@@ -98,7 +98,7 @@ $stmt = $conn->prepare("
         family_id, sold_to, paid_to, entry_date, name,
         dob, gender, passport_number, passport_expiry,
         id_type, flight_date, return_date, duration, room_type,
-        total_base_price, total_sold_price, total_profit, received_bank_payment,
+        price, sold_price, profit, received_bank_payment,
         bank_receipt_number, paid, due,
         created_by, remarks, relation, gfname, fname, discount,
         tenant_id

@@ -457,9 +457,9 @@ require_once('../includes/conn.php');
                                                                                                             <div><?= __('duration') ?>: <?= htmlspecialchars($member['duration']) ?></div>
                                                                                                         </td>
                                                                                                         <td>
-                                                                                                            <div><?= __('base') ?>: <?= htmlspecialchars($member['total_base_price']) ?></div>
+                                                                                                            <div><?= __('base') ?>: <?= htmlspecialchars($member['price']) ?></div>
                                                                                                             <div><?= __('discount') ?>: <?= htmlspecialchars($member['discount']) ?></div>
-                                                                                                            <div><?= __('sold') ?>: <?= htmlspecialchars($member['total_sold_price']) ?></div>
+                                                                                                            <div><?= __('sold') ?>: <?= htmlspecialchars($member['sold_price']) ?></div>
                                                                                                             <div class="text-success"><?= __('paid') ?>: <?= htmlspecialchars($member['paid']) ?></div>
                                                                                                             <?php
                                                                                                                                                                              // Fetch main account transactions for this booking
@@ -477,7 +477,7 @@ require_once('../includes/conn.php');
                                                                                                             <div><?= __('bank') ?>: <?= htmlspecialchars($member['received_bank_payment']) ?></div>
                                                                                                             <div><?= __('receipt') ?>: <?= htmlspecialchars($member['bank_receipt_number']) ?></div>
                                                                                                             <div class="text-danger"><?= __('due') ?>: <?= htmlspecialchars($member['due']) ?></div>
-                                                                                                            <div class="text-success"><?= __('profit') ?>: <?= htmlspecialchars($member['total_profit']) ?></div>
+                                                                                                            <div class="text-success"><?= __('profit') ?>: <?= htmlspecialchars($member['profit']) ?></div>
                                                                                                         </td>
                                                                                                         <td>
                                                                                                             <div class="dropdown">
