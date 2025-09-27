@@ -1,0 +1,661 @@
+/**
+ * RTL Stylesheet for Dari and Pashto languages
+ * This file contains styling overrides for right-to-left languages
+ */
+
+/* General RTL styles */
+html[dir="rtl"],
+body.rtl {
+    direction: rtl;
+    text-align: right;
+}
+
+/* Text alignment */
+html[dir="rtl"] .text-left,
+body.rtl .text-left {
+    text-align: right !important;
+}
+
+html[dir="rtl"] .text-right,
+body.rtl .text-right {
+    text-align: left !important;
+}
+
+/* Floats */
+html[dir="rtl"] .float-left,
+body.rtl .float-left {
+    float: right !important;
+}
+
+html[dir="rtl"] .float-right,
+body.rtl .float-right {
+    float: left !important;
+}
+
+/* Margins and paddings */
+html[dir="rtl"] .ml-1, html[dir="rtl"] .ml-2, html[dir="rtl"] .ml-3, html[dir="rtl"] .ml-4, html[dir="rtl"] .ml-5,
+body.rtl .ml-1, body.rtl .ml-2, body.rtl .ml-3, body.rtl .ml-4, body.rtl .ml-5 {
+    margin-left: 0 !important;
+    margin-right: .25rem !important;
+}
+
+html[dir="rtl"] .mr-1, html[dir="rtl"] .mr-2, html[dir="rtl"] .mr-3, html[dir="rtl"] .mr-4, html[dir="rtl"] .mr-5,
+body.rtl .mr-1, body.rtl .mr-2, body.rtl .mr-3, body.rtl .mr-4, body.rtl .mr-5 {
+    margin-right: 0 !important;
+    margin-left: .25rem !important;
+}
+
+html[dir="rtl"] .pl-1, html[dir="rtl"] .pl-2, html[dir="rtl"] .pl-3, html[dir="rtl"] .pl-4, html[dir="rtl"] .pl-5,
+body.rtl .pl-1, body.rtl .pl-2, body.rtl .pl-3, body.rtl .pl-4, body.rtl .pl-5 {
+    padding-left: 0 !important;
+    padding-right: .25rem !important;
+}
+
+html[dir="rtl"] .pr-1, html[dir="rtl"] .pr-2, html[dir="rtl"] .pr-3, html[dir="rtl"] .pr-4, html[dir="rtl"] .pr-5,
+body.rtl .pr-1, body.rtl .pr-2, body.rtl .pr-3, body.rtl .pr-4, body.rtl .pr-5 {
+    padding-right: 0 !important;
+    padding-left: .25rem !important;
+}
+
+/* Border radiuses */
+html[dir="rtl"] .rounded-left,
+body.rtl .rounded-left {
+    border-top-left-radius: 0 !important;
+    border-bottom-left-radius: 0 !important;
+    border-top-right-radius: .25rem !important;
+    border-bottom-right-radius: .25rem !important;
+}
+
+html[dir="rtl"] .rounded-right,
+body.rtl .rounded-right {
+    border-top-right-radius: 0 !important;
+    border-bottom-right-radius: 0 !important;
+    border-top-left-radius: .25rem !important;
+    border-bottom-left-radius: .25rem !important;
+}
+
+/* Flexbox */
+html[dir="rtl"] .justify-content-start,
+body.rtl .justify-content-start {
+    justify-content: flex-end !important;
+}
+
+html[dir="rtl"] .justify-content-end,
+body.rtl .justify-content-end {
+    justify-content: flex-start !important;
+}
+
+/* Navigation */
+html[dir="rtl"] .navbar-nav,
+body.rtl .navbar-nav {
+    padding-right: 0;
+}
+
+html[dir="rtl"] .dropdown-menu,
+body.rtl .dropdown-menu {
+    text-align: right;
+}
+
+html[dir="rtl"] .dropdown-item,
+body.rtl .dropdown-item {
+    text-align: right;
+}
+
+html[dir="rtl"] .navbar-nav .nav-link,
+body.rtl .navbar-nav .nav-link {
+    padding-right: 0;
+    padding-left: .5rem;
+}
+
+/* Sidebar */
+html[dir="rtl"] .pcoded-navbar,
+body.rtl .pcoded-navbar {
+    direction: rtl;
+    text-align: right;
+}
+
+html[dir="rtl"] .pcoded-navbar .pcoded-inner-navbar .pcoded-item li > a,
+body.rtl .pcoded-navbar .pcoded-inner-navbar .pcoded-item li > a {
+    text-align: right;
+    direction: rtl;
+}
+
+html[dir="rtl"] .pcoded-navbar .pcoded-inner-navbar .pcoded-item > li > a .pcoded-micon,
+body.rtl .pcoded-navbar .pcoded-inner-navbar .pcoded-item > li > a .pcoded-micon {
+    margin-right: 0;
+    margin-left: 15px;
+    float: right;
+}
+
+/* Force RTL for all menu items */
+html[dir="rtl"] .nav,
+body.rtl .nav {
+    padding-right: 0;
+}
+
+html[dir="rtl"] .pcoded-mtext,
+body.rtl .pcoded-mtext {
+    float: right;
+}
+
+html[dir="rtl"] .pcoded-navbar .pcoded-inner-navbar .pcoded-item li ul li > a,
+body.rtl .pcoded-navbar .pcoded-inner-navbar .pcoded-item li ul li > a {
+    padding-right: 60px;
+    padding-left: 20px;
+}
+
+html[dir="rtl"] .pcoded-navbar .pcoded-inner-navbar .pcoded-item li ul li > a:before,
+body.rtl .pcoded-navbar .pcoded-inner-navbar .pcoded-item li ul li > a:before {
+    left: auto;
+    right: 25px;
+}
+
+html[dir="rtl"] .pcoded-navbar .pcoded-inner-navbar .pcoded-item li.pcoded-hasmenu > a:after,
+body.rtl .pcoded-navbar .pcoded-inner-navbar .pcoded-item li.pcoded-hasmenu > a:after {
+    right: auto;
+    left: 15px;
+    transform: rotate(180deg);
+}
+
+html[dir="rtl"] .pcoded-header,
+body.rtl .pcoded-header {
+    margin-left: 0;
+    margin-right: 264px;
+}
+
+html[dir="rtl"] .pcoded-main-container,
+body.rtl .pcoded-main-container {
+    margin-left: 0 !important;
+    margin-right: 264px;
+}
+
+html[dir="rtl"] .mobile-menu,
+body.rtl .mobile-menu {
+    right: auto;
+    left: 0;
+}
+
+/* Content positioning */
+html[dir="rtl"] .pcoded-content,
+body.rtl .pcoded-content {
+    padding: 30px 30px 0;
+    position: relative;
+    width: 100%;
+    z-index: 5;
+}
+
+/* When sidebar is collapsed */
+html[dir="rtl"] .pcoded-navbar.navbar-collapsed ~ .pcoded-header,
+body.rtl .pcoded-navbar.navbar-collapsed ~ .pcoded-header {
+    margin-right: 70px;
+}
+
+html[dir="rtl"] .pcoded-navbar.navbar-collapsed ~ .pcoded-main-container,
+body.rtl .pcoded-navbar.navbar-collapsed ~ .pcoded-main-container {
+    margin-right: 70px;
+}
+
+/* Additional sidebar fixes */
+html[dir="rtl"] .pcoded-navbar .pcoded-inner-navbar .pcoded-item .pcoded-hasmenu .pcoded-submenu,
+body.rtl .pcoded-navbar .pcoded-inner-navbar .pcoded-item .pcoded-hasmenu .pcoded-submenu {
+    padding-right: 20px;
+    padding-left: 0;
+}
+
+html[dir="rtl"] .pcoded-navbar .pcoded-inner-navbar .pcoded-item .pcoded-submenu-caption,
+body.rtl .pcoded-navbar .pcoded-inner-navbar .pcoded-item .pcoded-submenu-caption {
+    text-align: right;
+}
+
+html[dir="rtl"] .pcoded-navbar .pcoded-inner-navbar li.pcoded-hasmenu a:after,
+body.rtl .pcoded-navbar .pcoded-inner-navbar li.pcoded-hasmenu a:after {
+    right: auto;
+    left: 20px;
+}
+
+html[dir="rtl"] .pcoded-navbar .pcoded-inner-navbar .pcoded-item li .pcoded-submenu li a,
+body.rtl .pcoded-navbar .pcoded-inner-navbar .pcoded-item li .pcoded-submenu li a {
+    padding: 10px 45px 10px 20px;
+}
+
+html[dir="rtl"] .pcoded-navbar .pcoded-inner-navbar .pcoded-navigatio-lavel,
+body.rtl .pcoded-navbar .pcoded-inner-navbar .pcoded-navigatio-lavel {
+    text-align: right;
+    padding-left: 0;
+    padding-right: 20px;
+}
+
+html[dir="rtl"] .pcoded-navbar .pcoded-inner-navbar .pcoded-item > li:first-child > a,
+body.rtl .pcoded-navbar .pcoded-inner-navbar .pcoded-item > li:first-child > a {
+    margin-top: 20px;
+}
+
+html[dir="rtl"] .pcoded-navbar .pcoded-inner-navbar .pcoded-item li a .pcoded-badge,
+body.rtl .pcoded-navbar .pcoded-inner-navbar .pcoded-item li a .pcoded-badge {
+    right: auto;
+    left: 35px;
+}
+
+html[dir="rtl"] .pcoded-navbar .pcoded-inner-navbar .pcoded-item .pcoded-hasmenu .pcoded-submenu li .pcoded-submenu li > a,
+body.rtl .pcoded-navbar .pcoded-inner-navbar .pcoded-item .pcoded-hasmenu .pcoded-submenu li .pcoded-submenu li > a {
+    padding: 10px 80px 10px 20px;
+}
+
+html[dir="rtl"] .pcoded-navbar .navbar-brand,
+body.rtl .pcoded-navbar .navbar-brand {
+    float: right;
+    margin-right: 0;
+    margin-left: 1rem;
+}
+
+html[dir="rtl"] .pcoded-navbar .pcoded-menu-caption,
+body.rtl .pcoded-navbar .pcoded-menu-caption {
+    text-align: right;
+    padding: 5px 20px;
+}
+
+html[dir="rtl"] .navbar-brand .b-title,
+body.rtl .navbar-brand .b-title {
+    margin-left: 0;
+    margin-right: 10px;
+}
+
+html[dir="rtl"] .navbar-brand .b-bg,
+body.rtl .navbar-brand .b-bg {
+    margin-right: 0;
+    margin-left: 10px;
+    float: right;
+}
+
+/* Form elements */
+html[dir="rtl"] .form-check,
+body.rtl .form-check {
+    padding-left: 0;
+    padding-right: 1.25rem;
+}
+
+html[dir="rtl"] .form-check-input,
+body.rtl .form-check-input {
+    margin-left: 0;
+    margin-right: -1.25rem;
+}
+
+/* Tables */
+html[dir="rtl"] .table th,
+body.rtl .table th {
+    text-align: right;
+}
+
+html[dir="rtl"] .table td,
+body.rtl .table td {
+    text-align: right;
+}
+
+/* Cards */
+html[dir="rtl"] .card-header-action,
+body.rtl .card-header-action {
+    right: auto;
+    left: 15px;
+}
+
+/* List groups */
+html[dir="rtl"] .list-group,
+body.rtl .list-group {
+    padding-right: 0;
+}
+
+/* Icons flipping */
+html[dir="rtl"] .fa-arrow-left,
+body.rtl .fa-arrow-left {
+    transform: scaleX(-1);
+}
+
+html[dir="rtl"] .fa-arrow-right,
+body.rtl .fa-arrow-right {
+    transform: scaleX(-1);
+}
+
+html[dir="rtl"] .fa-chevron-right,
+body.rtl .fa-chevron-right {
+    transform: scaleX(-1);
+}
+
+html[dir="rtl"] .fa-chevron-left,
+body.rtl .fa-chevron-left {
+    transform: scaleX(-1);
+}
+
+html[dir="rtl"] .fa-angle-right,
+body.rtl .fa-angle-right {
+    transform: scaleX(-1);
+}
+
+html[dir="rtl"] .fa-angle-left,
+body.rtl .fa-angle-left {
+    transform: scaleX(-1);
+}
+
+/* Pagination */
+html[dir="rtl"] .page-item:first-child .page-link,
+body.rtl .page-item:first-child .page-link {
+    border-top-left-radius: 0;
+    border-bottom-left-radius: 0;
+    border-top-right-radius: .25rem;
+    border-bottom-right-radius: .25rem;
+}
+
+html[dir="rtl"] .page-item:last-child .page-link,
+body.rtl .page-item:last-child .page-link {
+    border-top-right-radius: 0;
+    border-bottom-right-radius: 0;
+    border-top-left-radius: .25rem;
+    border-bottom-left-radius: .25rem;
+}
+
+/* Fix for RTL specific issues */
+html[dir="rtl"] .ml-auto,
+body.rtl .ml-auto {
+    margin-left: 0 !important;
+    margin-right: auto !important;
+}
+
+html[dir="rtl"] .mr-auto,
+body.rtl .mr-auto {
+    margin-right: 0 !important;
+    margin-left: auto !important;
+}
+
+/* Language switcher styling */
+.language-switcher {
+    display: flex;
+    align-items: center;
+}
+
+.language-switcher .lang-item {
+    margin: 0 5px;
+    padding: 5px 10px;
+    cursor: pointer;
+    text-decoration: none;
+}
+
+.language-switcher .lang-item.active {
+    font-weight: bold;
+    border-bottom: 2px solid;
+}
+
+/* RTL form controls with special icons */
+html[dir="rtl"] .form-control-icon-right,
+body.rtl .form-control-icon-right {
+    padding-right: 10px;
+    padding-left: 40px;
+}
+
+html[dir="rtl"] .form-control-icon-right + .input-icon,
+body.rtl .form-control-icon-right + .input-icon {
+    right: auto;
+    left: 10px;
+}
+
+/* Fonts for Arabic/Persian text */
+/* 
+ * NOTE: You need to download Noto Naskh Arabic font from https://fonts.google.com/noto/specimen/Noto+Naskh+Arabic
+ * and place it in ../fonts/NotoNaskhArabic-Regular.ttf
+ */
+@font-face {
+    font-family: 'DariPashto';
+    src: url('../fonts/NotoNaskhArabic-Regular.ttf') format('truetype');
+    font-weight: normal;
+    font-style: normal;
+}
+
+html[dir="rtl"] body,
+body.rtl {
+    font-family: 'DariPashto', Arial, sans-serif;
+}
+
+/* Additional logo and brand positioning in RTL */
+html[dir="rtl"] .navbar-brand.header-logo,
+body.rtl .navbar-brand.header-logo {
+    float: right;
+}
+
+html[dir="rtl"] .b-brand,
+body.rtl .b-brand {
+    margin-right: 0;
+    margin-left: 20px;
+}
+
+html[dir="rtl"] .b-brand .b-bg,
+body.rtl .b-brand .b-bg {
+    margin-right: 0;
+    margin-left: 10px;
+}
+
+html[dir="rtl"] .b-brand .b-title,
+body.rtl .b-brand .b-title {
+    margin-left: 0;
+    margin-right: 10px;
+}
+
+/* Fix for submenu indicators */
+html[dir="rtl"] .pcoded-submenu .pcoded-hasmenu:after,
+body.rtl .pcoded-submenu .pcoded-hasmenu:after {
+    transform: rotate(180deg);
+    right: auto;
+    left: 20px;
+}
+
+/* Fix specific for dropdown carets */
+html[dir="rtl"] .dropdown-toggle::after, 
+body.rtl .dropdown-toggle::after {
+    margin-left: 0;
+    margin-right: 0.255em;
+}
+
+/* Fix specific for breadcrumb */
+html[dir="rtl"] .breadcrumb-item + .breadcrumb-item::before,
+body.rtl .breadcrumb-item + .breadcrumb-item::before {
+    padding-right: 0;
+    padding-left: 0.5rem;
+}
+
+html[dir="rtl"] .breadcrumb-item + .breadcrumb-item,
+body.rtl .breadcrumb-item + .breadcrumb-item {
+    padding-left: 0;
+    padding-right: 0.5rem;
+}
+
+/* Fix for specific pcoded menu items */
+html[dir="rtl"] .pcoded-navbar .pcoded-inner-navbar .pcoded-item li,
+body.rtl .pcoded-navbar .pcoded-inner-navbar .pcoded-item li {
+    float: none;
+}
+
+html[dir="rtl"] .pcoded-navbar .pcoded-inner-navbar,
+body.rtl .pcoded-navbar .pcoded-inner-navbar {
+    direction: rtl;
+    text-align: right;
+}
+
+html[dir="rtl"] .pcoded-navbar .pcoded-inner-navbar .pcoded-item > li > a,
+body.rtl .pcoded-navbar .pcoded-inner-navbar .pcoded-item > li > a {
+    padding: 8px 20px 8px 35px;
+}
+
+/* Fix for specific icon positioning */
+html[dir="rtl"] .pcoded-navbar .pcoded-inner-navbar .pcoded-item > li > a > .pcoded-micon,
+body.rtl .pcoded-navbar .pcoded-inner-navbar .pcoded-item > li > a > .pcoded-micon {
+    display: inline-block;
+    float: right;
+    position: relative;
+    top: 0;
+    width: auto;
+    margin-right: 0;
+    margin-left: 15px;
+}
+
+/* Reset some potential interfering styles */
+html[dir="rtl"] .pcoded-navbar .pcoded-inner-navbar *,
+body.rtl .pcoded-navbar .pcoded-inner-navbar * {
+    direction: rtl;
+}
+
+/* Ensure chevron indicators are properly placed */
+html[dir="rtl"] .pcoded-navbar .pcoded-inner-navbar .pcoded-hasmenu > a:after,
+body.rtl .pcoded-navbar .pcoded-inner-navbar .pcoded-hasmenu > a:after {
+    position: absolute;
+    left: 20px;
+    right: auto;
+    top: 50%;
+    transform: translateY(-50%) rotate(180deg);
+}
+
+/* Fix for pcoded-mtext class */
+html[dir="rtl"] .pcoded-mtext,
+body.rtl .pcoded-mtext {
+    display: inline-block;
+    vertical-align: middle;
+    position: relative;
+    top: 0;
+}
+
+/* Force reset specific icon styles that might be overridden */
+html[dir="rtl"] .feather,
+body.rtl .feather {
+    display: inline-block;
+}
+
+/* Override specific styles for pcoded-navbar items */
+html[dir="rtl"] .pcoded-navbar.theme-horizontal .pcoded-inner-navbar li.pcoded-hasmenu > a:after,
+body.rtl .pcoded-navbar.theme-horizontal .pcoded-inner-navbar li.pcoded-hasmenu > a:after {
+    position: relative;
+    right: auto;
+    left: -21px;
+    top: 1px;
+}
+
+/* Force absolute positioning for all sidebar item icons */
+html[dir="rtl"] .pcoded-navbar .pcoded-inner-navbar li.pcoded-hasmenu > a:after,
+body.rtl .pcoded-navbar .pcoded-inner-navbar li.pcoded-hasmenu > a:after {
+    position: absolute;
+    left: 20px;
+    right: auto;
+    top: 15px;
+}
+
+/* Fix header brand alignment */
+html[dir="rtl"] .b-brand,
+body.rtl .b-brand {
+    display: flex;
+    align-items: center;
+    flex-direction: row-reverse;
+}
+
+/* Critical fix for sidebar items - apply !important to ensure overrides */
+html[dir="rtl"] .pcoded-navbar .pcoded-inner-navbar .pcoded-item > li > a > .pcoded-micon,
+body.rtl .pcoded-navbar .pcoded-inner-navbar .pcoded-item > li > a > .pcoded-micon {
+    float: right !important;
+    margin-left: 15px !important;
+    margin-right: 0 !important;
+}
+
+/* Fix for nested submenu items */
+html[dir="rtl"] .pcoded-navbar .pcoded-inner-navbar .pcoded-item .pcoded-hasmenu .pcoded-submenu,
+body.rtl .pcoded-navbar .pcoded-inner-navbar .pcoded-item .pcoded-hasmenu .pcoded-submenu {
+    padding-right: 40px !important;
+    padding-left: 0 !important;
+}
+
+/* Fix for text alignment in all sidebar items */
+html[dir="rtl"] .pcoded-navbar .pcoded-inner-navbar .pcoded-item li a,
+body.rtl .pcoded-navbar .pcoded-inner-navbar .pcoded-item li a {
+    text-align: right !important;
+}
+
+/* Fix layout for collapsed navbar */
+html[dir="rtl"] .pcoded-navbar.navbar-collapsed .header-logo,
+body.rtl .pcoded-navbar.navbar-collapsed .header-logo {
+    width: 70px !important;
+}
+
+html[dir="rtl"] .pcoded-navbar.navbar-collapsed .header-logo .b-title,
+body.rtl .pcoded-navbar.navbar-collapsed .header-logo .b-title {
+    transform: rotateY(-90deg);
+    transform-origin: 0 0;
+    width: 0;
+}
+
+html[dir="rtl"] .pcoded-navbar.navbar-collapsed:hover .pcoded-inner-navbar .pcoded-item > li > a > .pcoded-micon,
+body.rtl .pcoded-navbar.navbar-collapsed:hover .pcoded-inner-navbar .pcoded-item > li > a > .pcoded-micon {
+    float: right !important;
+    margin-right: 0 !important;
+    margin-left: 15px !important;
+}
+
+/* CRITICAL RTL SIDEBAR FIX - Override all other rules */
+html[dir="rtl"] .pcoded-navbar,
+body.rtl .pcoded-navbar {
+    direction: rtl;
+    text-align: right;
+}
+
+/* Force all sidebar links to use correct layout */
+html[dir="rtl"] .pcoded-navbar .pcoded-inner-navbar .pcoded-item li a,
+body.rtl .pcoded-navbar .pcoded-inner-navbar .pcoded-item li a {
+    display: flex !important;
+    flex-direction: row-reverse !important;
+    justify-content: flex-start !important;
+    text-align: right !important;
+    align-items: center !important;
+    padding: 10px 20px 10px 35px !important;
+}
+
+/* Fix icon positioning */
+html[dir="rtl"] .pcoded-navbar .pcoded-inner-navbar .pcoded-item li a .pcoded-micon,
+body.rtl .pcoded-navbar .pcoded-inner-navbar .pcoded-item li a .pcoded-micon {
+    margin-right: 0 !important;
+    margin-left: 15px !important;
+    float: none !important;
+    order: 1 !important;
+}
+
+/* Fix text positioning */
+html[dir="rtl"] .pcoded-navbar .pcoded-inner-navbar .pcoded-item li a .pcoded-mtext,
+body.rtl .pcoded-navbar .pcoded-inner-navbar .pcoded-item li a .pcoded-mtext {
+    float: none !important;
+    order: 2 !important;
+    text-align: right !important;
+}
+
+/* Fix menu captions */
+html[dir="rtl"] .pcoded-navbar .pcoded-inner-navbar .pcoded-menu-caption,
+body.rtl .pcoded-navbar .pcoded-inner-navbar .pcoded-menu-caption {
+    text-align: right !important;
+    padding-right: 20px !important;
+    padding-left: 0 !important;
+}
+
+/* Fix submenu indicators */
+html[dir="rtl"] .pcoded-navbar .pcoded-inner-navbar .pcoded-item li.pcoded-hasmenu > a:after,
+body.rtl .pcoded-navbar .pcoded-inner-navbar .pcoded-item li.pcoded-hasmenu > a:after {
+    position: absolute !important;
+    right: auto !important;
+    left: 20px !important;
+    top: 50% !important;
+    transform: translateY(-50%) rotate(180deg) !important;
+}
+
+/* Fix nested submenu items */
+html[dir="rtl"] .pcoded-navbar .pcoded-inner-navbar .pcoded-item li .pcoded-submenu li > a,
+body.rtl .pcoded-navbar .pcoded-inner-navbar .pcoded-item li .pcoded-submenu li > a {
+    padding: 7px 55px 7px 20px !important;
+}
+
+/* Remove any potential interfering styles */
+html[dir="rtl"] .pcoded-navbar .pcoded-inner-navbar .pcoded-item li,
+body.rtl .pcoded-navbar .pcoded-inner-navbar .pcoded-item li {
+    position: relative !important;
+    display: block !important;
+    width: 100% !important;
+    float: none !important;
+}

@@ -1,0 +1,1260 @@
+/* Modern Account Management Styling */
+
+:root {
+  --primary-color: #4099ff;
+  --secondary-color: #2ed8b6;
+  --danger-color: #FF5370;
+  --warning-color: #FFB64D;
+  --info-color: #00bcd4;
+  --success-color: #2ed8b6;
+  --dark-color: #373a3c;
+  --light-color: #f8f9fa;
+  --border-radius: 0.5rem;
+  --card-shadow: 0 4px 20px 1px rgba(0, 0, 0, 0.06), 0 1px 4px rgba(0, 0, 0, 0.08);
+  --transition: all 0.3s ease;
+}
+
+/* Card Styling */
+.modern-card {
+  border: none;
+  border-radius: var(--border-radius);
+  box-shadow: var(--card-shadow);
+  transition: var(--transition);
+  margin-bottom: 1.5rem;
+}
+
+.modern-card:hover {
+  transform: translateY(-5px);
+  box-shadow: 0 8px 25px rgba(0, 0, 0, 0.1);
+}
+
+.modern-card .card-header {
+  border-bottom: none;
+  padding: 1.25rem 1.5rem;
+  border-radius: var(--border-radius) var(--border-radius) 0 0;
+}
+
+.modern-card .card-body {
+  padding: 1.5rem;
+}
+
+/* Stats Cards */
+.stat-card {
+  border-radius: var(--border-radius);
+  padding: 1.5rem;
+  height: 100%;
+  transition: var(--transition);
+}
+
+.stat-card:hover {
+  transform: translateY(-3px);
+}
+
+.stat-card .stat-icon {
+  width: 48px;
+  height: 48px;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  margin-bottom: 1rem;
+}
+
+.stat-card .stat-value {
+  font-size: 1.75rem;
+  font-weight: 600;
+}
+
+/* Account Cards */
+.account-card {
+  height: 100%;
+  transition: var(--transition);
+  border: none;
+  border-radius: var(--border-radius);
+  box-shadow: var(--card-shadow);
+}
+
+.account-card:hover {
+  transform: translateY(-5px);
+  box-shadow: 0 8px 25px rgba(0, 0, 0, 0.1);
+}
+
+.account-card .balance-row {
+  margin-bottom: 1.25rem;
+}
+
+.account-card .balance-item {
+  margin-bottom: 1rem;
+}
+
+.account-card .balance-item .balance-label {
+  color: #6c757d;
+  font-size: 0.85rem;
+  margin-bottom: 0.25rem;
+}
+
+.account-card .balance-item .balance-value {
+  font-size: 1.25rem;
+  font-weight: 600;
+}
+
+/* Currency Icons */
+.currency-icon {
+  width: 32px;
+  height: 32px;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  margin-right: 0.75rem;
+}
+
+/* Filter Components */
+.filter-container {
+  background-color: #fff;
+  border-radius: var(--border-radius);
+  padding: 1.25rem;
+  margin-bottom: 1.5rem;
+  box-shadow: 0 2px 10px rgba(0, 0, 0, 0.05);
+}
+
+.filter-control {
+  border-radius: 0.375rem;
+  border: 1px solid #dee2e6;
+  padding: 0.5rem 1rem;
+  transition: var(--transition);
+}
+
+.filter-control:focus {
+  border-color: var(--primary-color);
+  box-shadow: 0 0 0 0.2rem rgba(64, 153, 255, 0.25);
+}
+
+/* Search Bar */
+.search-container {
+  position: relative;
+  margin-bottom: 1.5rem;
+}
+
+.search-input {
+  border-radius: 50px;
+  padding: 0.75rem 1.25rem 0.75rem 3rem;
+  border: 1px solid #dee2e6;
+  width: 100%;
+  transition: var(--transition);
+}
+
+.search-input:focus {
+  box-shadow: 0 0 0 0.2rem rgba(64, 153, 255, 0.25);
+  border-color: var(--primary-color);
+}
+
+.search-icon {
+  position: absolute;
+  left: 1rem;
+  top: 50%;
+  transform: translateY(-50%);
+  color: #6c757d;
+}
+
+/* Table Styling */
+.modern-table {
+  border-collapse: separate;
+  border-spacing: 0;
+  width: 100%;
+}
+
+.modern-table thead th {
+  background-color: #f8f9fa;
+  border: none;
+  font-weight: 600;
+  padding: 1rem;
+  font-size: 0.875rem;
+  color: #495057;
+  text-transform: uppercase;
+}
+
+.modern-table tbody td {
+  padding: 1rem;
+  vertical-align: middle;
+  border-top: 1px solid #f2f2f2;
+}
+
+.modern-table tbody tr:hover {
+  background-color: #f8f9fa;
+}
+
+/* Badge Styling */
+.status-badge {
+  padding: 0.4rem 0.8rem;
+  border-radius: 50px;
+  font-size: 0.75rem;
+  font-weight: 500;
+}
+
+/* Action Buttons */
+.action-btn {
+  padding: 0.4rem 0.75rem;
+  border-radius: 0.375rem;
+  margin-right: 0.5rem;
+  transition: var(--transition);
+}
+
+.action-btn:hover {
+  transform: translateY(-2px);
+}
+
+/* Animations */
+@keyframes fadeIn {
+  0% { opacity: 0; transform: translateY(10px); }
+  100% { opacity: 1; transform: translateY(0); }
+}
+
+.animated-item {
+  animation: fadeIn 0.5s ease forwards;
+}
+
+/* Responsive Design */
+@media (max-width: 992px) {
+  .filter-row {
+    flex-direction: column;
+  }
+  
+  .filter-col {
+    margin-bottom: 1rem;
+  }
+}
+
+@media (max-width: 768px) {
+  .account-card {
+    margin-bottom: 1.5rem;
+  }
+  
+  .stat-card {
+    margin-bottom: 1rem;
+  }
+}
+
+/* Modal enhancements */
+.modern-modal .modal-content {
+  border: none;
+  border-radius: var(--border-radius);
+  box-shadow: 0 5px 15px rgba(0, 0, 0, 0.1);
+  overflow: hidden;
+  max-height: 90vh;
+  display: flex;
+  flex-direction: column;
+}
+
+.modern-modal .modal-header {
+  padding: 1.5rem;
+  border-bottom: 1px solid rgba(0,0,0,0.05);
+  flex-shrink: 0;
+}
+
+.modern-modal .modal-body {
+  padding: 1.5rem;
+  overflow-y: auto;
+  max-height: calc(90vh - 130px); /* Account for header and footer */
+}
+
+.modern-modal .modal-footer {
+  padding: 1rem 1.5rem;
+  border-top: 1px solid rgba(0,0,0,0.05);
+  display: flex;
+  justify-content: flex-end;
+  align-items: center;
+  gap: 10px;
+  flex-shrink: 0;
+}
+
+/* Fix for modal buttons display */
+.modal-footer .btn {
+  margin-left: 0.5rem !important;
+  min-width: 100px;
+}
+
+.modal-footer .btn i {
+  margin-right: 0.5rem;
+  font-size: 1rem;
+}
+
+.modal-footer .btn-outline-secondary {
+  color: #6c757d;
+  border-color: #6c757d;
+}
+
+.modal-footer .btn-outline-secondary:hover {
+  color: #fff;
+  background-color: #6c757d;
+  border-color: #6c757d;
+}
+
+.modal-footer .btn-primary {
+  background-color: var(--primary-color);
+  border-color: var(--primary-color);
+}
+
+.modal-footer .btn-primary:hover {
+  background-color: #3089e9;
+  border-color: #3089e9;
+}
+
+.modal-footer .btn-danger {
+  background-color: var(--danger-color);
+  border-color: var(--danger-color);
+}
+
+.modal-footer .btn-danger:hover {
+  background-color: #ff3d5d;
+  border-color: #ff3d5d;
+}
+
+.modal-footer .btn-success {
+  background-color: var(--success-color);
+  border-color: var(--success-color);
+}
+
+.modal-footer .btn-success:hover {
+  background-color: #26c6a6;
+  border-color: #26c6a6;
+}
+
+.modal-footer .btn-info {
+  background-color: var(--info-color);
+  border-color: var(--info-color);
+}
+
+.modal-footer .btn-info:hover {
+  background-color: #00a5bb;
+  border-color: #00a5bb;
+}
+
+/* Loading Spinners */
+.loader-container {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 2rem 0;
+}
+
+.loader {
+  width: 40px;
+  height: 40px;
+  border: 3px solid #f3f3f3;
+  border-top: 3px solid var(--primary-color);
+  border-radius: 50%;
+  animation: spin 1s linear infinite;
+}
+
+@keyframes spin {
+  0% { transform: rotate(0deg); }
+  100% { transform: rotate(360deg); }
+}
+
+/* Base Styles */
+.container {
+    max-width: 1200px;
+    padding: 15px;
+}
+
+/* Card Styles */
+.card {
+    border-radius: 15px;
+    transition: all 0.3s ease;
+}
+
+/* Card Header */
+.card-header {
+    border-bottom: 2px solid #007BFF;
+    padding: 1rem;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+}
+.card-header h3 {
+    font-size: 1rem;
+    margin: 0;
+}
+
+/* Buttons */
+.fund-account-btn {
+    background-color: #007BFF;
+    border-radius: 15px;
+    font-size: 0.9rem;
+    padding: 10px;
+    transition: all 0.3s ease;
+}
+.fund-account-btn:hover {
+    background-color: #0056b3;
+    transform: scale(1.05);
+}
+
+/* Input Fields */
+.form-select, .form-control {
+    border-radius: 8px;
+    padding: 10px;
+    font-size: 0.9rem;
+}
+.form-select:focus, .form-control:focus {
+    border-color: #007BFF;
+    outline: none;
+}
+
+/* Responsive Styles */
+@media (max-width: 1200px) {
+    .card {
+        margin-bottom: 20px;
+    }
+}
+
+@media (max-width: 768px) {
+    .card-header h3 {
+        font-size: 0.9rem;
+    }
+    .fund-account-btn {
+        font-size: 0.85rem;
+        padding: 8px;
+    }
+    .form-select, .form-control {
+        font-size: 0.8rem;
+    }
+}
+
+@media (max-width: 576px) {
+    .card-header i {
+        display: none; /* Hide icons on very small screens */
+    }
+    .card-body p {
+        font-size: 0.85rem;
+    }
+}
+
+/* Existing styles... */
+
+/* Fix for modal stacking and scrolling issues */
+#editTransactionModal {
+    z-index: 1060 !important; /* Higher than default modal z-index */
+}
+
+.modal-open .modal {
+    overflow-x: hidden;
+    overflow-y: auto;
+}
+
+.modal-dialog-scrollable {
+    max-height: calc(100% - 1rem);
+    overflow-y: auto;
+}
+
+.modal-dialog-scrollable .modal-content {
+    max-height: calc(100vh - 3.5rem);
+    overflow: hidden;
+}
+
+.modal-dialog-scrollable .modal-body {
+    overflow-y: auto;
+}
+
+/* Ensure modals don't interfere with each other */
+.modal-backdrop.show + .modal-backdrop.show {
+    z-index: 1059;
+}
+  /* Responsive styles for transaction tables */
+        /* Desktop styles - make modals wider on larger screens */
+        @media (min-width: 1200px) {
+            .modal-xl {
+                max-width: 90% !important; /* Override Bootstrap's default */
+                width: 90% !important;
+            }
+        }
+
+        /* Table cell content handling */
+        #transactionsTable td:nth-child(7), 
+        #clientTransactionsTable td:nth-child(10), 
+        #supplierTransactionsTable td:nth-child(9) {
+            max-width: 250px;
+            white-space: normal;
+            word-wrap: break-word;
+            overflow-wrap: break-word;
+        }
+
+        /* Existing responsive styles */
+        @media (max-width: 992px) {
+            .modal-xl {
+                max-width: 95%;
+            }
+            
+            #transactionsTable, #clientTransactionsTable, #supplierTransactionsTable {
+                display: block;
+                width: 100%;
+                overflow-x: auto;
+            }
+            
+            #transactionsTable th, #clientTransactionsTable th, #supplierTransactionsTable th,
+            #transactionsTable td, #clientTransactionsTable td, #supplierTransactionsTable td {
+                white-space: nowrap;
+                padding: 8px;
+            }
+            
+            /* Override white-space for description/remarks columns */
+            #transactionsTable td:nth-child(7), 
+            #clientTransactionsTable td:nth-child(10), 
+            #supplierTransactionsTable td:nth-child(9) {
+                white-space: normal;
+                max-width: 150px;
+            }
+            
+            .modal-body {
+                padding: 10px;
+            }
+        }
+
+        @media (max-width: 576px) {
+            .modal-xl {
+                max-width: 100%;
+                margin: 0;
+            }
+            
+            .modal-body {
+                padding: 5px;
+            }
+            
+            #transactionsTable th, #clientTransactionsTable th, #supplierTransactionsTable th,
+            #transactionsTable td, #clientTransactionsTable td, #supplierTransactionsTable td {
+                padding: 5px;
+                font-size: 0.85rem;
+            }
+            
+            /* Make description/remarks columns even narrower on small screens */
+            #transactionsTable td:nth-child(7), 
+            #clientTransactionsTable td:nth-child(10), 
+            #supplierTransactionsTable td:nth-child(9) {
+                max-width: 100px;
+            }
+            
+            .btn-sm {
+                padding: 0.2rem 0.4rem;
+                font-size: 0.75rem;
+            }
+        }
+
+/* Enhanced Modal Styling */
+.modern-modal .modal-dialog {
+  max-width: 95%;
+  margin: 1.75rem auto;
+}
+
+@media (min-width: 992px) {
+  .modern-modal .modal-dialog {
+    max-width: 800px;
+  }
+  
+  .modern-modal.modal-lg .modal-dialog {
+    max-width: 850px;
+  }
+  
+  .modern-modal.modal-xl .modal-dialog {
+    max-width: 1140px;
+  }
+}
+
+.modern-modal .modal-content {
+  border: none;
+  border-radius: var(--border-radius);
+  box-shadow: 0 10px 30px rgba(0, 0, 0, 0.15);
+  overflow: hidden;
+}
+
+.modern-modal .modal-header {
+  padding: 1.5rem;
+  border-bottom: 1px solid rgba(0, 0, 0, 0.05);
+  align-items: center;
+}
+
+.modern-modal .modal-header .close {
+  margin: -1.5rem -1.5rem -1.5rem auto;
+  padding: 1.5rem;
+  color: inherit;
+  opacity: 0.75;
+  transition: opacity 0.15s linear;
+}
+
+.modern-modal .modal-header .close:hover {
+  opacity: 1;
+}
+
+.modern-modal .modal-title {
+  display: flex;
+  align-items: center;
+  font-weight: 600;
+}
+
+.modern-modal .modal-title i {
+  margin-right: 10px;
+}
+
+.modern-modal .modal-body {
+  padding: 1.75rem;
+}
+
+.modern-modal .modal-footer {
+  padding: 1.25rem 1.75rem;
+  border-top: 1px solid rgba(0, 0, 0, 0.05);
+}
+
+/* Form Styling for Modals */
+.modern-modal .form-group {
+  margin-bottom: 1.5rem;
+}
+
+.modern-modal .form-control {
+  height: auto;
+  padding: 0.75rem 1rem;
+  border: 1px solid #dee2e6;
+  border-radius: var(--border-radius);
+  font-size: 0.95rem;
+  transition: all 0.2s;
+}
+
+.modern-modal .form-control:focus {
+  border-color: var(--primary-color);
+  box-shadow: 0 0 0 0.2rem rgba(64, 153, 255, 0.25);
+}
+
+.modern-modal .form-label {
+  font-weight: 500;
+  margin-bottom: 0.5rem;
+  font-size: 0.95rem;
+}
+
+.modern-modal select.form-control {
+  padding-right: 2rem;
+  background-position: right 0.75rem center;
+  background-size: 16px 12px;
+}
+
+/* Floating Label Style for Modals */
+.modern-modal .float-label {
+  position: relative;
+}
+
+.modern-modal .float-label label {
+  position: absolute;
+  left: 0.75rem;
+  top: 0;
+  padding: 0 0.25rem;
+  background: #fff;
+  color: #6c757d;
+  font-size: 0.85rem;
+  transform: translateY(-50%);
+  transition: all 0.2s;
+  pointer-events: none;
+}
+
+.modern-modal .float-label .form-control {
+  padding: 1rem 0.75rem 0.5rem;
+}
+
+/* Modal Actions */
+.modal-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+}
+
+/* Transaction List in Modals */
+.transaction-list {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  max-height: 400px;
+  overflow-y: auto;
+}
+
+.transaction-item {
+  padding: 1rem;
+  border-radius: var(--border-radius);
+  background: #f9f9f9;
+  margin-bottom: 0.75rem;
+  transition: var(--transition);
+}
+
+.transaction-item:hover {
+  box-shadow: var(--card-shadow);
+  transform: translateY(-2px);
+}
+
+.transaction-item .transaction-amount {
+  font-size: 1.1rem;
+  font-weight: 600;
+}
+
+.transaction-item .transaction-amount.positive {
+  color: var(--success-color);
+}
+
+.transaction-item .transaction-amount.negative {
+  color: var(--danger-color);
+}
+
+.transaction-item .transaction-details {
+  font-size: 0.85rem;
+  color: #6c757d;
+}
+
+/* Modal confirmation buttons */
+.btn-confirm {
+  position: relative;
+  overflow: hidden;
+}
+
+.btn-confirm::before {
+  content: "";
+  position: absolute;
+  top: 0;
+  left: -100%;
+  width: 100%;
+  height: 100%;
+  background-image: linear-gradient(
+    120deg,
+    transparent,
+    rgba(255, 255, 255, 0.3),
+    transparent
+  );
+  animation: shine 1.5s infinite;
+}
+
+@keyframes shine {
+  100% {
+    left: 100%;
+  }
+}
+
+/* Modal animation */
+.fade .modal-dialog {
+  transform: translateY(-10px);
+  opacity: 0;
+  transition: transform 0.3s ease-out, opacity 0.3s ease;
+}
+
+.fade.show .modal-dialog {
+  transform: translateY(0);
+  opacity: 1;
+}
+
+/* Modal Input Styling */
+.modern-modal .input-group-text {
+  border: 1px solid #e4e9f0;
+  background-color: #f8f9fa;
+  color: #6c757d;
+  padding: 0.5rem 0.75rem;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.modern-modal .input-group-text i {
+  font-size: 1rem;
+}
+
+.modern-modal .form-control {
+  border: 1px solid #e4e9f0;
+  padding: 0.5rem 0.75rem;
+  transition: all 0.2s ease;
+}
+
+.modern-modal .form-control:focus {
+  border-color: var(--primary-color);
+  box-shadow: 0 0 0 0.2rem rgba(64, 153, 255, 0.15);
+}
+
+.modern-modal label {
+  color: #495057;
+  font-weight: 500;
+  margin-bottom: 0.5rem;
+  font-size: 0.9rem;
+}
+
+/* Make all modals consistent */
+.modal.fade .modal-dialog {
+  transform: translate(0, -50px);
+  transition: transform 0.3s ease-out;
+}
+
+.modal.fade.show .modal-dialog {
+  transform: none;
+}
+
+/* Fix for close button */
+.modern-modal .close {
+  opacity: 1;
+  text-shadow: none;
+  font-weight: 300;
+  font-size: 1.5rem;
+}
+
+/* Alert styling in modals */
+.modern-modal .alert {
+  border-radius: 0.375rem;
+  border: none;
+  padding: 1rem;
+}
+
+/* Fix for modal backdrop */
+.modal-backdrop {
+  background-color: #000;
+}
+
+.modal-backdrop.show {
+  opacity: 0.5;
+}
+
+/* Modal animation */
+@keyframes modalFadeIn {
+  from {
+    opacity: 0;
+    transform: translateY(-20px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.modal.show .modal-content {
+  animation: modalFadeIn 0.3s ease forwards;
+}
+
+/* Client Payment Modal Specific Styles */
+#partialPaymentModal .form-group {
+  margin-bottom: 1.25rem;
+}
+
+#partialPaymentModal .form-control {
+  height: calc(1.5em + 0.75rem + 2px);
+}
+
+#partialPaymentModal .input-group-text {
+  min-width: 40px;
+  justify-content: center;
+}
+
+#partialPaymentModal textarea.form-control {
+  height: auto;
+  min-height: 60px;
+}
+
+#partialPaymentModal small.text-muted,
+#partialPaymentModal small.text-info {
+  display: block;
+  margin-top: 0.25rem;
+  font-size: 80%;
+}
+
+#partialPaymentModal .alert {
+  margin-bottom: 1.5rem;
+  border-left: 4px solid rgba(0, 123, 255, 0.5);
+}
+
+#partialPaymentModal .balance-item {
+  margin-bottom: 0;
+}
+
+#partialPaymentModal .balance-value {
+  font-size: 1.1rem;
+}
+
+/* Fix for modals on mobile */
+@media (max-width: 576px) {
+  #partialPaymentModal .modal-dialog {
+    margin: 0.5rem;
+  }
+  
+  #partialPaymentModal .row {
+    margin-left: -5px;
+    margin-right: -5px;
+  }
+  
+  #partialPaymentModal [class*="col-"] {
+    padding-left: 5px;
+    padding-right: 5px;
+  }
+  
+  #partialPaymentModal .form-group {
+    margin-bottom: 0.75rem;
+  }
+  
+  #partialPaymentModal .mb-md-0 {
+    margin-bottom: 0.75rem !important;
+  }
+  
+  #partialPaymentModal .mb-3 {
+    margin-bottom: 0.75rem !important;
+  }
+}
+
+/* Form organization in modals */
+.modern-modal .form-section {
+  margin-bottom: 1.5rem;
+  padding-bottom: 1.5rem;
+  border-bottom: 1px solid rgba(0,0,0,0.05);
+}
+
+.modern-modal .form-section:last-child {
+  margin-bottom: 0;
+  padding-bottom: 0;
+  border-bottom: none;
+}
+
+.modern-modal .form-section-title {
+  font-size: 1rem;
+  font-weight: 500;
+  margin-bottom: 1rem;
+  color: var(--primary-color);
+}
+
+/* Button organization */
+.modern-modal .btn-group-modal {
+  display: flex;
+  justify-content: flex-end;
+  gap: 10px;
+  margin-top: 1rem;
+}
+
+.modern-modal .btn-primary {
+  background-color: var(--primary-color);
+  border-color: var(--primary-color);
+  padding: 0.5rem 1.25rem;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-weight: 500;
+  transition: all 0.2s ease;
+}
+
+.modern-modal .btn-primary:hover {
+  background-color: var(--primary-color-dark);
+  border-color: var(--primary-color-dark);
+}
+
+.modern-modal .btn-outline-secondary {
+  border-color: #e4e9f0;
+  color: #ffffff;
+  padding: 0.5rem 1.25rem;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-weight: 500;
+  transition: all 0.2s ease;
+}
+
+.modern-modal .btn-outline-secondary:hover {
+  background-color: #f8f9fa;
+  border-color: #dde2e6;
+}
+
+/* Responsive modal adjustments */
+@media (max-width: 767px) {
+  .modern-modal .modal-body {
+    padding: 1rem;
+    max-height: calc(100vh - 120px);
+  }
+  
+  .modern-modal .form-section {
+    margin-bottom: 1rem;
+    padding-bottom: 1rem;
+  }
+  
+  .modern-modal .modal-dialog {
+    margin: 0.5rem;
+  }
+  
+  .modern-modal .row {
+    margin-left: -0.5rem;
+    margin-right: -0.5rem;
+  }
+  
+  .modern-modal .col-md-6 {
+    padding-left: 0.5rem;
+    padding-right: 0.5rem;
+  }
+  
+  .modern-modal .form-group {
+    margin-bottom: 0.75rem;
+  }
+  
+  .modern-modal .modal-footer {
+    padding: 0.75rem 1rem;
+    flex-wrap: wrap;
+  }
+  
+  .modern-modal .modal-footer .btn {
+    flex: 1;
+    margin: 0.25rem !important;
+    min-width: auto;
+    padding: 0.5rem;
+  }
+}
+
+/* Toast Notification Styles */
+.toast-container {
+    position: fixed;
+    top: 20px;
+    right: 20px;
+    z-index: 9999;
+    max-width: 350px;
+    width: 100%;
+}
+
+.toast {
+    position: relative;
+    margin-bottom: 15px;
+    border-radius: 8px;
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+    overflow: hidden;
+    background: #fff;
+    opacity: 0;
+    transform: translateX(100%);
+    animation: toast-in 0.3s ease forwards;
+}
+
+.toast.show {
+    opacity: 1;
+    transform: translateX(0);
+}
+
+.toast.toast-hide {
+    animation: toast-out 0.3s ease forwards;
+}
+
+@keyframes toast-in {
+    from {
+        opacity: 0;
+        transform: translateX(100%);
+    }
+    to {
+        opacity: 1;
+        transform: translateX(0);
+    }
+}
+
+@keyframes toast-out {
+    from {
+        opacity: 1;
+        transform: translateX(0);
+    }
+    to {
+        opacity: 0;
+        transform: translateX(100%);
+    }
+}
+
+.toast-header {
+    display: flex;
+    align-items: center;
+    padding: 12px 15px;
+    border-bottom: 1px solid rgba(0, 0, 0, 0.05);
+}
+
+.toast-success .toast-header {
+    background-color: #4CAF50;
+    color: white;
+}
+
+.toast-error .toast-header {
+    background-color: #F44336;
+    color: white;
+}
+
+.toast-warning .toast-header {
+    background-color: #FF9800;
+    color: white;
+}
+
+.toast-info .toast-header {
+    background-color: #2196F3;
+    color: white;
+}
+
+.toast-icon {
+    margin-right: 10px;
+    font-size: 18px;
+}
+
+.toast-title {
+    flex-grow: 1;
+    font-size: 16px;
+    margin: 0;
+}
+
+.toast-close {
+    background: transparent;
+    border: none;
+    color: inherit;
+    font-size: 20px;
+    cursor: pointer;
+    opacity: 0.7;
+    transition: opacity 0.2s;
+}
+
+.toast-close:hover {
+    opacity: 1;
+}
+
+.toast-body {
+    padding: 15px;
+    color: #555;
+    font-size: 14px;
+    line-height: 1.5;
+}
+
+/* Toast with action buttons */
+.toast-body button {
+    margin-top: 10px;
+    transition: all 0.2s;
+}
+
+/* Toast colors */
+.toast-success .toast-body {
+    border-left: 4px solid #4CAF50;
+}
+
+.toast-error .toast-body {
+    border-left: 4px solid #F44336;
+}
+
+.toast-warning .toast-body {
+    border-left: 4px solid #FF9800;
+}
+
+.toast-info .toast-body {
+    border-left: 4px solid #2196F3;
+}
+
+/* Improve status badge readability */
+.status-badge {
+    padding: 4px 8px;
+    border-radius: 4px;
+    font-size: 12px;
+    font-weight: 500;
+    display: inline-block;
+    color: #fff;
+    text-shadow: 0 1px 1px rgba(0, 0, 0, 0.2);
+}
+
+/* Better background colors with improved contrast */
+.bg-success {
+    background-color: #28a745 !important;
+}
+
+.bg-danger {
+    background-color: #dc3545 !important;
+}
+
+.bg-info {
+    background-color: #17a2b8 !important;
+}
+
+.bg-warning {
+    background-color: #d39e00 !important;
+}
+
+.bg-primary {
+    background-color: #007bff !important;
+}
+
+/* Lighter background variants with better text contrast */
+.bg-success-light {
+    background-color: rgba(40, 167, 69, 0.15);
+    border: 1px solid rgba(40, 167, 69, 0.3);
+}
+
+.bg-danger-light {
+    background-color: rgba(220, 53, 69, 0.15);
+    border: 1px solid rgba(220, 53, 69, 0.3);
+}
+
+.bg-info-light {
+    background-color: rgba(23, 162, 184, 0.15);
+    border: 1px solid rgba(23, 162, 184, 0.3);
+}
+
+.bg-warning-light {
+    background-color: rgba(255, 193, 7, 0.15);
+    border: 1px solid rgba(255, 193, 7, 0.3);
+}
+
+.bg-primary-light {
+    background-color: rgba(0, 123, 255, 0.15);
+    border: 1px solid rgba(0, 123, 255, 0.3);
+}
+
+/* Account card styling */
+.account-card {
+    border-radius: 8px;
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+    transition: all 0.3s ease;
+    background-color: #fff;
+    overflow: hidden;
+    height: 100%;
+}
+
+.account-card:hover {
+    box-shadow: 0 5px 15px rgba(0, 0, 0, 0.15);
+}
+
+/* Account type badge styling */
+.account-type-badge {
+    padding: 3px 8px;
+    border-radius: 4px;
+    font-size: 11px;
+    font-weight: 500;
+    margin-top: 5px;
+    display: inline-block;
+    color: #fff;
+    text-shadow: 0 1px 1px rgba(0, 0, 0, 0.2);
+}
+
+/* Currency icons */
+.currency-icon {
+    width: 36px;
+    height: 36px;
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    margin-right: 10px;
+}
+
+/* Balance values */
+.balance-value {
+    font-weight: 600;
+    font-size: 1.1rem;
+}
+
+.balance-label {
+    font-size: 0.8rem;
+    color: #6c757d;
+}
+
+/* Text colors with better contrast */
+.text-success {
+    color: #218838 !important;
+}
+
+.text-danger {
+    color: #c82333 !important;
+}
+
+.text-info {
+    color: #138496 !important;
+}
+
+.text-warning {
+    color: #b8860b !important;
+}
+
+.text-primary {
+    color: #0069d9 !important;
+}

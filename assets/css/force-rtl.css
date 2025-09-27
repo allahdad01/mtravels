@@ -1,0 +1,425 @@
+/**
+ * FORCE RTL - Extreme measures to ensure RTL sidebar works
+ * This CSS uses !important on all rules and directly targets the specific template structure
+ */
+
+/* CRITICAL: Force ALL icons to right side in RTL mode */
+html[dir="rtl"] .pcoded-navbar i,
+body.rtl .pcoded-navbar i,
+html[dir="rtl"] .pcoded-navbar .feather,
+body.rtl .pcoded-navbar .feather,
+html[dir="rtl"] .pcoded-navbar svg,
+body.rtl .pcoded-navbar svg,
+html[dir="rtl"] .pcoded-navbar .fas,
+body.rtl .pcoded-navbar .fas,
+html[dir="rtl"] .pcoded-navbar .fab,
+body.rtl .pcoded-navbar .fab,
+html[dir="rtl"] .pcoded-navbar .far,
+body.rtl .pcoded-navbar .far {
+    float: right !important;
+    margin-left: 15px !important;
+    margin-right: 0 !important;
+    order: 2 !important; /* Icons second */
+}
+
+/* EXTREME MEASURE: Force complete RTL display */
+html[dir="rtl"] .pcoded-navbar .pcoded-inner-navbar ul.pcoded-item,
+body.rtl .pcoded-navbar .pcoded-inner-navbar ul.pcoded-item {
+    display: flex !important;
+    flex-direction: column !important;
+    width: 100% !important;
+}
+
+html[dir="rtl"] .pcoded-navbar .pcoded-inner-navbar ul.pcoded-item li,
+body.rtl .pcoded-navbar .pcoded-inner-navbar ul.pcoded-item li {
+    width: 100% !important;
+}
+
+html[dir="rtl"] .pcoded-navbar .pcoded-inner-navbar ul.pcoded-item li a,
+body.rtl .pcoded-navbar .pcoded-inner-navbar ul.pcoded-item li a {
+    display: flex !important;
+    flex-direction: row !important; /* Standard direction */
+    justify-content: flex-start !important;
+    width: 100% !important;
+    align-items: center !important;
+}
+
+html[dir="rtl"] .pcoded-navbar .pcoded-inner-navbar ul.pcoded-item li a .pcoded-micon,
+body.rtl .pcoded-navbar .pcoded-inner-navbar ul.pcoded-item li a .pcoded-micon {
+    margin-left: 15px !important;
+    margin-right: 0 !important;
+    order: 2 !important; /* Icons second */
+}
+
+html[dir="rtl"] .pcoded-navbar .pcoded-inner-navbar ul.pcoded-item li a .pcoded-mtext,
+body.rtl .pcoded-navbar .pcoded-inner-navbar ul.pcoded-item li a .pcoded-mtext {
+    order: 1 !important; /* Text first */
+}
+
+/* Force RTL for icon containers */
+html[dir="rtl"] .pcoded-micon,
+body.rtl .pcoded-micon {
+    float: right !important;
+    margin-left: 10px !important;
+    margin-right: 0 !important;
+    order: 2 !important; /* Icons second */
+}
+
+/* Force sidebar base to right side */
+html[dir="rtl"] .pcoded-navbar,
+body.rtl .pcoded-navbar {
+    right: 0 !important;
+    left: auto !important;
+}
+
+/* Completely override navbar structure */
+html[dir="rtl"] .pcoded-navbar *,
+body.rtl .pcoded-navbar * {
+    text-align: right !important;
+    direction: rtl !important;
+}
+
+/* Force all sidebar items to display correctly */
+html[dir="rtl"] .pcoded-navbar .pcoded-inner-navbar ul.pcoded-item li,
+body.rtl .pcoded-navbar .pcoded-inner-navbar ul.pcoded-item li {
+    text-align: right !important;
+    direction: rtl !important;
+    float: none !important;
+    width: 100% !important;
+}
+
+/* Force all links to display correctly */
+html[dir="rtl"] .pcoded-navbar .pcoded-inner-navbar ul.pcoded-item li > a,
+body.rtl .pcoded-navbar .pcoded-inner-navbar ul.pcoded-item li > a {
+    display: flex !important;
+    flex-direction: row !important; /* Standard direction */
+    justify-content: flex-start !important;
+    align-items: center !important;
+    text-align: right !important;
+    padding: 10px 20px 10px 35px !important;
+    width: 100% !important;
+}
+
+/* Fix icons positioning */
+html[dir="rtl"] .pcoded-navbar .pcoded-inner-navbar .pcoded-item li a .pcoded-micon,
+body.rtl .pcoded-navbar .pcoded-inner-navbar .pcoded-item li a .pcoded-micon {
+    float: right !important;
+    margin-right: 0 !important;
+    margin-left: 15px !important;
+    position: relative !important;
+    z-index: 2 !important;
+    display: flex !important;
+    align-items: center !important;
+    min-width: 30px !important;
+    justify-content: center !important;
+    order: 2 !important; /* Icons second */
+}
+
+/* Fix menu text positioning */
+html[dir="rtl"] .pcoded-navbar .pcoded-inner-navbar .pcoded-item li a .pcoded-mtext,
+body.rtl .pcoded-navbar .pcoded-inner-navbar .pcoded-item li a .pcoded-mtext {
+    flex-grow: 1 !important;
+    text-align: right !important;
+    position: relative !important;
+    z-index: 1 !important;
+    margin-right: 0 !important;
+    order: 1 !important; /* Text first */
+}
+
+/* Fix menu caption alignment */
+html[dir="rtl"] .pcoded-navbar .pcoded-inner-navbar .pcoded-menu-caption,
+body.rtl .pcoded-navbar .pcoded-inner-navbar .pcoded-menu-caption {
+    text-align: right !important;
+    direction: rtl !important;
+    padding-right: 20px !important;
+    padding-left: 0 !important;
+}
+
+/* Fix dropdown arrows */
+html[dir="rtl"] .pcoded-navbar .pcoded-inner-navbar .pcoded-hasmenu > a:after,
+body.rtl .pcoded-navbar .pcoded-inner-navbar .pcoded-hasmenu > a:after {
+    right: auto !important;
+    left: 15px !important;
+    position: absolute !important;
+    transform: rotate(0deg) !important; /* No rotation needed */
+}
+
+/* Fix submenu items */
+html[dir="rtl"] .pcoded-navbar .pcoded-inner-navbar .pcoded-hasmenu .pcoded-submenu li a,
+body.rtl .pcoded-navbar .pcoded-inner-navbar .pcoded-hasmenu .pcoded-submenu li a {
+    padding-right: 45px !important;
+    padding-left: 15px !important;
+    text-align: right !important;
+    display: flex !important;
+    flex-direction: row !important; /* Standard direction */
+}
+
+html[dir="rtl"] .pcoded-navbar .pcoded-inner-navbar .pcoded-hasmenu .pcoded-submenu li a .pcoded-micon,
+body.rtl .pcoded-navbar .pcoded-inner-navbar .pcoded-hasmenu .pcoded-submenu li a .pcoded-micon {
+    order: 2 !important; /* Icons second in submenu */
+    margin-left: 15px !important;
+    margin-right: 0 !important;
+}
+
+html[dir="rtl"] .pcoded-navbar .pcoded-inner-navbar .pcoded-hasmenu .pcoded-submenu li a .pcoded-mtext,
+body.rtl .pcoded-navbar .pcoded-inner-navbar .pcoded-hasmenu .pcoded-submenu li a .pcoded-mtext {
+    order: 1 !important; /* Text first in submenu */
+}
+
+/* Header brand positioning */
+html[dir="rtl"] .navbar-brand.header-logo,
+body.rtl .navbar-brand.header-logo {
+    float: right !important;
+}
+
+/* Fix header container */
+html[dir="rtl"] .pcoded-header,
+body.rtl .pcoded-header {
+    margin-right: 264px !important;
+    margin-left: 0 !important;
+}
+
+/* Fix main container */
+html[dir="rtl"] .pcoded-main-container,
+body.rtl .pcoded-main-container {
+    margin-right: 264px !important;
+    margin-left: 0 !important;
+}
+
+/* Force LTR elements to flip */
+html[dir="rtl"] .pcoded-navbar .pcoded-inner-navbar .pcoded-item > li.pcoded-hasmenu > a:after,
+body.rtl .pcoded-navbar .pcoded-inner-navbar .pcoded-item > li.pcoded-hasmenu > a:after {
+    content: "\f104" !important; /* Use left chevron instead of right */
+    right: auto !important;
+    left: 20px !important;
+}
+
+/* Add critical fix for nested submenus */
+html[dir="rtl"] .pcoded-navbar .pcoded-inner-navbar .pcoded-item .pcoded-hasmenu .pcoded-submenu,
+body.rtl .pcoded-navbar .pcoded-inner-navbar .pcoded-item .pcoded-hasmenu .pcoded-submenu {
+    padding-right: 40px !important;
+    padding-left: 0 !important;
+}
+
+/* Override any possible transform/transition properties */
+html[dir="rtl"] .pcoded-navbar .pcoded-inner-navbar .pcoded-item > li a,
+body.rtl .pcoded-navbar .pcoded-inner-navbar .pcoded-item > li a {
+    transition: none !important;
+}
+
+/* Fix visibility issues */
+html[dir="rtl"] .pcoded-navbar .pcoded-inner-navbar .pcoded-item .pcoded-hasmenu .pcoded-submenu,
+body.rtl .pcoded-navbar .pcoded-inner-navbar .pcoded-item .pcoded-hasmenu .pcoded-submenu {
+    position: relative !important;
+}
+
+/* Critical fix for RTL sidebar icons */
+html[dir="rtl"] .pcoded-navbar a,
+body.rtl .pcoded-navbar a {
+    display: flex !important;
+    flex-direction: row !important; /* Standard direction */
+    align-items: center !important;
+}
+
+html[dir="rtl"] .pcoded-navbar a i,
+body.rtl .pcoded-navbar a i,
+html[dir="rtl"] .pcoded-navbar a .feather,
+body.rtl .pcoded-navbar a .feather,
+html[dir="rtl"] .pcoded-navbar a .fas,
+body.rtl .pcoded-navbar a .fas {
+    margin-right: 0 !important;
+    margin-left: 15px !important;
+    float: right !important;
+    order: 2 !important; /* Icons second */
+}
+
+html[dir="rtl"] .pcoded-navbar .pcoded-mtext,
+body.rtl .pcoded-navbar .pcoded-mtext {
+    text-align: right !important;
+    display: inline-block !important;
+    order: 1 !important; /* Text first */
+}
+
+/* Extreme measure - flip entire sidebar contents if needed */
+@media (max-width: 992px) {
+    html[dir="rtl"] .pcoded-navbar,
+    body.rtl .pcoded-navbar {
+        right: -264px !important;
+        left: auto !important;
+    }
+
+    html[dir="rtl"] .pcoded-navbar.mob-open,
+    body.rtl .pcoded-navbar.mob-open {
+        right: 0 !important;
+        left: auto !important;
+    }
+}
+
+/* Critical fix for sidebar on small screens in RTL mode */
+@media (max-width: 991px) {
+    html[dir="rtl"] .pcoded-navbar,
+    body.rtl .pcoded-navbar {
+        right: -100% !important;
+        left: auto !important;
+        transform: translateX(0) !important;
+        transition: all 0.3s ease-in-out !important;
+    }
+
+    html[dir="rtl"] .pcoded-navbar.mob-open,
+    body.rtl .pcoded-navbar.mob-open {
+        right: 0 !important;
+        left: auto !important;
+        transform: translateX(0) !important;
+    }
+
+    html[dir="rtl"] .pcoded-navbar.navbar-collapsed,
+    body.rtl .pcoded-navbar.navbar-collapsed {
+        right: -100% !important;
+        left: auto !important;
+    }
+
+    html[dir="rtl"] .pcoded-header,
+    body.rtl .pcoded-header {
+        margin-right: 0 !important;
+        margin-left: 0 !important;
+    }
+
+    html[dir="rtl"] .pcoded-main-container,
+    body.rtl .pcoded-main-container {
+        margin-right: 0 !important;
+        margin-left: 0 !important;
+    }
+
+    /* Force hide sidebar on mobile by default */
+    html[dir="rtl"] .pcoded-navbar:not(.mob-open),
+    body.rtl .pcoded-navbar:not(.mob-open) {
+        display: none !important;
+    }
+
+    /* Show sidebar when mob-open class is present */
+    html[dir="rtl"] .pcoded-navbar.mob-open,
+    body.rtl .pcoded-navbar.mob-open {
+        display: block !important;
+    }
+    
+    /* Fix RTL sidebar items alignment on mobile */
+    html[dir="rtl"] .pcoded-navbar .nav-item a,
+    body.rtl .pcoded-navbar .nav-item a,
+    html[dir="rtl"] .pcoded-navbar .pcoded-hasmenu .nav-link,
+    body.rtl .pcoded-navbar .pcoded-hasmenu .nav-link {
+        text-align: right !important;
+        direction: rtl !important;
+        justify-content: flex-start !important;
+        padding-right: 20px !important;
+        display: flex !important;
+        flex-direction: row !important; /* Standard direction */
+    }
+    
+    html[dir="rtl"] .pcoded-navbar .pcoded-micon,
+    body.rtl .pcoded-navbar .pcoded-micon {
+        margin-left: 10px !important;
+        margin-right: 0 !important;
+        float: right !important;
+        position: relative !important;
+        display: inline-block !important;
+        order: 2 !important; /* Icons second */
+    }
+    
+    html[dir="rtl"] .pcoded-navbar .pcoded-mtext,
+    body.rtl .pcoded-navbar .pcoded-mtext {
+        text-align: right !important;
+        float: right !important;
+        display: inline-block !important;
+        order: 1 !important; /* Text first */
+    }
+    
+    /* Fix submenu items */
+    html[dir="rtl"] .pcoded-navbar .pcoded-submenu,
+    body.rtl .pcoded-navbar .pcoded-submenu {
+        padding-right: 40px !important;
+        padding-left: 0 !important;
+    }
+    
+    html[dir="rtl"] .pcoded-navbar .pcoded-submenu li a,
+    body.rtl .pcoded-navbar .pcoded-submenu li a {
+        text-align: right !important;
+        padding-right: 20px !important;
+        display: flex !important;
+        flex-direction: row !important; /* Standard direction */
+        justify-content: flex-start !important;
+    }
+    
+    /* Fix for icons in sidebar */
+    html[dir="rtl"] .pcoded-navbar i,
+    body.rtl .pcoded-navbar i,
+    html[dir="rtl"] .pcoded-navbar .feather,
+    body.rtl .pcoded-navbar .feather,
+    html[dir="rtl"] .pcoded-navbar .fas,
+    body.rtl .pcoded-navbar .fas {
+        margin-left: 15px !important;
+        margin-right: 0 !important;
+        float: right !important;
+        display: inline-block !important;
+        order: 2 !important; /* Icons second */
+    }
+}
+
+/* Direct fix for sidebar menu items with icons */
+html[dir="rtl"] .pcoded-navbar ul.pcoded-item > li > a,
+body.rtl .pcoded-navbar ul.pcoded-item > li > a {
+    display: flex !important;
+    flex-direction: row !important; /* Standard direction */
+    justify-content: flex-start !important;
+}
+
+html[dir="rtl"] .pcoded-navbar ul.pcoded-item > li > a > .pcoded-micon,
+body.rtl .pcoded-navbar ul.pcoded-item > li > a > .pcoded-micon {
+    float: right !important;
+    margin-left: 15px !important;
+    margin-right: 0 !important;
+    order: 2 !important; /* Icons second */
+}
+
+html[dir="rtl"] .pcoded-navbar ul.pcoded-item > li > a > .pcoded-mtext,
+body.rtl .pcoded-navbar ul.pcoded-item > li > a > .pcoded-mtext {
+    float: right !important;
+    text-align: right !important;
+    order: 1 !important; /* Text first */
+}
+
+/* CRITICAL: Target the exact sidebar structure in the screenshot */
+html[dir="rtl"] .pcoded-navbar ul li a,
+body.rtl .pcoded-navbar ul li a {
+    display: flex !important;
+    flex-direction: row !important; /* Standard direction */
+    justify-content: flex-start !important;
+    padding-right: 20px !important;
+    padding-left: 20px !important;
+}
+
+html[dir="rtl"] .pcoded-navbar ul li a i,
+body.rtl .pcoded-navbar ul li a i {
+    margin-right: 0 !important;
+    margin-left: 15px !important;
+    float: right !important;
+    position: static !important;
+    order: 2 !important; /* Icons second */
+}
+
+html[dir="rtl"] .pcoded-navbar ul li a span.pcoded-mtext,
+body.rtl .pcoded-navbar ul li a span.pcoded-mtext {
+    order: 1 !important; /* Text first */
+}
+
+html[dir="rtl"] .pcoded-navbar .pcoded-submenu,
+body.rtl .pcoded-navbar .pcoded-submenu {
+    padding-right: 20px !important;
+    padding-left: 0 !important;
+}
+
+/* Ensure sidebar is visible at all times in RTL mode when needed */
+html[dir="rtl"] .pcoded-navbar.mob-open,
+body.rtl .pcoded-navbar.mob-open {
+    display: block !important;
+    right: 0 !important;
+} 

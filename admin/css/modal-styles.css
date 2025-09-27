@@ -1,0 +1,201 @@
+/* Modern Modal Styles */
+:root {
+    --modal-border-radius: 12px;
+    --modal-shadow: 0 15px 30px rgba(0, 0, 0, 0.1);
+    --modal-header-bg: linear-gradient(135deg, #4099ff 0%, #2ed8b6 100%);
+    --modal-transition: all 0.3s ease-in-out;
+}
+
+.modal-content {
+    border: none;
+    border-radius: var(--modal-border-radius);
+    box-shadow: var(--modal-shadow);
+    overflow: hidden;
+}
+
+.modal-header {
+    background: var(--modal-header-bg);
+    color: white;
+    padding: 1rem 1.5rem;
+    border-bottom: none;
+}
+
+.modal-header .close {
+    color: white;
+    opacity: 0.8;
+    transition: var(--modal-transition);
+}
+
+.modal-header .close:hover {
+    opacity: 1;
+    transform: rotate(90deg);
+}
+
+.modal-title {
+    font-weight: 600;
+    display: flex;
+    align-items: center;
+}
+
+.modal-title i {
+    margin-right: 0.75rem;
+    font-size: 1.25rem;
+}
+
+.modal-body {
+    padding: 1.5rem;
+}
+
+.modal-footer {
+    background-color: #f8f9fa;
+    border-top: 1px solid #e9ecef;
+    padding: 1rem 1.5rem;
+}
+
+/* Form Enhancements */
+.modal-body .form-group {
+    margin-bottom: 1.25rem;
+}
+
+.modal-body .form-control {
+    border-radius: 8px;
+    transition: var(--modal-transition);
+}
+
+.modal-body .form-control:focus {
+    box-shadow: 0 0 0 0.2rem rgba(64, 153, 255, 0.25);
+    border-color: #4099ff;
+}
+
+/* Responsive Adjustments */
+@media (max-width: 768px) {
+    .modal-dialog {
+        margin: 1.75rem 0.5rem;
+        max-height: 90vh;
+        display: flex;
+        flex-direction: column;
+    }
+
+    .modal-content {
+        max-height: 90vh;
+        display: flex;
+        flex-direction: column;
+    }
+
+    .modal-body {
+        overflow-y: auto;
+        padding: 1rem;
+    }
+}
+
+/* Alert Styles */
+.modal .alert {
+    border-radius: 8px;
+    padding: 1rem;
+}
+
+/* Table Styles within Modals */
+.modal .table {
+    margin-bottom: 0;
+}
+
+.modal .table th {
+    background-color: #f8f9fa;
+    font-weight: 600;
+    color: #6c757d;
+}
+
+/* Checkbox and Radio Enhancements */
+.modal .custom-control-label {
+    cursor: pointer;
+    user-select: none;
+}
+
+.modal .custom-control-input:checked ~ .custom-control-label::before {
+    background-color: #4099ff;
+    border-color: #4099ff;
+}
+
+/* Dropdown Styles */
+.modal .dropdown-menu {
+    border-radius: 8px;
+    box-shadow: 0 10px 20px rgba(0, 0, 0, 0.1);
+}
+
+.modal .dropdown-item {
+    transition: var(--modal-transition);
+}
+
+.modal .dropdown-item:hover {
+    background-color: #f8f9fa;
+    transform: translateX(5px);
+}
+
+/* Floating Labels within Modals */
+.modal .floating-label {
+    position: relative;
+    margin-bottom: 1.5rem;
+}
+
+.modal .floating-label input,
+.modal .floating-label textarea {
+    height: auto;
+    padding: 1rem 0.75rem;
+    border: 1px solid #dee2e6;
+    border-radius: 8px;
+    transition: var(--modal-transition);
+}
+
+.modal .floating-label label {
+    position: absolute;
+    top: 50%;
+    left: 0.75rem;
+    transform: translateY(-50%);
+    pointer-events: none;
+    transition: var(--modal-transition);
+    color: #6c757d;
+    background-color: white;
+    padding: 0 0.25rem;
+    font-size: 0.95rem;
+}
+
+.modal .floating-label input:focus ~ label,
+.modal .floating-label input:not(:placeholder-shown) ~ label,
+.modal .floating-label textarea:focus ~ label,
+.modal .floating-label textarea:not(:placeholder-shown) ~ label {
+    top: 0;
+    transform: translateY(-50%) scale(0.85);
+    background-color: white;
+    color: #4099ff;
+    z-index: 1;
+}
+
+.modal .floating-label input:focus,
+.modal .floating-label textarea:focus {
+    border-color: #4099ff;
+    box-shadow: 0 0 0 0.2rem rgba(64, 153, 255, 0.25);
+}
+
+/* Scrollbar Styles for Modal Body */
+.modal-body {
+    scrollbar-width: thin;
+    scrollbar-color: #4099ff #f1f1f1;
+}
+
+.modal-body::-webkit-scrollbar {
+    width: 8px;
+}
+
+.modal-body::-webkit-scrollbar-track {
+    background: #f1f1f1;
+    border-radius: 10px;
+}
+
+.modal-body::-webkit-scrollbar-thumb {
+    background: #4099ff;
+    border-radius: 10px;
+}
+
+.modal-body::-webkit-scrollbar-thumb:hover {
+    background: #2ed8b6;
+} 

@@ -1,0 +1,275 @@
+/* Ticket Form Specific Styles */
+
+/* Form Layout */
+.form-row {
+    display: flex;
+    flex-wrap: wrap;
+    margin-right: -5px;
+    margin-left: -5px;
+}
+
+.form-row > .form-group {
+    padding-right: 5px;
+    padding-left: 5px;
+    margin-bottom: 1rem;
+    flex: 0 0 auto;
+    width: 100%;
+}
+
+/* Form Group Styling */
+.form-group {
+    position: relative;
+    margin-bottom: 1rem;
+}
+
+.form-group label {
+    display: block;
+    margin-bottom: 0.5rem;
+    font-weight: 500;
+    color: #495057;
+}
+
+/* Bootstrap-select Enhancement */
+.bootstrap-select .btn {
+    height: calc(1.5em + 0.75rem + 2px);
+    padding: 0.375rem 0.75rem;
+    font-size: 1rem;
+    font-weight: 400;
+    line-height: 1.5;
+    color: #495057;
+    background-color: #fff;
+    border: 1px solid #ced4da;
+    border-radius: 0.25rem;
+}
+
+.bootstrap-select .btn:focus,
+.bootstrap-select .btn:active {
+    border-color: #80bdff;
+    outline: 0;
+    box-shadow: 0 0 0 0.2rem rgba(0, 123, 255, 0.25);
+}
+
+.bootstrap-select .dropdown-menu {
+    padding: 0.5rem 0;
+    margin: 0.125rem 0 0;
+    border: 1px solid rgba(0,0,0,.15);
+    border-radius: 0.25rem;
+}
+
+.bootstrap-select .dropdown-menu .bs-searchbox {
+    padding: 0.5rem;
+}
+
+.bootstrap-select .dropdown-menu .bs-searchbox input {
+    border-radius: 0.25rem;
+    border: 1px solid #ced4da;
+    padding: 0.375rem 0.75rem;
+}
+
+.bootstrap-select .dropdown-menu .inner .dropdown-item {
+    padding: 0.5rem 1rem;
+    color: #495057;
+}
+
+.bootstrap-select .dropdown-menu .inner .dropdown-item:hover,
+.bootstrap-select .dropdown-menu .inner .dropdown-item:focus {
+    color: #16181b;
+    background-color: #f8f9fa;
+}
+
+.bootstrap-select .dropdown-menu .inner .dropdown-item.active,
+.bootstrap-select .dropdown-menu .inner .dropdown-item:active {
+    color: #fff;
+    background-color: #007bff;
+}
+
+/* Modal Specific Styles */
+.modal-body .card {
+    margin-bottom: 1.5rem;
+    border: 1px solid rgba(0,0,0,.125);
+    box-shadow: none;
+}
+
+.modal-body .card-header {
+    background-color: #f8f9fa;
+    border-bottom: 1px solid rgba(0,0,0,.125);
+    padding: 0.75rem 1.25rem;
+}
+
+.modal-body .card-body {
+    padding: 1.25rem;
+}
+
+/* Passenger Info Card Styles */
+.passenger-info {
+    background-color: #fff;
+    border-radius: 0.25rem;
+}
+
+.passenger-info .card-header {
+    background-color: #f8f9fa;
+}
+
+.passenger-info .card-header h6 {
+    margin: 0;
+    font-weight: 500;
+}
+
+/* Responsive Adjustments */
+@media (min-width: 768px) {
+    .form-row > .form-group {
+        width: auto;
+    }
+    
+    .form-row > .form-group.col-md-2 {
+        width: 16.666667%;
+    }
+    
+    .form-row > .form-group.col-md-3 {
+        width: 25%;
+    }
+    
+    .form-row > .form-group.col-md-4 {
+        width: 33.333333%;
+    }
+}
+
+/* Remove previous z-index fixes and implement expanding card behavior */
+.card {
+    transition: all 0.3s ease;
+    height: auto;
+    min-height: fit-content;
+}
+
+.modal-body {
+    overflow-y: auto !important;
+    overflow-x: hidden !important;
+    padding-bottom: 20px;
+}
+
+/* Style for select dropdowns */
+.bootstrap-select .dropdown-menu {
+    position: static !important;
+    transform: none !important;
+    width: 100%;
+    margin-top: 0;
+    border-radius: 0 0 4px 4px;
+}
+
+.bootstrap-select.show .dropdown-toggle {
+    border-radius: 4px 4px 0 0;
+}
+
+/* Ensure proper spacing */
+.form-group {
+    margin-bottom: 1rem;
+    position: relative;
+}
+
+/* Smooth transition for dropdown */
+.bootstrap-select .dropdown-menu {
+    transition: all 0.2s ease;
+    max-height: 300px;
+    overflow-y: auto;
+}
+
+/* Remove any absolute positioning */
+.bootstrap-select {
+    width: 100% !important;
+}
+
+.bootstrap-select .dropdown-toggle {
+    width: 100%;
+}
+
+/* Ensure dropdown is contained within parent */
+.form-group, .input-group {
+    position: relative;
+    z-index: 1;
+} 
+
+/* Common dropdown styles for both bootstrap-select and regular dropdowns */
+.dropdown-menu, .bootstrap-select .dropdown-menu {
+    position: static !important;
+    transform: none !important;
+    width: 100%;
+    margin-top: 0;
+    border-radius: 0 0 4px 4px;
+    transition: all 0.2s ease;
+    max-height: 300px;
+    overflow-y: auto;
+    float: none;
+}
+
+/* Style for dropdown buttons */
+.dropdown-toggle, .bootstrap-select .dropdown-toggle {
+    width: 100%;
+    border-radius: 4px;
+}
+
+.dropdown.show .dropdown-toggle, 
+.bootstrap-select.show .dropdown-toggle {
+    border-radius: 4px 4px 0 0;
+}
+
+/* Container styles */
+.card, .table-responsive {
+    transition: all 0.3s ease;
+    height: auto;
+    min-height: fit-content;
+}
+
+.modal-body {
+    overflow-y: auto !important;
+    overflow-x: hidden !important;
+    padding-bottom: 20px;
+}
+
+/* Ensure proper spacing */
+.form-group, .dropdown {
+    margin-bottom: 1rem;
+    position: relative;
+    z-index: 1;
+}
+
+/* Table cell containing dropdown */
+td .dropdown {
+    min-width: 40px; /* Minimum width for dropdown trigger */
+    margin-bottom: 0;
+}
+
+td .dropdown-menu {
+    min-width: 200px; /* Minimum width for dropdown menu */
+    margin: 0;
+    padding: 0.5rem 0;
+}
+
+/* Remove any absolute positioning */
+.bootstrap-select {
+    width: 100% !important;
+}
+
+/* Ensure dropdown items are properly spaced */
+.dropdown-item {
+    padding: 0.5rem 1rem;
+    white-space: nowrap;
+}
+
+/* Ensure dropdown dividers are visible */
+.dropdown-divider {
+    margin: 0.5rem 0;
+}
+
+/* Fix for table cell dropdowns */
+.table td {
+    position: relative;
+    padding: 0.75rem;
+}
+
+/* Ensure dropdown button is properly aligned */
+.btn-sm.dropdown-toggle {
+    padding: 0.25rem 0.5rem;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+} 
