@@ -42,10 +42,24 @@ if ($booking_id !== null) {
 
     $booking = $result->fetch_assoc();
     $client_id = $booking['sold_to'];
-    $supplier_id = $booking['supplier'];
     $currency = $booking['currency'];
     $client_type = $booking['client_type'];
     $mainAccountId = $booking['paid_to'];
+
+    // Get all services/suppliers for this booking
+    $servicesQuery = "SELECT ubs.id as service_id, ubs.supplier_id, ubs.service_type, ubs.base_price, ubs.sold_price, ubs.profit, ubs.currency, s.supplier_type
+                      FROM umrah_booking_services ubs
+                      JOIN suppliers s ON ubs.supplier_id = s.id
+                      WHERE ubs.booking_id = ? AND ubs.tenant_id = ? AND s.tenant_id = ?";
+    $stmtServices = $conn->prepare($servicesQuery);
+    $stmtServices->bind_param("iii", $booking_id, $tenant_id, $tenant_id);
+    $stmtServices->execute();
+    $servicesResult = $stmtServices->get_result();
+    $services = [];
+    while ($service = $servicesResult->fetch_assoc()) {
+        $services[] = $service;
+    }
+    $stmtServices->close();
 
     // Start Transaction
     $conn->begin_transaction();
@@ -137,63 +151,60 @@ if ($booking_id !== null) {
             $stmt->execute();
         }
 
-        // Step 3: Reverse Supplier Transactions
-        $supplierTypeQuery = "SELECT supplier_type FROM suppliers WHERE id = ? AND tenant_id = ?";
-        $stmt = $conn->prepare($supplierTypeQuery);
-        $stmt->bind_param("ii", $supplier_id, $tenant_id);
-        $stmt->execute();
-        $supplierTypeResult = $stmt->get_result();
-        $supplierTypeRow = $supplierTypeResult->fetch_assoc();
-        $supplier_type = $supplierTypeRow['supplier_type'];
+        // Step 3: Reverse Supplier Transactions for all services
+        foreach ($services as $service) {
+            $supplier_id = $service['supplier_id'];
+            $supplier_type = $service['supplier_type'];
 
-        if ($supplier_type === 'External') {
-            $supplierTransactions = "SELECT id, amount, transaction_type, transaction_date FROM supplier_transactions 
-                                     WHERE supplier_id = ? AND transaction_of = 'umrah' 
-                                     AND reference_id = ? AND tenant_id = ?";
-            $stmt = $conn->prepare($supplierTransactions);
-            $stmt->bind_param("iii", $supplier_id, $booking_id, $tenant_id);
-            $stmt->execute();
-            $supplierResults = $stmt->get_result();
-
-            while ($row = $supplierResults->fetch_assoc()) {
-                $amount = $row['amount'];
-                $transaction_date = $row['transaction_date'];
-                $transaction_id = $row['id'];
-                
-                // Adjust Supplier Balance
-                $adjustSupplierBalance = "UPDATE suppliers 
-                                          SET balance = balance " . ($row['transaction_type'] == 'Credit' ? '-' : '+') . " ? 
-                                          WHERE id = ? AND tenant_id = ?";
-                $stmt = $conn->prepare($adjustSupplierBalance);
-                $stmt->bind_param("dii", $amount, $supplier_id, $tenant_id);
+            if ($supplier_type === 'External') {
+                $supplierTransactions = "SELECT id, amount, transaction_type, transaction_date FROM supplier_transactions
+                                          WHERE supplier_id = ? AND transaction_of = 'umrah'
+                                          AND reference_id = ? AND tenant_id = ?";
+                $stmt = $conn->prepare($supplierTransactions);
+                $stmt->bind_param("iii", $supplier_id, $booking_id, $tenant_id);
                 $stmt->execute();
-                
-                // Update all subsequent transactions' running balances
-                // If the deleted transaction was a Credit, we need to subtract that amount from all later transactions
-                // If it was a Debit, we need to add that amount to all later transactions
-                $updateSubsequentSupplierBalances = "UPDATE supplier_transactions 
-                                                    SET balance = balance " . ($row['transaction_type'] == 'Credit' ? '-' : '+') . " ? 
-                                                    WHERE supplier_id = ? AND transaction_date > ?
-                                                    AND tenant_id = ?
-                                                    ORDER BY transaction_date ASC";
-                $stmtUpdate = $conn->prepare($updateSubsequentSupplierBalances);
-                $stmtUpdate->bind_param("disi", $amount, $supplier_id, $transaction_date, $tenant_id);
-                $stmtUpdate->execute();
+                $supplierResults = $stmt->get_result();
 
-                // Delete Supplier Transaction
-                $deleteSupplierTransaction = "DELETE FROM supplier_transactions WHERE id = ? AND tenant_id = ?";
-                $stmt = $conn->prepare($deleteSupplierTransaction);
-                $stmt->bind_param("ii", $transaction_id, $tenant_id);
+                while ($row = $supplierResults->fetch_assoc()) {
+                    $amount = $row['amount'];
+                    $transaction_date = $row['transaction_date'];
+                    $transaction_id = $row['id'];
+
+                    // Adjust Supplier Balance
+                    $adjustSupplierBalance = "UPDATE suppliers
+                                               SET balance = balance " . ($row['transaction_type'] == 'Credit' ? '-' : '+') . " ?
+                                               WHERE id = ? AND tenant_id = ?";
+                    $stmt = $conn->prepare($adjustSupplierBalance);
+                    $stmt->bind_param("dii", $amount, $supplier_id, $tenant_id);
+                    $stmt->execute();
+
+                    // Update all subsequent transactions' running balances
+                    // If the deleted transaction was a Credit, we need to subtract that amount from all later transactions
+                    // If it was a Debit, we need to add that amount to all later transactions
+                    $updateSubsequentSupplierBalances = "UPDATE supplier_transactions
+                                                         SET balance = balance " . ($row['transaction_type'] == 'Credit' ? '-' : '+') . " ?
+                                                         WHERE supplier_id = ? AND transaction_date > ?
+                                                         AND tenant_id = ?
+                                                         ORDER BY transaction_date ASC";
+                    $stmtUpdate = $conn->prepare($updateSubsequentSupplierBalances);
+                    $stmtUpdate->bind_param("disi", $amount, $supplier_id, $transaction_date, $tenant_id);
+                    $stmtUpdate->execute();
+
+                    // Delete Supplier Transaction
+                    $deleteSupplierTransaction = "DELETE FROM supplier_transactions WHERE id = ? AND tenant_id = ?";
+                    $stmt = $conn->prepare($deleteSupplierTransaction);
+                    $stmt->bind_param("ii", $transaction_id, $tenant_id);
+                    $stmt->execute();
+                }
+            } else if ($supplier_type === 'Internal') {
+                // For internal suppliers, just delete the transactions without balance adjustments
+                $deleteSupplierTransactions = "DELETE FROM supplier_transactions
+                                              WHERE supplier_id = ? AND transaction_of = 'umrah'
+                                              AND reference_id = ? AND tenant_id = ?";
+                $stmt = $conn->prepare($deleteSupplierTransactions);
+                $stmt->bind_param("iii", $supplier_id, $booking_id, $tenant_id);
                 $stmt->execute();
             }
-        } else if ($supplier_type === 'Internal') {
-            // For internal suppliers, just delete the transactions without balance adjustments
-            $deleteSupplierTransactions = "DELETE FROM supplier_transactions 
-                                         WHERE supplier_id = ? AND transaction_of = 'umrah' 
-                                         AND reference_id = ? AND tenant_id = ?";
-            $stmt = $conn->prepare($deleteSupplierTransactions);
-            $stmt->bind_param("iii", $supplier_id, $booking_id, $tenant_id);
-            $stmt->execute();
         }
         
          // Handle main account transactions and balance updates
@@ -295,6 +306,14 @@ if ($booking_id !== null) {
         }
         $stmt_delete_umrah_transactions->close();
 
+        // Delete booking services associated with this booking
+        $stmt_delete_services = $conn->prepare("DELETE FROM umrah_booking_services WHERE booking_id = ? AND tenant_id = ?");
+        $stmt_delete_services->bind_param("ii", $booking_id, $tenant_id);
+        if (!$stmt_delete_services->execute()) {
+            throw new Exception("Failed to delete booking services associated with booking ID $booking_id.");
+        }
+        $stmt_delete_services->close();
+
         // Step 5: Delete the Booking Record
         $deleteBooking = "DELETE FROM umrah_bookings WHERE booking_id = ? AND tenant_id = ?";
         $stmt = $conn->prepare($deleteBooking);
@@ -308,10 +327,13 @@ if ($booking_id !== null) {
         $old_values = json_encode([
             'booking_id' => $booking_id,
             'client_id' => $client_id,
-            'supplier_id' => $supplier_id,
+            'services' => $services,
             'paid_to' => $mainAccountId,
             'currency' => $currency,
-            'client_type' => $client_type
+            'client_type' => $client_type,
+            'total_base_price' => $booking['price'],
+            'total_sold_price' => $booking['sold_price'],
+            'total_profit' => $booking['profit']
         ]);
         $new_values = json_encode([]);
         

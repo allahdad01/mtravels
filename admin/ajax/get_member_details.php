@@ -21,12 +21,10 @@ if (!$bookingId) {
 $sql = "SELECT ub.*, 
                c.name as client_name, 
                ma.name as main_account_name, 
-               s.name as supplier_name, 
                u.name as created_by
         FROM umrah_bookings ub
         LEFT JOIN clients c ON ub.sold_to = c.id
         LEFT JOIN main_account ma ON ub.paid_to = ma.id
-        LEFT JOIN suppliers s ON ub.supplier = s.id
         LEFT JOIN users u ON ub.created_by = u.id
         WHERE ub.booking_id = ? AND ub.tenant_id = ?";
 
@@ -37,22 +35,33 @@ $result = $stmt->get_result();
 
 if ($result->num_rows > 0) {
     $member = $result->fetch_assoc();
-    
+
+    // Fetch services
+    $servicesSql = "SELECT * FROM umrah_booking_services WHERE booking_id = ?";
+    $servicesStmt = $conn->prepare($servicesSql);
+    $servicesStmt->bind_param('i', $bookingId);
+    $servicesStmt->execute();
+    $servicesResult = $servicesStmt->get_result();
+    $services = [];
+    while ($service = $servicesResult->fetch_assoc()) {
+        $services[] = $service;
+    }
+    $member['services'] = $services;
+
     // Format dates for display
-    $member['entry_date'] = date('d/m/Y', strtotime($member['entry_date']));
-    $member['dob'] = date('d/m/Y', strtotime($member['dob']));
-    $member['flight_date'] = $member['flight_date'] ? date('d/m/Y', strtotime($member['flight_date'])) : '-';
-    $member['return_date'] = $member['return_date'] ? date('d/m/Y', strtotime($member['return_date'])) : '-';
-    $member['passport_expiry'] = date('d/m/Y', strtotime($member['passport_expiry']));
-    
+    $member['entry_date'] = date('Y-m-d', strtotime($member['entry_date']));
+    $member['dob'] = date('Y-m-d', strtotime($member['dob']));
+    $member['flight_date'] = $member['flight_date'] ? date('Y-m-d', strtotime($member['flight_date'])) : '';
+    $member['return_date'] = $member['return_date'] ? date('Y-m-d', strtotime($member['return_date'])) : '';
+    $member['passport_expiry'] = date('Y-m-d', strtotime($member['passport_expiry']));
+
     // Add additional information
     $member['client_details'] = [
         'name' => $member['client_name'],
         'main_account' => $member['main_account_name'],
-        'supplier' => $member['supplier_name'],
         'created_by' => $member['created_by']
     ];
-    
+
     echo json_encode(['success' => true, 'member' => $member]);
 } else {
     echo json_encode(['success' => false, 'message' => 'Member not found']);

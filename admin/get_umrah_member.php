@@ -24,28 +24,52 @@ if (!isset($_GET['booking_id']) || empty($_GET['booking_id'])) {
 $bookingId = intval($_GET['booking_id']);
 
 try {
-    // Prepare the SQL query
-    $sql = "SELECT 
-                b.*, 
-                s.name as supplier_name, 
-                c.name as client_name, 
-                m.name as account_name 
-            FROM 
+    // Prepare the SQL query for booking data
+    $sql = "SELECT
+                b.*,
+                c.name as client_name,
+                m.name as account_name
+            FROM
                 umrah_bookings b
-            LEFT JOIN 
-                suppliers s ON b.supplier = s.id
-            LEFT JOIN 
+            LEFT JOIN
                 clients c ON b.sold_to = c.id
-            LEFT JOIN 
+            LEFT JOIN
                 main_account m ON b.paid_to = m.id
-            WHERE 
+            WHERE
                 b.booking_id = ? AND b.tenant_id = ?";
-    
+
     $stmt = $pdo->prepare($sql);
     $stmt->execute([$bookingId, $tenant_id]);
-    
+
     if ($stmt->rowCount() > 0) {
         $member = $stmt->fetch(PDO::FETCH_ASSOC);
+
+        // Get all services for this booking
+        $servicesSql = "SELECT
+                            ubs.id as service_id,
+                            ubs.service_type,
+                            ubs.supplier_id,
+                            s.name as supplier_name,
+                            ubs.base_price,
+                            ubs.sold_price,
+                            ubs.profit,
+                            ubs.currency,
+                            s.supplier_type
+                        FROM
+                            umrah_booking_services ubs
+                        LEFT JOIN
+                            suppliers s ON ubs.supplier_id = s.id
+                        WHERE
+                            ubs.booking_id = ? AND ubs.tenant_id = ?
+                        ORDER BY ubs.id";
+
+        $servicesStmt = $pdo->prepare($servicesSql);
+        $servicesStmt->execute([$bookingId, $tenant_id]);
+        $services = $servicesStmt->fetchAll(PDO::FETCH_ASSOC);
+
+        // Add services to member data
+        $member['services'] = $services;
+
         echo json_encode(['success' => true, 'member' => $member]);
     } else {
         echo json_encode(['success' => false, 'message' => 'Member not found']);

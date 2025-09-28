@@ -28,12 +28,13 @@ if (!$id) {
 try {
     // Get the date change request details
     $stmt = $conn->prepare("
-        SELECT dc.*, ub.price as current_price, ub.sold_price, ub.profit, ub.due, ub.supplier, ub.sold_to, ub.currency, ub.family_id,
+        SELECT dc.*, ub.price as current_price, ub.sold_price, ub.profit, ub.due, ubs.supplier_id as supplier, ub.sold_to, ub.currency, ub.family_id,
                s.name as supplier_name, s.balance as supplier_balance, s.supplier_type,
                c.name as client_name, c.usd_balance, c.afs_balance, c.client_type
         FROM date_change_umrah dc
         LEFT JOIN umrah_bookings ub ON dc.umrah_booking_id = ub.booking_id
-        LEFT JOIN suppliers s ON ub.supplier = s.id
+        LEFT JOIN umrah_booking_services ubs ON ub.booking_id = ubs.booking_id AND ubs.service_type IN ('all', 'ticket')
+        LEFT JOIN suppliers s ON ubs.supplier_id = s.id
         LEFT JOIN clients c ON ub.sold_to = c.id
         WHERE dc.id = ? AND dc.tenant_id = ?
     ");

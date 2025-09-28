@@ -59,11 +59,12 @@ if ($return_date_obj <= $flight_date_obj) {
 try {
     // Get current booking details
     $stmt = $conn->prepare("
-        SELECT ub.*, f.family_id, f.head_of_family,
+        SELECT ub.*, f.family_id, f.head_of_family, ubs.supplier_id as supplier,
                s.name as supplier_name, c.name as client_name, ma.name as main_account_name
         FROM umrah_bookings ub
         LEFT JOIN families f ON ub.family_id = f.family_id
-        LEFT JOIN suppliers s ON ub.supplier = s.id
+        LEFT JOIN umrah_booking_services ubs ON ub.booking_id = ubs.booking_id AND ubs.service_type IN ('all', 'ticket')
+        LEFT JOIN suppliers s ON ubs.supplier_id = s.id
         LEFT JOIN clients c ON ub.sold_to = c.id
         LEFT JOIN main_account ma ON ub.paid_to = ma.id
         WHERE ub.booking_id = ? AND ub.tenant_id = ?

@@ -92,20 +92,30 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         $reversal_amount = -$payment_amount;
         
         // Step 2: Fetch Umrah booking details
-        $stmt_fetch_umrah = $conn->prepare("SELECT paid_to, supplier, received_bank_payment, paid FROM umrah_bookings WHERE booking_id = ? AND tenant_id = ?");
+        $stmt_fetch_umrah = $conn->prepare("SELECT paid_to, received_bank_payment, paid FROM umrah_bookings WHERE booking_id = ? AND tenant_id = ?");
         $stmt_fetch_umrah->bind_param("ii", $umrah_id, $tenant_id);
         $stmt_fetch_umrah->execute();
         $umrah_result = $stmt_fetch_umrah->get_result();
-        
+
         if ($umrah_result->num_rows === 0) {
             throw new Exception("Umrah booking not found");
         }
-        
+
         $umrah = $umrah_result->fetch_assoc();
         $paid_to = $umrah['paid_to'];
-        $supplier_id = $umrah['supplier'];
         $received_bank_payment = $umrah['received_bank_payment'];
         $current_paid = $umrah['paid'];
+
+        // Get supplier_id from umrah_booking_services where service_type is 'all' or 'visa'
+        $stmt_fetch_supplier_id = $conn->prepare("SELECT supplier_id FROM umrah_booking_services WHERE booking_id = ? AND service_type IN ('all', 'visa') LIMIT 1");
+        $stmt_fetch_supplier_id->bind_param("i", $umrah_id);
+        $stmt_fetch_supplier_id->execute();
+        $supplier_result = $stmt_fetch_supplier_id->get_result();
+        if ($supplier_result->num_rows === 0) {
+            throw new Exception("Supplier not found for this booking");
+        }
+        $supplier_id = $supplier_result->fetch_assoc()['supplier_id'];
+        $stmt_fetch_supplier_id->close();
         
         // Step 3: Fetch Supplier Type
         $stmt_fetch_supplier = $conn->prepare("SELECT supplier_type FROM suppliers WHERE id = ? AND tenant_id = ?");

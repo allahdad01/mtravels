@@ -353,7 +353,7 @@ require_once('../includes/conn.php');
                                                                                 <?= __('actions') ?>
                                                                             </button>
                                                                             <div class="dropdown-menu dropdown-menu-right shadow">
-                                                                                <a class="dropdown-item" href="javascript:void(0)" onclick="openBookingModal(<?= $familyId ?>)">
+                                                                                <a class="dropdown-item" href="javascript:void(0)" onclick="openBookingModal(<?= $familyId ?>, '<?= addslashes($row['package_type']) ?>')">
                                                                                     <i class="feather icon-user-plus text-primary mr-2"></i><?= __('add_member') ?>
                                                                                 </a>
                                                                                 <a class="dropdown-item" href="javascript:void(0)" onclick="toggleMembers(<?= $familyId ?>)">
@@ -640,6 +640,283 @@ require_once('../includes/conn.php');
         </div>
     </div>
 
+<!-- Bootstrap Modal for Editing Umrah Booking -->
+<div class="modal fade" id="editMemberModal" tabindex="-1" aria-labelledby="editMemberModalLabel" aria-hidden="true">
+    <div class="modal-dialog modal-lg">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title" id="editMemberModalLabel"><?= __('edit_member') ?></h5>
+                <button type="button" class="close" data-dismiss="modal" aria-label="Close">
+                    <span aria-hidden="true">&times;</span>
+                </button>
+            </div>
+            <div class="modal-body" style="max-height: 75vh; overflow-y: auto;">
+                <form id="editMemberForm" method="POST">
+                    <!-- CSRF Protection -->
+                    <input type="hidden" name="csrf_token" value="<?php echo h($_SESSION['csrf_token']); ?>">
+
+                    <input type="hidden" name="booking_id" id="editBookingId">
+
+                    <!-- Common Fields: Sold To, Paid To -->
+                    <div class="card mb-4">
+                        <div class="card-header bg-light">
+                            <h6 class="mb-0"><i class="feather icon-settings mr-2"></i><?= __('common_information') ?></h6>
+                        </div>
+                        <div class="card-body">
+                            <div class="row">
+                                <div class="form-group col-md-6">
+                                    <label for="editSoldTo"><?= __('sold_to') ?></label>
+                                    <select class="form-control" id="editSoldTo" name="soldTo" required>
+                                        <option value=""><?= __('select_client') ?></option>
+                                        <?php
+                                        // Fetch clients from the database
+                                        if ($conn->connect_error) {
+                                            echo "<option value=''>Database connection failed</option>";
+                                        } else {
+                                            $result = $conn->query("SELECT id, name, usd_balance, afs_balance FROM clients where status = 'active' AND tenant_id = $tenant_id");
+                                            while ($row = $result->fetch_assoc()) {
+                                                echo "<option value='{$row['id']}' data-usd='{$row['usd_balance']}' data-afs='{$row['afs_balance']}'>
+                                                        {$row['name']}
+                                                      </option>";
+                                            }
+                                        }
+                                        ?>
+                                    </select>
+                                </div>
+                                <div class="form-group col-md-6">
+                                    <label for="editPaidTo"><?= __('paid_to') ?></label>
+                                    <select class="form-control" id="editPaidTo" name="paidTo" required>
+                                        <option value=""><?= __('select_main_account') ?></option>
+                                        <?php
+                                        // Fetch main accounts from the database
+                                        if ($conn->connect_error) {
+                                            echo "<option value=''>Database connection failed</option>";
+                                        } else {
+                                            $result = $conn->query("SELECT id, name, usd_balance, afs_balance FROM main_account where status = 'active' AND tenant_id = $tenant_id");
+                                            while ($row = $result->fetch_assoc()) {
+                                                echo "<option value='{$row['id']}' data-usd='{$row['usd_balance']}' data-afs='{$row['afs_balance']}'>
+                                                        {$row['name']}
+                                                      </option>";
+                                            }
+                                        }
+                                        ?>
+                                    </select>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Services Section -->
+                    <div class="card mb-4">
+                        <div class="card-header bg-light d-flex justify-content-between align-items-center">
+                            <h6 class="mb-0"><i class="feather icon-package mr-2"></i><?= __('services') ?></h6>
+                            <button type="button" class="btn btn-sm btn-outline-primary" id="editAddServiceBtn">
+                                <i class="feather icon-plus"></i> Add Service
+                            </button>
+                        </div>
+                        <div class="card-body">
+                            <div class="table-responsive">
+                                <table class="table table-bordered services-table" id="editServicesTable">
+                                    <thead class="thead-light">
+                                        <tr>
+                                            <th width="18%"><?= __('service_type') ?></th>
+                                            <th width="22%"><?= __('supplier') ?></th>
+                                            <th width="10%"><?= __('currency') ?></th>
+                                            <th width="15%"><?= __('base_price') ?></th>
+                                            <th width="15%"><?= __('sold_price') ?></th>
+                                            <th width="15%"><?= __('profit') ?></th>
+                                            <th width="5%"><?= __('actions') ?></th>
+                                        </tr>
+                                    </thead>
+                                    <tbody id="editServicesTableBody">
+                                        <!-- Service rows will be added here -->
+                                    </tbody>
+                                    <tfoot>
+                                        <tr>
+                                            <td colspan="3" class="text-right font-weight-bold"><?= __('total') ?>:</td>
+                                            <td><input type="number" class="form-control form-control-sm" id="editTotalBasePrice" readonly value="0"></td>
+                                            <td><input type="number" class="form-control form-control-sm" id="editTotalSoldPrice" readonly value="0"></td>
+                                            <td><input type="number" class="form-control form-control-sm" id="editTotalProfit" readonly value="0"></td>
+                                            <td></td>
+                                        </tr>
+                                    </tfoot>
+                                </table>
+                            </div>
+                        </div>
+                    </div>
+
+
+                    <!-- Second Row: Entry Date, Name, Date of Birth -->
+                    <div class="row">
+                        <div class="form-group col-md-4">
+                            <label for="editEntry_date"><?= __('entry_date') ?></label>
+                            <input type="date" class="form-control" id="editEntry_date" name="entry_date" required>
+                        </div>
+                        <div class="form-group col-md-4">
+                            <label for="editName"><?= __('name') ?></label>
+                            <input type="text" class="form-control" id="editName" name="name" required>
+                        </div>
+                        <div class="form-group col-md-4">
+                            <label for="editDob"><?= __('date_of_birth') ?></label>
+                            <input type="date" class="form-control" id="editDob" name="dob" required>
+                        </div>
+                    </div>
+
+                    <!-- Additional Row: Gender and Nationality -->
+                    <div class="row">
+                        <div class="form-group col-md-4">
+                            <label for="editGender"><?= __('gender') ?></label>
+                            <select class="form-control" id="editGender" name="gender" required>
+                                <option value="Male"><?= __('male') ?></option>
+                                <option value="Female"><?= __('female') ?></option>
+                            </select>
+                        </div>
+                        <div class="form-group col-md-4">
+                            <label for="editFather_name"><?= __('father_name') ?></label>
+                            <input type="text" class="form-control" id="editFather_name" name="father_name" required>
+                        </div>
+                        <div class="form-group col-md-4">
+                            <label for="editG_name"><?= __('g_name') ?></label>
+                            <input type="text" class="form-control" id="editG_name" name="g_name" required>
+                        </div>
+                        <div class="form-group col-md-4">
+                            <label for="editRelation"><?= __('relation') ?></label>
+                            <select class="form-control" id="editRelation" name="relation" required>
+                                <option value=""><?= __('select_relation') ?></option>
+                                <option value="Ownself"><?= __('ownself') ?></option>
+                                <option value="Friend"><?= __('friend') ?></option>
+                                <option value="Father"><?= __('father') ?></option>
+                                <option value="Mother"><?= __('mother') ?></option>
+                                <option value="Brother"><?= __('brother') ?></option>
+                                <option value="Sister"><?= __('sister') ?></option>
+                                <option value="Son"><?= __('son') ?></option>
+                                <option value="Daughter"><?= __('daughter') ?></option>
+                                <option value="Wife"><?= __('wife') ?></option>
+                                <option value="Husband"><?= __('husband') ?></option>
+                                <option value="Grandfather"><?= __('grand_father') ?></option>
+                                <option value="Grandmother"><?= __('grand_mother') ?></option>
+                                <option value="Uncle"><?= __('uncle') ?></option>
+                                <option value="Aunt"><?= __('aunt') ?></option>
+                                <option value="Cousin"><?= __('cousin') ?></option>
+                                <option value="Nephew"><?= __('nephew') ?></option>
+                                <option value="Niece"><?= __('niece') ?></option>
+                                <option value="Son-in-law"><?= __('son_in_law') ?></option>
+                                <option value="Daughter-in-law"><?= __('daughter_in_law') ?></option>
+                                <option value="Brother-in-law"><?= __('brother_in_law') ?></option>
+                                <option value="Sister-in-law"><?= __('sister_in_law') ?></option>
+                                <option value="Grandson"><?= __('grandson') ?></option>
+                                <option value="Granddaughter"><?= __('granddaughter') ?></option>
+                                <option value="Father-in-law"><?= __('father_in_law') ?></option>
+                                <option value="Mother-in-law"><?= __('mother_in_law') ?></option>
+                            </select>
+                        </div>
+
+                    </div>
+
+                    <!-- Third Row: Passport Number, ID Type, Flight Date -->
+                    <div class="row">
+                        <div class="form-group col-md-4">
+                            <label for="editPassport_number"><?= __('passport_number') ?></label>
+                            <input type="text" class="form-control" id="editPassport_number" name="passport_number" required>
+                        </div>
+                        <div class="form-group col-md-4">
+                            <label for="editPassport_expiry"><?= __('passport_expiry') ?></label>
+                            <input type="date" class="form-control" id="editPassport_expiry" name="passport_expiry" required>
+                        </div>
+                        <div class="form-group col-md-4">
+                            <label for="editId_type"><?= __('id_type') ?></label>
+                            <select class="form-control" id="editId_type" name="id_type" required>
+                            <option value="ID Original + Passport Original"><?= __('ID Original + Passport Original') ?></option>
+                            <option value="ID Original + Passport Copy"><?= __('ID Original + Passport Copy') ?></option>
+                            <option value="ID Copy + Passport Original"><?= __('ID Copy + Passport Original') ?></option>
+                            <option value="ID Copy + Passport Copy"><?= __('ID Copy + Passport Copy') ?></option>
+                            </select>
+                        </div>
+                    </div>
+
+                    <!-- Fourth Row: Return Date, Duration, Room Type -->
+                    <div class="row">
+                        <div class="form-group col-md-4">
+                            <label for="editFlight_date"><?= __('flight_date') ?></label>
+                            <input type="date" class="form-control" id="editFlight_date" name="flight_date">
+                        </div>
+                        <div class="form-group col-md-4">
+                            <label for="editReturn_date"><?= __('return_date') ?></label>
+                            <input type="date" class="form-control" id="editReturn_date" name="return_date">
+                        </div>
+                        <div class="form-group col-md-4">
+                            <label for="editDuration"><?= __('duration') ?></label>
+                            <select class="form-control" id="editDuration" name="duration" required>
+                                <option value="5 Days"><?= __('5_days') ?></option>
+                                <option value="6 Days"><?= __('6_days') ?></option>
+                                <option value="7 Days"><?= __('7_days') ?></option>
+                                <option value="8 Days"><?= __('8_days') ?></option>
+                                <option value="9 Days"><?= __('9_days') ?></option>
+                                <option value="10 Days"><?= __('10_days') ?></option>
+                                <option value="11 Days"><?= __('11_days') ?></option>
+                                <option value="12 Days"><?= __('12_days') ?></option>
+                                <option value="13 Days"><?= __('13_days') ?></option>
+                                <option value="14 Days"><?= __('14_days') ?></option>
+                                <option value="15 Days"><?= __('15_days') ?></option>
+                                <option value="16 Days"><?= __('16_days') ?></option>
+                                <option value="17 Days"><?= __('17_days') ?></option>
+                                <option value="18 Days"><?= __('18_days') ?></option>
+                                <option value="19 Days"><?= __('19_days') ?></option>
+                                <option value="20 Days"><?= __('20_days') ?></option>
+                                <option value="21 Days"><?= __('21_days') ?></option>
+                                <option value="22 Days"><?= __('22_days') ?></option>
+                                <option value="23 Days"><?= __('23_days') ?></option>
+                                <option value="24 Days"><?= __('24_days') ?></option>
+                                <option value="25 Days"><?= __('25_days') ?></option>
+                                <option value="26 Days"><?= __('26_days') ?></option>
+                                <option value="27 Days"><?= __('27_days') ?></option>
+                                <option value="28 Days"><?= __('28_days') ?></option>
+                                <option value="29 Days"><?= __('29_days') ?></option>
+                                <option value="30 Days"><?= __('30_days') ?></option>
+                            </select>
+                        </div>
+                    </div>
+
+                    <!-- Room Type -->
+                    <div class="row">
+                        <div class="form-group col-md-12">
+                            <label for="editRoom_type"><?= __('room_type') ?></label>
+                            <select class="form-control" id="editRoom_type" name="room_type" required>
+                                <option value="1 Bed"><?= __('1_bed') ?></option>
+                                <option value="2 Beds"><?= __('2_beds') ?></option>
+                                <option value="3 Beds"><?= __('3_beds') ?></option>
+                                <option value="Shared"><?= __('shared') ?></option>
+                                <option value="No Room"><?= __('no_room') ?></option>
+                            </select>
+                        </div>
+                    </div>
+
+                    <!-- Discount (applied to total sold price) -->
+                    <div class="row">
+                        <div class="form-group col-md-12">
+                            <label for="editDiscount"><?= __('discount') ?> (<?= __('applied_to_total_sold_price') ?>)</label>
+                            <input type="number" class="form-control" id="editDiscount" name="discount" value="0" min="0" step="0.01">
+                        </div>
+                    </div>
+
+
+
+                    <!-- Eighth Row: Due Amount and Additional Fields -->
+                    <div class="row">
+                            <input type="hidden" class="form-control" id="editDue" name="due" readonly>
+
+                        <div class="form-group col-md-12">
+                            <label for="editRemarks"><?= __('remarks') ?></label>
+                            <textarea class="form-control" id="editRemarks" name="remarks"></textarea>
+                        </div>
+                    </div>
+                    <button type="submit" class="btn btn-primary"><?= __('update_booking') ?></button>
+                </form>
+            </div>
+        </div>
+    </div>
+</div>
+
 <!-- Bootstrap Modal for Adding Umrah Booking -->
 <div class="modal fade" id="umrahModal" tabindex="-1" aria-labelledby="umrahModalLabel" aria-hidden="true">
     <div class="modal-dialog modal-lg">
@@ -650,7 +927,7 @@ require_once('../includes/conn.php');
                     <span aria-hidden="true">&times;</span>
                 </button>
             </div>
-            <div class="modal-body">
+            <div class="modal-body" style="max-height: 75vh; overflow-y: auto;">
                 <form id="umrahForm" method="POST">
                     <!-- CSRF Protection -->
                     <input type="hidden" name="csrf_token" value="<?php echo h($_SESSION['csrf_token']); ?>">
@@ -1539,279 +1816,6 @@ document.getElementById('editSupplier').addEventListener('change', function() {
 });
 </script>
 
-<!-- Bootstrap Modal for Editing Umrah Member -->
-<div class="modal fade" id="editMemberModal" tabindex="-1" aria-labelledby="editMemberModalLabel" aria-hidden="true">
-    <div class="modal-dialog modal-lg">
-        <div class="modal-content">
-            <div class="modal-header bg-warning text-white">
-                <h5 class="modal-title" id="editMemberModalLabel"><?= __('edit_member') ?></h5>
-                <button type="button" class="close" data-dismiss="modal" aria-label="Close">
-                    <span aria-hidden="true">&times;</span>
-                </button>
-            </div>
-            <div class="modal-body">
-                <form id="editMemberForm" method="POST">
-                     <!-- CSRF Protection -->
-                    <input type="hidden" name="csrf_token" value="<?php echo h($_SESSION['csrf_token']); ?>">
-                    
-                    <input type="hidden" name="booking_id" id="editBookingId">
-                    <input type="hidden" name="family_id" id="editFamilyIdMember">
-                    
-                    <!-- First Row: Supplier, Sold To, Paid To -->
-                    <div class="row">
-                        <div class="form-group col-md-4">
-                            <label for="editSupplier"><?= __('supplier') ?></label>
-                            <select class="form-control" id="editSupplier" name="supplier" required>
-                                <option value=""><?= __('select_supplier') ?></option>
-                                <?php 
-                                // Fetch suppliers from the database
-                                if ($conn->connect_error) {
-                                    echo "<option value=''>Database connection failed</option>";
-                                } else {
-                                    $result = $conn->query("SELECT id, name, balance, currency FROM suppliers where status = 'active' AND tenant_id = $tenant_id");
-                                    while ($row = $result->fetch_assoc()) {
-                                        echo "<option value='{$row['id']}'>
-                                                {$row['name']} ({$row['balance']} {$row['currency']})
-                                              </option>";
-                                    }
-                                }
-                                ?>
-                            </select>
-                        </div>
-                        <div class="form-group col-md-4">
-                            <label for="editSoldTo"><?= __('sold_to') ?></label>
-                            <select class="form-control" id="editSoldTo" name="soldTo" required>
-                                <option value=""><?= __('select_client') ?></option>
-                                <?php 
-                                // Fetch clients from the database
-                                if ($conn->connect_error) {
-                                    echo "<option value=''>Database connection failed</option>";
-                                } else {
-                                    $result = $conn->query("SELECT id, name, usd_balance, afs_balance FROM clients where status = 'active' AND tenant_id = $tenant_id");
-                                    while ($row = $result->fetch_assoc()) {
-                                        echo "<option value='{$row['id']}'>
-                                                {$row['name']}
-                                              </option>";
-                                    }
-                                }
-                                ?>
-                            </select>
-                        </div>
-                        <div class="form-group col-md-4">
-                            <label for="editPaidTo"><?= __('paid_to') ?></label>
-                            <select class="form-control" id="editPaidTo" name="paidTo" required>
-                                <option value=""><?= __('select_main_account') ?></option>
-                                <?php 
-                                // Fetch main accounts from the database
-                                if ($conn->connect_error) {
-                                    echo "<option value=''>Database connection failed</option>";
-                                } else {
-                                    $result = $conn->query("SELECT id, name, usd_balance, afs_balance FROM main_account where status = 'active' AND tenant_id = $tenant_id");
-                                    while ($row = $result->fetch_assoc()) {
-                                        echo "<option value='{$row['id']}'>
-                                                {$row['name']}
-                                              </option>";
-                                    }
-                                }
-                                ?>
-                            </select>
-                        </div>
-                    </div>
-
-                    <!-- Second Row: Entry Date, Name, Date of Birth -->
-                    <div class="row">
-                        <div class="form-group col-md-4">
-                            <label for="editEntryDate"><?= __('entry_date') ?></label>
-                            <input type="date" class="form-control" id="editEntryDate" name="entry_date" required>
-                        </div>
-                        <div class="form-group col-md-4">
-                            <label for="editName"><?= __('name') ?></label>
-                            <input type="text" class="form-control" id="editName" name="name" required>
-                        </div>
-                        <div class="form-group col-md-4">
-                            <label for="editDob"><?= __('date_of_birth') ?></label>
-                            <input type="date" class="form-control" id="editDob" name="dob" required>
-                        </div>
-                    </div>
-
-                    <!-- Additional Row: Gender and Nationality -->
-                    <div class="row">
-                        <div class="form-group col-md-4">
-                            <label for="editGender"><?= __('gender') ?></label>
-                            <select class="form-control" id="editGender" name="gender" required>
-                                <option value="Male"><?= __('male') ?></option>
-                                <option value="Female"><?= __('female') ?></option>
-                            </select>
-                        </div>
-                        <div class="form-group col-md-4">
-                            <label for="editFatherName"><?= __('father_name') ?></label>
-                            <input type="text" class="form-control" id="editFatherName" name="father_name" required>
-                        </div>
-                        <div class="form-group col-md-4">
-                            <label for="editGName"><?= __('g_name') ?></label>
-                            <input type="text" class="form-control" id="editGName" name="g_name" required>
-                        </div>
-                        <div class="form-group col-md-4">
-                            <label for="editRelation"><?= __('relation') ?></label>
-                            <select class="form-control" id="editRelation" name="relation" required>
-                                <option value=""><?= __('select_relation') ?></option>
-                                <option value="Ownself"><?= __('ownself') ?></option>
-                                <option value="Friend"><?= __('friend') ?></option>
-                                <option value="Father"><?= __('father') ?></option>
-                                <option value="Mother"><?= __('mother') ?></option>
-                                <option value="Brother"><?= __('brother') ?></option>
-                                <option value="Sister"><?= __('sister') ?></option>
-                                <option value="Son"><?= __('son') ?></option>
-                                <option value="Daughter"><?= __('daughter') ?></option>
-                                <option value="Wife"><?= __('wife') ?></option>
-                                <option value="Husband"><?= __('husband') ?></option>
-                                <option value="Grandfather"><?= __('grand_father') ?></option>
-                                <option value="Grandmother"><?= __('grand_mother') ?></option>
-                                <option value="Uncle"><?= __('uncle') ?></option>
-                                <option value="Aunt"><?= __('aunt') ?></option>
-                                <option value="Cousin"><?= __('cousin') ?></option>
-                                <option value="Nephew"><?= __('nephew') ?></option>
-                                <option value="Niece"><?= __('niece') ?></option>
-                                <option value="Son-in-law"><?= __('son_in_law') ?></option>
-                                <option value="Daughter-in-law"><?= __('daughter_in_law') ?></option>
-                                <option value="Brother-in-law"><?= __('brother_in_law') ?></option>
-                                <option value="Sister-in-law"><?= __('sister_in_law') ?></option>
-                                <option value="Grandson"><?= __('grandson') ?></option>
-                                <option value="Granddaughter"><?= __('granddaughter') ?></option>
-                                <option value="Father-in-law"><?= __('father_in_law') ?></option>
-                                <option value="Mother-in-law"><?= __('mother_in_law') ?></option>
-                            </select>
-                        </div>
-                    </div>
-
-                    <!-- Third Row: Passport Number, Passport Expiry, ID Type -->
-                    <div class="row">
-                        <div class="form-group col-md-4">
-                            <label for="editPassportNumber"><?= __('passport_number') ?></label>
-                            <input type="text" class="form-control" id="editPassportNumber" name="passport_number" required>
-                        </div>
-                        <div class="form-group col-md-4">
-                            <label for="editPassportExpiry"><?= __('passport_expiry') ?></label>
-                            <input type="date" class="form-control" id="editThePassportExpiry" name="passport_expiry" required>
-                        </div>
-                        <div class="form-group col-md-4">
-                            <label for="editIdType"><?= __('id_type') ?></label>
-                            <select class="form-control" id="editIdType" name="id_type" required>
-                            <option value="ID Original + Passport Original"><?= __('ID Original + Passport Original') ?></option>
-                            <option value="ID Original + Passport Copy"><?= __('ID Original + Passport Copy') ?></option>
-                            <option value="ID Copy + Passport Original"><?= __('ID Copy + Passport Original') ?></option>
-                            <option value="ID Copy + Passport Copy"><?= __('ID Copy + Passport Copy') ?></option>
-                            </select>
-                        </div>
-                    </div>
-
-                    <!-- Fourth Row: Flight Date, Return Date, Duration -->
-                    <div class="row">
-                        <div class="form-group col-md-4">
-                            <label for="editFlightDate"><?= __('flight_date') ?></label>
-                            <input type="date" class="form-control" id="editFlightDate" name="flight_date">
-                        </div>
-                        <div class="form-group col-md-4">
-                            <label for="editReturnDate"><?= __('return_date') ?></label>
-                            <input type="date" class="form-control" id="editReturnDate" name="return_date">
-                        </div>
-                        <div class="form-group col-md-4">
-                            <label for="editDuration"><?= __('duration') ?></label>
-                            <select class="form-control" id="editDuration" name="duration" required>
-                            <option value="5 Days"><?= __('5_days') ?></option>
-                                <option value="6 Days"><?= __('6_days') ?></option>
-                                <option value="7 Days"><?= __('7_days') ?></option>
-                                <option value="8 Days"><?= __('8_days') ?></option>
-                                <option value="9 Days"><?= __('9_days') ?></option>
-                                <option value="10 Days"><?= __('10_days') ?></option>
-                                <option value="11 Days"><?= __('11_days') ?></option>
-                                <option value="12 Days"><?= __('12_days') ?></option>
-                                <option value="13 Days"><?= __('13_days') ?></option>
-                                <option value="14 Days"><?= __('14_days') ?></option>
-                                <option value="15 Days"><?= __('15_days') ?></option>
-                                <option value="16 Days"><?= __('16_days') ?></option>
-                                <option value="17 Days"><?= __('17_days') ?></option>
-                                <option value="18 Days"><?= __('18_days') ?></option>
-                                <option value="19 Days"><?= __('19_days') ?></option>
-                                <option value="20 Days"><?= __('20_days') ?></option>
-                                <option value="21 Days"><?= __('21_days') ?></option>
-                                <option value="22 Days"><?= __('22_days') ?></option>
-                                <option value="23 Days"><?= __('23_days') ?></option>
-                                <option value="24 Days"><?= __('24_days') ?></option>
-                                <option value="25 Days"><?= __('25_days') ?></option>
-                                <option value="26 Days"><?= __('26_days') ?></option>
-                                <option value="27 Days"><?= __('27_days') ?></option>
-                                <option value="28 Days"><?= __('28_days') ?></option>
-                                <option value="29 Days"><?= __('29_days') ?></option>
-                                <option value="30 Days"><?= __('30_days') ?></option>
-                            </select>
-                        </div>
-                    </div>
-
-                    <!-- Fifth Row: Room Type, Currency, Price -->
-                    <div class="row">
-                        <div class="form-group col-md-4">
-                            <label for="editRoomType"><?= __('room_type') ?></label>
-                            <select class="form-control" id="editRoomType" name="room_type" required>
-                                <option value="1 Bed"><?= __('1_bed') ?></option>
-                                <option value="2 Beds"><?= __('2_beds') ?></option>
-                                <option value="3 Beds"><?= __('3_beds') ?></option>
-                                <option value="Shared"><?= __('shared') ?></option>
-                                <option value="No Room"><?= __('no_room') ?></option>
-                            </select>
-                        </div>
-                        <div class="form-group col-md-4">
-                            <label for="editSupplierCurrency"><?= __('currency') ?></label>
-                            <input type="text" class="form-control" id="editSupplierCurrency" name="supplier_currency" readonly>
-                        </div>
-                        <div class="form-group col-md-4">
-                            <label for="editPrice"><?= __('base') ?></label>
-                            <input type="number" class="form-control" id="editPrice" name="price" value="0" min="0" step="0.01">
-                        </div>
-                    </div>
-
-                    <!-- Sixth Row: Sold Price, Profit, Exchange Rate -->
-                    <div class="row">
-                        <div class="form-group col-md-4">
-                            <label for="editSoldPrice"><?= __('sold_price') ?></label>
-                            <input type="number" class="form-control" id="editSoldPrice" name="sold_price">
-                        </div>
-                        <div class="form-group col-md-4">
-                            <label for="editDiscount"><?= __('discount') ?></label>
-                            <input type="number" class="form-control" id="editDiscount" name="discount" value="0" min="0" step="0.01">
-                        </div>
-                        <div class="form-group col-md-4">
-                            <label for="editProfit"><?= __('profit') ?></label>
-                            <input type="number" class="form-control" id="editProfit" name="profit" readonly>
-                        </div>
-                        
-                    </div>
-
-                            <input type="hidden" class="form-control" id="editReceivedBankPayment" name="received_bank_payment">
-                        
-                            <input type="hidden" class="form-control" id="editBankReceiptNumber" name="bank_receipt_number">
-                       
-                            <input type="hidden" class="form-control" id="editPaid" name="paid">
-                        
-
-                    <!-- Eighth Row: Due Amount Info -->
-                    <div class="row">
-                        
-                            <input type="hidden" class="form-control" id="editDue" name="due" readonly>
-                    
-                        <div class="form-group col-md-12">
-                            <label for="editRemarks"><?= __('remarks') ?></label>
-                            <textarea class="form-control" id="editRemarks" name="remarks"></textarea>
-                        </div>
-                    </div>
-
-                    <button type="submit" class="btn btn-warning"><?= __('update_member') ?></button>
-                </form>
-            </div>
-        </div>
-    </div>
-</div>
-
 
 <!-- Edit Transaction Modal -->
 <div class="modal fade" id="editTransactionModal" tabindex="-1" role="dialog" aria-labelledby="editTransactionModalLabel" aria-hidden="true">
@@ -2023,6 +2027,579 @@ document.getElementById('editSupplier').addEventListener('change', function() {
 <!-- Include Umrah Forms JS -->
 <script src="js/umrah-forms.js"></script>
 
+
+
+<script>
+// Toggle between direct and indirect flight forms
+document.addEventListener('DOMContentLoaded', function() {
+    const directRadio = document.getElementById('directFlight');
+    const indirectRadio = document.getElementById('indirectFlight');
+    const directFields = document.getElementById('directFlightFields');
+    const indirectFields = document.getElementById('indirectFlightFields');
+    const directDates = document.getElementById('directFlightDates');
+
+    function toggleFlightType() {
+        if (directRadio.checked) {
+            directFields.style.display = 'block';
+            directDates.style.display = 'block';
+            indirectFields.style.display = 'none';
+            
+            // Make direct flight fields required
+            directFields.querySelectorAll('input').forEach(input => input.required = true);
+            directDates.querySelectorAll('input').forEach(input => input.required = true);
+            
+            // Remove required from indirect fields
+            indirectFields.querySelectorAll('input').forEach(input => input.required = false);
+        } else {
+            directFields.style.display = 'none';
+            directDates.style.display = 'none';
+            indirectFields.style.display = 'block';
+            
+            // Make indirect flight fields required
+            indirectFields.querySelectorAll('input').forEach(input => input.required = true);
+            
+            // Remove required from direct fields
+            directFields.querySelectorAll('input').forEach(input => input.required = false);
+            directDates.querySelectorAll('input').forEach(input => input.required = false);
+        }
+    }
+
+    directRadio.addEventListener('change', toggleFlightType);
+    indirectRadio.addEventListener('change', toggleFlightType);
+
+    // Calculate stopover duration
+    function calculateStopover() {
+        const leg1Arrival = document.getElementById('leg1ArrivalDate').value + ' ' + document.getElementById('leg1ArrivalTime').value;
+        const leg2Departure = document.getElementById('leg2DepartureDate').value + ' ' + document.getElementById('leg2DepartureTime').value;
+        
+        if (leg1Arrival && leg2Departure) {
+            const arrival = new Date(leg1Arrival);
+            const departure = new Date(leg2Departure);
+            const diffMs = departure - arrival;
+            const diffHours = Math.floor(diffMs / (1000 * 60 * 60));
+            const diffMins = Math.floor((diffMs % (1000 * 60 * 60)) / (1000 * 60));
+            
+            document.getElementById('stopoverDuration').textContent = `${diffHours}h ${diffMins}m`;
+        }
+    }
+
+    // Add event listeners for stopover calculation
+    ['leg1ArrivalDate', 'leg1ArrivalTime', 'leg2DepartureDate', 'leg2DepartureTime'].forEach(id => {
+        document.getElementById(id).addEventListener('change', calculateStopover);
+    });
+
+    // Initialize
+    toggleFlightType();
+});
+</script>
+
+<!-- Floating action button -->
+<div id="groupTicketFloatingButton" class="position-fixed" style="bottom: 80px; right: 30px; z-index: 1050; display: none;">
+    <button type="button" class="btn btn-primary btn-lg shadow" id="showGroupTicketModal" title="<?= __('generate_group_ticket') ?>">
+        <i class="feather icon-airplay"></i>
+        <span class="badge badge-light badge-pill position-absolute" style="top: -5px; right: -5px;" id="groupTicketSelectionCount">0</span>
+    </button>
+</div>
+
+
+<!-- Include Admin Footer -->
+<?php include '../includes/admin_footer.php'; ?>
+
+
+
+
+
+<script>
+var suppliersData = [];
+
+function loadSuppliers() {
+    return $.getJSON('ajax/get_suppliers.php').then(data => {
+        suppliersData = data.success ? data.suppliers : [];
+        console.log('Suppliers loaded:', suppliersData.length);
+    }).catch(() => { suppliersData = []; });
+}
+
+let serviceRowCounter = 0;
+
+function addServiceRow(serviceType = '', supplierId = '', basePrice = 0, soldPrice = 0) {
+    serviceRowCounter++;
+    const rowId = 'serviceRow_' + serviceRowCounter;
+
+    const suppliersOptions = suppliersData.map(s => `<option value="${s.id}" data-currency="${s.currency}">${s.name}</option>`).join('');
+
+    const rowHtml = `
+        <tr id="${rowId}">
+            <td>
+                <select class="form-control service-type" name="services[${serviceRowCounter}][service_type]" required>
+                    <option value="">Select Service Type</option>
+                    <option value="all" ${serviceType==='all'?'selected':''}>All Services</option>
+                    <option value="ticket" ${serviceType==='ticket'?'selected':''}>Ticket</option>
+                    <option value="visa" ${serviceType==='visa'?'selected':''}>Visa</option>
+                    <option value="hotel" ${serviceType==='hotel'?'selected':''}>Hotel</option>
+                    <option value="transport" ${serviceType==='transport'?'selected':''}>Transport</option>
+                </select>
+            </td>
+            <td>
+                <select class="form-control service-supplier" name="services[${serviceRowCounter}][supplier_id]" required>
+                    <option value="">Select Supplier</option>
+                    ${suppliersOptions}
+                </select>
+            </td>
+            <td><input type="text" class="form-control service-currency" name="services[${serviceRowCounter}][currency]" readonly></td>
+            <td><input type="number" class="form-control service-base-price" name="services[${serviceRowCounter}][base_price]" value="${basePrice}" min="0" step="0.01" required></td>
+            <td><input type="number" class="form-control service-sold-price" name="services[${serviceRowCounter}][sold_price]" value="${soldPrice}" min="0" step="0.01" required></td>
+            <td><input type="number" class="form-control service-profit" name="services[${serviceRowCounter}][profit]" readonly></td>
+            <td>
+                <button type="button" class="btn btn-sm btn-danger" onclick="removeServiceRow('${rowId}')">
+                    <i class="feather icon-trash-2"></i>
+                </button>
+            </td>
+        </tr>
+    `;
+
+    $('#servicesTableBody').append(rowHtml);
+    if(supplierId) $(`#${rowId} .service-supplier`).val(supplierId).trigger('change');
+    updateTotals();
+}
+
+function removeServiceRow(rowId) { $('#' + rowId).remove(); updateTotals(); }
+
+function updateTotals() {
+    let totalBase=0, totalSold=0, totalProfit=0;
+    const discount = parseFloat($('#discount').val()) || 0;
+    $('#servicesTableBody tr').each(function() {
+        const base = parseFloat($(this).find('.service-base-price').val()) || 0;
+        const sold = parseFloat($(this).find('.service-sold-price').val()) || 0;
+        const profit = sold - base;
+        $(this).find('.service-profit').val(profit.toFixed(2));
+        totalBase += base; totalSold += sold; totalProfit += profit;
+    });
+    const discountedSold = totalSold - discount;
+    $('#totalBasePrice').val(totalBase.toFixed(2));
+    $('#totalSoldPrice').val(discountedSold.toFixed(2));
+    $('#totalProfit').val((discountedSold - totalBase).toFixed(2));
+}
+
+// Event bindings
+$(document).on('click', '#addServiceBtn', () => addServiceRow());
+$(document).on('change', '.service-supplier', function() {
+    const currency = $(this).find('option:selected').data('currency') || '';
+    $(this).closest('tr').find('.service-currency').val(currency);
+});
+$(document).on('input', '.service-base-price, .service-sold-price, #discount', updateTotals);
+
+// Ensure at least one service row when modal opens
+$('#umrahModal').on('shown.bs.modal', function() {
+    if ($('#servicesTableBody tr').length === 0) {
+        loadSuppliers().then(() => addServiceRow());
+    }
+});
+</script>
+<script>
+// Edit modal service management functions
+let editServiceRowCounter = 0;
+
+function addEditServiceRow(serviceType = '', supplierId = '', basePrice = 0, soldPrice = 0, serviceId = null) {
+    editServiceRowCounter++;
+    const rowId = 'editServiceRow_' + editServiceRowCounter;
+
+    const suppliersOptions = suppliersData.map(supplier =>
+        `<option value="${supplier.id}" data-currency="${supplier.currency}" ${supplierId == supplier.id ? 'selected' : ''}>${supplier.name}</option>`
+    ).join('');
+
+    const rowHtml = `
+        <tr id="${rowId}" data-service-id="${serviceId || ''}">
+            <td>
+                <select class="form-control edit-service-type" name="edit_services[${editServiceRowCounter}][service_type]" required>
+                    <option value="">Select Service Type</option>
+                    <option value="all" ${serviceType === 'all' ? 'selected' : ''}>All Services</option>
+                    <option value="ticket" ${serviceType === 'ticket' ? 'selected' : ''}>Ticket</option>
+                    <option value="visa" ${serviceType === 'visa' ? 'selected' : ''}>Visa</option>
+                    <option value="hotel" ${serviceType === 'hotel' ? 'selected' : ''}>Hotel</option>
+                    <option value="transport" ${serviceType === 'transport' ? 'selected' : ''}>Transport</option>
+                </select>
+            </td>
+            <td>
+                <select class="form-control edit-service-supplier" name="edit_services[${editServiceRowCounter}][supplier_id]" required>
+                    <option value="">Select Supplier</option>
+                    ${suppliersOptions}
+                </select>
+            </td>
+            <td>
+                <input type="text" class="form-control edit-service-currency" name="edit_services[${editServiceRowCounter}][currency]" readonly>
+            </td>
+            <td>
+                <input type="number" class="form-control edit-service-base-price" name="edit_services[${editServiceRowCounter}][base_price]"
+                       value="${basePrice}" min="0" step="0.01" required>
+            </td>
+            <td>
+                <input type="number" class="form-control edit-service-sold-price" name="edit_services[${editServiceRowCounter}][sold_price]"
+                       value="${soldPrice}" min="0" step="0.01" required>
+            </td>
+            <td>
+                <input type="number" class="form-control edit-service-profit" name="edit_services[${editServiceRowCounter}][profit]" readonly>
+            </td>
+            <td>
+                <button type="button" class="btn btn-sm btn-danger remove-edit-service-btn" onclick="removeEditServiceRow('${rowId}')">
+                    <i class="feather icon-trash-2"></i>
+                </button>
+            </td>
+        </tr>
+    `;
+
+    $('#editServicesTableBody').append(rowHtml);
+
+    // Set currency if supplier is selected
+    if (supplierId) {
+        const selectedSupplier = suppliersData.find(s => s.id == supplierId);
+        if (selectedSupplier) {
+            $(`#${rowId} .edit-service-currency`).val(selectedSupplier.currency);
+        }
+    }
+
+    updateEditTotals();
+}
+
+function removeEditServiceRow(rowId) {
+    $('#' + rowId).remove();
+    updateEditTotals();
+}
+
+function updateEditTotals() {
+    let totalBase = 0;
+    let totalSold = 0;
+    let totalProfit = 0;
+    const discount = parseFloat($('#editDiscount').val()) || 0;
+
+    $('#editServicesTableBody tr').each(function() {
+        const basePrice = parseFloat($(this).find('.edit-service-base-price').val()) || 0;
+        const soldPrice = parseFloat($(this).find('.edit-service-sold-price').val()) || 0;
+        const profit = soldPrice - basePrice;
+
+        $(this).find('.edit-service-profit').val(profit.toFixed(2));
+
+        totalBase += basePrice;
+        totalSold += soldPrice;
+        totalProfit += profit;
+    });
+
+    // Apply discount to sold price
+    const discountedSold = totalSold - discount;
+    const finalProfit = discountedSold - totalBase;
+
+    // Update visible totals
+    $('#editTotalBasePrice').val(totalBase.toFixed(2));
+    $('#editTotalSoldPrice').val(discountedSold.toFixed(2));
+    $('#editTotalProfit').val(finalProfit.toFixed(2));
+
+    // Update hidden fields to ensure they are sent in the form
+    if ($('#editTotalBasePriceHidden').length === 0) {
+        $('<input>').attr({
+            type: 'hidden',
+            id: 'editTotalBasePriceHidden',
+            name: 'total_base_price',
+            value: totalBase.toFixed(2)
+        }).appendTo('#editMemberForm');
+    } else {
+        $('#editTotalBasePriceHidden').val(totalBase.toFixed(2));
+    }
+
+    if ($('#editTotalSoldPriceHidden').length === 0) {
+        $('<input>').attr({
+            type: 'hidden',
+            id: 'editTotalSoldPriceHidden',
+            name: 'total_sold_price',
+            value: discountedSold.toFixed(2)
+        }).appendTo('#editMemberForm');
+    } else {
+        $('#editTotalSoldPriceHidden').val(discountedSold.toFixed(2));
+    }
+
+    if ($('#editTotalProfitHidden').length === 0) {
+        $('<input>').attr({
+            type: 'hidden',
+            id: 'editTotalProfitHidden',
+            name: 'total_profit',
+            value: finalProfit.toFixed(2)
+        }).appendTo('#editMemberForm');
+    } else {
+        $('#editTotalProfitHidden').val(finalProfit.toFixed(2));
+    }
+
+    // Update due
+    const paid = parseFloat($('#editPaidAmount')?.val() || 0); // if you have a paid field
+    const due = discountedSold - paid;
+    $('#editDue').val(due.toFixed(2));
+}
+
+
+// Event handlers for edit modal
+$(document).on('change', '.edit-service-supplier', function() {
+    const selectedOption = $(this).find('option:selected');
+    const currency = selectedOption.data('currency') || '';
+    $(this).closest('tr').find('.edit-service-currency').val(currency);
+});
+
+$(document).on('input', '.edit-service-base-price, .edit-service-sold-price, #editDiscount', function() {
+    updateEditTotals();
+});
+
+$(document).on('click', '#editAddServiceBtn', function() {
+    addEditServiceRow();
+});
+
+// Edit form submission
+$(document).on('submit', '#editMemberForm', function(event) {
+    event.preventDefault();
+    console.log("Edit form submitted!");
+
+    const submitBtn = event.target.querySelector('button[type="submit"]');
+    const originalHtml = submitBtn.innerHTML;
+    submitBtn.disabled = true;
+    submitBtn.innerHTML = '<i class="feather icon-loader"></i> updating...';
+
+    let formData = new FormData(event.target);
+
+    fetch("update_umrah_member.php", {
+        method: "POST",
+        body: formData,
+    })
+    .then(response => response.json())
+    .then(data => {
+        console.log("Server Response:", data);
+        if (data.success) {
+            alert("umrah_member_updated_successfully");
+            location.reload();
+        } else {
+            alert("error: " + (data.message || "failed_to_update_member"));
+            submitBtn.disabled = false;
+            submitBtn.innerHTML = originalHtml;
+        }
+    })
+    .catch(error => {
+        console.error("Error:", error);
+        alert("an_error_occurred");
+        submitBtn.disabled = false;
+        submitBtn.innerHTML = originalHtml;
+    });
+});
+
+// Initialize with one empty row
+$(document).ready(function() {
+    loadSuppliers().then(() => {
+        addServiceRow();
+    });
+});
+
+function openEditMemberModal(bookingId) {
+    console.log('Opening edit modal for booking:', bookingId);
+
+    // Show loading state
+    Swal.fire({
+        title: '<?= __("loading") ?>',
+        text: '<?= __("please_wait") ?>',
+        allowOutsideClick: false,
+        didOpen: () => {
+            Swal.showLoading();
+        }
+    });
+
+    // Fetch member details
+    fetch(`ajax/get_member_details.php?booking_id=${bookingId}`)
+        .then(response => response.json())
+        .then(data => {
+            if (data.success && data.member) {
+                const member = data.member;
+
+                // Populate form fields
+                document.getElementById('editBookingId').value = member.booking_id;
+                document.getElementById('editSoldTo').value = member.sold_to;
+                document.getElementById('editPaidTo').value = member.paid_to;
+                document.getElementById('editEntry_date').value = member.entry_date;
+                document.getElementById('editName').value = member.name;
+                document.getElementById('editDob').value = member.dob;
+                document.getElementById('editGender').value = member.gender;
+                document.getElementById('editFather_name').value = member.fname;
+                document.getElementById('editG_name').value = member.gfname;
+                document.getElementById('editRelation').value = member.relation;
+                document.getElementById('editPassport_number').value = member.passport_number;
+                document.getElementById('editPassport_expiry').value = member.passport_expiry;
+                document.getElementById('editId_type').value = member.id_type;
+                document.getElementById('editFlight_date').value = member.flight_date;
+                document.getElementById('editReturn_date').value = member.return_date;
+                document.getElementById('editDuration').value = member.duration;
+                document.getElementById('editRoom_type').value = member.room_type;
+                document.getElementById('editDiscount').value = member.discount || 0;
+                document.getElementById('editRemarks').value = member.remarks || '';
+
+                // Clear existing services
+                $('#editServicesTableBody').empty();
+
+                // Ensure suppliers are loaded before adding rows
+                var addRows = () => {
+                    if (member.services && member.services.length > 0) {
+                        member.services.forEach(service => {
+                            addEditServiceRow(service.service_type, service.supplier_id, service.base_price, service.sold_price, service.service_id);
+                        });
+                    } else {
+                        // Add one empty row if no services
+                        addEditServiceRow();
+                    }
+                };
+
+                if (suppliersData.length === 0) {
+                    loadSuppliers().then(addRows);
+                } else {
+                    addRows();
+                }
+
+                // Close loading and show modal
+                Swal.close();
+                $('#editMemberModal').modal('show');
+            } else {
+                Swal.fire({
+                    icon: 'error',
+                    title: '<?= __("error") ?>',
+                    text: data.message || '<?= __("failed_to_load_member_details") ?>'
+                });
+            }
+        })
+        .catch(error => {
+            console.error('Error:', error);
+            Swal.fire({
+                icon: 'error',
+                title: '<?= __("error") ?>',
+                text: '<?= __("failed_to_load_member_details") ?>'
+            });
+        });
+}
+
+function viewMemberDetails(bookingId) {
+    // Show loading state
+    Swal.fire({
+        title: '<?= __("loading") ?>',
+        text: '<?= __("please_wait") ?>',
+        allowOutsideClick: false,
+        didOpen: () => {
+            Swal.showLoading();
+        }
+    });
+
+    // Fetch member details
+    fetch(`ajax/get_member_details.php?booking_id=${bookingId}`)
+        .then(response => response.json())
+        .then(data => {
+            if (data.success && data.member) {
+                const member = data.member;
+
+                // Update modal fields
+                document.getElementById('memberName').textContent = member.name;
+                document.getElementById('memberGender').textContent = member.gender;
+                document.getElementById('memberDob').textContent = member.dob;
+                document.getElementById('memberPassport').textContent = member.passport_number;
+                document.getElementById('memberPassportExpiry').textContent = member.passport_expiry;
+                document.getElementById('memberId').textContent = member.id_type;
+                document.getElementById('memberRemarks').textContent = member.remarks || '-';
+
+                document.getElementById('memberEntryDate').textContent = member.entry_date;
+                document.getElementById('memberFlightDate').textContent = member.flight_date;
+                document.getElementById('memberReturnDate').textContent = member.return_date;
+                document.getElementById('memberDuration').textContent = member.duration;
+                document.getElementById('memberRoomType').textContent = member.room_type;
+                document.getElementById('memberDiscount').textContent = `${member.discount} ${member.currency}`;
+                document.getElementById('memberPrice').textContent = `${member.price} ${member.currency}`;
+                document.getElementById('memberSoldPrice').textContent = `${member.sold_price} ${member.currency}`;
+
+                document.getElementById('memberProfit').textContent = `${member.profit} ${member.currency}`;
+                document.getElementById('memberPaid').textContent = `${member.paid} ${member.currency}`;
+                document.getElementById('memberBankPayment').textContent = `${member.received_bank_payment} ${member.currency}`;
+                document.getElementById('memberReceiptNumber').textContent = member.bank_receipt_number || '-';
+                document.getElementById('memberDue').textContent = `${member.due} ${member.currency}`;
+
+                // Load date change history
+                loadDateChangeHistory(bookingId);
+
+                // Close loading and show modal
+                Swal.close();
+                $('#memberDetailsModal').modal('show');
+            } else {
+                Swal.fire({
+                    icon: 'error',
+                    title: '<?= __("error") ?>',
+                    text: data.message || '<?= __("failed_to_load_member_details") ?>'
+                });
+            }
+        })
+        .catch(error => {
+            console.error('Error:', error);
+            Swal.fire({
+                icon: 'error',
+                title: '<?= __("error") ?>',
+                text: '<?= __("failed_to_load_member_details") ?>'
+            });
+        });
+}
+
+// Load date change history for a booking
+function loadDateChangeHistory(bookingId) {
+    $.ajax({
+        url: 'ajax/get_booking_date_changes.php',
+        type: 'GET',
+        data: { booking_id: bookingId },
+        success: function(response) {
+            if (response.success && response.history && response.history.length > 0) {
+                let historyHtml = '<div class="table-responsive"><table class="table table-sm table-striped">';
+                historyHtml += '<thead><tr><th>Date</th><th>Changes</th><th>Status</th><th>Penalty</th></tr></thead><tbody>';
+
+                response.history.forEach(function(item) {
+                    const date = new Date(item.created_at).toLocaleDateString();
+                    const changes = [];
+
+                    if (item.old_flight_date !== item.new_flight_date) {
+                        changes.push(`Flight: ${item.old_flight_date || 'N/A'} → ${item.new_flight_date}`);
+                    }
+                    if (item.old_return_date !== item.new_return_date) {
+                        changes.push(`Return: ${item.old_return_date || 'N/A'} → ${item.new_return_date}`);
+                    }
+                    if (item.old_duration !== item.new_duration) {
+                        changes.push(`Duration: ${item.old_duration || 'N/A'} → ${item.new_duration}`);
+                    }
+
+                    const changesText = changes.length > 0 ? changes.join('<br>') : 'Price change only';
+                    const penaltyText = item.total_penalty > 0 ? `$${item.total_penalty}` : '-';
+
+                    let statusBadge = '';
+                    switch(item.status) {
+                        case 'Pending': statusBadge = '<span class="badge badge-warning">Pending</span>'; break;
+                        case 'Approved': statusBadge = '<span class="badge badge-info">Approved</span>'; break;
+                        case 'Rejected': statusBadge = '<span class="badge badge-danger">Rejected</span>'; break;
+                        case 'Completed': statusBadge = '<span class="badge badge-success">Completed</span>'; break;
+                    }
+
+                    historyHtml += `<tr>
+                        <td>${date}</td>
+                        <td>${changesText}</td>
+                        <td>${statusBadge}</td>
+                        <td>${penaltyText}</td>
+                    </tr>`;
+                });
+
+                historyHtml += '</tbody></table></div>';
+                $('#dateChangeHistoryContent').html(historyHtml);
+                $('#dateChangeHistorySection').show();
+            } else {
+                $('#dateChangeHistorySection').hide();
+            }
+        },
+        error: function() {
+            $('#dateChangeHistorySection').hide();
+        }
+    });
+}
+</script>
+
+<!-- Add this before </body> tag -->
+<script src="https://cdn.jsdelivr.net/npm/tesseract.js@4.1.1/dist/tesseract.min.js"></script>
 <!-- Language Selection Modal -->
 <div class="modal fade" id="languageModal" tabindex="-1" role="dialog" aria-labelledby="languageModalLabel" aria-hidden="true">
     <div class="modal-dialog" role="document">
@@ -2520,82 +3097,6 @@ document.getElementById('editSupplier').addEventListener('change', function() {
         </div>
     </div>
 </div>
-
-<script>
-// Toggle between direct and indirect flight forms
-document.addEventListener('DOMContentLoaded', function() {
-    const directRadio = document.getElementById('directFlight');
-    const indirectRadio = document.getElementById('indirectFlight');
-    const directFields = document.getElementById('directFlightFields');
-    const indirectFields = document.getElementById('indirectFlightFields');
-    const directDates = document.getElementById('directFlightDates');
-
-    function toggleFlightType() {
-        if (directRadio.checked) {
-            directFields.style.display = 'block';
-            directDates.style.display = 'block';
-            indirectFields.style.display = 'none';
-            
-            // Make direct flight fields required
-            directFields.querySelectorAll('input').forEach(input => input.required = true);
-            directDates.querySelectorAll('input').forEach(input => input.required = true);
-            
-            // Remove required from indirect fields
-            indirectFields.querySelectorAll('input').forEach(input => input.required = false);
-        } else {
-            directFields.style.display = 'none';
-            directDates.style.display = 'none';
-            indirectFields.style.display = 'block';
-            
-            // Make indirect flight fields required
-            indirectFields.querySelectorAll('input').forEach(input => input.required = true);
-            
-            // Remove required from direct fields
-            directFields.querySelectorAll('input').forEach(input => input.required = false);
-            directDates.querySelectorAll('input').forEach(input => input.required = false);
-        }
-    }
-
-    directRadio.addEventListener('change', toggleFlightType);
-    indirectRadio.addEventListener('change', toggleFlightType);
-
-    // Calculate stopover duration
-    function calculateStopover() {
-        const leg1Arrival = document.getElementById('leg1ArrivalDate').value + ' ' + document.getElementById('leg1ArrivalTime').value;
-        const leg2Departure = document.getElementById('leg2DepartureDate').value + ' ' + document.getElementById('leg2DepartureTime').value;
-        
-        if (leg1Arrival && leg2Departure) {
-            const arrival = new Date(leg1Arrival);
-            const departure = new Date(leg2Departure);
-            const diffMs = departure - arrival;
-            const diffHours = Math.floor(diffMs / (1000 * 60 * 60));
-            const diffMins = Math.floor((diffMs % (1000 * 60 * 60)) / (1000 * 60));
-            
-            document.getElementById('stopoverDuration').textContent = `${diffHours}h ${diffMins}m`;
-        }
-    }
-
-    // Add event listeners for stopover calculation
-    ['leg1ArrivalDate', 'leg1ArrivalTime', 'leg2DepartureDate', 'leg2DepartureTime'].forEach(id => {
-        document.getElementById(id).addEventListener('change', calculateStopover);
-    });
-
-    // Initialize
-    toggleFlightType();
-});
-</script>
-
-<!-- Floating action button -->
-<div id="groupTicketFloatingButton" class="position-fixed" style="bottom: 80px; right: 30px; z-index: 1050; display: none;">
-    <button type="button" class="btn btn-primary btn-lg shadow" id="showGroupTicketModal" title="<?= __('generate_group_ticket') ?>">
-        <i class="feather icon-airplay"></i>
-        <span class="badge badge-light badge-pill position-absolute" style="top: -5px; right: -5px;" id="groupTicketSelectionCount">0</span>
-    </button>
-</div>
-
-
-<!-- Include Admin Footer -->
-<?php include '../includes/admin_footer.php'; ?>
 
 
 <!-- Umrah Service Completion Modal -->
@@ -3648,852 +4149,602 @@ document.addEventListener('DOMContentLoaded', function() {
 
 
 
+
+
 <script>
-// Suppliers data for JavaScript
-var suppliersData = [
-<?php
-$result = $conn->query("SELECT id, name, currency FROM suppliers WHERE status = 'active' AND tenant_id = $tenant_id");
-while ($row = $result->fetch_assoc()) {
-    echo "{id: {$row['id']}, name: '" . addslashes($row['name']) . "', currency: '{$row['currency']}'},";
-}
-?>
-];
+    // Family Cancellation Modal Functions
+    var familyMembersData = [];
 
-// Services management functions
-let serviceRowCounter = 0;
-
-function addServiceRow(serviceType = '', supplierId = '', basePrice = 0, soldPrice = 0) {
-    serviceRowCounter++;
-    const rowId = 'serviceRow_' + serviceRowCounter;
-
-    const suppliersOptions = suppliersData.map(supplier =>
-        `<option value="${supplier.id}" data-currency="${supplier.currency}">${supplier.name}</option>`
-    ).join('');
-
-    const rowHtml = `
-        <tr id="${rowId}">
-            <td>
-                <select class="form-control service-type" name="services[${serviceRowCounter}][service_type]" required>
-                    <option value="">Select Service Type</option>
-                    <option value="all" ${serviceType === 'all' ? 'selected' : ''}>All Services</option>
-                    <option value="ticket" ${serviceType === 'ticket' ? 'selected' : ''}>Ticket</option>
-                    <option value="visa" ${serviceType === 'visa' ? 'selected' : ''}>Visa</option>
-                    <option value="hotel" ${serviceType === 'hotel' ? 'selected' : ''}>Hotel</option>
-                    <option value="transport" ${serviceType === 'transport' ? 'selected' : ''}>Transport</option>
-                </select>
-            </td>
-            <td>
-                <select class="form-control service-supplier" name="services[${serviceRowCounter}][supplier_id]" required>
-                    <option value="">Select Supplier</option>
-                    ${suppliersOptions}
-                </select>
-            </td>
-            <td>
-                <input type="text" class="form-control service-currency" name="services[${serviceRowCounter}][currency]" readonly>
-            </td>
-            <td>
-                <input type="number" class="form-control service-base-price" name="services[${serviceRowCounter}][base_price]"
-                       value="${basePrice}" min="0" step="0.01" required>
-            </td>
-            <td>
-                <input type="number" class="form-control service-sold-price" name="services[${serviceRowCounter}][sold_price]"
-                       value="${soldPrice}" min="0" step="0.01" required>
-            </td>
-            <td>
-                <input type="number" class="form-control service-profit" name="services[${serviceRowCounter}][profit]" readonly>
-            </td>
-            <td>
-                <button type="button" class="btn btn-sm btn-danger remove-service-btn" onclick="removeServiceRow('${rowId}')">
-                    <i class="feather icon-trash-2"></i>
-                </button>
-            </td>
-        </tr>
-    `;
-
-    $('#servicesTableBody').append(rowHtml);
-
-    // Set selected supplier if provided
-    if (supplierId) {
-        $(`#${rowId} .service-supplier`).val(supplierId).trigger('change');
-    }
-
-    updateTotals();
-}
-
-function removeServiceRow(rowId) {
-    $('#' + rowId).remove();
-    updateTotals();
-}
-
-function updateTotals() {
-    let totalBase = 0;
-    let totalSold = 0;
-    let totalProfit = 0;
-    const discount = parseFloat($('#discount').val()) || 0;
-
-    $('#servicesTableBody tr').each(function() {
-        const basePrice = parseFloat($(this).find('.service-base-price').val()) || 0;
-        const soldPrice = parseFloat($(this).find('.service-sold-price').val()) || 0;
-        const profit = soldPrice - basePrice;
-
-        $(this).find('.service-profit').val(profit.toFixed(2));
-
-        totalBase += basePrice;
-        totalSold += soldPrice;
-        totalProfit += profit;
-    });
-
-    // Apply discount to sold price
-    const discountedSold = totalSold - discount;
-    const finalProfit = discountedSold - totalBase;
-
-    $('#totalBasePrice').val(totalBase.toFixed(2));
-    $('#totalSoldPrice').val(discountedSold.toFixed(2));
-    $('#totalProfit').val(finalProfit.toFixed(2));
-}
-
-// Event handlers
-$(document).on('change', '.service-supplier', function() {
-    const selectedOption = $(this).find('option:selected');
-    const currency = selectedOption.data('currency') || '';
-    $(this).closest('tr').find('.service-currency').val(currency);
-});
-
-$(document).on('input', '.service-base-price, .service-sold-price, #discount', function() {
-    updateTotals();
-});
-
-$(document).on('click', '#addServiceBtn', function() {
-    addServiceRow();
-});
-
-// Initialize with one empty row
-$(document).ready(function() {
-    addServiceRow();
-});
-
-function viewMemberDetails(bookingId) {
-    // Show loading state
-    Swal.fire({
-        title: '<?= __("loading") ?>',
-        text: '<?= __("please_wait") ?>',
-        allowOutsideClick: false,
-        didOpen: () => {
-            Swal.showLoading();
-        }
-    });
-
-    // Fetch member details
-    fetch(`ajax/get_member_details.php?booking_id=${bookingId}`)
-        .then(response => response.json())
-        .then(data => {
-            if (data.success && data.member) {
-                const member = data.member;
-                
-                // Update modal fields
-                document.getElementById('memberName').textContent = member.name;
-                document.getElementById('memberGender').textContent = member.gender;
-                document.getElementById('memberDob').textContent = member.dob;
-                document.getElementById('memberPassport').textContent = member.passport_number;
-                document.getElementById('memberPassportExpiry').textContent = member.passport_expiry;
-                document.getElementById('memberId').textContent = member.id_type;
-                document.getElementById('memberRemarks').textContent = member.remarks || '-';
-                
-                document.getElementById('memberEntryDate').textContent = member.entry_date;
-                document.getElementById('memberFlightDate').textContent = member.flight_date;
-                document.getElementById('memberReturnDate').textContent = member.return_date;
-                document.getElementById('memberDuration').textContent = member.duration;
-                document.getElementById('memberRoomType').textContent = member.room_type;
-                document.getElementById('memberDiscount').textContent = `${member.discount} ${member.currency}`;
-                document.getElementById('memberPrice').textContent = `${member.price} ${member.currency}`;
-                document.getElementById('memberSoldPrice').textContent = `${member.sold_price} ${member.currency}`;
-
-                document.getElementById('memberProfit').textContent = `${member.profit} ${member.currency}`;
-                document.getElementById('memberPaid').textContent = `${member.paid} ${member.currency}`;
-                document.getElementById('memberBankPayment').textContent = `${member.received_bank_payment} ${member.currency}`;
-                document.getElementById('memberReceiptNumber').textContent = member.bank_receipt_number || '-';
-                document.getElementById('memberDue').textContent = `${member.due} ${member.currency}`;
-
-                // Load date change history
-                loadDateChangeHistory(bookingId);
-
-                // Close loading and show modal
-                Swal.close();
-                $('#memberDetailsModal').modal('show');
-            } else {
-                Swal.fire({
-                    icon: 'error',
-                    title: '<?= __("error") ?>',
-                    text: data.message || '<?= __("failed_to_load_member_details") ?>'
-                });
-            }
-        })
-        .catch(error => {
-            console.error('Error:', error);
+    // Function to open family cancellation modal
+    function openFamilyCancellationModal(familyId, bookingId = null) {
+        console.log('Opening family cancellation modal with familyId:', familyId, 'bookingId:', bookingId);
+        
+        // Validate familyId
+        if (!familyId || familyId === '' || familyId === 'undefined') {
+            console.error('Invalid family ID provided:', familyId);
             Swal.fire({
                 icon: 'error',
-                title: '<?= __("error") ?>',
-                text: '<?= __("failed_to_load_member_details") ?>'
+                title: 'Invalid Family ID',
+                text: 'Please provide a valid family ID.'
             });
-        });
-}
-
-// Load date change history for a booking
-function loadDateChangeHistory(bookingId) {
-    $.ajax({
-        url: 'ajax/get_booking_date_changes.php',
-        type: 'GET',
-        data: { booking_id: bookingId },
-        success: function(response) {
-            if (response.success && response.history && response.history.length > 0) {
-                let historyHtml = '<div class="table-responsive"><table class="table table-sm table-striped">';
-                historyHtml += '<thead><tr><th>Date</th><th>Changes</th><th>Status</th><th>Penalty</th></tr></thead><tbody>';
-
-                response.history.forEach(function(item) {
-                    const date = new Date(item.created_at).toLocaleDateString();
-                    const changes = [];
-
-                    if (item.old_flight_date !== item.new_flight_date) {
-                        changes.push(`Flight: ${item.old_flight_date || 'N/A'} → ${item.new_flight_date}`);
-                    }
-                    if (item.old_return_date !== item.new_return_date) {
-                        changes.push(`Return: ${item.old_return_date || 'N/A'} → ${item.new_return_date}`);
-                    }
-                    if (item.old_duration !== item.new_duration) {
-                        changes.push(`Duration: ${item.old_duration || 'N/A'} → ${item.new_duration}`);
-                    }
-
-                    const changesText = changes.length > 0 ? changes.join('<br>') : 'Price change only';
-                    const penaltyText = item.total_penalty > 0 ? `$${item.total_penalty}` : '-';
-
-                    let statusBadge = '';
-                    switch(item.status) {
-                        case 'Pending': statusBadge = '<span class="badge badge-warning">Pending</span>'; break;
-                        case 'Approved': statusBadge = '<span class="badge badge-info">Approved</span>'; break;
-                        case 'Rejected': statusBadge = '<span class="badge badge-danger">Rejected</span>'; break;
-                        case 'Completed': statusBadge = '<span class="badge badge-success">Completed</span>'; break;
-                    }
-
-                    historyHtml += `<tr>
-                        <td>${date}</td>
-                        <td>${changesText}</td>
-                        <td>${statusBadge}</td>
-                        <td>${penaltyText}</td>
-                    </tr>`;
-                });
-
-                historyHtml += '</tbody></table></div>';
-                $('#dateChangeHistoryContent').html(historyHtml);
-                $('#dateChangeHistorySection').show();
-            } else {
-                $('#dateChangeHistorySection').hide();
-            }
-        },
-        error: function() {
-            $('#dateChangeHistorySection').hide();
-        }
-    });
-}
-</script>
-
-<!-- Add this before </body> tag -->
-<script src="https://cdn.jsdelivr.net/npm/tesseract.js@4.1.1/dist/tesseract.min.js"></script>
-
-
-<script>
- // Family Cancellation Modal Functions
-var familyMembersData = [];
-
-// Function to open family cancellation modal
-function openFamilyCancellationModal(familyId, bookingId = null) {
-    console.log('Opening family cancellation modal with familyId:', familyId, 'bookingId:', bookingId);
-    
-    // Validate familyId
-    if (!familyId || familyId === '' || familyId === 'undefined') {
-        console.error('Invalid family ID provided:', familyId);
-        Swal.fire({
-            icon: 'error',
-            title: 'Invalid Family ID',
-            text: 'Please provide a valid family ID.'
-        });
-        return;
-    }
-    
-    // Set the family ID and booking ID
-    $('#familyCancellationFamilyId').val(familyId);
-    $('#familyCancellationBookingId').val(bookingId || '');
-    
-    // Clear previous data
-    $('#familyMembersDocuments').html('');
-    $('#familyNameDisplay').text('');
-    $('#totalMembersDisplay').text('');
-    $('#packageTypeDisplay').text('');
-    
-    // Show the modal first
-    $('#familyCancellationDetailsModal').modal('show');
-    
-    // Load family members data after modal is shown
-    setTimeout(function() {
-        loadFamilyMembersForCancellation(familyId);
-    }, 300);
-}
-
-// Function to load family members data
-function loadFamilyMembersForCancellation(familyId) {
-    console.group('Load Family Members Debug');
-    console.log('Function called with familyId:', familyId);
-    console.log('Current page URL:', window.location.href);
-    console.log('jQuery version:', $.fn.jquery);
-    console.log('Modal exists:', $('#familyCancellationDetailsModal').length > 0);
-    console.log('Family ID input exists:', $('#familyCancellationFamilyId').length > 0);
-    
-    // Validate inputs
-    if (!familyId) {
-        console.error('Invalid familyId provided');
-        $('#familyMembersDocuments').html('<div class="alert alert-danger">Invalid Family ID</div>');
-        console.groupEnd();
-        return;
-    }
-    
-    // Show loading state
-    $('#familyMembersDocuments').html('<div class="text-center p-4"><i class="feather icon-loader spinning"></i> Loading family members...</div>');
-    
-    // Determine the correct AJAX URL with more logging
-    var possiblePaths = [
-        'ajax/get_family_members1.php',
-        'admin/ajax/get_family_members1.php',
-        '../ajax/get_family_members1.php',
-        'get_family_members1.php'
-    ];
-    
-    // Try to find the correct path dynamically
-    function findValidPath(paths) {
-        for (var i = 0; i < paths.length; i++) {
-            var testPath = paths[i];
-            console.log('Attempting path:', testPath);
-            
-            try {
-                var xhr = $.ajax({
-                    url: testPath,
-                    type: 'HEAD',
-                    async: false
-                });
-                
-                if (xhr.status === 200) {
-                    console.log('Valid path found:', testPath);
-                    return testPath;
-                }
-            } catch (e) {
-                console.warn('Path test failed:', testPath, e);
-            }
-        }
-        console.warn('No valid path found, defaulting to first path');
-        return paths[0]; // Default to first path if no valid path found
-    }
-    
-    var ajaxUrl = findValidPath(possiblePaths);
-    
-    console.log('Final AJAX URL:', ajaxUrl);
-    
-    // Perform AJAX request with extensive logging
-    $.ajax({
-        url: ajaxUrl,
-        type: 'GET',
-        data: { 
-            family_id: familyId,
-            action: 'get_family_members' 
-        },
-        dataType: 'json',
-        timeout: 30000, // 30 second timeout
-        beforeSend: function(xhr) {
-            console.log('AJAX request started for family ID:', familyId);
-            console.log('Request headers:', xhr.getAllResponseHeaders());
-        },
-        success: function(response, textStatus, xhr) {
-            console.log('AJAX Success Response:', response);
-            console.log('Response Status:', textStatus);
-            console.log('XHR Object:', xhr);
-            
-            if (response && response.success && response.data) {
-                // Store family members data globally
-                window.familyMembersData = response.data.members || [];
-                
-                console.log('Family members loaded:', window.familyMembersData.length);
-                
-                // Update family information display
-                $('#familyNameDisplay').text(response.data.family_name || 'N/A');
-                $('#totalMembersDisplay').text(window.familyMembersData.length);
-                $('#packageTypeDisplay').text(response.data.package_type || 'N/A');
-                
-                // Set the booking ID to the first member's booking ID
-                if (window.familyMembersData.length > 0) {
-                    var firstMemberBookingId = window.familyMembersData[0].booking_id;
-                    $('#familyCancellationBookingId').val(firstMemberBookingId);
-                    console.log('Set booking ID to first member:', firstMemberBookingId);
-                }
-                
-                // Generate member document sections
-                generateFamilyMemberDocumentSections();
-            } else {
-                console.error('Invalid response structure:', response);
-                var errorMsg = 'Error loading family members: ' + (response.message || 'Invalid response structure');
-                $('#familyMembersDocuments').html('<div class="alert alert-danger">' + errorMsg + '</div>');
-            }
-        },
-        error: function(xhr, status, error) {
-            console.error('AJAX Error Details:');
-            console.error('Status:', status);
-            console.error('Error:', error);
-            console.error('Response Text:', xhr.responseText);
-            console.error('Status Code:', xhr.status);
-            console.error('Request URL:', ajaxUrl);
-            console.error('Request Parameters:', { 
-                family_id: familyId, 
-                action: 'get_family_members' 
-            });
-            
-            var errorMessage = 'Failed to load family members.';
-            
-            if (xhr.status === 404) {
-                errorMessage = 'AJAX endpoint not found. Please check the file path: ' + ajaxUrl;
-            } else if (xhr.status === 500) {
-                errorMessage = 'Server error occurred. Check server logs.';
-            } else if (xhr.status === 403) {
-                errorMessage = 'Access denied. Please check your permissions.';
-            } else if (status === 'timeout') {
-                errorMessage = 'Request timed out. Please try again.';
-            } else if (xhr.responseText) {
-                try {
-                    var errorResponse = JSON.parse(xhr.responseText);
-                    errorMessage = errorResponse.message || errorMessage;
-                } catch (e) {
-                    errorMessage = 'Server returned: ' + xhr.responseText.substring(0, 100) + '...';
-                }
-            }
-            
-            $('#familyMembersDocuments').html(
-                '<div class="alert alert-danger">' + 
-                '<strong>Error:</strong> ' + errorMessage + 
-                '<br><small>Status Code: ' + xhr.status + ' | Status: ' + status + 
-                '<br>URL: ' + ajaxUrl + '</small>' +
-                '</div>'
-            );
-            
-            // Optional: Show a more user-friendly error toast
-            if (typeof Swal !== 'undefined') {
-                Swal.fire({
-                    icon: 'error',
-                    title: 'Loading Error',
-                    text: errorMessage,
-                    confirmButtonColor: '#dc3545'
-                });
-            } else {
-                alert(errorMessage);
-            }
-        },
-        complete: function(xhr, status) {
-            console.log('AJAX request completed with status:', status);
-            console.groupEnd();
-        }
-    });
-}
-
-// Function to generate document sections for each family member
-function generateFamilyMemberDocumentSections() {
-    console.log('Generating document sections for', familyMembersData.length, 'members');
-    
-    var sectionsHtml = '';
-    
-    if (familyMembersData.length === 0) {
-        $('#familyMembersDocuments').html('<div class="alert alert-warning">No family members found.</div>');
-        return;
-    }
-    
-    familyMembersData.forEach(function(member, index) {
-        console.log('Processing member:', member.name, 'ID:', member.booking_id);
-        
-        var template = $('#memberDocumentTemplate').html();
-        if (!template) {
-            console.error('Member document template not found!');
-            $('#familyMembersDocuments').html('<div class="alert alert-danger">Template not found. Please refresh the page.</div>');
             return;
         }
         
-        var memberSection = $(template);
+        // Set the family ID and booking ID
+        $('#familyCancellationFamilyId').val(familyId);
+        $('#familyCancellationBookingId').val(bookingId || '');
         
-        // Update member information
-        memberSection.find('.member-name').text(member.name || 'Unknown');
-        memberSection.find('.member-passport').text(member.passport_number || 'N/A');
-        memberSection.find('.member-booking-id').text(member.booking_id || 'N/A');
+        // Clear previous data
+        $('#familyMembersDocuments').html('');
+        $('#familyNameDisplay').text('');
+        $('#totalMembersDisplay').text('');
+        $('#packageTypeDisplay').text('');
         
-        // Update input IDs and names for this member
-        var memberId = member.booking_id || index;
+        // Show the modal first
+        $('#familyCancellationDetailsModal').modal('show');
         
-        // Ensure unique IDs for each input
-        memberSection.find('.member-return-checkbox').each(function() {
-            var docType = $(this).data('doc-type');
-            var uniqueId = 'member_' + memberId + '_return_' + docType;
-            
-            // Set unique ID and data attributes
-            $(this)
-                .attr('id', uniqueId)
-                .attr('name', uniqueId)
-                .attr('data-member-id', memberId)
-                .attr('data-doc-type', docType);
-            
-            // Update corresponding label
-            $(this).next('label').attr('for', uniqueId);
-        });
-        
-        memberSection.find('.member-condition-select').each(function() {
-            var docType = $(this).data('doc-type');
-            var uniqueId = 'member_' + memberId + '_condition_' + docType;
-            
-            // Set unique ID and data attributes
-            $(this)
-                .attr('id', uniqueId)
-                .attr('name', uniqueId)
-                .attr('data-member-id', memberId)
-                .attr('data-doc-type', docType);
-        });
-        
-        memberSection.find('.member-notes-input').each(function() {
-            var docType = $(this).data('doc-type');
-            var uniqueId = 'member_' + memberId + '_notes_' + docType;
-            
-            // Set unique ID and data attributes
-            $(this)
-                .attr('id', uniqueId)
-                .attr('name', uniqueId)
-                .attr('data-member-id', memberId)
-                .attr('data-doc-type', docType);
-        });
-        
-        sectionsHtml += memberSection.prop('outerHTML');
-    });
-    
-    $('#familyMembersDocuments').html(sectionsHtml);
-    console.log('Document sections generated successfully');
-}
+        // Load family members data after modal is shown
+        setTimeout(function() {
+            loadFamilyMembersForCancellation(familyId);
+        }, 300);
+    }
 
-// Main cancellation form generation handler
-$(document).on('click', '#familyGenerateCancellationFormBtn', function() {
-    console.log('Generate cancellation form button clicked');
-    
-    // Validate form
-    var form = $('#familyCancellationDetailsForm');
-    if (!form[0].checkValidity()) {
-        form[0].reportValidity();
-        return;
-    }
-    
-    // Check if at least one document is marked as returned for at least one member
-    var hasReturnedDocuments = false;
-    $('.member-return-checkbox:checked').each(function() {
-        hasReturnedDocuments = true;
-        return false; // Break the loop
-    });
-    
-    if (!hasReturnedDocuments) {
-        Swal.fire({
-            icon: 'warning',
-            title: 'No Documents Returned',
-            text: 'Please mark at least one document as returned for at least one family member.',
-            confirmButtonColor: '#dc3545'
-        });
-        return;
-    }
-    
-    // Validate cancellation reason
-    var cancellationReason = $('#familyCancellationReason').val().trim();
-    if (!cancellationReason) {
-        Swal.fire({
-            icon: 'warning',
-            title: 'Cancellation Reason Required',
-            text: 'Please provide a detailed reason for the family cancellation.',
-            confirmButtonColor: '#dc3545'
-        });
-        $('#familyCancellationReason').focus();
-        return;
-    }
-    
-    // Show confirmation dialog
-    Swal.fire({
-        title: 'Generate Family Cancellation Form',
-        text: 'This will generate a cancellation form for all ' + familyMembersData.length + ' family members. Continue?',
-        icon: 'warning',
-        showCancelButton: true,
-        confirmButtonColor: '#dc3545',
-        cancelButtonColor: '#6c757d',
-        confirmButtonText: 'Yes, Generate Form',
-        cancelButtonText: 'Cancel'
-    }).then((result) => {
-        if (result.isConfirmed) {
-            generateFamilyCancellationForm();
-        }
-    });
-});
-
-// Function to generate the actual cancellation form
-function generateFamilyCancellationForm() {
-    console.group('Family Cancellation Form Generation');
-    console.log('Starting form generation process');
-    
-    try {
-        // Show loading state
-        $('#familyGenerateCancellationFormBtn')
-            .html('<i class="feather icon-loader spinning"></i> Generating...')
-            .prop('disabled', true);
-        
-        // Collect all form data
-        var familyId = $('#familyCancellationFamilyId').val();
-        var bookingId = $('#familyCancellationBookingId').val();
-        var cancellationReason = $('#familyCancellationReason').val().trim();
-        
-        console.log('Form data:', { familyId, bookingId, cancellationReason });
+    // Function to load family members data
+    function loadFamilyMembersForCancellation(familyId) {
+        console.group('Load Family Members Debug');
+        console.log('Function called with familyId:', familyId);
+        console.log('Current page URL:', window.location.href);
+        console.log('jQuery version:', $.fn.jquery);
+        console.log('Modal exists:', $('#familyCancellationDetailsModal').length > 0);
+        console.log('Family ID input exists:', $('#familyCancellationFamilyId').length > 0);
         
         // Validate inputs
         if (!familyId) {
-            throw new Error('Family ID is required');
+            console.error('Invalid familyId provided');
+            $('#familyMembersDocuments').html('<div class="alert alert-danger">Invalid Family ID</div>');
+            console.groupEnd();
+            return;
         }
         
-        if (!bookingId) {
-            throw new Error('Booking ID is required');
-        }
+        // Show loading state
+        $('#familyMembersDocuments').html('<div class="text-center p-4"><i class="feather icon-loader spinning"></i> Loading family members...</div>');
         
-        if (!cancellationReason) {
-            throw new Error('Cancellation reason is required');
-        }
+        // Determine the correct AJAX URL with more logging
+        var possiblePaths = [
+            'ajax/get_family_members1.php',
+            'admin/ajax/get_family_members1.php',
+            '../ajax/get_family_members1.php',
+            'get_family_members1.php'
+        ];
         
-        // Use window.familyMembersData instead of local variable
-        var familyMembersData = window.familyMembersData || [];
-        
-        console.log('Family Members Data:', familyMembersData);
-        
-        // Collect returned items and their conditions for each member
-        var returnedItems = {};
-        var itemConditions = {};
-        var itemNotes = {};
-        
-        console.group('Returned Items Collection');
-        
-        familyMembersData.forEach(function(member) {
-            var memberId = member.booking_id;
-            var memberPrefix = 'member_' + memberId + '_';
-            
-            console.log('Processing member:', member);
-            console.log('Member Prefix:', memberPrefix);
-            
-            // Document types
-            var docTypes = ['passport', 'id_card', 'photos', 'other_docs'];
-            
-            docTypes.forEach(function(docType) {
-                var returnCheckbox = $('#member_' + memberId + '_return_' + docType);
-                var conditionSelect = $('#member_' + memberId + '_condition_' + docType);
-                var notesInput = $('#member_' + memberId + '_notes_' + docType);
-                
-                console.log('Checking document type:', docType);
-                console.log('Return Checkbox:', returnCheckbox.length, returnCheckbox.is(':checked'));
-                console.log('Condition Select:', conditionSelect.length, conditionSelect.val());
-                console.log('Notes Input:', notesInput.length, notesInput.val());
-                
-                if (returnCheckbox.length) {
-                    returnedItems[memberPrefix + docType] = returnCheckbox.is(':checked') ? '1' : '0';
-                }
-                if (conditionSelect.length) {
-                    itemConditions[memberPrefix + docType] = conditionSelect.val() || '';
-                }
-                if (notesInput.length) {
-                    itemNotes[memberPrefix + docType] = notesInput.val() || '';
-                }
-            });
-        });
-        
-        console.log('Collected Returned Items:', returnedItems);
-        console.log('Collected Item Conditions:', itemConditions);
-        console.log('Collected Item Notes:', itemNotes);
-        console.groupEnd();
-        
-        // Determine current language, default to 'en' if not set
-        var currentLang = typeof currentLang !== 'undefined' ? currentLang : 'en';
-        
-        // Build URL with parameters
-        var url = 'generate_family_cancellation.php?family_id=' + encodeURIComponent(familyId);
-        url += '&booking_id=' + encodeURIComponent(bookingId);
-        url += '&cancellation_reason=' + encodeURIComponent(cancellationReason);
-        url += '&returned_items=' + encodeURIComponent(JSON.stringify(returnedItems));
-        url += '&item_condition=' + encodeURIComponent(JSON.stringify(itemConditions));
-        url += '&item_notes=' + encodeURIComponent(JSON.stringify(itemNotes));
-        url += '&lang=' + currentLang;
-        
-        console.log('Generation URL:', url);
-        
-        // AJAX request to generate cancellation form
-        $.ajax({
-            url: url,
-            type: 'GET',
-            dataType: 'json',
-            timeout: 60000, // 60 second timeout for PDF generation
-            xhr: function() {
-                var xhr = new window.XMLHttpRequest();
-                xhr.responseType = 'text'; // Receive as text first
-                return xhr;
-            },
-            success: function(response, textStatus, xhr) {
-                console.group('Cancellation Form Generation Response');
-                console.log('Raw Response:', xhr.responseText);
+        // Try to find the correct path dynamically
+        function findValidPath(paths) {
+            for (var i = 0; i < paths.length; i++) {
+                var testPath = paths[i];
+                console.log('Attempting path:', testPath);
                 
                 try {
-                    // If response is not already an object (e.g., from dataType: 'json'), parse it
-                    if (typeof response === 'string') {
-                        response = JSON.parse(xhr.responseText);
+                    var xhr = $.ajax({
+                        url: testPath,
+                        type: 'HEAD',
+                        async: false
+                    });
+                    
+                    if (xhr.status === 200) {
+                        console.log('Valid path found:', testPath);
+                        return testPath;
+                    }
+                } catch (e) {
+                    console.warn('Path test failed:', testPath, e);
+                }
+            }
+            console.warn('No valid path found, defaulting to first path');
+            return paths[0]; // Default to first path if no valid path found
+        }
+        
+        var ajaxUrl = findValidPath(possiblePaths);
+        
+        console.log('Final AJAX URL:', ajaxUrl);
+        
+        // Perform AJAX request with extensive logging
+        $.ajax({
+            url: ajaxUrl,
+            type: 'GET',
+            data: { 
+                family_id: familyId,
+                action: 'get_family_members' 
+            },
+            dataType: 'json',
+            timeout: 30000, // 30 second timeout
+            beforeSend: function(xhr) {
+                console.log('AJAX request started for family ID:', familyId);
+                console.log('Request headers:', xhr.getAllResponseHeaders());
+            },
+            success: function(response, textStatus, xhr) {
+                console.log('AJAX Success Response:', response);
+                console.log('Response Status:', textStatus);
+                console.log('XHR Object:', xhr);
+                
+                if (response && response.success && response.data) {
+                    // Store family members data globally
+                    window.familyMembersData = response.data.members || [];
+                    
+                    console.log('Family members loaded:', window.familyMembersData.length);
+                    
+                    // Update family information display
+                    $('#familyNameDisplay').text(response.data.family_name || 'N/A');
+                    $('#totalMembersDisplay').text(window.familyMembersData.length);
+                    $('#packageTypeDisplay').text(response.data.package_type || 'N/A');
+                    
+                    // Set the booking ID to the first member's booking ID
+                    if (window.familyMembersData.length > 0) {
+                        var firstMemberBookingId = window.familyMembersData[0].booking_id;
+                        $('#familyCancellationBookingId').val(firstMemberBookingId);
+                        console.log('Set booking ID to first member:', firstMemberBookingId);
                     }
                     
-                    console.log('Parsed Response:', response);
+                    // Generate member document sections
+                    generateFamilyMemberDocumentSections();
+                } else {
+                    console.error('Invalid response structure:', response);
+                    var errorMsg = 'Error loading family members: ' + (response.message || 'Invalid response structure');
+                    $('#familyMembersDocuments').html('<div class="alert alert-danger">' + errorMsg + '</div>');
+                }
+            },
+            error: function(xhr, status, error) {
+                console.error('AJAX Error Details:');
+                console.error('Status:', status);
+                console.error('Error:', error);
+                console.error('Response Text:', xhr.responseText);
+                console.error('Status Code:', xhr.status);
+                console.error('Request URL:', ajaxUrl);
+                console.error('Request Parameters:', { 
+                    family_id: familyId, 
+                    action: 'get_family_members' 
+                });
+                
+                var errorMessage = 'Failed to load family members.';
+                
+                if (xhr.status === 404) {
+                    errorMessage = 'AJAX endpoint not found. Please check the file path: ' + ajaxUrl;
+                } else if (xhr.status === 500) {
+                    errorMessage = 'Server error occurred. Check server logs.';
+                } else if (xhr.status === 403) {
+                    errorMessage = 'Access denied. Please check your permissions.';
+                } else if (status === 'timeout') {
+                    errorMessage = 'Request timed out. Please try again.';
+                } else if (xhr.responseText) {
+                    try {
+                        var errorResponse = JSON.parse(xhr.responseText);
+                        errorMessage = errorResponse.message || errorMessage;
+                    } catch (e) {
+                        errorMessage = 'Server returned: ' + xhr.responseText.substring(0, 100) + '...';
+                    }
+                }
+                
+                $('#familyMembersDocuments').html(
+                    '<div class="alert alert-danger">' + 
+                    '<strong>Error:</strong> ' + errorMessage + 
+                    '<br><small>Status Code: ' + xhr.status + ' | Status: ' + status + 
+                    '<br>URL: ' + ajaxUrl + '</small>' +
+                    '</div>'
+                );
+                
+                // Optional: Show a more user-friendly error toast
+                if (typeof Swal !== 'undefined') {
+                    Swal.fire({
+                        icon: 'error',
+                        title: 'Loading Error',
+                        text: errorMessage,
+                        confirmButtonColor: '#dc3545'
+                    });
+                } else {
+                    alert(errorMessage);
+                }
+            },
+            complete: function(xhr, status) {
+                console.log('AJAX request completed with status:', status);
+                console.groupEnd();
+            }
+        });
+    }
+
+    // Function to generate document sections for each family member
+    function generateFamilyMemberDocumentSections() {
+        console.log('Generating document sections for', familyMembersData.length, 'members');
+        
+        var sectionsHtml = '';
+        
+        if (familyMembersData.length === 0) {
+            $('#familyMembersDocuments').html('<div class="alert alert-warning">No family members found.</div>');
+            return;
+        }
+        
+        familyMembersData.forEach(function(member, index) {
+            console.log('Processing member:', member.name, 'ID:', member.booking_id);
+            
+            var template = $('#memberDocumentTemplate').html();
+            if (!template) {
+                console.error('Member document template not found!');
+                $('#familyMembersDocuments').html('<div class="alert alert-danger">Template not found. Please refresh the page.</div>');
+                return;
+            }
+            
+            var memberSection = $(template);
+            
+            // Update member information
+            memberSection.find('.member-name').text(member.name || 'Unknown');
+            memberSection.find('.member-passport').text(member.passport_number || 'N/A');
+            memberSection.find('.member-booking-id').text(member.booking_id || 'N/A');
+            
+            // Update input IDs and names for this member
+            var memberId = member.booking_id || index;
+            
+            // Ensure unique IDs for each input
+            memberSection.find('.member-return-checkbox').each(function() {
+                var docType = $(this).data('doc-type');
+                var uniqueId = 'member_' + memberId + '_return_' + docType;
+                
+                // Set unique ID and data attributes
+                $(this)
+                    .attr('id', uniqueId)
+                    .attr('name', uniqueId)
+                    .attr('data-member-id', memberId)
+                    .attr('data-doc-type', docType);
+                
+                // Update corresponding label
+                $(this).next('label').attr('for', uniqueId);
+            });
+            
+            memberSection.find('.member-condition-select').each(function() {
+                var docType = $(this).data('doc-type');
+                var uniqueId = 'member_' + memberId + '_condition_' + docType;
+                
+                // Set unique ID and data attributes
+                $(this)
+                    .attr('id', uniqueId)
+                    .attr('name', uniqueId)
+                    .attr('data-member-id', memberId)
+                    .attr('data-doc-type', docType);
+            });
+            
+            memberSection.find('.member-notes-input').each(function() {
+                var docType = $(this).data('doc-type');
+                var uniqueId = 'member_' + memberId + '_notes_' + docType;
+                
+                // Set unique ID and data attributes
+                $(this)
+                    .attr('id', uniqueId)
+                    .attr('name', uniqueId)
+                    .attr('data-member-id', memberId)
+                    .attr('data-doc-type', docType);
+            });
+            
+            sectionsHtml += memberSection.prop('outerHTML');
+        });
+        
+        $('#familyMembersDocuments').html(sectionsHtml);
+        console.log('Document sections generated successfully');
+    }
+
+    // Main cancellation form generation handler
+    $(document).on('click', '#familyGenerateCancellationFormBtn', function() {
+        console.log('Generate cancellation form button clicked');
+        
+        // Validate form
+        var form = $('#familyCancellationDetailsForm');
+        if (!form[0].checkValidity()) {
+            form[0].reportValidity();
+            return;
+        }
+        
+        // Check if at least one document is marked as returned for at least one member
+        var hasReturnedDocuments = false;
+        $('.member-return-checkbox:checked').each(function() {
+            hasReturnedDocuments = true;
+            return false; // Break the loop
+        });
+        
+        if (!hasReturnedDocuments) {
+            Swal.fire({
+                icon: 'warning',
+                title: 'No Documents Returned',
+                text: 'Please mark at least one document as returned for at least one family member.',
+                confirmButtonColor: '#dc3545'
+            });
+            return;
+        }
+        
+        // Validate cancellation reason
+        var cancellationReason = $('#familyCancellationReason').val().trim();
+        if (!cancellationReason) {
+            Swal.fire({
+                icon: 'warning',
+                title: 'Cancellation Reason Required',
+                text: 'Please provide a detailed reason for the family cancellation.',
+                confirmButtonColor: '#dc3545'
+            });
+            $('#familyCancellationReason').focus();
+            return;
+        }
+        
+        // Show confirmation dialog
+        Swal.fire({
+            title: 'Generate Family Cancellation Form',
+            text: 'This will generate a cancellation form for all ' + familyMembersData.length + ' family members. Continue?',
+            icon: 'warning',
+            showCancelButton: true,
+            confirmButtonColor: '#dc3545',
+            cancelButtonColor: '#6c757d',
+            confirmButtonText: 'Yes, Generate Form',
+            cancelButtonText: 'Cancel'
+        }).then((result) => {
+            if (result.isConfirmed) {
+                generateFamilyCancellationForm();
+            }
+        });
+    });
+
+    // Function to generate the actual cancellation form
+    function generateFamilyCancellationForm() {
+        console.group('Family Cancellation Form Generation');
+        console.log('Starting form generation process');
+        
+        try {
+            // Show loading state
+            $('#familyGenerateCancellationFormBtn')
+                .html('<i class="feather icon-loader spinning"></i> Generating...')
+                .prop('disabled', true);
+            
+            // Collect all form data
+            var familyId = $('#familyCancellationFamilyId').val();
+            var bookingId = $('#familyCancellationBookingId').val();
+            var cancellationReason = $('#familyCancellationReason').val().trim();
+            
+            console.log('Form data:', { familyId, bookingId, cancellationReason });
+            
+            // Validate inputs
+            if (!familyId) {
+                throw new Error('Family ID is required');
+            }
+            
+            if (!bookingId) {
+                throw new Error('Booking ID is required');
+            }
+            
+            if (!cancellationReason) {
+                throw new Error('Cancellation reason is required');
+            }
+            
+            // Use window.familyMembersData instead of local variable
+            var familyMembersData = window.familyMembersData || [];
+            
+            console.log('Family Members Data:', familyMembersData);
+            
+            // Collect returned items and their conditions for each member
+            var returnedItems = {};
+            var itemConditions = {};
+            var itemNotes = {};
+            
+            console.group('Returned Items Collection');
+            
+            familyMembersData.forEach(function(member) {
+                var memberId = member.booking_id;
+                var memberPrefix = 'member_' + memberId + '_';
+                
+                console.log('Processing member:', member);
+                console.log('Member Prefix:', memberPrefix);
+                
+                // Document types
+                var docTypes = ['passport', 'id_card', 'photos', 'other_docs'];
+                
+                docTypes.forEach(function(docType) {
+                    var returnCheckbox = $('#member_' + memberId + '_return_' + docType);
+                    var conditionSelect = $('#member_' + memberId + '_condition_' + docType);
+                    var notesInput = $('#member_' + memberId + '_notes_' + docType);
+                    
+                    console.log('Checking document type:', docType);
+                    console.log('Return Checkbox:', returnCheckbox.length, returnCheckbox.is(':checked'));
+                    console.log('Condition Select:', conditionSelect.length, conditionSelect.val());
+                    console.log('Notes Input:', notesInput.length, notesInput.val());
+                    
+                    if (returnCheckbox.length) {
+                        returnedItems[memberPrefix + docType] = returnCheckbox.is(':checked') ? '1' : '0';
+                    }
+                    if (conditionSelect.length) {
+                        itemConditions[memberPrefix + docType] = conditionSelect.val() || '';
+                    }
+                    if (notesInput.length) {
+                        itemNotes[memberPrefix + docType] = notesInput.val() || '';
+                    }
+                });
+            });
+            
+            console.log('Collected Returned Items:', returnedItems);
+            console.log('Collected Item Conditions:', itemConditions);
+            console.log('Collected Item Notes:', itemNotes);
+            console.groupEnd();
+            
+            // Determine current language, default to 'en' if not set
+            var currentLang = typeof currentLang !== 'undefined' ? currentLang : 'en';
+            
+            // Build URL with parameters
+            var url = 'generate_family_cancellation.php?family_id=' + encodeURIComponent(familyId);
+            url += '&booking_id=' + encodeURIComponent(bookingId);
+            url += '&cancellation_reason=' + encodeURIComponent(cancellationReason);
+            url += '&returned_items=' + encodeURIComponent(JSON.stringify(returnedItems));
+            url += '&item_condition=' + encodeURIComponent(JSON.stringify(itemConditions));
+            url += '&item_notes=' + encodeURIComponent(JSON.stringify(itemNotes));
+            url += '&lang=' + currentLang;
+            
+            console.log('Generation URL:', url);
+            
+            // AJAX request to generate cancellation form
+            $.ajax({
+                url: url,
+                type: 'GET',
+                dataType: 'json',
+                timeout: 60000, // 60 second timeout for PDF generation
+                xhr: function() {
+                    var xhr = new window.XMLHttpRequest();
+                    xhr.responseType = 'text'; // Receive as text first
+                    return xhr;
+                },
+                success: function(response, textStatus, xhr) {
+                    console.group('Cancellation Form Generation Response');
+                    console.log('Raw Response:', xhr.responseText);
+                    
+                    try {
+                        // If response is not already an object (e.g., from dataType: 'json'), parse it
+                        if (typeof response === 'string') {
+                            response = JSON.parse(xhr.responseText);
+                        }
+                        
+                        console.log('Parsed Response:', response);
+                        
+                        // Reset button state
+                        $('#familyGenerateCancellationFormBtn')
+                            .html('<i class="feather icon-file-text mr-2"></i>Generate Family Cancellation Form')
+                            .prop('disabled', false);
+                        
+                        if (response.success) {
+                            Swal.fire({
+                                icon: 'success',
+                                title: 'Family Cancellation Form Generated',
+                                html: response.message + '<br><small>Family Members: ' + (response.family_members_count || familyMembersData.length) + '</small>',
+                                showCancelButton: true,
+                                confirmButtonText: 'Download PDF',
+                                cancelButtonText: 'Close',
+                                confirmButtonColor: '#28a745'
+                            }).then((result) => {
+                                if (result.isConfirmed && response.file_url) {
+                                    // Verify file exists before attempting download
+                                    $.ajax({
+                                        url: response.file_url,
+                                        type: 'HEAD',
+                                        success: function() {
+                                            // File exists, open in new window
+                                            window.open(response.file_url, '_blank');
+                                        },
+                                        error: function() {
+                                            // File not found, show error message
+                                            Swal.fire({
+                                                icon: 'error',
+                                                title: 'Download Error',
+                                                text: 'The PDF file could not be found. Please contact support.',
+                                                confirmButtonColor: '#dc3545'
+                                            });
+
+                                            // Log the error for debugging
+                                            console.error('PDF File Not Found:', response.file_url);
+                                        }
+                                    });
+                                }
+                            });
+                            
+                            // Close the modal
+                            $('#familyCancellationDetailsModal').modal('hide');
+                            
+                            // Refresh the page or update the UI as needed
+                            if (typeof refreshBookingsTable === 'function') {
+                                refreshBookingsTable();
+                            }
+                        } else {
+                            Swal.fire({
+                                icon: 'error',
+                                title: 'Generation Failed',
+                                text: response.message || 'Failed to generate family cancellation form',
+                                confirmButtonColor: '#dc3545'
+                            });
+                        }
+                    } catch (parseError) {
+                        console.error('JSON Parsing Error:', parseError);
+                        
+                        // Log the raw response for debugging
+                        console.error('Raw Response Text:', xhr.responseText);
+                        
+                        Swal.fire({
+                            icon: 'error',
+                            title: 'Response Error',
+                            html: 'Failed to parse server response. Please contact support.<br>' +
+                                '<small>Error: ' + parseError.message + '</small><br>' +
+                                '<small>Response: ' + xhr.responseText.substring(0, 200) + '...</small>',
+                            confirmButtonColor: '#dc3545'
+                        });
+                    }
+                    
+                    console.groupEnd();
+                },
+                error: function(xhr, status, error) {
+                    console.group('Cancellation Form Generation Error');
+                    console.error('Status:', status);
+                    console.error('Error:', error);
+                    console.error('Response Text:', xhr.responseText);
+                    console.error('Status Code:', xhr.status);
+                    console.groupEnd();
                     
                     // Reset button state
                     $('#familyGenerateCancellationFormBtn')
                         .html('<i class="feather icon-file-text mr-2"></i>Generate Family Cancellation Form')
                         .prop('disabled', false);
                     
-                    if (response.success) {
-                        Swal.fire({
-                            icon: 'success',
-                            title: 'Family Cancellation Form Generated',
-                            html: response.message + '<br><small>Family Members: ' + (response.family_members_count || familyMembersData.length) + '</small>',
-                            showCancelButton: true,
-                            confirmButtonText: 'Download PDF',
-                            cancelButtonText: 'Close',
-                            confirmButtonColor: '#28a745'
-                        }).then((result) => {
-                            if (result.isConfirmed && response.file_url) {
-                                // Verify file exists before attempting download
-                                $.ajax({
-                                    url: response.file_url,
-                                    type: 'HEAD',
-                                    success: function() {
-                                        // File exists, open in new window
-                                        window.open(response.file_url, '_blank');
-                                    },
-                                    error: function() {
-                                        // File not found, show error message
-                                        Swal.fire({
-                                            icon: 'error',
-                                            title: 'Download Error',
-                                            text: 'The PDF file could not be found. Please contact support.',
-                                            confirmButtonColor: '#dc3545'
-                                        });
-
-                                        // Log the error for debugging
-                                        console.error('PDF File Not Found:', response.file_url);
-                                    }
-                                });
-                            }
-                        });
-                        
-                        // Close the modal
-                        $('#familyCancellationDetailsModal').modal('hide');
-                        
-                        // Refresh the page or update the UI as needed
-                        if (typeof refreshBookingsTable === 'function') {
-                            refreshBookingsTable();
-                        }
-                    } else {
-                        Swal.fire({
-                            icon: 'error',
-                            title: 'Generation Failed',
-                            text: response.message || 'Failed to generate family cancellation form',
-                            confirmButtonColor: '#dc3545'
-                        });
-                    }
-                } catch (parseError) {
-                    console.error('JSON Parsing Error:', parseError);
+                    var errorMessage = 'Failed to generate family cancellation form.';
                     
-                    // Log the raw response for debugging
-                    console.error('Raw Response Text:', xhr.responseText);
+                    if (xhr.status === 404) {
+                        errorMessage = 'Generation endpoint not found.';
+                    } else if (xhr.status === 500) {
+                        errorMessage = 'Server error occurred. Check server logs.';
+                    } else if (status === 'parsererror') {
+                        errorMessage = 'Invalid response from server. Response could not be parsed.';
+                        
+                        // Try to extract meaningful error message
+                        try {
+                            var responseText = xhr.responseText;
+                            console.error('Unparseable Response:', responseText);
+                            
+                            // If it looks like HTML, extract the body
+                            if (responseText.includes('<!DOCTYPE') || responseText.includes('<html>')) {
+                                var bodyMatch = responseText.match(/<body[^>]*>([\s\S]*)<\/body>/i);
+                                if (bodyMatch) {
+                                    responseText = bodyMatch[1];
+                                }
+                            }
+                            
+                            errorMessage += ' Server returned: ' + responseText.substring(0, 200) + '...';
+                        } catch (e) {
+                            console.error('Error extracting error message:', e);
+                        }
+                    }
                     
                     Swal.fire({
                         icon: 'error',
-                        title: 'Response Error',
-                        html: 'Failed to parse server response. Please contact support.<br>' +
-                              '<small>Error: ' + parseError.message + '</small><br>' +
-                              '<small>Response: ' + xhr.responseText.substring(0, 200) + '...</small>',
+                        title: 'Generation Error',
+                        html: errorMessage,
                         confirmButtonColor: '#dc3545'
                     });
+                },
+                complete: function() {
+                    console.groupEnd(); // Close the main generation group
                 }
-                
-                console.groupEnd();
-            },
-            error: function(xhr, status, error) {
-                console.group('Cancellation Form Generation Error');
-                console.error('Status:', status);
-                console.error('Error:', error);
-                console.error('Response Text:', xhr.responseText);
-                console.error('Status Code:', xhr.status);
-                console.groupEnd();
-                
-                // Reset button state
-                $('#familyGenerateCancellationFormBtn')
-                    .html('<i class="feather icon-file-text mr-2"></i>Generate Family Cancellation Form')
-                    .prop('disabled', false);
-                
-                var errorMessage = 'Failed to generate family cancellation form.';
-                
-                if (xhr.status === 404) {
-                    errorMessage = 'Generation endpoint not found.';
-                } else if (xhr.status === 500) {
-                    errorMessage = 'Server error occurred. Check server logs.';
-                } else if (status === 'parsererror') {
-                    errorMessage = 'Invalid response from server. Response could not be parsed.';
-                    
-                    // Try to extract meaningful error message
-                    try {
-                        var responseText = xhr.responseText;
-                        console.error('Unparseable Response:', responseText);
-                        
-                        // If it looks like HTML, extract the body
-                        if (responseText.includes('<!DOCTYPE') || responseText.includes('<html>')) {
-                            var bodyMatch = responseText.match(/<body[^>]*>([\s\S]*)<\/body>/i);
-                            if (bodyMatch) {
-                                responseText = bodyMatch[1];
-                            }
-                        }
-                        
-                        errorMessage += ' Server returned: ' + responseText.substring(0, 200) + '...';
-                    } catch (e) {
-                        console.error('Error extracting error message:', e);
-                    }
-                }
-                
-                Swal.fire({
-                    icon: 'error',
-                    title: 'Generation Error',
-                    html: errorMessage,
-                    confirmButtonColor: '#dc3545'
-                });
-            },
-            complete: function() {
-                console.groupEnd(); // Close the main generation group
-            }
-        });
-    } catch (error) {
-        console.error('Form Generation Error:', error);
-        
-        // Reset button state
-        $('#familyGenerateCancellationFormBtn')
-            .html('<i class="feather icon-file-text mr-2"></i>Generate Family Cancellation Form')
-            .prop('disabled', false);
-        
-        Swal.fire({
-            icon: 'error',
-            title: 'Generation Error',
-            text: error.message,
-            confirmButtonColor: '#dc3545'
-        });
-        
-        console.groupEnd(); // Close the main generation group
+            });
+        } catch (error) {
+            console.error('Form Generation Error:', error);
+            
+            // Reset button state
+            $('#familyGenerateCancellationFormBtn')
+                .html('<i class="feather icon-file-text mr-2"></i>Generate Family Cancellation Form')
+                .prop('disabled', false);
+            
+            Swal.fire({
+                icon: 'error',
+                title: 'Generation Error',
+                text: error.message,
+                confirmButtonColor: '#dc3545'
+            });
+            
+            console.groupEnd(); // Close the main generation group
+        }
     }
-}
 </script>
 
 

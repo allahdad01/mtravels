@@ -7,8 +7,6 @@ require_once 'security.php';
 
 // Enforce authentication
 enforce_auth();
-$tenant_id = $_SESSION['tenant_id'];
-
 
 // Check if user is logged in
 if (!isset($_SESSION['user_id'])) {
@@ -29,10 +27,56 @@ if ($_SERVER['REQUEST_METHOD'] !== 'POST') {
 
 // Validate required fields
 $requiredFields = [
-    'booking_id', 'family_id', 'supplier', 'soldTo', 'paidTo', 'entry_date', 
+    'booking_id', 'soldTo', 'paidTo', 'entry_date',
     'name', 'dob', 'passport_number', 'id_type',
-    'duration', 'room_type','sold_price'
+    'duration', 'room_type','total_base_price', 'total_sold_price', 'total_profit'
 ];
+
+// Check if suppliers data is provided (multi-supplier support)
+$suppliers = isset($_POST['edit_services']) ? $_POST['edit_services'] : (isset($_POST['suppliers']) ? json_decode($_POST['suppliers'], true) : null);
+
+// Validate that either suppliers array or single supplier is provided
+if (!$suppliers) {
+    header('Content-Type: application/json');
+    echo json_encode(['success' => false, 'message' => 'Either suppliers array or supplier field is required']);
+    exit();
+}
+
+
+
+// Validate suppliers array if provided
+if ($suppliers) {
+    if (!is_array($suppliers) || empty($suppliers)) {
+        header('Content-Type: application/json');
+        echo json_encode(['success' => false, 'message' => 'Suppliers must be a non-empty array']);
+        exit();
+    }
+
+    foreach ($suppliers as $index => $supplier) {
+        if (!isset($supplier['service_type']) || !isset($supplier['supplier_id']) ||
+            !isset($supplier['base_price']) || !isset($supplier['sold_price']) ||
+            !isset($supplier['profit']) || !isset($supplier['currency'])) {
+            header('Content-Type: application/json');
+            echo json_encode(['success' => false, 'message' => "Supplier at index $index is missing required fields"]);
+            exit();
+        }
+
+        // Validate each supplier's data
+        $supplier['supplier_id'] = DbSecurity::validateInput($supplier['supplier_id'], 'int', ['min' => 1]);
+        $supplier['base_price'] = DbSecurity::validateInput($supplier['base_price'], 'float', ['min' => 0]);
+        $supplier['sold_price'] = DbSecurity::validateInput($supplier['sold_price'], 'float', ['min' => 0]);
+        $supplier['profit'] = DbSecurity::validateInput($supplier['profit'], 'float', ['min' => 0]);
+        $supplier['currency'] = DbSecurity::validateInput($supplier['currency'], 'string', ['maxlength' => 10]);
+
+        // Validate service_type
+        $validServiceTypes = ['all', 'ticket', 'visa', 'hotel', 'transport'];
+        if (!in_array($supplier['service_type'], $validServiceTypes)) {
+            header('Content-Type: application/json');
+            echo json_encode(['success' => false, 'message' => "Invalid service_type for supplier at index $index"]);
+            exit();
+        }
+    }
+}
 
 foreach ($requiredFields as $field) {
     if (!isset($_POST[$field]) || empty($_POST[$field])) {
@@ -55,13 +99,13 @@ $bank_receipt_number = isset($_POST['bank_receipt_number']) ? DbSecurity::valida
 $received_bank_payment = isset($_POST['received_bank_payment']) ? DbSecurity::validateInput($_POST['received_bank_payment'], 'float', ['min' => 0]) : null;
 
 // Validate profit
-$profit = isset($_POST['profit']) ? DbSecurity::validateInput($_POST['profit'], 'float', ['min' => 0]) : null;
+$total_profit = isset($_POST['total_profit']) ? DbSecurity::validateInput($_POST['total_profit'], 'float', ['min' => 0]) : null;
 
 // Validate sold_price
-$sold_price = isset($_POST['sold_price']) ? DbSecurity::validateInput($_POST['sold_price'], 'float', ['min' => 0]) : null;
+$total_sold_price = isset($_POST['total_sold_price']) ? DbSecurity::validateInput($_POST['total_sold_price'], 'float', ['min' => 0]) : null;
 
 // Validate price
-$price = isset($_POST['price']) ? DbSecurity::validateInput($_POST['price'], 'float', ['min' => 0]) : null;
+$total_base_price = isset($_POST['total_base_price']) ? DbSecurity::validateInput($_POST['total_base_price'], 'float', ['min' => 0]) : null;
 
 // Validate supplier_currency
 $supplier_currency = isset($_POST['supplier_currency']) ? DbSecurity::validateInput($_POST['supplier_currency'], 'currency') : null;
@@ -99,12 +143,6 @@ $paidTo = isset($_POST['paidTo']) ? DbSecurity::validateInput($_POST['paidTo'], 
 // Validate soldTo
 $soldTo = isset($_POST['soldTo']) ? DbSecurity::validateInput($_POST['soldTo'], 'int', ['min' => 0]) : null;
 
-// Validate supplier
-$supplier = isset($_POST['supplier']) ? DbSecurity::validateInput($_POST['supplier'], 'int', ['min' => 0]) : null;
-
-// Validate family_id
-$family_id = isset($_POST['family_id']) ? DbSecurity::validateInput($_POST['family_id'], 'int', ['min' => 0]) : null;
-
 // Validate booking_id
 $booking_id = isset($_POST['booking_id']) ? DbSecurity::validateInput($_POST['booking_id'], 'int', ['min' => 0]) : null;
 
@@ -136,59 +174,68 @@ try {
     // Begin transaction
     $pdo->beginTransaction();
     
+    // Get tenant_id - you might need to adjust this logic based on your system
+    $tenant_id = 1; // Default value
+    
+    if (isset($_SESSION['tenant_id'])) {
+        $tenant_id = $_SESSION['tenant_id'];
+    }
+    
     // First, get the current booking data to calculate balance adjustments
     $stmtCurrentData = $pdo->prepare("
-        SELECT supplier, sold_to, paid_to, entry_date, name, dob, passport_number, id_type, flight_date, return_date, duration, room_type, price, sold_price, profit, received_bank_payment, bank_receipt_number, paid, due, discount
-        FROM umrah_bookings 
-        WHERE booking_id = ? AND tenant_id = ?
+        SELECT sold_to, family_id, paid_to, entry_date, name, dob, passport_number, id_type, flight_date, return_date, duration, room_type, price, sold_price, profit, received_bank_payment, bank_receipt_number, paid, due, discount
+        FROM umrah_bookings
+        WHERE booking_id = ?
     ");
-    $stmtCurrentData->execute([$booking_id, $tenant_id]);
+    $stmtCurrentData->execute([$booking_id]);
     $currentData = $stmtCurrentData->fetch(PDO::FETCH_ASSOC);
+
+    // Get current services data for multi-supplier support
+    $stmtCurrentServices = $pdo->prepare("
+        SELECT id, service_type, supplier_id, base_price, sold_price, profit, currency
+        FROM umrah_booking_services
+        WHERE booking_id = ?
+        ORDER BY id
+    ");
+    $stmtCurrentServices->execute([$booking_id]);
+    $currentServices = $stmtCurrentServices->fetchAll(PDO::FETCH_ASSOC);
     
     if (!$currentData) {
         throw new PDOException("Booking not found");
     }
     
-    // Get supplier type
-    $stmtSupplierType = $pdo->prepare("SELECT supplier_type FROM suppliers WHERE id = ? AND tenant_id = ?");
-    $stmtSupplierType->execute([$supplier, $tenant_id]);
-    $supplierData = $stmtSupplierType->fetch(PDO::FETCH_ASSOC);
-    $isExternalSupplier = ($supplierData && $supplierData['supplier_type'] === 'External');
-    
-    // Get old supplier type if supplier has changed
-    $oldSupplierIsExternal = false;
-    if ($supplier != $currentData['supplier']) {
-        $stmtOldSupplierType = $pdo->prepare("SELECT supplier_type FROM suppliers WHERE id = ? AND tenant_id = ?");
-        $stmtOldSupplierType->execute([$currentData['supplier'], $tenant_id]);
-        $oldSupplierData = $stmtOldSupplierType->fetch(PDO::FETCH_ASSOC);
-        $oldSupplierIsExternal = ($oldSupplierData && $oldSupplierData['supplier_type'] === 'External');
-    }
-    
     // Get client type
-    $stmtClientType = $pdo->prepare("SELECT client_type FROM clients WHERE id = ? AND tenant_id = ?");
-    $stmtClientType->execute([$soldTo, $tenant_id]);
+    $stmtClientType = $pdo->prepare("SELECT client_type FROM clients WHERE id = ?");
+    $stmtClientType->execute([$soldTo]);
     $clientData = $stmtClientType->fetch(PDO::FETCH_ASSOC);
     $isRegularClient = ($clientData && $clientData['client_type'] === 'regular');
     
     // Get old client type if client has changed
     $oldClientIsRegular = false;
     if ($soldTo != $currentData['sold_to']) {
-        $stmtOldClientType = $pdo->prepare("SELECT client_type FROM clients WHERE id = ? AND tenant_id = ?");
-        $stmtOldClientType->execute([$currentData['sold_to'], $tenant_id]);
+        $stmtOldClientType = $pdo->prepare("SELECT client_type FROM clients WHERE id = ?");
+        $stmtOldClientType->execute([$currentData['sold_to']]);
         $oldClientData = $stmtOldClientType->fetch(PDO::FETCH_ASSOC);
         $oldClientIsRegular = ($oldClientData && $oldClientData['client_type'] === 'regular');
     }
     
-    // Calculate adjustments
-    $supplierPriceAdjustment = $price - $currentData['price'];
-    $clientPriceAdjustment = $sold_price - $currentData['sold_price'];
+    // Calculate totals from new suppliers
+    $totalBasePrice = array_sum(array_column($suppliers, 'base_price'));
+    $totalSoldPrice = array_sum(array_column($suppliers, 'sold_price'));
+    $totalProfit = array_sum(array_column($suppliers, 'profit'));
+
+    // Calculate totals from current services (not from main booking record)
+    $currentTotalBasePrice = array_sum(array_column($currentServices, 'base_price'));
+    $currentTotalSoldPrice = array_sum(array_column($currentServices, 'sold_price'));
+    
+    // Calculate proper adjustments
+    $supplierPriceAdjustment = $totalBasePrice - $currentTotalBasePrice;
+    $clientPriceAdjustment = $totalSoldPrice - $currentTotalSoldPrice;
     $paidAdjustment = $paid - $currentData['paid'];
     
-    // Update umrah_bookings table
+    // Update umrah_bookings table with totals
     $stmt = $pdo->prepare("
-        UPDATE umrah_bookings SET 
-            family_id = ?,
-            supplier = ?,
+        UPDATE umrah_bookings SET
             sold_to = ?,
             paid_to = ?,
             entry_date = ?,
@@ -204,10 +251,6 @@ try {
             price = ?,
             sold_price = ?,
             profit = ?,
-            received_bank_payment = ?,
-            bank_receipt_number = ?,
-            paid = ?,
-            due = ?,
             gender = ?,
             passport_expiry = ?,
             remarks = ?,
@@ -216,12 +259,10 @@ try {
             fname = ?,
             discount = ?,
             updated_at = NOW()
-        WHERE booking_id = ? AND tenant_id = ?
+        WHERE booking_id = ?
     ");
-    
+
     $stmt->execute([
-        $family_id,
-        $supplier,
         $soldTo,
         $paidTo,
         $entry_date,
@@ -233,14 +274,10 @@ try {
         $return_date,
         $duration,
         $room_type,
-        $supplier_currency,
-        $price,
-        $sold_price,
-        $profit,
-        $received_bank_payment,
-        $bank_receipt_number,
-        $paid,
-        $due,
+        ($suppliers[0]['currency'] ?? 'USD'), // Use first supplier's currency for main record
+        $totalBasePrice,
+        $totalSoldPrice,
+        $totalProfit,
         $gender,
         $passport_expiry,
         $remarks,
@@ -248,442 +285,385 @@ try {
         $g_name,
         $father_name,
         $discount,
-        $booking_id,
-        $tenant_id
+        $booking_id
     ]);
-    
-    // Update supplier balance if supplier has changed or price has changed
-    // Only update if supplier is External
-    if ($supplier != $currentData['supplier'] || $supplierPriceAdjustment != 0) {
-        // If supplier has changed
-        if ($supplier != $currentData['supplier']) {
-            // Adjust old supplier balance if old supplier was External
-            if ($oldSupplierIsExternal) {
-                $updateOldSupplierStmt = $pdo->prepare("
-                    UPDATE suppliers 
-                    SET balance = balance + ? 
-                    WHERE id = ? AND tenant_id = ?
-                ");
-                $updateOldSupplierStmt->execute([$currentData['price'], $currentData['supplier'], $tenant_id]);
-                
-                // Check if transaction record exists for old supplier
-                $checkOldSupplierTransactionStmt = $pdo->prepare("
-                    SELECT id FROM supplier_transactions 
-                    WHERE supplier_id = ? AND reference_id = ? and transaction_of = 'umrah' AND tenant_id = ?
+
+    // Handle supplier balance updates - IMPROVED LOGIC
+    $currentSupplierMap = [];
+    foreach ($currentServices as $service) {
+        $key = $service['supplier_id'] . '_' . $service['service_type'];
+        $currentSupplierMap[$key] = $service;
+    }
+
+    $newSupplierMap = [];
+    foreach ($suppliers as $service) {
+        $key = $service['supplier_id'] . '_' . $service['service_type'];
+        $newSupplierMap[$key] = $service;
+    }
+
+    // Process removed services
+    foreach ($currentSupplierMap as $key => $currentService) {
+        if (!isset($newSupplierMap[$key])) {
+            // Service removed - reverse the transaction
+            $stmtSupplierType = $pdo->prepare("SELECT supplier_type FROM suppliers WHERE id = ?");
+            $stmtSupplierType->execute([$currentService['supplier_id']]);
+            $supplierTypeData = $stmtSupplierType->fetch(PDO::FETCH_ASSOC);
+
+            if ($supplierTypeData && $supplierTypeData['supplier_type'] === 'External') {
+                // Reverse the balance
+                $updateSupplierStmt = $pdo->prepare("UPDATE suppliers SET balance = balance + ? WHERE id = ?");
+                $updateSupplierStmt->execute([$currentService['base_price'], $currentService['supplier_id']]);
+
+                // Get transaction details before deleting
+                $getTransactionStmt = $pdo->prepare("
+                    SELECT id, transaction_date, amount, balance 
+                    FROM supplier_transactions 
+                    WHERE supplier_id = ? AND reference_id = ? AND transaction_of = 'umrah'
+                    AND remarks LIKE CONCAT('%', ?, '%')
                     LIMIT 1
                 ");
-                $checkOldSupplierTransactionStmt->execute([$currentData['supplier'], $booking_id, $tenant_id]);
-                $oldSupplierTransactionExists = $checkOldSupplierTransactionStmt->fetch();
-                
-                if ($oldSupplierTransactionExists) {
-                    // Get transaction details before deleting
-                    $getOldSupplierTransactionStmt = $pdo->prepare("
-                        SELECT id, transaction_date, amount 
-                        FROM supplier_transactions 
-                        WHERE supplier_id = ? AND reference_id = ? AND transaction_of = 'umrah' 
-                        AND tenant_id = ?
-                        LIMIT 1
-                    ");
-                    $getOldSupplierTransactionStmt->execute([$currentData['supplier'], $booking_id, $tenant_id]);
-                    $oldSupplierTransactionData = $getOldSupplierTransactionStmt->fetch(PDO::FETCH_ASSOC);
-
-                    if ($oldSupplierTransactionData) {
-                        // Update all subsequent transactions' balances
-                        // Since we're removing a debit transaction, we need to increase subsequent balances
-                        $updateSubsequentSupplierStmt = $pdo->prepare("
-                            UPDATE supplier_transactions 
-                            SET balance = balance + ? 
-                            WHERE supplier_id = ? AND tenant_id = ?
-                            AND transaction_date > ? 
-                            AND id != ?
-                        ");
-                        $transactionAmount = abs($oldSupplierTransactionData['amount']); // Make sure it's positive
-                        $updateSubsequentSupplierStmt->execute([
-                            $transactionAmount,
-                            $currentData['supplier'],
-                            $tenant_id,
-                            $oldSupplierTransactionData['transaction_date'],
-                            $oldSupplierTransactionData['id'],
-                            $tenant_id
-                        ]);
-                    }
-
-                    // Delete the old transaction record
-                    $deleteOldSupplierTransactionStmt = $pdo->prepare("
-                        DELETE FROM supplier_transactions 
-                        WHERE supplier_id = ? AND reference_id = ? AND transaction_of = 'umrah' AND tenant_id = ?
-                    ");
-                    $deleteOldSupplierTransactionStmt->execute([$currentData['supplier'], $booking_id, $tenant_id]);
-                }
-            }
-            
-            // Add new transaction to new supplier if new supplier is External
-            if ($isExternalSupplier) {
-                $updateNewSupplierStmt = $pdo->prepare("
-                    UPDATE suppliers 
-                    SET balance = balance - ? 
-                    WHERE id = ? AND tenant_id = ?
-                ");
-                $updateNewSupplierStmt->execute([$price, $supplier, $tenant_id]);
-
-                // Get the updated balance after the update
-                $getNewSupplierBalanceStmt = $pdo->prepare("
-                    SELECT balance as current_balance 
-                    FROM suppliers 
-                    WHERE id = ? AND tenant_id = ?
-                ");
-                $getNewSupplierBalanceStmt->execute([$supplier, $tenant_id]);
-                $newSupplierBalance = $getNewSupplierBalanceStmt->fetchColumn();
-                
-                // Create new transaction record for new supplier
-                $insertNewSupplierTransactionStmt = $pdo->prepare("
-                    INSERT INTO supplier_transactions (supplier_id, reference_id, transaction_type, amount, remarks, balance, transaction_of, tenant_id)
-                    VALUES (?, ?, 'Debit', ?, ?, ?, 'umrah', ?)
-                ");
-                $insertNewSupplierTransactionStmt->execute([
-                    $supplier, 
+                $getTransactionStmt->execute([
+                    $currentService['supplier_id'], 
                     $booking_id, 
-                    $price, 
-                    "Purchase for member: $name (Passport: $passport_number)",
-                    $newSupplierBalance,
-                    $tenant_id
+                    $currentService['service_type']
                 ]);
-            }
-        } else {
-            // Same supplier, just adjust the balance by the difference if supplier is External
-            if ($isExternalSupplier && $supplierPriceAdjustment != 0) {
-                // Get current supplier balance before update
-                $getCurrentSupplierBalanceStmt = $pdo->prepare("
-                    SELECT balance FROM suppliers WHERE id = ? AND tenant_id = ?
-                ");
-                $getCurrentSupplierBalanceStmt->execute([$supplier, $tenant_id]);
-                $currentSupplierBalance = $getCurrentSupplierBalanceStmt->fetchColumn();
-                
-                // Calculate new balance
-                $newSupplierBalance = $currentSupplierBalance - $supplierPriceAdjustment;
-                
-                $updateSupplierStmt = $pdo->prepare("
-                    UPDATE suppliers 
-                    SET balance = balance - ? 
-                    WHERE id = ? AND tenant_id = ?
-                ");
-                $updateSupplierStmt->execute([$supplierPriceAdjustment, $supplier, $tenant_id]);
-                
-                // Check if transaction record exists for this supplier
-                $checkSupplierTransactionStmt = $pdo->prepare("
-                    SELECT id, transaction_date, balance, amount FROM supplier_transactions 
-                    WHERE supplier_id = ? AND reference_id = ? AND transaction_of = 'umrah' AND tenant_id = ?
-                ");
-                $checkSupplierTransactionStmt->execute([$supplier, $booking_id, $tenant_id]);
-                $supplierTransactionExists = $checkSupplierTransactionStmt->fetch(PDO::FETCH_ASSOC);
-                
-                if ($supplierTransactionExists) {
-                    $supplierTransactionId = $supplierTransactionExists['id'];
-                    $supplierTransactionDate = $supplierTransactionExists['transaction_date'];
-                    $currentTransactionBalance = floatval($supplierTransactionExists['balance']);
-                    $currentTransactionAmount = floatval($supplierTransactionExists['amount']); // Ensure positive value
-                    
-                    // Calculate the difference between the new price and the current transaction amount
-                    $amountDifference = $price - $currentTransactionAmount;
-                    
-                    // Calculate the new balance for this transaction
-                    // If price increased, balance should decrease by the difference
-                    // If price decreased, balance should increase by the difference
-                    $newTransactionBalance = $currentTransactionBalance - $amountDifference;
-                    
-                    // Update amount field to new price
-                    $updateSupplierAmountStmt = $pdo->prepare("
-                        UPDATE supplier_transactions 
-                        SET amount = ?
-                        WHERE id = ? AND tenant_id = ?
-                    ");
-                    $updateSupplierAmountStmt->execute([$price, $supplierTransactionId, $tenant_id]);
-                    
-                    // Update existing transaction record with adjusted balance
-                    $updateSupplierTransactionStmt = $pdo->prepare("
-                        UPDATE supplier_transactions 
-                        SET balance = ?,
-                            remarks = CONCAT('Updated: ', remarks)
-                        WHERE id = ? AND tenant_id = ?
-                    ");
-                    $updateSupplierTransactionStmt->execute([$newTransactionBalance, $supplierTransactionId, $tenant_id]);
-                    
+                $transactionData = $getTransactionStmt->fetch(PDO::FETCH_ASSOC);
+
+                if ($transactionData) {
                     // Update all subsequent transactions' balances
-                    // If price increased, decrease subsequent balances
-                    // If price decreased, increase subsequent balances
-                    if ($amountDifference > 0) {
-                        // Price increased, decrease subsequent balances
-                        $updateSubsequentSupplierStmt = $pdo->prepare("
-                            UPDATE supplier_transactions 
-                            SET balance = balance - ? 
-                            WHERE supplier_id = ? AND tenant_id = ?
-                            AND transaction_date > ?
-                        ");
-                    } else {
-                        // Price decreased, increase subsequent balances
-                        $updateSubsequentSupplierStmt = $pdo->prepare("
-                            UPDATE supplier_transactions 
-                            SET balance = balance + ? 
-                            WHERE supplier_id = ? AND tenant_id = ?
-                            AND transaction_date > ?
-                        ");
-                    }
-                    
-                    $absAmountDifference = abs($amountDifference);
-                    $updateSubsequentSupplierStmt->execute([$absAmountDifference, $supplier, $tenant_id, $supplierTransactionDate]);
+                    $updateSubsequentStmt = $pdo->prepare("
+                        UPDATE supplier_transactions 
+                        SET balance = balance + ? 
+                        WHERE supplier_id = ? 
+                        AND transaction_date > ? 
+                        AND id != ?
+                    ");
+                    $updateSubsequentStmt->execute([
+                        $currentService['base_price'],
+                        $currentService['supplier_id'],
+                        $transactionData['transaction_date'],
+                        $transactionData['id']
+                    ]);
+
+                    // Delete the transaction record
+                    $deleteTransactionStmt = $pdo->prepare("
+                        DELETE FROM supplier_transactions
+                        WHERE id = ?
+                    ");
+                    $deleteTransactionStmt->execute([$transactionData['id']]);
                 }
             }
         }
     }
-    
-    // Update client balance if client has changed or sold price has changed
-    // Only update if client is Regular
-    if ($soldTo != $currentData['sold_to'] || $clientPriceAdjustment != 0) {
-        // If client has changed
-        if ($soldTo != $currentData['sold_to']) {
-            // Adjust old client balance if old client was Regular
-            if ($oldClientIsRegular) {
-                if ($supplier_currency == 'USD') {
-                    $updateOldClientStmt = $pdo->prepare("
-                        UPDATE clients 
-                        SET usd_balance = usd_balance + ? 
-                        WHERE id = ? AND tenant_id = ?
-                    ");
-                } else {
-                    $updateOldClientStmt = $pdo->prepare("
-                        UPDATE clients 
-                        SET afs_balance = afs_balance + ? 
-                        WHERE id = ? AND tenant_id = ?
-                    ");
-                }
-                $updateOldClientStmt->execute([$currentData['sold_price'], $currentData['sold_to'], $tenant_id]);
-                
-                // Check if transaction record exists for old client
-                $checkOldClientTransactionStmt = $pdo->prepare("
-                    SELECT id FROM client_transactions 
-                    WHERE client_id = ? AND reference_id = ? and transaction_of = 'umrah' AND tenant_id = ?
-                    
+
+    // Process changed services
+    foreach ($currentSupplierMap as $key => $currentService) {
+        if (isset($newSupplierMap[$key]) && $newSupplierMap[$key]['base_price'] != $currentService['base_price']) {
+            // Price changed - adjust the difference
+            $priceDiff = $newSupplierMap[$key]['base_price'] - $currentService['base_price'];
+
+            $stmtSupplierType = $pdo->prepare("SELECT supplier_type FROM suppliers WHERE id = ?");
+            $stmtSupplierType->execute([$currentService['supplier_id']]);
+            $supplierTypeData = $stmtSupplierType->fetch(PDO::FETCH_ASSOC);
+
+            if ($supplierTypeData && $supplierTypeData['supplier_type'] === 'External') {
+                // Update supplier balance
+                $updateSupplierStmt = $pdo->prepare("UPDATE suppliers SET balance = balance - ? WHERE id = ?");
+                $updateSupplierStmt->execute([$priceDiff, $currentService['supplier_id']]);
+
+                // Find and update the transaction record
+                $getTransactionStmt = $pdo->prepare("
+                    SELECT id, transaction_date, balance 
+                    FROM supplier_transactions 
+                    WHERE supplier_id = ? AND reference_id = ? AND transaction_of = 'umrah'
+                    AND remarks LIKE CONCAT('%', ?, '%')
+                    LIMIT 1
                 ");
-                $checkOldClientTransactionStmt->execute([$currentData['sold_to'], $booking_id, $tenant_id]);
-                $oldClientTransactionExists = $checkOldClientTransactionStmt->fetch();
-                
-                if ($oldClientTransactionExists) {
-                    // Get transaction details before deleting
-                    $getOldClientTransactionStmt = $pdo->prepare("
-                        SELECT id, created_at, amount, currency 
-                        FROM client_transactions 
-                        WHERE client_id = ? AND reference_id = ? AND transaction_of = 'umrah' 
-                        AND tenant_id = ?
-                        LIMIT 1
-                    ");
-                    $getOldClientTransactionStmt->execute([$currentData['sold_to'], $booking_id, $tenant_id]);
-                    $oldTransactionData = $getOldClientTransactionStmt->fetch(PDO::FETCH_ASSOC);
+                $getTransactionStmt->execute([
+                    $currentService['supplier_id'], 
+                    $booking_id, 
+                    $currentService['service_type']
+                ]);
+                $transactionData = $getTransactionStmt->fetch(PDO::FETCH_ASSOC);
 
-                    if ($oldTransactionData) {
-                        // Update all subsequent transactions' balances
-                        // Since we're removing a debit transaction, we need to increase subsequent balances
-                        $updateSubsequentStmt = $pdo->prepare("
-                            UPDATE client_transactions 
-                            SET balance = balance + ? 
-                            WHERE client_id = ? AND tenant_id = ?
-                            AND created_at > ? 
-                            AND currency = ? 
-                            AND id != ?
-                        ");
-                        $transactionAmount = abs($oldTransactionData['amount']); // Make sure it's positive
-                        $updateSubsequentStmt->execute([
-                            $transactionAmount,
-                            $currentData['sold_to'],
-                            $oldTransactionData['created_at'],
-                            $oldTransactionData['currency'],
-                            $oldTransactionData['id'],
-                            $tenant_id
-                        ]);
-                    }
+                if ($transactionData) {
+                    $newTransactionBalance = $transactionData['balance'] - $priceDiff;
 
-                    // Delete the old transaction record
-                    $deleteOldClientTransactionStmt = $pdo->prepare("
-                        DELETE FROM client_transactions 
-                        WHERE client_id = ? AND reference_id = ? AND transaction_of = 'umrah' AND tenant_id = ?
+                    // Update transaction amount and balance
+                    $updateTransactionStmt = $pdo->prepare("
+                        UPDATE supplier_transactions
+                        SET amount = ?, balance = ?, remarks = CONCAT('Updated: ', remarks)
+                        WHERE id = ?
                     ");
-                    $deleteOldClientTransactionStmt->execute([$currentData['sold_to'], $booking_id, $tenant_id]);
+                    $updateTransactionStmt->execute([
+                        $newSupplierMap[$key]['base_price'],
+                        $newTransactionBalance,
+                        $transactionData['id']
+                    ]);
+
+                    // Update all subsequent transactions' balances
+                    $updateSubsequentStmt = $pdo->prepare("
+                        UPDATE supplier_transactions 
+                        SET balance = balance - ? 
+                        WHERE supplier_id = ? 
+                        AND transaction_date > ?
+                    ");
+                    $updateSubsequentStmt->execute([
+                        $priceDiff,
+                        $currentService['supplier_id'],
+                        $transactionData['transaction_date']
+                    ]);
                 }
             }
-            
-            // Add new transaction to new client if new client is Regular
-            if ($isRegularClient) {
-                if ($supplier_currency == 'USD') {
-                    $updateNewClientStmt = $pdo->prepare("
-                        UPDATE clients 
-                        SET usd_balance = usd_balance - ? 
-                        WHERE id = ? AND tenant_id = ?
-                    ");
-                } else {
-                    $updateNewClientStmt = $pdo->prepare("
-                        UPDATE clients 
-                        SET afs_balance = afs_balance - ? 
-                        WHERE id = ? AND tenant_id = ?
-                    ");
-                }
-                $updateNewClientStmt->execute([$sold_price, $soldTo, $tenant_id]);
+        }
+    }
 
-                // Get the updated balance after the update
-                $getNewBalanceStmt = $pdo->prepare("
-                    SELECT " . ($supplier_currency == 'USD' ? 'usd_balance' : 'afs_balance') . " as current_balance 
-                    FROM clients 
-                    WHERE id = ? AND tenant_id = ?
+    // Process new services
+    foreach ($newSupplierMap as $key => $newService) {
+        if (!isset($currentSupplierMap[$key])) {
+            // New service added
+            $stmtSupplierType = $pdo->prepare("SELECT supplier_type FROM suppliers WHERE id = ?");
+            $stmtSupplierType->execute([$newService['supplier_id']]);
+            $supplierTypeData = $stmtSupplierType->fetch(PDO::FETCH_ASSOC);
+
+            if ($supplierTypeData && $supplierTypeData['supplier_type'] === 'External') {
+                // Update supplier balance
+                $updateSupplierStmt = $pdo->prepare("UPDATE suppliers SET balance = balance - ? WHERE id = ?");
+                $updateSupplierStmt->execute([$newService['base_price'], $newService['supplier_id']]);
+
+                // Get updated balance
+                $getBalanceStmt = $pdo->prepare("SELECT balance FROM suppliers WHERE id = ?");
+                $getBalanceStmt->execute([$newService['supplier_id']]);
+                $newBalance = $getBalanceStmt->fetchColumn();
+
+                // Create transaction record
+                $insertTransactionStmt = $pdo->prepare("
+                    INSERT INTO supplier_transactions (tenant_id, supplier_id, reference_id, transaction_type, amount, remarks, balance, transaction_of)
+                    VALUES (?, ?, ?, 'Debit', ?, ?, ?, 'umrah')
                 ");
-                $getNewBalanceStmt->execute([$soldTo, $tenant_id]);
+                $insertTransactionStmt->execute([
+                    $tenant_id,
+                    $newService['supplier_id'],
+                    $booking_id,
+                    $newService['base_price'],
+                    "Purchase for {$newService['service_type']}: $name (Passport: $passport_number)",
+                    $newBalance
+                ]);
+            }
+        }
+    }
+
+    // Update or replace services in umrah_booking_services table
+    $deleteServicesStmt = $pdo->prepare("DELETE FROM umrah_booking_services WHERE booking_id = ?");
+    $deleteServicesStmt->execute([$booking_id]);
+
+    // Insert new services
+    $insertServiceStmt = $pdo->prepare("
+        INSERT INTO umrah_booking_services (tenant_id, booking_id, service_type, supplier_id, base_price, sold_price, profit, currency)
+        VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+    ");
+
+    foreach ($suppliers as $service) {
+        $insertServiceStmt->execute([
+            $tenant_id,
+            $booking_id,
+            $service['service_type'],
+            $service['supplier_id'],
+            $service['base_price'],
+            $service['sold_price'],
+            $service['profit'],
+            $service['currency']
+        ]);
+    }
+
+    // Handle client balance updates - SAME AS SINGLE SUPPLIER VERSION
+    if ($soldTo != $currentData['sold_to'] || $clientPriceAdjustment != 0) {
+        $clientCurrency = ($suppliers[0]['currency'] ?? 'USD');
+
+        if ($soldTo != $currentData['sold_to']) {
+            // Client changed - handle old and new client
+            if ($oldClientIsRegular) {
+                $oldClientCurrency = (!empty($currentServices) ? ($currentServices[0]['currency'] ?? 'USD') : 'USD');
+
+                if ($oldClientCurrency == 'USD') {
+                    $updateOldClientStmt = $pdo->prepare("UPDATE clients SET usd_balance = usd_balance + ? WHERE id = ?");
+                } else {
+                    $updateOldClientStmt = $pdo->prepare("UPDATE clients SET afs_balance = afs_balance + ? WHERE id = ?");
+                }
+                $updateOldClientStmt->execute([$currentTotalSoldPrice, $currentData['sold_to']]);
+
+                // Handle old client transaction removal
+                $checkOldClientTransactionStmt = $pdo->prepare("
+                    SELECT id, created_at, amount, currency
+                    FROM client_transactions
+                    WHERE client_id = ? AND reference_id = ? and transaction_of = 'umrah'
+                    LIMIT 1
+                ");
+                $checkOldClientTransactionStmt->execute([$currentData['sold_to'], $booking_id]);
+                $oldClientTransaction = $checkOldClientTransactionStmt->fetch(PDO::FETCH_ASSOC);
+
+                if ($oldClientTransaction) {
+                    // Update subsequent transactions
+                    $updateSubsequentStmt = $pdo->prepare("
+                        UPDATE client_transactions
+                        SET balance = balance + ?
+                        WHERE client_id = ?
+                        AND created_at > ?
+                        AND currency = ?
+                        AND id != ?
+                    ");
+                    $transactionAmount = abs($oldClientTransaction['amount']);
+                    $updateSubsequentStmt->execute([
+                        $transactionAmount,
+                        $currentData['sold_to'],
+                        $oldClientTransaction['created_at'],
+                        $oldClientTransaction['currency'],
+                        $oldClientTransaction['id']
+                    ]);
+
+                    // Delete old transaction
+                    $deleteOldClientTransactionStmt = $pdo->prepare("
+                        DELETE FROM client_transactions
+                        WHERE id = ?
+                    ");
+                    $deleteOldClientTransactionStmt->execute([$oldClientTransaction['id']]);
+                }
+            }
+
+            // Add transaction to new client
+            if ($isRegularClient) {
+                if ($clientCurrency == 'USD') {
+                    $updateNewClientStmt = $pdo->prepare("UPDATE clients SET usd_balance = usd_balance - ? WHERE id = ?");
+                } else {
+                    $updateNewClientStmt = $pdo->prepare("UPDATE clients SET afs_balance = afs_balance - ? WHERE id = ?");
+                }
+                $updateNewClientStmt->execute([$totalSoldPrice, $soldTo]);
+
+                // Get updated balance
+                $getNewBalanceStmt = $pdo->prepare("
+                    SELECT " . ($clientCurrency == 'USD' ? 'usd_balance' : 'afs_balance') . " as current_balance
+                    FROM clients WHERE id = ?
+                ");
+                $getNewBalanceStmt->execute([$soldTo]);
                 $newBalance = $getNewBalanceStmt->fetchColumn();
-                
-                // Create new transaction record for new client
+
+                // Create new transaction
                 $insertNewClientTransactionStmt = $pdo->prepare("
-                    INSERT INTO client_transactions (client_id, reference_id, type, amount, currency, description, balance, transaction_of, tenant_id)
-                    VALUES (?, ?, 'debit', ?, ?, ?, ?, 'umrah', ?)
+                    INSERT INTO client_transactions (client_id, reference_id, type, amount, currency, description, balance, transaction_of)
+                    VALUES (?, ?, 'debit', ?, ?, ?, ?, 'umrah')
                 ");
                 $insertNewClientTransactionStmt->execute([
-                    $soldTo, 
-                    $booking_id, 
-                    $sold_price, 
-                    $supplier_currency,
+                    $soldTo,
+                    $booking_id,
+                    $totalSoldPrice,
+                    $clientCurrency,
                     "Sale for member: $name (Passport: $passport_number)",
-                    $newBalance,
-                    $tenant_id
+                    $newBalance
                 ]);
             }
         } else {
-            // Same client, just adjust the balance by the difference if client is Regular
-            if ($isRegularClient && $clientPriceAdjustment != 0) {
-                // Determine which balance field to update based on currency
-                $balanceField = $supplier_currency == 'USD' ? 'usd_balance' : 'afs_balance';
-                
-                // Get current client balance before update
-                $getCurrentClientBalanceStmt = $pdo->prepare("
-                    SELECT $balanceField FROM clients WHERE id = ? AND tenant_id = ?
-                ");
-                $getCurrentClientBalanceStmt->execute([$soldTo, $tenant_id]);
-                $currentClientBalance = $getCurrentClientBalanceStmt->fetchColumn();
-                
-                // Calculate new balance
-                $newClientBalance = 0;
-                if ($clientPriceAdjustment > 0) {
-                    // Sold price decreased, client owes less, balance decreases
-                    $updateClientStmt = $pdo->prepare("
-                        UPDATE clients 
-                        SET $balanceField = $balanceField - ? 
-                        WHERE id = ? AND tenant_id = ?
-                    ");
-                    $newClientBalance = $currentClientBalance - $clientPriceAdjustment;
-                } else {
-                    // Sold price increased, client owes more, balance increases
-                    $updateClientStmt = $pdo->prepare("
-                        UPDATE clients 
-                        SET $balanceField = $balanceField + ? 
-                        WHERE id = ? AND tenant_id = ?
-                    ");
-                    // Make the difference positive for the query
-                    $clientPriceAdjustment = abs($clientPriceAdjustment);
-                    $newClientBalance = $currentClientBalance + $clientPriceAdjustment;
-                }
-                
-                $updateClientStmt->execute([$clientPriceAdjustment, $soldTo, $tenant_id]);
-                
-                // Check if transaction record exists for this client
-                $checkClientTransactionStmt = $pdo->prepare("
-                    SELECT id, created_at, balance, amount FROM client_transactions 
-                    WHERE client_id = ? AND reference_id = ? AND transaction_of = 'umrah' AND tenant_id = ?
-                ");
-                $checkClientTransactionStmt->execute([$soldTo, $booking_id, $tenant_id]);
-                $clientTransactionExists = $checkClientTransactionStmt->fetch(PDO::FETCH_ASSOC);
-                
-                if ($clientTransactionExists) {
-                    $clientTransactionId = $clientTransactionExists['id'];
-                    $clientTransactionDate = $clientTransactionExists['created_at'];
-                    $currentTransactionBalance = floatval($clientTransactionExists['balance']);
-                    $currentTransactionAmount = abs(floatval($clientTransactionExists['amount'])); // Ensure positive value
-                    
-                    // Calculate the difference between the new sold amount and the current transaction amount
-                    $amountDifference = $sold_price - $currentTransactionAmount;
-                    
-                    // Calculate the new balance for this transaction
-                    // If amount increased, balance should decrease by the difference
-                    // If amount decreased, balance should increase by the difference
-                    $newTransactionBalance = $currentTransactionBalance - $amountDifference;
-                    
-                    // Update amount field to new sold price (as negative value for debit)
-                    $negativeAmount = -1 * abs($sold_price);
-                    $updateClientAmountStmt = $pdo->prepare("
-                        UPDATE client_transactions 
-                        SET amount = ?
-                        WHERE id = ? AND tenant_id = ?
-                    ");
-                    $updateClientAmountStmt->execute([$negativeAmount, $clientTransactionId, $tenant_id]);
-                    
-                    // Update existing transaction record with adjusted balance
-                    $updateClientTransactionStmt = $pdo->prepare("
-                        UPDATE client_transactions 
-                        SET balance = ?,
-                            description = CONCAT('Updated: ', description)
-                        WHERE id = ? AND tenant_id = ?
-                    ");
-                    $updateClientTransactionStmt->execute([$newTransactionBalance, $clientTransactionId, $tenant_id]);
-                    
-                    // Update all subsequent transactions' balances
-                    // If amount increased, decrease subsequent balances
-                    // If amount decreased, increase subsequent balances
-                    if ($amountDifference > 0) {
-                        // Amount increased, decrease subsequent balances
-                        $updateSubsequentClientStmt = $pdo->prepare("
-                            UPDATE client_transactions 
-                            SET balance = balance - ? 
-                            WHERE client_id = ? AND tenant_id = ?
-                            AND created_at > ? 
-                            AND currency = ?
-                        ");
+            // Same client, adjust for price difference
+            if ($clientPriceAdjustment != 0) {
+                // Update client balance only for regular clients
+                if ($isRegularClient) {
+                    $balanceField = $clientCurrency == 'USD' ? 'usd_balance' : 'afs_balance';
+
+                    // Update client balance
+                    if ($clientPriceAdjustment > 0) {
+                        $updateClientStmt = $pdo->prepare("UPDATE clients SET $balanceField = $balanceField - ? WHERE id = ?");
                     } else {
-                        // Amount decreased, increase subsequent balances
-                        $updateSubsequentClientStmt = $pdo->prepare("
-                            UPDATE client_transactions 
-                            SET balance = balance + ? 
-                            WHERE client_id = ? AND tenant_id = ?
-                            AND created_at > ? 
-                            AND currency = ?
-                        ");
+                        $updateClientStmt = $pdo->prepare("UPDATE clients SET $balanceField = $balanceField + ? WHERE id = ?");
+                        $clientPriceAdjustment = abs($clientPriceAdjustment);
                     }
-                    
-                    $absAmountDifference = abs($amountDifference);
-                    $updateSubsequentClientStmt->execute([$absAmountDifference, $soldTo, $tenant_id, $clientTransactionDate, $supplier_currency]);
+                    $updateClientStmt->execute([$clientPriceAdjustment, $soldTo]);
+                }
+
+                // Update client transaction for all clients (regular and agency)
+                $checkClientTransactionStmt = $pdo->prepare("
+                    SELECT id, created_at, balance, amount FROM client_transactions
+                    WHERE client_id = ? AND reference_id = ? AND transaction_of = 'umrah'
+                    LIMIT 1
+                ");
+                $checkClientTransactionStmt->execute([$soldTo, $booking_id]);
+                $clientTransaction = $checkClientTransactionStmt->fetch(PDO::FETCH_ASSOC);
+
+                if ($clientTransaction) {
+                    $currentTransactionAmount = abs(floatval($clientTransaction['amount']));
+                    $amountDifference = $totalSoldPrice - $currentTransactionAmount;
+
+                    // For regular clients, update balance; for agency, keep balance the same
+                    $newTransactionBalance = $isRegularClient ? $clientTransaction['balance'] - $amountDifference : $clientTransaction['balance'];
+
+                    // Update transaction
+                    $updateClientTransactionStmt = $pdo->prepare("
+                        UPDATE client_transactions
+                        SET amount = ?, balance = ?, description = CONCAT('Updated: ', description)
+                        WHERE id = ?
+                    ");
+                    $negativeAmount = -1 * abs($totalSoldPrice);
+                    $updateClientTransactionStmt->execute([
+                        $negativeAmount,
+                        $newTransactionBalance,
+                        $clientTransaction['id']
+                    ]);
+
+                    // Update subsequent transactions only for regular clients
+                    if ($isRegularClient) {
+                        if ($amountDifference > 0) {
+                            $updateSubsequentClientStmt = $pdo->prepare("
+                                UPDATE client_transactions
+                                SET balance = balance - ?
+                                WHERE client_id = ? AND created_at > ? AND currency = ?
+                            ");
+                        } else {
+                            $updateSubsequentClientStmt = $pdo->prepare("
+                                UPDATE client_transactions
+                                SET balance = balance + ?
+                                WHERE client_id = ? AND created_at > ? AND currency = ?
+                            ");
+                        }
+
+                        $absAmountDifference = abs($amountDifference);
+                        $updateSubsequentClientStmt->execute([
+                            $absAmountDifference,
+                            $soldTo,
+                            $clientTransaction['created_at'],
+                            $clientCurrency
+                        ]);
+                    }
                 }
             }
         }
     }
     
-    // Update family totals
+    // Update due amount: due = sold_price - paid
+    $updateDueStmt = $pdo->prepare("UPDATE umrah_bookings SET due = sold_price - paid WHERE booking_id = ?");
+    $updateDueStmt->execute([$booking_id]);
+
+    // Update family totals (same as original)
+    $family_id = $currentData['family_id'];
     $updateFamilyStmt = $pdo->prepare("
         UPDATE families f
-        SET 
+        SET
             f.total_members = (SELECT COUNT(*) FROM umrah_bookings WHERE family_id = f.family_id),
-            f.total_price = (SELECT SUM(sold_price) FROM umrah_bookings WHERE family_id = f.family_id),
+            f.total_price = (SELECT SUM(COALESCE(sold_price)) FROM umrah_bookings WHERE family_id = f.family_id),
             f.total_paid = (SELECT SUM(paid) FROM umrah_bookings WHERE family_id = f.family_id),
             f.total_paid_to_bank = (SELECT SUM(received_bank_payment) FROM umrah_bookings WHERE family_id = f.family_id),
             f.total_due = (SELECT SUM(due) FROM umrah_bookings WHERE family_id = f.family_id)
-        WHERE f.family_id = ? AND f.tenant_id = ?
+        WHERE f.family_id = ?
     ");
-    $updateFamilyStmt->execute([$family_id, $tenant_id]);
+    $updateFamilyStmt->execute([$family_id]);
     
-    // Add activity log
+    // Activity logging (same as original)
     $userId = isset($_SESSION['user_id']) ? $_SESSION['user_id'] : 0;
     $userIp = $_SERVER['REMOTE_ADDR'];
     $userAgent = $_SERVER['HTTP_USER_AGENT'];
     
-    // Prepare old values as JSON
     $oldValues = json_encode($currentData);
-    
-    // Prepare new values as JSON
     $newValues = json_encode([
         'booking_id' => $booking_id,
         'family_id' => $family_id,
-        'supplier' => $supplier,
+        'suppliers' => $suppliers,
         'sold_to' => $soldTo,
         'paid_to' => $paidTo,
         'entry_date' => $entry_date,
@@ -695,21 +675,22 @@ try {
         'return_date' => $return_date,
         'duration' => $duration,
         'room_type' => $room_type,
-        'currency' => $supplier_currency,
-        'price' => $price,
-        'sold_price' => $sold_price,
-        'profit' => $profit,
+        'total_base_price' => $totalBasePrice,
+        'total_sold_price' => $totalSoldPrice,
+        'total_profit' => $totalProfit,
         'received_bank_payment' => $received_bank_payment,
         'bank_receipt_number' => $bank_receipt_number,
         'paid' => $paid,
         'due' => $due,
         'gender' => $gender,
-
         'passport_expiry' => $passport_expiry,
-
+        'remarks' => $remarks,
+        'relation' => $relation,
+        'g_name' => $g_name,
+        'father_name' => $father_name,
+        'discount' => $discount
     ]);
     
-    // Insert activity log record
     $logStmt = $pdo->prepare("
         INSERT INTO activity_log (user_id, ip_address, user_agent, action, table_name, record_id, old_values, new_values, created_at, tenant_id)
         VALUES (?, ?, ?, 'update_umrah_member', 'umrah_bookings', ?, ?, ?, NOW(), ?)
@@ -719,19 +700,13 @@ try {
     // Commit transaction
     $pdo->commit();
     
-    // Return success response
     header('Content-Type: application/json');
     echo json_encode(['success' => true, 'message' => 'Member updated successfully']);
     
 } catch (PDOException $e) {
-    // Rollback transaction on error
     $pdo->rollBack();
-    
-    // Log the error
     error_log("Database Error in update_umrah_member.php: " . $e->getMessage());
-    
-    // Return error message
     header('Content-Type: application/json');
     echo json_encode(['success' => false, 'message' => 'Database error: ' . $e->getMessage()]);
 }
-?> 
+?>

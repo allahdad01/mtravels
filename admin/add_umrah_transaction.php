@@ -51,14 +51,24 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 
     try {
         // Step 1: Get the umrah booking details including currency and exchange rate
-        $stmt_fetch_umrah_details = $conn->prepare("SELECT paid_to, supplier, received_bank_payment, currency as booking_currency FROM umrah_bookings WHERE booking_id = ? AND tenant_id = ?");
+        $stmt_fetch_umrah_details = $conn->prepare("SELECT paid_to, received_bank_payment, currency as booking_currency FROM umrah_bookings WHERE booking_id = ? AND tenant_id = ?");
         $stmt_fetch_umrah_details->bind_param("ii", $umrah_id, $tenant_id);
         $stmt_fetch_umrah_details->execute();
-        $stmt_fetch_umrah_details->bind_result($paid_to, $supplier_id, $received_bank_payment, $booking_currency);
+        $stmt_fetch_umrah_details->bind_result($paid_to, $received_bank_payment, $booking_currency);
         if (!$stmt_fetch_umrah_details->fetch()) {
             throw new Exception('Umrah booking details not found.');
         }
         $stmt_fetch_umrah_details->close();
+
+        // Get supplier_id from umrah_booking_services where service_type is 'all' or 'visa'
+        $stmt_fetch_supplier_id = $conn->prepare("SELECT supplier_id FROM umrah_booking_services WHERE booking_id = ? AND service_type IN ('all', 'visa') LIMIT 1");
+        $stmt_fetch_supplier_id->bind_param("i", $umrah_id);
+        $stmt_fetch_supplier_id->execute();
+        $stmt_fetch_supplier_id->bind_result($supplier_id);
+        if (!$stmt_fetch_supplier_id->fetch()) {
+            throw new Exception('Supplier not found for this booking.');
+        }
+        $stmt_fetch_supplier_id->close();
 
         // Step 2: Insert the transaction into umrah_transactions table
         $stmt = $conn->prepare("INSERT INTO umrah_transactions (transaction_type, umrah_booking_id, payment_date, transaction_to, payment_description, payment_amount, currency, receipt, tenant_id, exchange_rate) VALUES ('Credit', ?, ?, ?, ?, ?, ?, ?, ?, ?)");
@@ -291,18 +301,28 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             throw new Exception('Failed to update paid amount in umrah_bookings: ' . $stmt_update_paid->error);
         }
         $stmt_update_paid->close();
+
+        // Update due amount: due = sold_price - paid
+        $stmt_update_due = $conn->prepare("UPDATE umrah_bookings SET due = sold_price - paid WHERE booking_id = ? AND tenant_id = ?");
+        $stmt_update_due->bind_param("ii", $umrah_id, $tenant_id);
+        if (!$stmt_update_due->execute()) {
+            throw new Exception('Failed to update due amount in umrah_bookings: ' . $stmt_update_due->error);
+        }
+        $stmt_update_due->close();
         
         // Step 4: Get the supplier's name, applicant name, and base amount from umrah_bookings and suppliers
-        $supplierStmt = $conn->prepare(" 
-            SELECT 
-                ub.booking_id AS umrah_id, 
-                ub.name, 
-                ub.sold_price, 
+        $supplierStmt = $conn->prepare("
+            SELECT
+                ub.booking_id AS umrah_id,
+                ub.name,
+                ub.sold_price,
                 s.name AS supplier_name,
-                s.id AS supplier_id 
+                ubs.supplier_id
             FROM umrah_bookings ub
-            INNER JOIN suppliers s ON ub.supplier = s.id
+            INNER JOIN umrah_booking_services ubs ON ub.booking_id = ubs.booking_id AND ubs.service_type IN ('all', 'visa')
+            INNER JOIN suppliers s ON ubs.supplier_id = s.id
             WHERE ub.booking_id = ? AND ub.tenant_id = ?
+            LIMIT 1
         ");
         $supplierStmt->bind_param("ii", $umrah_id, $tenant_id);
         $supplierStmt->execute();
