@@ -210,6 +210,8 @@ try {
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title><?php echo getSetting($platform_settings, 'platform_name', 'MTravels') . ' - ' . getSetting($platform_settings, 'platform_description', 'Advanced Travel Agency SaaS Platform'); ?></title>
     <meta name="description" content="<?php echo getSetting($platform_settings, 'platform_description', 'The most advanced SaaS platform for modern travel agencies. Streamline operations, boost sales, and delight customers.'); ?>">
+        <!-- Favicon -->
+            <link rel="icon" href="uploads/logo/<?= htmlspecialchars(getSetting($platform_settings, 'platform_logo') ?? 'default-logo.png') ?>" type="image/x-icon">
     <style>
         * {
             margin: 0;
@@ -218,10 +220,10 @@ try {
         }
 
         :root {
-            --primary: <?php echo getSetting($platform_settings, 'primary_color', '#6366f1'); ?>;
-            --primary-dark: <?php echo getSetting($platform_settings, 'primary_color', '#4f46e5'); ?>;
-            --primary-light: <?php echo getSetting($platform_settings, 'primary_color', '#818cf8'); ?>;
-            --secondary: <?php echo getSetting($platform_settings, 'secondary_color', '#f59e0b'); ?>;
+            --primary: <?php echo getSetting($platform_settings, 'primary_color', '#4099ff'); ?>;
+            --primary-dark: <?php echo getSetting($platform_settings, 'primary_color', '#2ed8b6'); ?>;
+            --primary-light: <?php echo getSetting($platform_settings, 'primary_color', '#a0e6ff'); ?>;
+            --secondary: <?php echo getSetting($platform_settings, 'secondary_color', '#2ed8b6'); ?>;
             --accent: <?php echo getSetting($platform_settings, 'accent_color', '#06b6d4'); ?>;
             --success: #10b981;
             --danger: #ef4444;
@@ -257,7 +259,7 @@ try {
             width: 100%;
             height: 100%;
             z-index: -1;
-            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            background: linear-gradient(135deg, #4099ff 0%, #2ed8b6 100%);
         }
 
         .animated-bg::before {
@@ -329,20 +331,23 @@ try {
         /* Advanced Navbar */
         .navbar {
             position: fixed;
-            top: 0;
-            left: 0;
-            right: 0;
-            padding: 1rem 0;
-            background: rgba(255, 255, 255, 0.95);
+            top: 30px;
+            left: 100px;
+            right: 100px;
+            padding: 1.5rem 2rem;
+            background: rgba(255, 255, 255, 0.9);
             backdrop-filter: blur(20px);
-            border-bottom: 1px solid rgba(255, 255, 255, 0.2);
+            border-radius: 50px;
+            box-shadow: 0 10px 40px rgba(0, 0, 0, 0.15);
             z-index: 1000;
             transition: all 0.3s ease;
         }
 
         .navbar.scrolled {
-            background: rgba(255, 255, 255, 0.98);
-            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.1);
+            background: rgba(255, 255, 255, 0.95);
+            padding: 1rem 2rem;
+            border-radius: 50px;
+            box-shadow: 0 15px 50px rgba(0, 0, 0, 0.2);
         }
 
         .nav-content {
@@ -352,19 +357,28 @@ try {
         }
 
         .logo {
-            font-size: 1.8rem;
-            font-weight: 800;
             display: flex;
             align-items: center;
-            gap: 0.5rem;
-            color: var(--primary);
             text-decoration: none;
         }
 
-        .logo::before {
-            content: "✈️";
-            font-size: 1.5rem;
-            animation: bounce 2s ease-in-out infinite;
+        .logo {
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+            text-decoration: none;
+        }
+
+        .logo img {
+            max-height: 40px;
+            width: auto;
+        }
+
+        .logo-text {
+            font-size: 1.8rem;
+            font-weight: 800;
+            text-decoration: none;
+            color: var(--primary);
         }
 
         @keyframes bounce {
@@ -436,13 +450,14 @@ try {
         }
 
         .btn-primary {
-            background: linear-gradient(135deg, var(--primary) 0%, var(--primary-dark) 100%);
-            color: white;
+            background: linear-gradient(135deg, #4099ff 0%, #2ed8b6 100%) !important;
+            color: #ffffff !important;
+            border-bottom: none !important;
         }
 
         .btn-primary:hover {
             transform: translateY(-3px);
-            box-shadow: 0 15px 35px rgba(99, 102, 241, 0.4);
+            box-shadow: 0 15px 35px rgba(64, 153, 255, 0.4);
         }
 
         .btn-outline {
@@ -460,9 +475,9 @@ try {
 
         /* Hero Section */
         .hero {
-            padding: 8rem 0 4rem;
+            padding: 12rem 0 8rem;
             position: relative;
-            background: linear-gradient(135deg, rgba(99, 102, 241, 0.05) 0%, rgba(245, 158, 11, 0.05) 100%);
+            background: var(--gray-50);
         }
 
         .hero-content {
@@ -492,7 +507,7 @@ try {
             font-weight: 900;
             line-height: 1.1;
             margin-bottom: 1.5rem;
-            background: linear-gradient(135deg, var(--primary) 0%, var(--secondary) 50%, var(--accent) 100%);
+            background: linear-gradient(135deg, var(--primary) 0%, var(--primary-dark) 100%);
             -webkit-background-clip: text;
             -webkit-text-fill-color: transparent;
             background-clip: text;
@@ -506,7 +521,7 @@ try {
             left: 0;
             width: 100px;
             height: 4px;
-            background: linear-gradient(135deg, var(--primary), var(--secondary));
+            background: linear-gradient(135deg, var(--primary), var(--primary-dark));
             border-radius: 2px;
             animation: expand 2s ease-out 0.5s both;
         }
@@ -562,88 +577,6 @@ try {
             }
         }
 
-        .dashboard-mockup {
-            position: relative;
-            background: var(--white);
-            border-radius: 20px;
-            padding: 1.5rem;
-            box-shadow: 0 50px 100px rgba(0, 0, 0, 0.2);
-            transform: perspective(1000px) rotateY(-10deg) rotateX(5deg);
-            transition: transform 0.5s ease;
-        }
-
-        .dashboard-mockup:hover {
-            transform: perspective(1000px) rotateY(-5deg) rotateX(2deg);
-        }
-
-        .mockup-header {
-            display: flex;
-            gap: 0.5rem;
-            margin-bottom: 1rem;
-        }
-
-        .mockup-dot {
-            width: 12px;
-            height: 12px;
-            border-radius: 50%;
-        }
-
-        .mockup-dot:nth-child(1) { background: #ff5f57; }
-        .mockup-dot:nth-child(2) { background: #ffbd2e; }
-        .mockup-dot:nth-child(3) { background: #28ca42; }
-
-        .mockup-content {
-            height: 300px;
-            background: linear-gradient(135deg, var(--gray-50) 0%, var(--gray-100) 100%);
-            border-radius: 10px;
-            display: flex;
-            flex-direction: column;
-            padding: 1.5rem;
-            gap: 1rem;
-        }
-
-        .mockup-chart {
-            flex: 1;
-            background: var(--white);
-            border-radius: 8px;
-            position: relative;
-            overflow: hidden;
-        }
-
-        .mockup-chart::before {
-            content: '';
-            position: absolute;
-            top: 50%;
-            left: 50%;
-            transform: translate(-50%, -50%);
-            width: 60%;
-            height: 60%;
-            background: linear-gradient(45deg, var(--primary), var(--secondary));
-            border-radius: 50%;
-            opacity: 0.1;
-            animation: pulse 3s ease-in-out infinite;
-        }
-
-        @keyframes pulse {
-            0%, 100% { transform: translate(-50%, -50%) scale(1); }
-            50% { transform: translate(-50%, -50%) scale(1.1); }
-        }
-
-        .mockup-stats {
-            display: flex;
-            gap: 1rem;
-        }
-
-        .mockup-stat {
-            flex: 1;
-            background: var(--white);
-            padding: 0.75rem;
-            border-radius: 6px;
-            text-align: center;
-            font-size: 0.8rem;
-            font-weight: 600;
-            color: var(--gray-700);
-        }
 
         /* Features Section */
         .features {
@@ -677,11 +610,13 @@ try {
         }
 
         .feature-card {
-            background: var(--white);
+            background: linear-gradient(135deg, #4099ff 0%, #2ed8b6 100%) !important;
+            color: #ffffff !important;
+            border-bottom: none !important;
             padding: 3rem 2rem;
             border-radius: 20px;
-            box-shadow: 0 10px 40px rgba(0, 0, 0, 0.05);
-            border: 1px solid var(--gray-100);
+            box-shadow: 0 10px 40px rgba(0, 0, 0, 0.1);
+            border: none;
             transition: all 0.5s ease;
             position: relative;
             overflow: hidden;
@@ -704,13 +639,14 @@ try {
 
         .feature-card:hover {
             transform: translateY(-10px);
-            box-shadow: 0 25px 60px rgba(0, 0, 0, 0.15);
+            box-shadow: 0 25px 60px rgba(64, 153, 255, 0.2);
+            border-color: var(--primary-dark);
         }
 
         .feature-icon {
             width: 80px;
             height: 80px;
-            background: linear-gradient(135deg, var(--primary), var(--secondary));
+            background: white;
             border-radius: 20px;
             display: flex;
             align-items: center;
@@ -718,6 +654,7 @@ try {
             font-size: 2rem;
             margin-bottom: 1.5rem;
             position: relative;
+            color: white;
         }
 
         .feature-icon::after {
@@ -734,18 +671,18 @@ try {
         .feature-card h3 {
             font-size: 1.5rem;
             font-weight: 700;
-            color: var(--gray-900);
+            color: #ffffff;
             margin-bottom: 1rem;
         }
 
         .feature-card p {
-            color: var(--gray-600);
+            color: #ffffff;
             line-height: 1.7;
             margin-bottom: 1.5rem;
         }
 
         .feature-link {
-            color: var(--primary);
+            color: #ffffff;
             text-decoration: none;
             font-weight: 600;
             display: inline-flex;
@@ -760,9 +697,9 @@ try {
 
         /* Stats Section */
         .stats {
-            padding: 6rem 0;
-            background: linear-gradient(135deg, var(--primary) 0%, var(--primary-dark) 100%);
-            color: white;
+            padding: 8rem 0;
+            background: var(--gray-50);
+            color: var(--gray-900);
             position: relative;
             overflow: hidden;
         }
@@ -774,7 +711,7 @@ try {
             left: 0;
             right: 0;
             bottom: 0;
-            background: url('data:image/svg+xml,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100"><circle cx="25" cy="25" r="2" fill="rgba(255,255,255,0.1)"/><circle cx="75" cy="25" r="2" fill="rgba(255,255,255,0.1)"/><circle cx="25" cy="75" r="2" fill="rgba(255,255,255,0.1)"/><circle cx="75" cy="75" r="2" fill="rgba(255,255,255,0.1)"/></svg>');
+            background: url('data:image/svg+xml,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100"><circle cx="25" cy="25" r="2" fill="rgba(64, 153, 255, 0.1)"/><circle cx="75" cy="25" r="2" fill="rgba(64, 153, 255, 0.1)"/><circle cx="25" cy="75" r="2" fill="rgba(64, 153, 255, 0.1)"/><circle cx="75" cy="75" r="2" fill="rgba(64, 153, 255, 0.1)"/></svg>');
         }
 
         .stats-grid {
@@ -788,6 +725,19 @@ try {
         .stat-item {
             text-align: center;
             animation: countUp 2s ease-out;
+            background: var(--white);
+            border-radius: 20px;
+            padding: 3rem 2rem;
+            border: 1px solid var(--gray-200);
+            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.05);
+            position: relative;
+            overflow: hidden;
+            transition: transform 0.3s ease, box-shadow 0.3s ease;
+        }
+
+        .stat-item:hover {
+            transform: translateY(-5px);
+            box-shadow: 0 20px 40px rgba(64, 153, 255, 0.1);
         }
 
         @keyframes countUp {
@@ -795,14 +745,17 @@ try {
             to { opacity: 1; transform: translateY(0); }
         }
 
+        .stat-icon {
+            font-size: 3rem;
+            margin-bottom: 1rem;
+            color: var(--primary);
+        }
+
         .stat-number {
-            font-size: 4rem;
+            font-size: 2rem;
             font-weight: 900;
             margin-bottom: 0.5rem;
-            background: linear-gradient(135deg, white, rgba(255, 255, 255, 0.8));
-            -webkit-background-clip: text;
-            -webkit-text-fill-color: transparent;
-            background-clip: text;
+            color: var(--primary);
         }
 
         .stat-label {
@@ -842,19 +795,20 @@ try {
 
         .contact-item:hover {
             transform: translateY(-5px);
-            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.1);
+            box-shadow: 0 10px 30px rgba(64, 153, 255, 0.1);
         }
 
         .contact-icon {
             width: 60px;
             height: 60px;
-            background: linear-gradient(135deg, var(--primary), var(--secondary));
+            background: white;
             border-radius: 15px;
             display: flex;
             align-items: center;
             justify-content: center;
             font-size: 1.5rem;
             flex-shrink: 0;
+            color: var(--gray-900);
         }
 
         .contact-details h4 {
@@ -941,7 +895,7 @@ try {
 
         .testimonial-card:hover {
             transform: translateY(-5px);
-            box-shadow: 0 20px 40px rgba(0, 0, 0, 0.1);
+            box-shadow: 0 20px 40px rgba(64, 153, 255, 0.1);
         }
 
         .testimonial-content {
@@ -1034,7 +988,7 @@ try {
 
         .pricing-card:hover {
             transform: translateY(-5px);
-            box-shadow: 0 20px 40px rgba(0, 0, 0, 0.1);
+            box-shadow: 0 20px 40px rgba(64, 153, 255, 0.1);
         }
 
         .pricing-card > *:last-child {
@@ -1159,9 +1113,20 @@ try {
 
         /* Footer */
         .footer {
-            background: var(--gray-900);
-            color: white;
-            padding: 4rem 0 2rem;
+            background: var(--gray-50);
+            color: var(--gray-900);
+            padding: 6rem 0 3rem;
+            position: relative;
+        }
+
+        .footer::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            height: 4px;
+            background: linear-gradient(135deg, var(--primary), var(--primary-dark));
         }
 
         .footer-content {
@@ -1175,7 +1140,7 @@ try {
             font-size: 1.2rem;
             font-weight: 700;
             margin-bottom: 1.5rem;
-            color: white;
+            color: var(--gray-900);
         }
 
         .footer-section ul {
@@ -1187,20 +1152,24 @@ try {
         }
 
         .footer-section a {
-            color: var(--gray-300);
+            color: var(--gray-600);
             text-decoration: none;
             transition: color 0.3s;
         }
 
         .footer-section a:hover {
-            color: var(--primary-light);
+            color: var(--primary);
+        }
+
+        .footer p {
+            color: var(--gray-600) !important;
         }
 
         .footer-bottom {
-            padding-top: 2rem;
-            border-top: 1px solid var(--gray-700);
+            padding-top: 3rem;
+            border-top: 1px solid var(--primary);
             text-align: center;
-            color: var(--gray-400);
+            color: var(--gray-600);
         }
 
         /* Responsive Design */
@@ -1325,7 +1294,7 @@ try {
     <nav class="navbar" id="navbar">
         <div class="container">
             <div class="nav-content">
-                <a href="#" class="logo"><?php echo getSetting($platform_settings, 'platform_name', 'MTravels'); ?></a>
+                <a href="#" class="logo"><img src="uploads/logo/<?= htmlspecialchars(getSetting($platform_settings, 'platform_logo') ?? 'logo.png') ?>" alt="Logo" style="height: 40px;"> <span class="logo-text"><?= htmlspecialchars(getSetting($platform_settings, 'platform_name') ?? 'MTravels') ?></span></a>
                 <ul class="nav-links">
                     <li><a href="#features">Features</a></li>
                     <li><a href="#pricing">Pricing</a></li>
@@ -1333,8 +1302,7 @@ try {
                     <li><a href="#contact">Contact</a></li>
                 </ul>
                 <a href="login.php" class="btn btn-primary">
-                    <span>Get Started</span>
-                    <span>→</span>
+                    <span>Book a Demo</span>
                 </a>
             </div>
         </div>
@@ -1373,21 +1341,7 @@ try {
                     </div>
                 </div>
                 <div class="hero-image">
-                    <div class="dashboard-mockup">
-                        <div class="mockup-header">
-                            <div class="mockup-dot"></div>
-                            <div class="mockup-dot"></div>
-                            <div class="mockup-dot"></div>
-                        </div>
-                        <div class="mockup-content">
-                            <div class="mockup-chart"></div>
-                            <div class="mockup-stats">
-                                <div class="mockup-stat">Efficiency<br><strong><?php echo getSetting($platform_settings, 'mockup_efficiency', '85%'); ?></strong></div>
-                                <div class="mockup-stat">Processing<br><strong><?php echo getSetting($platform_settings, 'mockup_processing', '24/7'); ?></strong></div>
-                                <div class="mockup-stat">Accuracy<br><strong><?php echo getSetting($platform_settings, 'mockup_accuracy', '99.5%'); ?></strong></div>
-                            </div>
-                        </div>
-                    </div>
+                    <img src="assets/images/widget/undraw_finance_m6vw.svg" alt="Finance Dashboard" style="max-width: 100%; height: auto; border-radius: 20px; box-shadow: 0 20px 60px rgba(0, 0, 0, 0.1);">
                 </div>
             </div>
         </div>
@@ -1404,42 +1358,24 @@ try {
                 <?php
                 $features = json_decode(getSetting($platform_settings, 'features_list', '[]'), true);
                 if (empty($features)) {
-                    // Default features for MTravels if not set
+                    // Optimized & Combined Features for MTravels
                     $features = [
-                        ['icon' => '✈️', 'title' => 'Ticket Bookings', 'description' => 'Comprehensive ticket booking management with passenger details, flight information, pricing, and transaction tracking.'],
-                        ['icon' => '📋', 'title' => 'Ticket Reservations', 'description' => 'Advanced ticket reservation system with real-time availability, automated pricing, and seamless airline integration.'],
-                        ['icon' => '🔄', 'title' => 'Refunded Tickets', 'description' => 'Streamlined ticket refund processing with penalty calculations, supplier coordination, and automated refunds.'],
-                        ['icon' => '📅', 'title' => 'Date Change Tickets', 'description' => 'Efficient date change management for tickets with supplier penalties, service charges, and seamless updates.'],
-                        ['icon' => '⚖️', 'title' => 'Ticket Weights', 'description' => 'Baggage weight management system with pricing calculations, profit tracking, and weight limit monitoring.'],
-                        ['icon' => '🏨', 'title' => 'Hotel Bookings', 'description' => 'Complete hotel reservation system with dynamic pricing, room management, and global hotel chain integration.'],
-                        ['icon' => '💸', 'title' => 'Hotel Refunds', 'description' => 'Hotel refund processing with transaction management, penalty calculations, and automated refund workflows.'],
-                        ['icon' => '🛂', 'title' => 'Visa Applications', 'description' => 'Comprehensive visa application processing with document management, status tracking, and compliance checks.'],
-                        ['icon' => '📄', 'title' => 'Visa Refunds', 'description' => 'Visa refund management with transaction tracking, penalty calculations, and automated processing.'],
-                        ['icon' => '💳', 'title' => 'Visa Transactions', 'description' => 'Multi-currency visa transaction management with exchange rates, payment tracking, and financial reporting.'],
-                        ['icon' => '💬', 'title' => 'Inter Tenant Chat', 'description' => 'Real-time communication system for tenant collaboration, messaging, and coordination.'],
-                        ['icon' => '🕋', 'title' => 'Umrah Bookings', 'description' => 'Specialized Umrah pilgrimage booking system with package management, document processing, and compliance.'],
-                        ['icon' => '🔙', 'title' => 'Umrah Refunds', 'description' => 'Umrah refund processing with specialized penalty calculations and pilgrimage-specific workflows.'],
-                        ['icon' => '📈', 'title' => 'Debtors Management', 'description' => 'Advanced debtor tracking with payment schedules, overdue management, and financial reconciliation.'],
-                        ['icon' => '📉', 'title' => 'Creditors Management', 'description' => 'Comprehensive creditor management with payment tracking, supplier coordination, and financial oversight.'],
-                        ['icon' => '💱', 'title' => 'Sarafi (Money Exchange)', 'description' => 'Currency exchange management with real-time rates, deposit/withdrawal tracking, and hawala services.'],
-                        ['icon' => '💼', 'title' => 'Salary Management', 'description' => 'Employee salary processing with payroll management, deductions, bonuses, and payment tracking.'],
-                        ['icon' => '➕', 'title' => 'Additional Payments', 'description' => 'Flexible additional payment processing with transaction management and financial integration.'],
-                        ['icon' => '🤝', 'title' => 'JV Payments', 'description' => 'Joint venture payment management with partner coordination and profit sharing calculations.'],
-                        ['icon' => '📑', 'title' => 'Manage Maktobs', 'description' => 'Document management system for official letters, agreements, and administrative paperwork.'],
-                        ['icon' => '🏢', 'title' => 'Assets Management', 'description' => 'Company asset tracking with depreciation calculations, maintenance scheduling, and financial reporting.'],
-                        ['icon' => '📊', 'title' => 'Expense Management', 'description' => 'Comprehensive expense tracking with categorization, approval workflows, and budget management.'],
-                        ['icon' => '👥', 'title' => 'Customer Management', 'description' => 'Advanced CRM with customer profiling, booking history, preferences, and marketing campaigns.'],
-                        ['icon' => '🏪', 'title' => 'Supplier Management', 'description' => 'Supplier relationship management with contract tracking, payment schedules, and performance monitoring.'],
-                        ['icon' => '📈', 'title' => 'Business Analytics', 'description' => 'Real-time dashboards and reports on revenue, bookings, trends, and profitability analysis.'],
-                        ['icon' => '💰', 'title' => 'Financial Management', 'description' => 'Complete accounting system with multi-currency support, invoicing, and financial reporting.'],
-                        ['icon' => '📋', 'title' => 'Reporting System', 'description' => 'Comprehensive reporting tools for business intelligence, compliance, and strategic decision making.'],
-                        ['icon' => '📝', 'title' => 'Activity Logging', 'description' => 'Detailed activity tracking and audit logs for security, compliance, and operational oversight.'],
-                        ['icon' => '🎯', 'title' => 'Dashboard Analytics', 'description' => 'Interactive dashboard with key performance indicators, charts, and real-time business metrics.'],
-                        ['icon' => '🧾', 'title' => 'Invoice Generation', 'description' => 'Automated invoice creation with multi-currency support, templates, and digital delivery options.'],
-                        ['icon' => '👤', 'title' => 'User Management', 'description' => 'User account management with role-based access control, permissions, and security features.'],
-                        ['icon' => '📤', 'title' => 'Financial Data Export', 'description' => 'Data export capabilities for financial reporting, compliance, and external system integration.']
+                        ['icon' => '✈️', 'title' => 'Ticket Management', 'description' => 'Manage ticket bookings, reservations, refunds, and date changes with automated workflows and airline integration.'],
+                        ['icon' => '⚖️', 'title' => 'Baggage & Ticket Weights', 'description' => 'Track baggage allowances, weight limits, and related pricing with profit monitoring.'],
+                        ['icon' => '🏨', 'title' => 'Hotel Management', 'description' => 'Complete hotel booking and refund system with dynamic pricing, room management, and global integrations.'],
+                        ['icon' => '🛂', 'title' => 'Visa Management', 'description' => 'Comprehensive visa applications, refunds, and multi-currency transactions with compliance tracking.'],
+                        ['icon' => '🕋', 'title' => 'Umrah Services', 'description' => 'Specialized Umrah pilgrimage bookings, refunds, and package management with compliance handling.'],
+                        ['icon' => '💰', 'title' => 'Financial Management', 'description' => 'Multi-currency accounting, expense tracking, salary processing, JV payments, and financial reporting with export support.'],
+                        ['icon' => '📑', 'title' => 'Document & Maktob Management', 'description' => 'Manage official letters, agreements, and administrative paperwork with version tracking.'],
+                        ['icon' => '👥', 'title' => 'Customer & Supplier Management', 'description' => 'Advanced CRM with booking history, preferences, and supplier coordination for smooth operations.'],
+                        ['icon' => '💬', 'title' => 'Inter-Tenant Communication', 'description' => 'Real-time messaging and collaboration tools for tenant coordination and customer support.'],
+                        ['icon' => '🏢', 'title' => 'Assets & Expense Management', 'description' => 'Track company assets, calculate depreciation, schedule maintenance, and manage categorized expenses.'],
+                        ['icon' => '📊', 'title' => 'Analytics & Reporting', 'description' => 'Interactive dashboards, KPIs, compliance reports, activity logs, and strategic insights.'],
+                        ['icon' => '🧾', 'title' => 'Invoice & Payment Processing', 'description' => 'Automated invoice generation, additional payments, multi-currency receipts, and digital delivery.'],
+                        ['icon' => '👤', 'title' => 'User & Role Management', 'description' => 'Role-based access control with permissions, security, and activity logging.']
                     ];
                 }
+                
 
                 foreach ($features as $feature) {
                     echo '<div class="feature-card">';
@@ -1459,18 +1395,22 @@ try {
         <div class="container">
             <div class="stats-grid">
                 <div class="stat-item">
+                    <div class="stat-icon">🏢</div>
                     <div class="stat-number"><?php echo getSetting($platform_settings, 'stat_agencies', '10K+'); ?></div>
                     <div class="stat-label"><?php echo getSetting($platform_settings, 'stat_agencies_label', 'Travel Agencies'); ?></div>
                 </div>
                 <div class="stat-item">
+                    <div class="stat-icon">📊</div>
                     <div class="stat-number"><?php echo getSetting($platform_settings, 'stat_bookings', '2M+'); ?></div>
                     <div class="stat-label"><?php echo getSetting($platform_settings, 'stat_bookings_label', 'Bookings Processed'); ?></div>
                 </div>
                 <div class="stat-item">
+                    <div class="stat-icon">💰</div>
                     <div class="stat-number"><?php echo getSetting($platform_settings, 'stat_revenue', '$500M+'); ?></div>
                     <div class="stat-label"><?php echo getSetting($platform_settings, 'stat_revenue_label', 'Revenue Managed'); ?></div>
                 </div>
                 <div class="stat-item">
+                    <div class="stat-icon">⚡</div>
                     <div class="stat-number"><?php echo getSetting($platform_settings, 'stat_uptime', '99.9%'); ?></div>
                     <div class="stat-label"><?php echo getSetting($platform_settings, 'stat_uptime_label', 'Uptime Guaranteed'); ?></div>
                 </div>

@@ -361,8 +361,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['delete_transaction'])
         $stmt->bind_param("ii", $transaction_id, $tenant_id);
         $stmt->execute();
         
-        $stmt = $conn->prepare("DELETE FROM main_account_transactions WHERE id = ? AND tenant_id = ?");
-        $stmt->bind_param("ii", $main_transaction['id'], $tenant_id);
+        $stmt = $conn->prepare("DELETE FROM main_account_transactions WHERE reference_id = ? AND tenant_id = ?");
+        $stmt->bind_param("ii", $transaction_id, $tenant_id);
         $stmt->execute();
         
         $conn->commit();
