@@ -303,7 +303,7 @@ $imagePath = "../assets/images/user/" . $profilePic;
     <script src="https://unpkg.com/feather-icons"></script>
     <script src="https://cdn.jsdelivr.net/npm/feather-icons/dist/feather.min.js"></script>
     <!-- Favicon -->
-    <link rel="icon" href="../uploads/<?= htmlspecialchars($settings['platform_logo'] ?? 'default-logo.png') ?>" type="image/x-icon">
+    <link rel="icon" href="../uploads/logo/<?= htmlspecialchars($settings['platform_logo'] ?? 'default-logo.png') ?>" type="image/x-icon">
 
     <!-- RTL support -->
     <?php if (is_rtl()): ?>
@@ -360,7 +360,7 @@ $imagePath = "../assets/images/user/" . $profilePic;
         <div class="navbar-brand header-logo">
             <a href="dashboard.php" class="b-brand">
                 <div class="b-bg">
-                    <img class="rounded-circle" style="width:40px;" src="../Uploads/<?= htmlspecialchars($settings['platform_logo']) ?>" alt="activity-user">
+                    <img class="rounded-circle" style="width:40px;" src="../uploads/logo/<?= htmlspecialchars($settings['platform_logo']) ?>" alt="activity-user">
                 </div>
                 <span class="b-title"><?= htmlspecialchars($settings['platform_name']) ?></span>
             </a>
@@ -436,7 +436,7 @@ $imagePath = "../assets/images/user/" . $profilePic;
         <a class="mobile-menu" id="mobile-collapse1" href="javascript:"><span></span></a>
         <a href="dashboard.php" class="b-brand">
             <div class="b-bg">
-                <img class="rounded-circle" style="width:40px;" src="../uploads/<?= htmlspecialchars($settings['platform_logo']) ?>" alt="activity-user">
+                <img class="rounded-circle" style="width:40px;" src="../uploads/logo/<?= htmlspecialchars($settings['platform_logo']) ?>" alt="activity-user">
             </div>
             <span class="b-title"><?= htmlspecialchars($settings['platform_name']) ?></span>
         </a>

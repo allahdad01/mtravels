@@ -467,6 +467,12 @@ if (isset($_GET['debug'])) {
     box-shadow: 2px 0 15px rgba(0,0,0,0.15) !important;
 }
 
+/* Fix logo display when sidebar is collapsed */
+.pcoded-navbar.navbar-collapsed .header-logo img {
+    transform: rotateY(0deg) !important;
+    -webkit-transform: rotateY(0deg) !important;
+}
+
 .pcoded-navbar .navbar-brand {
     background: rgba(255,255,255,0.1) !important;
     border-radius: 8px !important;

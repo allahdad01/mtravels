@@ -109,7 +109,7 @@ if (!empty($max_users_per_tenant) && (!is_numeric($max_users_per_tenant) || $max
 }
 
 // Handle file uploads
-$upload_dir = '../uploads/';
+$upload_dir = '../uploads/logo/';
 
 // Create uploads directory if it doesn't exist
 if (!is_dir($upload_dir)) {

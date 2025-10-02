@@ -91,7 +91,7 @@ try {
       <div class="panels-container">
         <div class="panel left-panel">
           <div class="content">
-            <img src="uploads/logo/<?= htmlspecialchars($settings['platform_logo'] ?? 'default-logo.png') ?>" alt="Platform Logo" class="platform-logo" style="max-width: 200px; margin-bottom: 1rem;">
+            <img src="uploads/logo/<?= htmlspecialchars($settings['platform_logo'] ?? 'default-logo.png') ?>" alt="Platform Logo" class="platform-logo" style="max-width: 200px; margin-bottom: 1rem; background-color: #fff; border-radius: 50%; padding: 5px;">
             <h3><?= htmlspecialchars($settings['platform_name'] ?? '') ?></h3>
             <p><?= htmlspecialchars($settings['platform_description'] ?? '') ?></p>
           </div>

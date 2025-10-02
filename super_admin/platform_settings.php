@@ -527,7 +527,7 @@ input:checked + .slider:before {
                                                                 <div class="preview-container">
                                                                     <div class="preview-item">
                                                                         <small class="text-muted d-block mb-2">Current Logo</small>
-                                                                        <img src="../uploads/<?= htmlspecialchars($settings_map['platform_logo']) ?>" 
+                                                                        <img src="../uploads/logo/<?= htmlspecialchars($settings_map['platform_logo']) ?>" 
                                                                              alt="Current Platform Logo" 
                                                                              class="current-image">
                                                                         <br>
@@ -552,7 +552,7 @@ input:checked + .slider:before {
                                                                 <div class="preview-container">
                                                                     <div class="preview-item">
                                                                         <small class="text-muted d-block mb-2">Current Favicon</small>
-                                                                        <img src="../uploads/<?= htmlspecialchars($settings_map['platform_favicon']) ?>" 
+                                                                        <img src="../uploads/logo/<?= htmlspecialchars($settings_map['platform_favicon']) ?>" 
                                                                              alt="Current Platform Favicon" 
                                                                              style="width: 32px; height: 32px;">
                                                                         <br>
