@@ -1301,9 +1301,12 @@ try {
                     <li><a href="#testimonials">Reviews</a></li>
                     <li><a href="#contact">Contact</a></li>
                 </ul>
-                <a href="login.php" class="btn btn-primary">
-                    <span>Book a Demo</span>
-                </a>
+                <div style="display: flex; align-items: center; gap: 1rem;">
+                    <a href="login.php" class="nav-login-link" style="color: var(--primary); text-decoration: none; font-weight: 600; transition: color 0.3s;">Login</a>
+                    <a href="book-demo.php" class="btn btn-primary">
+                        <span>Book a Demo</span>
+                    </a>
+                </div>
             </div>
         </div>
     </nav>
@@ -1318,7 +1321,7 @@ try {
                         <?php echo getSetting($platform_settings, 'hero_subtitle', 'Professional travel agency management platform designed to optimize workflows, enhance customer service, and drive business growth through comprehensive automation and intelligent insights.' ); ?>
                     </p>
                     <div class="hero-buttons">
-                        <a href="login.php" class="btn btn-primary">
+                        <a href="book-demo.php" class="btn btn-primary">
                             <?php echo getSetting($platform_settings, 'cta_primary_text', 'Get Started'); ?>
                         </a>
                         <a href="#features" class="btn btn-outline">
@@ -1382,7 +1385,7 @@ try {
                     echo '<div class="feature-icon">' . htmlspecialchars($feature['icon'] ?? '🚀') . '</div>';
                     echo '<h3>' . htmlspecialchars($feature['title'] ?? 'Feature Title') . '</h3>';
                     echo '<p>' . htmlspecialchars($feature['description'] ?? 'Feature description') . '</p>';
-                    echo '<a href="login.php" class="feature-link">Try it now →</a>';
+                    echo '<a href="book-demo.php" class="feature-link">Try it now →</a>';
                     echo '</div>';
                 }
                 ?>
@@ -1498,7 +1501,7 @@ try {
                         echo '</div>';
                         ?>
                     </div>
-                    <a href="login.php" class="btn btn-primary">Get Started</a>
+                    <a href="book-demo.php" class="btn btn-primary">Get Started</a>
                 </div>
                 <?php endforeach; ?>
             </div>
@@ -1625,7 +1628,7 @@ try {
             <h2><?php echo getSetting($platform_settings, 'cta_title', 'Ready to Optimize Your Travel Operations?'); ?></h2>
             <p><?php echo getSetting($platform_settings, 'cta_subtitle', 'Join industry-leading travel agencies who have improved efficiency, reduced errors, and enhanced customer satisfaction with our comprehensive management platform.'); ?></p>
             <div class="cta-buttons">
-                <a href="login.php" class="btn btn-primary">
+                <a href="book-demo.php" class="btn btn-primary">
                     <?php echo getSetting($platform_settings, 'final_cta_primary', 'Get Started Today'); ?>
                 </a>
                 <a href="#contact" class="btn btn-outline">
