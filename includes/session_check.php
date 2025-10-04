@@ -14,7 +14,7 @@ function checkSessionValid() {
     }
     
     // Check for session timeout (30 minutes)
-    $session_timeout = 30 * 60; // 30 minutes in seconds
+    $session_timeout = 60 * 60; // 30 minutes in seconds
     if (isset($_SESSION["login_time"]) && (time() - $_SESSION["login_time"] > $session_timeout)) {
         // Session timed out
         session_unset();
