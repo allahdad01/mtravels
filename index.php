@@ -4,41 +4,10 @@ session_start();
 
 // Database connection and security
 require_once 'includes/db.php';
+require_once 'includes/cache.php';
 
 // Default tenant ID for landing page (can be made configurable)
 $default_tenant_id = 1;
-
-// Cache settings (TTL in seconds)
-$cache_ttl = 3600; // 1 hour
-$cache_dir = __DIR__ . '/cache/';
-
-// Create cache directory if it doesn't exist
-if (!is_dir($cache_dir)) {
-    mkdir($cache_dir, 0755, true);
-}
-
-// Function to get cache key
-function getCacheKey($prefix, $params = []) {
-    return $prefix . '_' . md5(serialize($params));
-}
-
-// Function to get cached data
-function getCachedData($key) {
-    global $cache_dir, $cache_ttl;
-    $file = $cache_dir . $key . '.cache';
-
-    if (file_exists($file) && (time() - filemtime($file)) < $cache_ttl) {
-        return unserialize(file_get_contents($file));
-    }
-    return false;
-}
-
-// Function to set cached data
-function setCachedData($key, $data) {
-    global $cache_dir;
-    $file = $cache_dir . $key . '.cache';
-    file_put_contents($file, serialize($data));
-}
 
 // Optimized function to fetch platform settings with caching
 function getPlatformSettings($pdo) {
@@ -220,11 +189,13 @@ try {
         }
 
         :root {
-            --primary: <?php echo getSetting($platform_settings, 'primary_color', '#4099ff'); ?>;
-            --primary-dark: <?php echo getSetting($platform_settings, 'primary_color', '#2ed8b6'); ?>;
-            --primary-light: <?php echo getSetting($platform_settings, 'primary_color', '#a0e6ff'); ?>;
-            --secondary: <?php echo getSetting($platform_settings, 'secondary_color', '#2ed8b6'); ?>;
-            --accent: <?php echo getSetting($platform_settings, 'accent_color', '#06b6d4'); ?>;
+            --primary: #4099ff;
+            --primary-dark: #2673cc;
+            --primary-light: #a0e6ff;
+            --secondary: #2ed8b6;
+            --secondary-dark: #24a88f;
+            --secondary-light: #8ef0e0;
+            --accent: #25c6b4;
             --success: #10b981;
             --danger: #ef4444;
             --warning: #f59e0b;
@@ -603,96 +574,131 @@ try {
             margin: 0 auto;
         }
 
-        .features-grid {
-            display: grid;
-            grid-template-columns: repeat(auto-fit, minmax(350px, 1fr));
-            gap: 2rem;
-        }
-
-        .feature-card {
-            background: linear-gradient(135deg, #4099ff 0%, #2ed8b6 100%) !important;
-            color: #ffffff !important;
-            border-bottom: none !important;
-            padding: 3rem 2rem;
-            border-radius: 20px;
-            box-shadow: 0 10px 40px rgba(0, 0, 0, 0.1);
-            border: none;
-            transition: all 0.5s ease;
+        .features-timeline {
             position: relative;
-            overflow: hidden;
+            padding: 2rem 0;
         }
 
-        .feature-card::before {
+        .features-timeline::before {
             content: '';
             position: absolute;
+            left: 50%;
             top: 0;
-            left: -100%;
+            bottom: 0;
+            width: 4px;
+            background: linear-gradient(to bottom, var(--primary) 0%, var(--secondary) 100%);
+            transform: translateX(-50%);
+            border-radius: 2px;
+            box-shadow: 0 0 20px rgba(64, 153, 255, 0.3);
+        }
+
+        .timeline-item {
+            position: relative;
+            margin: 4rem 0;
+            opacity: 0;
+            transform: translateY(30px);
+            animation: fadeInUp 0.6s ease forwards;
+            display: flex;
             width: 100%;
-            height: 4px;
-            background: linear-gradient(90deg, var(--primary), var(--secondary));
-            transition: left 0.5s ease;
         }
 
-        .feature-card:hover::before {
-            left: 0;
+        .timeline-item:nth-child(odd) {
+            animation-delay: 0.1s;
+            justify-content: flex-end;
         }
 
-        .feature-card:hover {
-            transform: translateY(-10px);
-            box-shadow: 0 25px 60px rgba(64, 153, 255, 0.2);
-            border-color: var(--primary-dark);
+        .timeline-item:nth-child(even) {
+            animation-delay: 0.3s;
+            justify-content: flex-start;
         }
 
-        .feature-icon {
-            width: 80px;
-            height: 80px;
-            background: white;
+        @keyframes fadeInUp {
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+
+        .timeline-content {
+            background: rgba(255, 255, 255, 0.95);
+            backdrop-filter: blur(20px);
+            border: 1px solid rgba(255, 255, 255, 0.3);
             border-radius: 20px;
+            padding: 2.5rem;
+            box-shadow: 0 15px 35px rgba(0, 0, 0, 0.1);
+            transition: all 0.4s ease;
+            position: relative;
+            max-width: 45%;
+            margin: 0 2rem;
+        }
+
+        .timeline-content:hover {
+            transform: translateY(-8px) scale(1.02);
+            box-shadow: 0 25px 50px rgba(64, 153, 255, 0.15);
+        }
+
+        .timeline-item::after {
+            content: '';
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            width: 20px;
+            height: 20px;
+            background: linear-gradient(135deg, var(--primary), var(--secondary));
+            border-radius: 50%;
+            border: 4px solid white;
+            box-shadow: 0 0 15px rgba(64, 153, 255, 0.6);
+            transform: translate(-50%, -50%);
+            z-index: 2;
+        }
+
+        .timeline-content .feature-icon {
+            width: 70px;
+            height: 70px;
+            background: linear-gradient(135deg, var(--primary), var(--secondary));
+            border-radius: 18px;
             display: flex;
             align-items: center;
             justify-content: center;
-            font-size: 2rem;
+            font-size: 1.8rem;
             margin-bottom: 1.5rem;
             position: relative;
             color: white;
+            box-shadow: 0 8px 25px rgba(64, 153, 255, 0.3);
         }
 
-        .feature-icon::after {
-            content: '';
-            position: absolute;
-            inset: -5px;
-            background: inherit;
-            border-radius: inherit;
-            z-index: -1;
-            opacity: 0.2;
-            filter: blur(10px);
-        }
-
-        .feature-card h3 {
-            font-size: 1.5rem;
+        .timeline-content h3 {
+            font-size: 1.4rem;
             font-weight: 700;
-            color: #ffffff;
+            color: var(--primary);
             margin-bottom: 1rem;
         }
 
-        .feature-card p {
-            color: #ffffff;
+        .timeline-content p {
+            color: var(--gray-700);
             line-height: 1.7;
             margin-bottom: 1.5rem;
+            font-size: 1rem;
         }
 
-        .feature-link {
-            color: #ffffff;
+        .timeline-content .feature-link {
+            color: var(--primary);
             text-decoration: none;
             font-weight: 600;
             display: inline-flex;
             align-items: center;
             gap: 0.5rem;
-            transition: gap 0.3s ease;
+            transition: all 0.3s ease;
+            padding: 0.5rem 1rem;
+            border-radius: 25px;
+            background: rgba(64, 153, 255, 0.1);
         }
 
-        .feature-link:hover {
+        .timeline-content .feature-link:hover {
             gap: 1rem;
+            background: var(--primary);
+            color: white;
+            transform: translateX(5px);
         }
 
         /* Stats Section */
@@ -1357,7 +1363,7 @@ try {
                 <h2><?php echo getSetting($platform_settings, 'features_title', 'Everything You Need to Scale'); ?></h2>
                 <p><?php echo getSetting($platform_settings, 'features_subtitle', 'Comprehensive tools designed specifically for travel agencies to manage, grow, and optimize their business operations.'); ?></p>
             </div>
-            <div class="features-grid">
+            <div class="features-timeline">
                 <?php
                 $features = json_decode(getSetting($platform_settings, 'features_list', '[]'), true);
                 if (empty($features)) {
@@ -1378,14 +1384,15 @@ try {
                         ['icon' => '👤', 'title' => 'User & Role Management', 'description' => 'Role-based access control with permissions, security, and activity logging.']
                     ];
                 }
-                
 
-                foreach ($features as $feature) {
-                    echo '<div class="feature-card">';
+                foreach ($features as $index => $feature) {
+                    echo '<div class="timeline-item">';
+                    echo '<div class="timeline-content">';
                     echo '<div class="feature-icon">' . htmlspecialchars($feature['icon'] ?? '🚀') . '</div>';
                     echo '<h3>' . htmlspecialchars($feature['title'] ?? 'Feature Title') . '</h3>';
                     echo '<p>' . htmlspecialchars($feature['description'] ?? 'Feature description') . '</p>';
                     echo '<a href="book-demo.php" class="feature-link">Try it now →</a>';
+                    echo '</div>';
                     echo '</div>';
                 }
                 ?>

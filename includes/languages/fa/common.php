@@ -4920,6 +4920,17 @@ return [
 'any_additional_notes_or_special_requests' => 'هرگونه یادداشت یا درخواست ویژه اضافی',
 'i_confirm_date_change_request_details_are_correct' => 'تأیید می‌کنم که جزئیات درخواست تغییر تاریخ درست است',
 'submit_request' => 'ارسال درخواست',
+'enter_the_exchange_rate_from_transaction_currency_to_payment_currency' => 'نرخ تبادله را از اسعار معامله به اسعار پرداخت وارد کنید',
+'new_sold_price' => 'قیمت جدید فروخته‌شده',
+'date_change_request_details' => 'جزئیات درخواست تغییر تاریخ',
+'add_visa' => 'افزودن ویزا',
+'add_transaction' => 'افزودن معامله',
+'save_changes' => 'ذخیره تغییرات',
+'chat' => 'گفتگو / چت',
+'no_hotel_refunds_have_been_processed_yet' => 'هنوز هیچ بازپرداخت هوتل پروسس نشده است',
+'visa_transport' => 'ترانسپورت ویزا',
+'applied_to_total_sold_price' => 'بر مجموع قیمت فروخته‌شده تطبیق شد',
+'Inactive_debtors' => 'بدهکاران غیرفعال',
 
     
 ]; 

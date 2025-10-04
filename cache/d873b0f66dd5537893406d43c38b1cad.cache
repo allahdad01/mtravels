@@ -1,0 +1,41 @@
+a:3:{i:0;a:7:{s:2:"id";i:2;s:4:"name";s:3:"pro";s:11:"description";s:77:"Pro plan with ticket-related tasks, visa-related tasks, and inter-tenant chat";s:8:"features";s:232:"[
+    "ticket_bookings",
+    "ticket_reservations",
+    "refunded_tickets",
+    "date_change_tickets",
+    "ticket_weights",
+    "visa_applications",
+    "visa_refunds",
+    "visa_transactions",
+    "inter_tenant_chat"
+  ]";s:5:"price";s:4:"0.00";s:9:"max_users";i:0;s:10:"trial_days";i:0;}i:1;a:7:{s:2:"id";i:3;s:4:"name";s:10:"enterprise";s:11:"description";s:59:"Enterprise plan with all Pro features plus Umrah management";s:8:"features";s:528:"[
+    "ticket_bookings",
+    "ticket_reservations", 
+    "refunded_tickets",
+    "date_change_tickets",
+    "ticket_weights",
+    "hotel_bookings",
+    "hotel_refunds",
+    "visa_applications",
+    "visa_refunds",
+    "visa_transactions", 
+    "inter_tenant_chat",
+    "umrah_bookings",
+    "umrah_refunds",
+    "debtors",
+    "creditors",
+    "sarafi",
+    "salary",
+    "additional_payments",
+    "jv_payments",
+    "manage_maktobs",
+    "assets",
+    "financial_statements",
+    "expense_management"
+]";s:5:"price";s:4:"0.00";s:9:"max_users";i:0;s:10:"trial_days";i:0;}i:2;a:7:{s:2:"id";i:1;s:4:"name";s:5:"basic";s:11:"description";s:51:"Basic plan with access to ticket-related tasks only";s:8:"features";s:133:"[
+    "ticket_bookings",
+    "ticket_reservations",
+    "refunded_tickets",
+    "date_change_tickets",
+    "ticket_weights"
+  ]";s:5:"price";s:6:"200.00";s:9:"max_users";i:20;s:10:"trial_days";i:10;}}

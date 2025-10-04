@@ -35,6 +35,7 @@ class ComposerStaticInit959e8777fb4abafbe90e9088833260b3
             'Psr\\Http\\Message\\' => 17,
             'Psr\\Http\\Client\\' => 16,
             'Psr\\Clock\\' => 10,
+            'Predis\\' => 7,
             'PhpOffice\\PhpWord\\' => 18,
             'PhpOffice\\PhpSpreadsheet\\' => 25,
             'PhpOffice\\Math\\' => 15,
@@ -120,6 +121,10 @@ class ComposerStaticInit959e8777fb4abafbe90e9088833260b3
         'Psr\\Clock\\' => 
         array (
             0 => __DIR__ . '/..' . '/psr/clock/src',
+        ),
+        'Predis\\' => 
+        array (
+            0 => __DIR__ . '/..' . '/predis/predis/src',
         ),
         'PhpOffice\\PhpWord\\' => 
         array (

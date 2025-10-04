@@ -132,7 +132,6 @@ return [
     'edit' => 'Edit',
     'download_pdf' => 'Download PDF',
     'edit_letter' => 'Edit Letter',
-    'save_changes' => 'Save Changes',
     'confirm_delete' => 'Confirm Delete',
     'delete_confirmation' => 'Are you sure you want to delete this letter? This action cannot be undone.',
     'letter_created' => 'Letter created successfully!',
@@ -303,7 +302,6 @@ return [
     'new_password' => 'New Password',
     'confirm_password' => 'Confirm Password',
     'cancel' => 'Cancel',
-    'save_changes' => 'Save Changes',
     
     // Receipt Modal
     'enter_receipt_details' => 'Enter Receipt Details',
@@ -516,7 +514,6 @@ return [
     'edit' => 'Edit',
     'delete' => 'Delete',
     'close' => 'Close',
-    'save_changes' => 'Save Changes',
     'cancel' => 'Cancel',
     'confirm_delete' => 'Confirm Delete',
     'are_you_sure_you_want_to_delete_this_message' => 'Are you sure you want to delete this message',
@@ -731,7 +728,6 @@ return [
     'current_password' => 'Current Password',
     'new_password' => 'New Password',
     'confirm_password' => 'Confirm Password',
-    'save_changes' => 'Save Changes',
     'cancel' => 'Cancel',
     'click_to_change_profile_picture' => 'Click to change profile picture',
     'account_created' => 'Account Created',
@@ -891,7 +887,6 @@ return [
     'profile' => 'Profile',
     'actions' => 'Actions',
     'save_user' => 'Save User',
-    'save_changes' => 'Save Changes',
     'cancel' => 'Cancel',
     'loading' => 'Loading...',
     
@@ -1524,7 +1519,6 @@ return [
     'internal' => 'Internal',
     'external' => 'External',
     'add_supplier' => 'Add Supplier',
-    'save_changes' => 'Save Changes',
 
 
     // Umrah detail page translations
@@ -1825,7 +1819,6 @@ return [
     'scan_qr_code' => 'Scan QR Code',
     'enter_verification_code' => 'Enter Verification Code',
     'backup_codes' => 'Backup Codes',
-    'save_changes' => 'Save Changes',
     'cancel' => 'Cancel',
 
 
@@ -5022,6 +5015,15 @@ return [
 'i_confirm_date_change_request_details_are_correct' => 'I Confirm Date Change Request Details are Correct',
 'submit_request' => 'Submit Request',
 
+'enter_the_exchange_rate_from_transaction_currency_to_payment_currency' => 'Enter the exchange rate from transaction currency to payment currency',
+'new_sold_price' => 'New Sold Price',
+'date_change_request_details' => 'Date Change Request Details',
+'add_visa' => 'Add Visa',
+'chat' => 'Chat',
+'no_hotel_refunds_have_been_processed_yet' => 'No hotel refunds have been processed yet',
+'visa_transport' => 'Visa Transport',
+'applied_to_total_sold_price' => 'Applied to Total Sold Price',
+'Inactive_debtors' => 'Inactive Debtors',
 
 
 ]; 

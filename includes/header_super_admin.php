@@ -404,6 +404,12 @@ $imagePath = "../assets/images/user/" . $profilePic;
                         <span class="pcoded-mtext">Subscription Payments</span>
                     </a>
                 </li>
+                <li data-username="manage_demo_requests" class="nav-item <?php echo basename($_SERVER['PHP_SELF']) == 'manage_demo_requests.php' ? 'active' : ''; ?>">
+                    <a href="manage_demo_requests.php" class="nav-link">
+                        <span class="pcoded-micon"><i class="feather icon-calendar"></i></span>
+                        <span class="pcoded-mtext">Demo Requests</span>
+                    </a>
+                </li>
                 <li data-username="platform_settings" class="nav-item <?php echo basename($_SERVER['PHP_SELF']) == 'platform_settings.php' ? 'active' : ''; ?>">
                     <a href="platform_settings.php" class="nav-link">
                         <span class="pcoded-micon"><i class="feather icon-settings"></i></span>

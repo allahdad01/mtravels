@@ -4793,5 +4793,16 @@ return [
 'any_additional_notes_or_special_requests' => 'هر ډول اضافي یادښتونه یا ځانګړې غوښتنې',
 'i_confirm_date_change_request_details_are_correct' => 'زه تاییدوم چې د نیټې د بدلون د غوښتنې تفصیلات سم دي',
 'submit_request' => 'غوښتنه وسپارئ',
+'enter_the_exchange_rate_from_transaction_currency_to_payment_currency' => 'د راکړې ورکړې له اسعارو څخه د تادیې اسعارو ته د تبادلې نرخ داخل کړئ',
+'new_sold_price' => 'نوې پلورل شوې بیه',
+'date_change_request_details' => 'د نیټې د بدلون د غوښتنې تفصیلات',
+'add_visa' => 'ویزه اضافه کړئ',
+'add_transaction' => 'معامله اضافه کړئ',
+'save_changes' => 'بدلونونه خوندي کړئ',
+'chat' => 'چت / خبرې اترې',
+'no_hotel_refunds_have_been_processed_yet' => 'تر اوسه د هوټل هیڅ بیرته ورکول نه دي پروسس شوي',
+'visa_transport' => 'د ویزې ترانسپورت',
+'applied_to_total_sold_price' => 'په ټولې پلورل شوې بیې تطبیق شو',
+'Inactive_debtors' => 'غیرفعاله قرضدار',
 
 ];

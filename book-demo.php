@@ -72,11 +72,13 @@ function getSetting($settings, $key, $default = '') {
         }
 
         :root {
-            --primary: <?php echo getSetting($platform_settings, 'primary_color', '#4099ff'); ?>;
-            --primary-dark: <?php echo getSetting($platform_settings, 'primary_color', '#2ed8b6'); ?>;
-            --primary-light: <?php echo getSetting($platform_settings, 'primary_color', '#a0e6ff'); ?>;
-            --secondary: <?php echo getSetting($platform_settings, 'secondary_color', '#2ed8b6'); ?>;
-            --accent: <?php echo getSetting($platform_settings, 'accent_color', '#06b6d4'); ?>;
+            --primary: #4099ff;
+            --primary-dark: #2673cc;
+            --primary-light: #a0e6ff;
+            --secondary: #2ed8b6;
+            --secondary-dark: #24a88f;
+            --secondary-light: #8ef0e0;
+            --accent: #25c6b4;
             --success: #10b981;
             --danger: #ef4444;
             --warning: #f59e0b;
@@ -195,7 +197,7 @@ function getSetting($settings, $key, $default = '') {
             display: block;
             width: 120px;
             height: 6px;
-            background: linear-gradient(135deg, var(--primary), var(--primary-dark));
+            background: linear-gradient(#4099ff, #2ed8b6);
             border-radius: 50px;
             margin: 0.5rem auto 0;
             animation: expandWidth 2s ease-out 0.5s both;
@@ -234,7 +236,7 @@ function getSetting($settings, $key, $default = '') {
         }
 
         .demo-info {
-            background: linear-gradient(135deg, var(--primary) 0%, var(--secondary) 100%);
+            background: linear-gradient(135deg, #4099ff 0%, #2ed8b6 100%);
             color: white;
             padding: 2rem;
             border-radius: 0 0 70px 0;
@@ -420,7 +422,7 @@ function getSetting($settings, $key, $default = '') {
         }
 
         .btn-primary {
-            background: linear-gradient(135deg, var(--primary) 0%, var(--primary-dark) 100%);
+            background: linear-gradient(135deg, #4099ff 0%, #2ed8b6 100%);
             color: white;
         }
 
@@ -463,7 +465,7 @@ function getSetting($settings, $key, $default = '') {
             left: 0;
             right: 0;
             height: 4px;
-            background: linear-gradient(135deg, var(--primary), var(--primary-dark));
+            background: linear-gradient(135deg, #4099ff, #2ed8b6);
         }
 
         .footer-content {

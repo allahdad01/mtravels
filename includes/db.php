@@ -15,13 +15,17 @@ try {
         PDO::ATTR_ERRMODE => PDO::ERRMODE_EXCEPTION,
         PDO::ATTR_DEFAULT_FETCH_MODE => PDO::FETCH_ASSOC,
         PDO::ATTR_EMULATE_PREPARES => false,
+        // Enable InnoDB transactions
+        PDO::MYSQL_ATTR_INIT_COMMAND => "SET SESSION sql_mode = 'STRICT_TRANS_TABLES,NO_ZERO_DATE,NO_ZERO_IN_DATE,ERROR_FOR_DIVISION_BY_ZERO'",
         // Persistent connections can improve performance but should be used cautiously
         // PDO::ATTR_PERSISTENT => true
     ];
-    
+
     $pdo = new PDO($dsn, DB_USERNAME, DB_PASSWORD, $options);
-    
-    
+
+    // Ensure InnoDB is the default storage engine
+    $pdo->exec("SET SESSION default_storage_engine = InnoDB");
+
 } catch (PDOException $e) {
     // Log the error but don't expose details to users
     error_log("Database Connection Error: " . $e->getMessage());
