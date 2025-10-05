@@ -1119,6 +1119,25 @@ input[type="button"] {
                     </ul>
                 </li>
                 <?php endif; ?>
+                <?php if (hasFeature('salary', $allowed_features)): ?>
+                <li data-username="hr" class="nav-item pcoded-hasmenu <?php echo (strpos(basename($_SERVER['PHP_SELF']), 'hr') !== false || strpos(basename($_SERVER['PHP_SELF']), 'employee') !== false) ? 'active pcoded-trigger' : ''; ?>">
+                    <a href="javascript:" class="nav-link">
+                        <span class="pcoded-micon"><i class="feather icon-users"></i></span>
+                        <span class="pcoded-mtext"><?= __('hr_management') ?></span>
+                    </a>
+                    <ul class="pcoded-submenu">
+                        <li class="<?php echo basename($_SERVER['PHP_SELF']) == 'hr.php' ? 'active' : ''; ?>">
+                            <a href="hr.php"><?= __('hr_dashboard') ?></a>
+                        </li>
+                        <li class="<?php echo basename($_SERVER['PHP_SELF']) == 'employee_management.php' ? 'active' : ''; ?>">
+                            <a href="employee_management.php"><?= __('employee_management') ?></a>
+                        </li>
+                        <li class="<?php echo basename($_SERVER['PHP_SELF']) == 'employee_performance.php' ? 'active' : ''; ?>">
+                            <a href="employee_performance.php"><?= __('performance_reviews') ?></a>
+                        </li>
+                    </ul>
+                </li>
+                <?php endif; ?>
                 <li data-username="users" class="nav-item <?php echo basename($_SERVER['PHP_SELF']) == 'users.php' ? 'active' : ''; ?>">
                     <a href="users.php" class="nav-link">
                         <span class="pcoded-micon"><i class="feather icon-user-plus"></i></span>

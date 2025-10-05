@@ -378,10 +378,10 @@ try {
                                                                         <a class="dropdown-item text-danger" href="#" onclick="deleteUser(<?= $user['id'] ?>)">
                                                                             <i class="feather icon-trash-2 mr-2"></i><?= __("delete") ?>
                                                                         </a>
-                                                                        <!-- Fire/Unfire -->
-                                                                        <a class="dropdown-item <?= $user['fired'] ? 'text-success' : 'text-warning' ?>" href="#" onclick="fireUser(<?= $user['id'] ?>)">
-                                                                            <i class="feather <?= $user['fired'] ? 'icon-refresh-ccw' : 'icon-user-x' ?> mr-2"></i>
-                                                                            <?= $user['fired'] ? __("reactivate") : __("fire") ?>
+                                                                        <!-- HR Management - Link to Employee Management -->
+                                                                        <a class="dropdown-item text-info" href="employee_management.php?user_id=<?= $user['id'] ?>">
+                                                                            <i class="feather icon-users mr-2"></i>
+                                                                            <?= __("manage_employee") ?>
                                                                         </a>
                                                                         <div class="dropdown-divider"></div>
                                                                         <!-- Documents -->
@@ -468,9 +468,10 @@ try {
                                                                                         <a class="dropdown-item text-danger" href="#" onclick="deleteUser(<?= $user['id'] ?>)">
                                                                                             <i class="feather icon-trash-2 mr-2"></i><?= __("delete") ?>
                                                                                         </a>
-                                                                                        <!-- Reactivate -->
-                                                                                        <a class="dropdown-item text-success" href="#" onclick="fireUser(<?= $user['id'] ?>)">
-                                                                                            <i class="feather icon-refresh-ccw mr-2"></i><?= __("reactivate") ?>
+                                                                                        <!-- HR Management - Link to Employee Management -->
+                                                                                        <a class="dropdown-item text-info" href="employee_management.php?user_id=<?= $user['id'] ?>">
+                                                                                            <i class="feather icon-users mr-2"></i>
+                                                                                            <?= __("manage_employee") ?>
                                                                                         </a>
                                                                                     </div>
                                                                                 </div>
@@ -1085,48 +1086,6 @@ try {
         }
     }
 
-    // Fire user function
-    function fireUser(userId) {
-        const confirmMessage = confirm('<?= __("are_you_sure_you_want_to_fire_this_user") ?>');
-        
-        if (confirmMessage) {
-            console.log('<?= __("firing_user") ?>:', userId);
-            
-            fetch('fire_user.php', {
-                method: 'POST',
-                headers: {
-                    'Content-Type': 'application/x-www-form-urlencoded', // Change this
-                    'X-Requested-With': 'XMLHttpRequest'
-                },
-                body: new URLSearchParams({ // Use URLSearchParams
-                    id: userId,
-                    csrf_token: '<?= $_SESSION['csrf_token'] ?>'
-                })
-            })
-            .then(response => {
-                if (!response.ok) {
-                    throw new Error('<?= __("network_response_was_not_ok") ?>');
-                }
-                return response.json();
-            })
-            .then(data => {
-                console.log('<?= __("fire_server_response") ?>:', data);
-                if (data.success) {
-                    createToast(data.message, 'success');
-                    // Reload after delay
-                    setTimeout(() => {
-                        window.location.reload();
-                    }, 1500);
-                } else {
-                    throw new Error(data.message || '<?= __("error_firing_user") ?>');
-                }
-            })
-            .catch(error => {
-                console.error('<?= __("fire_error") ?>:', error);
-                createToast(error.message || '<?= __("failed_to_fire_user") ?>', 'danger');
-            });
-        }
-    }
 
     // Image preview function
     function previewImage(input, previewId) {
