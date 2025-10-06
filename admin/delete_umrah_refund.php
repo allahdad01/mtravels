@@ -11,17 +11,17 @@ $data = json_decode(file_get_contents("php://input"), true);
 if ($_SERVER["REQUEST_METHOD"] == "POST" && isset($data['id'])) {
     $refundId = intval($data['id']);
 
-    // Step 1: Fetch Hotel Refund Details
-    $query = "SELECT umr.*, um.sold_to, um.supplier, um.sold_price, um.price, c.client_type 
-              FROM umrah_refunds umr 
-              JOIN umrah_bookings um ON umr.booking_id = um.booking_id 
-              LEFT JOIN clients c ON um.sold_to = c.id 
+    // Step 1: Fetch Refund Details
+    $query = "SELECT umr.*, um.sold_to, um.booking_id, c.client_type
+              FROM umrah_refunds umr
+              JOIN umrah_bookings um ON umr.booking_id = um.booking_id
+              LEFT JOIN clients c ON um.sold_to = c.id
               WHERE umr.id = ? AND umr.tenant_id = ?";
     $stmt = $conn->prepare($query);
     $stmt->bind_param("ii", $refundId, $tenant_id);
     $stmt->execute();
     $result = $stmt->get_result();
-    
+
     if ($result->num_rows === 0) {
         echo json_encode(['success' => false, 'message' => 'Refund not found.']);
         exit();
@@ -29,13 +29,36 @@ if ($_SERVER["REQUEST_METHOD"] == "POST" && isset($data['id'])) {
 
     $refund = $result->fetch_assoc();
     $clientId = $refund['sold_to'];
-    $supplierId = $refund['supplier'];
     $umrahId = $refund['booking_id'];
     $currency = $refund['currency'];
     $clientType = $refund['client_type'];
-    $sold = $refund['sold_price'];
-    $base = $refund['price'];
-    $profit = $sold - $base;
+    $refundType = $refund['refund_type'];
+    $refundAmount = $refund['refund_amount'];
+    $profit = $refund['sold_price'] - $refund['price'];
+
+    // Get all services for this booking (multi-supplier support)
+    $servicesQuery = "SELECT * FROM umrah_booking_services WHERE booking_id = ? AND tenant_id = ?";
+    $stmt = $conn->prepare($servicesQuery);
+    $stmt->bind_param('ii', $umrahId, $tenant_id);
+    $stmt->execute();
+    $servicesResult = $stmt->get_result();
+
+    if ($servicesResult->num_rows === 0) {
+        // Fallback to old single-supplier logic if no services found
+        $services = array(array(
+            'supplier_id' => $refund['supplier'] ?? null,
+            'base_price' => floatval($refund['price'] ?? 0),
+            'sold_price' => floatval($refund['sold_price'] ?? 0),
+            'profit' => floatval($refund['sold_price'] ?? 0) - floatval($refund['price'] ?? 0)
+        ));
+    } else {
+        $services = $servicesResult->fetch_all(MYSQLI_ASSOC);
+    }
+
+    // Calculate totals from services
+    $totalBasePrice = array_sum(array_column($services, 'base_price'));
+    $totalSoldPrice = array_sum(array_column($services, 'sold_price'));
+    $totalProfit = array_sum(array_column($services, 'profit'));
 
     // Start Transaction
     $conn->begin_transaction();
@@ -86,56 +109,56 @@ if ($_SERVER["REQUEST_METHOD"] == "POST" && isset($data['id'])) {
             }
         }
 
-        // Step 3: Reverse Supplier Transactions
-        if ($supplierId) {
-            $supplierTransactions = "SELECT id, amount, transaction_type, transaction_date FROM supplier_transactions 
-                                   WHERE supplier_id = ? AND transaction_of = 'umrah_refund' 
-                                   AND reference_id = ? AND tenant_id = ?";
-            $stmt = $conn->prepare($supplierTransactions);
-            $stmt->bind_param("iii", $supplierId, $refundId, $tenant_id);
-            $stmt->execute();
-            $supplierResults = $stmt->get_result();
+        // Step 3: Reverse Supplier Transactions for all suppliers involved in the refund
+        $supplierTransactions = "SELECT st.id, st.amount, st.transaction_type, st.transaction_date, st.supplier_id
+                                FROM supplier_transactions st
+                                WHERE st.transaction_of = 'umrah_refund'
+                                AND st.reference_id = ? AND st.tenant_id = ?";
+        $stmt = $conn->prepare($supplierTransactions);
+        $stmt->bind_param("ii", $refundId, $tenant_id);
+        $stmt->execute();
+        $supplierResults = $stmt->get_result();
 
-            while ($row = $supplierResults->fetch_assoc()) {
-                $amount = $row['amount'];
-                $transaction_date = $row['transaction_date'];
-                $transaction_id = $row['id'];
-                
-                // Check Supplier Type
-                $supplierTypeQuery = "SELECT supplier_type FROM suppliers WHERE id = ? AND tenant_id = ?";
-                $stmt = $conn->prepare($supplierTypeQuery);
-                $stmt->bind_param("ii", $supplierId, $tenant_id);
-                $stmt->execute();
-                $supplierTypeResult = $stmt->get_result();
-                $supplierTypeRow = $supplierTypeResult->fetch_assoc();
-                $supplierType = $supplierTypeRow['supplier_type'];
+        while ($row = $supplierResults->fetch_assoc()) {
+            $amount = $row['amount'];
+            $transaction_date = $row['transaction_date'];
+            $transaction_id = $row['id'];
+            $supplierId = $row['supplier_id'];
 
-                if ($supplierType === 'External') {
-                    // Adjust Supplier Balance
-                    $adjustSupplierBalance = "UPDATE suppliers 
-                                            SET balance = balance " . ($row['transaction_type'] == 'Credit' ? '-' : '+') . " ? 
-                                            WHERE id = ? AND tenant_id = ?";
-                    $stmt = $conn->prepare($adjustSupplierBalance);
-                    $stmt->bind_param("dii", $amount, $supplierId, $tenant_id);
-                    $stmt->execute();
-                    
-                    // Update subsequent transactions' running balances
-                    $updateSubsequentSupplierBalances = "UPDATE supplier_transactions 
-                                                       SET balance = balance " . ($row['transaction_type'] == 'Credit' ? '-' : '+') . " ? 
-                                                       WHERE supplier_id = ? AND transaction_date > ?
-                                                       AND tenant_id = ?
-                                                       ORDER BY transaction_date ASC";
-                    $stmtUpdate = $conn->prepare($updateSubsequentSupplierBalances);
-                    $stmtUpdate->bind_param("disi", $amount, $supplierId, $transaction_date, $tenant_id);
-                    $stmtUpdate->execute();
+            // Check Supplier Type
+            $supplierTypeQuery = "SELECT supplier_type FROM suppliers WHERE id = ? AND tenant_id = ?";
+            $stmtType = $conn->prepare($supplierTypeQuery);
+            $stmtType->bind_param("ii", $supplierId, $tenant_id);
+            $stmtType->execute();
+            $supplierTypeResult = $stmtType->get_result();
+            $supplierTypeRow = $supplierTypeResult->fetch_assoc();
+            $supplierType = $supplierTypeRow['supplier_type'];
 
-                    // Delete Supplier Transaction
-                    $deleteSupplierTransaction = "DELETE FROM supplier_transactions WHERE id = ? AND tenant_id = ?";
-                    $stmt = $conn->prepare($deleteSupplierTransaction);
-                    $stmt->bind_param("ii", $transaction_id, $tenant_id);
-                    $stmt->execute();
-                }
+            if ($supplierType === 'External') {
+                // Adjust Supplier Balance
+                $adjustSupplierBalance = "UPDATE suppliers
+                                        SET balance = balance " . ($row['transaction_type'] == 'credit' ? '-' : '+') . " ?
+                                        WHERE id = ? AND tenant_id = ?";
+                $stmtBalance = $conn->prepare($adjustSupplierBalance);
+                $stmtBalance->bind_param("dii", $amount, $supplierId, $tenant_id);
+                $stmtBalance->execute();
+
+                // Update subsequent transactions' running balances
+                $updateSubsequentSupplierBalances = "UPDATE supplier_transactions
+                                                   SET balance = balance " . ($row['transaction_type'] == 'credit' ? '-' : '+') . " ?
+                                                   WHERE supplier_id = ? AND transaction_date > ?
+                                                   AND tenant_id = ?
+                                                   ORDER BY transaction_date ASC";
+                $stmtUpdate = $conn->prepare($updateSubsequentSupplierBalances);
+                $stmtUpdate->bind_param("disi", $amount, $supplierId, $transaction_date, $tenant_id);
+                $stmtUpdate->execute();
             }
+
+            // Delete Supplier Transaction
+            $deleteSupplierTransaction = "DELETE FROM supplier_transactions WHERE id = ? AND tenant_id = ?";
+            $stmtDelete = $conn->prepare($deleteSupplierTransaction);
+            $stmtDelete->bind_param("ii", $transaction_id, $tenant_id);
+            $stmtDelete->execute();
         }
 
         // Step 4: Handle Main Account Transactions
@@ -182,17 +205,16 @@ if ($_SERVER["REQUEST_METHOD"] == "POST" && isset($data['id'])) {
             $stmt->execute();
         }
 
-        // Step 5: Update Hotel Booking Profit
-        if ($refund['refund_type'] === 'full') {
-            // For full refund, restore the original profit
-            $updateHotelQuery = "UPDATE umrah_bookings SET profit = ? WHERE booking_id = ? AND tenant_id = ?";
-            $stmt = $conn->prepare($updateHotelQuery);
+        // Step 5: Restore Booking Profit
+        if ($refundType === 'full') {
+            $updateBookingQuery = "UPDATE umrah_bookings SET profit = ?, status = 'confirmed' WHERE booking_id = ? AND tenant_id = ?";
+            $stmt = $conn->prepare($updateBookingQuery);
             $stmt->bind_param("dii", $profit, $umrahId, $tenant_id);
             $stmt->execute();
         } else {
-            // For partial refund, add back the refunded amount to profit
-            $updateHotelQuery = "UPDATE umrah_bookings SET profit = ? WHERE booking_id = ? AND tenant_id = ?";
-            $stmt = $conn->prepare($updateHotelQuery);
+           
+            $updateBookingQuery = "UPDATE umrah_bookings SET profit = ? WHERE booking_id = ? AND tenant_id = ?";
+            $stmt = $conn->prepare($updateBookingQuery);
             $stmt->bind_param("dii", $profit, $umrahId, $tenant_id);
             $stmt->execute();
         }

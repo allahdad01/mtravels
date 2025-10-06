@@ -130,6 +130,10 @@ try {
                         $stmt_update_main = $conn->prepare("UPDATE main_account SET usd_balance = usd_balance - ? WHERE id = ? AND tenant_id = ?");
                     } elseif ($main_currency === 'AFS') {
                         $stmt_update_main = $conn->prepare("UPDATE main_account SET afs_balance = afs_balance - ? WHERE id = ? AND tenant_id = ?");
+                    }  elseif ($main_currency === 'EUR') {
+                        $stmt_update_main = $conn->prepare("UPDATE main_account SET euro_balance = euro_balance + ? WHERE id = ? AND tenant_id = ?");
+                    } elseif ($main_currency === 'DARHAM') {
+                        $stmt_update_main = $conn->prepare("UPDATE main_account SET darham_balance = darham_balance + ? WHERE id = ? AND tenant_id = ?");
                     } else {
                         throw new Exception("Unsupported currency type for main account balance update.");
                     }
@@ -148,6 +152,10 @@ try {
                         $stmt_update_main = $conn->prepare("UPDATE main_account SET usd_balance = usd_balance + ? WHERE id = ? AND tenant_id = ?");
                     } elseif ($main_currency === 'AFS') {
                         $stmt_update_main = $conn->prepare("UPDATE main_account SET afs_balance = afs_balance + ? WHERE id = ? AND tenant_id = ?");
+                    }  elseif ($main_currency === 'EUR') {
+                        $stmt_update_main = $conn->prepare("UPDATE main_account SET euro_balance = euro_balance + ? WHERE id = ? AND tenant_id = ?");
+                    } elseif ($main_currency === 'DARHAM') {
+                        $stmt_update_main = $conn->prepare("UPDATE main_account SET darham_balance = darham_balance + ? WHERE id = ? AND tenant_id = ?");
                     } else {
                         throw new Exception("Unsupported currency type for main account balance update.");
                     }
@@ -165,14 +173,14 @@ try {
                     throw new Exception("Invalid transaction type for main account transaction.");
                 }
                 
-                $stmt_update_main->bind_param("di", $main_amount, $paid_to_id, $tenant_id);
+                $stmt_update_main->bind_param("dii", $main_amount, $paid_to_id, $tenant_id);
                 if (!$stmt_update_main->execute()) {
                     throw new Exception("Failed to update main account balance for transaction.");
                 }
                 $stmt_update_main->close();
                 
                 // Execute the update for subsequent transactions
-                $update_subsequent_main->bind_param("diss", $main_amount, $paid_to_id, $transaction_date, $main_currency, $tenant_id);
+                $update_subsequent_main->bind_param("dissi", $main_amount, $paid_to_id, $transaction_date, $main_currency, $tenant_id);
                 if (!$update_subsequent_main->execute()) {
                     throw new Exception("Failed to update subsequent main account transaction balances.");
                 }

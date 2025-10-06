@@ -237,7 +237,7 @@ function updateExchangeRate($conn, $from_currency, $to_currency, $rate) {
 }
 
 // Function to get exchange rate history
-function getExchangeRateHistory($conn, $from_currency, $to_currency, $days = 7, $tenant_id) {
+function getExchangeRateHistory($conn, $from_currency, $to_currency, $tenant_id, $days = 7) {
     try {
         $stmt = $conn->prepare("
             SELECT rate, created_at, tenant_id 

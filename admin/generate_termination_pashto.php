@@ -1,7 +1,6 @@
 <?php
 require_once '../includes/conn.php';
 require_once '../includes/db.php';
-require_once '../includes/csp_headers.php';
 require_once '../includes/language_helpers.php';
 
 if (session_status() === PHP_SESSION_NONE) {
@@ -26,7 +25,7 @@ try {
         die('کاربر یافت نشد');
     }
 
-    $settingStmt = $pdo->query("SELECT * FROM settings WHERE tenant_id = ?");
+    $settingStmt = $pdo->prepare("SELECT * FROM settings WHERE tenant_id = ?");
     $settingStmt->execute([$tenant_id]);
     $settings = $settingStmt->fetch(PDO::FETCH_ASSOC);
 
@@ -39,8 +38,15 @@ try {
     die("خطا در دریافت معلومات قرارداد. لطفاً بعداً دوباره تلاش نمایید.");
 }
 
-$job_title = filter_input(INPUT_GET, 'job_title', FILTER_DEFAULT);
-$termination_date = filter_input(INPUT_GET, 'termination_date', FILTER_DEFAULT);
+$job_title = filter_input(INPUT_POST, 'job_title', FILTER_DEFAULT);
+if (!$job_title) {
+    $job_title = filter_input(INPUT_GET, 'job_title', FILTER_DEFAULT);
+}
+
+$termination_date = filter_input(INPUT_POST, 'termination_date', FILTER_DEFAULT);
+if (!$termination_date) {
+    $termination_date = filter_input(INPUT_GET, 'termination_date', FILTER_DEFAULT);
+}
 
 ?>
 

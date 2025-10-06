@@ -350,9 +350,7 @@ include '../includes/header.php';
                                                 <i class="feather icon-user-plus mr-1"></i><?php echo __('add_employee'); ?>
                                             </a>
                                         <?php endif; ?>
-                                        <a href="<?php echo $user_id ? 'users.php' : 'hr.php'; ?>" class="btn btn-outline-secondary">
-                                            <i class="feather icon-arrow-left mr-1"></i><?php echo $user_id ? __('back_to_users') : __('back_to_hr'); ?>
-                                        </a>
+                                        
                                     </div>
                                 </div>
 
@@ -492,6 +490,9 @@ include '../includes/header.php';
                                                                                 </a>
                                                                                 <a class="dropdown-item" href="#" onclick="showFineLetterModal(<?php echo $employee['id']; ?>)">
                                                                                     <i class="fa fa-money-bill-alt mr-2"></i><?php echo __('fine_letter'); ?>
+                                                                                </a>
+                                                                                <a class="dropdown-item" href="#" onclick="showTerminationLetterModal(<?php echo $employee['id']; ?>)">
+                                                                                    <i class="feather icon-user-x mr-2"></i><?php echo __('termination_letter'); ?>
                                                                                 </a>
                                                                             </div>
                                                                         </div>

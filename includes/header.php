@@ -1138,12 +1138,6 @@ input[type="button"] {
                     </ul>
                 </li>
                 <?php endif; ?>
-                <li data-username="users" class="nav-item <?php echo basename($_SERVER['PHP_SELF']) == 'users.php' ? 'active' : ''; ?>">
-                    <a href="users.php" class="nav-link">
-                        <span class="pcoded-micon"><i class="feather icon-user-plus"></i></span>
-                        <span class="pcoded-mtext"><?= __('users') ?></span>
-                    </a>
-                </li>
                
                 <?php 
                 $bookingPages = ['ticket.php', 'refund_ticket.php', 'date_change.php', 'hotel.php', 'ticket_reserve.php', 'ticket_weights.php'];

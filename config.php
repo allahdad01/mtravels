@@ -11,6 +11,9 @@ define('HESABPAY_MERCHANT_ID', '0780310431'); // Replace with actual merchant ID
 define('HESABPAY_API_KEY', 'M2FjMGYxNjctNDEzZi00ODY2LWJjY2ItNmRiOGUxZDVkMzVmX18yNzZlN2U5YjFhOTU5MmJmYjgwMw=='); // Replace with actual API key
 define('HESABPAY_BASE_URL', 'https://api.hesabpay.com/v1');
 
+// Platform Configuration
+define('PLATFORM_NAME', 'MTravels');
+
 
 // Validate tenant_id
 $tenant_id = isset($_SESSION['tenant_id']) ? intval($_SESSION['tenant_id']) : null;

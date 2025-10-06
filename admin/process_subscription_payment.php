@@ -43,6 +43,7 @@ if (!isset($pdo) || !$pdo) {
     die("Database connection failed. Please contact administrator.");
 }
 
+
 // Get tenant_id from session
 $tenant_id = $_SESSION['tenant_id'] ?? null;
 if (!$tenant_id) {
@@ -81,6 +82,7 @@ $amount_afn = $amount; // Placeholder, add conversion if needed
 // Prepare Hesabpay API call
 $api_url = 'https://api.hesab.com/api/v1/payment/create-session';
 $data = [
+    'business_name' => PLATFORM_NAME,
     'items' => [
         [
             'id' => $subscription_id,

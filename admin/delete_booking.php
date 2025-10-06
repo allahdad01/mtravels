@@ -151,15 +151,20 @@ if ($booking_id !== null) {
             $stmt->execute();
         }
 
-        // Step 3: Reverse Supplier Transactions for all services
+        // Step 3: Reverse Supplier Transactions for all unique suppliers
+        $uniqueSuppliers = [];
         foreach ($services as $service) {
             $supplier_id = $service['supplier_id'];
-            $supplier_type = $service['supplier_type'];
+            if (!isset($uniqueSuppliers[$supplier_id])) {
+                $uniqueSuppliers[$supplier_id] = $service['supplier_type'];
+            }
+        }
 
+        foreach ($uniqueSuppliers as $supplier_id => $supplier_type) {
             if ($supplier_type === 'External') {
                 $supplierTransactions = "SELECT id, amount, transaction_type, transaction_date FROM supplier_transactions
-                                          WHERE supplier_id = ? AND transaction_of = 'umrah'
-                                          AND reference_id = ? AND tenant_id = ?";
+                                           WHERE supplier_id = ? AND transaction_of = 'umrah'
+                                           AND reference_id = ? AND tenant_id = ?";
                 $stmt = $conn->prepare($supplierTransactions);
                 $stmt->bind_param("iii", $supplier_id, $booking_id, $tenant_id);
                 $stmt->execute();
@@ -172,8 +177,8 @@ if ($booking_id !== null) {
 
                     // Adjust Supplier Balance
                     $adjustSupplierBalance = "UPDATE suppliers
-                                               SET balance = balance " . ($row['transaction_type'] == 'Credit' ? '-' : '+') . " ?
-                                               WHERE id = ? AND tenant_id = ?";
+                                                SET balance = balance " . ($row['transaction_type'] == 'Credit' ? '-' : '+') . " ?
+                                                WHERE id = ? AND tenant_id = ?";
                     $stmt = $conn->prepare($adjustSupplierBalance);
                     $stmt->bind_param("dii", $amount, $supplier_id, $tenant_id);
                     $stmt->execute();
@@ -182,10 +187,10 @@ if ($booking_id !== null) {
                     // If the deleted transaction was a Credit, we need to subtract that amount from all later transactions
                     // If it was a Debit, we need to add that amount to all later transactions
                     $updateSubsequentSupplierBalances = "UPDATE supplier_transactions
-                                                         SET balance = balance " . ($row['transaction_type'] == 'Credit' ? '-' : '+') . " ?
-                                                         WHERE supplier_id = ? AND transaction_date > ?
-                                                         AND tenant_id = ?
-                                                         ORDER BY transaction_date ASC";
+                                                          SET balance = balance " . ($row['transaction_type'] == 'Credit' ? '-' : '+') . " ?
+                                                          WHERE supplier_id = ? AND transaction_date > ?
+                                                          AND tenant_id = ?
+                                                          ORDER BY transaction_date ASC";
                     $stmtUpdate = $conn->prepare($updateSubsequentSupplierBalances);
                     $stmtUpdate->bind_param("disi", $amount, $supplier_id, $transaction_date, $tenant_id);
                     $stmtUpdate->execute();
@@ -199,8 +204,8 @@ if ($booking_id !== null) {
             } else if ($supplier_type === 'Internal') {
                 // For internal suppliers, just delete the transactions without balance adjustments
                 $deleteSupplierTransactions = "DELETE FROM supplier_transactions
-                                              WHERE supplier_id = ? AND transaction_of = 'umrah'
-                                              AND reference_id = ? AND tenant_id = ?";
+                                               WHERE supplier_id = ? AND transaction_of = 'umrah'
+                                               AND reference_id = ? AND tenant_id = ?";
                 $stmt = $conn->prepare($deleteSupplierTransactions);
                 $stmt->bind_param("iii", $supplier_id, $booking_id, $tenant_id);
                 $stmt->execute();
@@ -234,6 +239,10 @@ if ($booking_id !== null) {
                         $stmt_update_main = $conn->prepare("UPDATE main_account SET usd_balance = usd_balance - ? WHERE id = ? AND tenant_id = ?");
                     } elseif ($main_currency === 'AFS') {
                         $stmt_update_main = $conn->prepare("UPDATE main_account SET afs_balance = afs_balance - ? WHERE id = ? AND tenant_id = ?");
+                    }  elseif ($main_currency === 'EUR') {
+                        $stmt_update_main = $conn->prepare("UPDATE main_account SET euro_balance = euro_balance + ? WHERE id = ? AND tenant_id = ?");
+                    } elseif ($main_currency === 'DARHAM') {
+                        $stmt_update_main = $conn->prepare("UPDATE main_account SET darham_balance = darham_balance + ? WHERE id = ? AND tenant_id = ?");
                     } else {
                         throw new Exception("Unsupported currency type for main account balance update.");
                     }
@@ -252,6 +261,10 @@ if ($booking_id !== null) {
                         $stmt_update_main = $conn->prepare("UPDATE main_account SET usd_balance = usd_balance + ? WHERE id = ? AND tenant_id = ?");
                     } elseif ($main_currency === 'AFS') {
                         $stmt_update_main = $conn->prepare("UPDATE main_account SET afs_balance = afs_balance + ? WHERE id = ? AND tenant_id = ?");
+                    }  elseif ($main_currency === 'EUR') {
+                        $stmt_update_main = $conn->prepare("UPDATE main_account SET euro_balance = euro_balance + ? WHERE id = ? AND tenant_id = ?");
+                    } elseif ($main_currency === 'DARHAM') {
+                        $stmt_update_main = $conn->prepare("UPDATE main_account SET darham_balance = darham_balance + ? WHERE id = ? AND tenant_id = ?");
                     } else {
                         throw new Exception("Unsupported currency type for main account balance update.");
                     }

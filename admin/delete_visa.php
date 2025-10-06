@@ -167,6 +167,10 @@ try {
                     $stmt_update_main = $pdo->prepare("UPDATE main_account SET usd_balance = usd_balance - ? WHERE id = ? AND tenant_id = ?");
                 } elseif ($main_currency === 'AFS') {
                     $stmt_update_main = $pdo->prepare("UPDATE main_account SET afs_balance = afs_balance - ? WHERE id = ? AND tenant_id = ?");
+                }  elseif ($main_currency === 'EUR') {
+                    $stmt_update_main = $pdo->prepare("UPDATE main_account SET euro_balance = euro_balance + ? WHERE id = ? AND tenant_id = ?");
+                } elseif ($main_currency === 'DARHAM') {
+                    $stmt_update_main = $pdo->prepare("UPDATE main_account SET darham_balance = darham_balance + ? WHERE id = ? AND tenant_id = ?");
                 } else {
                     throw new Exception("Unsupported currency type for main account balance update.");
                 }
@@ -185,6 +189,10 @@ try {
                     $stmt_update_main = $pdo->prepare("UPDATE main_account SET usd_balance = usd_balance + ? WHERE id = ? AND tenant_id = ?");
                 } elseif ($main_currency === 'AFS') {
                     $stmt_update_main = $pdo->prepare("UPDATE main_account SET afs_balance = afs_balance + ? WHERE id = ? AND tenant_id = ?");
+                }  elseif ($main_currency === 'EUR') {
+                    $stmt_update_main = $conn->prepare("UPDATE main_account SET euro_balance = euro_balance + ? WHERE id = ? AND tenant_id = ?");
+                } elseif ($main_currency === 'DARHAM') {
+                    $stmt_update_main = $conn->prepare("UPDATE main_account SET darham_balance = darham_balance + ? WHERE id = ? AND tenant_id = ?");
                 } else {
                     throw new Exception("Unsupported currency type for main account balance update.");
                 }

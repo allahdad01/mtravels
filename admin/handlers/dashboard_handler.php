@@ -394,10 +394,21 @@ $monthlyStats = $stmt->fetchAll(PDO::FETCH_ASSOC);
 
 /**
  * Get top performers by ticket profit
+ * @param int|null $month Month to filter (1-12), null for all time
+ * @param int|null $year Year to filter, null for all time
  * @return array Array of top performers with their total profit
  */
-function getTopPerformersByTicketProfit() {
+function getTopPerformersByTicketProfit($month = null, $year = null) {
     global $pdo, $tenant_id;
+
+    $whereClause = "u.tenant_id = ?";
+    $params = [$tenant_id];
+
+    if ($month !== null && $year !== null) {
+        $whereClause .= " AND MONTH(tb.created_at) = ? AND YEAR(tb.created_at) = ?";
+        $params[] = $month;
+        $params[] = $year;
+    }
 
     $query = "SELECT
                 u.name AS user_name,
@@ -406,10 +417,10 @@ function getTopPerformersByTicketProfit() {
                 COALESCE(SUM(CASE WHEN tb.currency = 'AFS' THEN tb.profit ELSE 0 END), 0) AS total_profit_afs,
                 COUNT(tb.id) AS total_tickets
               FROM users u
-              LEFT JOIN ticket_bookings tb 
-                     ON u.id = tb.created_by 
+              LEFT JOIN ticket_bookings tb
+                     ON u.id = tb.created_by
                     AND tb.tenant_id = ?
-              WHERE u.tenant_id = ?
+              WHERE $whereClause
               GROUP BY u.id, u.name
               HAVING (total_profit_usd > 0 OR total_profit_afs > 0)
               ORDER BY total_profit_usd DESC, total_profit_afs DESC
@@ -417,7 +428,7 @@ function getTopPerformersByTicketProfit() {
 
     try {
         $stmt = $pdo->prepare($query);
-        $stmt->execute([$tenant_id, $tenant_id]);
+        $stmt->execute(array_merge([$tenant_id], $params));
         return $stmt->fetchAll(PDO::FETCH_ASSOC);
     } catch (PDOException $e) {
         error_log("Error getting top performers: " . $e->getMessage());

@@ -40,8 +40,19 @@ $(document).ready(function() {
             alert('Please select a year');
             return;
         }
-        
+
         applySalesFilter('yearly', selectedYear);
+    });
+
+    // Handle performance filter
+    $('.apply-performance-filter').on('click', function() {
+        const selectedMonth = $('#performanceDateInput').val();
+        if (!selectedMonth) {
+            alert('Please select a month');
+            return;
+        }
+
+        applyPerformanceFilter(selectedMonth);
     });
     
     // Function to apply the filter and update the card
@@ -105,7 +116,83 @@ $(document).ready(function() {
             }
         });
     }
-    
+
+    // Function to apply performance filter and update the table
+    function applyPerformanceFilter(filterDate) {
+        // Show loading indicator
+        const tableBody = $('#topPerformersTableBody');
+        tableBody.html('<tr><td colspan="5" class="text-center"><i class="fa fa-spinner fa-spin"></i> Loading...</td></tr>');
+
+        // Send AJAX request
+        $.ajax({
+            url: 'ajax/get_filtered_performance.php',
+            type: 'POST',
+            data: {
+                filter_date: filterDate
+            },
+            dataType: 'json',
+            success: function(response) {
+                if (response.status === 'success') {
+                    // Update table with filtered data
+                    let html = '';
+                    if (response.data.length > 0) {
+                        let rank = 1;
+                        response.data.forEach(function(performer) {
+                            let rankClass = '';
+                            let rankIconClass = '';
+
+                            // Add styling for top 3 performers
+                            if (rank === 1) {
+                                rankClass = 'rank-1';
+                                rankIconClass = 'fas fa-trophy';
+                            } else if (rank === 2) {
+                                rankClass = 'rank-2';
+                                rankIconClass = 'fas fa-medal';
+                            } else if (rank === 3) {
+                                rankClass = 'rank-3';
+                                rankIconClass = 'fas fa-award';
+                            }
+
+                            html += '<tr>';
+                            html += '<td class="text-center">';
+                            if (rank <= 3) {
+                                html += '<span class="rank-badge ' + rankClass + '"><i class="' + rankIconClass + '"></i></span>';
+                            } else {
+                                html += '<span class="font-weight-bold">' + rank + '</span>';
+                            }
+                            html += '</td>';
+                            html += '<td><span class="performer-name">' + performer.user_name + '</span></td>';
+                            html += '<td class="text-center"><span class="ticket-count-badge">' + performer.total_tickets + '</span></td>';
+                            html += '<td class="text-right"><span class="performer-profit">$' + formatNumber(performer.total_profit_usd) + '</span></td>';
+                            html += '<td class="text-right"><span class="performer-profit">' + formatNumber(performer.total_profit_afs) + '</span></td>';
+                            html += '</tr>';
+                            rank++;
+                        });
+                    } else {
+                        html = '<tr><td colspan="5" class="text-center">No ticket sales data available for selected period</td></tr>';
+                    }
+
+                    tableBody.html(html);
+
+                    // Hide the filter after applying
+                    $('#performanceDateFilter').collapse('hide');
+
+                    // Add visual indication that filter is applied
+                    $('.filter-controls .filter-icon[data-target="#performanceDateFilter"]').addClass('text-success').removeClass('text-primary');
+                } else {
+                    // Show error
+                    alert(response.message || 'Failed to retrieve data');
+                    tableBody.html('<tr><td colspan="5" class="text-center">Error loading data</td></tr>');
+                }
+            },
+            error: function(xhr, status, error) {
+                console.error(error);
+                alert('An error occurred while processing your request.');
+                tableBody.html('<tr><td colspan="5" class="text-center">Error loading data</td></tr>');
+            }
+        });
+    }
+
     // Helper function to format numbers
     function formatNumber(number) {
         return parseFloat(number).toFixed(2).replace(/\d(?=(\d{3})+\.)/g, '$&,');

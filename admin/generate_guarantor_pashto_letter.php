@@ -2,7 +2,6 @@
 // Include necessary files
 require_once '../includes/conn.php';
 require_once '../includes/db.php';
-require_once '../includes/csp_headers.php';
 require_once '../includes/language_helpers.php';
 
 // Start session if not already started
@@ -32,7 +31,7 @@ try {
     }
 
     // Fetch company settings
-    $settingStmt = $pdo->query("SELECT * FROM settings WHERE tenant_id = ?");
+    $settingStmt = $pdo->prepare("SELECT * FROM settings WHERE tenant_id = ?");
     $settingStmt->execute([$tenant_id]);
     $settings = $settingStmt->fetch(PDO::FETCH_ASSOC);
 

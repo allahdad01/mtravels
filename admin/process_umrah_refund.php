@@ -47,41 +47,58 @@ try {
     $stmt->bind_param('ii', $booking_id, $tenant_id);
     $stmt->execute();
     $bookingResult = $stmt->get_result();
-    
+
     if ($bookingResult->num_rows === 0) {
         throw new Exception('Umrah booking not found');
     }
-    
+
     $booking = $bookingResult->fetch_assoc();
-    $originalProfit = floatval($booking['profit']);
-    $originalBase = floatval($booking['price']);
-    $originalSold = floatval($booking['sold_price']);
-    
+
+    // Get all services for this booking (multi-supplier support)
+    $servicesQuery = "SELECT * FROM umrah_booking_services WHERE booking_id = ? AND tenant_id = ?";
+    $stmt = $conn->prepare($servicesQuery);
+    $stmt->bind_param('ii', $booking_id, $tenant_id);
+    $stmt->execute();
+    $servicesResult = $stmt->get_result();
+
+    if ($servicesResult->num_rows === 0) {
+        // Fallback to old single-supplier logic if no services found
+        $services = array(array(
+            'supplier_id' => $booking['supplier'],
+            'base_price' => floatval($booking['price']),
+            'sold_price' => floatval($booking['sold_price']),
+            'profit' => floatval($booking['profit']),
+            'currency' => $booking['currency']
+        ));
+    } else {
+        $services = $servicesResult->fetch_all(MYSQLI_ASSOC);
+    }
+
+    // Calculate totals from services
+    $totalBasePrice = array_sum(array_column($services, 'base_price'));
+    $totalSoldPrice = array_sum(array_column($services, 'sold_price'));
+    $totalProfit = array_sum(array_column($services, 'profit'));
+
     // Calculate new profit based on refund type
     if ($refund_type === 'full') {
         // Full refund - set profit to zero and refund the total sold amount
         $newProfit = 0;
-        $refund_amount = $originalSold; // Refund the total sold amount
-        $refundToSupplier = $originalBase; // Full base amount refund to supplier
+        $refund_amount = $totalSoldPrice; // Refund the total sold amount
     } else {
         // Partial refund
         if ($refund_amount < 0) {
             throw new Exception('Invalid refund amount');
         }
-        
-        if ($refund_amount > $originalSold) {
+
+        if ($refund_amount > $totalSoldPrice) {
             throw new Exception('Refund amount cannot be greater than sold amount');
         }
 
         // Calculate how much we're keeping (not refunding)
-        $amountKept = $originalSold - $refund_amount;
-        
+        $amountKept = $totalSoldPrice - $refund_amount;
+
         // New profit is proportional to amount kept
         $newProfit = $amountKept;
-        
-        // Calculate proportional refund to supplier based on refund amount
-        $refundPercentage = $refund_amount / $originalSold;
-        $refundToSupplier = $originalBase * $refundPercentage;
     }
 
     // Insert refund record
@@ -94,69 +111,79 @@ try {
     // Get the ID of the newly inserted refund record
     $refund_id = $conn->insert_id;
     
-    // Update booking profit
+    // Update booking profit and status
     $updateQuery = "UPDATE umrah_bookings SET profit = ?, due = '0', status = 'refunded' WHERE booking_id = ? AND tenant_id = ?";
     $stmt = $conn->prepare($updateQuery);
     $stmt->bind_param('dii', $newProfit, $booking_id, $tenant_id);
     $stmt->execute();
 
-    // Get supplier details
-    $stmt_check_balance = $conn->prepare("SELECT balance, currency, name, supplier_type FROM suppliers WHERE id = ? AND tenant_id = ?");
-    $stmt_check_balance->bind_param("ii", $booking['supplier'], $tenant_id);
-    if (!$stmt_check_balance->execute()) {
-        throw new Exception("Failed to fetch supplier details");
-    }
-    $supplierResult = $stmt_check_balance->get_result()->fetch_assoc();
-    if (!$supplierResult) {
-        throw new Exception("Supplier not found");
-    } 
-    $current_balance = $supplierResult['balance'];
-    $supplier_currency = $supplierResult['currency'];
-    $supplier_name = $supplierResult['name'];
-    $supplier_type = $supplierResult['supplier_type'];
-    
-    // Handle supplier balance and transaction for External suppliers
-    if ($supplier_type === 'External') {
-        // Convert refund amount if currencies differ
-        $supplierRefundAmount = $refundToSupplier;
 
-        // Update supplier balance
-        $newSupplierBalance = $current_balance + $supplierRefundAmount;
-        $updateSupplierStmt = $conn->prepare("UPDATE suppliers SET balance = ? WHERE id = ? AND tenant_id = ?");
-        $updateSupplierStmt->bind_param("dii", $newSupplierBalance, $booking['supplier'], $tenant_id);
-        if (!$updateSupplierStmt->execute()) {
-            throw new Exception("Failed to update supplier balance");
+    // Process refunds for each service/supplier
+    foreach ($services as $service) {
+        $supplier_id = $service['supplier_id'];
+        $service_base_price = floatval($service['base_price']);
+        $service_sold_price = floatval($service['sold_price']);
+        $service_profit = floatval($service['profit']);
+
+
+        // Get supplier details
+        $stmt_check_balance = $conn->prepare("SELECT balance, currency, name, supplier_type FROM suppliers WHERE id = ? AND tenant_id = ?");
+        $stmt_check_balance->bind_param("ii", $supplier_id, $tenant_id);
+        if (!$stmt_check_balance->execute()) {
+            throw new Exception("Failed to fetch supplier details for supplier ID: $supplier_id");
         }
+        $supplierResult = $stmt_check_balance->get_result()->fetch_assoc();
+        if (!$supplierResult) {
+            throw new Exception("Supplier not found for ID: $supplier_id");
+        }
+        $current_balance = $supplierResult['balance'];
+        $supplier_currency = $supplierResult['currency'];
+        $supplier_name = $supplierResult['name'];
+        $supplier_type = $supplierResult['supplier_type'];
 
-        // Record supplier transaction with balance
-        $insertSupplierTransactionStmt = $conn->prepare("INSERT INTO supplier_transactions 
-            (transaction_date, supplier_id, reference_id, amount, balance, transaction_type, remarks, transaction_of, tenant_id)
-            VALUES (NOW(), ?, ?, ?, ?, 'credit', ?, 'umrah_refund', ?)");
-        $supplierRemarks = "Refund for umrah booking #$booking_id - " . $reason;
-        $insertSupplierTransactionStmt->bind_param("iiddsi", 
-            $booking['supplier'],
-            $refund_id,
-            $supplierRefundAmount,
-            $newSupplierBalance,
-            $supplierRemarks,
-            $tenant_id
-        );
-    } else {
-        // Record supplier transaction without balance for non-External suppliers
-        $insertSupplierTransactionStmt = $conn->prepare("INSERT INTO supplier_transactions 
-            (transaction_date, supplier_id, reference_id, amount, transaction_type, remarks, transaction_of, tenant_id)
-            VALUES (NOW(), ?, ?, ?, 'credit', ?, 'umrah_refund', ?)");
-        $supplierRemarks = "Refund for umrah booking #$booking_id - " . $reason;
-        $insertSupplierTransactionStmt->bind_param("iidsi", 
-            $booking['supplier'],
-            $refund_id,
-            $refundToSupplier,
-            $supplierRemarks,
-            $tenant_id
-        );
-    }
-    if (!$insertSupplierTransactionStmt->execute()) {
-        throw new Exception("Failed to record supplier transaction");
+        // Handle supplier balance and transaction for External suppliers
+        if ($supplier_type === 'External') {
+            // Convert refund amount if currencies differ (simplified - assuming same currency for now)
+            $supplierRefundAmount = $service_refund_amount;
+
+            // Update supplier balance
+            $newSupplierBalance = $current_balance + $supplierRefundAmount;
+            $updateSupplierStmt = $conn->prepare("UPDATE suppliers SET balance = ? WHERE id = ? AND tenant_id = ?");
+            $updateSupplierStmt->bind_param("dii", $newSupplierBalance, $supplier_id, $tenant_id);
+            if (!$updateSupplierStmt->execute()) {
+                throw new Exception("Failed to update supplier balance for supplier ID: $supplier_id");
+            }
+
+            // Record supplier transaction with balance
+            $insertSupplierTransactionStmt = $conn->prepare("INSERT INTO supplier_transactions
+                (transaction_date, supplier_id, reference_id, amount, balance, transaction_type, remarks, transaction_of, tenant_id)
+                VALUES (NOW(), ?, ?, ?, ?, 'credit', ?, 'umrah_refund', ?)");
+            $supplierRemarks = "Refund for umrah booking #$booking_id - " . $reason;
+            $insertSupplierTransactionStmt->bind_param("iiddsi",
+                $supplier_id,
+                $refund_id,
+                $supplierRefundAmount,
+                $newSupplierBalance,
+                $supplierRemarks,
+                $tenant_id
+            );
+        } else {
+            // Record supplier transaction without balance for non-External suppliers
+            $insertSupplierTransactionStmt = $conn->prepare("INSERT INTO supplier_transactions
+                (transaction_date, supplier_id, reference_id, amount, transaction_type, remarks, transaction_of, tenant_id)
+                VALUES (NOW(), ?, ?, ?, 'credit', ?, 'umrah_refund', ?)");
+            $supplierRemarks = "Refund for umrah booking #$booking_id - " . $reason;
+            $insertSupplierTransactionStmt->bind_param("iidsi",
+                $supplier_id,
+                $refund_id,
+                $service_refund_amount,
+                $supplierRemarks,
+                $tenant_id
+            );
+        }
+        if (!$insertSupplierTransactionStmt->execute()) {
+            throw new Exception("Failed to record supplier transaction for supplier ID: $supplier_id");
+        }
     }
 
     // Get client details and type

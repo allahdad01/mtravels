@@ -1,7 +1,6 @@
 <?php
 require_once '../includes/conn.php';
 require_once '../includes/db.php';
-require_once '../includes/csp_headers.php';
 require_once '../includes/language_helpers.php';
 
 if (session_status() === PHP_SESSION_NONE) {
@@ -27,7 +26,7 @@ try {
         die('کاربر یافت نشد');
     }
 
-    $settingStmt = $pdo->query("SELECT * FROM settings WHERE tenant_id = ?");
+    $settingStmt = $pdo->prepare("SELECT * FROM settings WHERE tenant_id = ?");
     $settingStmt->execute([$tenant_id]);
     $settings = $settingStmt->fetch(PDO::FETCH_ASSOC);
 
@@ -39,10 +38,25 @@ try {
     error_log("Database error: " . $e->getMessage());
     die("خطا در دریافت معلومات قرارداد. لطفاً بعداً دوباره تلاش نمایید.");
 }
-$takhaluf = filter_input(INPUT_GET, 'takhaluf', FILTER_DEFAULT);
-$job_title = filter_input(INPUT_GET, 'job_title', FILTER_DEFAULT);
-$fine_amount = filter_input(INPUT_GET, 'fine_amount', FILTER_DEFAULT);
-$currency = filter_input(INPUT_GET, 'currency', FILTER_DEFAULT);
+$takhaluf = filter_input(INPUT_POST, 'takhaluf', FILTER_DEFAULT);
+if (!$takhaluf) {
+    $takhaluf = filter_input(INPUT_GET, 'takhaluf', FILTER_DEFAULT);
+}
+
+$job_title = filter_input(INPUT_POST, 'job_title', FILTER_DEFAULT);
+if (!$job_title) {
+    $job_title = filter_input(INPUT_GET, 'job_title', FILTER_DEFAULT);
+}
+
+$fine_amount = filter_input(INPUT_POST, 'fine_amount', FILTER_DEFAULT);
+if (!$fine_amount) {
+    $fine_amount = filter_input(INPUT_GET, 'fine_amount', FILTER_DEFAULT);
+}
+
+$currency = filter_input(INPUT_POST, 'currency', FILTER_DEFAULT);
+if (!$currency) {
+    $currency = filter_input(INPUT_GET, 'currency', FILTER_DEFAULT);
+}
 
 ?>
 

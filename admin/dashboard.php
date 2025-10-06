@@ -1274,6 +1274,19 @@ try {
             <h5><i class="feather icon-award text-warning mr-2"></i><?= __('top_performers') ?> - <?= __('ticket_sales') ?></h5>
             <span class="text-muted small"><?= __('users_with_highest_ticket_profit') ?></span>
         </div>
+        <div class="filter-controls">
+            <h6><?= __('performance_period') ?></h6>
+            <div class="date-filter-toggle">
+                <i class="feather icon-filter filter-icon" data-toggle="collapse" data-target="#performanceDateFilter"></i>
+            </div>
+        </div>
+        <div class="collapse mb-2" id="performanceDateFilter">
+            <div class="date-filter-panel">
+                <label class="small text-muted"><?= __('select_month') ?></label>
+                <input type="month" class="form-control form-control-sm date-filter" id="performanceDateInput" value="<?= date('Y-m') ?>">
+                <button class="btn btn-sm btn-primary mt-2 apply-performance-filter"><?= __('apply_filter') ?></button>
+            </div>
+        </div>
         <div class="card-block px-0 py-3">
             <div class="table-responsive px-3">
                 <table class="table table-hover">
@@ -1286,9 +1299,9 @@ try {
                             <th class="text-right"><?= __('total_profit_afs') ?></th>
                         </tr>
                     </thead>
-                    <tbody>
+                    <tbody id="topPerformersTableBody">
                         <?php
-                        $topPerformers = getTopPerformersByTicketProfit();
+                        $topPerformers = getTopPerformersByTicketProfit(date('m'), date('Y'));
                         if (count($topPerformers) > 0) {
                             $rank = 1;
                             foreach ($topPerformers as $performer) {

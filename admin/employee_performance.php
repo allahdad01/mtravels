@@ -20,11 +20,15 @@ if (!isset($_SESSION['user_id']) || $_SESSION['role'] !== 'admin') {
 $search = isset($_GET['search']) ? trim($_GET['search']) : '';
 $status_filter = isset($_GET['status']) ? $_GET['status'] : 'all';
 
-// Build query for employees
+// Build query for employees with performance reviews
 $query = "
-    SELECT u.*, sm.base_salary, sm.currency as salary_currency
+    SELECT u.*, sm.base_salary, sm.currency as salary_currency,
+           pr.id as review_id, pr.overall_rating, pr.review_date, pr.status as review_status,
+           pr.period_start, pr.period_end
     FROM users u
     LEFT JOIN salary_management sm ON u.id = sm.user_id AND sm.tenant_id = u.tenant_id
+    LEFT JOIN performance_reviews pr ON u.id = pr.user_id AND pr.tenant_id = u.tenant_id
+        AND pr.id = (SELECT MAX(id) FROM performance_reviews WHERE user_id = u.id AND tenant_id = u.tenant_id)
     WHERE u.tenant_id = ? AND u.role != 'super_admin'
 ";
 
@@ -68,11 +72,7 @@ include '../includes/header.php';
                                         <h1><i class="feather icon-trending-up mr-2"></i><?php echo __('performance_reviews'); ?></h1>
                                         <p><?php echo __('manage_employee_performance_reviews_and_evaluations'); ?></p>
                                     </div>
-                                    <div class="page-header-actions">
-                                        <a href="hr.php" class="btn btn-outline-secondary">
-                                            <i class="feather icon-arrow-left mr-1"></i><?php echo __('back_to_hr'); ?>
-                                        </a>
-                                    </div>
+                                    
                                 </div>
 
                                 <!-- Filters and Search -->
@@ -101,18 +101,39 @@ include '../includes/header.php';
 
                                 <!-- Performance Overview -->
                                 <div class="row mb-4">
-                                    <div class="col-md-12">
+                                    <div class="col-md-3">
                                         <div class="card">
-                                            <div class="card-header">
-                                                <h5><?php echo __('performance_overview'); ?></h5>
+                                            <div class="card-body text-center">
+                                                <h4 class="text-primary"><?php echo count(array_filter($employees, function($e) { return $e['review_id'] && $e['review_status'] == 'approved'; })); ?></h4>
+                                                <p class="text-muted mb-0"><?php echo __('evaluated_employees'); ?></p>
                                             </div>
-                                            <div class="card-body">
-                                                <div class="alert alert-info">
-                                                    <i class="feather icon-info mr-2"></i>
-                                                    <?php echo __('performance_reviews_feature_coming_soon'); ?>
-                                                    <br>
-                                                    <small class="text-muted"><?php echo __('this_feature_will_include_employee_evaluations_goals_and_performance_tracking'); ?></small>
-                                                </div>
+                                        </div>
+                                    </div>
+                                    <div class="col-md-3">
+                                        <div class="card">
+                                            <div class="card-body text-center">
+                                                <?php
+                                                $ratings = array_filter(array_column($employees, 'overall_rating'));
+                                                $avg_rating = count($ratings) > 0 ? array_sum($ratings) / count($ratings) : 0;
+                                                ?>
+                                                <h4 class="text-success"><?php echo number_format($avg_rating, 1); ?>/5.0</h4>
+                                                <p class="text-muted mb-0"><?php echo __('average_rating'); ?></p>
+                                            </div>
+                                        </div>
+                                    </div>
+                                    <div class="col-md-3">
+                                        <div class="card">
+                                            <div class="card-body text-center">
+                                                <h4 class="text-warning"><?php echo count(array_filter($employees, function($e) { return !$e['review_id']; })); ?></h4>
+                                                <p class="text-muted mb-0"><?php echo __('pending_reviews'); ?></p>
+                                            </div>
+                                        </div>
+                                    </div>
+                                    <div class="col-md-3">
+                                        <div class="card">
+                                            <div class="card-body text-center">
+                                                <h4 class="text-info"><?php echo count($employees); ?></h4>
+                                                <p class="text-muted mb-0"><?php echo __('total_employees'); ?></p>
                                             </div>
                                         </div>
                                     </div>
@@ -170,16 +191,37 @@ include '../includes/header.php';
                                                                     <?php endif; ?>
                                                                 </td>
                                                                 <td>
-                                                                    <span class="badge badge-secondary"><?php echo __('not_evaluated'); ?></span>
+                                                                    <?php if ($employee['review_id'] && $employee['review_status'] == 'approved'): ?>
+                                                                        <div class="d-flex align-items-center">
+                                                                            <span class="badge badge-success mr-2">
+                                                                                <?php echo $employee['overall_rating'] ? $employee['overall_rating'] . '/5' : __('evaluated'); ?>
+                                                                            </span>
+                                                                            <small class="text-muted">
+                                                                                <?php echo $employee['review_date'] ? date('M d, Y', strtotime($employee['review_date'])) : ''; ?>
+                                                                            </small>
+                                                                        </div>
+                                                                    <?php elseif ($employee['review_id'] && $employee['review_status'] == 'draft'): ?>
+                                                                        <span class="badge badge-warning"><?php echo __('draft'); ?></span>
+                                                                    <?php elseif ($employee['review_id'] && $employee['review_status'] == 'submitted'): ?>
+                                                                        <span class="badge badge-info"><?php echo __('submitted'); ?></span>
+                                                                    <?php else: ?>
+                                                                        <span class="badge badge-secondary"><?php echo __('not_evaluated'); ?></span>
+                                                                    <?php endif; ?>
                                                                 </td>
                                                                 <td>
                                                                     <div class="btn-group">
-                                                                        <button type="button" class="btn btn-sm btn-outline-primary" disabled title="<?php echo __('coming_soon'); ?>">
-                                                                            <i class="feather icon-eye"></i> <?php echo __('view_review'); ?>
-                                                                        </button>
-                                                                        <button type="button" class="btn btn-sm btn-outline-secondary" disabled title="<?php echo __('coming_soon'); ?>">
-                                                                            <i class="feather icon-edit"></i> <?php echo __('add_review'); ?>
-                                                                        </button>
+                                                                        <?php if ($employee['review_id']): ?>
+                                                                            <button type="button" class="btn btn-sm btn-outline-primary" onclick="viewReview(<?php echo $employee['review_id']; ?>)">
+                                                                                <i class="feather icon-eye"></i> <?php echo __('view_review'); ?>
+                                                                            </button>
+                                                                            <button type="button" class="btn btn-sm btn-outline-secondary" onclick="editReview(<?php echo $employee['review_id']; ?>)">
+                                                                                <i class="feather icon-edit"></i> <?php echo __('edit_review'); ?>
+                                                                            </button>
+                                                                        <?php else: ?>
+                                                                            <button type="button" class="btn btn-sm btn-outline-success" onclick="addReview(<?php echo $employee['id']; ?>, '<?php echo htmlspecialchars($employee['name']); ?>')">
+                                                                                <i class="feather icon-plus"></i> <?php echo __('add_review'); ?>
+                                                                            </button>
+                                                                        <?php endif; ?>
                                                                     </div>
                                                                 </td>
                                                             </tr>
@@ -198,8 +240,201 @@ include '../includes/header.php';
             </div>
         </div>
     </div>
+    <!-- Performance Review Modals -->
+    <div class="modal fade" id="viewReviewModal" tabindex="-1" role="dialog">
+        <div class="modal-dialog modal-lg" role="document">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title"><?php echo __('performance_review_details'); ?></h5>
+                    <button type="button" class="close" data-dismiss="modal">
+                        <span>&times;</span>
+                    </button>
+                </div>
+                <div class="modal-body" id="reviewDetails">
+                    <!-- Review details will be loaded here -->
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="modal fade" id="addReviewModal" tabindex="-1" role="dialog">
+        <div class="modal-dialog modal-xl" role="document">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title"><?php echo __('add_performance_review'); ?></h5>
+                    <button type="button" class="close" data-dismiss="modal">
+                        <span>&times;</span>
+                    </button>
+                </div>
+                <form id="performanceReviewForm">
+                    <div class="modal-body">
+                        <div class="row">
+                            <div class="col-md-6">
+                                <div class="form-group">
+                                    <label><?php echo __('employee'); ?></label>
+                                    <input type="text" class="form-control" id="employeeName" readonly>
+                                    <input type="hidden" id="userId" name="user_id">
+                                    <input type="hidden" id="reviewId" name="review_id">
+                                </div>
+                            </div>
+                            <div class="col-md-6">
+                                <div class="form-group">
+                                    <label><?php echo __('review_date'); ?></label>
+                                    <input type="date" class="form-control" id="reviewDate" name="review_date" required>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="row">
+                            <div class="col-md-6">
+                                <div class="form-group">
+                                    <label><?php echo __('period_start'); ?></label>
+                                    <input type="date" class="form-control" id="periodStart" name="period_start" required>
+                                </div>
+                            </div>
+                            <div class="col-md-6">
+                                <div class="form-group">
+                                    <label><?php echo __('period_end'); ?></label>
+                                    <input type="date" class="form-control" id="periodEnd" name="period_end" required>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="row">
+                            <div class="col-md-6">
+                                <div class="form-group">
+                                    <label><?php echo __('overall_rating'); ?> (1-5)</label>
+                                    <input type="number" class="form-control" id="overallRating" name="overall_rating" min="1" max="5" step="0.1">
+                                </div>
+                            </div>
+                            <div class="col-md-6">
+                                <div class="form-group">
+                                    <label><?php echo __('reviewer'); ?></label>
+                                    <input type="text" class="form-control" value="<?php echo htmlspecialchars($_SESSION['name'] ?? ''); ?>" readonly>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="form-group">
+                            <label><?php echo __('comments'); ?></label>
+                            <textarea class="form-control" id="comments" name="comments" rows="3"></textarea>
+                        </div>
+                        <div class="form-group">
+                            <label><?php echo __('achievements'); ?></label>
+                            <textarea class="form-control" id="achievements" name="achievements" rows="3"></textarea>
+                        </div>
+                        <div class="form-group">
+                            <label><?php echo __('areas_for_improvement'); ?></label>
+                            <textarea class="form-control" id="areasForImprovement" name="areas_for_improvement" rows="3"></textarea>
+                        </div>
+                        <div class="form-group">
+                            <label><?php echo __('goals'); ?></label>
+                            <textarea class="form-control" id="goals" name="goals" rows="3"></textarea>
+                        </div>
+                        <div class="form-group">
+                            <label><?php echo __('recommendations'); ?></label>
+                            <textarea class="form-control" id="recommendations" name="recommendations" rows="3"></textarea>
+                        </div>
+                        <div class="form-group">
+                            <label><?php echo __('status'); ?></label>
+                            <select class="form-control" id="reviewStatus" name="status">
+                                <option value="draft"><?php echo __('draft'); ?></option>
+                                <option value="submitted"><?php echo __('submitted'); ?></option>
+                                <option value="approved"><?php echo __('approved'); ?></option>
+                                <option value="rejected"><?php echo __('rejected'); ?></option>
+                            </select>
+                        </div>
+                    </div>
+                    <div class="modal-footer">
+                        <button type="button" class="btn btn-secondary" data-dismiss="modal"><?php echo __('cancel'); ?></button>
+                        <button type="submit" class="btn btn-primary"><?php echo __('save_review'); ?></button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+
     <!-- Required Js -->
     <script src="../assets/js/vendor-all.min.js"></script>
     <script src="../assets/plugins/bootstrap/js/bootstrap.min.js"></script>
     <script src="../assets/js/pcoded.min.js"></script>
+
+    <script>
+    function viewReview(reviewId) {
+        $.ajax({
+            url: 'ajax/get_performance_review.php',
+            type: 'GET',
+            data: { review_id: reviewId },
+            success: function(response) {
+                $('#reviewDetails').html(response);
+                $('#viewReviewModal').modal('show');
+            },
+            error: function() {
+                alert('<?php echo __('error_loading_review'); ?>');
+            }
+        });
+    }
+
+    function addReview(userId, employeeName) {
+        $('#performanceReviewForm')[0].reset();
+        $('#userId').val(userId);
+        $('#employeeName').val(employeeName);
+        $('#reviewId').val('');
+        $('#reviewDate').val(new Date().toISOString().split('T')[0]);
+        $('#addReviewModal .modal-title').text('<?php echo __('add_performance_review'); ?>');
+        $('#addReviewModal').modal('show');
+    }
+
+    function editReview(reviewId) {
+        $.ajax({
+            url: 'ajax/get_performance_review.php',
+            type: 'GET',
+            data: { review_id: reviewId, edit: 1 },
+            success: function(response) {
+                var data = JSON.parse(response);
+                $('#userId').val(data.user_id);
+                $('#employeeName').val(data.employee_name);
+                $('#reviewId').val(data.id);
+                $('#reviewDate').val(data.review_date);
+                $('#periodStart').val(data.period_start);
+                $('#periodEnd').val(data.period_end);
+                $('#overallRating').val(data.overall_rating);
+                $('#comments').val(data.comments);
+                $('#achievements').val(data.achievements);
+                $('#areasForImprovement').val(data.areas_for_improvement);
+                $('#goals').val(data.goals);
+                $('#recommendations').val(data.recommendations);
+                $('#reviewStatus').val(data.status);
+                $('#addReviewModal .modal-title').text('<?php echo __('edit_performance_review'); ?>');
+                $('#addReviewModal').modal('show');
+            },
+            error: function() {
+                alert('<?php echo __('error_loading_review'); ?>');
+            }
+        });
+    }
+
+    $('#performanceReviewForm').on('submit', function(e) {
+        e.preventDefault();
+
+        var formData = new FormData(this);
+
+        $.ajax({
+            url: 'ajax/save_performance_review.php',
+            type: 'POST',
+            data: formData,
+            processData: false,
+            contentType: false,
+            success: function(response) {
+                var result = JSON.parse(response);
+                if (result.success) {
+                    $('#addReviewModal').modal('hide');
+                    location.reload();
+                } else {
+                    alert(result.message || '<?php echo __('error_saving_review'); ?>');
+                }
+            },
+            error: function() {
+                alert('<?php echo __('error_saving_review'); ?>');
+            }
+        });
+    });
+    </script>
 <?php include '../includes/admin_footer.php'; ?>
