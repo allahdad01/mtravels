@@ -47,7 +47,7 @@ if ($_SERVER["REQUEST_METHOD"] == "POST" && isset($data['id'])) {
                                  WHERE client_id = ? AND transaction_of = 'visa_refund' 
                                  AND reference_id = ? AND tenant_id = ?";
             $stmt = $conn->prepare($clientTransactions);
-            $stmt->bind_param("iiii", $clientId, $refundId, $tenant_id);
+            $stmt->bind_param("iii", $clientId, $refundId, $tenant_id);
             $stmt->execute();
             $clientResults = $stmt->get_result();
 
@@ -60,11 +60,11 @@ if ($_SERVER["REQUEST_METHOD"] == "POST" && isset($data['id'])) {
                 $clientBalanceField = ($currency == 'USD') ? 'usd_balance' : 'afs_balance';
                 
                 // Reverse logic: If original was 'credit', subtract; if 'debit', add.
-                $adjustClientBalance = "UPDATE clients 
-                                      SET $clientBalanceField = $clientBalanceField " . ($row['type'] == 'credit' ? '-' : '+') . " ? 
+                $adjustClientBalance = "UPDATE clients
+                                      SET $clientBalanceField = $clientBalanceField " . ($row['type'] == 'credit' ? '-' : '+') . " ?
                                       WHERE id = ? AND tenant_id = ?";
                 $stmt = $conn->prepare($adjustClientBalance);
-                $stmt->bind_param("di", $amount, $clientId, $tenant_id);
+                $stmt->bind_param("dii", $amount, $clientId, $tenant_id);
                 $stmt->execute();
 
                 // Update subsequent transactions' running balances
@@ -92,7 +92,7 @@ if ($_SERVER["REQUEST_METHOD"] == "POST" && isset($data['id'])) {
                                    WHERE supplier_id = ? AND transaction_of = 'visa_refund' 
                                    AND reference_id = ? AND tenant_id = ?";
             $stmt = $conn->prepare($supplierTransactions);
-            $stmt->bind_param("iiii", $supplierId, $refundId, $tenant_id);
+            $stmt->bind_param("iii", $supplierId, $refundId, $tenant_id);
             $stmt->execute();
             $supplierResults = $stmt->get_result();
 
@@ -102,9 +102,9 @@ if ($_SERVER["REQUEST_METHOD"] == "POST" && isset($data['id'])) {
                 $transaction_id = $row['id'];
                 
                 // Check Supplier Type
-                $supplierTypeQuery = "SELECT supplier_type FROM suppliers WHERE id = ?";
+                $supplierTypeQuery = "SELECT supplier_type FROM suppliers WHERE id = ? AND tenant_id = ?";
                 $stmt = $conn->prepare($supplierTypeQuery);
-                $stmt->bind_param("i", $supplierId);
+                $stmt->bind_param("ii", $supplierId, $tenant_id);
                 $stmt->execute();
                 $supplierTypeResult = $stmt->get_result();
                 $supplierTypeRow = $supplierTypeResult->fetch_assoc();
@@ -116,7 +116,7 @@ if ($_SERVER["REQUEST_METHOD"] == "POST" && isset($data['id'])) {
                                             SET balance = balance " . ($row['transaction_type'] == 'Credit' ? '-' : '+') . " ? 
                                             WHERE id = ? AND tenant_id = ?";
                     $stmt = $conn->prepare($adjustSupplierBalance);
-                    $stmt->bind_param("di", $amount, $supplierId, $tenant_id);
+                    $stmt->bind_param("dii", $amount, $supplierId, $tenant_id);
                     $stmt->execute();
                     
                     // Update subsequent transactions' running balances
@@ -156,12 +156,18 @@ if ($_SERVER["REQUEST_METHOD"] == "POST" && isset($data['id'])) {
             $transaction_id = $row['id'];
 
             // Update main account balance
-            $balanceField = ($mainCurrency == 'USD') ? 'usd_balance' : 'afs_balance';
+            switch ($mainCurrency) {
+                case 'USD': $balanceField = 'usd_balance'; break;
+                case 'AFS': $balanceField = 'afs_balance'; break;
+                case 'EUR': $balanceField = 'euro_balance'; break;
+                case 'DARHAM': $balanceField = 'darham_balance'; break;
+                default: $balanceField = 'afs_balance'; break;
+            }
             $adjustMainBalance = "UPDATE main_account 
                                 SET $balanceField = $balanceField " . ($type == 'credit' ? '-' : '+') . " ? 
                                 WHERE id = ? AND tenant_id = ?";
             $stmt = $conn->prepare($adjustMainBalance);
-            $stmt->bind_param("di", $amount, $mainAccountId, $tenant_id);
+            $stmt->bind_param("dii", $amount, $mainAccountId, $tenant_id);
             $stmt->execute();
 
             // Update subsequent transactions' running balances
@@ -187,13 +193,13 @@ if ($_SERVER["REQUEST_METHOD"] == "POST" && isset($data['id'])) {
             // For full refund, restore the original profit
             $updateVisaQuery = "UPDATE visa_applications SET profit = ?, status = 'Pending' WHERE id = ? AND tenant_id = ?";
             $stmt = $conn->prepare($updateVisaQuery);
-            $stmt->bind_param("di", $profit, $visaId, $tenant_id);
+            $stmt->bind_param("dii", $profit, $visaId, $tenant_id);
             $stmt->execute();
         } else {
             // For partial refund, add back the refunded amount to profit
             $updateVisaQuery = "UPDATE visa_applications SET profit = ?, status = 'Pending' WHERE id = ? AND tenant_id = ?";
             $stmt = $conn->prepare($updateVisaQuery);
-            $stmt->bind_param("di", $profit, $visaId, $tenant_id);
+            $stmt->bind_param("dii", $profit, $visaId, $tenant_id);
             $stmt->execute();
         }
 

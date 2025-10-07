@@ -52,9 +52,10 @@ function checkBruteForce($email, $conection_db) {
 // Record failed login attempt
 function recordFailedAttempt($email, $conection_db) {
     $time = date("Y-m-d H:i:s");
-    if ($stmt = $conection_db->prepare("INSERT INTO login_attempts (email, time, ip_address) VALUES (?, ?, ?)")) {
+    if ($stmt = $conection_db->prepare("INSERT INTO login_attempts (email, time, ip_address, tenant_id) VALUES (?, ?, ?, ?)")) {
         $ip_address = $_SERVER['REMOTE_ADDR'];
-        $stmt->bind_param("sss", $email, $time, $ip_address);
+        $tenant_id = NULL; // For failed attempts, tenant_id is unknown
+        $stmt->bind_param("sssi", $email, $time, $ip_address, $tenant_id);
         $stmt->execute();
         $stmt->close();
     }

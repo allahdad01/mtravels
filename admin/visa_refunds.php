@@ -207,7 +207,7 @@ if ($tableExists) {
                                                                     </td>
                                                                    
                                                                     <td>
-                                                                        
+
                                                                         <?php if ($refund['processed'] == 0): ?>
                                                                         <button type="button" class="btn btn-success btn-sm" onclick="processRefundTransaction(<?= $refund['id'] ?>)">
                                                                             <i class="fas fa-check"></i> Process
@@ -215,6 +215,9 @@ if ($tableExists) {
                                                                         <?php endif; ?>
                                                                         <button type="button" class="btn btn-info btn-sm" onclick="printRefundAgreement(<?= $refund['id'] ?>)">
                                                                             <i class="fas fa-print"></i> Print Agreement
+                                                                        </button>
+                                                                        <button type="button" class="btn btn-danger btn-sm" onclick="deleteRefund(<?= $refund['id'] ?>)">
+                                                                            <i class="fas fa-trash"></i> Delete
                                                                         </button>
                                                                     </td>
                                                                 </tr>
@@ -651,6 +654,54 @@ $(document).ready(function() {
         ]
     });
 });
+
+function deleteRefund(refundId) {
+    Swal.fire({
+        title: 'Are you sure?',
+        text: "You won't be able to revert this!",
+        icon: 'warning',
+        showCancelButton: true,
+        confirmButtonColor: '#d33',
+        cancelButtonColor: '#3085d6',
+        confirmButtonText: 'Yes, delete it!'
+    }).then((result) => {
+        if (result.isConfirmed) {
+            fetch('delete_visa_refund.php', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify({ id: refundId })
+            })
+            .then(response => response.json())
+            .then(data => {
+                if (data.success) {
+                    Swal.fire(
+                        'Deleted!',
+                        data.message,
+                        'success'
+                    ).then(() => {
+                        location.reload();
+                    });
+                } else {
+                    Swal.fire(
+                        'Error!',
+                        data.message,
+                        'error'
+                    );
+                }
+            })
+            .catch(error => {
+                console.error('Error:', error);
+                Swal.fire(
+                    'Error!',
+                    'An error occurred while deleting the refund.',
+                    'error'
+                );
+            });
+        }
+    });
+}
 </script>
 </body>
 </html> 
