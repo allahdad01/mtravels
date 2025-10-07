@@ -728,7 +728,7 @@ if ($transactionQuery && $transactionQuery->num_rows > 0) {
                             <input type="hidden" name="csrf_token" value="<?= $_SESSION['csrf_token'] ?>">
                             
                             <div class="row">
-                                <div class="col-md-6">
+                                <div class="col-md-12">
                                     <div class="form-group">
                                         <label for="departureDate"><?= __('new_departure_date') ?></label>
                                         <input type="date" class="form-control" id="departureDate" 
@@ -736,17 +736,6 @@ if ($transactionQuery && $transactionQuery->num_rows > 0) {
                                                min="<?= date('Y-m-d') ?>">
                                         <div class="invalid-feedback">
                                             <?= __('please_select_future_date') ?>
-                                        </div>
-                                    </div>
-                                </div>
-                                <div class="col-md-6">
-                                    <div class="form-group">
-                                        <label for="exchange_rate"><?= __('exchange_rate') ?></label>
-                                        <input type="number" step="0.0001" class="form-control" 
-                                               id="exchange_rate" name="exchange_rate" required
-                                               min="0.0001">
-                                        <div class="invalid-feedback">
-                                            <?= __('please_enter_valid_exchange_rate') ?>
                                         </div>
                                     </div>
                                 </div>

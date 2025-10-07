@@ -39,7 +39,7 @@ try {
 
     // Fetch refund details with related information
     $query = "
-        SELECT 
+        SELECT
             r.*,
             um.name,
             um.flight_date,
@@ -48,15 +48,16 @@ try {
             um.duration,
             f.package_type,
             um.currency as booking_currency,
-            um.supplier,
+            ubs.supplier_id,
             COALESCE(s.name, '') as supplier_name,
             COALESCE(c.name, '') as client_name,
             COALESCE(c.client_type, '') as client_type,
             COALESCE(u.name, '') as processed_by_name
         FROM umrah_refunds r
         LEFT JOIN umrah_bookings um ON r.booking_id = um.booking_id
+        LEFT JOIN umrah_booking_services ubs ON um.booking_id = ubs.booking_id
         LEFT JOIN families f ON um.family_id = f.family_id
-        LEFT JOIN suppliers s ON um.supplier = s.id
+        LEFT JOIN suppliers s ON ubs.supplier_id = s.id
         LEFT JOIN clients c ON um.sold_to = c.id
         LEFT JOIN users u ON r.processed_by = u.id
         WHERE r.id = ? AND r.tenant_id = ?

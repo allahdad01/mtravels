@@ -19,27 +19,27 @@ if ($conn->connect_error) {
 
 // Retrieve form data with sanitization and validation
 $family_id = filter_input(INPUT_POST, 'family_id', FILTER_SANITIZE_NUMBER_INT);
-$soldTo = filter_input(INPUT_POST, 'soldTo', FILTER_SANITIZE_STRING);
-$paidTo = filter_input(INPUT_POST, 'paidTo', FILTER_SANITIZE_STRING);
-$entry_date = filter_input(INPUT_POST, 'entry_date', FILTER_SANITIZE_STRING);
-$name = filter_input(INPUT_POST, 'name', FILTER_SANITIZE_STRING);
-$dob = filter_input(INPUT_POST, 'dob', FILTER_SANITIZE_STRING);
-$gender = filter_input(INPUT_POST, 'gender', FILTER_SANITIZE_STRING);
-$passport_number = filter_input(INPUT_POST, 'passport_number', FILTER_SANITIZE_STRING);
-$passport_expiry = filter_input(INPUT_POST, 'passport_expiry', FILTER_SANITIZE_STRING);
-$id_type = filter_input(INPUT_POST, 'id_type', FILTER_SANITIZE_STRING);
-$flight_date = filter_input(INPUT_POST, 'flight_date', FILTER_SANITIZE_STRING);
-$return_date = filter_input(INPUT_POST, 'return_date', FILTER_SANITIZE_STRING);
-$duration = filter_input(INPUT_POST, 'duration', FILTER_SANITIZE_STRING);
-$room_type = filter_input(INPUT_POST, 'room_type', FILTER_SANITIZE_STRING);
+$soldTo = filter_input(INPUT_POST, 'soldTo', FILTER_SANITIZE_FULL_SPECIAL_CHARS);
+$paidTo = filter_input(INPUT_POST, 'paidTo', FILTER_SANITIZE_FULL_SPECIAL_CHARS);
+$entry_date = filter_input(INPUT_POST, 'entry_date', FILTER_SANITIZE_FULL_SPECIAL_CHARS);
+$name = filter_input(INPUT_POST, 'name', FILTER_SANITIZE_FULL_SPECIAL_CHARS);
+$dob = filter_input(INPUT_POST, 'dob', FILTER_SANITIZE_FULL_SPECIAL_CHARS);
+$gender = filter_input(INPUT_POST, 'gender', FILTER_SANITIZE_FULL_SPECIAL_CHARS);
+$passport_number = filter_input(INPUT_POST, 'passport_number', FILTER_SANITIZE_FULL_SPECIAL_CHARS);
+$passport_expiry = filter_input(INPUT_POST, 'passport_expiry', FILTER_SANITIZE_FULL_SPECIAL_CHARS);
+$id_type = filter_input(INPUT_POST, 'id_type', FILTER_SANITIZE_FULL_SPECIAL_CHARS);
+$flight_date = filter_input(INPUT_POST, 'flight_date', FILTER_SANITIZE_FULL_SPECIAL_CHARS);
+$return_date = filter_input(INPUT_POST, 'return_date', FILTER_SANITIZE_FULL_SPECIAL_CHARS);
+$duration = filter_input(INPUT_POST, 'duration', FILTER_SANITIZE_FULL_SPECIAL_CHARS);
+$room_type = filter_input(INPUT_POST, 'room_type', FILTER_SANITIZE_FULL_SPECIAL_CHARS);
 $received_bank_payment = filter_input(INPUT_POST, 'received_bank_payment', FILTER_SANITIZE_NUMBER_FLOAT, FILTER_FLAG_ALLOW_FRACTION);
-$bank_receipt_number = filter_input(INPUT_POST, 'bank_receipt_number', FILTER_SANITIZE_STRING);
+$bank_receipt_number = filter_input(INPUT_POST, 'bank_receipt_number', FILTER_SANITIZE_FULL_SPECIAL_CHARS);
 $paid = filter_input(INPUT_POST, 'paid', FILTER_SANITIZE_NUMBER_FLOAT, FILTER_FLAG_ALLOW_FRACTION);
 $due = filter_input(INPUT_POST, 'due', FILTER_SANITIZE_NUMBER_FLOAT, FILTER_FLAG_ALLOW_FRACTION);
-$remarks = filter_input(INPUT_POST, 'remarks', FILTER_SANITIZE_STRING);
-$relation = filter_input(INPUT_POST, 'relation', FILTER_SANITIZE_STRING);
-$g_name = filter_input(INPUT_POST, 'g_name', FILTER_SANITIZE_STRING);
-$father_name = filter_input(INPUT_POST, 'father_name', FILTER_SANITIZE_STRING);
+$remarks = filter_input(INPUT_POST, 'remarks', FILTER_SANITIZE_FULL_SPECIAL_CHARS);
+$relation = filter_input(INPUT_POST, 'relation', FILTER_SANITIZE_FULL_SPECIAL_CHARS);
+$g_name = filter_input(INPUT_POST, 'g_name', FILTER_SANITIZE_FULL_SPECIAL_CHARS);
+$father_name = filter_input(INPUT_POST, 'father_name', FILTER_SANITIZE_FULL_SPECIAL_CHARS);
 $discount = filter_input(INPUT_POST, 'discount', FILTER_SANITIZE_NUMBER_FLOAT, FILTER_FLAG_ALLOW_FRACTION);
 
 // Process services
@@ -50,9 +50,9 @@ $total_profit = 0;
 
 $processed_services = [];
 foreach ($services as $service) {
-    $service_type = filter_var($service['service_type'], FILTER_SANITIZE_STRING);
+    $service_type = filter_var($service['service_type'], FILTER_SANITIZE_FULL_SPECIAL_CHARS);
     $supplier_id = filter_var($service['supplier_id'], FILTER_SANITIZE_NUMBER_INT);
-    $currency = filter_var($service['currency'], FILTER_SANITIZE_STRING);
+    $currency = filter_var($service['currency'], FILTER_SANITIZE_FULL_SPECIAL_CHARS);
     $base_price = filter_var($service['base_price'], FILTER_SANITIZE_NUMBER_FLOAT, FILTER_FLAG_ALLOW_FRACTION);
     $sold_price = filter_var($service['sold_price'], FILTER_SANITIZE_NUMBER_FLOAT, FILTER_FLAG_ALLOW_FRACTION);
     $profit = $sold_price - $base_price;

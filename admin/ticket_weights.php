@@ -74,33 +74,8 @@ if ($weightsResult && $weightsResult->num_rows > 0) {
     <link rel="stylesheet" href="css/ticket-components.css">
     <link rel="stylesheet" href="css/modal-styles.css">
     <link rel="stylesheet" href="css/ticket-form.css">
-    <style>
-/* Apply gradient background to card headers matching the sidebar */
-.card-header {
-    background: linear-gradient(135deg, #4099ff 0%, #2ed8b6 100%) !important;
-    color: #ffffff !important;
-    border-bottom: none !important;
-}
+    <link rel="stylesheet" href="css/ticket_weight.css">
 
-.card-header h5 {
-    color: #ffffff !important;
-    margin-bottom: 0 !important;
-}
-
-.card-header .card-header-right {
-    color: #ffffff !important;
-}
-
-.card-header .card-header-right .btn {
-    color: #ffffff !important;
-    border-color: rgba(255, 255, 255, 0.3) !important;
-}
-
-.card-header .card-header-right .btn:hover {
-    background: rgba(255, 255, 255, 0.1) !important;
-    border-color: rgba(255, 255, 255, 0.5) !important;
-}
-</style>
     <!-- [ Main Content ] start -->
     <div class="pcoded-main-container">
         <div class="pcoded-wrapper">
@@ -372,7 +347,7 @@ if ($weightsResult && $weightsResult->num_rows > 0) {
         </div>
     </div>
 
-    <!-- Add Transaction Modal -->
+    <!-- Add Ticket weight Modal -->
     <div class="modal fade" id="addTransactionModal" tabindex="-1" role="dialog">
         <div class="modal-dialog modal-lg" role="document">
             <div class="modal-content">
@@ -652,10 +627,10 @@ if ($weightsResult && $weightsResult->num_rows > 0) {
                                             </label>
                                             <select class="form-control form-control-lg" id="transactionCurrency" name="currency" required>
                                                 <option value=""><?= __('select_currency') ?></option>
-                                                <option value="USD">🇺🇸 USD - US Dollar</option>
-                                                <option value="AFS">🇦🇫 AFS - Afghan Afghani</option>
-                                                <option value="EUR">🇪🇺 EUR - Euro</option>
-                                                <option value="DARHAM">🇦🇪 DARHAM - UAE Dirham</option>
+                                                <option value="USD">USD - US Dollar</option>
+                                                <option value="AFS">AFS - Afghan Afghani</option>
+                                                <option value="EUR">EUR - Euro</option>
+                                                <option value="DARHAM">DARHAM - UAE Darham</option>
                                             </select>
                                         </div>
                                     </div>
@@ -730,7 +705,6 @@ if ($weightsResult && $weightsResult->num_rows > 0) {
                                 <i class="feather icon-list mr-2"></i>
                                 <?= __('transaction_history') ?>
                             </h6>
-                            <span class="badge badge-light" id="transactionCount">0</span>
                         </div>
                         <div class="card-body p-0">
                             <div class="table-responsive">
@@ -743,19 +717,17 @@ if ($weightsResult && $weightsResult->num_rows > 0) {
                                             </th>
                                             <th class="border-0">
                                                 <i class="feather icon-dollar-sign mr-1"></i>
+                                                <?= __('remarks') ?>
+                                                
+                                            </th>
+                                            
+                                            <th class="border-0">
+                                                <i class="feather icon-refresh-cw mr-1"></i>
                                                 <?= __('amount') ?>
                                             </th>
                                             <th class="border-0">
-                                                <i class="feather icon-globe mr-1"></i>
-                                                <?= __('currency') ?>
-                                            </th>
-                                            <th class="border-0">
-                                                <i class="feather icon-refresh-cw mr-1"></i>
-                                                <?= __('exchange_rate') ?>
-                                            </th>
-                                            <th class="border-0">
                                                 <i class="feather icon-message-square mr-1"></i>
-                                                <?= __('remarks') ?>
+                                                <?= __('exchange_rate') ?>
                                             </th>
                                             <th class="text-center border-0">
                                                 <i class="feather icon-settings mr-1"></i>
@@ -785,7 +757,6 @@ if ($weightsResult && $weightsResult->num_rows > 0) {
     <!-- Required Js -->
     <script src="../assets/js/vendor-all.min.js"></script>
     <script src="../assets/plugins/bootstrap/js/bootstrap.min.js"></script>
-    <script src="js/toast-notification.js"></script>
     <script src="../assets/js/pcoded.min.js"></script>
 
     <!-- DataTables JS -->
@@ -793,8 +764,12 @@ if ($weightsResult && $weightsResult->num_rows > 0) {
     <script src="https://cdn.datatables.net/1.11.5/js/dataTables.bootstrap4.min.js"></script>
     <script src="https://cdn.datatables.net/responsive/2.2.9/js/dataTables.responsive.min.js"></script>
     <script src="https://cdn.datatables.net/responsive/2.2.9/js/responsive.bootstrap4.min.js"></script>
+    
+        <script src="js/weight/transaction_manager.js"></script>
 
-    <script>
+        <script src="js/weight/weight_manager.js"></script>
+    
+        <script>
             // Function to show toast
     function showToast(message, type = 'success') {
         Swal.fire({
@@ -807,43 +782,7 @@ if ($weightsResult && $weightsResult->num_rows > 0) {
             timerProgressBar: true
         });
     }
-         // Function to delete weight
-    function deleteWeight(weightId) {
-        Swal.fire({
-            title: '<?= __('are_you_sure_you_want_to_delete_this_weight') ?>',
-            icon: 'warning',
-            showCancelButton: true,
-            confirmButtonColor: '#3085d6',
-            cancelButtonColor: '#d33',
-            confirmButtonText: '<?= __('yes_delete_it') ?>',
-            cancelButtonText: '<?= __('cancel') ?>'
-        }).then((result) => {
-            if (result.isConfirmed) {
-                $.ajax({
-                    url: 'ajax/delete_weight.php',
-                    type: 'POST',
-                    data: { id: weightId },
-                    success: function(response) {
-                        try {
-                            const result = JSON.parse(response);
-                            if (result.success) {
-                                showToast('<?= __('weight_deleted_successfully') ?>', 'success');
-                                location.reload();
-                            } else {
-                                showToast(result.message || '<?= __('failed_to_delete_weight') ?>', 'error');
-                            }
-                        } catch (e) {
-                            console.error('Error:', e);
-                            showToast('<?= __('error_processing_request') ?>', 'error');
-                        }
-                    },
-                    error: function() {
-                        showToast('<?= __('error_deleting_weight') ?>', 'error');
-                    }
-                });
-            }
-        });
-    }
+
 
         $(document).ready(function() {
             // Initialize DataTable
@@ -851,16 +790,16 @@ if ($weightsResult && $weightsResult->num_rows > 0) {
                 responsive: true,
                 autoWidth: false,
                 language: {
-                    search: "<?= __('search') ?>:",
-                    lengthMenu: "<?= __('show') ?> _MENU_ <?= __('entries') ?>",
-                    info: "<?= __('showing') ?> _START_ <?= __('to') ?> _END_ <?= __('of') ?> _TOTAL_ <?= __('entries') ?>",
-                    infoEmpty: "<?= __('showing') ?> 0 <?= __('to') ?> 0 <?= __('of') ?> 0 <?= __('entries') ?>",
-                    infoFiltered: "(<?= __('filtered_from') ?> _MAX_ <?= __('total_entries') ?>)",
+                    search: <?= json_encode(__('search') . ':') ?>,
+                    lengthMenu: <?= json_encode(__('show') . ' _MENU_ ' . __('entries')) ?>,
+                    info: <?= json_encode(__('showing') . ' _START_ ' . __('to') . ' _END_ ' . __('of') . ' _TOTAL_ ' . __('entries')) ?>,
+                    infoEmpty: <?= json_encode(__('showing') . ' 0 ' . __('to') . ' 0 ' . __('of') . ' 0 ' . __('entries')) ?>,
+                    infoFiltered: <?= json_encode('(' . __('filtered_from') . ' _MAX_ ' . __('total_entries') . ')') ?>,
                     paginate: {
-                        first: "<?= __('first') ?>",
-                        last: "<?= __('last') ?>",
-                        next: "<?= __('next') ?>",
-                        previous: "<?= __('previous') ?>"
+                        first: <?= json_encode(__('first')) ?>,
+                        last: <?= json_encode(__('last')) ?>,
+                        next: <?= json_encode(__('next')) ?>,
+                        previous: <?= json_encode(__('previous')) ?>
                     }
                 },
                 columnDefs: [
@@ -1031,7 +970,6 @@ if ($weightsResult && $weightsResult->num_rows > 0) {
                                 showToast(result.message || 'Failed to load weights', 'error');
                             }
                         } catch (e) {
-                            console.error('Error:', e);
                             showToast('Error loading weights', 'error');
                         }
                     },
@@ -1159,45 +1097,7 @@ if ($weightsResult && $weightsResult->num_rows > 0) {
                 }
             });
 
-            // Calculate profit automatically in edit modal
-            $('#editBasePrice, #editSoldPrice').on('input', function() {
-                const basePrice = parseFloat($('#editBasePrice').val()) || 0;
-                const soldPrice = parseFloat($('#editSoldPrice').val()) || 0;
-                const profit = soldPrice - basePrice;
-                $('#editProfit').val(profit.toFixed(2));
-            });
-
-            // Handle edit form submission
-            $('#editWeightForm').on('submit', function(e) {
-                e.preventDefault();
-                
-                const formData = new FormData(this);
-                
-                $.ajax({
-                    url: 'ajax/update_weight.php',
-                    type: 'POST',
-                    data: formData,
-                    processData: false,
-                    contentType: false,
-                    success: function(response) {
-                        try {
-                            const result = JSON.parse(response);
-                            if (result.success) {
-                                showToast('<?= __('weight_updated_successfully') ?>', 'success');
-                                location.reload();
-                            } else {
-                                showToast(result.message || '<?= __('failed_to_update_weight') ?>', 'error');
-                            }
-                        } catch (e) {
-                            console.error('Error:', e);
-                            showToast('<?= __('error_processing_request') ?>', 'error');
-                        }
-                    },
-                    error: function() {
-                        showToast('<?= __('error_updating_weight') ?>', 'error');
-                    }
-                });
-            });
+            
 
             // Search by PNR
             $('#searchPNRBtn').on('click', function() {
@@ -1223,7 +1123,6 @@ if ($weightsResult && $weightsResult->num_rows > 0) {
                     data: params,
                     success: function(response) {
                         try {
-                            console.log('Raw response:', response); // Log raw response
                             
                             // Determine if response is already an object or needs parsing
                             const result = typeof response === 'string' ? JSON.parse(response) : response;
@@ -1231,16 +1130,14 @@ if ($weightsResult && $weightsResult->num_rows > 0) {
                             if (result.success) {
                                 displaySearchResults(result.tickets);
                             } else {
-                                alert(result.message || '<?= __('no_tickets_found') ?>');
+                                alert(result.message || <?= json_encode(__('no_tickets_found')) ?>);
                             }
                         } catch (e) {
-                            console.error('Error:', e);
-                            console.error('Response causing error:', response); // Log problematic response
-                            alert('<?= __('error_processing_request') ?>');
+                            alert(<?= json_encode(__('error_processing_request')) ?>);
                         }
                     },
                     error: function() {
-                        alert('<?= __('error_searching_tickets') ?>');
+                        alert(<?= json_encode(__('error_searching_tickets')) ?>);
                     }
                 });
             }
@@ -1302,575 +1199,24 @@ if ($weightsResult && $weightsResult->num_rows > 0) {
                         try {
                             const result = JSON.parse(response);
                             if (result.success) {
-                                showToast('<?= __('weight_saved_successfully') ?>', 'success');
+                                showToast(<?= json_encode(__('weight_saved_successfully')) ?>, 'success');
                                 location.reload();
                             } else {
-                                showToast(result.message || '<?= __('failed_to_save_weight') ?>', 'error');
+                                showToast(result.message || <?= json_encode(__('failed_to_save_weight')) ?>, 'error');
                             }
                         } catch (e) {
-                            console.error('Error:', e);
-                            showToast('<?= __('error_processing_request') ?>', 'error');
+                            showToast(<?= json_encode(__('error_processing_request')) ?>, 'error');
                         }
                     },
                     error: function() {
-                        showToast('<?= __('error_saving_weight') ?>', 'error');
+                        showToast(<?= json_encode(__('error_saving_weight')) ?>, 'error');
                     }
                 });
             });
 
-            // Reset form when modal is closed
-            $('#addTransactionModal').on('hidden.bs.modal', function() {
-                $('#addTransactionForm')[0].reset();
-                $('#searchResultsContainer').hide();
-                $('#weightDetailsContainer').hide();
-                $('#saveTransactionBtn').hide();
-                $('#selectedTicketId').val('');
-            });
-
-            // Function to manage transactions
-            window.manageTransactions = function(weightId) {
-                // Set the weight ID in the form
-                $('#weightId').val(weightId);
-
-                // Set today's date and current time as default for new transactions
-                const now = new Date();
-                const today = now.toISOString().split('T')[0];
-                const currentTime = now.toTimeString().split(' ')[0].slice(0, 5); // Format: HH:mm
-                $('#transactionDate').val(today);
-                $('#transactionTime').val(currentTime);
-
-                // Reset exchange rate field
-                $('#exchangeRateField').hide();
-                $('#transactionExchangeRate').attr('required', false);
-                $('#transactionExchangeRate').val('');
-
-                // Load weight details and transactions
-                loadWeightDetails(weightId);
-                loadTransactions(weightId);
-                // Show the modal
-                $('#transactionsModal').modal('show');
-            };
-
-            // Function to toggle exchange rate field based on currency selection
-            function toggleExchangeRateField() {
-                const selectedCurrency = $('#transactionCurrency').val();
-                if (selectedCurrency && window.weightCurrency && selectedCurrency !== window.weightCurrency) {
-                    $('#exchangeRateField').show();
-                    $('#transactionExchangeRate').attr('required', true);
-                } else {
-                    $('#exchangeRateField').hide();
-                    $('#transactionExchangeRate').attr('required', false);
-                    $('#transactionExchangeRate').val(''); // Clear value when hidden
-                }
-            }
-
-            // Add event listener for currency change
-            $('#transactionCurrency').on('change', toggleExchangeRateField);
-
-            // Function to load weight details
-            function loadWeightDetails(weightId) {
-                $.ajax({
-                    url: 'ajax/get_weight.php',
-                    type: 'GET',
-                    data: { id: weightId },
-                    success: function(response) {
-                        try {
-                            const result = JSON.parse(response);
-                            if (result.success) {
-                                const weight = result.weight;
-
-                                // Store weight currency for exchange rate logic
-                                window.weightCurrency = weight.currency;
-
-                                // Update weight details in the modal
-                                $('#trans-passenger-name').text(weight.passenger_name);
-                                $('#trans-pnr').text(weight.pnr);
-                                $('#trans-weight').text(weight.weight + ' kg');
-
-                                // Update financial details
-                                $('#totalAmount').text(weight.currency + ' ' + parseFloat(weight.sold_price).toFixed(2));
-                                updatePaymentStatus(weight);
-                            }
-                        } catch (e) {
-                            console.error('Error:', e);
-                        }
-                    }
-                });
-            }
-           // Function to load transactions
-function loadTransactions(weightId) {
-    $.ajax({
-        url: 'ajax/get_weight_transactions.php',
-        type: 'GET',
-        data: { weight_id: weightId },
-        success: function(response) {
-            try {
-                const result = JSON.parse(response);
-                if (result.success) {
-                    displayTransactions(result.transactions);
-                    updatePaymentStatus(result.weight, result.transactions);
-                } else {
-                    console.error('Failed to load transactions:', result.message);
-                }
-            } catch (e) {
-                console.error('Error parsing transactions:', e);
-            }
-        },
-        error: function(xhr, status, error) {
-            console.error('Error loading transactions:', error);
-        }
-    });
-}
-// Function to display transactions in the table
- function displayTransactions(transactions) {
-     const tbody = $('#transactionsTableBody');
-     tbody.empty();
-
-     // Update transaction count
-     $('#transactionCount').text(transactions.length);
-
-     if (transactions.length === 0) {
-         // Show no transactions message
-         const noTransactionsRow = `
-             <tr id="noTransactionsRow">
-                 <td colspan="6" class="text-center py-5 text-muted">
-                     <i class="feather icon-inbox display-4 mb-3"></i>
-                     <h5 class="mb-2">${__('no_transactions_found')}</h5>
-                     <p class="mb-0">${__('add_first_transaction_above')}</p>
-                 </td>
-             </tr>
-         `;
-         tbody.append(noTransactionsRow);
-         return;
-     }
-
-     transactions.forEach(trans => {
-         // Use exchange rate from the separate field
-         let exchangeRateDisplay = trans.exchange_rate ? parseFloat(trans.exchange_rate).toFixed(2) : 'N/A';
-         const description = trans.remarks || '';
-
-         const row = `
-             <tr>
-                 <td>
-                     <div class="d-flex align-items-center">
-                         <i class="feather icon-calendar mr-2 text-muted"></i>
-                         ${formatDate(trans.transaction_date)}
-                     </div>
-                 </td>
-                 <td>
-                     <strong class="text-primary">${parseFloat(trans.amount).toFixed(2)}</strong>
-                     <small class="text-muted d-block">${trans.currency}</small>
-                 </td>
-                 <td>
-                     <span class="badge badge-secondary">${trans.currency}</span>
-                 </td>
-                 <td>
-                     <span class="text-info font-weight-bold">${exchangeRateDisplay}</span>
-                 </td>
-                 <td>
-                     <div class="text-truncate" style="max-width: 200px;" title="${description}">
-                         ${description || '<em class="text-muted">No remarks</em>'}
-                     </div>
-                 </td>
-                 <td class="text-center">
-                     <button class="btn btn-sm btn-outline-danger" onclick="deleteTransaction(${trans.id}, ${$('#weightId').val()}, ${trans.amount})" title="Delete Transaction">
-                         <i class="feather icon-trash-2"></i>
-                     </button>
-                 </td>
-             </tr>
-         `;
-         tbody.append(row);
-     });
- }
-
- function updatePaymentStatus(weight, transactions = []) {
-    const baseCurrency = weight.currency; // e.g., "AFS"
-    const totalAmount = parseFloat(weight.sold_price) || 0;
-
-    // --- STEP 1: Build rates map from transactions ---
-    const ratesToBase = {};
-    transactions.forEach(t => {
-        const curr = t.currency;
-        let rate = parseFloat(t.exchange_rate);
-        if (!rate) rate = (curr === baseCurrency) ? 1 : null;
-        if (rate) ratesToBase[curr] = rate;
-    });
-    ratesToBase[baseCurrency] = 1; // ensure base currency included
-
-    // --- STEP 2: Sum paid amounts per currency ---
-    const paidAmounts = {};
-    transactions.forEach(t => {
-        const curr = t.currency;
-        const amount = parseFloat(t.amount) || 0;
-        if (!paidAmounts[curr]) paidAmounts[curr] = 0;
-        paidAmounts[curr] += amount;
-    });
-
-    // --- STEP 3: Conversion helper ---
-    function convert(amount, from, to) {
-        if (from === to) return amount;
-        const rateFrom = ratesToBase[from];
-        const rateTo = ratesToBase[to];
-        if (!rateFrom || !rateTo) return 0;
-        return (amount * rateFrom) / rateTo;
-    }
-
-    // --- STEP 4: Total paid in base currency ---
-    let totalPaidInBase = 0;
-    Object.keys(paidAmounts).forEach(curr => {
-        totalPaidInBase += convert(paidAmounts[curr], curr, baseCurrency);
-    });
-    const remainingInBase = Math.max(0, totalAmount - totalPaidInBase);
-
-    // --- STEP 5: Update info cards ---
-    $('#totalAmount').text(`${baseCurrency} ${totalAmount.toFixed(2)}`);
-
-    const exchangedAmounts = Object.keys(ratesToBase).map(curr => {
-        const converted = convert(totalAmount, baseCurrency, curr).toFixed(2);
-        return `${curr} ${converted}`;
-    });
-    $('#exchangedAmount').text(exchangedAmounts.join(', '));
-
-    $('#exchangeRateDisplay').text(
-        Object.keys(ratesToBase)
-            .filter(c => c !== baseCurrency)
-            .map(c => `${c}: ${ratesToBase[c]}`)
-            .join(', ')
-    );
-
-    // --- STEP 6: Update all payment cards dynamically ---
-    $('#paymentStatusContainer').show();
-    const currencies = ['USD', 'AFS', 'EUR', 'DARHAM']; // your card IDs
-    currencies.forEach(curr => {
-        const paid = paidAmounts[curr] || 0;
-        const remaining = convert(remainingInBase, baseCurrency, curr);
-
-        const sectionId = `#${curr.toLowerCase()}Section`;
-        if (paid > 0 || remaining > 0) $(sectionId).show();
-
-        $(`#paidAmount${curr}`).text(`${curr} ${paid.toFixed(2)}`);
-        $(`#remainingAmount${curr}`).text(`${curr} ${remaining.toFixed(2)}`);
-    });
-}
-
-
-
-
-
-
-
-
-// Handle transaction form submission
-$('#weightTransactionForm').on('submit', function(e) {
-    e.preventDefault();
-    
-    // Create FormData object
-    const formData = new FormData(this);
-
-    // Remove the transaction_time field since we'll combine it with date
-    formData.delete('transaction_time');
-
-    // Combine date and time
-    const date = $('#transactionDate').val();
-    const time = $('#transactionTime').val();
-    if (date && time) {
-        formData.set('transaction_date', `${date} ${time}`);
-    }
-
-    // Add exchange rate if field is visible
-    if ($('#exchangeRateField').is(':visible')) {
-        const exchangeRate = $('#transactionExchangeRate').val();
-        if (exchangeRate) {
-            formData.set('exchange_rate', exchangeRate);
-        }
-    }
-    
-    $.ajax({
-        url: 'ajax/save_weight_transaction.php',
-        type: 'POST',
-        data: formData,
-        processData: false,
-        contentType: false,
-        success: function(response) {
-            try {
-                const result = JSON.parse(response);
-                if (result.success) {
-                    // Show success message
-                    showToast('<?= __('transaction_saved_successfully') ?>', 'success');
-                    
-                    // Reload transactions
-                    loadTransactions($('#weightId').val());
-                    
-                    // Reset form
-                    $('#weightTransactionForm')[0].reset();
-                    
-                    // Set today's date and current time again
-                    const now = new Date();
-                    $('#transactionDate').val(now.toISOString().split('T')[0]);
-                    $('#transactionTime').val(now.toTimeString().split(' ')[0].slice(0, 5));
-                } else {
-                    showToast(result.message || '<?= __('failed_to_save_transaction') ?>', 'error');
-                }
-            } catch (e) {
-                console.error('Error parsing response:', e);
-                console.log('Raw response:', response);
-                showToast('<?= __('error_processing_request') ?>', 'error');
-            }
-        },
-        error: function(xhr, status, error) {
-            console.error('AJAX Error:', error);
-            console.log('Status:', status);
-            console.log('Response:', xhr.responseText);
-            alert('<?= __('error_saving_transaction') ?>'); 
-        }
-    });
-});
-            // Function to format date
-            function formatDate(dateString) {
-                const date = new Date(dateString);
-                return date.toLocaleDateString('en-US', {
-                    year: 'numeric',
-                    month: 'short',
-                    day: 'numeric'
-                });
-            }
         });
-
-        // Function to edit weight
-        function editWeight(weightId) {
-            $.ajax({
-                url: 'ajax/get_weight.php',
-                type: 'GET',
-                data: { id: weightId },
-                success: function(response) {
-                    try {
-                        const result = JSON.parse(response);
-                        if (result.success) {
-                            const weight = result.weight;
-                            
-                            // Populate the edit form
-                            $('#editWeightId').val(weight.id);
-                            $('#editWeight').val(weight.weight);
-                            $('#editBasePrice').val(weight.base_price);
-                            $('#editSoldPrice').val(weight.sold_price);
-                            $('#editMarketExchangeRate').val(weight.market_exchange_rate);
-                            $('#editExchangeRate').val(weight.exchange_rate);
-                            $('#editProfit').val(weight.profit);
-                            $('#editRemarks').val(weight.remarks);
-                            
-                            // Show the modal
-                            $('#editWeightModal').modal('show');
-                        } else {
-                            alert(result.message || '<?= __('failed_to_load_weight_details') ?>');
-                        }
-                    } catch (e) {
-                        alert('<?= __('error_loading_weight_details') ?>');
-                    }
-                },
-                error: function() {
-                    showToast('<?= __('error_loading_weight_details') ?>', 'error');
-                }
-            });
-        }
-        function deleteTransaction(transactionId, reference_id, amount) {
-    Swal.fire({
-        title: '<?= __('are_you_sure_you_want_to_delete_this_transaction') ?>',
-        icon: 'warning',
-        showCancelButton: true,
-        confirmButtonColor: '#3085d6',
-        cancelButtonColor: '#d33',
-        confirmButtonText: '<?= __('yes_delete_it') ?>',
-        cancelButtonText: '<?= __('cancel') ?>'
-    }).then((result) => {
-        if (result.isConfirmed) {
-            $.ajax({
-                url: 'ajax/delete_weight_transaction.php',
-                type: 'POST',
-                dataType: 'json',  // Let jQuery parse JSON automatically
-                data: { 
-                    transaction_id: transactionId,
-                    weight_id: reference_id,
-                    amount: amount
-                },
-                success: function(result) {
-                    // jQuery has already parsed JSON
-                    if (result && result.success) {
-                        showToast(result.message || '<?= __('transaction_deleted_successfully') ?>', 'success');
-                        // Reload transactions
-                    location.reload();
-                    } else {
-                        showToast(result?.message || '<?= __('failed_to_delete_transaction') ?>', 'error');
-                    }
-                },
-                error: function(xhr, status, error) {
-                    console.error('AJAX error:', status, error, xhr.responseText);
-                    showToast('<?= __('error_processing_request') ?>', 'error');
-                }
-            });
-        }
-    });
-}
-
     </script>
 
-    <style>
-        .avatar {
-            width: 40px;
-            height: 40px;
-            border-radius: 50%;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            font-weight: bold;
-            font-size: 18px;
-        }
-
-        .bg-light-primary {
-            background-color: rgba(62, 100, 255, 0.15);
-            color: #3e64ff;
-        }
-
-        .table td {
-            vertical-align: middle;
-        }
-
-        /* Checkbox styling */
-        .weight-checkbox, #selectAllWeights {
-            transform: scale(1.2);
-            cursor: pointer;
-        }
-
-        /* Selected row highlighting */
-        .table tbody tr.selected {
-            background-color: rgba(40, 167, 69, 0.1);
-        }
-
-        /* Generate invoice button styling */
-        #generateInvoiceBtn {
-            margin-right: 10px;
-            transition: all 0.3s ease;
-        }
-
-        #generateInvoiceBtn:hover {
-            transform: translateY(-1px);
-            box-shadow: 0 4px 8px rgba(0,0,0,0.1);
-        }
-
-        /* Transaction Modal Improvements */
-        #transactionsModal .modal-xl {
-            max-width: 95%;
-        }
-
-        #transactionsModal .card {
-            border: none;
-            border-radius: 10px;
-            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
-        }
-
-        #transactionsModal .card-header {
-            border-radius: 10px 10px 0 0 !important;
-            border: none;
-            padding: 1rem 1.5rem;
-        }
-
-        #transactionsModal .form-control-lg {
-            border-radius: 8px;
-            border: 2px solid #e9ecef;
-            transition: all 0.3s ease;
-        }
-
-        #transactionsModal .form-control-lg:focus {
-            border-color: #007bff;
-            box-shadow: 0 0 0 0.2rem rgba(0, 123, 255, 0.25);
-        }
-
-        #transactionsModal .input-group-text {
-            background-color: #f8f9fa;
-            border: 2px solid #e9ecef;
-            color: #6c757d;
-        }
-
-        #transactionsModal .btn-lg {
-            border-radius: 8px;
-            padding: 0.75rem 2rem;
-            font-weight: 600;
-            transition: all 0.3s ease;
-        }
-
-        #transactionsModal .btn-primary:hover {
-            transform: translateY(-2px);
-            box-shadow: 0 4px 15px rgba(0, 123, 255, 0.3);
-        }
-
-        #transactionsModal .table th {
-            font-weight: 600;
-            font-size: 0.875rem;
-            text-transform: uppercase;
-            letter-spacing: 0.5px;
-            color: #495057;
-        }
-
-        #transactionsModal .badge {
-            font-size: 0.75rem;
-            padding: 0.375rem 0.75rem;
-        }
-
-        /* Responsive improvements */
-        @media (max-width: 768px) {
-            #transactionsModal .modal-xl {
-                max-width: 98%;
-                margin: 0.5rem;
-            }
-
-            #transactionsModal .row {
-                margin-bottom: 1rem;
-            }
-
-            #transactionsModal .card-body {
-                padding: 1rem;
-            }
-
-            #transactionsModal .btn-lg {
-                width: 100%;
-                margin-bottom: 0.5rem;
-            }
-        }
-
-        /* Animation for modal content */
-        #transactionsModal .card {
-            animation: fadeInUp 0.3s ease-out;
-        }
-
-        @keyframes fadeInUp {
-            from {
-                opacity: 0;
-                transform: translateY(20px);
-            }
-            to {
-                opacity: 1;
-                transform: translateY(0);
-            }
-        }
-
-        /* Custom scrollbar for modal */
-        #transactionsModal .modal-body::-webkit-scrollbar {
-            width: 6px;
-        }
-
-        #transactionsModal .modal-body::-webkit-scrollbar-track {
-            background: #f1f1f1;
-            border-radius: 10px;
-        }
-
-        #transactionsModal .modal-body::-webkit-scrollbar-thumb {
-            background: #c1c1c1;
-            border-radius: 10px;
-        }
-
-        #transactionsModal .modal-body::-webkit-scrollbar-thumb:hover {
-            background: #a8a8a8;
-        }
-    </style>
 
     <!-- Floating Action Button for Multi-Weight Invoice -->
     <div id="floatingActionButton" class="position-fixed" style="bottom: 80px; right: 20px; z-index: 1050;">

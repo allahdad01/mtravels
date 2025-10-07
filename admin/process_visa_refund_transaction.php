@@ -20,8 +20,7 @@ $payment_amount = isset($_POST['payment_amount']) ? DbSecurity::validateInput($_
 // Validate payment_description
 $payment_description = isset($_POST['payment_description']) ? DbSecurity::validateInput($_POST['payment_description'], 'string', ['maxlength' => 255]) : null;
 
-// Validate payment_date
-$payment_date = isset($_POST['payment_date']) ? DbSecurity::validateInput($_POST['payment_date'], 'date') : null;
+// Validate payment_date (removed validation as it was not used and caused issues)
 
 // Validate refund_id
 $refund_id = isset($_POST['refund_id']) ? DbSecurity::validateInput($_POST['refund_id'], 'int', ['min' => 0]) : null;
@@ -36,7 +35,12 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     try {
         $refund_id = intval($_POST['refund_id']);
         $main_account_id = intval($_POST['main_account_id']);
-        $payment_date = $_POST['payment_date'] . ' ' . ($_POST['payment_time'] ?? '00:00:00');
+        $raw_date = trim($_POST['payment_date']);
+        if (strpos($raw_date, ' ') === false) {
+            $payment_date = $raw_date . ' ' . ($_POST['payment_time'] ?? '00:00:00');
+        } else {
+            $payment_date = $raw_date;
+        }
         $description = $_POST['payment_description'];
         $amount = floatval($_POST['payment_amount']);
         $currency = $_POST['payment_currency'];
@@ -65,7 +69,23 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         $newBalance = null;
 
         // Always get current balance for transaction record, but only deduct if client is an agency
-        $balanceField = $currency === 'USD' ? 'usd_balance' : 'afs_balance';
+        switch ($currency) {
+            case 'USD':
+                $balanceField = 'usd_balance';
+                break;
+            case 'AFS':
+                $balanceField = 'afs_balance';
+                break;
+            case 'EUR':
+                $balanceField = 'eur_balance';
+                break;
+            case 'DARHAM':
+                $balanceField = 'darham_balance';
+                break;
+            default:
+                $balanceField = 'afs_balance';
+                break;
+        }
         $stmt = $pdo->prepare("SELECT $balanceField as current_balance FROM main_account WHERE id = ? AND tenant_id = ?");
         $stmt->execute([$main_account_id, $tenant_id]);
         $balanceResult = $stmt->fetch(PDO::FETCH_ASSOC);

@@ -259,13 +259,6 @@ $(document).ready(function() {
         $dateChangeDetailsContainer.show();
         $saveDateChangeBtn.show();
         
-        // Set default exchange rate if currency is USD
-        if (currency === 'USD') {
-            $('#exchange_rate').val('1.0000');
-        } else {
-            // You might want to fetch the current exchange rate here
-            $('#exchange_rate').val('70.0000'); // Default AFS rate
-        }
         
         // Scroll to the details section
         $dateChangeDetailsContainer[0].scrollIntoView({ behavior: 'smooth' });
@@ -290,7 +283,6 @@ $(document).ready(function() {
         const requiredFields = [
             { id: 'selectedTicketId', name: 'Ticket' },
             { id: 'departureDate', name: 'Departure Date' },
-            { id: 'exchange_rate', name: 'Exchange Rate' },
             { id: 'supplier_penalty', name: 'Supplier Penalty' },
             { id: 'service_penalty', name: 'Service Penalty' },
             { id: 'base', name: 'Base Price' },
@@ -314,7 +306,7 @@ $(document).ready(function() {
         });
         
         // Additional validation for numeric fields
-        const numericFields = ['exchange_rate', 'supplier_penalty', 'service_penalty', 'base', 'sold'];
+        const numericFields = ['supplier_penalty', 'service_penalty', 'base', 'sold'];
         numericFields.forEach(fieldId => {
             const $field = $(`#${fieldId}`);
             const value = parseFloat($field.val());

@@ -40,7 +40,7 @@ try {
 
     // First get the transaction details to know the currency and main account
     $getTransactionStmt = $pdo->prepare("
-        SELECT t.*, t.currency as transaction_currency, t.created_at as transaction_date,
+        SELECT t.*, t.currency as transaction_currency,
                t.type as transaction_type, t.description
         FROM main_account_transactions t
         JOIN main_account m ON t.main_account_id = m.id
@@ -72,9 +72,9 @@ try {
     }
 
     // Debug logging to track the calculations
-    error_log("Delete Visa Transaction - ID: {$transaction_id}, Type: " . ($isRefund ? 'Refund' : 'Regular') . 
+    error_log("Delete Visa Transaction - ID: {$transaction_id}, Type: " . ($isRefund ? 'Refund' : 'Regular') .
               ", Transaction Type: {$transaction['transaction_type']}, Amount: {$amount}, " .
-              "Stored Amount: {$storedAmount}, Adjustment: {$adjustmentAmount}");
+              "Stored Amount: {$storedAmount}, Adjustment: {$adjustmentAmount}, Created At: {$transaction['created_at']}");
 
     // Determine which balance to update based on currency
     $balanceColumn = '';
@@ -94,19 +94,19 @@ try {
 
     // Update balances of all subsequent transactions with the correct adjustment
     $updateSubsequentStmt = $pdo->prepare("
-        UPDATE main_account_transactions 
+        UPDATE main_account_transactions
         SET balance = balance + ?
-        WHERE main_account_id = ? 
-        AND currency = ? 
-        AND created_at > ? 
+        WHERE main_account_id = ?
+        AND currency = ?
+        AND id > ?
         AND id != ?
         AND tenant_id = ?
     ");
     $updateSubsequentResult = $updateSubsequentStmt->execute([
-        $adjustmentAmount, 
-        $transaction['main_account_id'], 
-        $transaction['currency'], 
-        $transaction['transaction_date'],
+        $adjustmentAmount,
+        $transaction['main_account_id'],
+        $transaction['currency'],
+        $transaction_id,
         $transaction_id,
         $tenant_id
     ]);

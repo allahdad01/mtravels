@@ -38,11 +38,12 @@ $query = "SELECT st.*,
                             WHEN st.transaction_of = 'date_change' THEN CONCAT(dc.passenger_name)
                             WHEN st.transaction_of = 'weight_sale' THEN CONCAT(tbt.passenger_name)
                             WHEN st.transaction_of = 'visa_sale' THEN CONCAT(vs.applicant_name)
+                            WHEN st.transaction_of = 'visa_refund' THEN CONCAT(va.applicant_name)
                             WHEN st.transaction_of = 'umrah' THEN CONCAT(ub.name)
                             WHEN st.transaction_of = 'umrah_refund' THEN CONCAT(ubr.name)
                             WHEN st.transaction_of = 'hotel' THEN CONCAT(hb.title,hb.first_name, hb.last_name)
+                            WHEN st.transaction_of = 'hotel_refund' THEN CONCAT(hbr.title,hbr.first_name, hbr.last_name)
                             WHEN st.transaction_of = 'fund' THEN CONCAT(usr.name)
-                            WHEN st.transaction_of = 'hotel_refund' THEN CONCAT(hb.title,hb.first_name, hb.last_name)
                             WHEN st.transaction_of = 'jv_payment' THEN CONCAT(jv.jv_name)
                 ELSE st.reference_id
             END AS reference_name
@@ -52,6 +53,8 @@ $query = "SELECT st.*,
           LEFT JOIN ticket_weights tw ON st.reference_id = tw.id AND st.transaction_of = 'weight_sale'
           LEFT JOIN ticket_bookings tbt ON tw.ticket_id = tbt.id AND st.transaction_of = 'weight_sale'
           LEFT JOIN visa_applications vs ON st.reference_id = vs.id AND st.transaction_of = 'visa_sale'
+          LEFT JOIN visa_refunds vr ON st.reference_id = vr.id AND st.transaction_of = 'visa_refund'
+          LEFT JOIN visa_applications va ON va.id = vr.visa_id
           LEFT JOIN refunded_tickets rt ON st.reference_id = rt.id AND st.transaction_of = 'ticket_refund'
           LEFT JOIN date_change_tickets dc ON st.reference_id = dc.id AND st.transaction_of = 'date_change'
           LEFT JOIN umrah_transactions ut ON st.reference_id = ut.id AND st.transaction_of = 'umrah'
@@ -60,6 +63,7 @@ $query = "SELECT st.*,
           LEFT JOIN umrah_bookings ubr ON ur.booking_id = ubr.booking_id
           LEFT JOIN hotel_bookings hb ON st.reference_id = hb.id AND st.transaction_of = 'hotel'
           LEFT JOIN hotel_refunds hr ON st.reference_id = hr.id AND st.transaction_of = 'hotel_refund'
+          LEFT JOIN hotel_bookings hbr ON hbr.id = hr.booking_id
           LEFT JOIN users usr ON usr.id = st.reference_id AND st.transaction_of = 'fund'
           LEFT JOIN jv_payments jv ON jv.id = st.reference_id AND st.transaction_of = 'jv_payment'
           WHERE st.supplier_id = ?

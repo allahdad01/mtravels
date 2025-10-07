@@ -331,19 +331,19 @@ require_once('../includes/conn.php');
                                                                         <div class="financial-summary">
                                                                             <div class="d-flex justify-content-between mb-1">
                                                                                 <span class="text-muted"><?= __('total_price') ?>:</span>
-                                                                                <strong><?= htmlspecialchars($row['total_price']) ?></strong>
+                                                                                <strong><?= htmlspecialchars($row['total_price'] ?? '') ?></strong>
                                                                             </div>
                                                                             <div class="d-flex justify-content-between mb-1">
                                                                                 <span class="text-success"><?= __('paid') ?>:</span>
-                                                                                <strong class="text-success"><?= htmlspecialchars($row['total_paid']) ?></strong>
+                                                                                <strong class="text-success"><?= htmlspecialchars($row['total_paid'] ?? '') ?></strong>
                                                                             </div>
                                                                             <div class="d-flex justify-content-between mb-1">
                                                                                 <span class="text-warning"><?= __('bank') ?>:</span>
-                                                                                <strong class="text-warning"><?= htmlspecialchars($row['total_paid_to_bank']) ?></strong>
+                                                                                <strong class="text-warning"><?= htmlspecialchars($row['total_paid_to_bank'] ?? '') ?></strong>
                                                                             </div>
                                                                             <div class="d-flex justify-content-between">
                                                                                 <span class="text-danger"><?= __('due') ?>:</span>
-                                                                                <strong class="text-danger"><?= htmlspecialchars($row['total_due']) ?></strong>
+                                                                                <strong class="text-danger"><?= htmlspecialchars($row['total_due'] ?? '') ?></strong>
                                                                             </div>
                                                                         </div>
                                                                     </td>

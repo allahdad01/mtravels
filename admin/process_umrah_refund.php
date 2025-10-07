@@ -144,7 +144,7 @@ try {
         // Handle supplier balance and transaction for External suppliers
         if ($supplier_type === 'External') {
             // Convert refund amount if currencies differ (simplified - assuming same currency for now)
-            $supplierRefundAmount = $service_refund_amount;
+            $supplierRefundAmount = $service_base_price;
 
             // Update supplier balance
             $newSupplierBalance = $current_balance + $supplierRefundAmount;
@@ -264,7 +264,6 @@ try {
         'success' => true,
         'message' => 'Umrah booking refund processed successfully',
         'refund_id' => $refund_id,
-        'old_profit' => $originalProfit,
         'new_profit' => $newProfit
     ]);
     

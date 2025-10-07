@@ -16,8 +16,6 @@ require_once('../includes/db.php');
 // Validate original_transaction_id
 $exchange_rate = isset($_POST['exchange_rate']) ? DbSecurity::validateInput($_POST['exchange_rate'], 'float', ['min' => 0]) : null;
 
-// Validate is_refund
-$is_refund = isset($_POST['is_refund']) ? DbSecurity::validateInput($_POST['is_refund'], 'string', ['maxlength' => 255]) : null;
 
 // Validate currency
 $currency = isset($_POST['currency']) ? DbSecurity::validateInput($_POST['currency'], 'currency') : null;
@@ -47,13 +45,14 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         $visa_id = intval($_POST['visa_id']);
         $payment_date = $_POST['payment_date'] ?? date('Y-m-d');
         $payment_time = $_POST['payment_time'] ?? date('H:i:s');
-        $payment_datetime = $payment_date . ' ' . $payment_time;
+        // Parse payment_date and payment_time to ensure correct formats
+        $payment_date_parsed = date('Y-m-d', strtotime($payment_date));
+        $payment_time_parsed = date('H:i:s', strtotime($payment_time));
+        $payment_datetime = $payment_date_parsed . ' ' . $payment_time_parsed;
         $payment_description = $_POST['payment_description'] ?? '';
         $payment_amount = floatval($_POST['payment_amount']);
         $currency = $_POST['payment_currency'] ?? $_POST['currency'];
-        
-        // Check if this is a refund transaction
-        $is_refund = isset($_POST['is_refund']) && $_POST['is_refund'] === 'true';
+
         $exchange_rate = isset($_POST['exchange_rate']) ? floatval($_POST['exchange_rate']) : null;
     
         // Get visa and supplier details
@@ -108,8 +107,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         $stmt = $pdo->prepare("UPDATE main_account SET $balanceField = ? WHERE id = ?");
         $stmt->execute([$newBalance, $visa['paid_to']]);
 
-        // Determine transaction type based on refund status or amount sign
-        $transaction_type = ($payment_amount < 0 || $is_refund) ? 'debit' : 'credit';
+        // Determine transaction type based on amount sign
+        $transaction_type = $payment_amount < 0 ? 'debit' : 'credit';
 
         // Insert transaction record in main_account_transactions
         $stmt = $pdo->prepare("INSERT INTO main_account_transactions 
@@ -131,24 +130,14 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         // Get the last inserted ID for main account transaction
         $main_transaction_id = $pdo->lastInsertId();
 
-        // Create appropriate notification message based on transaction type
-        if ($is_refund) {
-            $notification_message = sprintf(
-                "Refund processed for visa application #%s - %s: Amount %s %.2f",
-                $visa_id,
-                $visa['applicant_name'],
-                $currency,
-                abs($payment_amount)
-            );
-        } else {
-            $notification_message = sprintf(
-                "New payment received for visa application #%s - %s: Amount %s %.2f",
-                $visa_id,
-                $visa['applicant_name'],
-                $currency,
-                abs($payment_amount)
-            );
-        }
+        // Create notification message
+        $notification_message = sprintf(
+            "New payment received for visa application #%s - %s: Amount %s %.2f",
+            $visa_id,
+            $visa['applicant_name'],
+            $currency,
+            abs($payment_amount)
+        );
 
         $notifStmt = $pdo->prepare("
             INSERT INTO notifications 
@@ -165,7 +154,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         
         echo json_encode([
             'success' => true,
-            'message' => $is_refund ? 'Refund processed successfully' : 'Transaction added successfully',
+            'message' => 'Transaction added successfully',
             'transaction_id' => $main_transaction_id
         ]);
 

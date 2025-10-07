@@ -247,7 +247,7 @@ try {
     }
     $stmt_delete_client->close();
 
-    $stmt_delete_main = $conn->prepare("DELETE FROM main_account_transactions WHERE reference_id = ? AND transaction_of = 'weight_sale' AND tenant_id = ?");
+    $stmt_delete_main = $conn->prepare("DELETE FROM main_account_transactions WHERE reference_id = ? AND transaction_of = 'weight' AND tenant_id = ?");
     $stmt_delete_main->bind_param("ii", $weightId, $tenant_id);
     if (!$stmt_delete_main->execute()) {
         throw new Exception("Failed to delete main account transactions.");

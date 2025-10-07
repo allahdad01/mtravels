@@ -399,80 +399,80 @@ const transactionManager = {
                 </div>
             `;
             $('body').append(modalHtml);
-
-            // Bind the change event for the edit currency select
-            $('#editPaymentCurrency').on('change', transactionManager.toggleEditExchangeRateField.bind(transactionManager));
-
-            // Add submit handler for the edit form
-            $('#editTransactionForm').on('submit', function(e) {
-                e.preventDefault();
-
-                // Create FormData from the form
-                const formData = new FormData(this);
-
-                // Explicitly set the refund ID again to ensure it's included
-                const currentRefundId = $('#refund_id').val();
-                formData.set('refund_id', currentRefundId);
-
-                // Ensure transaction_id and refund_id are set
-                if (!formData.get('transaction_id')) {
-                    alert('Error: Missing transaction ID');
-                    return;
-                }
-
-                if (!formData.get('refund_id')) {
-                    alert('Error: Missing refund ID');
-                    return;
-                }
-
-                // Combine date and time into a datetime string in MySQL format
-                const date = formData.get('payment_date');
-                const time = formData.get('payment_time');
-                if (date && time) {
-                    formData.set('payment_date', `${date} ${time}`);
-                }
-
-                // Add exchange rate if provided
-                const exchangeRate = $('#editTransactionExchangeRate').val();
-                if (exchangeRate && $('#editExchangeRateField').is(':visible')) {
-                    formData.set('payment_exchange_rate', exchangeRate);
-                }
-
-                // Log the form data for debugging
-                console.log('Submitting transaction update with data:');
-                for (let pair of formData.entries()) {
-                    console.log(pair[0] + ': ' + pair[1]);
-                }
-
-                $.ajax({
-                    url: 'update_refund_hotel_transaction.php',
-                    type: 'POST',
-                    data: formData,
-                    processData: false,
-                    contentType: false,
-                    success: function(response) {
-                        try {
-                            const result = typeof response === 'string' ? JSON.parse(response) : response;
-                            if (result.success) {
-                                showToast('Transaction updated successfully');
-                                $('#editTransactionModal').modal('hide');
-                                transactionManager.loadTransactionHistory(currentRefundId);
-                            } else {
-                                showToast('Error updating transaction: ' + (result.message || 'Unknown error'));
-                            }
-                        } catch (e) {
-                            console.error('Error parsing response:', e);
-                            showToast('Error processing the request');
-                        }
-                    },
-                    error: function(xhr, status, error) {
-                        console.error('AJAX Error:', error);
-                        console.error('Response:', xhr.responseText);
-                        showToast('Error updating transaction');
-                    }
-                });
-            });
         }
+
+        // Bind the change event for the edit currency select (rebind in case modal was recreated)
+        $('#editPaymentCurrency').off('change').on('change', transactionManager.toggleEditExchangeRateField.bind(transactionManager));
+
+        // Add submit handler for the edit form using event delegation
+        $(document).off('submit', '#editTransactionForm').on('submit', '#editTransactionForm', function(e) {
+            e.preventDefault();
+
+            // Create FormData from the form
+            const formData = new FormData(this);
+
+            // Explicitly set the refund ID again to ensure it's included
+            const currentRefundId = $('#refund_id').val();
+            formData.set('refund_id', currentRefundId);
+
+            // Ensure transaction_id and refund_id are set
+            if (!formData.get('transaction_id')) {
+                alert('Error: Missing transaction ID');
+                return;
+            }
+
+            if (!formData.get('refund_id')) {
+                alert('Error: Missing refund ID');
+                return;
+            }
+
+            // Combine date and time into a datetime string in MySQL format
+            const date = formData.get('payment_date');
+            const time = formData.get('payment_time');
+            if (date && time) {
+                formData.set('payment_date', `${date} ${time}`);
+            }
+
+            // Add exchange rate if provided
+            const exchangeRate = $('#editTransactionExchangeRate').val();
+            if (exchangeRate && $('#editExchangeRateField').is(':visible')) {
+                formData.set('payment_exchange_rate', exchangeRate);
+            }
+
+            // Log the form data for debugging
+            console.log('Submitting transaction update with data:');
+            for (let pair of formData.entries()) {
+                console.log(pair[0] + ': ' + pair[1]);
+            }
+
+            $.ajax({
+                url: 'update_refund_hotel_transaction.php',
+                type: 'POST',
+                data: formData,
+                processData: false,
+                contentType: false,
+                success: function(response) {
+                    try {
+                        const result = typeof response === 'string' ? JSON.parse(response) : response;
+                        if (result.success) {
+                            showToast('Transaction updated successfully');
+                            $('#editTransactionModal').modal('hide');
+                            transactionManager.loadTransactionHistory(currentRefundId);
+                        } else {
+                            showToast('Error updating transaction: ' + (result.message || 'Unknown error'));
+                        }
+                    } catch (e) {
+                        console.error('Error parsing response:', e);
+                        showToast('Error processing the request');
+                    }
+                },
+                error: function(xhr, status, error) {
+                    console.error('AJAX Error:', error);
+                    console.error('Response:', xhr.responseText);
+                    showToast('Error updating transaction');
+                }
+            });
+        });
 
         // Populate the edit form with the current values
         $('#editTransactionId').val(transactionId);

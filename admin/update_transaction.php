@@ -190,19 +190,19 @@ try {
             SET amount = ?, transaction_type = ?, receipt = ?, remarks = ? 
             WHERE id = ? AND tenant_id = ?
         ");
-        $updateStmt->bind_param("dsssi", $newAmount, $newType, $receipt, $description, $transactionId, $tenant_id);
+        $updateStmt->bind_param("dsssii", $newAmount, $newType, $receipt, $description, $transactionId, $tenant_id);
         $updateStmt->execute();
         
         // Get all transactions after this one to update balances
         $laterTransactionsStmt = $conn->prepare("
-            SELECT id, amount, transaction_type, balance 
-            FROM supplier_transactions 
+            SELECT id, amount, transaction_type, balance
+            FROM supplier_transactions
             WHERE supplier_id = ? AND tenant_id = ? AND
-                  (transaction_date > ? OR 
-                  (transaction_date = ? AND id > ?)) 
+                  (transaction_date > ? OR
+                  (transaction_date = ? AND id > ?))
             ORDER BY transaction_date ASC, id ASC
         ");
-        $laterTransactionsStmt->bind_param("issi", $supplierId, $tenant_id, $transaction['transaction_date'], $transaction['transaction_date'], $transactionId);
+        $laterTransactionsStmt->bind_param("issii", $supplierId, $tenant_id, $transaction['transaction_date'], $transaction['transaction_date'], $transactionId);
         $laterTransactionsStmt->execute();
         $laterTransactionsResult = $laterTransactionsStmt->get_result();
         $laterTransactions = $laterTransactionsResult->fetch_all(MYSQLI_ASSOC);
@@ -210,19 +210,19 @@ try {
         // Update the current transaction's balance
         $currentBalance = $transaction['balance'] + $amountDifference;
         $updateBalanceStmt = $conn->prepare("UPDATE supplier_transactions SET balance = ? WHERE id = ? AND tenant_id = ?");
-        $updateBalanceStmt->bind_param("di", $currentBalance, $transactionId, $tenant_id);
+        $updateBalanceStmt->bind_param("dii", $currentBalance, $transactionId, $tenant_id);
         $updateBalanceStmt->execute();
         
         // Update all subsequent transactions' balances
         foreach ($laterTransactions as $laterTransaction) {
             $newBalance = $laterTransaction['balance'] + $amountDifference;
-            $updateBalanceStmt->bind_param("di", $newBalance, $laterTransaction['id'], $tenant_id);
+            $updateBalanceStmt->bind_param("dii", $newBalance, $laterTransaction['id'], $tenant_id);
             $updateBalanceStmt->execute();
         }
         
         // Update the supplier balance
         $updateSupplierStmt = $conn->prepare("UPDATE suppliers SET balance = balance + ? WHERE id = ? AND tenant_id = ?");
-        $updateSupplierStmt->bind_param("di", $amountDifference, $supplierId, $tenant_id);
+        $updateSupplierStmt->bind_param("dii", $amountDifference, $supplierId, $tenant_id);
         $updateSupplierStmt->execute();
         
         // Also update the corresponding main account transaction if it exists

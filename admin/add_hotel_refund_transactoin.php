@@ -32,7 +32,10 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     try {
         $refund_id = intval($_POST['refund_id']);
         $main_account_id = intval($_POST['main_account_id']);
-        $payment_date = $_POST['payment_date'] . ' ' . ($_POST['payment_time'] ?? '00:00:00');
+        $payment_date = $_POST['payment_date'];
+        if (strpos($payment_date, ' ') === false) {
+            $payment_date .= ' ' . ($_POST['payment_time'] ?? '00:00:00');
+        }
         $description = $_POST['payment_description'];
         $amount = floatval($_POST['payment_amount']);
         $currency = $_POST['payment_currency'];

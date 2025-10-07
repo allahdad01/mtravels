@@ -20,7 +20,7 @@ document.addEventListener('DOMContentLoaded', function() {
 function updateDuesAmounts(data) {
     // Format USD amounts
     if (document.getElementById('ticketDuesUSD')) {
-        document.getElementById('ticketDuesUSD').textContent = '$' + formatNumber(data.ticket_reserve_dues_usd);
+        document.getElementById('ticketDuesUSD').textContent = '$' + formatNumber(data.ticket_dues_usd);
     }
     if (document.getElementById('ticketReserveDuesUSD')) {
         document.getElementById('ticketReserveDuesUSD').textContent = '$' + formatNumber(data.ticket_reserve_dues_usd);
@@ -49,7 +49,7 @@ function updateDuesAmounts(data) {
 
     // Format AFS amounts
     if (document.getElementById('ticketDuesAFS')) {
-        document.getElementById('ticketDuesAFS').textContent = '؋' + formatNumber(data.ticket_reserve_dues_afs);
+        document.getElementById('ticketDuesAFS').textContent = '؋' + formatNumber(data.ticket_dues_afs);
     }
     if (document.getElementById('ticketReserveDuesAFS')) {
         document.getElementById('ticketReserveDuesAFS').textContent = '؋' + formatNumber(data.ticket_reserve_dues_afs);
