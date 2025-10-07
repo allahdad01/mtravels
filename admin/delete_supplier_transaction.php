@@ -82,7 +82,7 @@ try {
     }
     
     $updateStmt = $conn->prepare($updateQuery);
-    $updateStmt->bind_param("di", $amount, $supplierId, $tenant_id);
+    $updateStmt->bind_param("dii", $amount, $supplierId, $tenant_id);
     $updateStmt->execute();
     $updateStmt->close();
 
@@ -106,7 +106,9 @@ try {
             // Map currency to the correct balance field
             $currencyFieldMap = [
                 'USD' => 'usd_balance',
-                'AFS' => 'afs_balance'
+                'AFS' => 'afs_balance',
+                'EUR' => 'euro_balance',
+                'DARHAM' => 'darham_balance'
             ];
             
             // Check if the currency is in our map
@@ -137,7 +139,7 @@ try {
             }
             
             $updateMainSubsequentStmt = $conn->prepare($updateMainSubsequentQuery);
-            $updateMainSubsequentStmt->bind_param("dissi", $mainAmount, $mainAccountId, $currency, $mainTxDate, $transactionId, $tenant_id);
+            $updateMainSubsequentStmt->bind_param("dissii", $mainAmount, $mainAccountId, $currency, $mainTxDate, $transactionId, $tenant_id);
             $updateMainSubsequentStmt->execute();
             $updateMainSubsequentStmt->close();
             
@@ -151,7 +153,7 @@ try {
             }
             
             $mainUpdateStmt = $conn->prepare($mainUpdateQuery);
-            $mainUpdateStmt->bind_param("di", $mainAmount, $mainAccountId, $tenant_id);
+            $mainUpdateStmt->bind_param("dii", $mainAmount, $mainAccountId, $tenant_id);
             $mainUpdateStmt->execute();
             $mainUpdateStmt->close();
             
