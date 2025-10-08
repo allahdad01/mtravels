@@ -102,18 +102,22 @@ try {
             $deleteClientTransaction->execute([$transaction_id, $tenant_id]);
         }
     } else {
-        
+
         $stmt_client_transactions = $pdo->prepare("
-            SELECT id, amount, type, created_at FROM client_transactions 
-            WHERE client_id = ? AND transaction_of = 'visa_sale' 
+            SELECT id, amount, type, created_at FROM client_transactions
+            WHERE client_id = ? AND transaction_of = 'visa_sale'
             AND reference_id = ? AND tenant_id = ?
         ");
         $stmt_client_transactions->execute([$client_id, $visa_id, $tenant_id]);
         $client_transactions = $stmt_client_transactions->fetchAll(PDO::FETCH_ASSOC);
 
-        // Delete Client Transaction
-        $deleteClientTransaction = $pdo->prepare("DELETE FROM client_transactions WHERE id = ? AND tenant_id = ?");
-        $deleteClientTransaction->execute([$transaction_id, $tenant_id]);
+        foreach ($client_transactions as $transaction) {
+            $transaction_id = $transaction['id'];
+
+            // Delete Client Transaction
+            $deleteClientTransaction = $pdo->prepare("DELETE FROM client_transactions WHERE id = ? AND tenant_id = ?");
+            $deleteClientTransaction->execute([$transaction_id, $tenant_id]);
+        }
     }
 
     // Step 3: Reverse Supplier Transactions

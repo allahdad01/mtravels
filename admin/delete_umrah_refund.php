@@ -108,19 +108,23 @@ if ($_SERVER["REQUEST_METHOD"] == "POST" && isset($data['id'])) {
                 $stmt->execute();
             }
         } else {
-            $clientTransactions = "SELECT id, amount, type, created_at FROM client_transactions 
-                                 WHERE client_id = ? AND transaction_of = 'umrah_refund' 
+            $clientTransactions = "SELECT id, amount, type, created_at FROM client_transactions
+                                 WHERE client_id = ? AND transaction_of = 'umrah_refund'
                                  AND reference_id = ? AND tenant_id = ?";
             $stmt = $conn->prepare($clientTransactions);
             $stmt->bind_param("iii", $clientId, $refundId, $tenant_id);
             $stmt->execute();
             $clientResults = $stmt->get_result();
 
+            while ($row = $clientResults->fetch_assoc()) {
+                $transaction_id = $row['id'];
+
                 // Delete Client Transaction
                 $deleteClientTransaction = "DELETE FROM client_transactions WHERE id = ? AND tenant_id = ?";
                 $stmt = $conn->prepare($deleteClientTransaction);
                 $stmt->bind_param("ii", $transaction_id, $tenant_id);
                 $stmt->execute();
+            }
         }
 
         // Step 3: Reverse Supplier Transactions for all suppliers involved in the refund

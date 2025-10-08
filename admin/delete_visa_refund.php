@@ -85,19 +85,23 @@ if ($_SERVER["REQUEST_METHOD"] == "POST" && isset($data['id'])) {
                 $stmt->execute();
             }
         } else {
-            $clientTransactions = "SELECT id, amount, type, created_at FROM client_transactions 
-                                 WHERE client_id = ? AND transaction_of = 'visa_refund' 
+            $clientTransactions = "SELECT id, amount, type, created_at FROM client_transactions
+                                 WHERE client_id = ? AND transaction_of = 'visa_refund'
                                  AND reference_id = ? AND tenant_id = ?";
             $stmt = $conn->prepare($clientTransactions);
             $stmt->bind_param("iii", $clientId, $refundId, $tenant_id);
             $stmt->execute();
             $clientResults = $stmt->get_result();
 
+            while ($row = $clientResults->fetch_assoc()) {
+                $transaction_id = $row['id'];
+
                 // Delete Client Transaction
                 $deleteClientTransaction = "DELETE FROM client_transactions WHERE id = ? AND tenant_id = ?";
                 $stmt = $conn->prepare($deleteClientTransaction);
                 $stmt->bind_param("ii", $transaction_id, $tenant_id);
                 $stmt->execute();
+            }
         }
 
         // Step 3: Reverse Supplier Transactions
@@ -126,44 +130,30 @@ if ($_SERVER["REQUEST_METHOD"] == "POST" && isset($data['id'])) {
 
                 if ($supplierType === 'External') {
                     // Adjust Supplier Balance
-                    $adjustSupplierBalance = "UPDATE suppliers 
-                                            SET balance = balance " . ($row['transaction_type'] == 'Credit' ? '-' : '+') . " ? 
+                    $adjustSupplierBalance = "UPDATE suppliers
+                                            SET balance = balance " . ($row['transaction_type'] == 'Credit' ? '-' : '+') . " ?
                                             WHERE id = ? AND tenant_id = ?";
                     $stmt = $conn->prepare($adjustSupplierBalance);
                     $stmt->bind_param("dii", $amount, $supplierId, $tenant_id);
                     $stmt->execute();
-                    
+
                     // Update subsequent transactions' running balances
-                    $updateSubsequentSupplierBalances = "UPDATE supplier_transactions 
-                                                       SET balance = balance " . ($row['transaction_type'] == 'Credit' ? '-' : '+') . " ? 
-                                                       WHERE supplier_id = ? 
+                    $updateSubsequentSupplierBalances = "UPDATE supplier_transactions
+                                                       SET balance = balance " . ($row['transaction_type'] == 'Credit' ? '-' : '+') . " ?
+                                                       WHERE supplier_id = ?
                                                        AND id > ?
                                                        AND tenant_id = ?";
                     $stmtUpdate = $conn->prepare($updateSubsequentSupplierBalances);
                     $stmtUpdate->bind_param("disi", $amount, $supplierId, $transaction_id, $tenant_id);
                     $stmtUpdate->execute();
-
-                    // Delete Supplier Transaction
-                    $deleteSupplierTransaction = "DELETE FROM supplier_transactions WHERE id = ? AND tenant_id = ?";
-                    $stmt = $conn->prepare($deleteSupplierTransaction);
-                    $stmt->bind_param("ii", $transaction_id, $tenant_id);
-                    $stmt->execute();
                 }
-            }
-        } else {
-            $supplierTransactions = "SELECT id, amount, transaction_type, transaction_date FROM supplier_transactions 
-                                   WHERE supplier_id = ? AND transaction_of = 'visa_refund' 
-                                   AND reference_id = ? AND tenant_id = ?";
-            $stmt = $conn->prepare($supplierTransactions);
-            $stmt->bind_param("iii", $supplierId, $refundId, $tenant_id);
-            $stmt->execute();
-            $supplierResults = $stmt->get_result();
 
-            // Delete Supplier Transaction
-            $deleteSupplierTransaction = "DELETE FROM supplier_transactions WHERE id = ? AND tenant_id = ?";
-            $stmt = $conn->prepare($deleteSupplierTransaction);
-            $stmt->bind_param("ii", $transaction_id, $tenant_id);
-            $stmt->execute();
+                // Delete Supplier Transaction (always)
+                $deleteSupplierTransaction = "DELETE FROM supplier_transactions WHERE id = ? AND tenant_id = ?";
+                $stmt = $conn->prepare($deleteSupplierTransaction);
+                $stmt->bind_param("ii", $transaction_id, $tenant_id);
+                $stmt->execute();
+            }
         }
 
         // Step 4: Handle Main Account Transactions
