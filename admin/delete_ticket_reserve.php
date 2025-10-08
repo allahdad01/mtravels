@@ -96,10 +96,10 @@ try {
             // Update all subsequent transactions' running balances
             $updateSubsequentSupplierBalances = "UPDATE supplier_transactions 
                                                 SET balance = balance " . ($type == 'Credit' ? '-' : '+') . " ? 
-                                                WHERE supplier_id = ? AND transaction_date > ?
-                                                ORDER BY transaction_date ASC";
+                                                WHERE supplier_id = ? 
+                                                AND id > ?";
             $stmtUpdate = $conn->prepare($updateSubsequentSupplierBalances);
-            $stmtUpdate->bind_param("dis", $amount, $supplier_id, $transaction_date);
+            $stmtUpdate->bind_param("dis", $amount, $supplier_id, $transaction_id);
             $stmtUpdate->execute();
             $stmtUpdate->close();
         }
@@ -131,9 +131,9 @@ try {
                     } elseif ($main_currency === 'AFS') {
                         $stmt_update_main = $conn->prepare("UPDATE main_account SET afs_balance = afs_balance - ? WHERE id = ? AND tenant_id = ?");
                     }  elseif ($main_currency === 'EUR') {
-                        $stmt_update_main = $conn->prepare("UPDATE main_account SET euro_balance = euro_balance + ? WHERE id = ? AND tenant_id = ?");
+                        $stmt_update_main = $conn->prepare("UPDATE main_account SET euro_balance = euro_balance - ? WHERE id = ? AND tenant_id = ?");
                     } elseif ($main_currency === 'DARHAM') {
-                        $stmt_update_main = $conn->prepare("UPDATE main_account SET darham_balance = darham_balance + ? WHERE id = ? AND tenant_id = ?");
+                        $stmt_update_main = $conn->prepare("UPDATE main_account SET darham_balance = darham_balance - ? WHERE id = ? AND tenant_id = ?");
                     } else {
                         throw new Exception("Unsupported currency type for main account balance update.");
                     }
@@ -142,10 +142,10 @@ try {
                     $update_subsequent_main = $conn->prepare("
                         UPDATE main_account_transactions 
                         SET balance = balance - ? 
-                        WHERE main_account_id = ? AND created_at > ? 
+                        WHERE main_account_id = ? 
+                        AND id > ? 
                         AND currency = ?
                         AND tenant_id = ?
-                        ORDER BY created_at ASC
                     ");
                 } elseif ($main_type === 'debit') {
                     if ($main_currency === 'USD') {
@@ -164,10 +164,10 @@ try {
                     $update_subsequent_main = $conn->prepare("
                         UPDATE main_account_transactions 
                         SET balance = balance + ? 
-                        WHERE main_account_id = ? AND created_at > ? 
+                        WHERE main_account_id = ? 
+                        AND id > ? 
                         AND currency = ?
                         AND tenant_id = ?
-                        ORDER BY created_at ASC
                     ");
                 } else {
                     throw new Exception("Invalid transaction type for main account transaction.");
@@ -180,7 +180,7 @@ try {
                 $stmt_update_main->close();
                 
                 // Execute the update for subsequent transactions
-                $update_subsequent_main->bind_param("dissi", $main_amount, $paid_to_id, $transaction_date, $main_currency, $tenant_id);
+                $update_subsequent_main->bind_param("dissi", $main_amount, $paid_to_id, $transaction_id, $main_currency, $tenant_id);
                 if (!$update_subsequent_main->execute()) {
                     throw new Exception("Failed to update subsequent main account transaction balances.");
                 }
@@ -239,12 +239,12 @@ try {
                     // Update all subsequent transactions' running balances
                     $updateSubsequentBalances = "UPDATE client_transactions 
                                                 SET balance = balance " . ($client_transaction_type == 'credit' ? '-' : '+') . " ? 
-                                                WHERE client_id = ? AND created_at > ? 
+                                                WHERE client_id = ? 
+                                                AND id > ? 
                                                 AND currency = ?
-                                                AND tenant_id = ?
-                                                ORDER BY created_at ASC";
+                                                AND tenant_id = ?";
                     $stmtUpdate = $conn->prepare($updateSubsequentBalances);
-                    $stmtUpdate->bind_param("dissi", $client_transaction_amount, $client_id, $transaction_date, $ticket_currency, $tenant_id);
+                    $stmtUpdate->bind_param("dissi", $client_transaction_amount, $client_id, $transaction_id, $ticket_currency, $tenant_id);
                     $stmtUpdate->execute();
                     $stmtUpdate->close();
                 }

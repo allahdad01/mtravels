@@ -90,12 +90,12 @@ try {
             $updateSubsequentBalances = $pdo->prepare("
                 UPDATE client_transactions 
                 SET balance = balance " . ($transaction['type'] == 'credit' ? '-' : '+') . " ? 
-                WHERE client_id = ? AND created_at > ? 
+                WHERE client_id = ? 
+                AND id > ? 
                 AND currency = ?
                 AND tenant_id = ?
-                ORDER BY created_at ASC
             ");
-            $updateSubsequentBalances->execute([$amount, $client_id, $transaction_date, $currency, $tenant_id]);
+            $updateSubsequentBalances->execute([$amount, $client_id, $transaction_id, $currency, $tenant_id]);
 
             // Delete Client Transaction
             $deleteClientTransaction = $pdo->prepare("DELETE FROM client_transactions WHERE id = ? AND tenant_id = ?");
@@ -130,11 +130,11 @@ try {
             $updateSubsequentSupplierBalances = $pdo->prepare("
                 UPDATE supplier_transactions 
                 SET balance = balance " . ($transaction['transaction_type'] == 'Credit' ? '-' : '+') . " ? 
-                WHERE supplier_id = ? AND transaction_date > ?
+                WHERE supplier_id = ? 
+                AND id > ?
                 AND tenant_id = ?
-                ORDER BY transaction_date ASC
             ");
-            $updateSubsequentSupplierBalances->execute([$amount, $supplier_id, $transaction_date, $tenant_id]);
+            $updateSubsequentSupplierBalances->execute([$amount, $supplier_id, $transaction_id, $tenant_id]);
 
             // Delete Supplier Transaction
             $deleteSupplierTransaction = $pdo->prepare("DELETE FROM supplier_transactions WHERE id = ? AND tenant_id = ?");
@@ -179,10 +179,10 @@ try {
                 $update_subsequent_main = $pdo->prepare("
                     UPDATE main_account_transactions 
                     SET balance = balance - ? 
-                    WHERE main_account_id = ? AND created_at > ? 
+                    WHERE main_account_id = ? 
+                    AND id > ? 
                     AND currency = ?
                     AND tenant_id = ?
-                    ORDER BY created_at ASC
                 ");
             } elseif ($main_type === 'debit') {
                 if ($main_currency === 'USD') {
@@ -201,10 +201,10 @@ try {
                 $update_subsequent_main = $pdo->prepare("
                     UPDATE main_account_transactions 
                     SET balance = balance + ? 
-                    WHERE main_account_id = ? AND created_at > ? 
+                    WHERE main_account_id = ? 
+                    AND id > ? 
                     AND currency = ?
                     AND tenant_id = ?
-                    ORDER BY created_at ASC
                 ");
             } else {
                 throw new Exception("Invalid transaction type for main account transaction.");
@@ -213,7 +213,7 @@ try {
             $stmt_update_main->execute([$main_amount, $mainAccountId, $tenant_id]);
             
             // Execute the update for subsequent transactions
-            $update_subsequent_main->execute([$main_amount, $mainAccountId, $transaction_date, $main_currency, $tenant_id]);
+            $update_subsequent_main->execute([$main_amount, $mainAccountId, $transaction_id, $main_currency, $tenant_id]);
         }
     }
     

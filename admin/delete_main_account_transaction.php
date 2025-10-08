@@ -69,10 +69,10 @@ try {
                              SET balance = balance - ? 
                              WHERE main_account_id = ? 
                              AND currency = ? 
-                             AND created_at > ? 
+                             AND id > ? 
                              AND id != ? AND tenant_id = ?";
     $updateSubsequentStmt = $conn->prepare($updateSubsequentQuery);
-    $updateSubsequentStmt->bind_param("dissis", $amount, $accountId, $currency, $transactionDate, $transactionId, $tenant_id);
+    $updateSubsequentStmt->bind_param("dissis", $amount, $accountId, $currency, $transactionId, $transactionId, $tenant_id);
     $updateSubsequentStmt->execute();
     $updateSubsequentStmt->close();
     

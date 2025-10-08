@@ -56,19 +56,19 @@ try {
         $updateSubsequentQuery = "UPDATE supplier_transactions 
                                 SET balance = balance + ? 
                                 WHERE supplier_id = ? 
-                                AND transaction_date > ? 
+                                AND id > ? 
                                 AND id != ? AND tenant_id = ?";
     } else { // credit
         // For CREDIT transactions, we need to subtract the amount from subsequent balances
         $updateSubsequentQuery = "UPDATE supplier_transactions 
                                 SET balance = balance - ? 
                                 WHERE supplier_id = ? 
-                                AND transaction_date > ? 
+                                AND id > ? 
                                 AND id != ? AND tenant_id = ?";
     }
     
     $updateSubsequentStmt = $conn->prepare($updateSubsequentQuery);
-    $updateSubsequentStmt->bind_param("disii", $amount, $supplierId, $transactionDate, $transactionId, $tenant_id);
+    $updateSubsequentStmt->bind_param("disii", $amount, $supplierId, $transactionId, $transactionId, $tenant_id);
     $updateSubsequentStmt->execute();
     $updateSubsequentStmt->close();
     

@@ -70,12 +70,13 @@ if ($_SERVER["REQUEST_METHOD"] == "POST" && isset($data['id'])) {
                 // Update subsequent transactions' running balances
                 $updateSubsequentBalances = "UPDATE client_transactions 
                                            SET balance = balance " . ($row['type'] == 'credit' ? '-' : '+') . " ? 
-                                           WHERE client_id = ? AND created_at > ? 
+                                           WHERE client_id = ? 
+                                           AND id > ? 
                                            AND currency = ?
                                            AND tenant_id = ?
                                            ORDER BY created_at ASC";
                 $stmtUpdate = $conn->prepare($updateSubsequentBalances);
-                $stmtUpdate->bind_param("dissi", $amount, $clientId, $transaction_date, $currency, $tenant_id);
+                $stmtUpdate->bind_param("dissi", $amount, $clientId, $transaction_id, $currency, $tenant_id);
                 $stmtUpdate->execute();
 
                 // Delete Client Transaction
@@ -84,6 +85,20 @@ if ($_SERVER["REQUEST_METHOD"] == "POST" && isset($data['id'])) {
                 $stmt->bind_param("ii", $transaction_id, $tenant_id);
                 $stmt->execute();
             }
+        } else {
+            $clientTransactions = "SELECT id, amount, type, created_at FROM client_transactions 
+                                 WHERE client_id = ? AND transaction_of = 'hotel_refund' 
+                                 AND reference_id = ? AND tenant_id = ?";
+            $stmt = $conn->prepare($clientTransactions);
+            $stmt->bind_param("iii", $clientId, $refundId, $tenant_id);
+            $stmt->execute();
+            $clientResults = $stmt->get_result();
+
+                // Delete Client Transaction
+                $deleteClientTransaction = "DELETE FROM client_transactions WHERE id = ? AND tenant_id = ?";
+                $stmt = $conn->prepare($deleteClientTransaction);
+                $stmt->bind_param("ii", $transaction_id, $tenant_id);
+                $stmt->execute();
         }
 
         // Step 3: Reverse Supplier Transactions
@@ -122,19 +137,21 @@ if ($_SERVER["REQUEST_METHOD"] == "POST" && isset($data['id'])) {
                     // Update subsequent transactions' running balances
                     $updateSubsequentSupplierBalances = "UPDATE supplier_transactions 
                                                        SET balance = balance " . ($row['transaction_type'] == 'Credit' ? '-' : '+') . " ? 
-                                                       WHERE supplier_id = ? AND transaction_date > ?
+                                                       WHERE supplier_id = ? 
+                                                       AND id > ?
                                                        AND tenant_id = ?
                                                        ORDER BY transaction_date ASC";
                     $stmtUpdate = $conn->prepare($updateSubsequentSupplierBalances);
-                    $stmtUpdate->bind_param("disi", $amount, $supplierId, $transaction_date, $tenant_id);
+                    $stmtUpdate->bind_param("disi", $amount, $supplierId, $transaction_id, $tenant_id);
                     $stmtUpdate->execute();
-
-                    // Delete Supplier Transaction
-                    $deleteSupplierTransaction = "DELETE FROM supplier_transactions WHERE id = ? AND tenant_id = ?";
-                    $stmt = $conn->prepare($deleteSupplierTransaction);
-                    $stmt->bind_param("ii", $transaction_id, $tenant_id);
-                    $stmt->execute();
+    
                 }
+
+                // Delete Supplier Transaction
+                $deleteSupplierTransaction = "DELETE FROM supplier_transactions WHERE id = ? AND tenant_id = ?";
+                $stmt = $conn->prepare($deleteSupplierTransaction);
+                $stmt->bind_param("ii", $transaction_id, $tenant_id);
+                $stmt->execute();
             }
         }
 
@@ -167,12 +184,13 @@ if ($_SERVER["REQUEST_METHOD"] == "POST" && isset($data['id'])) {
             // Update subsequent transactions' running balances
             $updateSubsequentMainBalances = "UPDATE main_account_transactions 
                                            SET balance = balance " . ($type == 'credit' ? '-' : '+') . " ? 
-                                           WHERE main_account_id = ? AND created_at > ? 
+                                           WHERE main_account_id = ? 
+                                           AND id > ? 
                                            AND currency = ?
                                            AND tenant_id = ?
                                            ORDER BY created_at ASC";
             $stmtUpdate = $conn->prepare($updateSubsequentMainBalances);
-            $stmtUpdate->bind_param("dissi", $amount, $mainAccountId, $transaction_date, $mainCurrency, $tenant_id);
+            $stmtUpdate->bind_param("dissi", $amount, $mainAccountId, $transaction_id, $mainCurrency, $tenant_id);
             $stmtUpdate->execute();
 
             // Delete Main Account Transaction

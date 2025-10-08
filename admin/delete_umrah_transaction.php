@@ -279,11 +279,11 @@ if ($currency !== $booking_currency) {
                 UPDATE main_account_transactions
                 SET balance = balance - ?
                 WHERE currency = ?
-                AND created_at > ?
+                AND id > ?
                 AND reference_id != ?
                 AND tenant_id = ?
             ");
-            $stmt_update_subsequent->bind_param("dssii", $payment_amount, $currency, $transaction_date, $transaction_id, $tenant_id);
+            $stmt_update_subsequent->bind_param("dssii", $payment_amount, $currency, $transaction_id, $transaction_id, $tenant_id);
 
             if (!$stmt_update_subsequent->execute()) {
                 throw new Exception("Failed to update subsequent transaction balances");

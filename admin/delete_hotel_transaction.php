@@ -106,14 +106,14 @@ try {
         SET balance = balance + ?
         WHERE main_account_id = ? 
         AND currency = ? 
-        AND created_at > ? 
+        AND id > ? 
         AND id != ? AND tenant_id = ?
     ");
     $updateSubsequentResult = $updateSubsequentStmt->execute([
         $adjustmentAmount, 
         $transaction['main_account_id'], 
         $transaction['currency'], 
-        $transaction['transaction_date'],
+        $transaction_id,
         $transaction_id,
         $tenant_id
     ]);
