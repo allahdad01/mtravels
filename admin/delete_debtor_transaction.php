@@ -77,10 +77,10 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['delete_transaction'])
             SET balance = balance - ?
             WHERE main_account_id = ? 
             AND currency = ? 
-            AND created_at > ? 
+            AND id > ? 
             AND id != ? AND tenant_id = ?
         ");
-        $updateSubsequentStmt->bind_param("dsssis", $main_amount, $main_transaction['main_account_id'], $main_currency, $main_transaction['created_at'], $main_transaction['id'], $tenant_id);
+        $updateSubsequentStmt->bind_param("dsssis", $main_amount, $main_transaction['main_account_id'], $main_currency, $main_transaction['id'], $main_transaction['id'], $tenant_id);
         $updateSubsequentStmt->execute();
         
         // Get debtor information

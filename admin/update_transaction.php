@@ -120,13 +120,12 @@ try {
         $laterTransactionsStmt = $pdo->prepare("
             SELECT id, amount, type, balance, currency
             FROM main_account_transactions 
-            WHERE main_account_id = ? AND tenant_id = ? AND
-                  (created_at > ? OR 
-                  (created_at = ? AND id > ?)) AND
-                  currency = ?
-            ORDER BY created_at ASC, id ASC
+            WHERE main_account_id = ? 
+            AND tenant_id = ? 
+            AND id > ? 
+            AND currency = ?
         ");
-        $laterTransactionsStmt->execute([$accountId, $tenant_id, $transaction['created_at'], $transaction['created_at'], $transactionId, $currency]);
+        $laterTransactionsStmt->execute([$accountId, $tenant_id, $transactionId, $currency]);
         $laterTransactions = $laterTransactionsStmt->fetchAll(PDO::FETCH_ASSOC);
         
         // Update the current transaction's balance
@@ -181,7 +180,7 @@ try {
         
         // Calculate the difference in amount
         $originalSignedAmount = $originalType === 'Credit' ? $originalAmount : -$originalAmount;
-        $newSignedAmount = $newType === 'credit' ? $newAmount : -$newAmount;
+        $newSignedAmount = $newType === 'Credit' ? $newAmount : -$newAmount;
         $amountDifference = $newSignedAmount - $originalSignedAmount;
         
         // Update the transaction - transaction_date already removed
@@ -197,12 +196,12 @@ try {
         $laterTransactionsStmt = $conn->prepare("
             SELECT id, amount, transaction_type, balance
             FROM supplier_transactions
-            WHERE supplier_id = ? AND tenant_id = ? AND
-                  (transaction_date > ? OR
-                  (transaction_date = ? AND id > ?))
-            ORDER BY transaction_date ASC, id ASC
+            WHERE supplier_id = ? 
+            AND tenant_id = ?
+            AND id > ?
+            
         ");
-        $laterTransactionsStmt->bind_param("issii", $supplierId, $tenant_id, $transaction['transaction_date'], $transaction['transaction_date'], $transactionId);
+        $laterTransactionsStmt->bind_param("iss", $supplierId, $tenant_id, $transactionId);
         $laterTransactionsStmt->execute();
         $laterTransactionsResult = $laterTransactionsStmt->get_result();
         $laterTransactions = $laterTransactionsResult->fetch_all(MYSQLI_ASSOC);
@@ -260,13 +259,11 @@ try {
             $laterMainTransStmt = $pdo->prepare("
                 SELECT id, balance, currency 
                 FROM main_account_transactions 
-                WHERE main_account_id = ? AND tenant_id = ? AND
-                      (created_at > ? OR 
-                      (created_at = ? AND id > ?)) AND
-                      currency = ?
-                ORDER BY created_at ASC, id ASC
+                WHERE main_account_id = ? AND tenant_id = ? 
+                AND id > ? 
+                AND currency = ?
             ");
-            $laterMainTransStmt->execute([$mainTransaction['main_account_id'], $tenant_id, $mainTransaction['created_at'], $mainTransaction['created_at'], $mainTransaction['id'], $currency]);
+            $laterMainTransStmt->execute([$mainTransaction['main_account_id'], $tenant_id, $mainTransaction['id'], $currency]);
             $laterMainTransactions = $laterMainTransStmt->fetchAll(PDO::FETCH_ASSOC);
             
             // Update all subsequent transactions' balances
@@ -333,13 +330,12 @@ try {
         $laterTransactionsStmt = $conn->prepare("
             SELECT id, amount, type, balance, currency 
             FROM client_transactions 
-            WHERE client_id = ? AND tenant_id = ? AND
-                  (created_at > ? OR 
-                  (created_at = ? AND id > ?)) AND
-                  currency = ?
-            ORDER BY created_at ASC, id ASC
+            WHERE client_id = ? AND tenant_id = ?  
+            AND id > ? 
+            AND currency = ?
+            
         ");
-        $laterTransactionsStmt->bind_param("issisi", $clientId, $tenant_id, $transaction['created_at'], $transaction['created_at'], $transactionId, $currency);
+        $laterTransactionsStmt->bind_param("isss", $clientId, $tenant_id, $transactionId, $currency);
         $laterTransactionsStmt->execute();
         $laterTransactionsResult = $laterTransactionsStmt->get_result();
         $laterTransactions = $laterTransactionsResult->fetch_all(MYSQLI_ASSOC);
@@ -410,13 +406,12 @@ try {
             $laterMainTransStmt = $pdo->prepare("
                 SELECT id, balance, currency 
                 FROM main_account_transactions 
-                WHERE main_account_id = ? AND tenant_id = ? AND
-                      (created_at > ? OR 
-                      (created_at = ? AND id > ?)) AND
-                      currency = ?
-                ORDER BY created_at ASC, id ASC
+                WHERE main_account_id = ? 
+                AND tenant_id = ? 
+                AND id > ? 
+                AND currency = ?
             ");
-            $laterMainTransStmt->execute([$mainTransaction['main_account_id'], $tenant_id, $mainTransaction['created_at'], $mainTransaction['created_at'], $mainTransaction['id'], $currency]);
+            $laterMainTransStmt->execute([$mainTransaction['main_account_id'], $tenant_id, $mainTransaction['id'], $currency]);
             $laterMainTransactions = $laterMainTransStmt->fetchAll(PDO::FETCH_ASSOC);
             
             // Update all subsequent transactions' balances

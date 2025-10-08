@@ -58,12 +58,12 @@ try {
         case 'AFS':
             $balanceColumn = 'afs_balance';
             break;
-            case 'EUR':
-                $balanceColumn = 'euro_balance';
-                break;
-                case 'DARHAM':
-                    $balanceColumn = 'darham_balance';
-                    break;
+        case 'EUR':
+            $balanceColumn = 'euro_balance';
+            break;
+        case 'DARHAM':
+            $balanceColumn = 'darham_balance';
+            break;
         default:
             throw new Exception('Unsupported currency: ' . $transaction['currency']);
     }

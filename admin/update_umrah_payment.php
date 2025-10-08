@@ -323,10 +323,10 @@ $exchange_rate = isset($_POST['exchange_rate']) ? DbSecurity::validateInput($_PO
                         $updateSubsequentSupplierQuery = "UPDATE supplier_transactions 
                                                         SET balance = balance + ? 
                                                         WHERE supplier_id = ? 
-                                                        AND transaction_date > ? 
+                                                        AND id > ? 
                                                         AND id != ? AND tenant_id = ?";
                         $updateSubsequentSupplierStmt = $conn->prepare($updateSubsequentSupplierQuery);
-                        $updateSubsequentSupplierStmt->bind_param("disii", $supplierTxAdjustment, $supplierId, $originalDate, $supplierTxId, $tenant_id);
+                        $updateSubsequentSupplierStmt->bind_param("disii", $supplierTxAdjustment, $supplierId, $supplierTxId, $supplierTxId, $tenant_id);
                         
                         if (!$updateSubsequentSupplierStmt->execute()) {
                             throw new Exception("Failed to update subsequent supplier transactions: " . $updateSubsequentSupplierStmt->error);

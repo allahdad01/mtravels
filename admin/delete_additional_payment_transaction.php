@@ -48,7 +48,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             SET balance = balance - ? 
             WHERE main_account_id = ?
             AND currency = ? 
-            AND created_at > ? 
+            AND id > ? 
             AND id != ?
             AND tenant_id = ?
         ");
@@ -56,13 +56,19 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             $transaction['amount'], 
             $transaction['main_account_id'], 
             $transaction['currency'], 
-            $transaction['transaction_date'],
+            $transactionId,
             $transactionId,
             $tenant_id
         ]);
 
         // Update main account balance
-        $balanceField = $transaction['currency'] === 'USD' ? 'usd_balance' : 'afs_balance';
+        switch ($mainCurrency) {
+            case 'USD': $balanceField = 'usd_balance'; break;
+            case 'AFS': $balanceField = 'afs_balance'; break;
+            case 'EUR': $balanceField = 'euro_balance'; break;
+            case 'DARHAM': $balanceField = 'darham_balance'; break;
+            default: $balanceField = 'afs_balance'; break;
+        }
         $updateStmt = $pdo->prepare("
             UPDATE main_account 
             SET $balanceField = $balanceField - ? 

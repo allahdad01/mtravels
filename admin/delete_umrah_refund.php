@@ -93,12 +93,12 @@ if ($_SERVER["REQUEST_METHOD"] == "POST" && isset($data['id'])) {
                 // Update subsequent transactions' running balances
                 $updateSubsequentBalances = "UPDATE client_transactions 
                                            SET balance = balance " . ($row['type'] == 'credit' ? '-' : '+') . " ? 
-                                           WHERE client_id = ? AND created_at > ? 
+                                           WHERE client_id = ? 
+                                           AND id > ? 
                                            AND currency = ?
-                                           AND tenant_id = ?
-                                           ORDER BY created_at ASC";
+                                           AND tenant_id = ?";
                 $stmtUpdate = $conn->prepare($updateSubsequentBalances);
-                $stmtUpdate->bind_param("dissi", $amount, $clientId, $transaction_date, $currency, $tenant_id);
+                $stmtUpdate->bind_param("dissi", $amount, $clientId, $transaction_id, $currency, $tenant_id);
                 $stmtUpdate->execute();
 
                 // Delete Client Transaction
@@ -151,7 +151,7 @@ if ($_SERVER["REQUEST_METHOD"] == "POST" && isset($data['id'])) {
             if ($supplierType === 'External') {
                 // Adjust Supplier Balance
                 $adjustSupplierBalance = "UPDATE suppliers
-                                        SET balance = balance " . ($row['transaction_type'] == 'credit' ? '-' : '+') . " ?
+                                        SET balance = balance " . ($row['transaction_type'] == 'Credit' ? '-' : '+') . " ?
                                         WHERE id = ? AND tenant_id = ?";
                 $stmtBalance = $conn->prepare($adjustSupplierBalance);
                 $stmtBalance->bind_param("dii", $amount, $supplierId, $tenant_id);
@@ -159,10 +159,10 @@ if ($_SERVER["REQUEST_METHOD"] == "POST" && isset($data['id'])) {
 
                 // Update subsequent transactions' running balances
                 $updateSubsequentSupplierBalances = "UPDATE supplier_transactions
-                                                   SET balance = balance " . ($row['transaction_type'] == 'credit' ? '-' : '+') . " ?
-                                                   WHERE supplier_id = ? AND id > ?
-                                                   AND tenant_id = ?
-                                                   ORDER BY transaction_date ASC";
+                                                   SET balance = balance " . ($row['transaction_type'] == 'Credit' ? '-' : '+') . " ?
+                                                   WHERE supplier_id = ? 
+                                                   AND id > ?
+                                                   AND tenant_id = ?";
                 $stmtUpdate = $conn->prepare($updateSubsequentSupplierBalances);
                 $stmtUpdate->bind_param("disi", $amount, $supplierId, $transaction_id, $tenant_id);
                 $stmtUpdate->execute();
@@ -193,7 +193,13 @@ if ($_SERVER["REQUEST_METHOD"] == "POST" && isset($data['id'])) {
             $transaction_id = $row['id'];
 
             // Update main account balance
-            $balanceField = ($mainCurrency == 'USD') ? 'usd_balance' : 'afs_balance';
+            switch ($mainCurrency) {
+                case 'USD': $balanceField = 'usd_balance'; break;
+                case 'AFS': $balanceField = 'afs_balance'; break;
+                case 'EUR': $balanceField = 'euro_balance'; break;
+                case 'DARHAM': $balanceField = 'darham_balance'; break;
+                default: $balanceField = 'afs_balance'; break;
+            }
             $adjustMainBalance = "UPDATE main_account 
                                 SET $balanceField = $balanceField " . ($type == 'credit' ? '-' : '+') . " ? 
                                 WHERE id = ? AND tenant_id = ?";
@@ -204,10 +210,10 @@ if ($_SERVER["REQUEST_METHOD"] == "POST" && isset($data['id'])) {
             // Update subsequent transactions' running balances
             $updateSubsequentMainBalances = "UPDATE main_account_transactions 
                                            SET balance = balance " . ($type == 'credit' ? '-' : '+') . " ? 
-                                           WHERE main_account_id = ? AND id > ? 
+                                           WHERE main_account_id = ? 
+                                           AND id > ? 
                                            AND currency = ?
-                                           AND tenant_id = ?
-                                           ORDER BY created_at ASC";
+                                           AND tenant_id = ?";
             $stmtUpdate = $conn->prepare($updateSubsequentMainBalances);
             $stmtUpdate->bind_param("dissi", $amount, $mainAccountId, $transaction_id, $mainCurrency, $tenant_id);
             $stmtUpdate->execute();

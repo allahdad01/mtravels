@@ -202,9 +202,9 @@ if ($currency !== $booking_currency) {
                 } elseif ($currency === 'AFS') {
                     $balance_field = 'afs_balance';
                 } elseif ($currency === 'EUR') {
-                    $balance_field = 'usd_balance'; // EUR transactions affect USD balance (converted)
+                    $balance_field = 'euro_balance'; // EUR transactions affect USD balance (converted)
                 } elseif ($currency === 'DARHAM' || $currency === 'DAR') {
-                    $balance_field = 'usd_balance'; // DARHAM transactions affect USD balance (converted)
+                    $balance_field = 'darham_balance'; // DARHAM transactions affect USD balance (converted)
                 } else {
                     $balance_field = 'usd_balance'; // Default to USD balance
                 }
@@ -238,9 +238,9 @@ if ($currency !== $booking_currency) {
             } elseif ($currency === 'AFS') {
                 $balance_field = 'afs_balance';
             } elseif ($currency === 'EUR') {
-                $balance_field = 'usd_balance'; // EUR transactions affect USD balance (converted)
+                $balance_field = 'euro_balance'; // EUR transactions affect USD balance (converted)
             } elseif ($currency === 'DARHAM' || $currency === 'DAR') {
-                $balance_field = 'usd_balance'; // DARHAM transactions affect USD balance (converted)
+                $balance_field = 'darham_balance'; // DARHAM transactions affect USD balance (converted)
             } else {
                 $balance_field = 'usd_balance'; // Default to USD balance
             }

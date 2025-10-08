@@ -307,11 +307,11 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['delete_transaction'])
             SET balance = balance + ?
             WHERE main_account_id = ? 
             AND currency = ? 
-            AND created_at > ? 
+            AND id > ? 
             AND id != ?
             AND tenant_id = ?
         ");
-        $updateSubsequentStmt->bind_param("dsssii", $main_amount, $main_transaction['main_account_id'], $main_currency, $main_transaction['created_at'], $main_transaction['id'], $tenant_id);
+        $updateSubsequentStmt->bind_param("dsssii", $main_amount, $main_transaction['main_account_id'], $main_currency, $main_transaction['id'], $main_transaction['id'], $tenant_id);
         $updateSubsequentStmt->execute();
         
         // Get creditor information
@@ -462,11 +462,11 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['edit_creditor'])) {
                     SET balance = balance + ?
                     WHERE main_account_id = ? 
                     AND currency = ? 
-                    AND created_at > ? 
+                    AND id > ? 
                     AND id != ?
                     AND tenant_id = ?
                 ");
-                $stmt->bind_param("dissi", $balance_difference, $initial_transaction['main_account_id'], $new_currency, $initial_transaction['created_at'], $initial_transaction['id'], $tenant_id);
+                $stmt->bind_param("dissi", $balance_difference, $initial_transaction['main_account_id'], $new_currency, $initial_transaction['id'], $initial_transaction['id'], $tenant_id);
                 $stmt->execute();
 
                 // Update the main account's current balance
@@ -2224,10 +2224,10 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['delete_creditor'])) {
                 SET balance = balance - ?
                 WHERE main_account_id = ? 
                 AND currency = ? 
-                AND created_at > ? 
+                AND id > ? 
                 AND id != ?
             ");
-            $stmt->bind_param("dissi", $creditor_balance, $initial_transaction['main_account_id'], $creditor_currency, $initial_transaction['created_at'], $initial_transaction['id']);
+            $stmt->bind_param("dissi", $creditor_balance, $initial_transaction['main_account_id'], $creditor_currency, $initial_transaction['id'], $initial_transaction['id']);
             $stmt->execute();
 
             // Update main account balance

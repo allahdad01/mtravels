@@ -335,13 +335,13 @@ try {
                         UPDATE supplier_transactions 
                         SET balance = balance + ? 
                         WHERE supplier_id = ? 
-                        AND transaction_date > ? 
+                        AND id > ? 
                         AND id != ?
                     ");
                     $updateSubsequentStmt->execute([
                         $currentService['base_price'],
                         $currentService['supplier_id'],
-                        $transactionData['transaction_date'],
+                        $transactionData['id'],
                         $transactionData['id']
                     ]);
 
@@ -406,12 +406,12 @@ try {
                         UPDATE supplier_transactions 
                         SET balance = balance - ? 
                         WHERE supplier_id = ? 
-                        AND transaction_date > ?
+                        AND id > ?
                     ");
                     $updateSubsequentStmt->execute([
                         $priceDiff,
                         $currentService['supplier_id'],
-                        $transactionData['transaction_date']
+                        $transactionData['id']
                     ]);
                 }
             }
@@ -508,7 +508,7 @@ try {
                         UPDATE client_transactions
                         SET balance = balance + ?
                         WHERE client_id = ?
-                        AND created_at > ?
+                        AND id > ?
                         AND currency = ?
                         AND id != ?
                     ");
@@ -516,7 +516,7 @@ try {
                     $updateSubsequentStmt->execute([
                         $transactionAmount,
                         $currentData['sold_to'],
-                        $oldClientTransaction['created_at'],
+                        $oldClientTransaction['id'],
                         $oldClientTransaction['currency'],
                         $oldClientTransaction['id']
                     ]);
@@ -613,13 +613,17 @@ try {
                             $updateSubsequentClientStmt = $pdo->prepare("
                                 UPDATE client_transactions
                                 SET balance = balance - ?
-                                WHERE client_id = ? AND created_at > ? AND currency = ?
+                                WHERE client_id = ? 
+                                AND id > ? 
+                                AND currency = ?
                             ");
                         } else {
                             $updateSubsequentClientStmt = $pdo->prepare("
                                 UPDATE client_transactions
                                 SET balance = balance + ?
-                                WHERE client_id = ? AND created_at > ? AND currency = ?
+                                WHERE client_id = ? 
+                                AND id > ? 
+                                AND currency = ?
                             ");
                         }
 
@@ -627,7 +631,7 @@ try {
                         $updateSubsequentClientStmt->execute([
                             $absAmountDifference,
                             $soldTo,
-                            $clientTransaction['created_at'],
+                            $clientTransaction['id'],
                             $clientCurrency
                         ]);
                     }

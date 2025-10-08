@@ -241,8 +241,7 @@ try {
                                                 WHERE client_id = ? 
                                                 AND id > ? 
                                                 AND currency = ?
-                                                AND tenant_id = ?
-                                                ORDER BY created_at ASC";
+                                                AND tenant_id = ?";
                     $stmtUpdate = $conn->prepare($updateSubsequentBalances);
                     $stmtUpdate->bind_param("dissi", $client_transaction_amount, $client_id, $transaction_id, $ticket_currency, $tenant_id);
                     $stmtUpdate->execute();

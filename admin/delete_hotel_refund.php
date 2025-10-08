@@ -173,7 +173,13 @@ if ($_SERVER["REQUEST_METHOD"] == "POST" && isset($data['id'])) {
             $transaction_id = $row['id'];
 
             // Update main account balance
-            $balanceField = ($mainCurrency == 'USD') ? 'usd_balance' : 'afs_balance';
+            switch ($mainCurrency) {
+                case 'USD': $balanceField = 'usd_balance'; break;
+                case 'AFS': $balanceField = 'afs_balance'; break;
+                case 'EUR': $balanceField = 'euro_balance'; break;
+                case 'DARHAM': $balanceField = 'darham_balance'; break;
+                default: $balanceField = 'afs_balance'; break;
+            }
             $adjustMainBalance = "UPDATE main_account 
                                 SET $balanceField = $balanceField " . ($type == 'credit' ? '-' : '+') . " ? 
                                 WHERE id = ? AND tenant_id = ?";
@@ -187,8 +193,7 @@ if ($_SERVER["REQUEST_METHOD"] == "POST" && isset($data['id'])) {
                                            WHERE main_account_id = ? 
                                            AND id > ? 
                                            AND currency = ?
-                                           AND tenant_id = ?
-                                           ORDER BY created_at ASC";
+                                           AND tenant_id = ?";
             $stmtUpdate = $conn->prepare($updateSubsequentMainBalances);
             $stmtUpdate->bind_param("dissi", $amount, $mainAccountId, $transaction_id, $mainCurrency, $tenant_id);
             $stmtUpdate->execute();

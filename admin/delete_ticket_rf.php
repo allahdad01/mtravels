@@ -71,8 +71,7 @@ if ($_SERVER["REQUEST_METHOD"] == "POST" && isset($data['id'])) {
                                             WHERE client_id = ? 
                                             AND id > ? 
                                             AND currency = ?
-                                            AND tenant_id = ?
-                                            ORDER BY created_at ASC";
+                                            AND tenant_id = ?";
                 $stmtUpdate = $conn->prepare($updateSubsequentBalances);
                 $stmtUpdate->bind_param("dissi", $amount, $clientId, $transaction_id, $currency, $tenant_id);
                 $stmtUpdate->execute();
@@ -124,8 +123,7 @@ if ($_SERVER["REQUEST_METHOD"] == "POST" && isset($data['id'])) {
                                                     SET balance = balance " . ($row['transaction_type'] == 'Credit' ? '-' : '+') . " ? 
                                                     WHERE supplier_id = ? 
                                                     AND id > ?
-                                                    AND tenant_id = ?
-                                                    ORDER BY transaction_date ASC";
+                                                    AND tenant_id = ?";
                 $stmtUpdate = $conn->prepare($updateSubsequentSupplierBalances);
                 $stmtUpdate->bind_param("disi", $amount, $supplierId, $transaction_id, $tenant_id);
                 $stmtUpdate->execute();

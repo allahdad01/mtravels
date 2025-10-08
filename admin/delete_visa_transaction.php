@@ -53,27 +53,14 @@ try {
         throw new Exception('Transaction not found');
     }
 
-    // Determine if this is a refund transaction
-    $isRefund = ($transaction['transaction_type'] === 'debit' || 
-                 strpos($transaction['description'], 'Refund for:') === 0);
-
     // Get the stored amount from the transaction record
     $storedAmount = floatval($transaction['amount']);
     
-    // Calculate the correct adjustment based on transaction type
-    if ($isRefund) {
-        // For refunds (type 'debit'), the original effect was to DECREASE the balance by the stored amount
-        // To reverse this effect, we need to ADD that same amount
-        $adjustmentAmount = $storedAmount; // Reverse the effect
-    } else {
-        // For regular payments (type 'credit'), the original effect was to INCREASE the balance by the stored amount
-        // To reverse this effect, we need to SUBTRACT that same amount
-        $adjustmentAmount = -$storedAmount; // Reverse the effect
-    }
+    // Calculate the adjustment (treat as regular transaction)
+    $adjustmentAmount = -$storedAmount;
 
     // Debug logging to track the calculations
-    error_log("Delete Visa Transaction - ID: {$transaction_id}, Type: " . ($isRefund ? 'Refund' : 'Regular') .
-              ", Transaction Type: {$transaction['transaction_type']}, Amount: {$amount}, " .
+    error_log("Delete Visa Transaction - ID: {$transaction_id}, Transaction Type: {$transaction['transaction_type']}, Amount: {$amount}, " .
               "Stored Amount: {$storedAmount}, Adjustment: {$adjustmentAmount}, Created At: {$transaction['created_at']}");
 
     // Determine which balance to update based on currency
@@ -136,9 +123,7 @@ try {
 
         if ($updateResult) {
             $pdo->commit();
-            $message = $isRefund ? 
-                'Refund transaction deleted successfully and balances adjusted' : 
-                'Transaction deleted successfully and balances adjusted';
+            $message = 'Transaction deleted successfully and balances adjusted';
             
             echo json_encode(['success' => true, 'message' => $message]);
         } else {

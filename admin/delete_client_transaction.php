@@ -61,7 +61,9 @@ try {
     // Map currency to the correct balance field
     $currencyFieldMap = [
         'USD' => 'usd_balance',
-        'AFS' => 'afs_balance'
+        'AFS' => 'afs_balance',
+        'EUR' => 'euro_balance',
+        'DARHAM' => 'darham_balance'
     ];
     
     // Check if the currency is in our map
@@ -79,7 +81,7 @@ try {
                                 SET balance = balance + ? 
                                 WHERE client_id = ? 
                                 AND currency = ? 
-                                AND created_at > ? 
+                                AND id > ? 
                                 AND id != ? AND tenant_id = ?";
     } else { // credit
         // For CREDIT transactions, we need to subtract the amount from subsequent balances
@@ -87,12 +89,12 @@ try {
                                 SET balance = balance - ? 
                                 WHERE client_id = ? 
                                 AND currency = ? 
-                                AND created_at > ? 
+                                AND id > ? 
                                 AND id != ? AND tenant_id = ?";
     }
     
     $updateSubsequentStmt = $conn->prepare($updateSubsequentQuery);
-    $updateSubsequentStmt->bind_param("dissi", $amount, $clientId, $currency, $transactionDate, $transactionId, $tenant_id);
+    $updateSubsequentStmt->bind_param("dissi", $amount, $clientId, $currency, $transactionId, $transactionId, $tenant_id);
     $updateSubsequentStmt->execute();
     $updateSubsequentStmt->close();
     
@@ -126,7 +128,7 @@ try {
             $mainAmount = $mainTx['amount'];
             $mainType = strtolower($mainTx['type']); // credit or debit
             $mainAccountId = $mainTx['main_account_id'];
-            $mainTxDate = $mainTx['created_at'];
+            $mainTxId = $mainTx['id'];
             
             // Update balances of all subsequent main account transactions
             // For credit transactions to main account, we need to subtract the amount from subsequent balances
@@ -136,19 +138,19 @@ try {
                                             SET balance = balance - ? 
                                             WHERE main_account_id = ? 
                                             AND currency = ? 
-                                            AND created_at > ? 
+                                            AND id > ? 
                                             AND reference_id != ? AND tenant_id = ?";
             } else {
                 $updateMainSubsequentQuery = "UPDATE main_account_transactions 
                                             SET balance = balance + ? 
                                             WHERE main_account_id = ? 
                                             AND currency = ? 
-                                            AND created_at > ? 
+                                            AND id > ? 
                                             AND reference_id != ? AND tenant_id = ?";
             }
             
             $updateMainSubsequentStmt = $conn->prepare($updateMainSubsequentQuery);
-            $updateMainSubsequentStmt->bind_param("dissi", $mainAmount, $mainAccountId, $currency, $mainTxDate, $transactionId, $tenant_id);
+            $updateMainSubsequentStmt->bind_param("dissi", $mainAmount, $mainAccountId, $currency, $mainTxId, $transactionId, $tenant_id);
             $updateMainSubsequentStmt->execute();
             $updateMainSubsequentStmt->close();
             

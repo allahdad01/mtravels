@@ -58,27 +58,14 @@ try {
         throw new Exception('Transaction not found');
     }
 
-    // Determine if this is a refund transaction
-    $isRefund = ($transaction['transaction_type'] === 'debit' || 
-                 strpos($transaction['description'], 'Refund for:') === 0);
-
     // Get the stored amount from the transaction record
     $storedAmount = floatval($transaction['amount']);
     
-    // Calculate the correct adjustment based on transaction type
-    if ($isRefund) {
-        // For refunds (type 'debit'), the original effect was to DECREASE the balance
-        // So we need to INCREASE the balance when deleting (add the amount back)
-        $adjustmentAmount = $storedAmount;
-    } else {
-        // For regular payments (type 'credit'), the original effect was to INCREASE the balance
-        // So we need to DECREASE the balance when deleting (subtract the amount)
-        $adjustmentAmount = -$storedAmount;
-    }
+    // Calculate the adjustment (treat as regular transaction)
+    $adjustmentAmount = -$storedAmount;
 
     // Debug logging to track the calculations
-    error_log("Delete Transaction - ID: {$transaction_id}, Type: " . ($isRefund ? 'Refund' : 'Regular') . 
-              ", Transaction Type: {$transaction['transaction_type']}, Amount: {$amount}, " .
+    error_log("Delete Transaction - ID: {$transaction_id}, Transaction Type: {$transaction['transaction_type']}, Amount: {$amount}, " .
               "Stored Amount: {$storedAmount}, Adjustment: {$adjustmentAmount}");
 
     // Determine which balance to update based on currency
@@ -90,12 +77,12 @@ try {
         case 'AFS':
             $balanceColumn = 'afs_balance';
             break;
-            case 'EUR':
-                $balanceColumn = 'euro_balance';
-                break;
-                case 'DARHAM':
-                    $balanceColumn = 'darham_balance';
-                    break;
+        case 'EUR':
+            $balanceColumn = 'euro_balance';
+            break;
+        case 'DARHAM':
+            $balanceColumn = 'darham_balance';
+            break;
         default:
             throw new Exception('Unsupported currency: ' . $transaction['currency']);
     }
@@ -140,9 +127,7 @@ try {
 
         if ($updateResult) {
             $pdo->commit();
-            $message = $isRefund ? 
-                'Refund transaction deleted successfully and balances adjusted' : 
-                'Transaction deleted successfully and balances adjusted';
+            $message = 'Transaction deleted successfully and balances adjusted';
             
             // Log the activity
             $old_values = json_encode([
@@ -151,7 +136,6 @@ try {
                 'amount' => $storedAmount,
                 'currency' => $transaction['currency'],
                 'transaction_type' => $transaction['transaction_type'],
-                'is_refund' => $isRefund,
                 'main_account_id' => $transaction['main_account_id'],
                 'description' => $transaction['description'],
                 'created_at' => $transaction['transaction_date']

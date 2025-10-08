@@ -91,21 +91,21 @@ try {
                 if ($transaction_type == 'debit') {
                     $updateSubsequentBalances = "UPDATE client_transactions 
                                                 SET balance = balance + ? 
-                                                WHERE client_id = ? AND created_at > ? 
+                                                WHERE client_id = ? 
+                                                AND id > ? 
                                                 AND currency = ?
-                                                AND tenant_id = ?
-                                                ORDER BY created_at ASC";
+                                                AND tenant_id = ?";
                 } else {
                     $updateSubsequentBalances = "UPDATE client_transactions 
                                                 SET balance = balance - ? 
-                                                WHERE client_id = ? AND created_at > ? 
+                                                WHERE client_id = ? 
+                                                AND id > ? 
                                                 AND currency = ?
-                                                AND tenant_id = ?
-                                                ORDER BY created_at ASC";
+                                                AND tenant_id = ?";
                 }
                 
                 $stmtUpdate = $conn->prepare($updateSubsequentBalances);
-                $stmtUpdate->bind_param("dissi", $amount, $client_id, $transaction_date, $currency, $tenant_id);
+                $stmtUpdate->bind_param("dissi", $amount, $client_id, $transaction_id, $currency, $tenant_id);
                 $stmtUpdate->execute();
             }
 
@@ -151,11 +151,11 @@ try {
                 // Update subsequent transactions' running balances
                 $updateSubsequentSupplierBalances = "UPDATE supplier_transactions 
                                                     SET balance = balance " . ($row['transaction_type'] == 'Credit' ? '-' : '+') . " ? 
-                                                    WHERE supplier_id = ? AND transaction_date > ?
-                                                    AND tenant_id = ?
-                                                    ORDER BY transaction_date ASC";
+                                                    WHERE supplier_id = ? 
+                                                    AND id > ?
+                                                    AND tenant_id = ?";
                 $stmtUpdate = $conn->prepare($updateSubsequentSupplierBalances);
-                $stmtUpdate->bind_param("disi", $amount, $supplier_id, $transaction_date, $tenant_id);
+                $stmtUpdate->bind_param("disi", $amount, $supplier_id, $transaction_id, $tenant_id);
                 $stmtUpdate->execute();
             }
 
@@ -199,8 +199,14 @@ try {
                 if ($main_type === 'credit') {
                     if ($main_currency === 'USD') {
                         $stmt_update_main = $conn->prepare("UPDATE main_account SET usd_balance = usd_balance - ? WHERE id = ? AND tenant_id = ?");
-                    } else {
+                    } elseif ($main_currency === 'AFS') {
                         $stmt_update_main = $conn->prepare("UPDATE main_account SET afs_balance = afs_balance - ? WHERE id = ? AND tenant_id = ?");
+                    }  elseif ($main_currency === 'EUR') {
+                        $stmt_update_main = $conn->prepare("UPDATE main_account SET euro_balance = euro_balance - ? WHERE id = ? AND tenant_id = ?");
+                    } elseif ($main_currency === 'DARHAM') {
+                        $stmt_update_main = $conn->prepare("UPDATE main_account SET darham_balance = darham_balance - ? WHERE id = ? AND tenant_id = ?");
+                    } else {
+                        throw new Exception("Unsupported currency type for main account balance update.");
                     }
                     
                     $update_subsequent_main = $conn->prepare("
@@ -214,17 +220,23 @@ try {
                 } else {
                     if ($main_currency === 'USD') {
                         $stmt_update_main = $conn->prepare("UPDATE main_account SET usd_balance = usd_balance + ? WHERE id = ? AND tenant_id = ?");
-                    } else {
+                    } elseif ($main_currency === 'AFS') {
                         $stmt_update_main = $conn->prepare("UPDATE main_account SET afs_balance = afs_balance + ? WHERE id = ? AND tenant_id = ?");
+                    }  elseif ($main_currency === 'EUR') {
+                        $stmt_update_main = $conn->prepare("UPDATE main_account SET euro_balance = euro_balance + ? WHERE id = ? AND tenant_id = ?");
+                    } elseif ($main_currency === 'DARHAM') {
+                        $stmt_update_main = $conn->prepare("UPDATE main_account SET darham_balance = darham_balance + ? WHERE id = ? AND tenant_id = ?");
+                    } else {
+                        throw new Exception("Unsupported currency type for main account balance update.");
                     }
                     
                     $update_subsequent_main = $conn->prepare("
                         UPDATE main_account_transactions 
                         SET balance = balance + ? 
-                        WHERE main_account_id = ? AND created_at > ? 
+                        WHERE main_account_id = ? 
+                        AND id > ? 
                         AND currency = ?
                         AND tenant_id = ?
-                        ORDER BY created_at ASC
                     ");
                 }
                 
@@ -232,7 +244,7 @@ try {
                 $stmt_update_main->execute();
                 $stmt_update_main->close();
                 
-                $update_subsequent_main->bind_param("dissi", $main_amount, $mainAccountId, $transaction_date, $main_currency, $tenant_id);
+                $update_subsequent_main->bind_param("dissi", $main_amount, $mainAccountId, $transaction_id, $main_currency, $tenant_id);
                 $update_subsequent_main->execute();
                 $update_subsequent_main->close();
             }
