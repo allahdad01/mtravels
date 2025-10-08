@@ -59,7 +59,7 @@ try {
     $mainAccountId = $visa['paid_to'];
 
     // Step 2: Reverse Client Transactions (Only If Client is Regular)
-    if ($client_type === 'regular') {
+    if ($client_type === 'regular') { 
         $stmt_client_transactions = $pdo->prepare("
             SELECT id, amount, type, created_at FROM client_transactions 
             WHERE client_id = ? AND transaction_of = 'visa_sale' 
@@ -101,6 +101,19 @@ try {
             $deleteClientTransaction = $pdo->prepare("DELETE FROM client_transactions WHERE id = ? AND tenant_id = ?");
             $deleteClientTransaction->execute([$transaction_id, $tenant_id]);
         }
+    } else {
+        
+        $stmt_client_transactions = $pdo->prepare("
+            SELECT id, amount, type, created_at FROM client_transactions 
+            WHERE client_id = ? AND transaction_of = 'visa_sale' 
+            AND reference_id = ? AND tenant_id = ?
+        ");
+        $stmt_client_transactions->execute([$client_id, $visa_id, $tenant_id]);
+        $client_transactions = $stmt_client_transactions->fetchAll(PDO::FETCH_ASSOC);
+
+        // Delete Client Transaction
+        $deleteClientTransaction = $pdo->prepare("DELETE FROM client_transactions WHERE id = ? AND tenant_id = ?");
+        $deleteClientTransaction->execute([$transaction_id, $tenant_id]);
     }
 
     // Step 3: Reverse Supplier Transactions
@@ -140,6 +153,18 @@ try {
             $deleteSupplierTransaction = $pdo->prepare("DELETE FROM supplier_transactions WHERE id = ? AND tenant_id = ?");
             $deleteSupplierTransaction->execute([$transaction_id, $tenant_id]);
         }
+    } else {
+        $stmt_supplier_transactions = $pdo->prepare("
+            SELECT id, amount, transaction_type, transaction_date FROM supplier_transactions 
+            WHERE supplier_id = ? AND transaction_of = 'visa_sale' 
+            AND reference_id = ? AND tenant_id = ?
+        ");
+        $stmt_supplier_transactions->execute([$supplier_id, $visa_id, $tenant_id]);
+        $supplier_transactions = $stmt_supplier_transactions->fetchAll(PDO::FETCH_ASSOC);
+
+        // Delete Supplier Transaction
+        $deleteSupplierTransaction = $pdo->prepare("DELETE FROM supplier_transactions WHERE id = ? AND tenant_id = ?");
+        $deleteSupplierTransaction->execute([$transaction_id, $tenant_id]);
     }
     
     // Handle main account transactions and balance updates
