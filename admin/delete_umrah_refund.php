@@ -12,7 +12,7 @@ if ($_SERVER["REQUEST_METHOD"] == "POST" && isset($data['id'])) {
     $refundId = intval($data['id']);
 
     // Step 1: Fetch Refund Details
-    $query = "SELECT umr.*, um.sold_to, um.booking_id, c.client_type
+    $query = "SELECT umr.*, um.sold_to, um.booking_id, um.supplier, um.price, um.sold_price, c.client_type
               FROM umrah_refunds umr
               JOIN umrah_bookings um ON umr.booking_id = um.booking_id
               LEFT JOIN clients c ON um.sold_to = c.id

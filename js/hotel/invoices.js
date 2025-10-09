@@ -159,20 +159,4 @@ window.updateInvoiceTotal = function() {
     document.getElementById('invoiceTotal').textContent = total.toFixed(2);
 };
 
-// Global toast notification function
-function showToast(message, type = 'success') {
-    // Use SweetAlert2 if available, otherwise fallback to alert
-    if (typeof Swal !== 'undefined') {
-        Swal.fire({
-            toast: true,
-            position: 'top-end',
-            icon: type,
-            title: message,
-            showConfirmButton: false,
-            timer: 3000,
-            timerProgressBar: true
-        });
-    } else {
-        alert(message);
-    }
-}
+// Toast notifications are handled by the global showToast function

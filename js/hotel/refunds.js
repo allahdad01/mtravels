@@ -1,23 +1,7 @@
 /**
  * Refund Management Module
  */
-            // Function to show toast
-            function showToast(message, type = 'success') {
-                // Use SweetAlert2 if available, otherwise fallback to alert
-                if (typeof Swal !== 'undefined') {
-                    Swal.fire({
-                        toast: true,
-                        position: 'top-end',
-                        icon: type,
-                        title: message,
-                        showConfirmButton: false,
-                        timer: 3000,
-                        timerProgressBar: true
-                    });
-                } else {
-                    alert(message);
-                }
-            }
+// Toast notifications are handled by the global showToast function
 // Function to open refund modal
 function openRefundModal(bookingId, amount, profit, currency) {
     // Set hidden fields

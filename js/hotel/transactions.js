@@ -458,20 +458,4 @@ function manageTransactions(bookingId) {
     transactionManager.loadTransactionModal(bookingId);
 }
 
-// Toast notification function
-function showToast(message, type = 'success') {
-    // Use SweetAlert2 if available, otherwise fallback to alert
-    if (typeof Swal !== 'undefined') {
-        Swal.fire({
-            toast: true,
-            position: 'top-end',
-            icon: type,
-            title: message,
-            showConfirmButton: false,
-            timer: 3000,
-            timerProgressBar: true
-        });
-    } else {
-        alert(message);
-    }
-}
+// Toast notifications are handled by the global showToast function

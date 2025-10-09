@@ -390,6 +390,9 @@ require_once('../includes/utils.php');
                             <!-- Add more stat cards as needed -->
                         </div>
 
+                        <!-- Toast Container -->
+<div class="toast-container"></div>
+
                         <!-- Main Card -->
                         <div class="card shadow-sm fade-in">
                                 <!-- Card Header with Actions -->
@@ -2246,31 +2249,65 @@ document.addEventListener('DOMContentLoaded', function() {
         to { transform: rotate(360deg); }
     }
 
-    /* Toast Notifications */
-    .toast {
+    .toast-container {
         position: fixed;
         top: 20px;
         right: 20px;
-        min-width: 250px;
-        padding: 1rem;
-        background-color: white;
-        box-shadow: 0 0.5rem 1rem rgba(0, 0, 0, 0.15);
-        border-radius: var(--border-radius);
-        z-index: 1050;
+        z-index: 9999;
+        max-width: 350px;
+    }
+
+    .toast {
+        position: relative;
+        background-color: #fff;
+        border-radius: 8px;
+        box-shadow: 0 8px 16px rgba(0, 0, 0, 0.15);
+        margin-bottom: 10px;
+        overflow: hidden;
         opacity: 0;
+        transform: translateX(40px);
         transition: all 0.3s ease;
+        border-left: 4px solid transparent;
+        padding: 15px;
     }
 
-    .toast.show {
+    .toast-showing {
         opacity: 1;
+        transform: translateX(0);
     }
 
-    .toast.success {
-        border-left: 4px solid var(--success-color);
+    .toast-removing {
+        opacity: 0;
+        transform: translateY(-20px);
     }
 
-    .toast.error {
-        border-left: 4px solid var(--danger-color);
+    .toast-success {
+        border-left-color: #10b981;
+    }
+
+    .toast-error {
+        border-left-color: #ef4444;
+    }
+
+    .toast-warning {
+        border-left-color: #f59e0b;
+    }
+
+    .toast-info {
+        border-left-color: #3b82f6;
+    }
+
+    .toast-title {
+        display: flex;
+        align-items: center;
+        font-weight: 600;
+        margin-bottom: 5px;
+    }
+
+    .toast-message {
+        word-break: break-word;
+        line-height: 1.5;
+        color: #64748b;
     }
 
     /* Enhanced Form Styles */
@@ -2282,6 +2319,23 @@ document.addEventListener('DOMContentLoaded', function() {
     .input-group-text {
         background-color: #f8f9fa;
         border-color: #e9ecef;
+    }
+
+    /* Toast Close Button */
+    .toast .close {
+        background: none;
+        border: none;
+        font-size: 1.5rem;
+        line-height: 1;
+        color: #6c757d;
+        opacity: 0.7;
+        padding: 0;
+        margin-left: auto;
+    }
+
+    .toast .close:hover {
+        color: #000;
+        opacity: 1;
     }
 
     /* Tooltip Enhancements */
@@ -2307,9 +2361,114 @@ document.addEventListener('DOMContentLoaded', function() {
 <script src="../js/hotel/refunds.js"></script>
 <script src="../js/hotel/init.js"></script>
 <script src="../js/profile-management.js"></script>
-
 <!-- Include Admin Footer -->
 <?php include '../includes/admin_footer.php'; ?>
+<!-- Custom Toast Function -->
+<script>
+// Toast notification system
+const toastConfig = {
+    duration: 4000,      // Display duration in ms
+    animationDuration: 300,  // Animation duration in ms
+    maxToasts: 3        // Maximum number of toasts to show at once
+};
 
+// Collection to track active toasts
+let activeToasts = [];
+
+/**
+ * Show a toast notification
+ * @param {string} message - The message to display
+ * @param {string} type - Type of toast (success, error, warning, info)
+ * @param {object} options - Optional configuration overrides
+ */
+function showToast(message, type = 'success', options = {}) {
+    const config = { ...toastConfig, ...options };
+
+    // Create the toast element
+    const toast = document.createElement('div');
+    toast.className = `toast toast-${type}`;
+
+    // Set icon based on type
+    let icon = 'check-circle';
+    switch(type) {
+        case 'error':
+            icon = 'alert-circle';
+            break;
+        case 'warning':
+            icon = 'alert-triangle';
+            break;
+        case 'info':
+            icon = 'info';
+            break;
+    }
+
+    // Set toast content
+    toast.innerHTML = `
+        <div class="toast-title">
+            <i class="feather icon-${icon} mr-2"></i>
+            ${type.charAt(0).toUpperCase() + type.slice(1)}
+        </div>
+        <div class="toast-message">${message}</div>
+    `;
+
+    // Manage toast collection
+    if (activeToasts.length >= toastConfig.maxToasts) {
+        const oldestToast = activeToasts.shift();
+        if (oldestToast && oldestToast.parentNode) {
+            oldestToast.classList.add('toast-removing');
+            setTimeout(() => oldestToast.remove(), config.animationDuration);
+        }
+    }
+
+    // Add toast to container
+    const container = document.querySelector('.toast-container');
+    container.appendChild(toast);
+    activeToasts.push(toast);
+
+    // Trigger animation
+    requestAnimationFrame(() => toast.classList.add('toast-showing'));
+
+    // Auto dismiss
+    setTimeout(() => {
+        toast.classList.add('toast-removing');
+        setTimeout(() => {
+            toast.remove();
+            activeToasts = activeToasts.filter(t => t !== toast);
+        }, config.animationDuration);
+    }, config.duration);
+
+    return toast;
+}
+
+// Convert all alerts to toasts
+document.addEventListener('DOMContentLoaded', function() {
+    // Success alerts
+    document.querySelectorAll('.alert-success').forEach(alert => {
+        const message = alert.textContent.trim();
+        showToast(message, 'success');
+        alert.remove();
+    });
+
+    // Error alerts
+    document.querySelectorAll('.alert-danger').forEach(alert => {
+        const message = alert.textContent.trim();
+        showToast(message, 'error');
+        alert.remove();
+    });
+
+    // Warning alerts
+    document.querySelectorAll('.alert-warning').forEach(alert => {
+        const message = alert.textContent.trim();
+        showToast(message, 'warning');
+        alert.remove();
+    });
+});
+
+// Optional: Replace alert() calls with toast notifications (commented out to avoid loops)
+// window.oldAlert = window.alert;
+// window.alert = function(message) {
+//     showToast(message, 'info');
+// };
+</script>
 </body>
 </html>

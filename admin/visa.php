@@ -230,9 +230,13 @@ foreach ($visas as $key => $visa) {
                         </div>
                     </div>
                     <!-- [ breadcrumb ] end -->
+
                     <div class="main-body">
                         <div class="page-wrapper">
                             <!-- [ Main Content ] start -->
+                            <!-- Toast Container -->
+                            <div class="toast-container"></div>
+
                             <div class="row">
                                 <div class="col-sm-12">
                                     <div class="card mb-3">
@@ -1735,6 +1739,70 @@ foreach ($visas as $key => $visa) {
                                 </div>
                             </div>
 
+
+    <style>
+.toast-container {
+    position: fixed;
+    top: 20px;
+    right: 20px;
+    z-index: 9999;
+    max-width: 350px;
+}
+
+.toast {
+    position: relative;
+    background-color: #fff;
+    border-radius: 8px;
+    box-shadow: 0 8px 16px rgba(0, 0, 0, 0.15);
+    margin-bottom: 10px;
+    overflow: hidden;
+    opacity: 0;
+    transform: translateX(40px);
+    transition: all 0.3s ease;
+    border-left: 4px solid transparent;
+    padding: 15px;
+}
+
+.toast-showing {
+    opacity: 1;
+    transform: translateX(0);
+}
+
+.toast-removing {
+    opacity: 0;
+    transform: translateY(-20px);
+}
+
+.toast-success {
+    border-left-color: #10b981;
+}
+
+.toast-error {
+    border-left-color: #ef4444;
+}
+
+.toast-warning {
+    border-left-color: #f59e0b;
+}
+
+.toast-info {
+    border-left-color: #3b82f6;
+}
+
+.toast-title {
+    display: flex;
+    align-items: center;
+    font-weight: 600;
+    margin-bottom: 5px;
+}
+
+.toast-message {
+    word-break: break-word;
+    line-height: 1.5;
+    color: #64748b;
+}
+</style>
+
     <!-- Required Js -->
     <script src="../assets/js/vendor-all.min.js"></script>
     <script src="../assets/plugins/bootstrap/js/bootstrap.min.js"></script>
@@ -1754,6 +1822,112 @@ foreach ($visas as $key => $visa) {
          <script src="js/visa/search.js"></script>
 
    
+<script>
+// Toast notification system
+const toastConfig = {
+    duration: 4000,      // Display duration in ms
+    animationDuration: 300,  // Animation duration in ms
+    maxToasts: 3        // Maximum number of toasts to show at once
+};
+
+// Collection to track active toasts
+let activeToasts = [];
+
+/**
+ * Show a toast notification
+ * @param {string} message - The message to display
+ * @param {string} type - Type of toast (success, error, warning, info)
+ * @param {object} options - Optional configuration overrides
+ */
+function showToast(message, type = 'success', options = {}) {
+    const config = { ...toastConfig, ...options };
+
+    // Create the toast element
+    const toast = document.createElement('div');
+    toast.className = `toast toast-${type}`;
+
+    // Set icon based on type
+    let icon = 'check-circle';
+    switch(type) {
+        case 'error':
+            icon = 'alert-circle';
+            break;
+        case 'warning':
+            icon = 'alert-triangle';
+            break;
+        case 'info':
+            icon = 'info';
+            break;
+    }
+
+    // Set toast content
+    toast.innerHTML = `
+        <div class="toast-title">
+            <i class="feather icon-${icon} mr-2"></i>
+            ${type.charAt(0).toUpperCase() + type.slice(1)}
+        </div>
+        <div class="toast-message">${message}</div>
+    `;
+
+    // Manage toast collection
+    if (activeToasts.length >= toastConfig.maxToasts) {
+        const oldestToast = activeToasts.shift();
+        if (oldestToast && oldestToast.parentNode) {
+            oldestToast.classList.add('toast-removing');
+            setTimeout(() => oldestToast.remove(), config.animationDuration);
+        }
+    }
+
+    // Add toast to container
+    const container = document.querySelector('.toast-container');
+    container.appendChild(toast);
+    activeToasts.push(toast);
+
+    // Trigger animation
+    requestAnimationFrame(() => toast.classList.add('toast-showing'));
+
+    // Auto dismiss
+    setTimeout(() => {
+        toast.classList.add('toast-removing');
+        setTimeout(() => {
+            toast.remove();
+            activeToasts = activeToasts.filter(t => t !== toast);
+        }, config.animationDuration);
+    }, config.duration);
+
+    return toast;
+}
+
+// Convert all alerts to toasts
+document.addEventListener('DOMContentLoaded', function() {
+    // Success alerts
+    document.querySelectorAll('.alert-success').forEach(alert => {
+        const message = alert.textContent.trim();
+        showToast(message, 'success');
+        alert.remove();
+    });
+
+    // Error alerts
+    document.querySelectorAll('.alert-danger').forEach(alert => {
+        const message = alert.textContent.trim();
+        showToast(message, 'error');
+        alert.remove();
+    });
+
+    // Warning alerts
+    document.querySelectorAll('.alert-warning').forEach(alert => {
+        const message = alert.textContent.trim();
+        showToast(message, 'warning');
+        alert.remove();
+    });
+});
+
+// Replace all existing alert() calls with toast notifications
+window.oldAlert = window.alert;
+window.alert = function(message) {
+    showToast(message, 'info');
+};
+</script>
          
 </body>
 </html>

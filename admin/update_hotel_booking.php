@@ -66,8 +66,6 @@ $sold_amount = isset($_POST['sold_amount']) ? DbSecurity::validateInput($_POST['
 // Validate base_amount
 $base_amount = isset($_POST['base_amount']) ? DbSecurity::validateInput($_POST['base_amount'], 'float', ['min' => 0]) : null;
 
-// Validate exchange_rate
-$exchange_rate = isset($_POST['exchangeRate']) ? DbSecurity::validateInput($_POST['exchangeRate'], 'float', ['min' => 0]) : null;
 
 // Validate booking_id
 $booking_id = isset($_POST['booking_id']) ? DbSecurity::validateInput($_POST['booking_id'], 'int', ['min' => 0]) : null;
@@ -76,7 +74,6 @@ $booking_id = isset($_POST['booking_id']) ? DbSecurity::validateInput($_POST['bo
     }
 
     $booking_id = intval($_POST['booking_id']);
-    $exchange_rate = floatval($_POST['exchangeRate']);
 
     try {
         // Get original values to calculate differences
@@ -523,7 +520,6 @@ $booking_id = isset($_POST['booking_id']) ? DbSecurity::validateInput($_POST['bo
             sold_to = :sold_to,
             paid_to = :paid_to,
             remarks = :remarks,
-            exchange_rate = :exchange_rate,
             updated_at = NOW()
             WHERE id = :booking_id AND tenant_id = :tenant_id";
 
@@ -548,7 +544,6 @@ $booking_id = isset($_POST['booking_id']) ? DbSecurity::validateInput($_POST['bo
             ':sold_to' => $_POST['sold_to'],
             ':paid_to' => $_POST['paid_to'],
             ':remarks' => $_POST['remarks'],
-            ':exchange_rate' => $_POST['exchangeRate'],
             ':tenant_id' => $tenant_id
         ];
 
@@ -591,8 +586,7 @@ $booking_id = isset($_POST['booking_id']) ? DbSecurity::validateInput($_POST['bo
                 'supplier_id' => $_POST['supplier_id'],
                 'sold_to' => $_POST['sold_to'],
                 'paid_to' => $_POST['paid_to'],
-                'remarks' => $_POST['remarks'],
-                'exchange_rate' => $_POST['exchangeRate']
+                'remarks' => $_POST['remarks']
             ];
             
             // Insert activity log

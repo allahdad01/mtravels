@@ -84,15 +84,7 @@ function addHotelBookingForm() {
     const formData = new FormData(form);
     
     if (!formData.get('title') || !formData.get('first_name') || !formData.get('last_name')) {
-        if (typeof Swal !== 'undefined') {
-            Swal.fire({
-                icon: 'error',
-                title: 'Error',
-                text: 'Please fill in all required fields'
-            });
-        } else {
-            alert('Please fill in all required fields');
-        }
+        showToast('Please fill in all required fields', 'error');
         return;
     }
 
@@ -108,55 +100,19 @@ function addHotelBookingForm() {
                 
                 if (result.success) {
                     $('#addBookingModal').modal('hide');
-                    if (typeof Swal !== 'undefined') {
-                        Swal.fire({
-                            icon: 'success',
-                            title: 'Success',
-                            text: result.message || 'Hotel booking added successfully'
-                        }).then((result) => {
-                            if (result.isConfirmed || result.isDismissed) {
-                                window.location.reload();
-                            }
-                        });
-                    } else {
-                        alert(result.message || 'Hotel booking added successfully');
-                        window.location.reload();
-                    }
+                    showToast(result.message || 'Hotel booking added successfully', 'success');
+                    setTimeout(() => window.location.reload(), 1000);
                 } else {
-                    if (typeof Swal !== 'undefined') {
-                        Swal.fire({
-                            icon: 'error',
-                            title: 'Error',
-                            text: result.message || 'Failed to add hotel booking'
-                        });
-                    } else {
-                        alert(result.message || 'Failed to add hotel booking');
-                    }
+                    showToast(result.message || 'Failed to add hotel booking', 'error');
                 }
             } catch (e) {
                 console.error('Error parsing response:', e);
-                if (typeof Swal !== 'undefined') {
-                    Swal.fire({
-                        icon: 'error',
-                        title: 'Error',
-                        text: 'An unexpected error occurred'
-                    });
-                } else {
-                    alert('An unexpected error occurred');
-                }
+                showToast('An unexpected error occurred', 'error');
             }
         },
         error: function(xhr, status, error) {
             console.error('AJAX Error:', xhr.responseText);
-            if (typeof Swal !== 'undefined') {
-                Swal.fire({
-                    icon: 'error',
-                    title: 'Error',
-                    text: 'Failed to add hotel booking'
-                });
-            } else {
-                alert('Failed to add hotel booking');
-            }
+            showToast('Failed to add hotel booking', 'error');
         }
     });
 }
@@ -415,20 +371,4 @@ $(document).ready(function() {
     $('input[name="base_amount"], input[name="sold_amount"]').on('input', calculateProfit);
 });
 
-// Global toast notification function
-function showToast(message, type = 'success') {
-    // Use SweetAlert2 if available, otherwise fallback to alert
-    if (typeof Swal !== 'undefined') {
-        Swal.fire({
-            toast: true,
-            position: 'top-end',
-            icon: type,
-            title: message,
-            showConfirmButton: false,
-            timer: 3000,
-            timerProgressBar: true
-        });
-    } else {
-        alert(message);
-    }
-}
+// Toast notifications are handled by the global showToast function
