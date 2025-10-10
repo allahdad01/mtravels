@@ -9,7 +9,6 @@ if (session_status() === PHP_SESSION_NONE) {
 require_once('../includes/db.php');
 require_once('../includes/conn.php');
 require_once('security.php');
-require_once('../vendor/autoload.php');
 
 // Enforce authentication
 enforce_auth();
@@ -26,6 +25,10 @@ if (file_exists($lang_file)) {
     $l = require(__DIR__ . '/../includes/languages/en/umrah_cancellation.php');
 }
 $isRtl = ($lang === 'ps' || $lang === 'fa');
+
+// Check if it's an AJAX request
+$isAjaxRequest = !empty($_SERVER['HTTP_X_REQUESTED_WITH']) &&
+               strtolower($_SERVER['HTTP_X_REQUESTED_WITH']) == 'xmlhttprequest';
 
 // Create directory if it doesn't exist
 $uploadsBaseDir = '../uploads';
@@ -92,14 +95,16 @@ try {
     $query = "
         SELECT um.*, f.package_type, f.head_of_family as family_name,
                u.name as processed_by_name, m.name as account_name,
-               s.name as supplier_name, c.name as client_name
+               GROUP_CONCAT(DISTINCT s.name) as supplier_name, c.name as client_name
         FROM umrah_bookings um
         LEFT JOIN families f ON um.family_id = f.family_id
         LEFT JOIN users u ON u.id = ?
         LEFT JOIN main_account m ON um.paid_to = m.id
-        LEFT JOIN suppliers s ON um.supplier = s.id
+        LEFT JOIN umrah_booking_services ubs ON um.booking_id = ubs.booking_id
+        LEFT JOIN suppliers s ON ubs.supplier_id = s.id
         LEFT JOIN clients c ON um.sold_to = c.id
         WHERE um.family_id = ? AND um.tenant_id = ?
+        GROUP BY um.booking_id
         ORDER BY um.booking_id ASC
     ";
 
@@ -122,54 +127,7 @@ try {
     $settingsStmt = $pdo->prepare($settingsQuery);
     $settingsStmt->execute([$tenant_id]);
     $settings = $settingsStmt->fetch(PDO::FETCH_ASSOC);
-    
 
-    // Create mPDF instance with language-specific settings
-    if ($isRtl) {
-        // For Dari and Pashto, use XW Zar font with RTL support
-        $mpdf = new \Mpdf\Mpdf([
-            'mode' => 'utf-8',
-            'format' => 'A4',
-            'margin_left' => 15,
-            'margin_right' => 15,
-            'margin_top' => 15,
-            'margin_bottom' => 15,
-            'margin_footer' => 5,
-            'default_font' => 'xwzar',
-            'fontDir' => ['../assets/fonts/'],
-            'fontdata' => [
-                'xwzar' => [
-                    'R' => 'XW Zar Bd_0.ttf',
-                    'useOTL' => 0xFF,
-                ]
-            ],
-            'orientation' => 'P'
-        ]);
-
-        // Set right-to-left direction
-        $mpdf->SetDirectionality('rtl');
-    } else {
-        // For English, use default Arial font
-        $mpdf = new \Mpdf\Mpdf([
-            'mode' => 'utf-8',
-            'format' => 'A4',
-            'margin_left' => 15,
-            'margin_right' => 15,
-            'margin_top' => 15,
-            'margin_bottom' => 15,
-            'margin_footer' => 5,
-            'orientation' => 'P'
-        ]);
-    }
-
-    // Set watermark
-    $mpdf->SetWatermarkText($l['cancelled']);
-    $mpdf->showWatermarkText = true;
-    $mpdf->watermarkTextAlpha = 0.1;
-
-    // Check if it's an AJAX request
-    $isAjaxRequest = !empty($_SERVER['HTTP_X_REQUESTED_WITH']) &&
-                   strtolower($_SERVER['HTTP_X_REQUESTED_WITH']) == 'xmlhttprequest';
 
     // Prepare cancellation details
     $cancellationDetails = [
@@ -239,70 +197,69 @@ try {
     $template = include $templatePath;
     ob_end_clean();
 
-    // Write CSS first
-    $mpdf->WriteHTML($template['css'], \Mpdf\HTMLParserMode::HEADER_CSS);
-
-    // Then write HTML
-    $mpdf->WriteHTML($template['html'], \Mpdf\HTMLParserMode::HTML_BODY);
-
-    // Generate unique filename
-    $filename = 'family_umrah_cancellation_' . preg_replace('/[^a-zA-Z0-9_-]/', '_', $family_name) . '_' . date('Y-m-d_His') . '.pdf';
-    $filepath = $absoluteUploadsDir . '/' . $filename;
-
-    // Determine the correct relative URL
-    $currentScriptPath = $_SERVER['PHP_SELF'];
-    $adminIndex = strpos($currentScriptPath, '/admin/');
-    $salesIndex = strpos($currentScriptPath, '/sales/');
-    $financeIndex = strpos($currentScriptPath, '/finance/');
-    $umrahIndex = strpos($currentScriptPath, '/umrah/');
-    
-    $directoryIndex = $adminIndex !== false ? $adminIndex : 
-                      ($salesIndex !== false ? $salesIndex : 
-                      ($financeIndex !== false ? $financeIndex : 
-                      ($umrahIndex !== false ? $umrahIndex : false)));
-    
-    if ($directoryIndex !== false) {
-        // If the script is in one of these directories, remove the directory name from the path
-        $relativeUrl = substr($currentScriptPath, 0, $directoryIndex + 1) . 'uploads/' . $uploadsSubDir . '/' . $filename;
-    } else {
-        // Fallback to default relative URL
-        $relativeUrl = 'uploads/' . $uploadsSubDir . '/' . $filename;
-    }
-
-    // Verify the file can be created
-    try {
-        // Attempt to create the file
-        $mpdf->Output($filepath, 'F');
-        
-        // Verify file was created
-        if (!file_exists($filepath)) {
-            throw new Exception('Failed to save PDF file');
+    // Output HTML directly with print styles
+    $printStyles = '
+        @media print {
+            @page {
+                size: A4 portrait;
+                margin: 15mm;
+            }
+            body { margin: 0; font-size: 9pt; }
+            .container { max-width: none; width: auto; padding: 0; }
+            .no-print { display: none !important; }
+            .print-button { display: none !important; }
+            .header { margin-bottom: 5px; padding-bottom: 5px; }
+            .section-header { padding: 2px 5px; margin-bottom: 3px; font-size: 9pt; }
+            .details-table td { padding: 2px 4px; font-size: 8pt; }
+            .members-table th, .members-table td { padding: 3px 4px; font-size: 7pt; }
+            .terms-container { padding: 5px; margin-top: 5px; }
+            .terms-list { font-size: 7pt; }
+            .signatures { margin-top: 10px; }
+            .footer { margin-top: 10px; font-size: 6pt; }
+            * { page-break-inside: avoid; }
         }
-    } catch (Exception $fileError) {
-        error_log('PDF Generation Error: ' . $fileError->getMessage());
-        
-        if ($isAjaxRequest) {
-            echo json_encode([
-                'success' => false, 
-                'message' => 'Failed to generate PDF: ' . $fileError->getMessage()
-            ]);
-            exit;
-        } else {
-            die('Failed to generate PDF: ' . $fileError->getMessage());
+        .print-button {
+            position: fixed;
+            top: 20px;
+            right: 20px;
+            background-color: #2c3e50;
+            color: white;
+            border: none;
+            padding: 10px 20px;
+            border-radius: 5px;
+            cursor: pointer;
+            font-size: 12pt;
+            box-shadow: 0 2px 5px rgba(0,0,0,0.2);
+            z-index: 1000;
         }
-    }
+        .print-button:hover {
+            background-color: #34495e;
+        }
+    ';
+
+    $html = '<!DOCTYPE html>
+<html lang="' . ($isRtl ? ($lang === 'fa' ? 'fa' : 'ps') : 'en') . '"' . ($isRtl ? ' dir="rtl"' : '') . '>
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Family Cancellation - ' . htmlspecialchars($family_name) . '</title>
+    <style>' . $template['css'] . $printStyles . '</style>
+</head>
+<body>
+    <button class="print-button no-print" onclick="window.print()">🖨️ Print</button>
+    ' . $template['html'] . '
+</body>
+</html>';
 
     if ($isAjaxRequest) {
-        // Save PDF to file and return JSON response
         echo json_encode([
-            'success' => true, 
-            'message' => 'Family Umrah cancellation form generated successfully', 
-            'file_url' => $relativeUrl,
+            'success' => true,
+            'message' => 'Family Umrah cancellation form generated successfully',
+            'html' => $html,
             'family_members_count' => count($bookings)
         ]);
     } else {
-        // Output PDF directly for download
-        $mpdf->Output($filename, 'I');
+        echo $html;
     }
     exit;
 

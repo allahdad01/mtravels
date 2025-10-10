@@ -4931,6 +4931,8 @@ return [
 'visa_transport' => 'ترانسپورت ویزا',
 'applied_to_total_sold_price' => 'بر مجموع قیمت فروخته‌شده تطبیق شد',
 'Inactive_debtors' => 'بدهکاران غیرفعال',
+'umrah_services' => 'خدمات عمره',
+'booked_services' => 'خدمات رزرو شده',
 
-    
-]; 
+
+];

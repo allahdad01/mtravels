@@ -16,15 +16,33 @@ body {
     padding: 15px;
 }
 .header {
-    text-align: center;
     margin-bottom: 10px;
     border-bottom: 1px solid #2c3e50;
     padding-bottom: 8px;
+    display: table;
+    width: 100%;
+}
+.header-left,
+.header-center,
+.header-right {
+    display: table-cell;
+    vertical-align: middle;
+}
+.header-left {
+    text-align: left;
+    width: 30%;
+}
+.header-center {
+    text-align: center;
+    width: 40%;
+}
+.header-right {
+    text-align: right;
+    width: 30%;
 }
 .logo {
     width: 60px;
-    margin: 0 auto 3px auto;
-    display: block;
+    height: auto;
 }
 .company-name {
     font-size: 16pt;
@@ -39,8 +57,11 @@ body {
     text-transform: uppercase;
     border: 1px solid #2c3e50;
     padding: 3px 15px;
-    margin: 3px auto;
     display: inline-block;
+}
+.agreement-info {
+    font-size: 9pt;
+    color: #666;
 }
 .section-header {
     background-color: #f9f9f9;
@@ -141,22 +162,28 @@ body {
 <body>
     <div class="container">
         <div class="header">
-            <?php
-            // Create company logo
-            $logoPath = __DIR__ . '/../../uploads/logo/' . $settings['logo'];
-            $logoData = '';
-            if (file_exists($logoPath)) {
-                $logoType = pathinfo($logoPath, PATHINFO_EXTENSION);
-                $logoData = file_get_contents($logoPath);
-                $logoBase64 = 'data:image/' . $logoType . ';base64,' . base64_encode($logoData);
-            }
-            ?>
-            <?php if (!empty($logoData)): ?>
-                <img src="<?= $logoBase64 ?>" alt="Company Logo" class="logo">
-            <?php endif; ?>
-            <div class="company-name"><?= $settings['agency_name'] ?></div>
-            <div class="title">Family Umrah Agreement</div>
-            <div class="agreement-info">Date: <?= date('M d, Y') ?> | Agreement No: FAMILY-<?= $family['family_id'] ?>-<?= date('Ymd') ?></div>
+            <div class="header-left">
+                <div class="agreement-info">Date: <?= date('M d, Y') ?><br>Agreement No: FAMILY-<?= $family['family_id'] ?>-<?= date('Ymd') ?></div>
+            </div>
+            <div class="header-center">
+                <div class="company-name"><?= $settings['agency_name'] ?></div>
+                <div class="title">Family Umrah Agreement</div>
+            </div>
+            <div class="header-right">
+                <?php
+                // Create company logo
+                $logoPath = __DIR__ . '/../../uploads/logo/' . $settings['logo'];
+                $logoData = '';
+                if (file_exists($logoPath)) {
+                    $logoType = pathinfo($logoPath, PATHINFO_EXTENSION);
+                    $logoData = file_get_contents($logoPath);
+                    $logoBase64 = 'data:image/' . $logoType . ';base64,' . base64_encode($logoData);
+                }
+                ?>
+                <?php if (!empty($logoData)): ?>
+                    <img src="<?= $logoBase64 ?>" alt="Company Logo" class="logo">
+                <?php endif; ?>
+            </div>
         </div>
 
         <div class="section-header">Family Details</div>

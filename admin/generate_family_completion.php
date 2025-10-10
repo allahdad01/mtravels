@@ -9,7 +9,6 @@ if (session_status() === PHP_SESSION_NONE) {
 require_once('../includes/db.php');
 require_once('../includes/conn.php');
 require_once('security.php');
-require_once('../vendor/autoload.php');
 
 // Enforce authentication
 enforce_auth();
@@ -60,11 +59,13 @@ try {
 
     // Get family members
     $membersQuery = "
-        SELECT ub.*, c.name as client_name, s.name as supplier_name
+        SELECT ub.*, c.name as client_name, GROUP_CONCAT(DISTINCT s.name) as supplier_name
         FROM umrah_bookings ub
         LEFT JOIN clients c ON ub.sold_to = c.id
-        LEFT JOIN suppliers s ON ub.supplier = s.id
+        LEFT JOIN umrah_booking_services ubs ON ub.booking_id = ubs.booking_id
+        LEFT JOIN suppliers s ON ubs.supplier_id = s.id
         WHERE ub.family_id = ? AND ub.tenant_id = ?
+        GROUP BY ub.booking_id
     ";
     $membersStmt = $pdo->prepare($membersQuery);
     $membersStmt->execute([$familyId, $tenant_id]);
@@ -80,51 +81,8 @@ try {
     // Get completion details from POST data
     $completionDetails = $_POST;
 
-    // Create mPDF instance with language-specific settings
-    if ($isRtl) {
-        // For Dari and Pashto, use XW Zar font with RTL support
-        $mpdf = new \Mpdf\Mpdf([
-            'mode' => 'utf-8',
-            'format' => 'A4',
-            'margin_left' => 15,
-            'margin_right' => 15,
-            'margin_top' => 15,
-            'margin_bottom' => 15,
-            'margin_footer' => 5,
-            'default_font' => 'xwzar',
-            'fontDir' => ['../assets/fonts/'],
-            'fontdata' => [
-                'xwzar' => [
-                    'R' => 'XW Zar Bd_0.ttf',
-                    'useOTL' => 0xFF,
-                ]
-            ],
-            'orientation' => 'P'
-        ]);
-        
-        // Set right-to-left direction
-        $mpdf->SetDirectionality('rtl');
-    } else {
-        // For English, use default Arial font
-        $mpdf = new \Mpdf\Mpdf([
-            'mode' => 'utf-8',
-            'format' => 'A4',
-            'margin_left' => 15,
-            'margin_right' => 15,
-            'margin_top' => 15,
-            'margin_bottom' => 15,
-            'margin_footer' => 5,
-            'orientation' => 'P'
-        ]);
-    }
-
-    // Set watermark
-    $mpdf->SetWatermarkText($settings['agency_name']);
-    $mpdf->showWatermarkText = true;
-    $mpdf->watermarkTextAlpha = 0.1;
-
     // Check if it's an AJAX request
-    $isAjaxRequest = !empty($_SERVER['HTTP_X_REQUESTED_WITH']) && 
+    $isAjaxRequest = !empty($_SERVER['HTTP_X_REQUESTED_WITH']) &&
                    strtolower($_SERVER['HTTP_X_REQUESTED_WITH']) == 'xmlhttprequest';
 
     // Get the HTML and CSS content by capturing the output buffer
@@ -132,25 +90,68 @@ try {
     $template = include 'templates/family_completion_template_' . $lang . '.php';
     ob_end_clean();
 
-    // Write CSS first
-    $mpdf->WriteHTML($template['css'], \Mpdf\HTMLParserMode::HEADER_CSS);
-    
-    // Then write HTML
-    $mpdf->WriteHTML($template['html'], \Mpdf\HTMLParserMode::HTML_BODY);
+    // Output HTML directly with print styles
+    $printStyles = '
+        @media print {
+            @page {
+                size: A4 portrait;
+                margin: 15mm;
+            }
+            body { margin: 0; font-size: 9pt; }
+            .container { max-width: none; width: auto; padding: 0; }
+            .no-print { display: none !important; }
+            .print-button { display: none !important; }
+            .header { margin-bottom: 5px; padding-bottom: 5px; }
+            .section-header { padding: 2px 5px; margin-bottom: 3px; font-size: 9pt; }
+            .details-table td { padding: 2px 4px; font-size: 8pt; }
+            .members-table th, .members-table td { padding: 3px 4px; font-size: 7pt; }
+            .terms-container { padding: 5px; margin-top: 5px; }
+            .terms-list { font-size: 7pt; }
+            .signatures { margin-top: 10px; }
+            .footer { margin-top: 10px; font-size: 6pt; }
+            * { page-break-inside: avoid; }
+        }
+        .print-button {
+            position: fixed;
+            top: 20px;
+            right: 20px;
+            background-color: #2c3e50;
+            color: white;
+            border: none;
+            padding: 10px 20px;
+            border-radius: 5px;
+            cursor: pointer;
+            font-size: 12pt;
+            box-shadow: 0 2px 5px rgba(0,0,0,0.2);
+            z-index: 1000;
+        }
+        .print-button:hover {
+            background-color: #34495e;
+        }
+    ';
 
-    // Generate unique filename
-    $filename = 'family_completion_' . $family['head_of_family'] . '_' . date('Y-m-d_His') . '.pdf';
+    $html = '<!DOCTYPE html>
+<html lang="' . ($isRtl ? ($lang === 'fa' ? 'fa' : 'ps') : 'en') . '"' . ($isRtl ? ' dir="rtl"' : '') . '>
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Family Completion - ' . htmlspecialchars($family['head_of_family']) . '</title>
+    <style>' . $template['css'] . $printStyles . '</style>
+</head>
+<body>
+    <button class="print-button no-print" onclick="window.print()">🖨️ Print</button>
+    ' . $template['html'] . '
+</body>
+</html>';
 
     if ($isAjaxRequest) {
-        // Save PDF to file and return JSON response
-        $mpdf->Output($filename, 'D');
         echo json_encode([
-            'success' => true, 
-            'message' => 'Family completion form generated successfully'
+            'success' => true,
+            'message' => 'Family completion form generated successfully',
+            'html' => $html
         ]);
     } else {
-        // Output PDF directly for download
-        $mpdf->Output($filename, 'I');
+        echo $html;
     }
     exit;
     

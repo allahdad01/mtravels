@@ -129,51 +129,9 @@
                 
                 // Build URL with parameters
                 const url = `generate_umrah_cancellation.php?booking_id=${bookingId}&lang=${lang}&${params.toString()}`;
-                
-                Swal.fire({
-                    title: 'Generating Cancellation Form',
-                    text: 'Please wait...',
-                    allowOutsideClick: false,
-                    didOpen: () => {
-                        Swal.showLoading();
-                    }
-                });
 
-                fetch(url, {
-                    method: 'GET',
-                    headers: { 'X-Requested-With': 'XMLHttpRequest' }
-                })
-                .then(response => response.json())
-                .then(data => {
-                    if (data.success) {
-                        Swal.fire({
-                            icon: 'success',
-                            title: 'Success',
-                            text: data.message,
-                            confirmButtonText: 'View Document',
-                            showCancelButton: true,
-                            cancelButtonText: 'Close'
-                        }).then((result) => {
-                            if (result.isConfirmed) {
-                                window.open('../' + data.file_url, '_blank');
-                            }
-                        });
-                    } else {
-                        Swal.fire({
-                            icon: 'error',
-                            title: 'Error',
-                            text: data.message || 'Failed to generate document'
-                        });
-                    }
-                })
-                .catch(error => {
-                    console.error('Error:', error);
-                    Swal.fire({
-                        icon: 'error',
-                        title: 'Error',
-                        text: 'An error occurred'
-                    });
-                });
+                // Directly open in new window, similar to family agreements
+                window.open(url, '_blank');
             });
         });
     });

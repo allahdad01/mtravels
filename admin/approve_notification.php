@@ -97,47 +97,45 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['notification_id'])) {
 
             // Fetch Umrah transaction details with error checking
             $stmt_fetch_umrah = $conn->prepare("
-                SELECT id, payment_amount, currency, transaction_type, umrah_booking_id, transaction_to 
-                FROM umrah_transactions 
+                SELECT id, payment_amount, umrah_booking_id, transaction_to
+                FROM umrah_transactions
                 WHERE id = ? AND tenant_id = ?
             ");
-            
+
             if (!$stmt_fetch_umrah) {
                 throw new Exception('Prepare failed: ' . $conn->error);
             }
-            
+
             $stmt_fetch_umrah->bind_param("ii", $transaction_id, $tenant_id);
-            
+
             if (!$stmt_fetch_umrah->execute()) {
                 throw new Exception('Execute failed: ' . $stmt_fetch_umrah->error);
             }
-            
+
             $result = $stmt_fetch_umrah->get_result();
             if ($result->num_rows === 0) {
                 // Debug: Query the table directly to see what's there
                 $debug_query = $conn->query("SELECT id FROM umrah_transactions WHERE id = " . intval($transaction_id) . " AND tenant_id = " . intval($tenant_id));
                 $debug_count = $debug_query ? $debug_query->num_rows : 0;
-                throw new Exception('Umrah transaction details not found. Transaction ID: ' . $transaction_id . 
+                throw new Exception('Umrah transaction details not found. Transaction ID: ' . $transaction_id .
                                   '. Records found: ' . $debug_count);
             }
-            
+
             $row = $result->fetch_assoc();
             $transaction_id = $row['id'];
             $amount = $row['payment_amount'];
-            $umrahCurrency = $row['currency'];
-            $umrah_transaction_type = $row['transaction_type'];
             $umrah_booking_id = $row['umrah_booking_id'];
             $transaction_to = $row['transaction_to'];
-            
+
             $stmt_fetch_umrah->close();
 
-            // Fetch Umrah booking details
-            $stmt_fetch_umrah_app = $conn->prepare("SELECT paid_to, supplier, received_bank_payment FROM umrah_bookings WHERE booking_id = ? AND tenant_id = ?");
+            // Fetch supplier_id from umrah_booking_services
+            $stmt_fetch_umrah_app = $conn->prepare("SELECT supplier_id FROM umrah_booking_services WHERE booking_id = ? AND tenant_id = ? LIMIT 1");
             $stmt_fetch_umrah_app->bind_param("ii", $umrah_booking_id, $tenant_id);
             $stmt_fetch_umrah_app->execute();
-            $stmt_fetch_umrah_app->bind_result($paid_to, $supplier_id, $received_bank_payment);
+            $stmt_fetch_umrah_app->bind_result($supplier_id);
             if (!$stmt_fetch_umrah_app->fetch()) {
-                throw new Exception('Umrah booking details not found.');
+                throw new Exception('Umrah booking services details not found.');
             }
             $stmt_fetch_umrah_app->close();
 

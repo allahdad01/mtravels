@@ -22,7 +22,7 @@ function selectForGroupTicket(bookingId, memberName) {
 function updateGroupTicketSelection() {
     const floatingButton = document.getElementById('groupTicketFloatingButton');
     const selectionCount = document.getElementById('groupTicketSelectionCount');
-    const modalSelectedCount = document.getElementById('groupSelectedCount');
+    const modalSelectedCount = document.getElementById('selectedGroupCount');
     const generateBtn = document.getElementById('generateGroupTicketBtn');
 
     if (selectionCount) selectionCount.textContent = selectedGroupMembers.length;

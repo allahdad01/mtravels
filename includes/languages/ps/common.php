@@ -51,6 +51,8 @@ return [
     'salary_payment' => 'د معاش تادیه',
     'users' => 'کاروونکي',
     'umrah_management' => 'د عمرې مدیریت',
+    'umrah_services' => 'د عمرې خدمات',
+    'booked_services' => 'بک شوي خدمات',
     'visa' => 'ویزه',
     'additional_payments' => 'اضافي تادیات',
     'hotel' => 'هوټل',

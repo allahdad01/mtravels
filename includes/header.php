@@ -1208,11 +1208,27 @@ input[type="button"] {
                 </li>
                 <?php endif; ?>
                 <?php if (hasFeature('umrah_bookings', $allowed_features)): ?>
-                <li data-username="umrah" class="nav-item <?php echo basename($_SERVER['PHP_SELF']) == 'umrah.php' ? 'active' : ''; ?>">
-                    <a href="umrah.php" class="nav-link">
+                <li data-username="umrah" class="nav-item pcoded-hasmenu <?php echo in_array(basename($_SERVER['PHP_SELF']), ['umrah.php', 'umrah_services.php', 'umrah_refunds.php', 'umrah_date_changes.php']) ? 'active pcoded-trigger' : ''; ?>">
+                    <a href="javascript:" class="nav-link">
                         <span class="pcoded-micon"><i class="feather icon-map"></i></span>
                         <span class="pcoded-mtext"><?= __('umrah_management') ?></span>
                     </a>
+                    <ul class="pcoded-submenu">
+                        <li class="<?php echo basename($_SERVER['PHP_SELF']) == 'umrah.php' ? 'active' : ''; ?>">
+                            <a href="umrah.php"><?= __('umrah_bookings') ?></a>
+                        </li>
+                        <li class="<?php echo basename($_SERVER['PHP_SELF']) == 'umrah_services.php' ? 'active' : ''; ?>">
+                            <a href="umrah_services.php"><?= __('umrah_services') ?></a>
+                        </li>
+                        <?php if (hasFeature('umrah_refunds', $allowed_features)): ?>
+                        <li class="<?php echo basename($_SERVER['PHP_SELF']) == 'umrah_refunds.php' ? 'active' : ''; ?>">
+                            <a href="umrah_refunds.php"><?= __('umrah_refunds') ?></a>
+                        </li>
+                        <?php endif; ?>
+                        <li class="<?php echo basename($_SERVER['PHP_SELF']) == 'umrah_date_changes.php' ? 'active' : ''; ?>">
+                            <a href="umrah_date_changes.php"><?= __('umrah_date_changes') ?></a>
+                        </li>
+                    </ul>
                 </li>
                 <?php endif; ?>
                 <?php if (hasFeature('visa_applications', $allowed_features)): ?>

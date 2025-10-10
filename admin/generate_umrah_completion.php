@@ -8,12 +8,10 @@ $tenant_id = $_SESSION['tenant_id'];
 require_once('../includes/db.php');
 require_once('../includes/conn.php');
 require_once('security.php');
-require_once('../vendor/autoload.php');
 
 // Enforce authentication
 enforce_auth();
 
-$tenant_id = $_SESSION['tenant_id'];
 $user_id = $_SESSION['user_id'];
 // Language handling
 $lang = isset($_GET['lang']) && in_array($_GET['lang'], ['en', 'ps', 'fa']) ? $_GET['lang'] : 'en';
@@ -45,14 +43,16 @@ try {
     $query = "
         SELECT um.*, f.package_type, f.head_of_family as family_name,
                u.name as processed_by_name, m.name as account_name,
-               s.name as supplier_name, c.name as client_name
+               GROUP_CONCAT(DISTINCT s.name) as supplier_name, c.name as client_name
         FROM umrah_bookings um
         LEFT JOIN families f ON um.family_id = f.family_id
         LEFT JOIN users u ON u.id = ?
         LEFT JOIN main_account m ON um.paid_to = m.id
-        LEFT JOIN suppliers s ON um.supplier = s.id
+        LEFT JOIN umrah_booking_services ubs ON um.booking_id = ubs.booking_id
+        LEFT JOIN suppliers s ON ubs.supplier_id = s.id
         LEFT JOIN clients c ON um.sold_to = c.id
         WHERE um.booking_id = ? AND um.tenant_id = ?
+        GROUP BY um.booking_id
     ";
     
     $stmt = $pdo->prepare($query);
@@ -70,51 +70,8 @@ try {
     $settingsStmt->execute([$tenant_id]);
     $settings = $settingsStmt->fetch(PDO::FETCH_ASSOC);
 
-    // Create mPDF instance with language-specific settings
-    if ($isRtl) {
-        // For Dari and Pashto, use XW Zar font with RTL support
-        $mpdf = new \Mpdf\Mpdf([
-            'mode' => 'utf-8',
-            'format' => 'A4',
-            'margin_left' => 15,
-            'margin_right' => 15,
-            'margin_top' => 15,
-            'margin_bottom' => 15,
-            'margin_footer' => 5,
-            'default_font' => 'xwzar',
-            'fontDir' => ['../assets/fonts/'],
-            'fontdata' => [
-                'xwzar' => [
-                    'R' => 'XW Zar Bd_0.ttf',
-                    'useOTL' => 0xFF,
-                ]
-            ],
-            'orientation' => 'P'
-        ]);
-        
-        // Set right-to-left direction
-        $mpdf->SetDirectionality('rtl');
-    } else {
-        // For English, use default Arial font
-        $mpdf = new \Mpdf\Mpdf([
-            'mode' => 'utf-8',
-            'format' => 'A4',
-            'margin_left' => 15,
-            'margin_right' => 15,
-            'margin_top' => 15,
-            'margin_bottom' => 15,
-            'margin_footer' => 5,
-            'orientation' => 'P'
-        ]);
-    }
-
-    // Set watermark
-    $mpdf->SetWatermarkText($settings['agency_name']);
-    $mpdf->showWatermarkText = true;
-    $mpdf->watermarkTextAlpha = 0.1;
-
     // Check if it's an AJAX request
-    $isAjaxRequest = !empty($_SERVER['HTTP_X_REQUESTED_WITH']) && 
+    $isAjaxRequest = !empty($_SERVER['HTTP_X_REQUESTED_WITH']) &&
                    strtolower($_SERVER['HTTP_X_REQUESTED_WITH']) == 'xmlhttprequest';
 
     // Get the HTML and CSS content by capturing the output buffer
@@ -122,28 +79,68 @@ try {
     $template = include 'templates/umrah_service_completion_form.php';
     ob_end_clean();
 
-    // Write CSS first
-    $mpdf->WriteHTML($template['css'], \Mpdf\HTMLParserMode::HEADER_CSS);
-    
-    // Then write HTML
-    $mpdf->WriteHTML($template['html'], \Mpdf\HTMLParserMode::HTML_BODY);
+    // Output HTML directly with print styles
+    $printStyles = '
+        @media print {
+            @page {
+                size: A4 portrait;
+                margin: 15mm;
+            }
+            body { margin: 0; font-size: 9pt; }
+            .container { max-width: none; width: auto; padding: 0; }
+            .no-print { display: none !important; }
+            .print-button { display: none !important; }
+            .header { margin-bottom: 5px; padding-bottom: 5px; }
+            .section-header { padding: 2px 5px; margin-bottom: 3px; font-size: 9pt; }
+            .details-table td { padding: 2px 4px; font-size: 8pt; }
+            .members-table th, .members-table td { padding: 3px 4px; font-size: 7pt; }
+            .terms-container { padding: 5px; margin-top: 5px; }
+            .terms-list { font-size: 7pt; }
+            .signatures { margin-top: 10px; }
+            .footer { margin-top: 10px; font-size: 6pt; }
+            * { page-break-inside: avoid; }
+        }
+        .print-button {
+            position: fixed;
+            top: 20px;
+            right: 20px;
+            background-color: #2c3e50;
+            color: white;
+            border: none;
+            padding: 10px 20px;
+            border-radius: 5px;
+            cursor: pointer;
+            font-size: 12pt;
+            box-shadow: 0 2px 5px rgba(0,0,0,0.2);
+            z-index: 1000;
+        }
+        .print-button:hover {
+            background-color: #34495e;
+        }
+    ';
 
-    // Generate unique filename
-    $filename = 'umrah_completion_' . $pilgrim_name . '_' . date('Y-m-d_His') . '.pdf';
-    $filepath = $uploadsDir . '/' . $filename;
-
+    $html = '<!DOCTYPE html>
+<html lang="' . ($isRtl ? ($lang === 'fa' ? 'fa' : 'ps') : 'en') . '"' . ($isRtl ? ' dir="rtl"' : '') . '>
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Umrah Completion - ' . htmlspecialchars($pilgrim_name) . '</title>
+    <style>' . $template['css'] . $printStyles . '</style>
+</head>
+<body>
+    <button class="print-button no-print" onclick="window.print()">🖨️ Print</button>
+    ' . $template['html'] . '
+</body>
+</html>';
 
     if ($isAjaxRequest) {
-        // Save PDF to file and return JSON response
-        $mpdf->Output($filepath, 'F');
         echo json_encode([
-            'success' => true, 
-            'message' => 'Umrah service completion form generated successfully', 
-            'file_url' => 'uploads/umrah/umrah_completions/' . $filename
+            'success' => true,
+            'message' => 'Umrah service completion form generated successfully',
+            'html' => $html
         ]);
     } else {
-        // Output PDF directly for download
-        $mpdf->Output($filename, 'I');
+        echo $html;
     }
     exit;
     

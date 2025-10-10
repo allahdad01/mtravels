@@ -195,11 +195,16 @@ function generateDocumentReceipt(bookingId) {
     openLanguageModal(bookingId, 'receipt');
 }
 
+function generateCancellationForm(bookingId) {
+    openLanguageModal(bookingId, 'cancellation');
+}
+
 let currentBookingId = null;
 let currentFormType = null;
 const formEndpoints = {
     agreement: 'generate_umrah_agreement.php',
     completion: 'generate_umrah_completion.php',
+    cancellation: 'generate_umrah_cancellation.php',
     receipt: 'generate_umrah_document_receipt.php'
 };
 const formTitles = {
@@ -220,53 +225,10 @@ function generateIndividualDocumentWithLanguage(lang) {
 
     const bookingId = currentBookingId;
     const url = `${formEndpoints[currentFormType]}?booking_id=${bookingId}&lang=${lang}`;
-    const title = formTitles[currentFormType];
 
-    Swal.fire({
-        title: title,
-        text: 'please_wait...',
-        allowOutsideClick: false,
-        didOpen: () => {
-            Swal.showLoading();
-        }
-    });
-
-    fetch(url, {
-        method: 'GET',
-        headers: { 'X-Requested-With': 'XMLHttpRequest' }
-    })
-    .then(response => response.json())
-    .then(data => {
-        if (data.success) {
-            Swal.fire({
-                icon: 'success',
-                title: 'success',
-                text: data.message,
-                confirmButtonText: 'view_document',
-                showCancelButton: true,
-                cancelButtonText: 'close'
-            }).then((result) => {
-                if (result.isConfirmed) {
-                    window.open('../' + data.file_url, '_blank');
-                }
-            });
-        } else {
-            Swal.fire({
-                icon: 'error',
-                title: 'error',
-                text: data.message || 'failed_to_generate_document'
-            });
-        }
-    })
-    .catch(error => {
-        console.error('Error:', error);
-        Swal.fire({
-            icon: 'error',
-            title: 'error',
-            text: 'an_error_occurred'
-        });
-    });
-}   
+    // Directly open in new window, similar to family agreements
+    window.open(url, '_blank');
+}
 
 // Expose to global scope for inline onclick handlers
 if (typeof window !== 'undefined') {
