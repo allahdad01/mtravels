@@ -111,11 +111,11 @@ $exchange_rate = isset($_POST['exchange_rate']) ? DbSecurity::validateInput($_PO
                                      SET balance = balance + ? 
                                      WHERE main_account_id = ? 
                                      AND currency = ? 
-                                     AND created_at > ? 
+                                     AND id > ? 
                                      AND id != ?
                                      AND tenant_id = ?";
             $updateSubsequentStmt = $conn->prepare($updateSubsequentQuery);
-            $updateSubsequentStmt->bind_param("dissi", $balanceAdjustment, $mainAccountId, $currency, $originalDate, $transactionId, $tenant_id);
+            $updateSubsequentStmt->bind_param("dissi", $balanceAdjustment, $mainAccountId, $currency, $transactionId, $transactionId, $tenant_id);
             
             if (!$updateSubsequentStmt->execute()) {
                 throw new Exception("Failed to update subsequent transactions: " . $updateSubsequentStmt->error);

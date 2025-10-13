@@ -147,7 +147,7 @@ $booking_id = isset($_POST['booking_id']) ? DbSecurity::validateInput($_POST['bo
                                 UPDATE supplier_transactions 
                                 SET balance = balance + ? 
                                 WHERE supplier_id = ? 
-                                AND transaction_date > ? 
+                                AND id > ? 
                                 AND id != ?
                                 AND tenant_id = ?
                             ");
@@ -155,7 +155,7 @@ $booking_id = isset($_POST['booking_id']) ? DbSecurity::validateInput($_POST['bo
                             $updateSubsequentSupplierStmt->execute([
                                 $transactionAmount,
                                 $originalSupplier,
-                                $oldSupplierTransactionData['transaction_date'],
+                                $oldSupplierTransactionData['id'],
                                 $oldSupplierTransactionData['id'],
                                 $tenant_id
                             ]);
@@ -274,7 +274,7 @@ $booking_id = isset($_POST['booking_id']) ? DbSecurity::validateInput($_POST['bo
                                 $updateSubsequentSupplierQuery = "UPDATE supplier_transactions 
                                                                 SET balance = balance - ? 
                                                                 WHERE supplier_id = ? 
-                                                                AND transaction_date > ? 
+                                                                AND id > ? 
                                                                 AND id != ?
                                                                 AND tenant_id = ?";
                             } else {
@@ -282,14 +282,14 @@ $booking_id = isset($_POST['booking_id']) ? DbSecurity::validateInput($_POST['bo
                                 $updateSubsequentSupplierQuery = "UPDATE supplier_transactions 
                                                                 SET balance = balance + ? 
                                                                 WHERE supplier_id = ? 
-                                                                AND transaction_date > ? 
+                                                                AND id > ? 
                                                                 AND id != ?
                                                                 AND tenant_id = ?";
                             }
                             
                             $stmtUpdateSubsequentSupplier = $pdo->prepare($updateSubsequentSupplierQuery);
                             $absAmountDifference = abs($amountDifference);
-                            $stmtUpdateSubsequentSupplier->execute([$absAmountDifference, $_POST['supplier_id'], $supplierTransactionDate, $supplierTransactionId, $tenant_id]);
+                            $stmtUpdateSubsequentSupplier->execute([$absAmountDifference, $_POST['supplier_id'], $supplierTransactionId, $supplierTransactionId, $tenant_id]);
                         }
                     }
                 }
@@ -343,7 +343,7 @@ $booking_id = isset($_POST['booking_id']) ? DbSecurity::validateInput($_POST['bo
                                 UPDATE client_transactions 
                                 SET balance = balance + ? 
                                 WHERE client_id = ? 
-                                AND created_at > ? 
+                                AND id > ? 
                                 AND currency = ? 
                                 AND id != ?
                                 AND tenant_id = ?
@@ -352,7 +352,7 @@ $booking_id = isset($_POST['booking_id']) ? DbSecurity::validateInput($_POST['bo
                             $updateSubsequentStmt->execute([
                                 $transactionAmount,
                                 $originalClient,
-                                $oldTransactionData['created_at'],
+                                $oldTransactionData['id'],
                                 $oldTransactionData['currency'],
                                 $oldTransactionData['id'],
                                 $tenant_id
@@ -478,7 +478,7 @@ $booking_id = isset($_POST['booking_id']) ? DbSecurity::validateInput($_POST['bo
                                 $updateSubsequentQuery = "UPDATE client_transactions 
                                                          SET balance = balance - ? 
                                                          WHERE client_id = ? 
-                                                         AND created_at > ? 
+                                                         AND id > ? 
                                                          AND currency = ? 
                                                          AND id != ?
                                                          AND tenant_id = ?";
@@ -487,7 +487,7 @@ $booking_id = isset($_POST['booking_id']) ? DbSecurity::validateInput($_POST['bo
                                 $updateSubsequentQuery = "UPDATE client_transactions 
                                                          SET balance = balance + ? 
                                                          WHERE client_id = ? 
-                                                         AND created_at > ? 
+                                                         AND id > ? 
                                                          AND currency = ? 
                                                          AND id != ?
                                                          AND tenant_id = ?";
@@ -495,7 +495,7 @@ $booking_id = isset($_POST['booking_id']) ? DbSecurity::validateInput($_POST['bo
                             
                             $stmtUpdateSubsequent = $pdo->prepare($updateSubsequentQuery);
                             $absAmountDifference = abs($amountDifference);
-                            $stmtUpdateSubsequent->execute([$absAmountDifference, $_POST['sold_to'], $transactionDate, $_POST['currency'], $transactionId, $tenant_id]);
+                            $stmtUpdateSubsequent->execute([$absAmountDifference, $_POST['sold_to'], $transactionId, $_POST['currency'], $transactionId, $tenant_id]);
                         }
                     }
                 }

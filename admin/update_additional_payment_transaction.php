@@ -78,7 +78,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 SET balance = balance + ? 
                 WHERE main_account_id = ? 
                 AND currency = ? 
-                AND created_at > ? 
+                AND id > ? 
                 AND id != ?
                 AND tenant_id = ?
             ");
@@ -86,7 +86,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 $balanceAdjustment, 
                 $transaction['main_account_id'], 
                 $transaction['currency'], 
-                $transaction['transaction_date'],
+                $transactionId,
                 $transactionId,
                 $tenant_id
             ]);

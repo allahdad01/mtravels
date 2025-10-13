@@ -129,11 +129,11 @@ $transaction_id = isset($_POST['transaction_id']) ? DbSecurity::validateInput($_
             $updateSubsequentQuery = "UPDATE main_account_transactions 
                                      SET balance = balance + ? 
                                      WHERE main_account_id = ? 
-                                     AND created_at > ? 
+                                     AND id > ? 
                                      AND id != ?
                                      AND tenant_id = ?";
             $updateSubsequentStmt = $conn->prepare($updateSubsequentQuery);
-            $updateSubsequentStmt->bind_param("disii", $typeChangeAdjustment, $mainAccountId, $originalDate, $transactionId, $tenant_id);
+            $updateSubsequentStmt->bind_param("disii", $typeChangeAdjustment, $mainAccountId, $transactionId, $transactionId, $tenant_id);
             
             if (!$updateSubsequentStmt->execute()) {
                 throw new Exception("Failed to update subsequent transactions: " . $updateSubsequentStmt->error);
@@ -157,11 +157,11 @@ $transaction_id = isset($_POST['transaction_id']) ? DbSecurity::validateInput($_
             $updateSubsequentQuery = "UPDATE main_account_transactions 
                                      SET balance = balance + ? 
                                      WHERE main_account_id = ? 
-                                     AND created_at > ? 
+                                     AND id > ? 
                                      AND id != ?
                                      AND tenant_id = ?";
             $updateSubsequentStmt = $conn->prepare($updateSubsequentQuery);
-            $updateSubsequentStmt->bind_param("disii", $balanceAdjustment, $mainAccountId, $originalDate, $transactionId, $tenant_id);
+            $updateSubsequentStmt->bind_param("disii", $balanceAdjustment, $mainAccountId, $transactionId, $transactionId, $tenant_id);
             
             if (!$updateSubsequentStmt->execute()) {
                 throw new Exception("Failed to update subsequent transactions: " . $updateSubsequentStmt->error);

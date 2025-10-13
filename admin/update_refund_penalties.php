@@ -177,7 +177,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                             $updateSubsequentSupplierQuery = "UPDATE supplier_transactions 
                                                            SET balance = balance + ? 
                                                            WHERE supplier_id = ? 
-                                                           AND transaction_date > ? 
+                                                           AND id > ? 
                                                            AND id != ?
                                                            AND tenant_id = ?";
                         } else {
@@ -185,14 +185,14 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                             $updateSubsequentSupplierQuery = "UPDATE supplier_transactions 
                                                            SET balance = balance - ? 
                                                            WHERE supplier_id = ? 
-                                                           AND transaction_date > ? 
+                                                           AND id > ? 
                                                            AND id != ?
                                                            AND tenant_id = ?";
                         }
                         
                         $stmtUpdateSubsequentSupplier = $conn->prepare($updateSubsequentSupplierQuery);
                         $absAmountDifference = abs($amountDifference);
-                        $stmtUpdateSubsequentSupplier->bind_param('disi', $absAmountDifference, $supplier_id, $transactionDate, $transactionId, $tenant_id);
+                        $stmtUpdateSubsequentSupplier->bind_param('disi', $absAmountDifference, $supplier_id, $transactionId, $transactionId, $tenant_id);
                         $stmtUpdateSubsequentSupplier->execute();
                         $stmtUpdateSubsequentSupplier->close();
                     }
@@ -312,7 +312,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                             $updateSubsequentQuery = "UPDATE client_transactions 
                                                    SET balance = balance + ? 
                                                    WHERE client_id = ? 
-                                                   AND created_at > ? 
+                                                   AND id > ? 
                                                    AND currency = ?
                                                    AND id != ?
                                                    AND tenant_id = ?";
@@ -321,7 +321,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                             $updateSubsequentQuery = "UPDATE client_transactions 
                                                    SET balance = balance - ? 
                                                    WHERE client_id = ? 
-                                                   AND created_at > ? 
+                                                   AND id > ? 
                                                    AND currency = ?
                                                    AND id != ?
                                                    AND tenant_id = ?";
@@ -329,7 +329,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                         
                         $stmtUpdateSubsequent = $conn->prepare($updateSubsequentQuery);
                         $absAmountDifference = abs($amountDifference);
-                        $stmtUpdateSubsequent->bind_param('dissi', $absAmountDifference, $client_id, $transactionDate, $currency, $transactionId, $tenant_id);
+                        $stmtUpdateSubsequent->bind_param('dissi', $absAmountDifference, $client_id, $transactionId, $currency, $transactionId, $tenant_id);
                         $stmtUpdateSubsequent->execute();
                         $stmtUpdateSubsequent->close();
                     }

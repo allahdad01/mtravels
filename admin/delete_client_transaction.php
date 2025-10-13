@@ -9,7 +9,7 @@ require_once 'security.php';
 // Enforce authentication
 enforce_auth();
 
-$tenant_id = $_SESSION['tenant_id'];
+
 
 // Check if user is logged in
 if (!isset($_SESSION['user_id'])) {
@@ -38,9 +38,9 @@ $conn->begin_transaction();
 
 try {
     // Get transaction details first
-    $getQuery = "SELECT client_id, amount, currency, type, reference_id, created_at, balance FROM client_transactions WHERE id = ? AND tenant_id = ?";
+    $getQuery = "SELECT client_id, amount, currency, type, reference_id, created_at, balance FROM client_transactions WHERE id = ?";
     $getStmt = $conn->prepare($getQuery);
-    $getStmt->bind_param("ii", $transactionId, $tenant_id);
+    $getStmt->bind_param("i", $transactionId);
     $getStmt->execute();
     $result = $getStmt->get_result();
     
@@ -61,9 +61,7 @@ try {
     // Map currency to the correct balance field
     $currencyFieldMap = [
         'USD' => 'usd_balance',
-        'AFS' => 'afs_balance',
-        'EUR' => 'euro_balance',
-        'DARHAM' => 'darham_balance'
+        'AFS' => 'afs_balance'
     ];
     
     // Check if the currency is in our map
@@ -81,20 +79,20 @@ try {
                                 SET balance = balance + ? 
                                 WHERE client_id = ? 
                                 AND currency = ? 
-                                AND id > ? 
-                                AND id != ? AND tenant_id = ?";
+                                AND created_at > ? 
+                                AND id != ?";
     } else { // credit
         // For CREDIT transactions, we need to subtract the amount from subsequent balances
         $updateSubsequentQuery = "UPDATE client_transactions 
                                 SET balance = balance - ? 
                                 WHERE client_id = ? 
                                 AND currency = ? 
-                                AND id > ? 
-                                AND id != ? AND tenant_id = ?";
+                                AND created_at > ? 
+                                AND id != ?";
     }
     
     $updateSubsequentStmt = $conn->prepare($updateSubsequentQuery);
-    $updateSubsequentStmt->bind_param("dissi", $amount, $clientId, $currency, $transactionId, $transactionId, $tenant_id);
+    $updateSubsequentStmt->bind_param("dissi", $amount, $clientId, $currency, $transactionDate, $transactionId);
     $updateSubsequentStmt->execute();
     $updateSubsequentStmt->close();
     
@@ -110,78 +108,91 @@ try {
     }
     
     $updateStmt = $conn->prepare($updateQuery);
-    $updateStmt->bind_param("di", $amount, $clientId, $tenant_id);
+    $updateStmt->bind_param("di", $amount, $clientId);
     $updateStmt->execute();
     $updateStmt->close();
     
     // Handle main account transaction if it exists
     if ($referenceId) {
         // Get main account transaction details
-        $mainTxQuery = "SELECT main_account_id, amount, type, created_at FROM main_account_transactions WHERE reference_id = ? AND transaction_of = 'client_fund' AND tenant_id = ?";
+        $mainTxQuery = "SELECT main_account_id, amount, type, currency, created_at FROM main_account_transactions WHERE reference_id = ? AND transaction_of = 'client_fund'";
         $mainTxStmt = $conn->prepare($mainTxQuery);
-        $mainTxStmt->bind_param("ii", $transactionId, $tenant_id);
+        $mainTxStmt->bind_param("i", $transactionId);
         $mainTxStmt->execute();
         $mainTxResult = $mainTxStmt->get_result();
-        
+
         if ($mainTxResult->num_rows > 0) {
             $mainTx = $mainTxResult->fetch_assoc();
             $mainAmount = $mainTx['amount'];
             $mainType = strtolower($mainTx['type']); // credit or debit
+            $mainCurrency = $mainTx['currency'];
             $mainAccountId = $mainTx['main_account_id'];
-            $mainTxId = $mainTx['id'];
-            
+            $mainTxDate = $mainTx['created_at'];
+
+            // Get the correct field name for main account
+            $mainUpdateField = $currencyFieldMap[$mainCurrency];
+
             // Update balances of all subsequent main account transactions
             // For credit transactions to main account, we need to subtract the amount from subsequent balances
             // For debit transactions from main account, we need to add the amount to subsequent balances
             if ($mainType === 'credit') {
-                $updateMainSubsequentQuery = "UPDATE main_account_transactions 
-                                            SET balance = balance - ? 
-                                            WHERE main_account_id = ? 
-                                            AND currency = ? 
-                                            AND id > ? 
-                                            AND reference_id != ? AND tenant_id = ?";
+                $updateMainSubsequentQuery = "UPDATE main_account_transactions
+                                            SET balance = balance - ?
+                                            WHERE main_account_id = ?
+                                            AND currency = ?
+                                            AND created_at > ?
+                                            AND reference_id != ?";
             } else {
-                $updateMainSubsequentQuery = "UPDATE main_account_transactions 
-                                            SET balance = balance + ? 
-                                            WHERE main_account_id = ? 
-                                            AND currency = ? 
-                                            AND id > ? 
-                                            AND reference_id != ? AND tenant_id = ?";
+                $updateMainSubsequentQuery = "UPDATE main_account_transactions
+                                            SET balance = balance + ?
+                                            WHERE main_account_id = ?
+                                            AND currency = ?
+                                            AND created_at > ?
+                                            AND reference_id != ?";
             }
-            
+
             $updateMainSubsequentStmt = $conn->prepare($updateMainSubsequentQuery);
-            $updateMainSubsequentStmt->bind_param("dissi", $mainAmount, $mainAccountId, $currency, $mainTxId, $transactionId, $tenant_id);
+            $updateMainSubsequentStmt->bind_param("dissi", $mainAmount, $mainAccountId, $mainCurrency, $mainTxDate, $transactionId);
             $updateMainSubsequentStmt->execute();
             $updateMainSubsequentStmt->close();
-            
+
             // Reverse the main account balance
             if ($mainType === 'credit') {
                 // For CREDIT to main account, subtract the amount
-                $mainUpdateQuery = "UPDATE main_account SET {$updateField} = {$updateField} - ? WHERE id = ? AND tenant_id = ?";
+                $mainUpdateQuery = "UPDATE main_account SET {$mainUpdateField} = {$mainUpdateField} - ? WHERE id = ?";
             } else {
                 // For DEBIT from main account, add the amount back
-                $mainUpdateQuery = "UPDATE main_account SET {$updateField} = {$updateField} + ? WHERE id = ? AND tenant_id = ?";
+                $mainUpdateQuery = "UPDATE main_account SET {$mainUpdateField} = {$mainUpdateField} + ? WHERE id = ?";
             }
-            
+
             $mainUpdateStmt = $conn->prepare($mainUpdateQuery);
-            $mainUpdateStmt->bind_param("di", $mainAmount, $mainAccountId, $tenant_id);
+            $mainUpdateStmt->bind_param("di", $mainAmount, $mainAccountId);
             $mainUpdateStmt->execute();
             $mainUpdateStmt->close();
-            
+
+            // Get the current balance after update
+            $balanceStmt = $conn->prepare("SELECT {$mainUpdateField} as current_balance FROM main_account WHERE id = ?");
+            $balanceStmt->bind_param("i", $mainAccountId);
+            $balanceStmt->execute();
+            $balanceResult = $balanceStmt->get_result();
+            $current_balance = $balanceResult->fetch_assoc()['current_balance'];
+            $balanceStmt->close();
+
             // Delete the main account transaction
-            $mainDeleteQuery = "DELETE FROM main_account_transactions WHERE reference_id = ? AND transaction_of = 'client_fund' AND tenant_id = ?";
+            $mainDeleteQuery = "DELETE FROM main_account_transactions WHERE reference_id = ? AND transaction_of = 'client_fund'";
             $mainDeleteStmt = $conn->prepare($mainDeleteQuery);
-            $mainDeleteStmt->bind_param("ii", $transactionId, $tenant_id);
+            $mainDeleteStmt->bind_param("i", $transactionId);
             $mainDeleteStmt->execute();
             $mainDeleteStmt->close();
+
         }
         $mainTxStmt->close();
     }
     
     // Delete the client transaction
-    $deleteQuery = "DELETE FROM client_transactions WHERE id = ? AND tenant_id = ?";
+    $deleteQuery = "DELETE FROM client_transactions WHERE id = ?";
     $deleteStmt = $conn->prepare($deleteQuery);
-    $deleteStmt->bind_param("ii", $transactionId, $tenant_id);
+    $deleteStmt->bind_param("i", $transactionId);
     $deleteStmt->execute();
     $deleteStmt->close();
     
@@ -206,12 +217,13 @@ try {
     
     $stmt_log = $conn->prepare("
         INSERT INTO activity_log 
-        (user_id, action, table_name, record_id, old_values, new_values, ip_address, user_agent, created_at, tenant_id) 
-        VALUES (?, 'delete', 'client_transactions', ?, ?, ?, ?, ?, NOW(), ?)
+        (user_id, action, table_name, record_id, old_values, new_values, ip_address, user_agent, created_at) 
+        VALUES (?, 'delete', 'client_transactions', ?, ?, ?, ?, ?, NOW())
     ");
-    $stmt_log->bind_param("iissssi", $user_id, $transactionId, $old_values, $new_values, $ip_address, $user_agent, $tenant_id);
+    $stmt_log->bind_param("iissss", $user_id, $transactionId, $old_values, $new_values, $ip_address, $user_agent);
     $stmt_log->execute();
     $stmt_log->close();
+    
     
     // Return success response
     echo json_encode([

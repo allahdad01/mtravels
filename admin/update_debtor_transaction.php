@@ -206,7 +206,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                                          SET balance = balance + ? 
                                          WHERE main_account_id = ? 
                                          AND currency = ? 
-                                         AND created_at > (SELECT created_at FROM main_account_transactions WHERE id = ?) 
+                                         AND id > ?
                                          AND id != ?
                                          AND tenant_id = ?";
                 $updateSubsequentStmt = $conn->prepare($updateSubsequentQuery);

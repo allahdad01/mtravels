@@ -203,19 +203,19 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 
                     // Update subsequent transactions for old supplier - ADDING back the amount
                     // But only for transactions that occurred after this specific transaction
-                    $updateOldSupplierSubsequentQuery = "UPDATE supplier_transactions 
-                                                       SET balance = balance + ?
-                                                       WHERE supplier_id = ? 
-                                                       AND transaction_date > (
-                                                           SELECT transaction_date 
-                                                           FROM supplier_transactions 
-                                                           WHERE supplier_id = ? 
-                                                           AND reference_id = ? 
-                                                           AND transaction_of = 'ticket_sale'
-                                                           AND tenant_id = ?
-                                                           LIMIT 1
-                                                       )
-                                                       ORDER BY transaction_date ASC";
+                    $updateOldSupplierSubsequentQuery = "UPDATE supplier_transactions
+                                                        SET balance = balance + ?
+                                                        WHERE supplier_id = ?
+                                                        AND id > (
+                                                            SELECT id
+                                                            FROM supplier_transactions
+                                                            WHERE supplier_id = ?
+                                                            AND reference_id = ?
+                                                            AND transaction_of = 'ticket_sale'
+                                                            AND tenant_id = ?
+                                                            LIMIT 1
+                                                        )
+                                                        ORDER BY transaction_date ASC, id ASC";
                     $stmtUpdateOldSupplierSubsequent = $conn->prepare($updateOldSupplierSubsequentQuery);
                     $stmtUpdateOldSupplierSubsequent->bind_param('diiii', $totalAmount, $originalSupplier, $originalSupplier, $id, $tenant_id);
                     $stmtUpdateOldSupplierSubsequent->execute();
@@ -477,20 +477,19 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                         $stmtUpdateOldClientUsd->close();
 
                         // Update subsequent USD transactions for old client
-                        $updateOldClientUsdSubsequentQuery = "UPDATE client_transactions 
-                                                            SET balance = balance + ?
-                                                            WHERE client_id = ? 
-                                                            AND created_at > ? 
-                                                            AND id != (SELECT id FROM client_transactions 
-                                                                     WHERE client_id = ? 
-                                                                     AND reference_id = ? 
-                                                                     AND transaction_of = 'ticket_sale' 
-                                                                     LIMIT 1)
-                                                            AND currency = 'USD'
-                                                            AND tenant_id = ?
-                                                            ORDER BY created_at ASC";
+                        $updateOldClientUsdSubsequentQuery = "UPDATE client_transactions
+                                                             SET balance = balance + ?
+                                                             WHERE client_id = ?
+                                                             AND id > (SELECT id FROM client_transactions
+                                                                      WHERE client_id = ?
+                                                                      AND reference_id = ?
+                                                                      AND transaction_of = 'ticket_sale'
+                                                                      LIMIT 1)
+                                                             AND currency = 'USD'
+                                                             AND tenant_id = ?
+                                                             ORDER BY created_at ASC, id ASC";
                         $stmtUpdateOldClientUsdSubsequent = $conn->prepare($updateOldClientUsdSubsequentQuery);
-                        $stmtUpdateOldClientUsdSubsequent->bind_param('disiii', $totalUsdAmount, $originalClient, $transferTransactionDate, $originalClient, $id, $tenant_id);
+                        $stmtUpdateOldClientUsdSubsequent->bind_param('diiii', $totalUsdAmount, $originalClient, $originalClient, $id, $tenant_id);
                         $stmtUpdateOldClientUsdSubsequent->execute();
                         $stmtUpdateOldClientUsdSubsequent->close();
                     }
@@ -504,20 +503,19 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                         $stmtUpdateOldClientAfs->close();
 
                         // Update subsequent AFS transactions for old client
-                        $updateOldClientAfsSubsequentQuery = "UPDATE client_transactions 
-                                                            SET balance = balance + ?
-                                                            WHERE client_id = ? 
-                                                            AND created_at > ? 
-                                                            AND id != (SELECT id FROM client_transactions 
-                                                                     WHERE client_id = ? 
-                                                                     AND reference_id = ? 
-                                                                     AND transaction_of = 'ticket_sale' 
-                                                                     LIMIT 1)
-                                                            AND currency = 'AFS'
-                                                            AND tenant_id = ?
-                                                            ORDER BY created_at ASC";
+                        $updateOldClientAfsSubsequentQuery = "UPDATE client_transactions
+                                                             SET balance = balance + ?
+                                                             WHERE client_id = ?
+                                                             AND id > (SELECT id FROM client_transactions
+                                                                      WHERE client_id = ?
+                                                                      AND reference_id = ?
+                                                                      AND transaction_of = 'ticket_sale'
+                                                                      LIMIT 1)
+                                                             AND currency = 'AFS'
+                                                             AND tenant_id = ?
+                                                             ORDER BY created_at ASC, id ASC";
                         $stmtUpdateOldClientAfsSubsequent = $conn->prepare($updateOldClientAfsSubsequentQuery);
-                        $stmtUpdateOldClientAfsSubsequent->bind_param('disiii', $totalAfsAmount, $originalClient, $transferTransactionDate, $originalClient, $id, $tenant_id);
+                        $stmtUpdateOldClientAfsSubsequent->bind_param('diiii', $totalAfsAmount, $originalClient, $originalClient, $id, $tenant_id);
                         $stmtUpdateOldClientAfsSubsequent->execute();
                         $stmtUpdateOldClientAfsSubsequent->close();
                     }
@@ -575,20 +573,19 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 
                             // Update subsequent USD transactions for new client
                             if ($earliestTransactionDate) {
-                                $updateNewClientUsdSubsequentQuery = "UPDATE client_transactions 
+                                $updateNewClientUsdSubsequentQuery = "UPDATE client_transactions
                                                                     SET balance = balance - ?
-                                                                    WHERE client_id = ? 
-                                                                    AND created_at > ? 
-                                                                    AND id != (SELECT id FROM client_transactions 
-                                                                             WHERE client_id = ? 
-                                                                             AND reference_id = ? 
-                                                                             AND transaction_of = 'ticket_sale' 
-                                                                             LIMIT 1)
+                                                                    WHERE client_id = ?
+                                                                    AND id > (SELECT id FROM client_transactions
+                                                                              WHERE client_id = ?
+                                                                              AND reference_id = ?
+                                                                              AND transaction_of = 'ticket_sale'
+                                                                              LIMIT 1)
                                                                     AND currency = 'USD'
                                                                     AND tenant_id = ?
-                                                                    ORDER BY created_at ASC";
+                                                                    ORDER BY created_at ASC, id ASC";
                                 $stmtUpdateNewClientUsdSubsequent = $conn->prepare($updateNewClientUsdSubsequentQuery);
-                                $stmtUpdateNewClientUsdSubsequent->bind_param('disiiii', $negativeAmount, $sold_to, $earliestTransactionDate, $sold_to, $id, $tenant_id);
+                                $stmtUpdateNewClientUsdSubsequent->bind_param('diiii', $negativeAmount, $sold_to, $sold_to, $id, $tenant_id);
                                 $stmtUpdateNewClientUsdSubsequent->execute();
                                 $stmtUpdateNewClientUsdSubsequent->close();
                             }
@@ -604,20 +601,19 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 
                             // Update subsequent AFS transactions for new client
                             if ($earliestTransactionDate) {
-                                $updateNewClientAfsSubsequentQuery = "UPDATE client_transactions 
+                                $updateNewClientAfsSubsequentQuery = "UPDATE client_transactions
                                                                     SET balance = balance - ?
-                                                                    WHERE client_id = ? 
-                                                                    AND created_at > ? 
-                                                                    AND id != (SELECT id FROM client_transactions 
-                                                                             WHERE client_id = ? 
-                                                                             AND reference_id = ? 
-                                                                             AND transaction_of = 'ticket_sale' 
-                                                                             LIMIT 1)
+                                                                    WHERE client_id = ?
+                                                                    AND id > (SELECT id FROM client_transactions
+                                                                              WHERE client_id = ?
+                                                                              AND reference_id = ?
+                                                                              AND transaction_of = 'ticket_sale'
+                                                                              LIMIT 1)
                                                                     AND currency = 'AFS'
                                                                     AND tenant_id = ?
-                                                                    ORDER BY created_at ASC";
+                                                                    ORDER BY created_at ASC, id ASC";
                                 $stmtUpdateNewClientAfsSubsequent = $conn->prepare($updateNewClientAfsSubsequentQuery);
-                                $stmtUpdateNewClientAfsSubsequent->bind_param('disiiii', $totalAfsAmount, $sold_to, $earliestTransactionDate, $sold_to, $id, $tenant_id);
+                                $stmtUpdateNewClientAfsSubsequent->bind_param('diiii', $totalAfsAmount, $sold_to, $sold_to, $id, $tenant_id);
                                 $stmtUpdateNewClientAfsSubsequent->execute();
                                 $stmtUpdateNewClientAfsSubsequent->close();
                             }
