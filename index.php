@@ -366,6 +366,28 @@ try {
             50% { transform: translateY(-5px); }
         }
 
+        .hamburger {
+            display: none;
+            background: none;
+            border: none;
+            font-size: 1.5rem;
+            color: var(--gray-700);
+            cursor: pointer;
+            padding: 0.5rem;
+            border-radius: 5px;
+            transition: background 0.3s;
+        }
+
+        .hamburger:hover {
+            background: rgba(64, 153, 255, 0.1);
+        }
+
+        .nav-menu {
+            display: flex;
+            align-items: center;
+            gap: 2rem;
+        }
+
         .nav-links {
             display: flex;
             gap: 2rem;
@@ -397,6 +419,12 @@ try {
 
         .nav-links a:hover::after {
             width: 100%;
+        }
+
+        .nav-actions {
+            display: flex;
+            align-items: center;
+            gap: 1rem;
         }
 
         .btn {
@@ -1294,8 +1322,60 @@ try {
 
         /* Responsive Design */
         @media (max-width: 768px) {
+            .navbar {
+                left: 20px;
+                right: 20px;
+                padding: 1rem 1.5rem;
+            }
+
+            .hamburger {
+                display: block;
+            }
+
+            .nav-menu {
+                position: absolute;
+                top: 100%;
+                left: 0;
+                right: 0;
+                background: rgba(255, 255, 255, 0.95);
+                backdrop-filter: blur(20px);
+                border-radius: 20px;
+                padding: 1rem;
+                flex-direction: column;
+                gap: 1rem;
+                box-shadow: 0 10px 30px rgba(0, 0, 0, 0.1);
+                transform: translateY(-100%);
+                opacity: 0;
+                visibility: hidden;
+                transition: all 0.3s ease;
+            }
+
+            .nav-menu.open {
+                transform: translateY(0);
+                opacity: 1;
+                visibility: visible;
+            }
+
             .nav-links {
-                display: none;
+                flex-direction: column;
+                gap: 1rem;
+                width: 100%;
+            }
+
+            .nav-links li {
+                width: 100%;
+                text-align: center;
+            }
+
+            .nav-actions {
+                flex-direction: column;
+                gap: 0.5rem;
+                width: 100%;
+            }
+
+            .nav-actions .btn {
+                width: 100%;
+                text-align: center;
             }
 
             .hero-text h1 {
@@ -1431,17 +1511,20 @@ try {
         <div class="container">
             <div class="nav-content">
                 <a href="#" class="logo"><img src="uploads/logo/<?= htmlspecialchars(getSetting($platform_settings, 'platform_logo') ?? 'logo.png') ?>" alt="Logo" style="height: 40px;"> <span class="logo-text"><?= htmlspecialchars(getSetting($platform_settings, 'platform_name') ?? 'MTravels') ?></span></a>
-                <ul class="nav-links">
-                    <li><a href="#features">Features</a></li>
-                    <li><a href="#pricing">Pricing</a></li>
-                    <li><a href="#testimonials">Reviews</a></li>
-                    <li><a href="#contact">Contact</a></li>
-                </ul>
-                <div style="display: flex; align-items: center; gap: 1rem;">
-                    <a href="login.php" class="nav-login-link" style="color: var(--primary); text-decoration: none; font-weight: 600; transition: color 0.3s;">Login</a>
-                    <a href="book-demo.php" class="btn btn-primary">
-                        <span>Book a Demo</span>
-                    </a>
+                <button class="hamburger" id="hamburger">☰</button>
+                <div class="nav-menu">
+                    <ul class="nav-links">
+                        <li><a href="#features">Features</a></li>
+                        <li><a href="#pricing">Pricing</a></li>
+                        <li><a href="#testimonials">Reviews</a></li>
+                        <li><a href="#contact">Contact</a></li>
+                    </ul>
+                    <div class="nav-actions">
+                        <a href="login.php" class="nav-login-link" style="color: var(--primary); text-decoration: none; font-weight: 600; transition: color 0.3s;">Login</a>
+                        <a href="book-demo.php" class="btn btn-primary">
+                            <span>Book a Demo</span>
+                        </a>
+                    </div>
                 </div>
             </div>
         </div>
@@ -1998,9 +2081,30 @@ try {
         // Create particles periodically
         setInterval(createParticle, 3000);
 
-        // Mobile menu functionality (for future mobile optimization)
+        // Mobile menu functionality
         function toggleMobileMenu() {
-            // Implementation for mobile menu toggle
+            const hamburger = document.getElementById('hamburger');
+            const navMenu = document.querySelector('.nav-menu');
+
+            if (hamburger && navMenu) {
+                hamburger.addEventListener('click', function() {
+                    navMenu.classList.toggle('open');
+                });
+
+                // Close menu when clicking outside
+                document.addEventListener('click', function(event) {
+                    if (!hamburger.contains(event.target) && !navMenu.contains(event.target)) {
+                        navMenu.classList.remove('open');
+                    }
+                });
+
+                // Close menu when clicking on a link
+                navMenu.addEventListener('click', function(event) {
+                    if (event.target.tagName === 'A') {
+                        navMenu.classList.remove('open');
+                    }
+                });
+            }
         }
 
         // Testimonial Slider Functionality
@@ -2167,11 +2271,12 @@ try {
             }
         }
 
-        // Initialize testimonial slider when DOM is loaded
+        // Initialize testimonial slider and mobile menu when DOM is loaded
         document.addEventListener('DOMContentLoaded', function() {
             if (document.querySelector('.testimonials-slider')) {
                 new TestimonialSlider();
             }
+            toggleMobileMenu();
         });
     </script>
 </body>
