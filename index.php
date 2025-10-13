@@ -4,6 +4,7 @@ session_start();
 
 // Database connection and security
 require_once 'includes/db.php';
+require_once 'includes/conn.php';
 require_once 'includes/cache.php';
 
 // Default tenant ID for landing page (can be made configurable)
@@ -76,7 +77,7 @@ function getDestinations($pdo, $tenant_id, $limit = 6) {
 }
 
 // Optimized function to fetch testimonials with caching
-function getTestimonials($pdo, $tenant_id, $limit = 3) {
+function getTestimonials($pdo, $tenant_id, $limit = null) {
     $cache_key = getCacheKey('testimonials', [$tenant_id, $limit]);
 
     if ($cached = getCachedData($cache_key)) {
@@ -84,8 +85,16 @@ function getTestimonials($pdo, $tenant_id, $limit = 3) {
     }
 
     try {
-        $stmt = $pdo->prepare("SELECT id, name, photo, testimonial, rating FROM testimonials WHERE tenant_id = ? AND active = 1 ORDER BY rating DESC, created_at DESC LIMIT ?");
-        $stmt->execute([$tenant_id, $limit]);
+        $sql = "SELECT id, name, photo, testimonial, rating FROM testimonials WHERE tenant_id = ? AND active = 1 ORDER BY rating DESC, created_at DESC";
+        $params = [$tenant_id];
+
+        if ($limit !== null) {
+            $sql .= " LIMIT ?";
+            $params[] = $limit;
+        }
+
+        $stmt = $pdo->prepare($sql);
+        $stmt->execute($params);
         $testimonials = $stmt->fetchAll(PDO::FETCH_ASSOC);
 
         setCachedData($cache_key, $testimonials);
@@ -158,7 +167,7 @@ try {
     $platform_settings = getPlatformSettings($pdo);
     $plans = getPlans($pdo);
     $destinations = getDestinations($pdo, $default_tenant_id);
-    $testimonials = getTestimonials($pdo, $default_tenant_id);
+    $testimonials = getTestimonials($pdo, $default_tenant_id); // Get all testimonials for slider
     $deals = getDeals($pdo, $default_tenant_id);
     $blog_posts = getBlogPosts($pdo, $default_tenant_id);
 } catch (Exception $e) {
@@ -882,12 +891,25 @@ try {
         .testimonials {
             padding: 6rem 0;
             background: var(--gray-50);
+            position: relative;
+            overflow: hidden;
         }
 
-        .testimonials-grid {
-            display: grid;
-            grid-template-columns: repeat(auto-fit, minmax(350px, 1fr));
-            gap: 2rem;
+        .testimonials-slider {
+            position: relative;
+            max-width: 100%;
+            overflow: hidden;
+        }
+
+        .testimonials-track {
+            display: flex;
+            transition: transform 0.5s ease-in-out;
+        }
+
+        .testimonial-slide {
+            flex: 0 0 33.333%; /* Show 3 testimonials at once on desktop */
+            padding: 0 1rem;
+            box-sizing: border-box;
         }
 
         .testimonial-card {
@@ -897,6 +919,10 @@ try {
             box-shadow: 0 10px 30px rgba(0, 0, 0, 0.05);
             position: relative;
             transition: all 0.3s ease;
+            height: 100%;
+            min-height: 300px;
+            display: flex;
+            flex-direction: column;
         }
 
         .testimonial-card:hover {
@@ -911,6 +937,7 @@ try {
             position: relative;
             font-size: 1.1rem;
             line-height: 1.6;
+            flex: 1;
         }
 
         .testimonial-content::before {
@@ -927,6 +954,7 @@ try {
             display: flex;
             align-items: center;
             gap: 1rem;
+            margin-top: auto;
         }
 
         .author-avatar {
@@ -946,6 +974,92 @@ try {
         .author-rating {
             color: var(--secondary);
             font-size: 1.2rem;
+        }
+
+        /* Slider Navigation */
+        .slider-nav {
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            gap: 2rem;
+            margin-top: 3rem;
+        }
+
+        .slider-btn {
+            background: var(--primary);
+            color: white;
+            border: none;
+            width: 50px;
+            height: 50px;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 1.5rem;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            box-shadow: 0 4px 15px rgba(64, 153, 255, 0.3);
+        }
+
+        .slider-btn:hover {
+            transform: scale(1.1);
+            box-shadow: 0 6px 20px rgba(64, 153, 255, 0.4);
+        }
+
+        .slider-btn:disabled {
+            background: var(--gray-300);
+            cursor: not-allowed;
+            box-shadow: none;
+        }
+
+        .slider-dots {
+            display: flex;
+            gap: 0.5rem;
+        }
+
+        .slider-dot {
+            width: 12px;
+            height: 12px;
+            border-radius: 50%;
+            background: var(--gray-300);
+            cursor: pointer;
+            transition: all 0.3s ease;
+        }
+
+        .slider-dot.active {
+            background: var(--primary);
+            transform: scale(1.2);
+        }
+
+        /* Auto-play indicator */
+        .auto-play-indicator {
+            position: absolute;
+            top: 20px;
+            right: 20px;
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+            background: rgba(255, 255, 255, 0.9);
+            padding: 0.5rem 1rem;
+            border-radius: 20px;
+            font-size: 0.8rem;
+            color: var(--gray-600);
+            backdrop-filter: blur(10px);
+        }
+
+        .auto-play-progress {
+            width: 20px;
+            height: 2px;
+            background: var(--gray-200);
+            border-radius: 1px;
+            overflow: hidden;
+        }
+
+        .auto-play-bar {
+            height: 100%;
+            background: var(--primary);
+            border-radius: 1px;
+            transition: width 0.1s linear;
         }
 
         /* Pricing Section */
@@ -1237,18 +1351,34 @@ try {
                 gap: 0;
             }
 
-            .testimonials-grid {
-                grid-template-columns: 1fr;
+            /* Mobile testimonial slider */
+            .testimonials-track {
+                width: calc(100% * 1); /* Show 1 testimonial on mobile */
+            }
+
+            .testimonial-slide {
+                flex: 0 0 100%; /* Show 1 testimonial on mobile */
             }
 
             .testimonial-card {
                 padding: 1.5rem;
+                min-height: 250px;
             }
 
             .testimonial-author {
                 flex-direction: column;
                 text-align: center;
                 gap: 0.5rem;
+            }
+
+            .slider-nav {
+                gap: 1rem;
+            }
+
+            .slider-btn {
+                width: 40px;
+                height: 40px;
+                font-size: 1.2rem;
             }
 
             .cta h2 {
@@ -1596,34 +1726,61 @@ try {
                 <h2><?php echo getSetting($platform_settings, 'testimonials_title', 'What Our Customers Say'); ?></h2>
                 <p><?php echo getSetting($platform_settings, 'testimonials_subtitle', 'Join thousands of satisfied travel agencies who have transformed their business with MTravels.'); ?></p>
             </div>
-            <div class="testimonials-grid">
-                <?php foreach ($testimonials as $testimonial): ?>
-                <div class="testimonial-card">
-                    <div class="testimonial-content">
-                        "<?php echo htmlspecialchars($testimonial['testimonial']); ?>"
-                    </div>
-                    <div class="testimonial-author">
-                        <?php if (!empty($testimonial['photo'])): ?>
-                        <img src="<?php echo htmlspecialchars($testimonial['photo']); ?>" alt="<?php echo htmlspecialchars($testimonial['name']); ?>" class="author-avatar">
-                        <?php else: ?>
-                        <div class="author-avatar" style="background: var(--primary); display: flex; align-items: center; justify-content: center; color: white; font-weight: bold;">
-                            <?php echo strtoupper(substr($testimonial['name'], 0, 1)); ?>
-                        </div>
-                        <?php endif; ?>
-                        <div class="author-info">
-                            <h4><?php echo htmlspecialchars($testimonial['name']); ?></h4>
-                            <div class="author-rating">
-                                <?php
-                                $rating = intval($testimonial['rating']);
-                                for ($i = 1; $i <= 5; $i++) {
-                                    echo $i <= $rating ? '⭐' : '☆';
-                                }
-                                ?>
+
+            <!-- Auto-play indicator -->
+            <div class="auto-play-indicator">
+                <span>Auto-play</span>
+                <div class="auto-play-progress">
+                    <div class="auto-play-bar" id="autoPlayBar"></div>
+                </div>
+            </div>
+
+            <div class="testimonials-slider">
+                <div class="testimonials-track" id="testimonialsTrack">
+                    <?php foreach ($testimonials as $index => $testimonial): ?>
+                    <div class="testimonial-slide">
+                        <div class="testimonial-card">
+                            <div class="testimonial-content">
+                                "<?php echo htmlspecialchars($testimonial['testimonial']); ?>"
+                            </div>
+                            <div class="testimonial-author">
+                                <?php if (!empty($testimonial['photo'])): ?>
+                                <img src="<?php echo htmlspecialchars($testimonial['photo']); ?>" alt="<?php echo htmlspecialchars($testimonial['name']); ?>" class="author-avatar" onerror="this.style.display='none'; this.nextElementSibling.style.display='flex';">
+                                <div class="author-avatar" style="background: var(--primary); display: none; align-items: center; justify-content: center; color: white; font-weight: bold;">
+                                    <?php echo strtoupper(substr($testimonial['name'], 0, 1)); ?>
+                                </div>
+                                <?php else: ?>
+                                <div class="author-avatar" style="background: var(--primary); display: flex; align-items: center; justify-content: center; color: white; font-weight: bold;">
+                                    <?php echo strtoupper(substr($testimonial['name'], 0, 1)); ?>
+                                </div>
+                                <?php endif; ?>
+                                <div class="author-info">
+                                    <h4><?php echo htmlspecialchars($testimonial['name']); ?></h4>
+                                    <div class="author-rating">
+                                        <?php
+                                        $rating = intval($testimonial['rating']);
+                                        for ($i = 1; $i <= 5; $i++) {
+                                            echo $i <= $rating ? '⭐' : '☆';
+                                        }
+                                        ?>
+                                    </div>
+                                </div>
                             </div>
                         </div>
                     </div>
+                    <?php endforeach; ?>
                 </div>
-                <?php endforeach; ?>
+            </div>
+
+            <!-- Slider Navigation -->
+            <div class="slider-nav">
+                <button class="slider-btn" id="prevBtn" disabled>
+                    <i class="fas fa-chevron-left"></i>
+                </button>
+                <div class="slider-dots" id="sliderDots"></div>
+                <button class="slider-btn" id="nextBtn">
+                    <i class="fas fa-chevron-right"></i>
+                </button>
             </div>
         </div>
     </section>
@@ -1845,6 +2002,177 @@ try {
         function toggleMobileMenu() {
             // Implementation for mobile menu toggle
         }
+
+        // Testimonial Slider Functionality
+        class TestimonialSlider {
+            constructor() {
+                this.track = document.getElementById('testimonialsTrack');
+                this.slides = document.querySelectorAll('.testimonial-slide');
+                this.prevBtn = document.getElementById('prevBtn');
+                this.nextBtn = document.getElementById('nextBtn');
+                this.dotsContainer = document.getElementById('sliderDots');
+                this.autoPlayBar = document.getElementById('autoPlayBar');
+
+                this.currentIndex = 0;
+                this.slidesPerView = 3;
+                this.totalSlides = this.slides.length;
+                this.autoPlayInterval = null;
+                this.autoPlayDuration = 5000; // 5 seconds
+
+                this.init();
+            }
+
+            init() {
+                this.updateMaxIndex();
+                this.createDots();
+                this.updateButtons();
+                this.updateDots();
+                this.startAutoPlay();
+
+                this.prevBtn.addEventListener('click', () => this.prev());
+                this.nextBtn.addEventListener('click', () => this.next());
+
+                // Pause auto-play on hover
+                document.querySelector('.testimonials-slider').addEventListener('mouseenter', () => this.pauseAutoPlay());
+                document.querySelector('.testimonials-slider').addEventListener('mouseleave', () => this.startAutoPlay());
+
+                // Handle window resize
+                window.addEventListener('resize', () => this.handleResize());
+            }
+
+            createDots() {
+                // Clear existing dots
+                this.dotsContainer.innerHTML = '';
+
+                // Calculate total dots based on slides per view
+                // For 6 slides with 3 per view, we need 4 dots (positions 0,1,2,3)
+                const totalDots = Math.max(1, this.totalSlides - this.slidesPerView + 1);
+                for (let i = 0; i < totalDots; i++) {
+                    const dot = document.createElement('div');
+                    dot.className = 'slider-dot';
+                    dot.addEventListener('click', () => this.goToSlide(i));
+                    this.dotsContainer.appendChild(dot);
+                }
+                this.dots = document.querySelectorAll('.slider-dot');
+            }
+
+            updateButtons() {
+                this.prevBtn.disabled = this.currentIndex === 0;
+                this.nextBtn.disabled = this.currentIndex >= this.totalSlides - this.slidesPerView;
+            }
+
+            updateDots() {
+                this.dots.forEach((dot, index) => {
+                    dot.classList.toggle('active', index === this.currentIndex);
+                });
+            }
+
+            goToSlide(index) {
+                this.currentIndex = Math.max(0, Math.min(index, this.totalSlides - this.slidesPerView));
+                this.updateSlider();
+                this.resetAutoPlay();
+            }
+
+            updateMaxIndex() {
+                this.maxIndex = Math.max(0, this.totalSlides - this.slidesPerView);
+            }
+
+            prev() {
+                if (this.currentIndex > 0) {
+                    this.currentIndex--;
+                    this.updateSlider();
+                    this.resetAutoPlay();
+                }
+            }
+
+            next() {
+                if (this.currentIndex < this.totalSlides - this.slidesPerView) {
+                    this.currentIndex++;
+                    this.updateSlider();
+                    this.resetAutoPlay();
+                } else {
+                    // Loop back to start
+                    this.currentIndex = 0;
+                    this.updateSlider();
+                    this.resetAutoPlay();
+                }
+            }
+
+            updateButtons() {
+                const maxIndex = this.totalSlides - this.slidesPerView;
+                this.prevBtn.disabled = this.currentIndex === 0;
+                this.nextBtn.disabled = this.currentIndex >= maxIndex;
+            }
+
+            updateSlider() {
+                const translateX = -this.currentIndex * (100 / this.slidesPerView);
+                this.track.style.transform = `translateX(${translateX}%)`;
+                this.updateButtons();
+                this.updateDots();
+            }
+
+            startAutoPlay() {
+                this.stopAutoPlay();
+                this.autoPlayInterval = setInterval(() => {
+                    this.animateProgressBar();
+                    setTimeout(() => {
+                        this.next();
+                    }, 100); // Small delay to show progress bar completion
+                }, this.autoPlayDuration);
+            }
+
+            pauseAutoPlay() {
+                this.stopAutoPlay();
+                this.resetProgressBar();
+            }
+
+            stopAutoPlay() {
+                if (this.autoPlayInterval) {
+                    clearInterval(this.autoPlayInterval);
+                    this.autoPlayInterval = null;
+                }
+            }
+
+            resetAutoPlay() {
+                this.stopAutoPlay();
+                this.resetProgressBar();
+                this.startAutoPlay();
+            }
+
+            animateProgressBar() {
+                this.autoPlayBar.style.width = '0%';
+                this.autoPlayBar.style.transition = 'none';
+
+                setTimeout(() => {
+                    this.autoPlayBar.style.transition = `width ${this.autoPlayDuration}ms linear`;
+                    this.autoPlayBar.style.width = '100%';
+                }, 10);
+            }
+
+            resetProgressBar() {
+                this.autoPlayBar.style.width = '0%';
+                this.autoPlayBar.style.transition = 'none';
+            }
+
+            handleResize() {
+                // Recalculate slides per view on resize if needed
+                const newSlidesPerView = window.innerWidth < 768 ? 1 : 3;
+                if (newSlidesPerView !== this.slidesPerView) {
+                    this.slidesPerView = newSlidesPerView;
+                    this.updateMaxIndex();
+                    this.createDots(); // Recreate dots with new calculation
+                    this.currentIndex = Math.min(this.currentIndex, this.maxIndex);
+                    this.updateSlider();
+                }
+            }
+        }
+
+        // Initialize testimonial slider when DOM is loaded
+        document.addEventListener('DOMContentLoaded', function() {
+            if (document.querySelector('.testimonials-slider')) {
+                new TestimonialSlider();
+            }
+        });
     </script>
 </body>
 </html>

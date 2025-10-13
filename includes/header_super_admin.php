@@ -429,6 +429,12 @@ $imagePath = "../assets/images/user/" . $profilePic;
                         <span class="pcoded-mtext"><?= __('manage_users') ?></span>
                     </a>
                 </li>
+                <li data-username="manage_testimonials" class="nav-item <?php echo basename($_SERVER['PHP_SELF']) == 'manage_testimonials.php' ? 'active' : ''; ?>">
+                    <a href="manage_testimonials.php" class="nav-link">
+                        <span class="pcoded-micon"><i class="feather icon-message-square"></i></span>
+                        <span class="pcoded-mtext">Manage Testimonials</span>
+                    </a>
+                </li>
             </ul>
         </div>
     </div>
