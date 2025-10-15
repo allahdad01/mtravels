@@ -231,77 +231,77 @@ include '../includes/header.php';
                                                             </td>
                                                             <td class="text-center">
                                                             <?php
-// Get client type from clients table
-$soldTo = $ticket['ticket']['sold_to'];
-$isAgencyClient = false;
+                                                            // Get client type from clients table
+                                                            $soldTo = $ticket['ticket']['sold_to'];
+                                                            $isAgencyClient = false;
 
-// Check if client is an agency
-$clientQuery = $conn->query("SELECT client_type FROM clients WHERE name = '$soldTo'");
-if ($clientQuery && $clientQuery->num_rows > 0) {
-    $clientRow = $clientQuery->fetch_assoc();
-    $isAgencyClient = ($clientRow['client_type'] === 'agency');
-}
+                                                            // Check if client is an agency
+                                                            $clientQuery = $conn->query("SELECT client_type FROM clients WHERE name = '$soldTo'");
+                                                            if ($clientQuery && $clientQuery->num_rows > 0) {
+                                                                $clientRow = $clientQuery->fetch_assoc();
+                                                                $isAgencyClient = ($clientRow['client_type'] === 'agency');
+                                                            }
 
-if ($isAgencyClient) {
-    // Calculate payment status using transaction-specific exchange rates
-    $baseCurrency = $ticket['ticket']['currency'];
-    $soldAmount = floatval($ticket['ticket']['sold']);
-    $totalPaidInBase = 0.0;
+                                                            if ($isAgencyClient) {
+                                                                // Calculate payment status using transaction-specific exchange rates
+                                                                $baseCurrency = $ticket['ticket']['currency'];
+                                                                $soldAmount = floatval($ticket['ticket']['sold']);
+                                                                $totalPaidInBase = 0.0;
 
-    // Get ticket ID
-    $ticketId = $ticket['ticket']['id'];
+                                                                // Get ticket ID
+                                                                $ticketId = $ticket['ticket']['id'];
 
-    // Query transactions from main_account_transactions table
-    $transactionQuery = $conn->query("SELECT * FROM main_account_transactions WHERE
-        transaction_of = 'ticket_sale'
-        AND reference_id = '$ticketId'");
+                                                                // Query transactions from main_account_transactions table
+                                                                $transactionQuery = $conn->query("SELECT * FROM main_account_transactions WHERE
+                                                                    transaction_of = 'ticket_sale'
+                                                                    AND reference_id = '$ticketId'");
 
-    if ($transactionQuery && $transactionQuery->num_rows > 0) {
-        while ($transaction = $transactionQuery->fetch_assoc()) {
-            $amount = floatval($transaction['amount']);
-            $transCurrency = $transaction['currency'];
-            $transExchangeRate = isset($transaction['exchange_rate']) && $transaction['exchange_rate'] > 0 ? floatval($transaction['exchange_rate']) : 1.0;
+                                                                if ($transactionQuery && $transactionQuery->num_rows > 0) {
+                                                                    while ($transaction = $transactionQuery->fetch_assoc()) {
+                                                                        $amount = floatval($transaction['amount']);
+                                                                        $transCurrency = $transaction['currency'];
+                                                                        $transExchangeRate = isset($transaction['exchange_rate']) && $transaction['exchange_rate'] > 0 ? floatval($transaction['exchange_rate']) : 1.0;
 
-            $convertedAmount = 0.0;
+                                                                        $convertedAmount = 0.0;
 
-            if ($transCurrency === $baseCurrency) {
-                $convertedAmount = $amount;
-            } else {
-                if ($baseCurrency === 'AFS') {
-                    $convertedAmount = $amount * $transExchangeRate;
-                } else {
-                    $convertedAmount = $amount / $transExchangeRate;
-                }
-            }
+                                                                        if ($transCurrency === $baseCurrency) {
+                                                                            $convertedAmount = $amount;
+                                                                        } else {
+                                                                            if ($baseCurrency === 'AFS') {
+                                                                                $convertedAmount = $amount * $transExchangeRate;
+                                                                            } else {
+                                                                                $convertedAmount = $amount / $transExchangeRate;
+                                                                            }
+                                                                        }
 
-            $totalPaidInBase += $convertedAmount;
-        }
-    }
+                                                                        $totalPaidInBase += $convertedAmount;
+                                                                    }
+                                                                }
 
-    // Status icon based on payment status
-    if ($totalPaidInBase <= 0) {
-        echo '<i class="fas fa-circle text-danger" title="No payment received"></i>';
-    } elseif ($totalPaidInBase < $soldAmount) {
-        // Partial payment
-        $percentage = round(($totalPaidInBase / $soldAmount) * 100);
-        echo '<i class="fas fa-circle text-warning" style="color: #ffc107 !important;"
-            title="Partial payment: ' . $baseCurrency . ' ' . number_format($totalPaidInBase, 2) . ' / ' . $baseCurrency . ' ' .
-            number_format($soldAmount, 2) . ' (' . $percentage . '%)"></i>';
-    } elseif (abs($totalPaidInBase - $soldAmount) < 0.01) {
-        // Fully paid (with a small tolerance for floating-point comparison)
-        echo '<i class="fas fa-circle text-success" title="Fully paid"></i>';
-    } else {
-        // Overpaid
-        echo '<i class="fas fa-circle text-success"
-            title="Fully paid (overpaid by ' . $baseCurrency . ' ' .
-            number_format($totalPaidInBase - $soldAmount, 2) . ')"></i>';
-    }
-} else {
-    // Not an agency client - show neutral icon
-    echo '<i class="fas fa-minus text-muted" title="Not an agency client"></i>';
-}
-?>
-</td>
+                                                                // Status icon based on payment status
+                                                                if ($totalPaidInBase <= 0) {
+                                                                    echo '<i class="fas fa-circle text-danger" title="No payment received"></i>';
+                                                                } elseif ($totalPaidInBase < $soldAmount) {
+                                                                    // Partial payment
+                                                                    $percentage = round(($totalPaidInBase / $soldAmount) * 100);
+                                                                    echo '<i class="fas fa-circle text-warning" style="color: #ffc107 !important;"
+                                                                        title="Partial payment: ' . $baseCurrency . ' ' . number_format($totalPaidInBase, 2) . ' / ' . $baseCurrency . ' ' .
+                                                                        number_format($soldAmount, 2) . ' (' . $percentage . '%)"></i>';
+                                                                } elseif (abs($totalPaidInBase - $soldAmount) < 0.01) {
+                                                                    // Fully paid (with a small tolerance for floating-point comparison)
+                                                                    echo '<i class="fas fa-circle text-success" title="Fully paid"></i>';
+                                                                } else {
+                                                                    // Overpaid
+                                                                    echo '<i class="fas fa-circle text-success"
+                                                                        title="Fully paid (overpaid by ' . $baseCurrency . ' ' .
+                                                                        number_format($totalPaidInBase - $soldAmount, 2) . ')"></i>';
+                                                                }
+                                                            } else {
+                                                                // Not an agency client - show neutral icon
+                                                                echo '<i class="fas fa-minus text-muted" title="Not an agency client"></i>';
+                                                            }
+                                                            ?>
+                                                            </td>
 
 
                                                             <td>
