@@ -181,7 +181,7 @@ if ($currency === 'USD') {
         (user_id, action, table_name, record_id, old_values, new_values, ip_address, user_agent, created_at, tenant_id) 
         VALUES (?, 'fund', 'main_account', ?, ?, ?, ?, ?, NOW(), ?)
     ");
-    $activityStmt->bind_param("iissss", $user_id, $accountId, $old_values, $new_values, $ip_address, $user_agent);
+    $activityStmt->bind_param("iisssss", $user_id, $accountId, $old_values, $new_values, $ip_address, $user_agent, $tenant_id);
     $activityStmt->execute();
 
     echo json_encode(['success' => true, 'message' => 'Main account funded with DARHAM.']);

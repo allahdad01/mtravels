@@ -23,7 +23,7 @@ $usd_balance = isset($_POST['usd_balance']) ? DbSecurity::validateInput($_POST['
 $bank_name = isset($_POST['bank_name']) ? DbSecurity::validateInput($_POST['bank_name'], 'string', ['maxlength' => 255]) : null;
 
 // Validate bank_account_number
-$bank_account_number = isset($_POST['bank_account_number']) ? DbSecurity::validateInput($_POST['bank_account_number'], 'string', ['maxlength' => 255]) : null;
+$bank_account_usd_number = isset($_POST['bank_account_usd_number']) ? DbSecurity::validateInput($_POST['bank_account_usd_number'], 'string', ['maxlength' => 255]) : null;
 $bank_account_afs_number = isset($_POST['bank_account_afs_number']) ? DbSecurity::validateInput($_POST['bank_account_afs_number'], 'string', ['maxlength' => 255]) : null;
 // Validate account_type
 $account_type = isset($_POST['account_type']) ? DbSecurity::validateInput($_POST['account_type'], 'string', ['maxlength' => 255]) : null;
@@ -35,7 +35,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 
     $accountName = $_POST['account_name'];
     $accountType = $_POST['account_type'];
-    $bankAccountNumber = ($accountType === 'bank') ? $_POST['bank_account_number'] : null;
+    $bankAccountNumber = ($accountType === 'bank') ? $_POST['bank_account_usd_number'] : null;
     $bankAccountAfsNumber = ($accountType === 'bank') ? $_POST['bank_account_afs_number'] : null;
     $bankName = ($accountType === 'bank') ? $_POST['bank_name'] : null;
     $usdBalance = $_POST['usd_balance'];

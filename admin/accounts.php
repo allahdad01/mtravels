@@ -242,8 +242,8 @@ $clientAccounts = $clientAccounts->get_result()->fetch_all(MYSQLI_ASSOC);
                                                                                 <i class="fas fa-money-bill-wave text-warning"></i>
                                                                             </div>
                                                                             <div>
-                                                                                <div class="balance-label"><?= __('darham_balance') ?></div>
-                                                                                <div class="balance-value text-warning">د.أ <?= number_format($account['darham_balance'], 2) ?></div>
+                                                                                <div class="balance-label"><?= __('aed_balance') ?></div>
+                                                                                <div class="balance-value text-warning">AED <?= number_format($account['darham_balance'], 2) ?></div>
                                                                             </div>
                                                                         </div>
                                                                     </div>
@@ -765,7 +765,7 @@ $clientAccounts = $clientAccounts->get_result()->fetch_all(MYSQLI_ASSOC);
                                     <option value="USD"><?= __('usd') ?> ($)</option>
                                     <option value="AFS"><?= __('afs') ?> (؋)</option>
                                     <option value="EUR"><?= __('eur') ?> (€)</option>
-                                    <option value="DARHAM"><?= __('darham') ?> (د.أ)</option>
+                                    <option value="DARHAM"><?= __('darham') ?> (AED)</option>
                                 </select>
                             </div>
                         </div>
@@ -950,7 +950,7 @@ $clientAccounts = $clientAccounts->get_result()->fetch_all(MYSQLI_ASSOC);
                                                 <option value="USD"><?= __('usd') ?> ($)</option>
                                                 <option value="AFS"><?= __('afs') ?> (؋)</option>
                                                 <option value="EUR"><?= __('eur') ?> (€)</option>
-                                                <option value="DARHAM"><?= __('darham') ?> (د.أ)</option>
+                                                <option value="DARHAM"><?= __('darham') ?> (AED)</option>
                                             </select>
                                         </div>
                                     </div>

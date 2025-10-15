@@ -113,7 +113,7 @@
         e.preventDefault();
             const form = e.target;
             const formData = new FormData(form);
-        
+
         fetch('add_supplier.php', {
             method: 'POST',
             body: formData,
@@ -121,11 +121,11 @@
         .then(response => response.json())
         .then(data => {
             if (data.success) {
-                alert("<?= __('supplier_added_successfully') ?>");
+                showToast('', 'success');
                 $('#addSupplierModal').modal('hide');
                     this.loadSuppliers(); // Refresh table
             } else {
-                alert("<?= __('error') ?>: " + data.message);
+                showToast("<?= __('error') ?>: " + data.message, 'error');
             }
         })
         .catch(error => console.error('Error:', error));
@@ -143,11 +143,11 @@
             .then(response => response.json())
             .then(data => {
                 if (data.success) {
-                    alert('supplier_updated_successfully');
+                    showToast('', 'success');
                     $('#editSupplierModal').modal('hide');
                     this.loadSuppliers(); // Refresh supplier table
                 } else {
-                    alert('error_updating_supplier: ' + data.message);
+                    showToast('error_updating_supplier: ' + data.message, 'error');
                 }
             })
             .catch(error => console.error('error_updating_supplier:', error));
@@ -338,10 +338,10 @@
         .then(response => response.json())
         .then(data => {
             if (data.success) {
-                alert('supplier_deleted_successfully');
+                showToast('', 'success');
                         this.loadSuppliers(); // Refresh table
             } else {
-                alert('error: ' + data.message);
+                showToast('error: ' + data.message, 'error');
             }
         })
         .catch(error => console.error('error:', error));
@@ -358,10 +358,10 @@
         .then(response => response.json())
                 .then(data => {
                     if (data.success) {
-                        alert('supplier_deactivated_successfully');
+                        showToast('', 'success');
                         this.loadSuppliers(); // Refresh table
                     } else {
-                        alert('error: ' + data.message);
+                        showToast('error: ' + data.message, 'error');
                     }
                 })
                 .catch(error => console.error('error:', error));
@@ -378,10 +378,10 @@
         .then(response => response.json())
         .then(data => {
             if (data.success) {
-                        alert('supplier_activated_successfully');
+                        showToast('', 'success');
                         this.loadSuppliers(); // Refresh table
             } else {
-                        alert('error: ' + data.message);
+                        showToast('error: ' + data.message, 'error');
                     }
                 })
                 .catch(error => console.error('error:', error));

@@ -110,7 +110,7 @@
                         if (transaction.currency === 'USD') currencySymbol = '$';
                         else if (transaction.currency === 'AFS') currencySymbol = '؋';
                         else if (transaction.currency === 'EUR') currencySymbol = '€';
-                        else if (transaction.currency === 'DARHAM') currencySymbol = 'د.أ.ف.س';
+                        else if (transaction.currency === 'DARHAM') currencySymbol = 'AED';
                         
                         // Check if this is a fund transaction - only show actions for fund transactions
                         const isFundTransaction = 
@@ -344,7 +344,7 @@
                     let currencyValue = 'USD';
                     if (currencySymbol === '؋') currencyValue = 'AFS';
                     else if (currencySymbol === '€') currencyValue = 'EUR';
-                    else if (currencySymbol === 'د') currencyValue = 'DARHAM';
+                    else if (currencySymbol === 'AED') currencyValue = 'DARHAM';
                     
                     document.getElementById('editTransactionCurrency').value = currencyValue;
                     document.getElementById('editTransactionDescription').value = remarks || '';
@@ -464,7 +464,7 @@
                 let currencyValue = 'USD';
                 if (currencySymbol === '؋') currencyValue = 'AFS';
                 else if (currencySymbol === '€') currencyValue = 'EUR';
-                else if (currencySymbol === 'د') currencyValue = 'DARHAM';
+                else if (currencySymbol === 'AED') currencyValue = 'DARHAM';
                 
                 document.getElementById('editTransactionCurrency').value = currencyValue;
                 document.getElementById('editTransactionDescription').value = remarks || '';
