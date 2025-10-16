@@ -323,7 +323,7 @@ try {
             SET amount = ?, type = ?, currency = ?, receipt = ?, description = ? 
             WHERE id = ? AND tenant_id = ?
         ");
-        $updateStmt->bind_param("dssssi", $newAmount, $newType, $currency, $receipt, $description, $transactionId, $tenant_id);
+        $updateStmt->bind_param("dssssii", $newAmount, $newType, $currency, $receipt, $description, $transactionId, $tenant_id);
         $updateStmt->execute();
         
         // Get all transactions after this one to update balances
@@ -343,13 +343,13 @@ try {
         // Update the current transaction's balance
         $currentBalance = $transaction['balance'] + $amountDifference;
         $updateBalanceStmt = $conn->prepare("UPDATE client_transactions SET balance = ? WHERE id = ? AND tenant_id = ?");
-        $updateBalanceStmt->bind_param("di", $currentBalance, $transactionId, $tenant_id);
+        $updateBalanceStmt->bind_param("dii", $currentBalance, $transactionId, $tenant_id);
         $updateBalanceStmt->execute();
         
         // Update all subsequent transactions' balances
         foreach ($laterTransactions as $laterTransaction) {
             $newBalance = $laterTransaction['balance'] + $amountDifference;
-            $updateBalanceStmt->bind_param("di", $newBalance, $laterTransaction['id'], $tenant_id);
+            $updateBalanceStmt->bind_param("dii", $newBalance, $laterTransaction['id'], $tenant_id);
             $updateBalanceStmt->execute();
         }
         
@@ -361,7 +361,7 @@ try {
                 SET usd_balance = usd_balance + ? 
                 WHERE id = ? AND tenant_id = ?
             ");
-            $updateClientStmt->bind_param("di", $amountDifference, $clientId, $tenant_id);
+            $updateClientStmt->bind_param("dii", $amountDifference, $clientId, $tenant_id);
             $updateClientStmt->execute();
         } elseif ($currency === 'AFS') {
             $updateClientStmt = $conn->prepare("
@@ -369,7 +369,7 @@ try {
                 SET afs_balance = afs_balance + ? 
                 WHERE id = ? AND tenant_id = ?
             ");
-            $updateClientStmt->bind_param("di", $amountDifference, $clientId, $tenant_id);
+            $updateClientStmt->bind_param("dii", $amountDifference, $clientId, $tenant_id);
             $updateClientStmt->execute();
         }
         

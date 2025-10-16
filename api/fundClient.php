@@ -4,6 +4,7 @@ require_once('../includes/conn.php');
 // Check if the user is logged in
 $username = isset($_SESSION['name']) ? $_SESSION['name'] : null;
 $user_id = isset($_SESSION['user_id']) ? $_SESSION['user_id'] : null;
+$tenant_id = isset($_SESSION['tenant_id']) ? $_SESSION['tenant_id'] : null;
 
 // Check if the request is JSON or form data
 $contentType = isset($_SERVER['CONTENT_TYPE']) ? $_SERVER['CONTENT_TYPE'] : '';
@@ -84,9 +85,9 @@ if ($usdAmount <= 0 && $afsAmount <= 0) {
 }
 
 // Fetch the client's account balances (USD and AFS) based on client ID
-$clientAccountQuery = "SELECT name, usd_balance, afs_balance FROM clients WHERE id = ?";
+$clientAccountQuery = "SELECT name, usd_balance, afs_balance FROM clients WHERE id = ? AND tenant_id = ?";
 $stmt = $conn->prepare($clientAccountQuery);
-$stmt->bind_param('i', $clientId);
+$stmt->bind_param('ii', $clientId, $tenant_id);
 $stmt->execute();
 $clientAccount = $stmt->get_result()->fetch_assoc();
 $clientName = $clientAccount['name'];
@@ -97,9 +98,9 @@ if (!$clientAccount) {
 }
 
 // Fetch main account details
-$mainAccountQuery = "SELECT id, name, usd_balance, afs_balance FROM main_account WHERE id = ?";
+$mainAccountQuery = "SELECT id, name, usd_balance, afs_balance FROM main_account WHERE id = ? AND tenant_id = ?";
 $mainAccountStmt = $conn->prepare($mainAccountQuery);
-$mainAccountStmt->bind_param('i', $mainAccountId);
+$mainAccountStmt->bind_param('ii', $mainAccountId, $tenant_id);
 $mainAccountStmt->execute();
 $mainAccount = $mainAccountStmt->get_result()->fetch_assoc();
 
@@ -147,17 +148,17 @@ try {
             $mainUsdStmt->execute();
 
             // Record client transaction for the USD payment
-            $transactionStmt = $conn->prepare("INSERT INTO client_transactions (client_id, type, currency, amount, balance, transaction_of, description, reference_id, receipt,exchange_rate)
-                                            VALUES (?, 'Credit', 'USD', ?, ?, 'fund', ?, ?, ?, ?)");
-            $transactionStmt->bind_param('iddssss', $clientId, $usdAmount, $newUsdBalance, $fullRemark, $user_id, $receipt, $exchangeRate);
+            $transactionStmt = $conn->prepare("INSERT INTO client_transactions (client_id, type, currency, amount, balance, transaction_of, description, reference_id, receipt,exchange_rate, tenant_id)
+                                            VALUES (?, 'Credit', 'USD', ?, ?, 'fund', ?, ?, ?, ?, ?)");
+            $transactionStmt->bind_param('iddssssi', $clientId, $usdAmount, $newUsdBalance, $fullRemark, $user_id, $receipt, $exchangeRate, $tenant_id);
             $transactionStmt->execute();
             $lastInsertId = $transactionStmt->insert_id;
 
             // Record USD main account transaction
             $mainUsdTransactionRemarks = "Client: $clientName, Received $usdAmount USD for client account funding, processed by: $username, Remarks: $remarks";
-            $mainUsdTransactionStmt = $conn->prepare("INSERT INTO main_account_transactions (main_account_id, type, amount, transaction_of, reference_id, description, balance, receipt,currency)
-                                                VALUES (?, 'credit', ?, 'client_fund', ?, ?, ?, ?, 'USD')");
-            $mainUsdTransactionStmt->bind_param('idisds', $mainAccountId, $usdAmount, $lastInsertId, $mainUsdTransactionRemarks, $newMainUsdBalance, $receipt);
+            $mainUsdTransactionStmt = $conn->prepare("INSERT INTO main_account_transactions (main_account_id, type, amount, transaction_of, reference_id, description, balance, receipt,currency, tenant_id)
+                                                VALUES (?, 'credit', ?, 'client_fund', ?, ?, ?, ?, 'USD', ?)");
+            $mainUsdTransactionStmt->bind_param('idisdss', $mainAccountId, $usdAmount, $lastInsertId, $mainUsdTransactionRemarks, $newMainUsdBalance, $receipt, $tenant_id);
             $mainUsdTransactionStmt->execute();
 
 
@@ -171,17 +172,19 @@ try {
                 transaction_type,
                 message,
                 status,
-                created_at
+                created_at,
+                tenant_id
             ) VALUES (
                 ?,
                 ?,
                 ?,
                 ?,
-                NOW()
+                NOW(),
+                ?
             )
             ";
             $notificationStmt = $conn->prepare($notificationQuery);
-            $notificationStmt->bind_param('isss', $lastInsertId, $transaction_type, $notificationMessage, $status);
+            $notificationStmt->bind_param('isssi', $lastInsertId, $transaction_type, $notificationMessage, $status, $tenant_id);
 
             if (!$notificationStmt->execute()) {
                 throw new Exception("Failed to send notification to admin.");
@@ -198,17 +201,17 @@ try {
             $mainAfsStmt->bind_param('di', $newMainAfsBalance, $mainAccountId);
             $mainAfsStmt->execute();
             // Record client transaction for the AFS payment
-            $transactionStmt = $conn->prepare("INSERT INTO client_transactions (client_id, type, currency, amount, balance, transaction_of, description, reference_id, receipt,exchange_rate)
-            VALUES (?, 'Credit', 'USD', ?, ?, 'fund', ?, ?, ?, ?)");
-            $transactionStmt->bind_param('iddssss', $clientId, $afsInUsd, $newUsdBalance, $fullRemark, $user_id, $receipt, $exchangeRate);
+            $transactionStmt = $conn->prepare("INSERT INTO client_transactions (client_id, type, currency, amount, balance, transaction_of, description, reference_id, receipt,exchange_rate, tenant_id)
+            VALUES (?, 'Credit', 'USD', ?, ?, 'fund', ?, ?, ?, ?, ?)");
+            $transactionStmt->bind_param('iddssssi', $clientId, $afsInUsd, $newUsdBalance, $fullRemark, $user_id, $receipt, $exchangeRate, $tenant_id);
             $transactionStmt->execute();
             $lastInsertId = $transactionStmt->insert_id;
 
             // Record AFS main account transaction
             $mainAfsTransactionRemarks = "Client: $clientName, Received $afsAmount AFS (equivalent to $afsInUsd USD) for client account funding, processed by: $username, Remarks: $remarks";
-            $mainAfsTransactionStmt = $conn->prepare("INSERT INTO main_account_transactions (main_account_id, type, amount, transaction_of, reference_id, description, balance, receipt,currency)
-                                                VALUES (?, 'credit', ?, 'client_fund', ?, ?, ?, ?, 'AFS')");
-            $mainAfsTransactionStmt->bind_param('idisds', $mainAccountId, $afsAmount, $lastInsertId, $mainAfsTransactionRemarks, $newMainAfsBalance, $receipt);
+            $mainAfsTransactionStmt = $conn->prepare("INSERT INTO main_account_transactions (main_account_id, type, amount, transaction_of, reference_id, description, balance, receipt,currency, tenant_id)
+                                                VALUES (?, 'credit', ?, 'client_fund', ?, ?, ?, ?, 'AFS', ?)");
+            $mainAfsTransactionStmt->bind_param('idisdss', $mainAccountId, $afsAmount, $lastInsertId, $mainAfsTransactionRemarks, $newMainAfsBalance, $receipt, $tenant_id);
             $mainAfsTransactionStmt->execute();
 
             //notification
@@ -221,17 +224,19 @@ try {
                 transaction_type,
                 message,
                 status,
-                created_at
+                created_at,
+                tenant_id
             ) VALUES (
                 ?,
                 ?,
                 ?,
                 ?,
-                NOW()
+                NOW(),
+                ?
             )
             ";
             $notificationStmt = $conn->prepare($notificationQuery);
-            $notificationStmt->bind_param('isss', $lastInsertId, $transaction_type, $notificationMessage, $status);
+            $notificationStmt->bind_param('isssi', $lastInsertId, $transaction_type, $notificationMessage, $status, $tenant_id);
             if (!$notificationStmt->execute()) {
                 throw new Exception("Failed to send notification to admin.");
             }
@@ -263,17 +268,17 @@ try {
             $mainUsdStmt->execute();
 
             // Record client transaction for the USD payment
-            $transactionStmt = $conn->prepare("INSERT INTO client_transactions (client_id, type, currency, amount, balance, transaction_of, description, reference_id, receipt,exchange_rate)
-                                            VALUES (?, 'Credit', 'AFS', ?, ?, 'fund', ?, ?, ?, ?)");
-            $transactionStmt->bind_param('iddssss', $clientId, $usdInAfs, $newAfsBalance, $fullRemark, $user_id, $receipt, $exchangeRate);
+            $transactionStmt = $conn->prepare("INSERT INTO client_transactions (client_id, type, currency, amount, balance, transaction_of, description, reference_id, receipt,exchange_rate, tenant_id)
+                                            VALUES (?, 'Credit', 'AFS', ?, ?, 'fund', ?, ?, ?, ?, ?)");
+            $transactionStmt->bind_param('iddssssi', $clientId, $usdInAfs, $newAfsBalance, $fullRemark, $user_id, $receipt, $exchangeRate, $tenant_id);
             $transactionStmt->execute();
             $lastInsertId = $transactionStmt->insert_id;
 
             // Record USD main account transaction
             $mainUsdTransactionRemarks = "Client: $clientName, Received $usdAmount USD (equivalent to $usdInAfs AFS) for client account funding, processed by: $username, Remarks: $remarks";
-            $mainUsdTransactionStmt = $conn->prepare("INSERT INTO main_account_transactions (main_account_id, type, amount, transaction_of, reference_id, description, balance, receipt,currency)
-                                                VALUES (?, 'credit', ?, 'client_fund', ?, ?, ?, ?, 'USD')");
-            $mainUsdTransactionStmt->bind_param('idisds', $mainAccountId, $usdAmount, $lastInsertId, $mainUsdTransactionRemarks, $newMainUsdBalance, $receipt);
+            $mainUsdTransactionStmt = $conn->prepare("INSERT INTO main_account_transactions (main_account_id, type, amount, transaction_of, reference_id, description, balance, receipt,currency, tenant_id)
+                                                VALUES (?, 'credit', ?, 'client_fund', ?, ?, ?, ?, 'USD', ?)");
+            $mainUsdTransactionStmt->bind_param('idisds', $mainAccountId, $usdAmount, $lastInsertId, $mainUsdTransactionRemarks, $newMainUsdBalance, $receipt, $tenant_id);
             $mainUsdTransactionStmt->execute();
 
             //notification
@@ -286,17 +291,19 @@ try {
                 transaction_type,
                 message,
                 status,
-                created_at
+                created_at,
+                tenant_id
             ) VALUES (
                 ?,
                 ?,
                 ?,
                 ?,
-                NOW()
+                NOW(),
+                ?
             )
             ";
             $notificationStmt = $conn->prepare($notificationQuery);
-            $notificationStmt->bind_param('isss', $lastInsertId, $transaction_type, $notificationMessage, $status);
+            $notificationStmt->bind_param('isssi', $lastInsertId, $transaction_type, $notificationMessage, $status, $tenant_id);
             if (!$notificationStmt->execute()) {
                 throw new Exception("Failed to send notification to admin.");
             }
@@ -312,17 +319,17 @@ try {
         }
         
         // Record client transaction for the total AFS payment
-        $transactionStmt = $conn->prepare("INSERT INTO client_transactions (client_id, type, currency, amount, balance, transaction_of, description, reference_id, receipt)
-                                        VALUES (?, 'Credit', 'AFS', ?, ?, 'fund', ?, ?, ?)");
-        $transactionStmt->bind_param('iddsss', $clientId, $afsAmount, $newAfsBalance, $fullRemark, $user_id, $receipt);
+        $transactionStmt = $conn->prepare("INSERT INTO client_transactions (client_id, type, currency, amount, balance, transaction_of, description, reference_id, receipt, tenant_id)
+                                        VALUES (?, 'Credit', 'AFS', ?, ?, 'fund', ?, ?, ?, ?)");
+        $transactionStmt->bind_param('iddsssi', $clientId, $afsAmount, $newAfsBalance, $fullRemark, $user_id, $receipt, $tenant_id);
         $transactionStmt->execute();
         $lastInsertId = $transactionStmt->insert_id;
         
         // Record AFS main account transaction
         $mainAfsTransactionRemarks = "Client: $clientName, Received $afsAmount AFS for client account funding, processed by: $username, Remarks: $remarks";
-        $mainAfsTransactionStmt = $conn->prepare("INSERT INTO main_account_transactions (main_account_id, type, amount, transaction_of, reference_id, description, balance, receipt,currency)
-                                            VALUES (?, 'credit', ?, 'client_fund', ?, ?, ?, ?, 'AFS')");
-        $mainAfsTransactionStmt->bind_param('idisds', $mainAccountId, $afsAmount, $lastInsertId, $mainAfsTransactionRemarks, $newMainAfsBalance, $receipt);
+        $mainAfsTransactionStmt = $conn->prepare("INSERT INTO main_account_transactions (main_account_id, type, amount, transaction_of, reference_id, description, balance, receipt,currency, tenant_id)
+                                            VALUES (?, 'credit', ?, 'client_fund', ?, ?, ?, ?, 'AFS', ?)");
+        $mainAfsTransactionStmt->bind_param('idisds', $mainAccountId, $afsAmount, $lastInsertId, $mainAfsTransactionRemarks, $newMainAfsBalance, $receipt, $tenant_id);
         $mainAfsTransactionStmt->execute();
 
         //notification
@@ -335,17 +342,19 @@ try {
             transaction_type,
             message,
             status,
-            created_at
+            created_at,
+            tenant_id
         ) VALUES (
             ?,
             ?,
             ?,
             ?,
-            NOW()
+            NOW(),
+            ?
         )
         ";
         $notificationStmt = $conn->prepare($notificationQuery);
-        $notificationStmt->bind_param('isss', $lastInsertId, $transaction_type, $notificationMessage, $status);
+        $notificationStmt->bind_param('isssi', $lastInsertId, $transaction_type, $notificationMessage, $status, $tenant_id);
         if (!$notificationStmt->execute()) {
             throw new Exception("Failed to send notification to admin.");
         }

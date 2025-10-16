@@ -89,7 +89,7 @@ try {
     // Handle main account transaction if it exists
     if ($transactionId) {
         // Get main account transaction details
-        $mainTxQuery = "SELECT main_account_id, amount, type, currency, created_at FROM main_account_transactions WHERE reference_id = ? AND transaction_of = 'supplier_fund' AND tenant_id = ?";
+        $mainTxQuery = "SELECT main_account_id, amount, type, currency, created_at FROM main_account_transactions WHERE reference_id = ? AND transaction_of IN ('supplier_fund', 'supplier_fund_withdrawal') AND tenant_id = ?";
         $mainTxStmt = $conn->prepare($mainTxQuery);
         $mainTxStmt->bind_param("ii", $transactionId, $tenant_id);
         $mainTxStmt->execute();
@@ -158,7 +158,7 @@ try {
             $mainUpdateStmt->close();
             
             // Delete the main account transaction
-            $mainDeleteQuery = "DELETE FROM main_account_transactions WHERE reference_id = ? AND transaction_of = 'supplier_fund' AND tenant_id = ?";
+            $mainDeleteQuery = "DELETE FROM main_account_transactions WHERE reference_id = ? AND transaction_of IN ('supplier_fund', 'supplier_fund_withdrawal') AND tenant_id = ?";
             $mainDeleteStmt = $conn->prepare($mainDeleteQuery);
             $mainDeleteStmt->bind_param("ii", $transactionId, $tenant_id);
             $mainDeleteStmt->execute();

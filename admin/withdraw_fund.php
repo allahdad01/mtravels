@@ -104,7 +104,7 @@ try {
         WHERE id = ? and tenant_id = ?
     ";
     $mainUpdateStmt = $conn->prepare($mainUpdateQuery);
-    $mainUpdateStmt->bind_param('di', $amount, $mainAccountId, $tenant_id);
+    $mainUpdateStmt->bind_param('dii', $amount, $mainAccountId, $tenant_id);
     if (!$mainUpdateStmt->execute()) {
         throw new Exception("Failed to update main account balance.");
     }
@@ -135,7 +135,7 @@ $supplierUpdateQuery = "
         WHERE id = ? and tenant_id = ?
     ";
 $supplierUpdateStmt = $conn->prepare($supplierUpdateQuery);
-$supplierUpdateStmt->bind_param('di', $creditedAmount, $supplierId, $tenant_id);
+$supplierUpdateStmt->bind_param('dii', $creditedAmount, $supplierId, $tenant_id);
     if (!$supplierUpdateStmt->execute()) {
         throw new Exception("Failed to update supplier account balance.");
     }
@@ -178,7 +178,7 @@ $supplierUpdateStmt->bind_param('di', $creditedAmount, $supplierId, $tenant_id);
         )
     ";
     $transactionStmt = $conn->prepare($transactionQuery);
-    $transactionStmt->bind_param('idssss', 
+    $transactionStmt->bind_param('idssssi', 
         $supplierId, 
         $creditedAmount, 
         $user_id, 
@@ -220,7 +220,7 @@ $supplierUpdateStmt->bind_param('di', $creditedAmount, $supplierId, $tenant_id);
         )
     ";
     $mainTransactionStmt = $conn->prepare($mainTransactionQuery);
-    $mainTransactionStmt->bind_param('idisdss',
+    $mainTransactionStmt->bind_param('idisdssi',
         $mainAccountId,
         $amount,
         $lastInsertId,

@@ -115,7 +115,7 @@ try {
             $amount = $_POST['expenseAmount'] ?? '';
             $currency = $_POST['expenseCurrency'] ?? 'USD'; // Default to USD if not specified
             $mainAccountId = $_POST['expenseMainAccount'] ?? '';
-            $allocationId = $_POST['expenseAllocation'] ?? null; // New parameter for allocation ID
+            $allocationId = !empty($_POST['expenseAllocation']) ? $_POST['expenseAllocation'] : null; // New parameter for allocation ID
             
             // Get receipt number (optional)
             $receiptNumber = $_POST['expenseReceiptNumber'] ?? '';
