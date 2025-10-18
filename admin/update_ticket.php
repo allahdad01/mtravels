@@ -166,6 +166,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                                                        WHERE supplier_id = ? 
                                                        AND reference_id = ? 
                                                        AND transaction_of = 'ticket_sale'
+                                                       AND tenant_id = ?
                                                        ORDER BY transaction_date ASC";
                     $stmtGetOldSupplierTransactions = $conn->prepare($getOldSupplierTransactionsQuery);
                     $stmtGetOldSupplierTransactions->bind_param('iii', $originalSupplier, $id, $tenant_id);
@@ -263,7 +264,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                                                          AND transaction_of = 'ticket_sale'
                                                          AND tenant_id = ?";
                         $stmtCheckExisting = $conn->prepare($checkExistingTransactionsQuery);
-                        $stmtCheckExisting->bind_param('iiii', $originalSupplier, $id, $tenant_id);
+                        $stmtCheckExisting->bind_param('iii', $originalSupplier, $id, $tenant_id);
                         $stmtCheckExisting->execute();
                         $stmtCheckExisting->bind_result($existingCount);
                         $stmtCheckExisting->fetch();
@@ -282,17 +283,17 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                                                       AND transaction_of = 'ticket_sale'
                                                       AND tenant_id = ?";
                             $stmtUpdateTransactions = $conn->prepare($updateTransactionsQuery);
-                            $stmtUpdateTransactions->bind_param('iddiisii', $supplier, $base, $newBalance, $originalSupplier, $originalSupplier, $id, $tenant_id);
+                            $stmtUpdateTransactions->bind_param('iddiisi', $supplier, $base, $newBalance, $originalSupplier, $originalSupplier, $id, $tenant_id);
                             $stmtUpdateTransactions->execute();
                             $stmtUpdateTransactions->close();
                         } else {
                             // For a new transaction record, the balance should equal the current supplier balance
                             // Create new transaction record
-                            $insertSupplierTransactionQuery = "INSERT INTO supplier_transactions (supplier_id, reference_id, transaction_type, amount, balance, remarks, transaction_of, transaction_date, tenant_id) 
-                                                             VALUES (?, ?, 'debit', ?, ?, ?, 'ticket_sale', NOW(), ?)";
+                            $insertSupplierTransactionQuery = "INSERT INTO supplier_transactions (supplier_id, reference_id, transaction_type, amount, balance, remarks, transaction_of, transaction_date, tenant_id, receipt)
+                                                             VALUES (?, ?, 'debit', ?, ?, ?, 'ticket_sale', NOW(), ?, '')";
                             $stmtInsertSupplierTransaction = $conn->prepare($insertSupplierTransactionQuery);
                             $description = "Purchase for ticket: $passenger_name ($origin to $destination)";
-                            $stmtInsertSupplierTransaction->bind_param('iiddsii', $supplier, $id, $base, $newBalance, $description, $tenant_id);
+                            $stmtInsertSupplierTransaction->bind_param('iiddsisi', $supplier, $id, $base, $newBalance, $description, $tenant_id);
                             $stmtInsertSupplierTransaction->execute();
                             $stmtInsertSupplierTransaction->close();
                         }
@@ -388,11 +389,11 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                     } else {
                         // For a new transaction record, the balance should equal the current supplier balance
                         // Create new transaction record
-                        $insertSupplierTransactionQuery = "INSERT INTO supplier_transactions (supplier_id, reference_id, transaction_type, amount, balance, remarks, transaction_of, transaction_date, tenant_id) 
-                                                         VALUES (?, ?, 'debit', ?, ?, ?, 'ticket_sale', NOW(), ?)";
+                        $insertSupplierTransactionQuery = "INSERT INTO supplier_transactions (supplier_id, reference_id, transaction_type, amount, balance, remarks, transaction_of, transaction_date, tenant_id, receipt)
+                                                         VALUES (?, ?, 'debit', ?, ?, ?, 'ticket_sale', NOW(), ?, '')";
                         $stmtInsertSupplierTransaction = $conn->prepare($insertSupplierTransactionQuery);
                         $description = "Purchase for ticket: $passenger_name ($origin to $destination)";
-                        $stmtInsertSupplierTransaction->bind_param('iiddsii', $supplier, $id, $base, $newBalance, $description, $tenant_id);
+                        $stmtInsertSupplierTransaction->bind_param('iiddsisi', $supplier, $id, $base, $newBalance, $description, $tenant_id);
                         $stmtInsertSupplierTransaction->execute();
                         $stmtInsertSupplierTransaction->close();
                     }
@@ -673,10 +674,10 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                         $stmtGetCurrentBalance->close();
                         
                         // Create new transaction record for new client
-                        $insertClientTransactionQuery = "INSERT INTO client_transactions (client_id, reference_id, type, amount, currency, balance, description, transaction_of, tenant_id) VALUES (?, ?, 'debit', ?, ?, ?, ?, 'ticket_sale', ?)";
+                        $insertClientTransactionQuery = "INSERT INTO client_transactions (client_id, reference_id, type, amount, currency, balance, description, transaction_of, tenant_id, receipt) VALUES (?, ?, 'debit', ?, ?, ?, ?, 'ticket_sale', ?, NULL)";
                         $stmtInsertClientTransaction = $conn->prepare($insertClientTransactionQuery);
                         $description = "Sale for ticket: $passenger_name ($origin to $destination)";
-                        $stmtInsertClientTransaction->bind_param('iidsdsii', $sold_to, $id, $sold, $currency, $currentBalance, $description, $tenant_id);
+                        $stmtInsertClientTransaction->bind_param('iidsdsis', $sold_to, $id, $sold, $currency, $currentBalance, $description, $tenant_id);
                         $stmtInsertClientTransaction->execute();
                         $stmtInsertClientTransaction->close();
                     } 
@@ -769,10 +770,10 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                             $stmtUpdateSubsequent->close();
                         } else {
                             // Create new transaction record if one doesn't exist
-                            $insertClientTransactionQuery = "INSERT INTO client_transactions (client_id, reference_id, type, amount, currency, balance, description, transaction_of, tenant_id) VALUES (?, ?, 'debit', ?, ?, ?, ?, 'ticket_sale', ?)";
+                            $insertClientTransactionQuery = "INSERT INTO client_transactions (client_id, reference_id, type, amount, currency, balance, description, transaction_of, tenant_id, receipt) VALUES (?, ?, 'debit', ?, ?, ?, ?, 'ticket_sale', ?, '')";
                             $stmtInsertClientTransaction = $conn->prepare($insertClientTransactionQuery);
                             $description = "Sale for ticket: $passenger_name ($origin to $destination)";
-                            $stmtInsertClientTransaction->bind_param('iidsdsii', $sold_to, $id, $sold, $currency, $newBalance, $description, $tenant_id);
+                            $stmtInsertClientTransaction->bind_param('iidsdsis', $sold_to, $id, $sold, $currency, $newBalance, $description, $tenant_id);
                             $stmtInsertClientTransaction->execute();
                             $stmtInsertClientTransaction->close();
                         }
@@ -805,14 +806,12 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             profit = ?, 
             currency = ?, 
             description = ?, 
-            paid_to = ?,
-            exchange_rate = ?,
-            market_exchange_rate = ?
+            paid_to = ?
             WHERE id = ? AND tenant_id = ?";
         
         $stmtTicket = $conn->prepare($updateTicketQuery);
         $stmtTicket->bind_param(
-            'iissssssssssssssdddssisssi', 
+            'iissssssssssssssdddssisi', 
             $supplier, 
             $sold_to, 
             $trip_type, 
@@ -835,8 +834,6 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             $currency, 
             $description, 
             $paid_to, 
-            $exchangeRate,
-            $marketExchangeRate,
             $id,
             $tenant_id
         );
@@ -882,7 +879,6 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             'currency' => $currency,
             'description' => $description,
             'paid_to' => $paid_to,
-            'exchange_rate' => $exchangeRate,
             'market_exchange_rate' => $marketExchangeRate
         ];
         $action = 'update';

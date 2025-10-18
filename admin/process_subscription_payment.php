@@ -80,9 +80,8 @@ try {
 $amount_afn = $amount; // Placeholder, add conversion if needed
 
 // Prepare Hesabpay API call
-$api_url = 'https://api.hesab.com/api/v1/payment/create-session';
+$api_url = HESABPAY_BASE_URL . '/payment/create-session';
 $data = [
-    'business_name' => PLATFORM_NAME,
     'items' => [
         [
             'id' => $subscription_id,
@@ -90,9 +89,12 @@ $data = [
             'price' => $amount_afn
         ]
     ],
-    'redirect_success_url' => 'https://' . $_SERVER['HTTP_HOST'] . '/admin/subscription_payments.php?payment=success&subscription_id=' . $subscription_id,
-    'redirect_failure_url' => 'https://' . $_SERVER['HTTP_HOST'] . '/admin/subscription_payments.php?payment=failed&subscription_id=' . $subscription_id
+    'redirect_success_url' => 'http://' . $_SERVER['HTTP_HOST'] . '/admin/subscription_payments.php?payment=success&subscription_id=' . $subscription_id,
+    'redirect_failure_url' => 'http://' . $_SERVER['HTTP_HOST'] . '/admin/subscription_payments.php?payment=failed&subscription_id=' . $subscription_id
 ];
+
+// Debug: Log the request data
+error_log("Hesabpay API Request: " . json_encode($data));
 
 $ch = curl_init($api_url);
 curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
@@ -103,20 +105,33 @@ curl_setopt($ch, CURLOPT_HTTPHEADER, [
     'accept: application/json',
     'Content-Type: application/json'
 ]);
+curl_setopt($ch, CURLOPT_SSL_VERIFYPEER, false); // For testing only
+curl_setopt($ch, CURLOPT_SSL_VERIFYHOST, false); // For testing only
 
 $response = curl_exec($ch);
 $http_code = curl_getinfo($ch, CURLINFO_HTTP_CODE);
 curl_close($ch);
 
 if ($http_code !== 200) {
-    error_log("Hesabpay API error: " . $response);
-    die("Payment initiation failed. Please try again.");
+    error_log("Hesabpay API error: HTTP $http_code - " . $response);
+    die("Payment initiation failed. Please try again. Error: HTTP $http_code - " . substr($response, 0, 200));
 }
 
 $response_data = json_decode($response, true);
 if (!$response_data || !isset($response_data['url'])) {
     error_log("Invalid Hesabpay response: " . $response);
     die("Payment initiation failed.");
+}
+
+// Store session_id for callback handling
+$session_id = $response_data['session_id'] ?? null;
+if ($session_id) {
+    try {
+        $stmt = $pdo->prepare("INSERT INTO payment_sessions (session_id, subscription_id, tenant_id, amount, currency, status, created_at) VALUES (?, ?, ?, ?, ?, 'pending', NOW()) ON DUPLICATE KEY UPDATE status='pending'");
+        $stmt->execute([$session_id, $subscription_id, $tenant_id, $amount_afn, $currency]);
+    } catch (PDOException $e) {
+        error_log("Error storing session: " . $e->getMessage());
+    }
 }
 
 // Redirect to Hesabpay payment page

@@ -1446,11 +1446,13 @@ $payments = $paymentsResult->fetch_all(MYSQLI_ASSOC);
                 editTransaction: function(id, description, amount, created_at, currency, exchange_rate) {
                     // Populate edit modal with transaction data
                     $('#edit_transaction_id').val(id);
+                    $('#edit_transaction_payment_id').val($('#transaction_payment_id').val());
+                    $('#edit_original_payment_currency').val($('#original_payment_currency').val());
                     $('#edit_payment_amount').val(amount);
                     $('#edit_transaction_currency').val(currency);
                     $('#edit_payment_description').val(description);
                     $('#edit_receipt').val(''); // You may need to fetch this separately
-    
+
                     // Parse and set date/time
                     const txDate = new Date(created_at);
                     const formattedDate = txDate.toISOString().split('T')[0];
@@ -1458,10 +1460,10 @@ $payments = $paymentsResult->fetch_all(MYSQLI_ASSOC);
                     const minutes = String(txDate.getMinutes()).padStart(2, '0');
                     const seconds = String(txDate.getSeconds()).padStart(2, '0');
                     const formattedTime = `${hours}:${minutes}:${seconds}`;
-    
+
                     $('#edit_payment_date').val(formattedDate);
                     $('#edit_payment_time').val(formattedTime);
-    
+
                     // Handle exchange rate - use the direct field from database
                     if (exchange_rate && exchange_rate !== 'null') {
                         $('#edit_exchange_rate').val(exchange_rate);
@@ -1470,7 +1472,7 @@ $payments = $paymentsResult->fetch_all(MYSQLI_ASSOC);
                         $('#edit_exchange_rate').val('');
                         $('#edit_exchange_rate_group').hide();
                     }
-    
+
                     // Show modal
                     $('#editTransactionModal').modal('show');
                 },
@@ -1995,13 +1997,6 @@ $payments = $paymentsResult->fetch_all(MYSQLI_ASSOC);
                 var description = $('#edit_payment_description').val();
                 var exchangeRate = $('#edit_exchange_rate').val();
                 
-                // Exchange rate is stored in separate field, no need to modify description
-                if (selectedCurrency !== originalCurrency) {
-                    if (!exchangeRate) {
-                            alert('<?= __('please_enter_an_exchange_rate') ?>');
-                        return;
-                    }
-                }
                 
                 var formData = {
                     transaction_id: $('#edit_transaction_id').val(),

@@ -43,6 +43,7 @@ $query = "SELECT ct.*,
                 WHEN ct.transaction_of = 'hotel' THEN CONCAT(hb.title, ' ', hb.first_name, ' ', hb.last_name)
                 WHEN ct.transaction_of = 'fund' THEN CONCAT(usr.name) 
                 WHEN ct.transaction_of = 'jv_payment' THEN CONCAT(jv.jv_name)
+                WHEN ct.transaction_of = 'additional_payment' THEN CONCAT(ap.payment_type)
                 ELSE ct.reference_id
             END AS reference_name
           FROM client_transactions ct
@@ -57,6 +58,7 @@ $query = "SELECT ct.*,
           LEFT JOIN hotel_bookings hb ON ct.reference_id = hb.id AND ct.transaction_of = 'hotel'
           LEFT JOIN users usr ON usr.id = ct.reference_id AND ct.transaction_of = 'fund'
           LEFT JOIN jv_payments jv ON jv.id = ct.reference_id AND ct.transaction_of = 'jv_payment'
+          LEFT JOIN additional_payments ap ON ap.id = ct.reference_id AND ct.transaction_of = 'additional_payment'
           WHERE ct.client_id = ? AND ct.tenant_id = ?
           ORDER BY ct.id DESC";
 

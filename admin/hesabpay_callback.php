@@ -14,85 +14,63 @@ if (!isset($pdo) || !$pdo) {
 }
 
 // Get callback data (assuming POST)
-$payment_id = $_POST['payment_id'] ?? '';
+$session_id = $_POST['session_id'] ?? '';
 $status = $_POST['status'] ?? '';
 $amount = $_POST['amount'] ?? 0;
 $currency = $_POST['currency'] ?? 'AFN';
+$transaction_id = $_POST['transaction_id'] ?? '';
 
-// Verify the callback (you may need to verify signature or something, check Hesabpay docs)
-if (empty($payment_id) || empty($status)) {
+// Verify the callback
+if (empty($session_id) || empty($status)) {
     error_log("Invalid callback data: " . json_encode($_POST));
     http_response_code(400);
     exit();
 }
 
-// Assuming we stored payment_id in session, but for callback, better store in DB
-// For simplicity, assume we can find the subscription from payment_id
-// But since we don't have mapping, perhaps store in DB during initiation
-
-// In process_subscription_payment.php, we should insert a pending payment record
-
-// For now, assume we have subscription_id from session or something, but callbacks are separate
-
-// Better way: during initiation, insert into subscription_payments with status 'pending', payment_id
-
-// Then in callback, update the status
-
-// But since the table is subscription_payments, and it has payment_date, etc.
-
-// Let's modify process to insert pending payment
-
-// But for now, in callback, if status == 'success', update subscription status to active, and insert payment record
-
-// But need subscription_id
-
-// Since we stored in session, but session may not be available in callback
-
-// Callbacks are server-to-server, no session
-
-// So, need to store payment_id with subscription_id in DB
-
-// Let's add a table or use existing
-
-// For simplicity, assume we can query by payment_id, but since we don't have it, perhaps add to tenant_subscriptions a payment_id column
-
-// To keep simple, in callback, log and assume success updates something
-
-// But to make it work, let's assume the callback provides subscription_id or we can find it
-
-// Perhaps store in a temp table
-
-// Create a pending_payments table
-
-// But to avoid, let's modify the process to insert into subscription_payments with status 'pending'
-
 try {
-    // Assume we have subscription_id from somewhere, but since not, for demo, update based on tenant
-
-    // This is incomplete, but for the task, log the callback
-
-    error_log("Hesabpay callback received: payment_id=$payment_id, status=$status, amount=$amount");
+    error_log("Hesabpay callback received: session_id=$session_id, status=$status, amount=$amount, transaction_id=$transaction_id");
 
     if ($status === 'success') {
-        // Update payment date to confirm completion
-        $stmt = $pdo->prepare("UPDATE subscription_payments SET payment_date = CURDATE() WHERE receipt_number = ?");
-        $stmt->execute([$payment_id]);
+        // Find the payment session
+        $stmt = $pdo->prepare("SELECT * FROM payment_sessions WHERE session_id = ? AND status = 'pending'");
+        $stmt->execute([$session_id]);
+        $session = $stmt->fetch(PDO::FETCH_ASSOC);
 
-        if ($stmt->rowCount() > 0) {
-            // Also update subscription status to active
-            $stmt2 = $pdo->prepare("UPDATE tenant_subscriptions SET status = 'active' WHERE id = (SELECT subscription_id FROM subscription_payments WHERE receipt_number = ?)");
-            $stmt2->execute([$payment_id]);
+        if ($session) {
+            $subscription_id = $session['subscription_id'];
+            $tenant_id = $session['tenant_id'];
+
+            // Insert payment record
+            $processed_by = 1; // System user
+            $stmt2 = $pdo->prepare("INSERT INTO subscription_payments (subscription_id, amount, currency, payment_method, payment_date, processed_by, receipt_number) VALUES (?, ?, ?, 'Hesabpay', CURDATE(), ?, ?)");
+            $stmt2->execute([$subscription_id, $amount, $currency, $processed_by, $transaction_id]);
+
+            // Update subscription status to active
+            $pdo->prepare("UPDATE tenant_subscriptions SET status = 'active' WHERE id = ? AND tenant_id = ?")->execute([$subscription_id, $tenant_id]);
+
+            // Update session status
+            $pdo->prepare("UPDATE payment_sessions SET status = 'completed', transaction_id = ?, updated_at = NOW() WHERE session_id = ?")->execute([$transaction_id, $session_id]);
+
+            error_log("Payment processed successfully for subscription $subscription_id");
+        } else {
+            error_log("Payment session not found: $session_id");
         }
 
         http_response_code(200);
-        echo "OK";
-    } else {
-        // Failed, perhaps delete the pending payment or leave it
+        echo json_encode(['status' => 'success']);
+    } elseif ($status === 'failed') {
+        // Update session status to failed
+        $pdo->prepare("UPDATE payment_sessions SET status = 'failed', updated_at = NOW() WHERE session_id = ?")->execute([$session_id]);
+
         http_response_code(200);
-        echo "OK";
+        echo json_encode(['status' => 'failed']);
+    } else {
+        http_response_code(200);
+        echo json_encode(['status' => 'unknown']);
     }
 } catch (PDOException $e) {
     error_log("Error in callback: " . $e->getMessage());
     http_response_code(500);
+    echo json_encode(['status' => 'error']);
 }
 ?>

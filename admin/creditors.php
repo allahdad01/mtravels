@@ -453,7 +453,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['edit_creditor'])) {
                 $stmt = $conn->prepare("UPDATE main_account_transactions 
                                       SET amount = ?, currency = ?, balance = balance + ? 
                                       WHERE id = ? AND tenant_id = ?");
-                $stmt->bind_param("dsdi", $new_transaction_amount, $new_currency, $balance_difference, $initial_transaction['id'], $tenant_id);
+                $stmt->bind_param("dsdii", $new_transaction_amount, $new_currency, $balance_difference, $initial_transaction['id'], $tenant_id);
                 $stmt->execute();
 
                 // Update all subsequent transaction balances in a single query
@@ -466,12 +466,12 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['edit_creditor'])) {
                     AND id != ?
                     AND tenant_id = ?
                 ");
-                $stmt->bind_param("dissi", $balance_difference, $initial_transaction['main_account_id'], $new_currency, $initial_transaction['id'], $initial_transaction['id'], $tenant_id);
+                $stmt->bind_param("dissii", $balance_difference, $initial_transaction['main_account_id'], $new_currency, $initial_transaction['id'], $initial_transaction['id'], $tenant_id);
                 $stmt->execute();
 
                 // Update the main account's current balance
                 $stmt = $conn->prepare("UPDATE main_account SET $balance_column = $balance_column + ? WHERE id = ? AND tenant_id = ?");
-                $stmt->bind_param("di", $balance_difference, $initial_transaction['main_account_id'], $tenant_id);
+                $stmt->bind_param("dii", $balance_difference, $initial_transaction['main_account_id'], $tenant_id);
                 $stmt->execute();
 
                 $_SESSION['success_message'] = __("creditor_updated_and_all_transactions_recalculated_successfully");

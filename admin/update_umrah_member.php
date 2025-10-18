@@ -438,8 +438,8 @@ try {
 
                 // Create transaction record
                 $insertTransactionStmt = $pdo->prepare("
-                    INSERT INTO supplier_transactions (tenant_id, supplier_id, reference_id, transaction_type, amount, remarks, balance, transaction_of)
-                    VALUES (?, ?, ?, 'Debit', ?, ?, ?, 'umrah')
+                    INSERT INTO supplier_transactions (tenant_id, supplier_id, reference_id, transaction_type, amount, remarks, balance, transaction_of, receipt)
+                    VALUES (?, ?, ?, 'Debit', ?, ?, ?, 'umrah', ?)
                 ");
                 $insertTransactionStmt->execute([
                     $tenant_id,
@@ -447,7 +447,8 @@ try {
                     $booking_id,
                     $newService['base_price'],
                     "Purchase for {$newService['service_type']}: $name (Passport: $passport_number)",
-                    $newBalance
+                    $newBalance,
+                    ''
                 ]);
             }
         }
@@ -549,8 +550,8 @@ try {
 
                 // Create new transaction
                 $insertNewClientTransactionStmt = $pdo->prepare("
-                    INSERT INTO client_transactions (client_id, reference_id, type, amount, currency, description, balance, transaction_of)
-                    VALUES (?, ?, 'debit', ?, ?, ?, ?, 'umrah')
+                    INSERT INTO client_transactions (client_id, reference_id, type, amount, currency, description, balance, transaction_of, receipt, tenant_id)
+                    VALUES (?, ?, 'debit', ?, ?, ?, ?, 'umrah', NULL, ?)
                 ");
                 $insertNewClientTransactionStmt->execute([
                     $soldTo,
@@ -558,7 +559,8 @@ try {
                     $totalSoldPrice,
                     $clientCurrency,
                     "Sale for member: $name (Passport: $passport_number)",
-                    $newBalance
+                    $newBalance,
+                    $tenant_id
                 ]);
             }
         } else {

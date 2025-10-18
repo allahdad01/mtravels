@@ -552,4 +552,31 @@ if (isset($_GET['payment']) && isset($_GET['subscription_id'])) {
 <script src="../assets/js/pcoded.min.js"></script>
 <script src="js/date-change/profile.js"></script>
 
+<script>
+// Listen for paymentSuccess event from HesabPay
+window.addEventListener('message', function(event) {
+    // Validate origin for security
+    if (event.origin !== 'https://checkout.hesabpay.com' && event.origin !== 'https://api-sandbox.hesab.com') {
+        return;
+    }
+
+    if (event.data && event.data.type === 'paymentSuccess') {
+        console.log('Payment successful:', event.data);
+
+        // Extract payment details
+        const { success, message, transaction_id } = event.data;
+
+        if (success) {
+            // Show success message
+            alert('Payment completed successfully! Transaction ID: ' + transaction_id);
+
+            // Optionally redirect or refresh the page
+            window.location.reload();
+        } else {
+            alert('Payment failed: ' + message);
+        }
+    }
+});
+</script>
+
 <?php include '../includes/admin_footer.php'; ?>

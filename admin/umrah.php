@@ -431,22 +431,22 @@ require_once('../includes/conn.php');
                                                                                                             <div><?= __('created_by') ?>: <?= htmlspecialchars($member['created_by']) ?></div>
                                                                                                         </td>
                                                                                                         <td>
-                                                                                                            <div><strong><?= htmlspecialchars($member['name']) ?></strong></div>
-                                                                                                            <div><?= __('dob') ?>: <?= htmlspecialchars($member['dob']) ?></div>
-                                                                                                            <div><?= __('passport') ?>: <?= htmlspecialchars($member['passport_number']) ?></div>
-                                                                                                            <div><?= __('id') ?>: <span class="badge badge-info"><?= htmlspecialchars($member['id_type']) ?></span></div>
+                                                                                                            <div><strong><?= htmlspecialchars($member['name'] ?? '') ?></strong></div>
+                                                                                                            <div><?= __('dob') ?>: <?= htmlspecialchars($member['dob'] ?? '') ?></div>
+                                                                                                            <div><?= __('passport') ?>: <?= htmlspecialchars($member['passport_number'] ?? '') ?></div>
+                                                                                                            <div><?= __('id') ?>: <span class="badge badge-info"><?= htmlspecialchars($member['id_type'] ?? '') ?></span></div>
                                                                                                         </td>
                                                                                                         <td>
-                                                                                                            <div><?= __('flight') ?>: <?= htmlspecialchars($member['flight_date']) ?></div>
-                                                                                                            <div><?= __('return') ?>: <?= htmlspecialchars($member['return_date']) ?></div>
-                                                                                                            <div><?= __('room') ?>: <?= htmlspecialchars($member['room_type']) ?></div>
-                                                                                                            <div><?= __('duration') ?>: <?= htmlspecialchars($member['duration']) ?></div>
+                                                                                                            <div><?= __('flight') ?>: <?= htmlspecialchars($member['flight_date'] ?? '') ?></div>
+                                                                                                            <div><?= __('return') ?>: <?= htmlspecialchars($member['return_date'] ?? '') ?></div>
+                                                                                                            <div><?= __('room') ?>: <?= htmlspecialchars($member['room_type'] ?? '') ?></div>
+                                                                                                            <div><?= __('duration') ?>: <?= htmlspecialchars($member['duration'] ?? '') ?></div>
                                                                                                         </td>
                                                                                                         <td>
-                                                                                                            <div><?= __('base') ?>: <?= htmlspecialchars($member['price']) ?></div>
-                                                                                                            <div><?= __('discount') ?>: <?= htmlspecialchars($member['discount']) ?></div>
-                                                                                                            <div><?= __('sold') ?>: <?= htmlspecialchars($member['sold_price']) ?></div>
-                                                                                                            <div class="text-success"><?= __('paid') ?>: <?= htmlspecialchars($member['paid']) ?></div>
+                                                                                                            <div><?= __('base') ?>: <?= htmlspecialchars($member['price'] ?? '') ?></div>
+                                                                                                            <div><?= __('discount') ?>: <?= htmlspecialchars($member['discount'] ?? '') ?></div>
+                                                                                                            <div><?= __('sold') ?>: <?= htmlspecialchars($member['sold_price'] ?? '') ?></div>
+                                                                                                            <div class="text-success"><?= __('paid') ?>: <?= htmlspecialchars($member['paid'] ?? '') ?></div>
                                                                                                             <?php
                                                                                                                                                                              // Fetch main account transactions for this booking
                                                                                                                                                                              $transactionSql = "SELECT SUM(payment_amount / COALESCE(exchange_rate, 1)) as main_account_total
@@ -460,10 +460,10 @@ require_once('../includes/conn.php');
                                                                                                                                                                              }
                                                                                                                                                                              ?>
                                                                                                             <div class="text-primary"><?= __('internal_account') ?>: <?= htmlspecialchars($mainAccountTotal) ?></div>
-                                                                                                            <div><?= __('bank') ?>: <?= htmlspecialchars($member['received_bank_payment']) ?></div>
-                                                                                                            <div><?= __('receipt') ?>: <?= htmlspecialchars($member['bank_receipt_number']) ?></div>
-                                                                                                            <div class="text-danger"><?= __('due') ?>: <?= htmlspecialchars($member['due']) ?></div>
-                                                                                                            <div class="text-success"><?= __('profit') ?>: <?= htmlspecialchars($member['profit']) ?></div>
+                                                                                                            <div><?= __('bank') ?>: <?= htmlspecialchars($member['received_bank_payment'] ?? '') ?></div>
+                                                                                                            <div><?= __('receipt') ?>: <?= htmlspecialchars($member['bank_receipt_number'] ?? '') ?></div>
+                                                                                                            <div class="text-danger"><?= __('due') ?>: <?= htmlspecialchars($member['due'] ?? '') ?></div>
+                                                                                                            <div class="text-success"><?= __('profit') ?>: <?= htmlspecialchars($member['profit'] ?? '') ?></div>
                                                                                                         </td>
                                                                                                         <td>
                                                                                                             <div class="dropdown">

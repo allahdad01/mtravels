@@ -363,6 +363,20 @@ include '../includes/header.php';
                                                                             </small>
                                                                         </div>
                                                                     <?php endif; ?>
+                                                                    <?php if ($ticket['date_change_data']): ?>
+                                                                        <div class="ticket-amount__date-change text-warning">
+                                                                            <small>
+                                                                                <?= __('date_change') ?>: <?= htmlspecialchars($ticket['date_change_data']['currency']) ?> <?= number_format($ticket['date_change_data']['supplier_penalty'] + $ticket['date_change_data']['service_penalty'], 2) ?>
+                                                                            </small>
+                                                                        </div>
+                                                                    <?php endif; ?>
+                                                                    <?php if ($ticket['ticket']['weight_count'] > 0): ?>
+                                                                        <div class="ticket-amount__weight text-info">
+                                                                            <small>
+                                                                                <?= __('weight') ?>: <?= htmlspecialchars($ticket['ticket']['weight_count']) ?> items, <?= number_format($ticket['ticket']['total_weight'], 2) ?> kg
+                                                                            </small>
+                                                                        </div>
+                                                                    <?php endif; ?>
                                                                 </div>
                                                             </td>
                                                         </tr>

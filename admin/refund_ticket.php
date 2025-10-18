@@ -86,44 +86,14 @@ $version = '?v=' . time();
                     <div class="page-wrapper">
                         <!-- [ Main Content ] start -->
                         <div class="row">
-                            <!-- [ Statistics ] start -->
-                            <div class="col-md-12 col-xl-4">
-                                <div class="card">
-                                    <div class="card-header">
-                                        <h6 class="text-muted mb-3"><?= __('total_refunds') ?></h6>
-                                        <div class="row d-flex align-items-center">
-                                            <div class="col-9">
-                                                <h3 class="f-w-300 d-flex align-items-center m-b-0">
-                                                    <i class="feather icon-refresh-ccw text-c-blue f-30 m-r-10"></i>
-                                                    <?= count($tickets) ?>
-                                                </h3>
-                                            </div>
-                                        </div>
-                                    </div>
-                                </div>
-                            </div>
-                            <!-- [ Statistics ] end -->
-
-                            <!-- [ Search and Actions Section ] start -->
-                            <div class="card col-sm-12">
-                                <div class="card-header">
-                                    <div class="card-body">
-                                        <div class="row align-items-center">
-                                            <div class="col-md-6 text-left">
-                                                <h4 class="mb-0">Refunded Tickets</h4>
-                                            </div>
-                                            <div class="col-md-6 text-right">
-                                                <button type="button" class="btn btn-primary" data-toggle="modal" data-target="#addRefundTicketModal">
-                                                    <i class="feather icon-plus mr-2"></i><?= __('add_refund_ticket') ?>
-                                                </button>
-                                            </div>
-                                        </div>
-                                    </div>
-                                </div>
-                            </div>
-
                                 <!-- [ Ticket Table ] start -->
                                 <div class="card" style="width: 100%;">
+                                    <div class="card-header d-flex justify-content-between align-items-center">
+                                        <h4 class="mb-0">Refunded Tickets</h4>
+                                        <button type="button" class="btn btn-primary" data-toggle="modal" data-target="#addRefundTicketModal">
+                                            <i class="feather icon-plus mr-2"></i><?= __('add_refund_ticket') ?>
+                                        </button>
+                                    </div>
                                     <div class="card-body p-4">
                                         <div class="table-responsive">
                                             <table id="refundTicketTable" class="table table-hover">

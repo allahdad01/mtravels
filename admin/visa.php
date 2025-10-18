@@ -1214,19 +1214,19 @@ foreach ($visas as $key => $visa) {
                                                                         </div>
                                                                         <div class="card-body">
                                                                             <div class="row">
-                                                                                <div class="col-md-3">
+                                                                                <div class="col-md-6">
                                                                                     <div class="form-group">
                                                                                         <label for="editBase"><?= __('base_price') ?></label>
                                                                                         <input type="number" class="form-control" id="editBase" name="base" step="0.01" required>
                                                                                     </div>
                                                                                 </div>
-                                                                                <div class="col-md-3">
+                                                                                <div class="col-md-6">
                                                                                     <div class="form-group">
                                                                                         <label for="editSold"><?= __('sold_price') ?></label>
                                                                                         <input type="number" class="form-control" id="editSold" name="sold" step="0.01" required>
                                                                                     </div>
                                                                                 </div>
-                                                                                <div class="col-md-6">
+                                                                                <div class="col-md-12">
                                                                                     <div class="form-group">
                                                                                         <label for="editPro"><?= __('profit') ?></label>
                                                                                         <input type="number" class="form-control" id="editPro" name="profit" step="0.01" readonly>

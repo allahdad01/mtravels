@@ -185,7 +185,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 // Update the balance of the current transaction
                 $updateCurrentBalanceQuery = "UPDATE main_account_transactions SET balance = ? WHERE id = ? AND tenant_id = ?";
                 $updateCurrentBalanceStmt = $conn->prepare($updateCurrentBalanceQuery);
-                $updateCurrentBalanceStmt->bind_param("di", $newBalance, $mainTransaction['id'], $tenant_id);
+                $updateCurrentBalanceStmt->bind_param("dii", $newBalance, $mainTransaction['id'], $tenant_id);
                 
                 if (!$updateCurrentBalanceStmt->execute()) {
                     throw new Exception("Failed to update current transaction balance: " . $updateCurrentBalanceStmt->error);
@@ -199,7 +199,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                                      AND created_at > ? 
                                      AND id != ? AND tenant_id = ?";
              $updateSubsequentStmt = $conn->prepare($updateSubsequentQuery);
-             $updateSubsequentStmt->bind_param("dissi", $balanceAdjustment, $mainTransaction['main_account_id'], $currency, $newDateTime, $mainTransaction['id'], $tenant_id);
+             $updateSubsequentStmt->bind_param("dissii", $balanceAdjustment, $mainTransaction['main_account_id'], $currency, $newDateTime, $mainTransaction['id'], $tenant_id);
                 
                 if (!$updateSubsequentStmt->execute()) {
                     throw new Exception("Failed to update subsequent transactions: " . $updateSubsequentStmt->error);

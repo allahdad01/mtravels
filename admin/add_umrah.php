@@ -35,7 +35,6 @@ $room_type = filter_input(INPUT_POST, 'room_type', FILTER_SANITIZE_FULL_SPECIAL_
 $received_bank_payment = filter_input(INPUT_POST, 'received_bank_payment', FILTER_SANITIZE_NUMBER_FLOAT, FILTER_FLAG_ALLOW_FRACTION);
 $bank_receipt_number = filter_input(INPUT_POST, 'bank_receipt_number', FILTER_SANITIZE_FULL_SPECIAL_CHARS);
 $paid = filter_input(INPUT_POST, 'paid', FILTER_SANITIZE_NUMBER_FLOAT, FILTER_FLAG_ALLOW_FRACTION);
-$due = filter_input(INPUT_POST, 'due', FILTER_SANITIZE_NUMBER_FLOAT, FILTER_FLAG_ALLOW_FRACTION);
 $remarks = filter_input(INPUT_POST, 'remarks', FILTER_SANITIZE_FULL_SPECIAL_CHARS);
 $relation = filter_input(INPUT_POST, 'relation', FILTER_SANITIZE_FULL_SPECIAL_CHARS);
 $g_name = filter_input(INPUT_POST, 'g_name', FILTER_SANITIZE_FULL_SPECIAL_CHARS);
@@ -76,6 +75,10 @@ foreach ($services as $service) {
 // Apply discount to total sold price
 $total_sold_price -= $discount;
 $total_profit = $total_sold_price - $total_base_price;
+
+// Calculate due and amount paid
+$due = (float)$total_sold_price - (float)$paid - (float)$received_bank_payment;
+$amount_paid = (float)$paid + (float)$received_bank_payment;
 
 
 // Validate passport expiry (must be at least 6 months from today)
@@ -157,16 +160,16 @@ $afs_balance = $client_data['afs_balance'];
 $client_type = $client_data['client_type'];
 $stmt_client_info->close();
 
-// Record client transaction for total sold price (assuming USD for simplicity, or we can use the first service's currency)
+// Record client transaction for amount paid (assuming USD for simplicity, or we can use the first service's currency)
 $client_currency = 'USD'; // Default, or determine based on services
 $current_balance_client = ($client_currency === 'USD') ? $usd_balance : $afs_balance;
-$new_balance_client = $current_balance_client - $total_sold_price;
+$new_balance_client = $current_balance_client - $amount_paid;
 
-$description = "Client was debited for umrah booking for $name";
+$description = "Client was debited $amount_paid for umrah booking for $name";
 $stmt_client_transaction = $conn->prepare("INSERT INTO client_transactions (
     client_id, type, transaction_of, reference_id, amount, balance, currency, description, created_at, tenant_id
 ) VALUES (?, 'Debit', 'umrah', ?, ?, ?, ?, ?, NOW(), ?)");
-$stmt_client_transaction->bind_param("iiddssi", $soldTo, $umrah_id, $total_sold_price, $new_balance_client, $client_currency, $description, $tenant_id);
+$stmt_client_transaction->bind_param("iiddssi", $soldTo, $umrah_id, $amount_paid, $new_balance_client, $client_currency, $description, $tenant_id);
 if (!$stmt_client_transaction->execute()) {
     throw new Exception('Failed to log client transaction: ' . $stmt_client_transaction->error);
 }
@@ -222,7 +225,7 @@ if ($client_type === 'regular') {
         $stmt_deduct_client_balance = $conn->prepare("UPDATE clients SET afs_balance = afs_balance - ? WHERE id = ? AND tenant_id = ?");
     }
 
-    $stmt_deduct_client_balance->bind_param("did", $total_sold_price, $soldTo, $tenant_id);
+    $stmt_deduct_client_balance->bind_param("did", $amount_paid, $soldTo, $tenant_id);
 
     if (!$stmt_deduct_client_balance->execute()) {
         throw new Exception('Failed to update client balance: ' . $stmt_deduct_client_balance->error);

@@ -51,12 +51,12 @@ $stmtCount->close();
 
 // Main query
 $ticketsQuery = "
-    SELECT 
-        tb.id, tb.supplier, tb.sold_to, tb.title, tb.passenger_name, tb.pnr, tb.airline, 
-        tb.origin, tb.destination, tb.issue_date, tb.departure_date, tb.sold, tb.price, 
-        tb.profit, tb.gender, tb.currency, tb.phone, tb.description, tb.status, 
+    SELECT
+        tb.id, tb.supplier, tb.sold_to, tb.title, tb.passenger_name, tb.pnr, tb.airline,
+        tb.origin, tb.destination, tb.issue_date, tb.departure_date, tb.sold, tb.price,
+        tb.profit, tb.gender, tb.currency, tb.phone, tb.description, tb.status,
         tb.trip_type, tb.return_date, tb.return_origin, tb.return_destination,
-        
+
         s.name as supplier_name,
         c.name as sold_to_name,
         ma.name as paid_to_name,
@@ -72,7 +72,9 @@ $ticketsQuery = "
         dct.supplier_penalty AS date_change_supplier_penalty,
         dct.service_penalty AS date_change_service_penalty,
         dct.status AS date_change_status,
-        dct.remarks AS date_change_remarks
+        dct.remarks AS date_change_remarks,
+        (SELECT COUNT(*) FROM ticket_weights WHERE ticket_id = tb.id AND tenant_id = tb.tenant_id) as weight_count,
+        (SELECT COALESCE(SUM(weight), 0) FROM ticket_weights WHERE ticket_id = tb.id AND tenant_id = tb.tenant_id) as total_weight
     FROM ticket_bookings tb
     LEFT JOIN refunded_tickets rt ON tb.id = rt.ticket_id
     LEFT JOIN date_change_tickets dct ON tb.id = dct.ticket_id
@@ -139,7 +141,9 @@ while ($row = $ticketsResult->fetch_assoc()) {
                 'return_date' => $row['return_date'],
                 'return_origin' => $row['return_origin'],
                 'return_destination' => $row['return_destination'],
-                'created_by_name' => $row['created_by_name']
+                'created_by_name' => $row['created_by_name'],
+                'weight_count' => $row['weight_count'],
+                'total_weight' => $row['total_weight']
             ],
             'refund_data' => null,
             'date_change_data' => null

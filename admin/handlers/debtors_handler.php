@@ -267,15 +267,101 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['edit_debtor'])) {
     $currency = $_POST['currency'];
     $main_account_id = $_POST['main_account_id'];
     $agreement_terms = isset($_POST['agreement_terms']) ? $_POST['agreement_terms'] : '';
-    
+
     try {
+        $conn->begin_transaction();
+
+        // Get old debtor info before update
+        $stmt = $conn->prepare("SELECT balance, currency, main_account_id FROM debtors WHERE id = ? AND tenant_id = ?");
+        $stmt->bind_param("ii", $debtor_id, $tenant_id);
+        $stmt->execute();
+        $result = $stmt->get_result();
+        $old_debtor = $result->fetch_assoc();
+
+        if (!$old_debtor) {
+            throw new Exception("Debtor not found");
+        }
+
+        $old_balance = $old_debtor['balance'];
+        $old_currency = $old_debtor['currency'];
+        $old_main_account_id = $old_debtor['main_account_id'];
+
+        // Update debtor
         $stmt = $conn->prepare("UPDATE debtors SET name = ?, email = ?, phone = ?, address = ?, balance = ?, currency = ?, main_account_id = ?, agreement_terms = ? WHERE id = ? AND tenant_id = ?");
         $stmt->bind_param("ssssdsssii", $name, $email, $phone, $address, $balance, $currency, $main_account_id, $agreement_terms, $debtor_id, $tenant_id);
         $stmt->execute();
+
+        // If balance changed, update related transactions and main account
+        if ($old_balance != $balance) {
+            $difference = $balance - $old_balance;
+
+            // Update debtor transaction (initial balance)
+            $stmt = $conn->prepare("UPDATE debtor_transactions SET amount = ? WHERE debtor_id = ? AND description LIKE 'Initial debt balance%' AND tenant_id = ?");
+            $stmt->bind_param("dii", $balance, $debtor_id, $tenant_id);
+            $stmt->execute();
+
+            // Get main account transaction
+            $stmt = $conn->prepare("SELECT id, main_account_id, amount, created_at FROM main_account_transactions WHERE reference_id = (SELECT id FROM debtor_transactions WHERE debtor_id = ? AND description LIKE 'Initial debt balance%' AND tenant_id = ?) AND transaction_of = 'debtor' AND tenant_id = ?");
+            $stmt->bind_param("iii", $debtor_id, $tenant_id, $tenant_id);
+            $stmt->execute();
+            $result = $stmt->get_result();
+
+            if ($result->num_rows > 0) {
+                $main_trans = $result->fetch_assoc();
+                $new_amount = $main_trans['amount'] + $difference;
+
+                // Update main account transaction amount
+                $stmt = $conn->prepare("UPDATE main_account_transactions SET amount = ? WHERE id = ? AND tenant_id = ?");
+                $stmt->bind_param("dii", $new_amount, $main_trans['id'], $tenant_id);
+                $stmt->execute();
+
+                // Get balance column
+                $balance_column = strtolower($currency) . '_balance';
+                if ($currency == 'DARHAM') {
+                    $balance_column = 'darham_balance';
+                } elseif ($currency == 'EUR') {
+                    $balance_column = 'euro_balance';
+                } elseif ($currency == 'USD') {
+                    $balance_column = 'usd_balance';
+                } elseif ($currency == 'AFS') {
+                    $balance_column = 'afs_balance';
+                }
+
+                // Get current main account balance
+                $stmt = $conn->prepare("SELECT $balance_column FROM main_account WHERE id = ? AND tenant_id = ?");
+                $stmt->bind_param("ii", $main_account_id, $tenant_id);
+                $stmt->execute();
+                $result = $stmt->get_result();
+                $main_acc = $result->fetch_assoc();
+
+                if (!$main_acc) {
+                    throw new Exception("Main account not found");
+                }
+
+                // Update main account balance (deduct difference if positive, add if negative)
+                $new_main_balance = $main_acc[$balance_column] - $difference;
+                $stmt = $conn->prepare("UPDATE main_account SET $balance_column = ? WHERE id = ? AND tenant_id = ?");
+                $stmt->bind_param("dii", $new_main_balance, $main_account_id, $tenant_id);
+                $stmt->execute();
+
+                // Update the balance in the main account transaction
+                $stmt = $conn->prepare("UPDATE main_account_transactions SET balance = ? WHERE id = ? AND tenant_id = ?");
+                $stmt->bind_param("dii", $new_main_balance, $main_trans['id'], $tenant_id);
+                $stmt->execute();
+
+                // Update subsequent main account transactions' balances
+                $stmt = $conn->prepare("UPDATE main_account_transactions SET balance = balance - ? WHERE main_account_id = ? AND currency = ? AND id > ? AND tenant_id = ?");
+                $stmt->bind_param("dsiii", $difference, $main_account_id, $currency, $main_trans['id'], $tenant_id);
+                $stmt->execute();
+            }
+        }
+
+        $conn->commit();
         $_SESSION['success_message'] = "Debtor updated successfully!";
         header('Location: ' . $redirect_url);
         exit();
     } catch (Exception $e) {
+        $conn->rollback();
         $_SESSION['error_message'] = "Error updating debtor: " . $e->getMessage();
         header('Location: ' . $redirect_url);
         exit();

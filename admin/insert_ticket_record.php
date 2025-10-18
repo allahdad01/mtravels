@@ -21,13 +21,13 @@ if (!isset($_POST['ticketId'], $_POST['status'], $_POST['base'], $_POST['sold'],
 
 // 1. CAPTURE POST DATA with proper validation
 $ticketId = filter_input(INPUT_POST, 'ticketId', FILTER_VALIDATE_INT);
-$status = filter_input(INPUT_POST, 'status', FILTER_SANITIZE_STRING);
+$status = filter_input(INPUT_POST, 'status', FILTER_SANITIZE_FULL_SPECIAL_CHARS);
 $base = filter_input(INPUT_POST, 'base', FILTER_VALIDATE_FLOAT);
 $sold = filter_input(INPUT_POST, 'sold', FILTER_VALIDATE_FLOAT);
 $supplierPenalty = filter_input(INPUT_POST, 'supplier_penalty', FILTER_VALIDATE_FLOAT);
 $servicePenalty = filter_input(INPUT_POST, 'service_penalty', FILTER_VALIDATE_FLOAT);
-$description = filter_input(INPUT_POST, 'description', FILTER_SANITIZE_STRING);
-$calculationMethod = filter_input(INPUT_POST, 'calculationMethod', FILTER_SANITIZE_STRING);
+$description = filter_input(INPUT_POST, 'description', FILTER_SANITIZE_FULL_SPECIAL_CHARS);
+$calculationMethod = filter_input(INPUT_POST, 'calculationMethod', FILTER_SANITIZE_FULL_SPECIAL_CHARS);
 
 // Additional validation
 if (!$ticketId || !$base || !$sold || $supplierPenalty === false || $servicePenalty === false) {

@@ -31,7 +31,6 @@ try {
                      hb.currency,
                      hb.remarks,
                      hb.receipt,
-                     hb.exchange_rate,
                      c.name as client_name
               FROM hotel_bookings hb
               JOIN clients c ON hb.sold_to = c.id

@@ -1139,69 +1139,70 @@ input[type="button"] {
                 </li>
                 <?php endif; ?>
                
-                <?php 
-                $bookingPages = ['ticket.php', 'refund_ticket.php', 'date_change.php', 'hotel.php', 'ticket_reserve.php', 'ticket_weights.php'];
-                $isBookingActive = in_array(basename($_SERVER['PHP_SELF']), $bookingPages);
-                $showBookings = hasFeature('ticket_bookings', $allowed_features) || 
-                                hasFeature('ticket_reservations', $allowed_features) || 
-                                hasFeature('refunded_tickets', $allowed_features) || 
-                                hasFeature('date_change_tickets', $allowed_features) || 
-                                hasFeature('ticket_weights', $allowed_features) || 
-                                hasFeature('hotel_bookings', $allowed_features);
+                <?php
+                $ticketPages = ['ticket.php', 'refund_ticket.php', 'date_change.php', 'ticket_reserve.php', 'ticket_weights.php'];
+                $isTicketActive = in_array(basename($_SERVER['PHP_SELF']), $ticketPages);
+                $showTickets = hasFeature('ticket_bookings', $allowed_features) ||
+                              hasFeature('ticket_reservations', $allowed_features) ||
+                              hasFeature('refunded_tickets', $allowed_features) ||
+                              hasFeature('date_change_tickets', $allowed_features) ||
+                              hasFeature('ticket_weights', $allowed_features);
                 ?>
-                <?php if ($showBookings): ?>
-                <li data-username="bookings" class="nav-item pcoded-hasmenu <?php echo $isBookingActive ? 'active pcoded-trigger' : ''; ?>">
+                <?php if ($showTickets): ?>
+                <li data-username="ticket_management" class="nav-item pcoded-hasmenu <?php echo $isTicketActive ? 'active pcoded-trigger' : ''; ?>">
                     <a href="javascript:" class="nav-link">
                         <span class="pcoded-micon"><i class="feather icon-calendar"></i></span>
-                        <span class="pcoded-mtext"><?= __('bookings') ?></span>
+                        <span class="pcoded-mtext">Ticket Management</span>
                     </a>
                     <ul class="pcoded-submenu">
-                        <?php 
-                        $ticketPages = ['ticket.php', 'refund_ticket.php', 'date_change.php', 'ticket_reserve.php', 'ticket_weights.php'];
-                        $isTicketActive = in_array(basename($_SERVER['PHP_SELF']), $ticketPages);
-                        $showTickets = hasFeature('ticket_bookings', $allowed_features) || 
-                                      hasFeature('ticket_reservations', $allowed_features) || 
-                                      hasFeature('refunded_tickets', $allowed_features) || 
-                                      hasFeature('date_change_tickets', $allowed_features) || 
-                                      hasFeature('ticket_weights', $allowed_features);
-                        ?>
-                        <?php if ($showTickets): ?>
-                        <li data-username="tickets" class="nav-item pcoded-hasmenu <?php echo $isTicketActive ? 'active pcoded-trigger' : ''; ?>">
-                            <a href="javascript:" class="nav-link">
-                                <span class="pcoded-mtext"><?= __('ticket') ?></span>
-                            </a>
-                            <ul class="pcoded-submenu">
-                                <?php if (hasFeature('ticket_bookings', $allowed_features)): ?>
-                                <li class="<?php echo basename($_SERVER['PHP_SELF']) == 'ticket.php' ? 'active' : ''; ?>">
-                                    <a href="ticket.php"><?= __('book_tickets') ?></a>
-                                </li>
-                                <?php endif; ?>
-                                <?php if (hasFeature('refunded_tickets', $allowed_features)): ?>
-                                <li class="<?php echo basename($_SERVER['PHP_SELF']) == 'refund_ticket.php' ? 'active' : ''; ?>">
-                                    <a href="refund_ticket.php"><?= __('refund_tickets') ?></a>
-                                </li>
-                                <?php endif; ?>
-                                <?php if (hasFeature('date_change_tickets', $allowed_features)): ?>
-                                <li class="<?php echo basename($_SERVER['PHP_SELF']) == 'date_change.php' ? 'active' : ''; ?>">
-                                    <a href="date_change.php"><?= __('date_changed_tickets') ?></a>
-                                </li>
-                                <?php endif; ?>
-                                <?php if (hasFeature('ticket_weights', $allowed_features)): ?>
-                                <li class="<?php echo basename($_SERVER['PHP_SELF']) == 'ticket_weights.php' ? 'active' : ''; ?>">
-                                    <a href="ticket_weights.php"><?= __('ticket_weights') ?></a>
-                                </li>
-                                <?php endif; ?>
-                                <?php if (hasFeature('ticket_reservations', $allowed_features)): ?>
-                                <li class="<?php echo basename($_SERVER['PHP_SELF']) == 'ticket_reserve.php' ? 'active' : ''; ?>">
-                                    <a href="ticket_reserve.php"><?= __('ticket_reservations') ?></a>
-                                </li>
-                                <?php endif; ?>
-                            </ul>
+                        <?php if (hasFeature('ticket_bookings', $allowed_features)): ?>
+                        <li class="<?php echo basename($_SERVER['PHP_SELF']) == 'ticket.php' ? 'active' : ''; ?>">
+                            <a href="ticket.php"><?= __('book_tickets') ?></a>
                         </li>
                         <?php endif; ?>
+                        <?php if (hasFeature('refunded_tickets', $allowed_features)): ?>
+                        <li class="<?php echo basename($_SERVER['PHP_SELF']) == 'refund_ticket.php' ? 'active' : ''; ?>">
+                            <a href="refund_ticket.php"><?= __('refund_tickets') ?></a>
+                        </li>
+                        <?php endif; ?>
+                        <?php if (hasFeature('date_change_tickets', $allowed_features)): ?>
+                        <li class="<?php echo basename($_SERVER['PHP_SELF']) == 'date_change.php' ? 'active' : ''; ?>">
+                            <a href="date_change.php"><?= __('date_changed_tickets') ?></a>
+                        </li>
+                        <?php endif; ?>
+                        <?php if (hasFeature('ticket_weights', $allowed_features)): ?>
+                        <li class="<?php echo basename($_SERVER['PHP_SELF']) == 'ticket_weights.php' ? 'active' : ''; ?>">
+                            <a href="ticket_weights.php"><?= __('ticket_weights') ?></a>
+                        </li>
+                        <?php endif; ?>
+                        <?php if (hasFeature('ticket_reservations', $allowed_features)): ?>
+                        <li class="<?php echo basename($_SERVER['PHP_SELF']) == 'ticket_reserve.php' ? 'active' : ''; ?>">
+                            <a href="ticket_reserve.php"><?= __('ticket_reservations') ?></a>
+                        </li>
+                        <?php endif; ?>
+                    </ul>
+                </li>
+                <?php endif; ?>
+                <?php
+                $hotelPages = ['hotel.php', 'hotel_refunds.php'];
+                $isHotelActive = in_array(basename($_SERVER['PHP_SELF']), $hotelPages);
+                $showHotel = hasFeature('hotel_bookings', $allowed_features) || hasFeature('hotel_refunds', $allowed_features);
+                ?>
+                <?php if ($showHotel): ?>
+                <li data-username="hotel_management" class="nav-item pcoded-hasmenu <?php echo $isHotelActive ? 'active pcoded-trigger' : ''; ?>">
+                    <a href="javascript:" class="nav-link">
+                        <span class="pcoded-micon"><i class="feather icon-home"></i></span>
+                        <span class="pcoded-mtext">Hotel Management</span>
+                    </a>
+                    <ul class="pcoded-submenu">
                         <?php if (hasFeature('hotel_bookings', $allowed_features)): ?>
                         <li class="<?php echo basename($_SERVER['PHP_SELF']) == 'hotel.php' ? 'active' : ''; ?>">
-                            <a href="hotel.php"><?= __('hotel') ?></a>
+                            <a href="hotel.php">Hotel Bookings</a>
+                        </li>
+                        <?php endif; ?>
+                        <?php if (hasFeature('hotel_refunds', $allowed_features)): ?>
+                        <li class="<?php echo basename($_SERVER['PHP_SELF']) == 'hotel_refund.php' ? 'active' : ''; ?>">
+                            <a href="hotel_refunds.php">Hotel Refund</a>
                         </li>
                         <?php endif; ?>
                     </ul>
@@ -1231,12 +1232,29 @@ input[type="button"] {
                     </ul>
                 </li>
                 <?php endif; ?>
-                <?php if (hasFeature('visa_applications', $allowed_features)): ?>
-                <li data-username="visa" class="nav-item <?php echo basename($_SERVER['PHP_SELF']) == 'visa.php' ? 'active' : ''; ?>">
-                    <a href="visa.php" class="nav-link">
+                <?php
+                $visaPages = ['visa.php', 'visa_refunds.php'];
+                $isVisaActive = in_array(basename($_SERVER['PHP_SELF']), $visaPages);
+                $showVisa = hasFeature('visa_applications', $allowed_features) || hasFeature('visa_refunds', $allowed_features);
+                ?>
+                <?php if ($showVisa): ?>
+                <li data-username="visa_management" class="nav-item pcoded-hasmenu <?php echo $isVisaActive ? 'active pcoded-trigger' : ''; ?>">
+                    <a href="javascript:" class="nav-link">
                         <span class="pcoded-micon"><i class="feather icon-globe"></i></span>
-                        <span class="pcoded-mtext"><?= __('visa') ?></span>
+                        <span class="pcoded-mtext">Visa Management</span>
                     </a>
+                    <ul class="pcoded-submenu">
+                        <?php if (hasFeature('visa_applications', $allowed_features)): ?>
+                        <li class="<?php echo basename($_SERVER['PHP_SELF']) == 'visa.php' ? 'active' : ''; ?>">
+                            <a href="visa.php">Visa Bookings</a>
+                        </li>
+                        <?php endif; ?>
+                        <?php if (hasFeature('visa_refunds', $allowed_features)): ?>
+                        <li class="<?php echo basename($_SERVER['PHP_SELF']) == 'visa_refunds.php' ? 'active' : ''; ?>">
+                            <a href="visa_refunds.php">Visa Refund</a>
+                        </li>
+                        <?php endif; ?>
+                    </ul>
                 </li>
                 <?php endif; ?>
                 <?php if (hasFeature('additional_payments', $allowed_features)): ?>

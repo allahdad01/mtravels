@@ -276,6 +276,76 @@
                     
                     // Add event listeners to delete buttons
                     attachDeleteButtonListeners();
+
+                    // Add event listeners for edit buttons (only for main account fund transactions)
+                    document.querySelectorAll('.edit-transaction-btn').forEach(button => {
+                        // Clone the button to remove all event listeners
+                        const newButton = button.cloneNode(true);
+                        button.parentNode.replaceChild(newButton, button);
+
+                        // Add click event listener to the new button
+                        newButton.addEventListener('click', function(e) {
+                            e.stopPropagation();
+
+                            // Get transaction data from data attributes
+                            const transactionId = this.dataset.transactionId;
+                            const transactionType = this.dataset.transactionType;
+                            const amount = this.dataset.amount;
+                            const transactionDate = this.dataset.transactionDate;
+                            const description = this.dataset.description;
+                            const remarks = this.dataset.remarks;
+                            const receipt = this.dataset.receipt;
+                            const type = this.dataset.type;
+                            const currency = this.dataset.currency;
+
+                            // Populate the edit form
+                            const editTransactionId = document.getElementById('editTransactionId');
+                            const editTransactionType = document.getElementById('editTransactionType');
+                            const originalAmount = document.getElementById('originalAmount');
+                            const originalType = document.getElementById('originalType');
+                            const editTransactionDate = document.getElementById('editTransactionDate');
+                            const editTransactionAmount = document.getElementById('editTransactionAmount');
+                            const editTransactionTypeSelect = document.getElementById('editTransactionTypeSelect');
+                            const editTransactionCurrency = document.getElementById('editTransactionCurrency');
+                            const editTransactionDescription = document.getElementById('editTransactionDescription');
+                            const editTransactionReceipt = document.getElementById('editTransactionReceipt');
+
+                            if (editTransactionId && editTransactionType && originalAmount && originalType &&
+                                editTransactionDate && editTransactionAmount && editTransactionTypeSelect &&
+                                editTransactionCurrency && editTransactionDescription && editTransactionReceipt) {
+
+                                editTransactionId.value = transactionId;
+                                editTransactionType.value = transactionType;
+                                originalAmount.value = amount;
+                                originalType.value = type;
+
+                                // Format date for datetime-local input
+                                if (transactionDate) {
+                                    const date = new Date(transactionDate);
+                                    const formattedDate = date.toISOString().slice(0, 16); // Format: YYYY-MM-DDTHH:MM
+                                    editTransactionDate.value = formattedDate;
+                                }
+
+                                editTransactionAmount.value = amount;
+                                editTransactionTypeSelect.value = type.toLowerCase();
+
+                                // For main accounts, use description
+                                editTransactionCurrency.value = currency;
+                                editTransactionDescription.value = description;
+
+                                editTransactionReceipt.value = receipt;
+
+                                // Hide the current transaction history modal
+                                $('#transactionHistoryModal').modal('hide');
+
+                                // Show the edit modal after a short delay
+                                setTimeout(() => {
+                                    const editModal = new bootstrap.Modal(document.getElementById('editTransactionModal'));
+                                    editModal.show();
+                                }, 500);
+                            }
+                        });
+                    });
                 }
             })
             .catch(error => {
@@ -330,6 +400,56 @@
     }
     
 
+});
+
+// Add event listener for the save edit button (only for main account fund transactions)
+document.getElementById('saveEditTransactionBtn').addEventListener('click', function() {
+    // Get form data
+    const form = document.getElementById('editTransactionForm');
+    const formData = new FormData(form);
+
+    // Show loading state
+    this.disabled = true;
+    this.innerHTML = '<span class="spinner-border spinner-border-sm" role="status" aria-hidden="true"></span> saving...';
+
+    // Send AJAX request to update the transaction
+    fetch('update_transaction.php', {
+        method: 'POST',
+        body: formData
+    })
+    .then(response => response.json())
+    .then(data => {
+        // Reset button state
+        this.disabled = false;
+        this.innerHTML = 'save_changes';
+
+        if (data.success) {
+            // Close the modal
+            $('#editTransactionModal').modal('hide');
+
+            // Show success message
+            showSuccessToast('transaction_updated_successfully');
+            showSuccessToast('balances_have_been_recalculated');
+
+            // Reload the transactions to show updated data
+            const accountType = document.getElementById('editTransactionType').value;
+            const accountId = data.account_id;
+            const accountName = data.account_name;
+
+            // Reload transactions
+            loadTransactions(accountType, accountId, accountName);
+        } else {
+            // Show error message
+            showErrorToast('error: ' + data.message);
+        }
+    })
+    .catch(error => {
+        showErrorToast('error_updating_transaction: ' + error);
+        this.disabled = false;
+        this.innerHTML = 'save_changes';
+        showErrorToast('an_error_occurred_while_updating_the_transaction');
+        showErrorToast('please_try_again');
+    });
 });
 
 // Function to delete transaction directly

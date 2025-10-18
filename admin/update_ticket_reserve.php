@@ -226,7 +226,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                         $insertSupplierTransactionQuery = "INSERT INTO supplier_transactions (supplier_id, reference_id, transaction_type, amount, balance, remarks, transaction_of, tenant_id) VALUES (?, ?, 'debit', ?, ?, ?, 'ticket_reserve', ?)";
                         $stmtInsertSupplierTransaction = $conn->prepare($insertSupplierTransactionQuery);
                         $description = "Purchase for ticket: $passenger_name ($origin to $destination)";
-                        $stmtInsertSupplierTransaction->bind_param('iiddsii', $supplier, $id, $base, $currentSupplierBalance, $description, $tenant_id);
+                        $stmtInsertSupplierTransaction->bind_param('iiddsi', $supplier, $id, $base, $currentSupplierBalance, $description, $tenant_id);
                         $stmtInsertSupplierTransaction->execute();
                         $stmtInsertSupplierTransaction->close();
                     } 
@@ -362,32 +362,217 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 
                 // If client changed and old client was regular
                 if ($sold_to != $originalClient && $oldClientIsRegular) {
-                    // Update old client balance - SUBTRACTING the original sold amount
-                    // This DECREASES the balance (client gets charged less)
-                    $balanceField = strtolower($originalCurrency) === 'usd' ? 'usd_balance' : 'afs_balance';
-                    $updateOldClientQuery = "UPDATE clients SET $balanceField = $balanceField - ? WHERE id = ? AND tenant_id = ?";
-                    $stmtUpdateOldClient = $conn->prepare($updateOldClientQuery);
-                    $stmtUpdateOldClient->bind_param('dii', $originalData['sold'], $originalClient, $tenant_id);
-                    $stmtUpdateOldClient->execute();
-                    $stmtUpdateOldClient->close();
-                    
-                    // Check if transaction record exists for old client
-                    $checkOldClientTransactionQuery = "SELECT id FROM client_transactions WHERE client_id = ? AND reference_id = ? AND transaction_of = 'ticket_reserve' AND tenant_id = ? LIMIT 1";
-                    $stmtCheckOldClientTransaction = $conn->prepare($checkOldClientTransactionQuery);
-                    $stmtCheckOldClientTransaction->bind_param('iii', $originalClient, $id, $tenant_id);
-                    $stmtCheckOldClientTransaction->execute();
-                    $oldClientTransactionResult = $stmtCheckOldClientTransaction->get_result();
-                    $oldClientTransactionExists = $oldClientTransactionResult->num_rows > 0;
-                    $stmtCheckOldClientTransaction->close();
-                    
-                    if ($oldClientTransactionExists) {
-                        // Update existing transaction record
-                        $updateOldClientTransactionQuery = "UPDATE client_transactions SET type = 'cancelled', description = CONCAT(description, ' (Client changed)') WHERE client_id = ? AND reference_id = ? AND transaction_of = 'ticket_reserve' AND tenant_id = ?";
-                        $stmtUpdateOldClientTransaction = $conn->prepare($updateOldClientTransactionQuery);
-                        $stmtUpdateOldClientTransaction->bind_param('iii', $originalClient, $id, $tenant_id);
-                        $stmtUpdateOldClientTransaction->execute();
-                        $stmtUpdateOldClientTransaction->close();
+                    // Get all transactions for the old client related to this ticket
+                    $getOldClientTransactionsQuery = "SELECT * FROM client_transactions 
+                                                    WHERE client_id = ? 
+                                                    AND reference_id = ? 
+                                                    AND transaction_of = 'ticket_reserve'
+                                                    AND tenant_id = ?
+                                                    ORDER BY created_at ASC";
+                    $stmtGetOldClientTransactions = $conn->prepare($getOldClientTransactionsQuery);
+                    $stmtGetOldClientTransactions->bind_param('iii', $originalClient, $id, $tenant_id);
+                    $stmtGetOldClientTransactions->execute();
+                    $oldClientTransactions = $stmtGetOldClientTransactions->get_result()->fetch_all(MYSQLI_ASSOC);
+                    $stmtGetOldClientTransactions->close();
+
+                    // Get the earliest transaction date for this ticket
+                    $earliestTransactionDate = null;
+                    if (!empty($oldClientTransactions)) {
+                        $earliestTransactionDate = $oldClientTransactions[0]['created_at'];
                     }
+
+                    // Get the transaction we're transferring to get its date
+                    $getTransferTransactionQuery = "SELECT created_at FROM client_transactions 
+                                                  WHERE client_id = ? 
+                                                  AND reference_id = ? 
+                                                  AND transaction_of = 'ticket_reserve'
+                                                  AND tenant_id = ?
+                                                  LIMIT 1";
+                    $stmtGetTransferTransaction = $conn->prepare($getTransferTransactionQuery);
+                    $stmtGetTransferTransaction->bind_param('iii', $originalClient, $id, $tenant_id);
+                    $stmtGetTransferTransaction->execute();
+                    $transferTransactionResult = $stmtGetTransferTransaction->get_result();
+                    $transferTransactionDate = $transferTransactionResult->fetch_assoc()['created_at'];
+                    $stmtGetTransferTransaction->close();
+
+                    // Calculate total amounts for USD and AFS
+                    $totalUsdAmount = 0;
+                    $totalAfsAmount = 0;
+                    foreach ($oldClientTransactions as $transaction) {
+                        if (strtolower($transaction['currency']) === 'usd') {
+                            $totalUsdAmount += $transaction['amount'];
+                        } else {
+                            $totalAfsAmount += $transaction['amount'];
+                        }
+                    }
+
+                    // Update old client balances - ADDING the amounts since we're removing these transactions
+                    if ($totalUsdAmount > 0) {
+                        // When removing a ticket from a client, we need to add the amount back
+                        // For example: if balance is -6095.600 and removing amount 265
+                        // New balance should be -5830.600 (client owes less)
+                        $updateOldClientUsdQuery = "UPDATE clients SET usd_balance = usd_balance + ? WHERE id = ? AND tenant_id = ?";
+                        $stmtUpdateOldClientUsd = $conn->prepare($updateOldClientUsdQuery);
+                        $stmtUpdateOldClientUsd->bind_param('dii', $totalUsdAmount, $originalClient, $tenant_id);
+                        $stmtUpdateOldClientUsd->execute();
+                        $stmtUpdateOldClientUsd->close();
+
+                        // Update subsequent USD transactions for old client
+                        $updateOldClientUsdSubsequentQuery = "UPDATE client_transactions
+                                                             SET balance = balance + ?
+                                                             WHERE client_id = ?
+                                                             AND id > (SELECT id FROM client_transactions
+                                                                      WHERE client_id = ?
+                                                                      AND reference_id = ?
+                                                                      AND transaction_of = 'ticket_reserve'
+                                                                      LIMIT 1)
+                                                             AND currency = 'USD'
+                                                             AND tenant_id = ?
+                                                             ORDER BY created_at ASC, id ASC";
+                        $stmtUpdateOldClientUsdSubsequent = $conn->prepare($updateOldClientUsdSubsequentQuery);
+                        $stmtUpdateOldClientUsdSubsequent->bind_param('diiii', $totalUsdAmount, $originalClient, $originalClient, $id, $tenant_id);
+                        $stmtUpdateOldClientUsdSubsequent->execute();
+                        $stmtUpdateOldClientUsdSubsequent->close();
+                    }
+                    
+                    if ($totalAfsAmount > 0) {
+                        // When removing a ticket from a client, we need to add the amount back
+                        $updateOldClientAfsQuery = "UPDATE clients SET afs_balance = afs_balance + ? WHERE id = ? AND tenant_id = ?";
+                        $stmtUpdateOldClientAfs = $conn->prepare($updateOldClientAfsQuery);
+                        $stmtUpdateOldClientAfs->bind_param('dii', $totalAfsAmount, $originalClient, $tenant_id);
+                        $stmtUpdateOldClientAfs->execute();
+                        $stmtUpdateOldClientAfs->close();
+
+                        // Update subsequent AFS transactions for old client
+                        $updateOldClientAfsSubsequentQuery = "UPDATE client_transactions
+                                                             SET balance = balance + ?
+                                                             WHERE client_id = ?
+                                                             AND id > (SELECT id FROM client_transactions
+                                                                      WHERE client_id = ?
+                                                                      AND reference_id = ?
+                                                                      AND transaction_of = 'ticket_reserve'
+                                                                      LIMIT 1)
+                                                             AND currency = 'AFS'
+                                                             AND tenant_id = ?
+                                                             ORDER BY created_at ASC, id ASC";
+                        $stmtUpdateOldClientAfsSubsequent = $conn->prepare($updateOldClientAfsSubsequentQuery);
+                        $stmtUpdateOldClientAfsSubsequent->bind_param('diiii', $totalAfsAmount, $originalClient, $originalClient, $id, $tenant_id);
+                        $stmtUpdateOldClientAfsSubsequent->execute();
+                        $stmtUpdateOldClientAfsSubsequent->close();
+                    }
+
+                    // Check if new client is regular
+                    $newClientQuery = "SELECT * FROM clients WHERE id = ? AND tenant_id = ?";
+                    $stmtNewClient = $conn->prepare($newClientQuery);
+                    $stmtNewClient->bind_param('ii', $sold_to, $tenant_id);
+                    $stmtNewClient->execute();
+                    $newClientResult = $stmtNewClient->get_result();
+                    $newClientData = $newClientResult->fetch_assoc();
+                    $stmtNewClient->close();
+
+                    $newClientType = isset($newClientData['client_type']) ? $newClientData['client_type'] : '';
+                    if (!$newClientType) {
+                        $newClientType = isset($newClientData['type']) ? $newClientData['type'] : '';
+                    }
+                    $newClientIsRegular = (strtolower(trim($newClientType)) === 'regular');
+
+                    // Only update balances if new client is regular
+                    if ($newClientIsRegular) {
+                        // Get current balances of new client
+                        $newClientUsdBalance = 0;
+                        $newClientAfsBalance = 0;
+                        
+                        $getNewClientUsdBalanceQuery = "SELECT usd_balance FROM clients WHERE id = ? AND tenant_id = ?";
+                        $stmtGetNewClientUsdBalance = $conn->prepare($getNewClientUsdBalanceQuery);
+                        $stmtGetNewClientUsdBalance->bind_param('ii', $sold_to, $tenant_id);
+                        $stmtGetNewClientUsdBalance->execute();
+                        $stmtGetNewClientUsdBalance->bind_result($newClientUsdBalance);
+                        $stmtGetNewClientUsdBalance->fetch();
+                        $stmtGetNewClientUsdBalance->close();
+
+                        $getNewClientAfsBalanceQuery = "SELECT afs_balance FROM clients WHERE id = ? AND tenant_id = ?";
+                        $stmtGetNewClientAfsBalance = $conn->prepare($getNewClientAfsBalanceQuery);
+                        $stmtGetNewClientAfsBalance->bind_param('ii', $sold_to, $tenant_id);
+                        $stmtGetNewClientAfsBalance->execute();
+                        $stmtGetNewClientAfsBalance->bind_result($newClientAfsBalance);
+                        $stmtGetNewClientAfsBalance->fetch();
+                        $stmtGetNewClientAfsBalance->close();
+
+                        // Update new client balances
+                        if ($totalUsdAmount > 0) {
+                            // When adding a ticket to a client with balance:
+                            // Example: If balance is -4930.600 and adding amount 215
+                            // We want final balance to be -5145.600 (client owes more)
+                            // Simply add the negative of the amount to make balance more negative
+                            $negativeAmount = abs($totalUsdAmount);
+                            $ClientUsdBalance = $newClientUsdBalance - $negativeAmount;
+                            $updateNewClientUsdQuery = "UPDATE clients SET usd_balance = ? WHERE id = ? AND tenant_id = ?";
+                            $stmtUpdateNewClientUsd = $conn->prepare($updateNewClientUsdQuery);
+                            $stmtUpdateNewClientUsd->bind_param('dii', $ClientUsdBalance, $sold_to, $tenant_id);
+                            $stmtUpdateNewClientUsd->execute();
+                            $stmtUpdateNewClientUsd->close();
+
+                            // Update subsequent USD transactions for new client
+                            if ($earliestTransactionDate) {
+                                $updateNewClientUsdSubsequentQuery = "UPDATE client_transactions
+                                                                    SET balance = balance - ?
+                                                                    WHERE client_id = ?
+                                                                    AND id > (SELECT id FROM client_transactions
+                                                                              WHERE client_id = ?
+                                                                              AND reference_id = ?
+                                                                              AND transaction_of = 'ticket_reserve'
+                                                                              LIMIT 1)
+                                                                    AND currency = 'USD'
+                                                                    AND tenant_id = ?
+                                                                    ORDER BY created_at ASC, id ASC";
+                                $stmtUpdateNewClientUsdSubsequent = $conn->prepare($updateNewClientUsdSubsequentQuery);
+                                $stmtUpdateNewClientUsdSubsequent->bind_param('diiii', $negativeAmount, $sold_to, $sold_to, $id, $tenant_id);
+                                $stmtUpdateNewClientUsdSubsequent->execute();
+                                $stmtUpdateNewClientUsdSubsequent->close();
+                            }
+                        }
+                        
+                        if ($totalAfsAmount > 0) {
+                            // When adding a ticket to a client with negative balance, we need to subtract the amount
+                            $updateNewClientAfsQuery = "UPDATE clients SET afs_balance = afs_balance - ? WHERE id = ? AND tenant_id = ?";
+                            $stmtUpdateNewClientAfs = $conn->prepare($updateNewClientAfsQuery);
+                            $stmtUpdateNewClientAfs->bind_param('dii', $totalAfsAmount, $sold_to, $tenant_id);
+                            $stmtUpdateNewClientAfs->execute();
+                            $stmtUpdateNewClientAfs->close();
+
+                            // Update subsequent AFS transactions for new client
+                            if ($earliestTransactionDate) {
+                                $updateNewClientAfsSubsequentQuery = "UPDATE client_transactions
+                                                                    SET balance = balance - ?
+                                                                    WHERE client_id = ?
+                                                                    AND id > (SELECT id FROM client_transactions
+                                                                              WHERE client_id = ?
+                                                                              AND reference_id = ?
+                                                                              AND transaction_of = 'ticket_reserve'
+                                                                              LIMIT 1)
+                                                                    AND currency = 'AFS'
+                                                                    AND tenant_id = ?
+                                                                    ORDER BY created_at ASC, id ASC";
+                                $stmtUpdateNewClientAfsSubsequent = $conn->prepare($updateNewClientAfsSubsequentQuery);
+                                $stmtUpdateNewClientAfsSubsequent->bind_param('diiii', $totalAfsAmount, $sold_to, $sold_to, $id, $tenant_id);
+                                $stmtUpdateNewClientAfsSubsequent->execute();
+                                $stmtUpdateNewClientAfsSubsequent->close();
+                            }
+                        }
+                    }
+
+                    // Update client_id in transactions and add note about transfer
+                    $updateTransactionsQuery = "UPDATE client_transactions 
+                                              SET client_id = ?,
+                                                  description = CONCAT(description, ' (Transferred from client ', ?, ')')
+                                              WHERE client_id = ? 
+                                              AND reference_id = ? 
+                                              AND transaction_of = 'ticket_reserve'
+                                              AND tenant_id = ?";
+                    $stmtUpdateTransactions = $conn->prepare($updateTransactionsQuery);
+                    $stmtUpdateTransactions->bind_param('iiiii', $sold_to, $originalClient, $originalClient, $id, $tenant_id);
+                    $stmtUpdateTransactions->execute();
+                    $stmtUpdateTransactions->close();
                 }
             }
             
@@ -410,10 +595,10 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 if ($isRegular) {
                     // If client changed
                     if ($sold_to != $originalClient) {
-                        // Update new client balance - ADDING the new sold amount
-                        // This INCREASES the balance (client gets charged more)
+                        // Update new client balance - SUBTRACTING the new sold amount
+                        // This DECREASES the balance (client owes more)
                         $balanceField = strtolower($currency) === 'usd' ? 'usd_balance' : 'afs_balance';
-                        $updateClientQuery = "UPDATE clients SET $balanceField = $balanceField + ? WHERE id = ? AND tenant_id = ?";
+                        $updateClientQuery = "UPDATE clients SET $balanceField = $balanceField - ? WHERE id = ? AND tenant_id = ?";
                         $stmtUpdateClient = $conn->prepare($updateClientQuery);
                         $stmtUpdateClient->bind_param('dii', $sold, $sold_to, $tenant_id);
                         $stmtUpdateClient->execute();
@@ -432,7 +617,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                         $insertClientTransactionQuery = "INSERT INTO client_transactions (client_id, reference_id, type, amount, currency, balance, description, transaction_of, tenant_id) VALUES (?, ?, 'debit', ?, ?, ?, ?, 'ticket_reserve', ?)";
                         $stmtInsertClientTransaction = $conn->prepare($insertClientTransactionQuery);
                         $description = "Sale for ticket: $passenger_name ($origin to $destination)";
-                        $stmtInsertClientTransaction->bind_param('iidsdsii', $sold_to, $id, $sold, $currency, $currentBalance, $description, $tenant_id);
+                        $stmtInsertClientTransaction->bind_param('iidsdsi', $sold_to, $id, $sold, $currency, $currentBalance, $description, $tenant_id);
                         $stmtInsertClientTransaction->execute();
                         $stmtInsertClientTransaction->close();
                     } 
@@ -485,51 +670,42 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                             // Calculate the difference between the new sold amount and the current transaction amount
                             $amountDifference = $sold - $currentTransactionAmount;
                             
-                            // Calculate the new balance for this transaction
-                            // If amount increased, balance should decrease by the difference
-                            // If amount decreased, balance should increase by the difference
-                            $newTransactionBalance = $currentTransactionBalance - $amountDifference;
+                            // For client transactions, subsequent balances should:
+                            // - Increase (add) when amount decreases
+                            // - Decrease (subtract) when amount increases
+                            $balanceAdjustment = -$amountDifference;
                             
-                            // Update amount field to new sold price
-                            $updateClientAmountQuery = "UPDATE client_transactions SET amount = ? WHERE id = ? AND tenant_id = ?";
-                            $stmtUpdateClientAmount = $conn->prepare($updateClientAmountQuery);
-                            $stmtUpdateClientAmount->bind_param('dii', $sold, $transactionId, $tenant_id);
-                            $stmtUpdateClientAmount->execute();
-                            $stmtUpdateClientAmount->close();
+                            // Get the current transaction's date
+                            $getCurrentTransactionQuery = "SELECT created_at FROM client_transactions WHERE id = ? AND tenant_id = ? LIMIT 1";
+                            $stmtGetCurrentTransaction = $conn->prepare($getCurrentTransactionQuery);
+                            $stmtGetCurrentTransaction->bind_param('ii', $transactionId, $tenant_id);
+                            $stmtGetCurrentTransaction->execute();
+                            $currentTransactionResult = $stmtGetCurrentTransaction->get_result();
+                            $currentTransactionDate = $currentTransactionResult->fetch_assoc()['created_at'];
+                            $stmtGetCurrentTransaction->close();
                             
                             // Update existing transaction record with adjusted balance
-                            $updateClientTransactionQuery = "UPDATE client_transactions SET balance = ?, description = CONCAT('Updated: ', description) WHERE id = ? AND tenant_id = ?";
+                            $updateClientTransactionQuery = "UPDATE client_transactions 
+                                                           SET amount = ?,
+                                                               balance = balance + ?,
+                                                               description = CONCAT('Updated: ', description) 
+                                                           WHERE id = ? AND tenant_id = ?";
                             $stmtUpdateClientTransaction = $conn->prepare($updateClientTransactionQuery);
-                            $stmtUpdateClientTransaction->bind_param('dii', $newTransactionBalance, $transactionId, $tenant_id);
+                            $stmtUpdateClientTransaction->bind_param('ddii', $sold, $balanceAdjustment, $transactionId, $tenant_id);
                             $stmtUpdateClientTransaction->execute();
                             $stmtUpdateClientTransaction->close();
                             
                             // Update all subsequent transactions' balances
-                            // If amount increased, decrease subsequent balances
-                            // If amount decreased, increase subsequent balances
-                            if ($amountDifference > 0) {
-                                // Amount increased, decrease subsequent balances
-                                $updateSubsequentQuery = "UPDATE client_transactions 
-                                                         SET balance = balance - ? 
-                                                         WHERE client_id = ? 
-                                                         AND id > ? 
-                                                         AND currency = ? 
-                                                         AND id != ?
-                                                         AND tenant_id = ?";
-                            } else {
-                                // Amount decreased, increase subsequent balances
-                                $updateSubsequentQuery = "UPDATE client_transactions 
-                                                         SET balance = balance + ? 
-                                                         WHERE client_id = ? 
-                                                         AND id > ? 
-                                                         AND currency = ? 
-                                                         AND id != ?
-                                                         AND tenant_id = ?";
-                            }
+                            $updateSubsequentQuery = "UPDATE client_transactions 
+                                                    SET balance = balance + ? 
+                                                    WHERE client_id = ? 
+                                                    AND currency = ? 
+                                                    AND id > ?
+                                                    AND tenant_id = ?
+                                                    ORDER BY created_at ASC";
                             
                             $stmtUpdateSubsequent = $conn->prepare($updateSubsequentQuery);
-                            $absAmountDifference = abs($amountDifference);
-                            $stmtUpdateSubsequent->bind_param('dissi', $absAmountDifference, $sold_to, $transactionId, $currency, $transactionId, $tenant_id);
+                            $stmtUpdateSubsequent->bind_param('dissi', $balanceAdjustment, $sold_to, $currency, $transactionId, $tenant_id);
                             $stmtUpdateSubsequent->execute();
                             $stmtUpdateSubsequent->close();
                         } else {
@@ -571,7 +747,6 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             currency = ?, 
             description = ?, 
             paid_to = ?
-   
             WHERE id = ? AND tenant_id = ?";
         
         $stmtTicket = $conn->prepare($updateTicketQuery);
@@ -599,7 +774,6 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             $currency, 
             $description, 
             $paid_to, 
-
             $id,
             $tenant_id
         );

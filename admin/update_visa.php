@@ -143,7 +143,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                     // This INCREASES the balance (supplier gets money back)
                     $updateOldSupplierQuery = "UPDATE suppliers SET balance = balance + ? WHERE id = ? AND tenant_id = ?";
                     $stmtUpdateOldSupplier = $conn->prepare($updateOldSupplierQuery);
-                    $stmtUpdateOldSupplier->bind_param('di', $originalData['base'], $originalSupplier, $tenant_id);
+                    $stmtUpdateOldSupplier->bind_param('dii', $originalData['base'], $originalSupplier, $tenant_id);
                     $stmtUpdateOldSupplier->execute();
                     $stmtUpdateOldSupplier->close();
                     
@@ -176,7 +176,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                                                             AND id != ? AND tenant_id = ?";
                             $stmtUpdateSubsequentSupplier = $conn->prepare($updateSubsequentSupplierQuery);
                             $transactionAmount = abs($oldSupplierTransactionData['amount']); // Make sure it's positive
-                            $stmtUpdateSubsequentSupplier->bind_param('disi', 
+                            $stmtUpdateSubsequentSupplier->bind_param('disii', 
                                 $transactionAmount, 
                                 $originalSupplier, 
                                 $oldSupplierTransactionData['id'], 
@@ -300,14 +300,14 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                             // Update amount field to new base price
                             $updateSupplierAmountQuery = "UPDATE supplier_transactions SET amount = ? WHERE id = ? AND tenant_id = ?";
                             $stmtUpdateSupplierAmount = $conn->prepare($updateSupplierAmountQuery);
-                            $stmtUpdateSupplierAmount->bind_param('di', $base, $supplierTransactionId, $tenant_id);
+                            $stmtUpdateSupplierAmount->bind_param('dii', $base, $supplierTransactionId, $tenant_id);
                             $stmtUpdateSupplierAmount->execute();
                             $stmtUpdateSupplierAmount->close();
                             
                             // Update existing transaction record with adjusted balance
                             $updateSupplierTransactionQuery = "UPDATE supplier_transactions SET balance = ?, remarks = CONCAT('Updated: ', remarks) WHERE id = ? AND tenant_id = ?";
                             $stmtUpdateSupplierTransaction = $conn->prepare($updateSupplierTransactionQuery);
-                            $stmtUpdateSupplierTransaction->bind_param('di', $newTransactionBalance, $supplierTransactionId, $tenant_id);
+                            $stmtUpdateSupplierTransaction->bind_param('dii', $newTransactionBalance, $supplierTransactionId, $tenant_id);
                             $stmtUpdateSupplierTransaction->execute();
                             $stmtUpdateSupplierTransaction->close();
                             
@@ -451,7 +451,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                         $stmtUpdateClient->close();
 
                         // Get the updated balance
-                        $getBalanceQuery = "SELECT $balanceField FROM clients WHERE id = ?";
+                        $getBalanceQuery = "SELECT $balanceField FROM clients WHERE id = ? and tenant_id = ?";
                         $stmtGetBalance = $conn->prepare($getBalanceQuery);
                         $stmtGetBalance->bind_param('ii', $sold_to, $tenant_id);
                         $stmtGetBalance->execute();
@@ -530,14 +530,14 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                             $negativeAmount = -1 * abs($sold);
                             $updateClientAmountQuery = "UPDATE client_transactions SET amount = ? WHERE id = ? AND tenant_id = ?";
                             $stmtUpdateClientAmount = $conn->prepare($updateClientAmountQuery);
-                            $stmtUpdateClientAmount->bind_param('di', $negativeAmount, $transactionId, $tenant_id);
+                            $stmtUpdateClientAmount->bind_param('dii', $negativeAmount, $transactionId, $tenant_id);
                             $stmtUpdateClientAmount->execute();
                             $stmtUpdateClientAmount->close();
                             
                             // Update existing transaction record with adjusted balance
                             $updateClientTransactionQuery = "UPDATE client_transactions SET balance = ?, description = CONCAT('Updated: ', description) WHERE id = ? AND tenant_id = ?";
                             $stmtUpdateClientTransaction = $conn->prepare($updateClientTransactionQuery);
-                            $stmtUpdateClientTransaction->bind_param('di', $newTransactionBalance, $transactionId, $tenant_id);
+                            $stmtUpdateClientTransaction->bind_param('dii', $newTransactionBalance, $transactionId, $tenant_id);
                             $stmtUpdateClientTransaction->execute();
                             $stmtUpdateClientTransaction->close();
                             
@@ -564,7 +564,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                             
                             $stmtUpdateSubsequent = $conn->prepare($updateSubsequentQuery);
                             $absAmountDifference = abs($amountDifference);
-                            $stmtUpdateSubsequent->bind_param('dissi', $absAmountDifference, $sold_to, $transactionId, $currency, $transactionId, $tenant_id);
+                            $stmtUpdateSubsequent->bind_param('dissii', $absAmountDifference, $sold_to, $transactionId, $currency, $transactionId, $tenant_id);
                             $stmtUpdateSubsequent->execute();
                             $stmtUpdateSubsequent->close();
                         }
