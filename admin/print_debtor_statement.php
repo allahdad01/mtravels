@@ -57,7 +57,7 @@ $transactions = $transResult->fetch_all(MYSQLI_ASSOC);
 
 // Calculate total paid amount
 $total_paid = 0;
-$initial_balance = $debtor['balance'];
+$initial_balance = 0;
 
 foreach ($transactions as $transaction) {
     if ($transaction['transaction_type'] == 'credit') {

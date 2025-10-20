@@ -840,14 +840,6 @@ while ($row = $result->fetch_assoc()) {
                                     <i class="feather icon-eye"></i>
                                 </a>
 
-                                <!-- Add Edit Button for deposit and withdrawal transactions -->
-                                <?php if (in_array($transaction['type'], ['deposit', 'withdrawal'])): ?>
-                                <button class="btn btn-sm btn-warning" 
-                                        onclick="editTransaction(<?= $transaction['id'] ?>, '<?= $transaction['type'] ?>')" 
-                                        data-toggle="tooltip" title="<?= __('edit') ?>">
-                                    <i class="feather icon-edit"></i>
-                                </button>
-                                <?php endif; ?>
 
                                 <?php if ($transaction['type'] === 'deposit'): ?>
                                 <button class="btn btn-sm btn-danger" 
@@ -2014,52 +2006,22 @@ function editTransaction(transactionId, type) {
                 const customer = data.customer;
                 const mainAccount = data.main_account;
 
-                // Find customer ID by name (since it's not directly in the response)
-                let customerId = '';
-                $.ajax({
-                    url: 'get_customer_id_by_name.php', // You'll need to create this endpoint
-                    type: 'GET',
-                    data: { name: customer.name },
-                    async: false, // Synchronous to ensure ID is set before modal opens
-                    success: function(customerResponse) {
-                        customerId = customerResponse.customer_id || '';
-                    },
-                    error: function() {
-                        console.error('Could not fetch customer ID');
-                    }
-                });
-
-                // Find main account ID by name
-                let mainAccountId = '';
-                $.ajax({
-                    url: 'get_main_account_id_by_name.php', // You'll need to create this endpoint
-                    type: 'GET',
-                    data: { name: mainAccount.name },
-                    async: false, // Synchronous to ensure ID is set before modal opens
-                    success: function(mainAccountResponse) {
-                        mainAccountId = mainAccountResponse.main_account_id || '';
-                    },
-                    error: function() {
-                        console.error('Could not fetch main account ID');
-                    }
-                });
-
                 // Populate edit modal
                 $('#editTransactionId').val(transaction.id);
                 $('#editTransactionType').val(transaction.type);
-                
-                // Set customer and main account IDs
-                $('#editCustomerId').val(customerId);
+
+                // Set customer and main account IDs directly from response
+                $('#editCustomerId').val(customer.id);
                 $('#editCustomerName').val(customer.name);
-                
-                $('#editMainAccountId').val(mainAccountId);
-                
+
+                $('#editMainAccountId').val(mainAccount.id);
+
                 $('#editAmount').val(parseFloat(transaction.amount).toFixed(2));
                 $('#editOriginalAmount').val(parseFloat(transaction.amount).toFixed(2));
-                
+
                 $('#editReference').val(transaction.reference_number || '');
                 $('#editNotes').val(transaction.notes || '');
-                
+
                 // Show the edit modal
                 $('#editTransactionModal').modal('show');
             } else {

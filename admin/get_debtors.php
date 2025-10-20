@@ -261,7 +261,7 @@ try {
     foreach ($debtors as &$debtor) {
         foreach ($debtor as $key => $value) {
             if ($key !== 'id' && !is_numeric($value)) {
-                $debtor[$key] = htmlspecialchars($value, ENT_QUOTES, 'UTF-8');
+                $debtor[$key] = $value !== null ? htmlspecialchars($value, ENT_QUOTES, 'UTF-8') : '';
             }
         }
     }

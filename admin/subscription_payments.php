@@ -4,54 +4,45 @@ if (session_status() === PHP_SESSION_NONE) {
     session_start();
 }
 
-// Set secure headers
+// Security headers
 header("X-XSS-Protection: 1; mode=block");
 header("X-Content-Type-Options: nosniff");
 header("X-Frame-Options: DENY");
 header("Content-Security-Policy: default-src 'self'; script-src 'self' 'unsafe-inline' https://cdn.jsdelivr.net; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com https://cdn.jsdelivr.net; font-src 'self' https://fonts.gstatic.com; img-src 'self' data:;");
 
-// Check session timeout (30 minutes)
-$sessionTimeout = 30 * 60; // 30 minutes in seconds
+// Session timeout (30 mins)
+$sessionTimeout = 30 * 60;
 if (isset($_SESSION['last_activity']) && (time() - $_SESSION['last_activity'] > $sessionTimeout)) {
-    // Session expired, destroy session and redirect to login
     session_unset();
     session_destroy();
     header('Location: ../login.php?timeout=1');
     exit();
 }
-$_SESSION['last_activity'] = time(); // Update last activity time
+$_SESSION['last_activity'] = time();
 
-// Check if user is logged in with proper role
+// Check user role
 if (!isset($_SESSION['user_id']) || $_SESSION['role'] !== 'admin') {
-    // Log unauthorized access attempt
-    error_log("Unauthorized access attempt to subscription payments: " . ($_SESSION['user_id'] ?? 'unknown') . " - IP: " . $_SERVER['REMOTE_ADDR']);
+    error_log("Unauthorized access attempt: " . ($_SESSION['user_id'] ?? 'unknown') . " - IP: " . $_SERVER['REMOTE_ADDR']);
     header('Location: ../login.php');
     exit();
-}
-
-// Create CSRF token if not exists
-if (!isset($_SESSION['csrf_token'])) {
-    $_SESSION['csrf_token'] = bin2hex(random_bytes(32));
 }
 
 require_once '../config.php';
 require_once '../includes/conn.php';
 require_once '../includes/db.php';
 
-// Check if $pdo is available
 if (!isset($pdo) || !$pdo) {
     die("Database connection failed. Please contact administrator.");
 }
 
-// Get tenant_id from session (assuming tenant admins have this set)
+// Get tenant_id from session
 $tenant_id = $_SESSION['tenant_id'] ?? null;
 if (!$tenant_id) {
-    // If no tenant_id, redirect or show error
     header('Location: dashboard.php');
     exit();
 }
 
-// Get tenant payment status
+// Fetch tenant payment status
 $tenant_payment_status = 'current';
 try {
     $stmt = $pdo->prepare("SELECT payment_status, payment_due_date FROM tenants WHERE id = ?");
@@ -62,13 +53,13 @@ try {
         $payment_due_date = $tenant_data['payment_due_date'];
     }
 } catch (PDOException $e) {
-    // Ignore errors
+    // ignore
 }
 
-// Fetch subscription data for this tenant
+// Fetch tenant subscriptions
 try {
     $stmt = $pdo->prepare("
-        SELECT ts.*, p.name as plan_name, p.price as plan_price
+        SELECT ts.*, p.name AS plan_name, p.price AS plan_price
         FROM tenant_subscriptions ts
         LEFT JOIN plans p ON ts.plan_id = p.id
         WHERE ts.tenant_id = :tenant_id
@@ -81,13 +72,13 @@ try {
     $subscriptions = [];
 }
 
-// Fetch payment history from subscription_payments table
+// Fetch subscription payment history
 try {
     $stmt = $pdo->prepare("
-        SELECT sp.*, ts.plan_id, p.name as plan_name, u.name as processed_by_name
+        SELECT sp.*, ts.plan_id, p.name AS plan_name, u.name AS processed_by_name
         FROM subscription_payments sp
         LEFT JOIN tenant_subscriptions ts ON sp.subscription_id = ts.id
-        LEFT JOIN plans p ON ts.plan_id = p.name
+        LEFT JOIN plans p ON ts.plan_id = p.id
         LEFT JOIN users u ON sp.processed_by = u.id
         WHERE ts.tenant_id = :tenant_id
         ORDER BY sp.payment_date DESC, sp.created_at DESC
@@ -99,35 +90,79 @@ try {
     $payments = [];
 }
 
-// Handle payment redirect
-if (isset($_GET['payment']) && isset($_GET['subscription_id'])) {
+// Handle HesabPay redirect
+if (isset($_GET['payment'], $_GET['subscription_id'])) {
     $payment_status = $_GET['payment'];
     $sub_id = intval($_GET['subscription_id']);
+
+    // Safely decode JSON from data param
+    $data = null;
+    if (!empty($_GET['data'])) {
+        $raw = urldecode($_GET['data']);
+        $data = json_decode($raw, true);
+        if ($data === null && strpos($raw, '{') !== false) {
+            // fallback for malformed JSON
+            $raw = str_replace(['\\"', "'"], ['"', '"'], $raw);
+            $data = json_decode($raw, true);
+        }
+    }
+
     if ($payment_status === 'success') {
-        // Fetch subscription details
         try {
-            $stmt = $pdo->prepare("SELECT amount, currency FROM tenant_subscriptions WHERE id = ? AND tenant_id = ?");
+            $stmt = $pdo->prepare("SELECT amount, currency, billing_cycle, start_date, next_billing_date FROM tenant_subscriptions WHERE id = ? AND tenant_id = ?");
             $stmt->execute([$sub_id, $tenant_id]);
             $subscription = $stmt->fetch(PDO::FETCH_ASSOC);
-            if ($subscription) {
-                // Insert payment record
-                $processed_by = $_SESSION['user_id'] ?? null;
-                $stmt2 = $pdo->prepare("INSERT INTO subscription_payments (subscription_id, amount, currency, payment_method, payment_date, processed_by) VALUES (?, ?, ?, 'Hesabpay', CURDATE(), ?)");
-                $stmt2->execute([$sub_id, $subscription['amount'], $subscription['currency'], $processed_by]);
 
-                // Update subscription status to active
-                $pdo->prepare("UPDATE tenant_subscriptions SET status = 'active' WHERE id = ? AND tenant_id = ?")->execute([$sub_id, $tenant_id]);
+            if ($subscription) {
+                $processed_by = $_SESSION['user_id'] ?? null;
+                $transaction_id = $data['transaction_id'] ?? null;
+
+                // Insert payment record
+                $stmt2 = $pdo->prepare("
+                    INSERT INTO subscription_payments
+                    (subscription_id, amount, currency, payment_method, payment_date, processed_by, transaction_id)
+                    VALUES (?, ?, ?, 'HesabPay', CURDATE(), ?, ?)
+                ");
+                $stmt2->execute([$sub_id, $subscription['amount'], $subscription['currency'], $processed_by, $transaction_id]);
+
+                // Update subscription
+                $pdo->prepare("
+                    UPDATE tenant_subscriptions
+                    SET status = 'active', last_payment_date = CURDATE()
+                    WHERE id = ? AND tenant_id = ?
+                ")->execute([$sub_id, $tenant_id]);
+
+                // Update next billing date
+                $base_date = $subscription['next_billing_date'] ?: $subscription['start_date'];
+                $next_billing_date = null;
+                switch ($subscription['billing_cycle']) {
+                    case 'monthly':
+                        $next_billing_date = date('Y-m-d', strtotime('+1 month', strtotime($base_date)));
+                        break;
+                    case 'quarterly':
+                        $next_billing_date = date('Y-m-d', strtotime('+3 months', strtotime($base_date)));
+                        break;
+                    case 'yearly':
+                        $next_billing_date = date('Y-m-d', strtotime('+1 year', strtotime($base_date)));
+                        break;
+                }
+                if ($next_billing_date) {
+                    $pdo->prepare("UPDATE tenant_subscriptions SET next_billing_date = ? WHERE id = ? AND tenant_id = ?")
+                        ->execute([$next_billing_date, $sub_id, $tenant_id]);
+                }
+
+                $payment_message = "✅ Payment successful! Subscription activated.";
             }
         } catch (PDOException $e) {
-            error_log("Error processing successful payment: " . $e->getMessage());
+            error_log("Error processing payment: " . $e->getMessage());
+            $payment_message = "⚠️ Error processing payment.";
         }
-        $payment_message = "Payment successful! Your subscription has been activated.";
     } elseif ($payment_status === 'failed') {
-        $payment_message = "Payment failed. Please try again.";
+        $payment_message = "❌ Payment failed. Please try again.";
     }
 }
-
 ?>
+
 
 <?php include '../includes/header.php'; ?>
 

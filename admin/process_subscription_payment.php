@@ -1,48 +1,23 @@
 <?php
-// Start session if not already started
+// Start session
 if (session_status() === PHP_SESSION_NONE) {
     session_start();
 }
 
-// Set secure headers
+// Security headers
 header("X-XSS-Protection: 1; mode=block");
 header("X-Content-Type-Options: nosniff");
 header("X-Frame-Options: DENY");
 header("Content-Security-Policy: default-src 'self'; script-src 'self' 'unsafe-inline' https://cdn.jsdelivr.net; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com https://cdn.jsdelivr.net; font-src 'self' https://fonts.gstatic.com; img-src 'self' data:;");
 
-// Check session timeout (30 minutes)
-$sessionTimeout = 30 * 60; // 30 minutes in seconds
-if (isset($_SESSION['last_activity']) && (time() - $_SESSION['last_activity'] > $sessionTimeout)) {
-    // Session expired, destroy session and redirect to login
-    session_unset();
-    session_destroy();
-    header('Location: ../login.php?timeout=1');
-    exit();
-}
-$_SESSION['last_activity'] = time(); // Update last activity time
-
-// Check if tenant_id is set (user must be associated with a tenant)
-if (!isset($_SESSION['tenant_id'])) {
-    // Log unauthorized access attempt
-    error_log("Unauthorized access attempt to process subscription payment: no tenant_id - IP: " . $_SERVER['REMOTE_ADDR']);
-    header('Location: ../login.php');
-    exit();
-}
-
-// Check CSRF token
-if (!isset($_POST['csrf_token']) || $_POST['csrf_token'] !== $_SESSION['csrf_token']) {
-    die("CSRF token validation failed.");
-}
-
 require_once '../config.php';
 require_once '../includes/conn.php';
 require_once '../includes/db.php';
 
-// Check if $pdo is available
+// Check DB connection
 if (!isset($pdo) || !$pdo) {
     die("Database connection failed. Please contact administrator.");
 }
-
 
 // Get tenant_id from session
 $tenant_id = $_SESSION['tenant_id'] ?? null;
@@ -60,11 +35,12 @@ if ($subscription_id <= 0 || $amount <= 0) {
     die("Invalid payment data.");
 }
 
-// Fetch subscription details to verify
+// Fetch subscription details
 try {
-    $stmt = $pdo->prepare("SELECT ts.*, p.name as plan_name FROM tenant_subscriptions ts LEFT JOIN plans p ON ts.plan_id = p.id WHERE ts.id = ? AND ts.tenant_id = ?");
+    $stmt = $pdo->prepare("SELECT ts.*, p.name AS plan_name FROM tenant_subscriptions ts LEFT JOIN plans p ON ts.plan_id = p.id WHERE ts.id = ? AND ts.tenant_id = ?");
     $stmt->execute([$subscription_id, $tenant_id]);
     $subscription = $stmt->fetch(PDO::FETCH_ASSOC);
+
     if (!$subscription) {
         die("Subscription not found.");
     }
@@ -73,15 +49,25 @@ try {
     die("Error processing payment.");
 }
 
-// Convert amount to AFN if needed (assuming currency is USD, convert to AFN)
-// For simplicity, assume amount is in AFN, or add conversion logic
-// Here, assume $amount is in the currency specified, but Hesabpay uses AFN
-// You may need to convert USD to AFN using exchange rate
-$amount_afn = $amount; // Placeholder, add conversion if needed
+// Amount in AFN (or same currency for simplicity)
+$amount_afn = $amount;
 
-// Prepare Hesabpay API call
+// Build redirect URLs properly
+$base_url = 'http://' . $_SERVER['HTTP_HOST'] . '/almoqadas/mtravels/admin/subscription_payments.php';
+$success_params = http_build_query([
+    'payment' => 'success',
+    'subscription_id' => $subscription_id
+]);
+$failure_params = http_build_query([
+    'payment' => 'failed',
+    'subscription_id' => $subscription_id
+]);
+$redirect_success_url = $base_url . '?' . $success_params;
+$redirect_failure_url = $base_url . '?' . $failure_params;
+
+// Prepare HesabPay API request
 $api_url = HESABPAY_BASE_URL . '/payment/create-session';
-$data = [
+$request_payload = [
     'items' => [
         [
             'id' => $subscription_id,
@@ -89,41 +75,43 @@ $data = [
             'price' => $amount_afn
         ]
     ],
-    'redirect_success_url' => 'http://' . $_SERVER['HTTP_HOST'] . '/admin/subscription_payments.php?payment=success&subscription_id=' . $subscription_id,
-    'redirect_failure_url' => 'http://' . $_SERVER['HTTP_HOST'] . '/admin/subscription_payments.php?payment=failed&subscription_id=' . $subscription_id
+    'redirect_success_url' => $redirect_success_url,
+    'redirect_failure_url' => $redirect_failure_url
 ];
 
-// Debug: Log the request data
-error_log("Hesabpay API Request: " . json_encode($data));
+// Debug log
+error_log("HesabPay API Request: " . json_encode($request_payload));
 
+// Initialize cURL
 $ch = curl_init($api_url);
 curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
 curl_setopt($ch, CURLOPT_POST, true);
-curl_setopt($ch, CURLOPT_POSTFIELDS, json_encode($data));
+curl_setopt($ch, CURLOPT_POSTFIELDS, json_encode($request_payload));
 curl_setopt($ch, CURLOPT_HTTPHEADER, [
     'Authorization: API-KEY ' . HESABPAY_API_KEY,
     'accept: application/json',
     'Content-Type: application/json'
 ]);
 curl_setopt($ch, CURLOPT_SSL_VERIFYPEER, false); // For testing only
-curl_setopt($ch, CURLOPT_SSL_VERIFYHOST, false); // For testing only
+curl_setopt($ch, CURLOPT_SSL_VERIFYHOST, false);
 
 $response = curl_exec($ch);
 $http_code = curl_getinfo($ch, CURLINFO_HTTP_CODE);
 curl_close($ch);
 
+// Check response
 if ($http_code !== 200) {
-    error_log("Hesabpay API error: HTTP $http_code - " . $response);
-    die("Payment initiation failed. Please try again. Error: HTTP $http_code - " . substr($response, 0, 200));
+    error_log("HesabPay API error: HTTP $http_code - " . $response);
+    die("Payment initiation failed. Please try again.");
 }
 
 $response_data = json_decode($response, true);
 if (!$response_data || !isset($response_data['url'])) {
-    error_log("Invalid Hesabpay response: " . $response);
+    error_log("Invalid HesabPay response: " . $response);
     die("Payment initiation failed.");
 }
 
-// Store session_id for callback handling
+// Store session_id for callback tracking
 $session_id = $response_data['session_id'] ?? null;
 if ($session_id) {
     try {
@@ -134,7 +122,7 @@ if ($session_id) {
     }
 }
 
-// Redirect to Hesabpay payment page
+// Redirect user to HesabPay payment page
 header('Location: ' . $response_data['url']);
 exit();
 ?>

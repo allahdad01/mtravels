@@ -730,7 +730,11 @@ include 'handlers/debtors_handler.php';
                                                 <a href="print_agreement.php?id=<?php echo h($debtor['id']); ?>" class="btn btn-icon btn-dark btn-sm mr-1" target="_blank" title="<?= __('print_agreement') ?>">
                                                     <i class="feather icon-printer"></i>
                                                 </a>
-                                                
+
+                                                <button type="button" class="btn btn-icon btn-danger btn-sm mr-1 delete-debtor-btn" data-debtor-id="<?php echo h($debtor['id']); ?>" data-debtor-name="<?php echo htmlspecialchars($debtor['name']); ?>" title="<?= __('delete_debtor') ?>">
+                                                    <i class="feather icon-trash-2"></i>
+                                                </button>
+
                                                 <?php if ($debtor['balance'] <= 0): ?>
                                                     <form method="POST" class="d-inline" name="debtor_status_form" onsubmit="return confirm('<?= __('confirm_deactivate_debtor') ?>');">
                                                         <input type="hidden" name="debtor_id" value="<?php echo h($debtor['id']); ?>">
@@ -1590,26 +1594,26 @@ document.addEventListener('DOMContentLoaded', function() {
     // Direct event handler for delete transaction buttons
     const deleteButtons = document.querySelectorAll('.delete-transaction-btn');
     console.log('Found ' + deleteButtons.length + ' delete transaction buttons');
-    
+
     deleteButtons.forEach(function(button) {
         button.addEventListener('click', function(e) {
             e.preventDefault();
             e.stopPropagation();
             console.log('Delete button clicked');
-            
+
             // Get data attributes
             const transactionId = this.getAttribute('data-transaction-id');
             const debtorId = this.getAttribute('data-debtor-id');
             const amount = this.getAttribute('data-amount');
             const currency = this.getAttribute('data-currency');
-            
+
             console.log('Transaction data for deletion:', {
                 transactionId,
                 debtorId,
                 amount,
                 currency
             });
-            
+
             // Show toast notification instead of confirmation dialog
             Swal.fire({
                 icon: 'info',
@@ -1621,7 +1625,7 @@ document.addEventListener('DOMContentLoaded', function() {
                 timer: 2000,
                 timerProgressBar: true
             });
-            
+
             // Create form data for the delete request
             const formData = new FormData();
             formData.append('transaction_id', transactionId);
@@ -1629,7 +1633,7 @@ document.addEventListener('DOMContentLoaded', function() {
             formData.append('amount', amount);
             formData.append('currency', currency);
             formData.append('delete_transaction', 'true');
-            
+
             // Submit form data via fetch API after a short delay
             setTimeout(() => {
                 fetch('delete_debtor_transaction.php', {
@@ -1652,7 +1656,7 @@ document.addEventListener('DOMContentLoaded', function() {
                             showConfirmButton: false,
                             timer: 3000
                         });
-                        
+
                         // Reload the page to refresh the transaction list
                         setTimeout(() => {
                             location.reload();
@@ -1681,6 +1685,107 @@ document.addEventListener('DOMContentLoaded', function() {
                     });
                 });
             }, 2000);
+        });
+    });
+
+    // Direct event handler for delete debtor buttons
+    const deleteDebtorButtons = document.querySelectorAll('.delete-debtor-btn');
+    console.log('Found ' + deleteDebtorButtons.length + ' delete debtor buttons');
+
+    deleteDebtorButtons.forEach(function(button) {
+        button.addEventListener('click', function(e) {
+            e.preventDefault();
+            e.stopPropagation();
+            console.log('Delete debtor button clicked');
+
+            // Get data attributes
+            const debtorId = this.getAttribute('data-debtor-id');
+            const debtorName = this.getAttribute('data-debtor-name');
+
+            console.log('Debtor data for deletion:', {
+                debtorId,
+                debtorName
+            });
+
+            // Show confirmation dialog with conditional message
+            Swal.fire({
+                title: 'Confirm Deletion',
+                text: 'Are you sure you want to delete this debtor? All transactions will be deleted and balances will be reversed.',
+                icon: 'warning',
+                showCancelButton: true,
+                confirmButtonColor: '#d33',
+                cancelButtonColor: '#3085d6',
+                confirmButtonText: 'Yes, delete debtor',
+                cancelButtonText: 'Cancel'
+            }).then((result) => {
+                if (result.isConfirmed) {
+                    // Show loading indicator
+                    Swal.fire({
+                        title: 'Deleting debtor...',
+                        allowOutsideClick: false,
+                        didOpen: () => {
+                            Swal.showLoading();
+                        }
+                    });
+
+                    // Create form data for the delete request
+                    const formData = new FormData();
+                    formData.append('debtor_id', debtorId);
+                    formData.append('delete_debtor', 'true');
+
+                    // Submit form data via fetch API
+                    fetch('delete_debtor.php', {
+                        method: 'POST',
+                        body: formData
+                    })
+                    .then(response => {
+                        console.log('Response received:', response);
+                        return response.json();
+                    })
+                    .then(data => {
+                        console.log('Data received:', data);
+                        Swal.close();
+                        if (data.success) {
+                            // Show success message
+                            Swal.fire({
+                                icon: 'success',
+                                title: data.message || 'Debtor deleted successfully',
+                                toast: true,
+                                position: 'top-end',
+                                showConfirmButton: false,
+                                timer: 3000
+                            });
+
+                            // Reload the page to refresh the debtor list
+                            setTimeout(() => {
+                                location.reload();
+                            }, 1000);
+                        } else {
+                            // Show error message
+                            Swal.fire({
+                                icon: 'error',
+                                title: data.message || 'Failed to delete debtor',
+                                toast: true,
+                                position: 'top-end',
+                                showConfirmButton: false,
+                                timer: 3000
+                            });
+                        }
+                    })
+                    .catch(error => {
+                        console.error('Error:', error);
+                        Swal.close();
+                        Swal.fire({
+                            icon: 'error',
+                            title: 'An error occurred while deleting the debtor',
+                            toast: true,
+                            position: 'top-end',
+                            showConfirmButton: false,
+                            timer: 3000
+                        });
+                    });
+                }
+            });
         });
     });
 });

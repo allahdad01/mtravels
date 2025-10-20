@@ -71,16 +71,19 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['delete_transaction'])
         $main_amount = $main_transaction['amount'];
         $main_currency = $main_transaction['currency'];
 
+        // Determine adjustment sign based on transaction type: credit deducts, debit adds
+        $adjustment = ($main_transaction['type'] == 'credit') ? -$main_amount : $main_amount;
+
         // Update balances of all subsequent transactions
         $updateSubsequentStmt = $conn->prepare("
-            UPDATE main_account_transactions 
-            SET balance = balance - ?
-            WHERE main_account_id = ? 
-            AND currency = ? 
-            AND id > ? 
+            UPDATE main_account_transactions
+            SET balance = balance + ?
+            WHERE main_account_id = ?
+            AND currency = ?
+            AND id > ?
             AND id != ? AND tenant_id = ?
         ");
-        $updateSubsequentStmt->bind_param("dsssis", $main_amount, $main_transaction['main_account_id'], $main_currency, $main_transaction['id'], $main_transaction['id'], $tenant_id);
+        $updateSubsequentStmt->bind_param("dsssis", $adjustment, $main_transaction['main_account_id'], $main_currency, $main_transaction['id'], $main_transaction['id'], $tenant_id);
         $updateSubsequentStmt->execute();
         
         // Get debtor information
@@ -90,8 +93,14 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['delete_transaction'])
         $result = $stmt->get_result();
         $debtor = $result->fetch_assoc();
         
-        // Update debtor balance (add amount back)
-        $new_balance = $debtor['balance'] + $transaction['amount'];
+        // Update debtor balance based on transaction type
+        if ($transaction['transaction_type'] == 'credit') {
+            $new_balance = $debtor['balance'] + $transaction['amount'];
+        } elseif ($transaction['transaction_type'] == 'debit') {
+            $new_balance = $debtor['balance'] - $transaction['amount'];
+        } else {
+            throw new Exception("Invalid transaction type");
+        }
         $stmt = $conn->prepare("UPDATE debtors SET balance = ? WHERE id = ? AND tenant_id = ?");
         $stmt->bind_param("dii", $new_balance, $debtor_id, $tenant_id);
         $stmt->execute();
@@ -119,8 +128,9 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['delete_transaction'])
             throw new Exception("Main account not found");
         }
         
-        // Update main account balance (subtract main transaction amount)
-        $new_main_balance = $main_account[$balance_column] - $main_amount;
+        // Update main account balance based on transaction type: credit deducts, debit adds
+        $balance_adjustment = ($main_transaction['type'] == 'credit') ? -$main_amount : $main_amount;
+        $new_main_balance = $main_account[$balance_column] + $balance_adjustment;
         $stmt = $conn->prepare("UPDATE main_account SET $balance_column = ? WHERE id = ? AND tenant_id = ?");
         $stmt->bind_param("dii", $new_main_balance, $main_transaction['main_account_id'], $tenant_id);
         $stmt->execute();

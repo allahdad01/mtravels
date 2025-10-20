@@ -61,6 +61,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             $tenant_id
         ]);
 
+        $mainCurrency = $transaction['currency'];
+
         // Update main account balance
         switch ($mainCurrency) {
             case 'USD': $balanceField = 'usd_balance'; break;

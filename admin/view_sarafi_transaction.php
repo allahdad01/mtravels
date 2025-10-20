@@ -32,10 +32,11 @@ if (!$transaction_id) {
 try {
     // Get transaction details with customer and main account information
     $stmt = $pdo->prepare("
-        SELECT 
+        SELECT
             st.*,
             c.name as customer_name,
             c.phone as customer_phone,
+            ma.id as main_account_id,
             ma.name as main_account_name,
             mat.amount as main_transaction_amount,
             mat.balance as main_transaction_balance,
@@ -79,11 +80,13 @@ try {
                 'receipt_path' => $transaction['receipt_path']
             ],
             'customer' => [
+                'id' => $transaction['customer_id'],
                 'name' => $transaction['customer_name'],
                 'phone' => $transaction['customer_phone'],
                 'wallet_balance' => $wallet ? $wallet['balance'] : 0
             ],
             'main_account' => [
+                'id' => $transaction['main_account_id'],
                 'name' => $transaction['main_account_name'],
                 'transaction_amount' => $transaction['main_transaction_amount'],
                 'balance_after' => $transaction['main_transaction_balance'],

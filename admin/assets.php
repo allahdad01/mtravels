@@ -304,214 +304,589 @@ if (count($assets) > 0) {
 ?>
 
     <style>
+        /* Modern Asset Management Styles */
+        :root {
+            --primary-color: #4099ff;
+            --secondary-color: #2ed8b6;
+            --success-color: #28a745;
+            --warning-color: #ffc107;
+            --danger-color: #dc3545;
+            --info-color: #17a2b8;
+            --dark-color: #343a40;
+            --light-color: #f8f9fa;
+            --border-radius: 12px;
+            --shadow: 0 4px 20px rgba(0, 0, 0, 0.08);
+            --shadow-hover: 0 8px 30px rgba(0, 0, 0, 0.12);
+        }
+
+        /* Status Badges */
         .status-badge {
-            padding: 5px 10px;
-            border-radius: 4px;
-            font-size: 12px;
-            font-weight: bold;
+            padding: 6px 12px;
+            border-radius: 20px;
+            font-size: 11px;
+            font-weight: 600;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
         }
-        .status-active {
-            background-color: #28a745;
-            color: white;
-        }
-        .status-inactive {
-            background-color: #6c757d;
-            color: white;
-        }
-        .status-maintenance {
-            background-color: #ffc107;
-            color: black;
-        }
-        .status-sold {
-            background-color: #17a2b8;
-            color: white;
-        }
-        .status-disposed {
-            background-color: #dc3545;
-            color: white;
-        }
-        
-        /* Enhanced UI Styles */
-        .asset-card {
-            transition: all 0.3s;
-            border-radius: 10px;
-            box-shadow: 0 4px 20px rgba(0, 0, 0, 0.05);
+
+        .status-active { background: linear-gradient(45deg, var(--success-color), #20c997); color: white; }
+        .status-inactive { background: linear-gradient(45deg, #6c757d, #868e96); color: white; }
+        .status-maintenance { background: linear-gradient(45deg, var(--warning-color), #fd7e14); color: white; }
+        .status-sold { background: linear-gradient(45deg, var(--info-color), #0dcaf0); color: white; }
+        .status-disposed { background: linear-gradient(45deg, var(--danger-color), #fd7e14); color: white; }
+
+        /* Card Styles */
+        .asset-card, .summary-card {
             border: none;
+            border-radius: var(--border-radius);
+            box-shadow: var(--shadow);
+            transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+            overflow: hidden;
+            background: white;
+        }
+
+        .asset-card:hover, .summary-card:hover {
+            transform: translateY(-4px);
+            box-shadow: var(--shadow-hover);
+        }
+
+        /* Gradient Headers */
+        .card-header-gradient {
+            background: linear-gradient(135deg, var(--primary-color) 0%, var(--secondary-color) 100%);
+            color: white;
+            border: none;
+            padding: 20px;
+        }
+
+        .card-header-gradient h5 {
+            margin: 0;
+            font-weight: 600;
+            font-size: 1.1rem;
+        }
+
+        /* Summary Cards */
+        .summary-card {
+            position: relative;
             overflow: hidden;
         }
-        
-        .asset-card:hover {
-            box-shadow: 0 8px 25px rgba(0, 0, 0, 0.1);
-            transform: translateY(-5px);
+
+        .summary-card .card-body {
+            padding: 25px;
+            position: relative;
+            z-index: 2;
         }
-        
-        .category-icon {
-            font-size: 2rem;
-            padding: 15px;
-            border-radius: 50%;
-            width: 60px;
-            height: 60px;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            background-color: rgba(0, 123, 255, 0.1);
-            color: #007bff;
-            margin-bottom: 15px;
-        }
-        
-        .summary-card {
-            border-radius: 10px;
-            box-shadow: 0 4px 15px rgba(0, 0, 0, 0.05);
-            border: none;
-            transition: all 0.3s;
-        }
-        
-        .summary-card:hover {
-            box-shadow: 0 6px 20px rgba(0, 0, 0, 0.1);
-        }
-        
+
         .summary-icon {
             position: absolute;
             top: 20px;
             right: 20px;
-            font-size: 2.5rem;
-            opacity: 0.2;
-            color: #007bff;
+            font-size: 3rem;
+            opacity: 0.1;
+            color: var(--primary-color);
+            z-index: 1;
         }
-        
-        .asset-table th {
-            font-weight: 600;
-            background-color: #f8f9fa;
+
+        .summary-card h2 {
+            font-size: 2rem;
+            font-weight: 700;
+            margin-bottom: 5px;
+            color: var(--dark-color);
         }
-        
-        .asset-detailed-view {
-            padding: 20px;
-            background-color: #f8f9fa;
-            border-radius: 10px;
-            margin-bottom: 20px;
+
+        .summary-card h6 {
+            font-size: 0.9rem;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+            color: #6c757d;
+            margin-bottom: 15px;
         }
-        
+
+        .summary-card p {
+            color: #6c757d;
+            font-size: 0.85rem;
+            margin-bottom: 15px;
+        }
+
+        /* Filter Section */
         .filter-section {
-            padding: 20px;
-            background-color: #f8f9fa;
-            border-radius: 10px;
+            background: linear-gradient(135deg, #f8f9fa 0%, #e9ecef 100%);
+            border-radius: var(--border-radius);
+            padding: 25px;
+            margin-bottom: 30px;
+            border: 1px solid #dee2e6;
+        }
+
+        .filter-section h5 {
+            color: var(--dark-color);
+            font-weight: 600;
             margin-bottom: 20px;
         }
 
-        .table-hover tbody tr:hover {
-            background-color: rgba(0, 123, 255, 0.05);
-        }
-        
-        .select2-container .select2-selection--single {
-            height: 38px !important;
-            padding: 8px 5px;
-        }
-        
-        .chart-container {
-            position: relative;
-            height: 250px;
-            margin-bottom: 20px;
+        /* Filter Buttons */
+        .filter-buttons {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 8px;
         }
 
-        /* Custom card headers */
-        .card-header-gradient {
-            background: linear-gradient(45deg, #007bff, #00c6ff);
+        .filter-buttons .btn {
+            border-radius: 25px;
+            padding: 8px 16px;
+            font-weight: 500;
+            font-size: 0.85rem;
+            transition: all 0.3s;
+            border: 2px solid transparent;
+        }
+
+        .filter-buttons .btn:hover {
+            transform: translateY(-2px);
+        }
+
+        .filter-buttons .btn.active {
+            background: linear-gradient(45deg, var(--primary-color), var(--secondary-color));
+            border-color: var(--primary-color);
             color: white;
-            border-radius: 10px 10px 0 0;
         }
 
-        /* Custom badges */
-        .custom-badge {
-            padding: 5px 12px;
-            border-radius: 50px;
+        /* Advanced Search */
+        .advanced-search .card-body {
+            padding: 25px;
+        }
+
+        .advanced-search .form-group label {
+            font-weight: 600;
+            color: var(--dark-color);
+            margin-bottom: 8px;
+        }
+
+        .advanced-search .form-control, .advanced-search .btn {
+            border-radius: 8px;
+            border: 2px solid #e9ecef;
+            transition: all 0.3s;
+        }
+
+        .advanced-search .form-control:focus {
+            border-color: var(--primary-color);
+            box-shadow: 0 0 0 0.2rem rgba(64, 153, 255, 0.25);
+        }
+
+        /* Table Styles */
+        .asset-table {
+            background: white;
+            border-radius: var(--border-radius);
+            overflow: hidden;
+        }
+
+        .asset-table thead th {
+            background: linear-gradient(45deg, #f8f9fa, #e9ecef);
+            border: none;
+            font-weight: 600;
+            color: var(--dark-color);
+            padding: 15px;
+            font-size: 0.85rem;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+        }
+
+        .asset-table tbody tr {
+            transition: all 0.2s;
+            border-bottom: 1px solid #f1f3f4;
+        }
+
+        .asset-table tbody tr:hover {
+            background: linear-gradient(45deg, rgba(64, 153, 255, 0.02), rgba(46, 216, 182, 0.02));
+        }
+
+        .asset-table tbody td {
+            padding: 15px;
+            vertical-align: middle;
+            border: none;
+        }
+
+        /* Asset Name Cell */
+        .asset-name-cell {
+            display: flex;
+            align-items: center;
+        }
+
+        .asset-icon {
+            width: 40px;
+            height: 40px;
+            border-radius: 10px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            background: linear-gradient(45deg, var(--primary-color), var(--secondary-color));
+            color: white;
+            margin-right: 12px;
+            font-size: 1.2rem;
+        }
+
+        .asset-details h6 {
+            margin: 0;
+            font-weight: 600;
+            color: var(--dark-color);
+        }
+
+        .asset-details small {
+            color: #6c757d;
+            font-size: 0.8rem;
+        }
+
+        /* Category Badge */
+        .category-badge {
+            background: linear-gradient(45deg, #e9ecef, #dee2e6);
+            color: var(--dark-color);
+            padding: 4px 10px;
+            border-radius: 15px;
+            font-size: 0.75rem;
             font-weight: 500;
         }
 
-        /* Animation for cards */
+        /* Value Display */
+        .asset-value {
+            font-weight: 700;
+            color: var(--success-color);
+            font-size: 1rem;
+        }
+
+        .asset-currency {
+            color: #6c757d;
+            font-size: 0.8rem;
+            margin-left: 4px;
+        }
+
+        /* Depreciation Progress */
+        .depreciation-progress {
+            height: 6px;
+            border-radius: 3px;
+            background: #e9ecef;
+            overflow: hidden;
+        }
+
+        .depreciation-progress .progress-bar {
+            border-radius: 3px;
+            transition: width 0.3s ease;
+        }
+
+        /* Status Badge in Table */
+        .status-badge-sm {
+            padding: 3px 8px;
+            font-size: 10px;
+            border-radius: 12px;
+        }
+
+        /* Action Buttons */
+        .action-buttons {
+            display: flex;
+            gap: 5px;
+        }
+
+        .action-btn {
+            width: 35px;
+            height: 35px;
+            border-radius: 8px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            border: none;
+            transition: all 0.3s;
+            font-size: 0.9rem;
+        }
+
+        .action-btn:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+        }
+
+        .action-btn.btn-info { background: linear-gradient(45deg, var(--info-color), #0dcaf0); }
+        .action-btn.btn-warning { background: linear-gradient(45deg, var(--warning-color), #fd7e14); }
+        .action-btn.btn-primary { background: linear-gradient(45deg, var(--primary-color), var(--secondary-color)); }
+
+        /* Chart Containers */
+        .chart-container {
+            position: relative;
+            height: 350px;
+            border-radius: var(--border-radius);
+            background: white;
+        }
+
+        /* Loading States */
+        .chart-loading {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            height: 100%;
+            color: #6c757d;
+        }
+
+        .chart-loading i {
+            font-size: 2rem;
+            margin-bottom: 10px;
+        }
+
+        /* Modal Styles */
+        .modal-content {
+            border: none;
+            border-radius: var(--border-radius);
+            box-shadow: var(--shadow-hover);
+        }
+
+        .modal-header {
+            background: linear-gradient(135deg, var(--primary-color), var(--secondary-color));
+            color: white;
+            border: none;
+            border-radius: var(--border-radius) var(--border-radius) 0 0;
+            padding: 20px 25px;
+        }
+
+        .modal-title {
+            font-weight: 600;
+        }
+
+        .modal-body {
+            padding: 25px;
+        }
+
+        .modal-footer {
+            border: none;
+            padding: 20px 25px;
+            background: #f8f9fa;
+            border-radius: 0 0 var(--border-radius) var(--border-radius);
+        }
+
+        /* Form Elements */
+        .form-group label {
+            font-weight: 600;
+            color: var(--dark-color);
+            margin-bottom: 8px;
+        }
+
+        .form-control {
+            border-radius: 8px;
+            border: 2px solid #e9ecef;
+            padding: 10px 15px;
+            transition: all 0.3s;
+        }
+
+        .form-control:focus {
+            border-color: var(--primary-color);
+            box-shadow: 0 0 0 0.2rem rgba(64, 153, 255, 0.25);
+        }
+
+        /* Buttons */
+        .btn {
+            border-radius: 8px;
+            font-weight: 500;
+            padding: 10px 20px;
+            transition: all 0.3s;
+        }
+
+        .btn-primary {
+            background: linear-gradient(45deg, var(--primary-color), var(--secondary-color));
+            border: none;
+        }
+
+        .btn-primary:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 4px 15px rgba(64, 153, 255, 0.3);
+        }
+
+        /* Responsive Design */
+        @media (max-width: 768px) {
+            .summary-card {
+                margin-bottom: 20px;
+            }
+
+            .summary-card .card-body {
+                padding: 20px;
+            }
+
+            .summary-icon {
+                font-size: 2rem;
+                top: 15px;
+                right: 15px;
+            }
+
+            .summary-card h2 {
+                font-size: 1.5rem;
+            }
+
+            .filter-buttons {
+                flex-direction: column;
+            }
+
+            .filter-buttons .btn {
+                width: 100%;
+                margin-bottom: 8px;
+            }
+
+            .advanced-search .col-md-3 {
+                margin-bottom: 20px;
+            }
+
+            .chart-container {
+                height: 280px;
+                margin-bottom: 20px;
+            }
+
+            .asset-table {
+                font-size: 0.85rem;
+            }
+
+            .asset-table th,
+            .asset-table td {
+                padding: 10px 8px;
+            }
+
+            .asset-name-cell {
+                flex-direction: column;
+                align-items: flex-start;
+            }
+
+            .asset-icon {
+                margin-bottom: 8px;
+                margin-right: 0;
+            }
+
+            .action-buttons {
+                flex-wrap: wrap;
+            }
+
+            .modal-dialog {
+                margin: 10px;
+            }
+
+            .modal-lg {
+                max-width: 95%;
+            }
+
+            /* Modal scrolling fixes for mobile */
+            .modal-dialog {
+                max-height: calc(100vh - 20px);
+                margin: 10px auto;
+            }
+
+            .modal-content {
+                max-height: calc(100vh - 20px);
+                display: flex;
+                flex-direction: column;
+            }
+
+            .modal-header {
+                flex-shrink: 0;
+                padding: 15px 20px;
+            }
+
+            .modal-body {
+                flex: 1;
+                overflow-y: auto;
+                -webkit-overflow-scrolling: touch;
+                padding: 20px;
+                max-height: calc(100vh - 140px); /* Account for header and footer */
+            }
+
+            .modal-footer {
+                flex-shrink: 0;
+                padding: 15px 20px;
+            }
+
+            /* Ensure form elements are accessible in scrolled modal */
+            .modal-body .form-group {
+                margin-bottom: 20px;
+            }
+
+            .modal-body .row {
+                margin-bottom: 15px;
+            }
+        }
+
+        @media (max-width: 576px) {
+            .card-header-gradient {
+                padding: 15px;
+            }
+
+            .card-header-gradient h5 {
+                font-size: 1rem;
+            }
+
+            .filter-section {
+                padding: 20px;
+            }
+
+            .chart-container {
+                height: 250px;
+            }
+
+            .asset-table th,
+            .asset-table td {
+                padding: 8px 6px;
+                font-size: 0.8rem;
+            }
+
+            .action-btn {
+                width: 30px;
+                height: 30px;
+                font-size: 0.8rem;
+            }
+
+            .modal-body {
+                padding: 20px;
+            }
+        }
+
+        /* Animations */
         @keyframes fadeInUp {
             from {
                 opacity: 0;
-                transform: translate3d(0, 40px, 0);
+                transform: translateY(30px);
             }
             to {
                 opacity: 1;
-                transform: translate3d(0, 0, 0);
+                transform: translateY(0);
             }
         }
 
         .animated-card {
-            animation: fadeInUp 0.5s ease-out forwards;
+            animation: fadeInUp 0.6s ease-out;
         }
 
-        /* Action buttons styling */
-        .action-btn {
-            width: 32px;
-            height: 32px;
-            border-radius: 50%;
-            display: inline-flex;
-            align-items: center;
-            justify-content: center;
-            margin: 0 3px;
-            transition: all 0.3s;
-        }
-        
-        .action-btn:hover {
-            transform: translateY(-3px);
-        }
-
-        /* Timeline for asset history */
-        .asset-timeline {
-            position: relative;
-            padding-left: 30px;
-        }
-        
-        .asset-timeline:before {
-            content: '';
-            position: absolute;
-            left: 10px;
-            top: 0;
-            height: 100%;
-            width: 2px;
-            background-color: #e9ecef;
-        }
-        
-        .timeline-item {
-            position: relative;
-            margin-bottom: 20px;
-        }
-        
-        .timeline-item:before {
-            content: '';
-            position: absolute;
-            left: -30px;
-            top: 5px;
-            width: 12px;
-            height: 12px;
-            border-radius: 50%;
-            background-color: #007bff;
-        }
-        
-        /* Progress bar for asset depreciation */
-        .depreciation-progress {
+        /* Custom Scrollbar */
+        .table-responsive::-webkit-scrollbar {
             height: 8px;
+        }
+
+        .table-responsive::-webkit-scrollbar-track {
+            background: #f1f1f1;
             border-radius: 4px;
         }
-        
-        /* Custom tabs */
-        .custom-tabs .nav-link {
-            border: none;
-            border-bottom: 2px solid transparent;
-            border-radius: 0;
-            padding: 10px 15px;
+
+        .table-responsive::-webkit-scrollbar-thumb {
+            background: linear-gradient(45deg, var(--primary-color), var(--secondary-color));
+            border-radius: 4px;
+        }
+
+        .table-responsive::-webkit-scrollbar-thumb:hover {
+            background: linear-gradient(45deg, var(--secondary-color), var(--primary-color));
+        }
+
+        .text-gradient {
+            background: linear-gradient(45deg, var(--primary-color), var(--secondary-color));
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+        }
+
+        .font-weight-medium {
             font-weight: 500;
         }
-        
-        .custom-tabs .nav-link.active {
-            color: #007bff;
-            border-bottom: 2px solid #007bff;
-            background-color: transparent;
+
+        .font-weight-bold {
+            font-weight: 700;
         }
     </style>
+
 <style>
 /* Apply gradient background to card headers matching the sidebar */
 .card-header {
@@ -587,31 +962,30 @@ if (count($assets) > 0) {
                                 <!-- Status Filters -->
                                 <div class="col-md-12 mb-4">
                                     <div class="filter-section">
-                                        <div class="row align-items-center">
-                                            <div class="col-md-6">
-                                                <h5><i class="feather icon-filter mr-2"></i><?= __('filter_assets') ?></h5>
-                                            </div>
-                                            <div class="col-md-6">
-                                                <div class="btn-group float-right">
-                                                    <a href="assets.php?status=active" class="btn <?php echo h($status_filter) == 'active' ? 'btn-primary' : 'btn-outline-primary'; ?>">
-                                                        <i class="feather icon-check-circle mr-1"></i> <?= __('active') ?>
-                                                    </a>
-                                                    <a href="assets.php?status=inactive" class="btn <?php echo h($status_filter) == 'inactive' ? 'btn-primary' : 'btn-outline-primary'; ?>">
-                                                        <i class="feather icon-circle mr-1"></i> <?= __('inactive') ?>
-                                                    </a>
-                                                    <a href="assets.php?status=maintenance" class="btn <?php echo h($status_filter) == 'maintenance' ? 'btn-primary' : 'btn-outline-primary'; ?>">
-                                                        <i class="feather icon-tool mr-1"></i> <?= __('maintenance') ?>
-                                                    </a>
-                                                    <a href="assets.php?status=sold" class="btn <?php echo h($status_filter) == 'sold' ? 'btn-primary' : 'btn-outline-primary'; ?>">
-                                                        <i class="feather icon-shopping-cart mr-1"></i> <?= __('sold') ?>
-                                                    </a>
-                                                    <a href="assets.php?status=disposed" class="btn <?php echo h($status_filter) == 'disposed' ? 'btn-primary' : 'btn-outline-primary'; ?>">
-                                                        <i class="feather icon-trash-2 mr-1"></i> <?= __('disposed') ?>
-                                                    </a>
-                                                    <a href="assets.php?status=all" class="btn <?php echo h($status_filter) == 'all' ? 'btn-primary' : 'btn-outline-primary'; ?>">
-                                                        <i class="feather icon-list mr-1"></i> <?= __('all') ?>
-                                                    </a>
-                                                </div>
+                                        <div class="d-flex justify-content-between align-items-center flex-wrap">
+                                            <h5 class="mb-3 mb-md-0">
+                                                <i class="feather icon-filter mr-2"></i>
+                                                <span class="text-gradient"><?= __('filter_assets') ?></span>
+                                            </h5>
+                                            <div class="filter-buttons">
+                                                <a href="assets.php?status=active" class="btn <?php echo h($status_filter) == 'active' ? 'active' : ''; ?>">
+                                                    <i class="feather icon-check-circle mr-1"></i> <?= __('active') ?>
+                                                </a>
+                                                <a href="assets.php?status=inactive" class="btn <?php echo h($status_filter) == 'inactive' ? 'active' : ''; ?>">
+                                                    <i class="feather icon-circle mr-1"></i> <?= __('inactive') ?>
+                                                </a>
+                                                <a href="assets.php?status=maintenance" class="btn <?php echo h($status_filter) == 'maintenance' ? 'active' : ''; ?>">
+                                                    <i class="feather icon-tool mr-1"></i> <?= __('maintenance') ?>
+                                                </a>
+                                                <a href="assets.php?status=sold" class="btn <?php echo h($status_filter) == 'sold' ? 'active' : ''; ?>">
+                                                    <i class="feather icon-shopping-cart mr-1"></i> <?= __('sold') ?>
+                                                </a>
+                                                <a href="assets.php?status=disposed" class="btn <?php echo h($status_filter) == 'disposed' ? 'active' : ''; ?>">
+                                                    <i class="feather icon-trash-2 mr-1"></i> <?= __('disposed') ?>
+                                                </a>
+                                                <a href="assets.php?status=all" class="btn <?php echo h($status_filter) == 'all' ? 'active' : ''; ?>">
+                                                    <i class="feather icon-list mr-1"></i> <?= __('all') ?>
+                                                </a>
                                             </div>
                                         </div>
                                     </div>
@@ -775,9 +1149,12 @@ if (count($assets) > 0) {
                                 
                                 <!-- Add Asset Button -->
                                 <div class="col-md-12 mb-4">
-                                    <button type="button" class="btn btn-primary btn-lg" data-toggle="modal" data-target="#addAssetModal">
-                                        <i class="feather icon-plus-circle mr-1"></i> <?= __('add_new_asset') ?>
-                                    </button>
+                                    <div class="text-center">
+                                        <button type="button" class="btn btn-primary btn-lg px-4 py-3 shadow-lg" data-toggle="modal" data-target="#addAssetModal">
+                                            <i class="feather icon-plus-circle mr-2"></i>
+                                            <span class="font-weight-bold"><?= __('add_new_asset') ?></span>
+                                        </button>
+                                    </div>
                                 </div>
                                 
                                 <!-- Assets Table -->
@@ -805,78 +1182,89 @@ if (count($assets) > 0) {
                                                         <?php if (count($assets) > 0): ?>
                                                             <?php foreach ($assets as $asset): ?>
                                                                 <tr>
-                                                                    <td><?php echo h($asset['id']); ?></td>
+                                                                    <td class="font-weight-bold text-primary"><?php echo h($asset['id']); ?></td>
                                                                     <td>
-                                                                        <div class="d-flex align-items-center">
+                                                                        <div class="asset-name-cell">
                                                                             <?php
                                                                             // Define icon based on category
                                                                             $icon = 'box';
+                                                                            $iconColor = 'var(--primary-color)';
                                                                             switch($asset['category']) {
                                                                                 case 'Electronics':
                                                                                     $icon = 'cpu';
+                                                                                    $iconColor = '#17a2b8';
                                                                                     break;
                                                                                 case 'Furniture':
                                                                                     $icon = 'home';
+                                                                                    $iconColor = '#28a745';
                                                                                     break;
                                                                                 case 'Vehicle':
                                                                                     $icon = 'truck';
+                                                                                    $iconColor = '#dc3545';
                                                                                     break;
                                                                                 case 'Office Equipment':
                                                                                     $icon = 'printer';
+                                                                                    $iconColor = '#ffc107';
                                                                                     break;
                                                                                 case 'Real Estate':
                                                                                     $icon = 'layout';
+                                                                                    $iconColor = '#6f42c1';
                                                                                     break;
                                                                                 case 'Software':
                                                                                     $icon = 'code';
+                                                                                    $iconColor = '#20c997';
                                                                                     break;
                                                                             }
                                                                             ?>
-                                                                            <div class="mr-3 bg-light p-2 rounded">
+                                                                            <div class="asset-icon" style="background: linear-gradient(45deg, <?php echo $iconColor; ?>, <?php echo $iconColor; ?>dd);">
                                                                                 <i class="feather icon-<?php echo h($icon); ?>"></i>
                                                                             </div>
-                                                                            <div>
-                                                                                <h6 class="mb-0"><?php echo htmlspecialchars($asset['name']); ?></h6>
-                                                                                <small class="text-muted"><?php echo !empty($asset['serial_number']) ? 'SN: ' . htmlspecialchars($asset['serial_number']) : ''; ?></small>
+                                                                            <div class="asset-details">
+                                                                                <h6><?php echo htmlspecialchars($asset['name']); ?></h6>
+                                                                                <small><?php echo !empty($asset['serial_number']) ? 'SN: ' . htmlspecialchars($asset['serial_number']) : ''; ?></small>
                                                                             </div>
                                                                         </div>
                                                                     </td>
-                                                                    <td><span class="custom-badge bg-light"><?php echo htmlspecialchars($asset['category']); ?></span></td>
-                                                                    <td><?php echo date('M d, Y', strtotime($asset['purchase_date'])); ?></td>
+                                                                    <td><span class="category-badge"><?php echo htmlspecialchars($asset['category']); ?></span></td>
+                                                                    <td class="font-weight-medium"><?php echo date('M d, Y', strtotime($asset['purchase_date'])); ?></td>
                                                                     <td>
-                                                                        <strong><?php echo number_format($asset['current_value'], 2); ?></strong>
-                                                                        <small class="text-muted"><?php echo h($asset['currency']); ?></small>
-                                                                        
-                                                                        <?php 
-                                                                        // Calculate depreciation percentage
-                                                                        $depreciation = 0;
-                                                                        if ($asset['purchase_value'] > 0) {
-                                                                            $depreciation = 100 - (($asset['current_value'] / $asset['purchase_value']) * 100);
-                                                                        }
-                                                                        
-                                                                        $depreciationClass = 'success';
-                                                                        if ($depreciation > 25) $depreciationClass = 'info';
-                                                                        if ($depreciation > 50) $depreciationClass = 'warning';
-                                                                        if ($depreciation > 75) $depreciationClass = 'danger';
-                                                                        ?>
-                                                                        
-                                                                        <div class="progress mt-1 depreciation-progress">
-                                                                            <div class="progress-bar bg-<?php echo h($depreciationClass); ?>" role="progressbar" 
-                                                                                 style="width: <?php echo min(100, $depreciation); ?>%" 
-                                                                                 aria-valuenow="<?php echo h($depreciation); ?>" 
-                                                                                 aria-valuemin="0" 
-                                                                                 aria-valuemax="100" 
-                                                                                 title="Depreciated <?php echo round($depreciation, 1); ?>%">
+                                                                        <div class="d-flex flex-column">
+                                                                            <div class="asset-value">
+                                                                                <?php echo number_format($asset['current_value'], 2); ?>
+                                                                                <span class="asset-currency"><?php echo h($asset['currency']); ?></span>
+                                                                            </div>
+
+                                                                            <?php
+                                                                            // Calculate depreciation percentage
+                                                                            $depreciation = 0;
+                                                                            if ($asset['purchase_value'] > 0) {
+                                                                                $depreciation = 100 - (($asset['current_value'] / $asset['purchase_value']) * 100);
+                                                                            }
+
+                                                                            $depreciationClass = 'success';
+                                                                            if ($depreciation > 25) $depreciationClass = 'info';
+                                                                            if ($depreciation > 50) $depreciationClass = 'warning';
+                                                                            if ($depreciation > 75) $depreciationClass = 'danger';
+                                                                            ?>
+
+                                                                            <div class="depreciation-progress mt-2">
+                                                                                <div class="progress-bar bg-<?php echo h($depreciationClass); ?>" role="progressbar"
+                                                                                     style="width: <?php echo min(100, $depreciation); ?>%"
+                                                                                     aria-valuenow="<?php echo h($depreciation); ?>"
+                                                                                     aria-valuemin="0"
+                                                                                     aria-valuemax="100"
+                                                                                     title="Depreciated <?php echo round($depreciation, 1); ?>%">
+                                                                                </div>
                                                                             </div>
                                                                         </div>
                                                                     </td>
-                                                                    <td><?php echo htmlspecialchars($asset['location'] ?: 'N/A'); ?></td>
+                                                                    <td class="font-weight-medium"><?php echo htmlspecialchars($asset['location'] ?: 'N/A'); ?></td>
                                                                     <td>
                                                                         <?php
                                                                         // Define badge colors
                                                                         $statusClass = 'secondary';
                                                                         $statusIcon = 'circle';
-                                                                        
+
                                                                         switch($asset['status']) {
                                                                             case 'active':
                                                                                 $statusClass = 'success';
@@ -900,29 +1288,29 @@ if (count($assets) > 0) {
                                                                                 break;
                                                                         }
                                                                         ?>
-                                                                        <span class="badge badge-<?php echo h($statusClass); ?>">
+                                                                        <span class="status-badge status-<?php echo h($asset['status']); ?> status-badge-sm">
                                                                             <i class="feather icon-<?php echo h($statusIcon); ?> mr-1"></i>
                                                                             <?php echo ucfirst($asset['status']); ?>
                                                                         </span>
                                                                     </td>
                                                                     <td>
-                                                                        <div class="d-flex">
+                                                                        <div class="action-buttons">
                                                                             <!-- View Details Button -->
-                                                                            <button type="button" class="action-btn btn btn-icon btn-info btn-sm" data-toggle="modal" data-target="#viewAssetModal<?php echo h($asset['id']); ?>" title="<?= __('view_details') ?>">
+                                                                            <button type="button" class="action-btn btn btn-info" data-toggle="modal" data-target="#viewAssetModal<?php echo h($asset['id']); ?>" title="<?= __('view_details') ?>">
                                                                                 <i class="feather icon-eye"></i>
                                                                             </button>
-                                                                            
+
                                                                             <!-- Edit Button -->
-                                                                            <button type="button" class="action-btn btn btn-icon btn-warning btn-sm" data-toggle="modal" data-target="#editAssetModal<?php echo h($asset['id']); ?>" title="<?= __('edit_asset') ?>">
+                                                                            <button type="button" class="action-btn btn btn-warning" data-toggle="modal" data-target="#editAssetModal<?php echo h($asset['id']); ?>" title="<?= __('edit_asset') ?>">
                                                                                 <i class="feather icon-edit-2"></i>
                                                                             </button>
-                                                                            
+
                                                                             <!-- Status Actions Dropdown -->
                                                                             <div class="dropdown">
-                                                                                <button class="action-btn btn btn-icon btn-primary btn-sm dropdown-toggle" type="button" id="dropdownMenuButton<?php echo h($asset['id']); ?>" data-toggle="dropdown" aria-haspopup="true" aria-expanded="false">
+                                                                                <button class="action-btn btn btn-primary dropdown-toggle" type="button" id="dropdownMenuButton<?php echo h($asset['id']); ?>" data-toggle="dropdown" aria-haspopup="true" aria-expanded="false">
                                                                                     <i class="feather icon-more-vertical"></i>
                                                                                 </button>
-                                                                                <div class="dropdown-menu dropdown-menu-right" aria-labelledby="dropdownMenuButton<?php echo h($asset['id']); ?>">
+                                                                                <div class="dropdown-menu dropdown-menu-right shadow-lg border-0" aria-labelledby="dropdownMenuButton<?php echo h($asset['id']); ?>">
                                                                                     <?php if ($asset['status'] === 'active'): ?>
                                                                                         <form method="POST" onsubmit="return confirm('<?= __('are_you_sure_you_want_to_deactivate_this_asset') ?>');">
 
@@ -1004,6 +1392,8 @@ if (count($assets) > 0) {
         </div>
     </div>
 
+<!-- Include Admin Footer -->
+<?php include '../includes/admin_footer.php'; ?>
     <!-- Add Asset Modal -->
     <div class="modal fade" id="addAssetModal" tabindex="-1" role="dialog" aria-labelledby="addAssetModalLabel" aria-hidden="true">
         <div class="modal-dialog modal-lg" role="document">
@@ -1948,7 +2338,5 @@ $(document).on('click', '.openEditFromView', function() {
     });
 });
 </script>
-<!-- Include Admin Footer -->
-<?php include '../includes/admin_footer.php'; ?>
 </body>
 </html> 

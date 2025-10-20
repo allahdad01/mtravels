@@ -423,11 +423,14 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['delete_transaction'])
         $result = $stmt->get_result();
         $debtor = $result->fetch_assoc();
         
-        // Update debtor balance (add amount back)
-        $new_balance = $debtor['balance'] + $transaction['amount'];
-        $stmt = $conn->prepare("UPDATE debtors SET balance = ? WHERE id = ? AND tenant_id = ?");
-        $stmt->bind_param("dii", $new_balance, $debtor_id, $tenant_id);
-        $stmt->execute();
+        // Update debtor balance based on transaction type
+        if ($transaction['type'] == 'credit') {
+            $new_balance = $debtor['balance'] + $transaction['amount'];
+        } elseif ($transaction['type'] == 'debit') {
+            $new_balance = $debtor['balance'] - $transaction['amount'];
+        } else {
+            throw new Exception("Invalid transaction type");
+        }
         
         // Get main account info and update the correct currency balance
         $balance_column = strtolower($main_currency) . '_balance';
@@ -500,7 +503,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['deactivate_debtor']))
 // Handle debtor reactivation
 if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['reactivate_debtor'])) {
     $debtor_id = $_POST['debtor_id'];
-    
+
     try {
         $stmt = $conn->prepare("UPDATE debtors SET status = 'active' WHERE id = ? AND tenant_id = ?");
         $stmt->bind_param("ii", $debtor_id, $tenant_id);
@@ -510,6 +513,57 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['reactivate_debtor']))
         exit();
     } catch (Exception $e) {
         $_SESSION['error_message'] = "Error reactivating debtor: " . $e->getMessage();
+        header('Location: ' . $redirect_url);
+        exit();
+    }
+}
+
+// Handle debtor deletion
+if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['delete_debtor'])) {
+    $debtor_id = $_POST['debtor_id'];
+
+    try {
+        // Get debtor information
+        $stmt = $conn->prepare("SELECT * FROM debtors WHERE id = ? AND tenant_id = ?");
+        $stmt->bind_param("ii", $debtor_id, $tenant_id);
+        $stmt->execute();
+        $result = $stmt->get_result();
+        $debtor = $result->fetch_assoc();
+
+        if (!$debtor) {
+            throw new Exception("Debtor not found");
+        }
+
+        // Check if debtor has any transactions
+        $stmt = $conn->prepare("SELECT COUNT(*) as transaction_count FROM debtor_transactions WHERE debtor_id = ? AND tenant_id = ?");
+        $stmt->bind_param("ii", $debtor_id, $tenant_id);
+        $stmt->execute();
+        $result = $stmt->get_result();
+        $transaction_count = $result->fetch_assoc()['transaction_count'];
+
+        if ($transaction_count > 0) {
+            $_SESSION['error_message'] = "Cannot delete debtor. Please delete all transactions for this debtor first, then come back and delete the debtor.";
+            header('Location: ' . $redirect_url);
+            exit();
+        }
+
+        // If no transactions, proceed with deletion
+        $conn->begin_transaction();
+
+        // Delete the debtor
+        $stmt = $conn->prepare("DELETE FROM debtors WHERE id = ? AND tenant_id = ?");
+        $stmt->bind_param("ii", $debtor_id, $tenant_id);
+        $stmt->execute();
+
+        $conn->commit();
+        $_SESSION['success_message'] = "Debtor deleted successfully!";
+        header('Location: ' . $redirect_url);
+        exit();
+    } catch (Exception $e) {
+        if (isset($conn) && $conn->connect_error === null) {
+            $conn->rollback();
+        }
+        $_SESSION['error_message'] = "Error deleting debtor: " . $e->getMessage();
         header('Location: ' . $redirect_url);
         exit();
     }

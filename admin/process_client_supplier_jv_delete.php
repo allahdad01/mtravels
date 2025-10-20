@@ -142,14 +142,12 @@ try {
                 // Get all subsequent client transactions in the same currency
                 $laterClientTransQuery = "SELECT id, balance FROM client_transactions 
                     WHERE client_id = ? AND currency = ? AND 
-                        (created_at > ? OR (created_at = ? AND id > ?)) 
-                    ORDER BY created_at ASC, id ASC";
+                         id > ? 
+                    ORDER BY id ASC";
                 $laterClientTransStmt = $pdo->prepare($laterClientTransQuery);
                 $laterClientTransStmt->execute([
                     $clientId, 
-                    $clientCurrency, 
-                    $clientTransDate, 
-                    $clientTransDate, 
+                    $clientCurrency,  
                     $clientTransId
                 ]);
                 
@@ -207,14 +205,12 @@ try {
                 // Get all subsequent client transactions in the same currency
                 $laterClientTransQuery = "SELECT id, balance FROM client_transactions 
                     WHERE client_id = ? AND currency = ? AND 
-                        (created_at > ? OR (created_at = ? AND id > ?)) 
-                    ORDER BY created_at ASC, id ASC";
+                        id > ? 
+                    ORDER BY id ASC";
                 $laterClientTransStmt = $pdo->prepare($laterClientTransQuery);
                 $laterClientTransStmt->execute([
                     $clientId, 
                     $clientCurrency, 
-                    $clientTransDate, 
-                    $clientTransDate, 
                     $clientTransId
                 ]);
                 
@@ -260,13 +256,11 @@ try {
                 // Get all subsequent supplier transactions
                 $laterSupplierTransQuery = "SELECT id, balance FROM supplier_transactions 
                     WHERE supplier_id = ? AND 
-                        (transaction_date > ? OR (transaction_date = ? AND id > ?)) AND tenant_id = ?
-                    ORDER BY transaction_date ASC, id ASC";
+                        id > ? AND tenant_id = ?
+                    ORDER BY id ASC";
                 $laterSupplierTransStmt = $pdo->prepare($laterSupplierTransQuery);
                 $laterSupplierTransStmt->execute([
-                    $supplierId, 
-                    $supplierTransDate, 
-                    $supplierTransDate, 
+                    $supplierId,  
                     $supplierTransId,
                     $tenant_id
                 ]);
@@ -325,13 +319,11 @@ try {
                 // Get all subsequent supplier transactions
                 $laterSupplierTransQuery = "SELECT id, balance FROM supplier_transactions 
                     WHERE supplier_id = ? AND 
-                        (transaction_date > ? OR (transaction_date = ? AND id > ?)) AND tenant_id = ?
-                    ORDER BY transaction_date ASC, id ASC";
+                        id > ? AND tenant_id = ?
+                    ORDER BY id ASC";
                 $laterSupplierTransStmt = $pdo->prepare($laterSupplierTransQuery);
                 $laterSupplierTransStmt->execute([
-                    $supplierId, 
-                    $supplierTransDate, 
-                    $supplierTransDate, 
+                    $supplierId,  
                     $supplierTransId,
                     $tenant_id
                 ]);
@@ -412,8 +404,8 @@ try {
         
         // Insert activity log
         $activity_log_stmt = $pdo->prepare("INSERT INTO activity_log 
-            (user_id, action, table_name, record_id, old_values, new_values, ip_address, user_agent, created_at) 
-            VALUES (?, 'delete', 'jv_payments', ?, ?, '{}', ?, ?, NOW()) AND tenant_id = ?");
+            (user_id, action, table_name, record_id, old_values, new_values, ip_address, user_agent, created_at, tenant_id) 
+            VALUES (?, 'delete', 'jv_payments', ?, ?, '{}', ?, ?, NOW(), ?)");
         
         $old_values_json = json_encode($old_values);
         $activity_log_stmt->execute([$user_id, $paymentId, $old_values_json, $ip_address, $user_agent, $tenant_id]);
