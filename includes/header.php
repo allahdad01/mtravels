@@ -157,145 +157,7 @@ if (isset($_GET['debug'])) {
 <!DOCTYPE html>
 <html lang="<?= get_current_lang() ?>" dir="<?= get_lang_dir() ?>">
 <head>
-    <?php if (is_rtl()): ?>
-    <style>
-        /* === CRITICAL RTL SIDEBAR FIXES === */
-        /* Force right positioning for the entire sidebar */
-        .pcoded-navbar {
-            right: 0 !important; 
-            left: auto !important; 
-            direction: rtl !important;
-            text-align: right !important;
-        }
-        
-        /* Force all menu items to display icons on right and text on left */
-        .pcoded-navbar li a,
-        .pcoded-navbar .nav-item a,
-        .pcoded-navbar .pcoded-inner-navbar li a {
-            display: flex !important;
-            flex-direction: row !important; /* This is key - normal direction but with right alignment */
-            justify-content: flex-start !important;
-            align-items: center !important;
-            text-align: right !important;
-            width: 100% !important;
-        }
-        
-        /* Force icon positions to the right of text */
-        .pcoded-navbar .pcoded-micon,
-        .pcoded-navbar i.feather,
-        .pcoded-navbar i.fas {
-            float: right !important;
-            margin-left: 0 !important; 
-            margin-right: 12px !important; /* Icon on right side of text */
-            order: 2 !important; /* Icon comes second */
-        }
-        
-        /* Text alignment */
-        .pcoded-navbar .pcoded-mtext {
-            float: left !important;
-            text-align: right !important;
-            order: 1 !important; /* Text comes first */
-        }
-        
-        /* Menu captions */
-        .pcoded-navbar .pcoded-menu-caption {
-            text-align: right !important;
-            padding-right: 20px !important;
-        }
-        
-        /* Submenu positioning */
-        .pcoded-navbar .pcoded-submenu {
-            padding-right: 40px !important;
-            padding-left: 0 !important;
-        }
-        
-        /* Arrow positioning for dropdown menus */
-        .pcoded-navbar li.pcoded-hasmenu > a:after {
-            position: absolute !important;
-            left: 20px !important;
-            right: auto !important;
-        }
-        
-        /* Adjust spacing for header and main container */
-        .pcoded-header {
-            margin-right: 264px !important;
-            margin-left: 0 !important;
-        }
-        .pcoded-main-container {
-            margin-right: 264px !important;
-            margin-left: 0 !important;
-        }
 
-        /* === RTL HEADER DROPDOWN FIXES === */
-        /* Header dropdown positioning */
-        .pcoded-header .dropdown .dropdown-menu {
-            left: 0 !important;
-            right: auto !important;
-            text-align: right !important;
-            transform-origin: top left !important;
-        }
-
-        /* Fix dropdown arrow indicator */
-        .pcoded-header .dropdown .dropdown-menu:before {
-            right: auto !important;
-            left: 10px !important;
-        }
-
-        /* Dropdown items alignment */
-        .pcoded-header .dropdown .dropdown-menu .dropdown-item {
-            text-align: right !important;
-            direction: rtl !important;
-        }
-
-        /* Profile dropdown specific fixes */
-        .pcoded-header .dropdown .profile-notification {
-            left: 0 !important;
-            right: auto !important;
-        }
-
-        .pcoded-header .dropdown .profile-notification .pro-head {
-            display: flex !important;
-            flex-direction: row-reverse !important;
-            text-align: right !important;
-        }
-
-        .pcoded-header .dropdown .profile-notification .pro-body li {
-            text-align: right !important;
-        }
-
-        .pcoded-header .dropdown .profile-notification .pro-body li a {
-            display: flex !important;
-            flex-direction: row-reverse !important;
-            text-align: right !important;
-        }
-
-        .pcoded-header .dropdown .profile-notification .pro-body li a i {
-            margin-right: 0 !important;
-            margin-left: 10px !important;
-        }
-
-        /* Language dropdown specific fixes */
-        .pcoded-header .dropdown .icon.feather.icon-globe + .dropdown-menu {
-            min-width: 160px !important;
-        }
-
-        /* Mobile specific dropdown fixes */
-        @media (max-width: 991px) {
-            .pcoded-header .dropdown .dropdown-menu {
-                position: absolute !important;
-                left: 0 !important;
-                right: auto !important;
-            }
-        }
-
-        /* Hide dropdown arrows */
-        html[dir="rtl"] .pcoded-header .dropdown-toggle::after,
-        body.rtl .pcoded-header .dropdown-toggle::after,
-        html[dir="rtl"] .pcoded-header .dropdown .dropdown-toggle::after,
-        body.rtl .pcoded-header .dropdown .dropdown-toggle::after {
-            display: none !important;
-        }
-    </style>
     <style>
 /* Apply gradient background to card headers matching the sidebar */
 .card-header {
@@ -323,84 +185,7 @@ if (isset($_GET['debug'])) {
     border-color: rgba(255, 255, 255, 0.5) !important;
 }
 </style>
-    <script>
-        // Apply RTL styles immediately and after DOM load
-        (function() {
-            function forceRTL() {
-                // Target the sidebar
-                var navbar = document.querySelector('.pcoded-navbar');
-                if (!navbar) return;
-                
-                // Set fundamental RTL properties
-                navbar.style.right = '0';
-                navbar.style.left = 'auto';
-                navbar.style.direction = 'rtl';
-                navbar.style.textAlign = 'right';
-                
-                // Force direction on all menu items
-                var menuItems = navbar.querySelectorAll('.nav-item a, .pcoded-inner-navbar li a');
-                menuItems.forEach(function(item) {
-                    // Style flex container
-                    item.style.display = 'flex';
-                    item.style.flexDirection = 'row'; // Normal direction, we'll use order to control placement
-                    item.style.justifyContent = 'flex-start';
-                    item.style.alignItems = 'center';
-                    item.style.textAlign = 'right';
-                    item.style.width = '100%';
-                    
-                    // Position icons on the right side
-                    var icon = item.querySelector('.pcoded-micon, i.feather, i.fas');
-                    if (icon) {
-                        icon.style.float = 'right';
-                        icon.style.marginLeft = '0';
-                        icon.style.marginRight = '12px';
-                        icon.style.order = '2'; // Icon comes second
-                    }
-                    
-                    // Position text
-                    var text = item.querySelector('.pcoded-mtext');
-                    if (text) {
-                        text.style.float = 'left';
-                        text.style.textAlign = 'right';
-                        text.style.order = '1'; // Text comes first
-                    }
-                });
-                
-                // Style submenu padding
-                var submenus = navbar.querySelectorAll('.pcoded-submenu');
-                submenus.forEach(function(submenu) {
-                    submenu.style.paddingRight = '40px';
-                    submenu.style.paddingLeft = '0';
-                });
 
-                // Fix header dropdowns
-                var headerDropdowns = document.querySelectorAll('.pcoded-header .dropdown');
-                headerDropdowns.forEach(function(dropdown) {
-                    var menu = dropdown.querySelector('.dropdown-menu');
-                    if (menu) {
-                        // Set RTL positioning
-                        menu.style.left = '0';
-                        menu.style.right = 'auto';
-                        menu.style.textAlign = 'right';
-                        
-                        // Fix dropdown item alignment
-                        var items = menu.querySelectorAll('.dropdown-item');
-                        items.forEach(function(item) {
-                            item.style.textAlign = 'right';
-                        });
-                    }
-                });
-            }
-            
-            // Apply immediately
-            forceRTL();
-            
-            // Also apply after DOM loaded and a short delay
-            document.addEventListener('DOMContentLoaded', forceRTL);
-            setTimeout(forceRTL, 500);
-        })();
-    </script>
-    <?php endif; ?>
     <title><?= htmlspecialchars($settings['agency_name']) ?></title>
   
     <!-- Meta -->
@@ -420,405 +205,1253 @@ if (isset($_GET['debug'])) {
         <!-- DataTables CSS -->
         <link rel="stylesheet" type="text/css" href="https://cdn.datatables.net/1.11.5/css/dataTables.bootstrap4.min.css">
     <link rel="stylesheet" type="text/css" href="https://cdn.datatables.net/responsive/2.2.9/css/responsive.bootstrap4.min.css">
-    <!-- RTL support -->
-    <?php if (is_rtl()): ?>
-    <link rel="stylesheet" href="../assets/css/force-rtl.css">
-    <link rel="stylesheet" href="../assets/css/rtl-reset.css">
-    <link rel="stylesheet" href="../assets/css/rtl.css">
-    <script src="../assets/js/rtl-extreme-fix.js"></script>
-    <script src="../assets/js/rtl-fix.js"></script>
-    <script src="../assets/js/rtl-header-fix.js"></script>
-    <!-- Force dropdowns to work properly in RTL mode -->
-    <style>
-        /* Critical header dropdown fixes */
-        html[dir="rtl"] .dropdown-menu.show,
-        body.rtl .dropdown-menu.show {
-            display: block !important;
-            visibility: visible !important;
-        }
-        
-        /* Bootstrap RTL patch for dropdowns */
-        html[dir="rtl"] .dropdown-menu,
-        body.rtl .dropdown-menu {
-            position: absolute !important;
-            float: left !important;
-            text-align: right !important;
-            left: 0 !important;
-            right: auto !important;
-        }
-        
-        /* Force dropdowns to be properly positioned */
-        @media (min-width: 992px) {
-            html[dir="rtl"] .pcoded-header .ml-auto .dropdown-menu,
-            body.rtl .pcoded-header .ml-auto .dropdown-menu {
-                position: absolute !important;
-                left: 0 !important;
-                right: auto !important;
-            }
-        }
-    
-</style>
-<?php endif; ?>
+
 
 <style>
-/* Enhanced Sidebar Styles */
-.pcoded-navbar {
-    background: linear-gradient(135deg, #4099ff 0%, #2ed8b6 100%) !important;
-    box-shadow: 2px 0 15px rgba(0,0,0,0.15) !important;
+    /* Enhanced Sidebar Styles */
+    .pcoded-navbar {
+        background: linear-gradient(135deg, #4099ff 0%, #2ed8b6 100%) !important;
+        box-shadow: 2px 0 15px rgba(0,0,0,0.15) !important;
+    }
+
+    /* Fix logo display when sidebar is collapsed */
+    .pcoded-navbar.navbar-collapsed .header-logo img {
+        transform: rotateY(0deg) !important;
+        -webkit-transform: rotateY(0deg) !important;
+    }
+
+    .pcoded-navbar .navbar-brand {
+        background: rgba(255,255,255,0.1) !important;
+        border-radius: 8px !important;
+        margin: 10px !important;
+    }
+
+    /* White text and icons for better contrast */
+    .pcoded-navbar li a,
+    .pcoded-navbar .pcoded-mtext {
+        color: #ffffff !important;
+    }
+
+    .pcoded-navbar .pcoded-micon,
+    .pcoded-navbar i.feather,
+    .pcoded-navbar i.fas {
+        color: #ffffff !important;
+    }
+
+    .pcoded-navbar .navbar-brand .b-title {
+        color: #ffffff !important;
+    }
+
+    .pcoded-navbar .pcoded-menu-caption label {
+        color: rgba(255,255,255,0.8) !important;
+    }
+
+    .pcoded-navbar li a {
+        transition: all 0.3s ease !important;
+        border-radius: 6px !important;
+        margin: 2px 8px !important;
+    }
+
+    .pcoded-navbar li a:hover {
+        background: rgba(255,255,255,0.15) !important;
+        transform: translateX(5px) !important;
+        box-shadow: 0 4px 12px rgba(0,0,0,0.2) !important;
+        color: #ffffff !important;
+    }
+
+    .pcoded-navbar li a:hover .pcoded-mtext,
+    .pcoded-navbar li a:hover .pcoded-micon,
+    .pcoded-navbar li a:hover i.feather,
+    .pcoded-navbar li a:hover i.fas {
+        color: #ffffff !important;
+    }
+
+    /* Active menu items */
+    .pcoded-navbar li.active a,
+    .pcoded-navbar li.pcoded-trigger a {
+        color: #ffffff !important;
+        background: rgba(255,255,255,0.2) !important;
+    }
+
+    .pcoded-navbar li.active a .pcoded-mtext,
+    .pcoded-navbar li.active a .pcoded-micon,
+    .pcoded-navbar li.active i.feather,
+    .pcoded-navbar li.active i.fas,
+    .pcoded-navbar li.pcoded-trigger a .pcoded-mtext,
+    .pcoded-navbar li.pcoded-trigger a .pcoded-micon,
+    .pcoded-navbar li.pcoded-trigger i.feather,
+    .pcoded-navbar li.pcoded-trigger i.fas {
+        color: #ffffff !important;
+    }
+
+    /* Submenu styling */
+    .pcoded-navbar .pcoded-submenu {
+        background: linear-gradient(135deg, #4099ff 0%, #2ed8b6 100%) !important;
+        border: none !important;
+    }
+
+    .pcoded-navbar .pcoded-submenu li a {
+        color: #ffffff !important;
+        background: transparent !important;
+    }
+
+    .pcoded-navbar .pcoded-submenu li a:hover {
+        background: rgba(255,255,255,0.15) !important;
+        color: #ffffff !important;
+    }
+
+    .pcoded-navbar .pcoded-submenu li a .pcoded-mtext,
+    .pcoded-navbar .pcoded-submenu li a .pcoded-micon,
+    .pcoded-navbar .pcoded-submenu li a i.feather,
+    .pcoded-navbar .pcoded-submenu li a i.fas {
+        color: #ffffff !important;
+    }
+
+    .pcoded-navbar .pcoded-submenu li.active a,
+    .pcoded-navbar .pcoded-submenu li.pcoded-trigger a {
+        background: rgba(255,255,255,0.2) !important;
+        color: #ffffff !important;
+    }
+
+    .pcoded-navbar .pcoded-micon {
+        transition: transform 0.3s ease !important;
+    }
+
+    .pcoded-navbar li a:hover .pcoded-micon {
+        transform: scale(1.1) !important;
+    }
+
+    /* Enhanced Header Styles */
+    .pcoded-header {
+        background: #ffffff !important;
+        box-shadow: 0 2px 15px rgba(0,0,0,0.1) !important;
+        border-bottom: 1px solid #e5e7eb !important;
+    }
+
+    .pcoded-header .navbar-nav li {
+        margin: 0 5px !important;
+    }
+
+    .pcoded-header .navbar-nav li a {
+        transition: all 0.3s ease !important;
+        border-radius: 6px !important;
+        padding: 8px 12px !important;
+    }
+
+    .pcoded-header .navbar-nav li a:hover {
+        background: rgba(79, 70, 229, 0.1) !important;
+    }
+
+
+    .pcoded-header .dropdown-menu {
+        border-radius: 8px !important;
+        box-shadow: 0 4px 20px rgba(0,0,0,0.15) !important;
+        border: none !important;
+    }
+
+    .pcoded-header .dropdown-item {
+        transition: background 0.3s ease !important;
+    }
+
+    .pcoded-header .dropdown-item:hover {
+        background: rgba(79, 70, 229, 0.1) !important;
+    }
+
+    /* Global Button Styling with Gradient */
+    .btn-primary,
+    .btn-success,
+    .btn-info,
+    .btn-warning,
+    .btn-danger,
+    .btn-secondary,
+    .btn-light,
+    .btn-dark,
+    .btn-outline-primary,
+    .btn-outline-success,
+    .btn-outline-info,
+    .btn-outline-warning,
+    .btn-outline-danger,
+    .btn-outline-secondary,
+    .btn-outline-light,
+    .btn-outline-dark,
+    button[type="submit"],
+    button[type="button"],
+    input[type="submit"],
+    input[type="button"],
+    .btn {
+        background: linear-gradient(135deg, #4099ff 0%, #2ed8b6 100%) !important;
+        border: none !important;
+        color: #ffffff !important;
+        transition: all 0.3s ease !important;
+    }
+
+    .btn-primary:hover,
+    .btn-success:hover,
+    .btn-info:hover,
+    .btn-warning:hover,
+    .btn-danger:hover,
+    .btn-secondary:hover,
+    .btn-light:hover,
+    .btn-dark:hover,
+    .btn-outline-primary:hover,
+    .btn-outline-success:hover,
+    .btn-outline-info:hover,
+    .btn-outline-warning:hover,
+    .btn-outline-danger:hover,
+    .btn-outline-secondary:hover,
+    .btn-outline-light:hover,
+    .btn-outline-dark:hover,
+    button[type="submit"]:hover,
+    button[type="button"]:hover,
+    input[type="submit"]:hover,
+    input[type="button"]:hover,
+    .btn:hover {
+        background: linear-gradient(135deg, #2ed8b6 0%, #4099ff 100%) !important;
+        color: #ffffff !important;
+        transform: translateY(-1px) !important;
+        box-shadow: 0 4px 12px rgba(64, 153, 255, 0.3) !important;
+    }
+
+    .btn-primary:focus,
+    .btn-success:focus,
+    .btn-info:focus,
+    .btn-warning:focus,
+    .btn-danger:focus,
+    .btn-secondary:focus,
+    .btn-light:focus,
+    .btn-dark:focus,
+    .btn-outline-primary:focus,
+    .btn-outline-success:focus,
+    .btn-outline-info:focus,
+    .btn-outline-warning:focus,
+    .btn-outline-danger:focus,
+    .btn-outline-secondary:focus,
+    .btn-outline-light:focus,
+    .btn-outline-dark:focus,
+    button[type="submit"]:focus,
+    button[type="button"]:focus,
+    input[type="submit"]:focus,
+    input[type="button"]:focus,
+    .btn:focus {
+        background: linear-gradient(135deg, #4099ff 0%, #2ed8b6 100%) !important;
+        color: #ffffff !important;
+        box-shadow: 0 0 0 0.2rem rgba(64, 153, 255, 0.25) !important;
+    }
+
+    /* Specific button variations */
+    .btn-outline-primary,
+    .btn-outline-success,
+    .btn-outline-info,
+    .btn-outline-warning,
+    .btn-outline-danger,
+    .btn-outline-secondary,
+    .btn-outline-light,
+    .btn-outline-dark {
+        border-color: #4099ff !important;
+        color: #4099ff !important;
+    }
+
+    .btn-outline-primary:hover,
+    .btn-outline-success:hover,
+    .btn-outline-info:hover,
+    .btn-outline-warning:hover,
+    .btn-outline-danger:hover,
+    .btn-outline-secondary:hover,
+    .btn-outline-light:hover,
+    .btn-outline-dark:hover {
+        border-color: #4099ff !important;
+    }
+
+    /* Button groups and dropdowns */
+    .btn-group .btn,
+    .dropdown-menu .btn {
+        background: linear-gradient(135deg, #4099ff 0%, #2ed8b6 100%) !important;
+        color: #ffffff !important;
+    }
+
+    /* Modal buttons */
+    .modal-footer .btn,
+    .modal-header .btn {
+        background: linear-gradient(135deg, #4099ff 0%, #2ed8b6 100%) !important;
+        color: #ffffff !important;
+    }
+
+    /* Form buttons */
+    .form-group .btn,
+    input[type="submit"],
+    input[type="button"] {
+        background: linear-gradient(135deg, #4099ff 0%, #2ed8b6 100%) !important;
+        color: #ffffff !important;
+    }
+
+    /* Special cases */
+    .btn-close,
+    .close {
+        color: #ffffff !important;
+        opacity: 0.8 !important;
+    }
+
+    .btn-close:hover,
+    .close:hover {
+        color: #ffffff !important;
+        opacity: 1 !important;
+    }
+    /* ============================================
+   COMPLETE RTL LAYOUT FIXES - UPDATED VERSION
+   ============================================ */
+
+    /* RTL Base Layout */
+    html[dir="rtl"] body {
+        direction: rtl;
+        text-align: right;
+    }
+
+    /* ============================================
+    RTL SIDEBAR - COMPLETE FIX
+    ============================================ */
+
+    /* RTL Sidebar Positioning */
+    html[dir="rtl"] .pcoded-navbar {
+        right: 0;
+        left: auto;
+        overflow-x: hidden;
+    }
+
+    html[dir="rtl"] .pcoded-navbar.navbar-collapsed {
+        right: 0;
+        left: auto;
+    }
+
+    /* RTL Main Content Area */
+    html[dir="rtl"] .pcoded-main-container {
+        margin-right: 264px;
+        margin-left: 0;
+    }
+
+    html[dir="rtl"] .pcoded-wrapper.navbar-collapsed .pcoded-main-container {
+        margin-right: 70px;
+        margin-left: 0;
+    }
+
+    /* RTL Header */
+    html[dir="rtl"] .pcoded-header {
+        right: 264px;
+        left: 0;
+    }
+
+    html[dir="rtl"] .pcoded-wrapper.navbar-collapsed .pcoded-header {
+        right: 70px;
+        left: 0;
+    }
+
+    /* ============================================
+    FIX FOR 40PX GAP - MENU ITEMS PADDING & SPACING
+    ============================================ */
+
+    /* Remove default padding and reset for RTL menu items */
+    html[dir="rtl"] .pcoded-navbar li a {
+        padding-right: 15px !important;
+        padding-left: 0 !important;
+        display: flex !important;
+        flex-direction: row !important;
+        align-items: center !important;
+        justify-content: flex-start !important;
+        gap: 10px !important;
+        box-sizing: border-box !important;
+    }
+
+    /* Fix the menu icon container width */
+    html[dir="rtl"] .pcoded-navbar .pcoded-micon {
+        width: 20px !important;
+        min-width: 20px !important;
+        max-width: 20px !important;
+        margin-left: 10px !important;
+        margin-right: 0 !important;
+        padding: 0 !important;
+        order: 2 !important;
+        flex: 0 0 auto !important;
+    }
+
+    /* Ensure text takes remaining space without overflow */
+    html[dir="rtl"] .pcoded-navbar .pcoded-mtext {
+        flex: 1 1 auto !important;
+        padding: 5px !important;
+        margin: 0 20px !important;
+        overflow: hidden !important;
+        text-overflow: ellipsis !important;
+        white-space: nowrap !important;
+        text-align: right !important;
+        order: 1 !important;
+    }
+
+    /* Fix hover effect direction */
+    html[dir="rtl"] .pcoded-navbar li a:hover {
+        transform: translateX(-3px) !important;
+    }
+
+    /* ============================================
+    SUBMENU FIXES
+    ============================================ */
+
+    /* RTL Submenu Container */
+    html[dir="rtl"] .pcoded-navbar .pcoded-submenu {
+        padding-right: 0 !important;
+        padding-left: 0 !important;
+    }
+
+    /* Fix submenu items padding */
+    html[dir="rtl"] .pcoded-navbar .pcoded-submenu li a {
+        padding-right: 40px !important;
+        padding-left: 0 !important;
+        display: flex !important;
+        flex-direction: row !important;
+        align-items: center !important;
+        justify-content: flex-start !important;
+        gap: 10px !important;
+    }
+
+    /* Submenu icon specific fix */
+    html[dir="rtl"] .pcoded-navbar .pcoded-submenu a i.feather,
+    html[dir="rtl"] .pcoded-navbar .pcoded-submenu a i.fas,
+    html[dir="rtl"] .pcoded-navbar .pcoded-submenu a i.fa {
+        width: 20px !important;
+        min-width: 20px !important;
+        text-align: center !important;
+        margin-left: 10px !important;
+        margin-right: 0 !important;
+        order: 2 !important;
+        flex: 0 0 auto !important;
+    }
+
+    /* Force submenu text to left */
+    html[dir="rtl"] .pcoded-navbar .pcoded-submenu li a > *:not(i) {
+        order: 1 !important;
+        flex: 1 !important;
+        text-align: right !important;
+    }
+
+    /* ============================================
+    ACTIVE STATE FIXES
+    ============================================ */
+
+    /* Fix for active menu items in RTL */
+    html[dir="rtl"] .pcoded-navbar li.active > a,
+    html[dir="rtl"] .pcoded-navbar li.pcoded-trigger > a {
+        background: rgba(255,255,255,0.2) !important;
+        border-right: 3px solid rgba(255,255,255,0.5) !important;
+        border-left: none !important;
+        padding-right: 12px !important; /* Compensate for border */
+    }
+
+    /* ============================================
+    NAVBAR CONTENT & STRUCTURE
+    ============================================ */
+
+    /* Fix for navbar content container */
+    html[dir="rtl"] .pcoded-navbar .navbar-content {
+        direction: rtl;
+        padding: 0 !important;
+    }
+
+    /* Fix for inner navbar */
+    html[dir="rtl"] .pcoded-navbar .pcoded-inner-navbar {
+        direction: rtl;
+        padding: 0 !important;
+        margin: 0 !important;
+    }
+
+    /* Ensure full width usage */
+    html[dir="rtl"] .pcoded-navbar .pcoded-inner-navbar > li {
+        width: 100% !important;
+        max-width: 100% !important;
+    }
+
+    /* Remove any extra spacing from list items */
+    html[dir="rtl"] .pcoded-navbar ul {
+        padding: 0 !important;
+        margin: 0 !important;
+    }
+
+    html[dir="rtl"] .pcoded-navbar li {
+        list-style: none !important;
+        padding: 0 !important;
+        margin: 0 !important;
+    }
+
+    /* ============================================
+    NAV-LINK SPECIFIC FIXES
+    ============================================ */
+
+    /* Remove any extra spacing from nav-link */
+    html[dir="rtl"] .pcoded-navbar .nav-link {
+        padding: 12px 15px 12px 0 !important;
+        width: 100% !important;
+        gap: 10px !important;
+        display: flex !important;
+        flex-direction: row !important;
+        justify-content: flex-start !important;
+    }
+
+    /* Fix icon alignment without extra space */
+    html[dir="rtl"] .pcoded-navbar .nav-link .pcoded-micon {
+        order: 2 !important;
+        flex: 0 0 auto !important;
+    }
+
+    html[dir="rtl"] .pcoded-navbar .nav-link .pcoded-mtext {
+        order: 1 !important;
+        flex: 1 !important;
+        text-align: right !important;
+    }
+
+    html[dir="rtl"] .pcoded-navbar .nav-link .pcoded-micon i {
+        display: block !important;
+        width: 20px !important;
+        text-align: center !important;
+    }
+
+    /* ============================================
+    MENU CAPTION & DROPDOWN ARROW
+    ============================================ */
+
+    /* RTL Menu Caption */
+    html[dir="rtl"] .pcoded-navbar .pcoded-menu-caption {
+        text-align: right;
+        padding-right: 15px !important;
+        padding-left: 0 !important;
+        margin: 0 !important;
+    }
+
+    html[dir="rtl"] .pcoded-navbar .pcoded-menu-caption label {
+        text-align: right;
+        display: block;
+    }
+
+    /* RTL Has Menu Arrow */
+    html[dir="rtl"] .pcoded-navbar .pcoded-hasmenu > a::after {
+        left: 10px !important;
+        right: auto !important;
+        position: absolute !important;
+        transform: rotate(180deg);
+    }
+
+    html[dir="rtl"] .pcoded-navbar .pcoded-hasmenu.pcoded-trigger > a::after {
+        transform: rotate(90deg);
+    }
+
+    /* ============================================
+    COLLAPSED STATE
+    ============================================ */
+
+    /* Collapsed state - ensure proper alignment */
+    html[dir="rtl"] .pcoded-navbar.navbar-collapsed li a {
+        padding-right: 0 !important;
+        padding-left: 0 !important;
+        justify-content: center !important;
+    }
+
+    /* Fix for collapsed state */
+    html[dir="rtl"] .pcoded-navbar.navbar-collapsed .pcoded-mtext {
+        display: none;
+    }
+
+    /* ============================================
+    NAVBAR BRAND
+    ============================================ */
+
+    /* RTL Navbar Brand */
+    html[dir="rtl"] .pcoded-navbar .navbar-brand .b-bg {
+        margin-left: 10px;
+        margin-right: 0;
+    }
+
+    html[dir="rtl"] .pcoded-navbar .navbar-brand {
+        text-align: right;
+        display: flex;
+        flex-direction: row-reverse;
+        align-items: center;
+    }
+
+    /* ============================================
+    SCROLLBAR
+    ============================================ */
+
+    /* RTL Scrollbar */
+    html[dir="rtl"] .pcoded-navbar .navbar-content::-webkit-scrollbar {
+        width: 6px;
+    }
+
+    html[dir="rtl"] .pcoded-navbar .navbar-content::-webkit-scrollbar-thumb {
+        background: rgba(255, 255, 255, 0.3);
+        border-radius: 3px;
+    }
+
+    /* ============================================
+    MOBILE & RESPONSIVE
+    ============================================ */
+
+    /* RTL Mobile Menu */
+    html[dir="rtl"] .mobile-menu {
+        left: 0;
+        right: auto;
+    }
+
+    /* ============================================
+    GENERAL RTL ELEMENTS
+    ============================================ */
+
+    /* RTL Dropdown Menus */
+    html[dir="rtl"] .dropdown-menu-right {
+        right: auto !important;
+        left: 0 !important;
+    }
+
+    html[dir="rtl"] .dropdown-menu {
+        text-align: right;
+    }
+
+    /* RTL Card Headers */
+    html[dir="rtl"] .card-header .card-header-right {
+        left: 20px;
+        right: auto;
+    }
+
+    /* RTL Form Elements */
+    html[dir="rtl"] .form-control {
+        text-align: right;
+    }
+
+    html[dir="rtl"] .input-group-append {
+        margin-left: 0;
+        margin-right: -1px;
+    }
+
+    html[dir="rtl"] .input-group-prepend {
+        margin-right: 0;
+        margin-left: -1px;
+    }
+
+    /* RTL Search Results */
+    html[dir="rtl"] .search-results-dropdown {
+        left: auto;
+        right: 0;
+    }
+
+    html[dir="rtl"] .search-result-item i {
+        margin-left: 10px;
+        margin-right: 0;
+    }
+
+    /* RTL Breadcrumbs */
+    html[dir="rtl"] .breadcrumb-item + .breadcrumb-item::before {
+        padding-right: 0;
+        padding-left: 0.5rem;
+    }
+
+    html[dir="rtl"] .breadcrumb-item + .breadcrumb-item {
+        padding-right: 0.5rem;
+        padding-left: 0;
+    }
+
+    /* RTL DataTables */
+    html[dir="rtl"] .dataTables_wrapper .dataTables_filter {
+        text-align: left;
+    }
+
+    html[dir="rtl"] .dataTables_wrapper .dataTables_length {
+        text-align: right;
+    }
+
+    html[dir="rtl"] .dataTables_wrapper .dataTables_info {
+        text-align: right;
+    }
+
+    html[dir="rtl"] .dataTables_wrapper .dataTables_paginate {
+        text-align: left;
+    }
+
+    /* RTL Buttons */
+    html[dir="rtl"] .btn-group > .btn:not(:last-child) {
+        margin-left: -1px;
+        margin-right: 0;
+    }
+
+    html[dir="rtl"] .btn-group > .btn:not(:first-child) {
+        margin-right: -1px;
+        margin-left: 0;
+    }
+
+    /* RTL Alerts */
+    html[dir="rtl"] .alert-dismissible .close {
+        left: 0;
+        right: auto;
+    }
+
+    /* RTL Modals */
+    html[dir="rtl"] .modal-header .close {
+        margin: -1rem auto -1rem -1rem;
+    }
+
+    html[dir="rtl"] .modal-footer > * {
+        margin-left: 0;
+        margin-right: 0.25rem;
+    }
+
+    /* RTL Navigation Pills/Tabs */
+    html[dir="rtl"] .nav-pills .nav-link,
+    html[dir="rtl"] .nav-tabs .nav-link {
+        text-align: right;
+    }
+
+    /* RTL List Groups */
+    html[dir="rtl"] .list-group-item {
+        text-align: right;
+    }
+
+    /* RTL Progress Bars */
+    html[dir="rtl"] .progress-bar {
+        right: 0;
+        left: auto;
+    }
+
+    /* RTL Badges */
+    html[dir="rtl"] .badge {
+        margin-left: 0.5rem;
+        margin-right: 0;
+    }
+
+    /* ============================================
+    FLOATING CHAT WIDGET
+    ============================================ */
+
+    /* Floating Chat Widget - Base Styles */
+    .alq-chat-fab {
+        position: fixed;
+        bottom: 20px;
+        width: 56px;
+        height: 56px;
+        border-radius: 50%;
+        background: #2563eb;
+        color: #fff;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        box-shadow: 0 8px 24px rgba(0,0,0,0.18);
+        cursor: pointer;
+        z-index: 2147483000;
+        transition: transform .15s ease-in-out, box-shadow .15s ease-in-out, background .15s ease-in-out;
+    }
+
+    /* LTR positioning */
+    html[dir="ltr"] .alq-chat-fab {
+        right: 20px;
+    }
+
+    html[dir="ltr"] .alq-chat-panel {
+        right: 20px;
+    }
+
+    html[dir="ltr"] .alq-chat-fab .unread-badge {
+        right: -8px;
+    }
+
+    /* RTL positioning */
+    html[dir="rtl"] .alq-chat-fab {
+        left: 20px;
+        right: auto;
+    }
+
+    html[dir="rtl"] .alq-chat-fab .unread-badge {
+        left: -8px;
+        right: auto;
+    }
+
+    html[dir="rtl"] .alq-chat-panel {
+        left: 20px;
+        right: auto;
+    }
+
+    .alq-chat-fab:hover { 
+        transform: translateY(-2px); 
+        box-shadow: 0 10px 28px rgba(0,0,0,0.22); 
+        background: #1d4ed8; 
+    }
+
+    .alq-chat-fab i { font-size: 22px; }
+
+    .alq-chat-fab .unread-badge {
+        position: absolute;
+        top: -8px;
+        background: #ef4444;
+        color: white;
+        border-radius: 10px;
+        padding: 2px 6px;
+        font-size: 12px;
+        font-weight: 600;
+        min-width: 18px;
+        text-align: center;
+        display: none;
+        z-index: 1;
+    }
+
+    .alq-chat-fab .unread-badge.show { display: block; }
+
+    .alq-chat-panel {
+        position: fixed;
+        bottom: 86px;
+        width: 400px;
+        max-width: calc(100% - 24px);
+        height: 70vh;
+        max-height: 720px;
+        background: #fff;
+        border-radius: 12px;
+        box-shadow: 0 12px 40px rgba(0,0,0,0.24);
+        overflow: hidden;
+        display: none;
+        z-index: 2147483000;
+    }
+
+    .alq-chat-panel.open { display: block; }
+
+    .alq-chat-panel__header {
+        height: 48px;
+        background: linear-gradient(135deg, #2563eb 0%, #1d4ed8 100%);
+        color: #fff;
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        padding: 0 12px;
+        font-weight: 600;
+    }
+
+    .alq-chat-panel__actions { display: flex; gap: 6px; }
+
+    .alq-chat-btn { 
+        background: transparent; 
+        border: 0; 
+        color: #fff; 
+        width: 32px; 
+        height: 32px; 
+        border-radius: 6px; 
+        cursor: pointer; 
+    }
+
+    .alq-chat-btn:hover { background: rgba(255,255,255,0.12); }
+
+    .alq-chat-iframe { width: 100%; height: calc(100% - 48px); border: 0; }
+
+    @media (max-width: 575.98px) {
+        .alq-chat-panel { 
+            width: calc(100% - 20px); 
+            height: 80vh; 
+            bottom: 76px; 
+        }
+        
+        html[dir="ltr"] .alq-chat-panel {
+            right: 10px;
+        }
+        
+        html[dir="ltr"] .alq-chat-fab {
+            right: 12px;
+        }
+        
+        html[dir="rtl"] .alq-chat-panel {
+            left: 10px;
+            right: auto;
+        }
+        
+        html[dir="rtl"] .alq-chat-fab {
+            left: 12px;
+            right: auto;
+        }
+    }
+
+/* ============================================
+MOBILE SIDEBAR - CLEAN LAYOUT FIX
+============================================ */
+
+@media (max-width: 991.98px) {
+ /* Ensure main content takes full width on mobile (sidebar is overlay) */
+ .pcoded-main-container {
+     margin-right: 0 !important;
+     margin-left: 0 !important;
+ }
+
+ /* Mobile floating hamburger button */
+ .mobile-menu-float {
+        position: fixed;
+        top: 20px;
+        left: 20px;
+        width: 50px;
+        height: 50px;
+        background: linear-gradient(135deg, #4099ff 0%, #2ed8b6 100%);
+        border-radius: 50%;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        cursor: pointer;
+        z-index: 1050;
+        box-shadow: 0 4px 20px rgba(0,0,0,0.3);
+        transition: all 0.3s ease;
+        padding: 0;
+    }
+
+    .mobile-menu-float:hover {
+        transform: scale(1.1);
+        box-shadow: 0 6px 25px rgba(0,0,0,0.4);
+    }
+
+    .mobile-menu-float .mobile-menu {
+        display: flex !important;
+        flex-direction: column;
+        align-items: center;
+        justify-content: center;
+        margin: 0;
+        padding: 0;
+        width: 24px;
+        height: 18px;
+        position: relative;
+    }
+
+    .mobile-menu-float .mobile-menu span {
+        width: 100%;
+        margin-top: 5px;
+        height: 2px;
+        background: #ffffff;
+        border-radius: 2px;
+        display: block;
+        transition: all 0.3s ease;
+        position: absolute;
+        left: 0;
+    }
+
+    .mobile-menu-float .mobile-menu span:nth-child(1) { 
+        top: 0;
+    }
+    
+    .mobile-menu-float .mobile-menu span:nth-child(2) { 
+        top: 50%; 
+        transform: translateY(-50%);
+    }
+    
+    .mobile-menu-float .mobile-menu span:nth-child(3) { 
+        bottom: 0;
+    }
+
+    /* Animated hamburger when menu is open */
+    .mobile-menu-float.active .mobile-menu span:nth-child(1) {
+        top: 50%;
+        transform: translateY(-50%) rotate(45deg);
+    }
+
+    .mobile-menu-float.active .mobile-menu span:nth-child(2) {
+        opacity: 0;
+    }
+
+    .mobile-menu-float.active .mobile-menu span:nth-child(3) {
+        bottom: 50%;
+        transform: translateY(50%) rotate(-45deg);
+    }
+
+    /* RTL support for mobile button */
+    html[dir="rtl"] .mobile-menu-float {
+        left: auto;
+        right: 20px;
+    }
+
+    /* Hide the desktop navbar toggle */
+    .pcoded-navbar .navbar-brand .mobile-menu {
+        display: none !important;
+    }
+
+    /* Hide the original navbar on mobile by default */
+    .pcoded-navbar {
+        display: none;
+    }
+
+    /* Show sidebar as full-width overlay on mobile */
+    .pcoded-navbar.mobile-overlay {
+        display: block !important;
+        position: fixed;
+        top: 0;
+        left: 0;
+        width: 280px !important;
+        max-width: 85vw;
+        height: 100vh;
+        z-index: 1040;
+        transform: translateX(-100%);
+        transition: transform 0.3s ease;
+        overflow-y: auto;
+        overflow-x: hidden;
+    }
+
+    .pcoded-navbar.mobile-overlay.open {
+        transform: translateX(0);
+    }
+
+    /* RTL support for mobile sidebar */
+    html[dir="rtl"] .pcoded-navbar.mobile-overlay {
+        left: auto;
+        right: 0;
+        transform: translateX(100%);
+    }
+
+    html[dir="rtl"] .pcoded-navbar.mobile-overlay.open {
+        transform: translateX(0);
+    }
+
+    /* CRITICAL: Fix menu item layout */
+    .pcoded-navbar.mobile-overlay li a {
+        padding: 12px 15px !important;
+        display: flex !important;
+        flex-direction: row !important;
+        align-items: center !important;
+        justify-content: flex-start !important;
+        gap: 12px !important;
+        width: 100% !important;
+        box-sizing: border-box !important;
+    }
+
+    /* Reset all icon and text positioning */
+    .pcoded-navbar.mobile-overlay .pcoded-micon {
+        width: 24px !important;
+        min-width: 24px !important;
+        max-width: 24px !important;
+        height: 24px !important;
+        display: flex !important;
+        align-items: center !important;
+        justify-content: center !important;
+        flex-shrink: 0 !important;
+        order: 1 !important;
+        margin: 0 !important;
+        padding: 0 !important;
+        position: relative !important;
+    }
+
+    .pcoded-navbar.mobile-overlay .pcoded-micon i {
+        font-size: 18px !important;
+        line-height: 1 !important;
+        display: block !important;
+    }
+
+    .pcoded-navbar.mobile-overlay .pcoded-mtext {
+        flex: 1 !important;
+        display: block !important;
+        opacity: 1 !important;
+        visibility: visible !important;
+        white-space: nowrap !important;
+        order: 2 !important;
+        margin: 0 !important;
+        padding: 0 !important;
+        position: relative !important;
+        text-align: left !important;
+    }
+
+    /* RTL text alignment */
+    html[dir="rtl"] .pcoded-navbar.mobile-overlay .pcoded-mtext {
+        text-align: right !important;
+    }
+
+    /* Fix for submenu items */
+    .pcoded-navbar.mobile-overlay .pcoded-submenu li a {
+        padding-left: 45px !important;
+    }
+
+    html[dir="rtl"] .pcoded-navbar.mobile-overlay .pcoded-submenu li a {
+        padding-left: 15px !important;
+        padding-right: 45px !important;
+    }
+
+    /* Ensure submenu icons and text don't overlap */
+    .pcoded-navbar.mobile-overlay .pcoded-submenu .pcoded-micon {
+        width: 20px !important;
+        min-width: 20px !important;
+        max-width: 20px !important;
+    }
+
+    .pcoded-navbar.mobile-overlay .pcoded-submenu .pcoded-mtext {
+        display: block !important;
+        opacity: 1 !important;
+    }
+
+    /* Fix for has-menu arrow */
+    .pcoded-navbar.mobile-overlay .pcoded-hasmenu > a::after {
+        position: absolute !important;
+        right: 15px !important;
+        left: auto !important;
+    }
+
+    html[dir="rtl"] .pcoded-navbar.mobile-overlay .pcoded-hasmenu > a::after {
+        right: auto !important;
+        left: 15px !important;
+    }
+
+    /* Remove any transform on icons */
+    .pcoded-navbar.mobile-overlay .pcoded-micon,
+    .pcoded-navbar.mobile-overlay .pcoded-mtext {
+        transform: none !important;
+    }
+
+    /* Ensure logo section is visible */
+    .pcoded-navbar.mobile-overlay .navbar-brand.header-logo {
+        display: flex !important;
+        padding: 15px !important;
+        flex-direction: row !important;
+        align-items: center !important;
+        gap: 10px !important;
+    }
+
+    .pcoded-navbar.mobile-overlay .navbar-brand.header-logo .b-title {
+        display: inline-block !important;
+        opacity: 1 !important;
+    }
+
+    /* Language selector */
+    .pcoded-navbar.mobile-overlay .language-selector {
+        display: block !important;
+        padding: 10px 15px !important;
+        text-align: center !important;
+    }
+
+    /* Menu caption */
+    .pcoded-navbar.mobile-overlay .pcoded-menu-caption {
+        display: block !important;
+        padding: 10px 15px !important;
+        margin-top: 10px !important;
+    }
+
+    .pcoded-navbar.mobile-overlay .pcoded-menu-caption label {
+        display: block !important;
+        opacity: 1 !important;
+        font-size: 11px !important;
+        text-transform: uppercase !important;
+        letter-spacing: 0.5px !important;
+    }
+
+    /* User profile section at bottom */
+    .pcoded-navbar.mobile-overlay .navbar-brand.user-profile-section {
+        display: block !important;
+        position: fixed !important;
+        bottom: 0 !important;
+        left: 0 !important;
+        width: 280px !important;
+        max-width: 85vw !important;
+        border-top: 1px solid rgba(255,255,255,0.1) !important;
+        background: linear-gradient(135deg, #4099ff 0%, #2ed8b6 100%) !important;
+        z-index: 10 !important;
+    }
+
+    html[dir="rtl"] .pcoded-navbar.mobile-overlay .navbar-brand.user-profile-section {
+        left: auto !important;
+        right: 0 !important;
+    }
+
+    /* Navbar content padding for user profile */
+    .pcoded-navbar.mobile-overlay .navbar-content {
+        padding-bottom: 100px !important;
+    }
+
+    /* Mobile overlay background */
+    .mobile-menu-overlay {
+        position: fixed;
+        top: 0;
+        left: 0;
+        right: 0;
+        bottom: 0;
+        background: rgba(0, 0, 0, 0.5);
+        z-index: 1030;
+        opacity: 0;
+        visibility: hidden;
+        transition: all 0.3s ease;
+    }
+
+    .mobile-menu-overlay.show {
+        opacity: 1;
+        visibility: visible;
+    }
+
+    /* Force remove collapsed state on mobile */
+    .pcoded-navbar.mobile-overlay.navbar-collapsed {
+        width: 280px !important;
+        max-width: 85vw !important;
+    }
+
+    .pcoded-navbar.mobile-overlay.navbar-collapsed .pcoded-mtext {
+        display: block !important;
+        opacity: 1 !important;
+        visibility: visible !important;
+    }
+
+    .pcoded-navbar.mobile-overlay.navbar-collapsed .pcoded-micon {
+        margin: 0 !important;
+    }
 }
 
-/* Fix logo display when sidebar is collapsed */
-.pcoded-navbar.navbar-collapsed .header-logo img {
-    transform: rotateY(0deg) !important;
-    -webkit-transform: rotateY(0deg) !important;
+/* Tablet adjustments */
+@media (min-width: 576px) and (max-width: 991.98px) {
+    .pcoded-navbar.mobile-overlay {
+        width: 300px !important;
+    }
+    
+    .pcoded-navbar.mobile-overlay .navbar-brand.user-profile-section {
+        width: 300px !important;
+    }
 }
 
-.pcoded-navbar .navbar-brand {
-    background: rgba(255,255,255,0.1) !important;
-    border-radius: 8px !important;
-    margin: 10px !important;
-}
+    /* ============================================
+    RTL UTILITY CLASSES
+    ============================================ */
 
-/* White text and icons for better contrast */
-.pcoded-navbar li a,
-.pcoded-navbar .pcoded-mtext {
-    color: #ffffff !important;
-}
+    /* Additional RTL Utility Classes */
+    html[dir="rtl"] .mr-auto,
+    html[dir="rtl"] .mx-auto {
+        margin-right: 0 !important;
+        margin-left: auto !important;
+    }
 
-.pcoded-navbar .pcoded-micon,
-.pcoded-navbar i.feather,
-.pcoded-navbar i.fas {
-    color: #ffffff !important;
-}
+    html[dir="rtl"] .ml-auto,
+    html[dir="rtl"] .mx-auto {
+        margin-left: 0 !important;
+        margin-right: auto !important;
+    }
 
-.pcoded-navbar .navbar-brand .b-title {
-    color: #ffffff !important;
-}
+    html[dir="rtl"] .pr-0 { padding-right: 0 !important; padding-left: 0 !important; }
+    html[dir="rtl"] .pl-0 { padding-left: 0 !important; padding-right: 0 !important; }
+    html[dir="rtl"] .pr-1 { padding-right: 0.25rem !important; padding-left: 0.25rem !important; }
+    html[dir="rtl"] .pl-1 { padding-left: 0.25rem !important; padding-right: 0.25rem !important; }
+    html[dir="rtl"] .pr-2 { padding-right: 0.5rem !important; padding-left: 0.5rem !important; }
+    html[dir="rtl"] .pl-2 { padding-left: 0.5rem !important; padding-right: 0.5rem !important; }
+    html[dir="rtl"] .pr-3 { padding-right: 1rem !important; padding-left: 1rem !important; }
+    html[dir="rtl"] .pl-3 { padding-left: 1rem !important; padding-right: 1rem !important; }
+    html[dir="rtl"] .pr-4 { padding-right: 1.5rem !important; padding-left: 1.5rem !important; }
+    html[dir="rtl"] .pl-4 { padding-left: 1.5rem !important; padding-right: 1.5rem !important; }
+    html[dir="rtl"] .pr-5 { padding-right: 3rem !important; padding-left: 3rem !important; }
+    html[dir="rtl"] .pl-5 { padding-left: 3rem !important; padding-right: 3rem !important; }
 
-.pcoded-navbar .pcoded-menu-caption label {
-    color: rgba(255,255,255,0.8) !important;
-}
+    html[dir="rtl"] .mr-0 { margin-right: 0 !important; margin-left: 0 !important; }
+    html[dir="rtl"] .ml-0 { margin-left: 0 !important; margin-right: 0 !important; }
+    html[dir="rtl"] .mr-1 { margin-right: 0.25rem !important; margin-left: 0.25rem !important; }
+    html[dir="rtl"] .ml-1 { margin-left: 0.25rem !important; margin-right: 0.25rem !important; }
+    html[dir="rtl"] .mr-2 { margin-right: 0.5rem !important; margin-left: 0.5rem !important; }
+    html[dir="rtl"] .ml-2 { margin-left: 0.5rem !important; margin-right: 0.5rem !important; }
+    html[dir="rtl"] .mr-3 { margin-right: 1rem !important; margin-left: 1rem !important; }
+    html[dir="rtl"] .ml-3 { margin-left: 1rem !important; margin-right: 1rem !important; }
+    html[dir="rtl"] .mr-4 { margin-right: 1.5rem !important; margin-left: 1.5rem !important; }
+    html[dir="rtl"] .ml-4 { margin-left: 1.5rem !important; margin-right: 1.5rem !important; }
+    html[dir="rtl"] .mr-5 { margin-right: 3rem !important; margin-left: 3rem !important; }
+    html[dir="rtl"] .ml-5 { margin-left: 3rem !important; margin-right: 3rem !important; }
 
-.pcoded-navbar li a {
-    transition: all 0.3s ease !important;
-    border-radius: 6px !important;
-    margin: 2px 8px !important;
-}
+    html[dir="rtl"] .text-left { text-align: right !important; }
+    html[dir="rtl"] .text-right { text-align: left !important; }
 
-.pcoded-navbar li a:hover {
-    background: rgba(255,255,255,0.15) !important;
-    transform: translateX(5px) !important;
-    box-shadow: 0 4px 12px rgba(0,0,0,0.2) !important;
-    color: #ffffff !important;
-}
+    html[dir="rtl"] .float-left { float: right !important; }
+    html[dir="rtl"] .float-right { float: left !important; }
 
-.pcoded-navbar li a:hover .pcoded-mtext,
-.pcoded-navbar li a:hover .pcoded-micon,
-.pcoded-navbar li a:hover i.feather,
-.pcoded-navbar li a:hover i.fas {
-    color: #ffffff !important;
-}
-
-/* Active menu items */
-.pcoded-navbar li.active a,
-.pcoded-navbar li.pcoded-trigger a {
-    color: #ffffff !important;
-    background: rgba(255,255,255,0.2) !important;
-}
-
-.pcoded-navbar li.active a .pcoded-mtext,
-.pcoded-navbar li.active a .pcoded-micon,
-.pcoded-navbar li.active i.feather,
-.pcoded-navbar li.active i.fas,
-.pcoded-navbar li.pcoded-trigger a .pcoded-mtext,
-.pcoded-navbar li.pcoded-trigger a .pcoded-micon,
-.pcoded-navbar li.pcoded-trigger i.feather,
-.pcoded-navbar li.pcoded-trigger i.fas {
-    color: #ffffff !important;
-}
-
-/* Submenu styling */
-.pcoded-navbar .pcoded-submenu {
-    background: linear-gradient(135deg, #4099ff 0%, #2ed8b6 100%) !important;
-    border: none !important;
-}
-
-.pcoded-navbar .pcoded-submenu li a {
-    color: #ffffff !important;
-    background: transparent !important;
-}
-
-.pcoded-navbar .pcoded-submenu li a:hover {
-    background: rgba(255,255,255,0.15) !important;
-    color: #ffffff !important;
-}
-
-.pcoded-navbar .pcoded-submenu li a .pcoded-mtext,
-.pcoded-navbar .pcoded-submenu li a .pcoded-micon,
-.pcoded-navbar .pcoded-submenu li a i.feather,
-.pcoded-navbar .pcoded-submenu li a i.fas {
-    color: #ffffff !important;
-}
-
-.pcoded-navbar .pcoded-submenu li.active a,
-.pcoded-navbar .pcoded-submenu li.pcoded-trigger a {
-    background: rgba(255,255,255,0.2) !important;
-    color: #ffffff !important;
-}
-
-.pcoded-navbar .pcoded-micon {
-    transition: transform 0.3s ease !important;
-}
-
-.pcoded-navbar li a:hover .pcoded-micon {
-    transform: scale(1.1) !important;
-}
-
-/* Enhanced Header Styles */
-.pcoded-header {
-    background: #ffffff !important;
-    box-shadow: 0 2px 15px rgba(0,0,0,0.1) !important;
-    border-bottom: 1px solid #e5e7eb !important;
-}
-
-.pcoded-header .navbar-nav li {
-    margin: 0 5px !important;
-}
-
-.pcoded-header .navbar-nav li a {
-    transition: all 0.3s ease !important;
-    border-radius: 6px !important;
-    padding: 8px 12px !important;
-}
-
-.pcoded-header .navbar-nav li a:hover {
-    background: rgba(79, 70, 229, 0.1) !important;
-}
-
-.pcoded-header .main-search {
-    border-radius: 25px !important;
-    overflow: hidden !important;
-    background: #f3f4f6 !important;
-    position: relative !important;
-}
-
-.pcoded-header .main-search input {
-    border: none !important;
-    background: transparent !important;
-}
-
-.search-results-dropdown {
-    position: absolute !important;
-    top: 100% !important;
-    left: 0 !important;
-    right: 0 !important;
-    background: white !important;
-    border: 1px solid #e5e7eb !important;
-    border-radius: 8px !important;
-    box-shadow: 0 4px 20px rgba(0,0,0,0.15) !important;
-    max-height: 300px !important;
-    overflow-y: auto !important;
-    z-index: 1000 !important;
-    margin-top: 5px !important;
-}
-
-.search-result-item {
-    display: flex !important;
-    align-items: center !important;
-    gap: 10px !important;
-    padding: 10px 15px !important;
-    cursor: pointer !important;
-    transition: background 0.2s ease !important;
-    border-bottom: 1px solid #f3f4f6 !important;
-}
-
-.search-result-item:hover {
-    background: #f8fafc !important;
-}
-
-.search-result-item:last-child {
-    border-bottom: none !important;
-}
-
-.search-result-item i {
-    color: #4099ff !important;
-    font-size: 16px !important;
-    width: 16px !important;
-}
-
-.search-result-title {
-    flex: 1 !important;
-    font-weight: 500 !important;
-    color: #1f2937 !important;
-}
-
-.search-result-path {
-    font-size: 12px !important;
-    color: #6b7280 !important;
-}
-
-.search-no-results {
-    padding: 20px 15px !important;
-    text-align: center !important;
-    color: #9ca3af !important;
-    font-size: 14px !important;
-}
-
-.pcoded-header .dropdown-menu {
-    border-radius: 8px !important;
-    box-shadow: 0 4px 20px rgba(0,0,0,0.15) !important;
-    border: none !important;
-}
-
-.pcoded-header .dropdown-item {
-    transition: background 0.3s ease !important;
-}
-
-.pcoded-header .dropdown-item:hover {
-    background: rgba(79, 70, 229, 0.1) !important;
-}
-
-/* Global Button Styling with Gradient */
-.btn-primary,
-.btn-success,
-.btn-info,
-.btn-warning,
-.btn-danger,
-.btn-secondary,
-.btn-light,
-.btn-dark,
-.btn-outline-primary,
-.btn-outline-success,
-.btn-outline-info,
-.btn-outline-warning,
-.btn-outline-danger,
-.btn-outline-secondary,
-.btn-outline-light,
-.btn-outline-dark,
-button[type="submit"],
-button[type="button"],
-input[type="submit"],
-input[type="button"],
-.btn {
-    background: linear-gradient(135deg, #4099ff 0%, #2ed8b6 100%) !important;
-    border: none !important;
-    color: #ffffff !important;
-    transition: all 0.3s ease !important;
-}
-
-.btn-primary:hover,
-.btn-success:hover,
-.btn-info:hover,
-.btn-warning:hover,
-.btn-danger:hover,
-.btn-secondary:hover,
-.btn-light:hover,
-.btn-dark:hover,
-.btn-outline-primary:hover,
-.btn-outline-success:hover,
-.btn-outline-info:hover,
-.btn-outline-warning:hover,
-.btn-outline-danger:hover,
-.btn-outline-secondary:hover,
-.btn-outline-light:hover,
-.btn-outline-dark:hover,
-button[type="submit"]:hover,
-button[type="button"]:hover,
-input[type="submit"]:hover,
-input[type="button"]:hover,
-.btn:hover {
-    background: linear-gradient(135deg, #2ed8b6 0%, #4099ff 100%) !important;
-    color: #ffffff !important;
-    transform: translateY(-1px) !important;
-    box-shadow: 0 4px 12px rgba(64, 153, 255, 0.3) !important;
-}
-
-.btn-primary:focus,
-.btn-success:focus,
-.btn-info:focus,
-.btn-warning:focus,
-.btn-danger:focus,
-.btn-secondary:focus,
-.btn-light:focus,
-.btn-dark:focus,
-.btn-outline-primary:focus,
-.btn-outline-success:focus,
-.btn-outline-info:focus,
-.btn-outline-warning:focus,
-.btn-outline-danger:focus,
-.btn-outline-secondary:focus,
-.btn-outline-light:focus,
-.btn-outline-dark:focus,
-button[type="submit"]:focus,
-button[type="button"]:focus,
-input[type="submit"]:focus,
-input[type="button"]:focus,
-.btn:focus {
-    background: linear-gradient(135deg, #4099ff 0%, #2ed8b6 100%) !important;
-    color: #ffffff !important;
-    box-shadow: 0 0 0 0.2rem rgba(64, 153, 255, 0.25) !important;
-}
-
-/* Specific button variations */
-.btn-outline-primary,
-.btn-outline-success,
-.btn-outline-info,
-.btn-outline-warning,
-.btn-outline-danger,
-.btn-outline-secondary,
-.btn-outline-light,
-.btn-outline-dark {
-    border-color: #4099ff !important;
-    color: #4099ff !important;
-}
-
-.btn-outline-primary:hover,
-.btn-outline-success:hover,
-.btn-outline-info:hover,
-.btn-outline-warning:hover,
-.btn-outline-danger:hover,
-.btn-outline-secondary:hover,
-.btn-outline-light:hover,
-.btn-outline-dark:hover {
-    border-color: #4099ff !important;
-}
-
-/* Button groups and dropdowns */
-.btn-group .btn,
-.dropdown-menu .btn {
-    background: linear-gradient(135deg, #4099ff 0%, #2ed8b6 100%) !important;
-    color: #ffffff !important;
-}
-
-/* Modal buttons */
-.modal-footer .btn,
-.modal-header .btn {
-    background: linear-gradient(135deg, #4099ff 0%, #2ed8b6 100%) !important;
-    color: #ffffff !important;
-}
-
-/* Form buttons */
-.form-group .btn,
-input[type="submit"],
-input[type="button"] {
-    background: linear-gradient(135deg, #4099ff 0%, #2ed8b6 100%) !important;
-    color: #ffffff !important;
-}
-
-/* Special cases */
-.btn-close,
-.close {
-    color: #ffffff !important;
-    opacity: 0.8 !important;
-}
-
-.btn-close:hover,
-.close:hover {
-    color: #ffffff !important;
-    opacity: 1 !important;
-}
+    /* Ensure content doesn't push beyond boundaries */
+    html[dir="rtl"] .pcoded-navbar * {
+        box-sizing: border-box !important;
+    }
 </style>
-
 
 </head>
   
@@ -830,6 +1463,11 @@ input[type="button"] {
     </div>
     <!-- [ Pre-loader ] End -->
 
+    <!-- Mobile Floating Hamburger Button -->
+    <div class="mobile-menu-float">
+        <a class="mobile-menu" id="mobile-collapse" href="javascript:"><span></span></a>
+    </div>
+
 <!-- [ navigation menu ] start -->
 <nav class="pcoded-navbar">
     <div class="navbar-wrapper">
@@ -840,9 +1478,16 @@ input[type="button"] {
                 </div>
                 <span class="b-title"><?= htmlspecialchars($settings['agency_name']) ?></span>
             </a>
-            <a class="mobile-menu" id="mobile-collapse" href="javascript:"><span></span></a>
+            <div class="language-selector" style="padding: 5px 15px; text-align: center;">
+                <select onchange="window.location.href='../language_switcher.php?lang='+this.value" style="background: linear-gradient(135deg, #4099ff 0%, #2ed8b6 100%); color: #ffffff; border: none; border-radius: 4px; padding: 2px 5px; font-size: 11px; cursor: pointer;">
+                    <option value="en" <?= get_current_lang() == 'en' ? 'selected' : '' ?> style="background: #4099ff; color: #ffffff;">EN</option>
+                    <option value="fa" <?= get_current_lang() == 'fa' ? 'selected' : '' ?> style="background: #4099ff; color: #ffffff;">دری</option>
+                    <option value="ps" <?= get_current_lang() == 'ps' ? 'selected' : '' ?> style="background: #4099ff; color: #ffffff;">پښتو</option>
+                </select>
+            </div>
+            <a class="mobile-menu" id="mobile-collapse" href="javascript:"><span></span><span></span><span></span></a>
         </div>
-        <div class="navbar-content scroll-div">
+        <div class="navbar-content scroll-div" style="padding-bottom: 100px;">
             <ul class="nav pcoded-inner-navbar">
                 <li class="nav-item pcoded-menu-caption">
                     <label><?= __('navigation') ?></label>
@@ -886,187 +1531,7 @@ input[type="button"] {
                         </li>
                     </ul>
                 </li>
-                <?php endif; ?>
-                
-                <!-- Header Search Functionality -->
-                <script>
-                document.addEventListener('DOMContentLoaded', function() {
-                    const searchInput = document.getElementById('m-search');
-                    const searchResults = document.getElementById('search-results');
-                    const searchResultsList = document.getElementById('search-results-list');
-                    const searchClose = document.querySelector('.search-close');
-                
-                    let menuItems = [];
-                    let searchTimeout;
-                
-                    // Collect all menu items on page load
-                    function collectMenuItems() {
-                        menuItems = [];
-                
-                        // Get main navigation items
-                        document.querySelectorAll('.pcoded-inner-navbar li a').forEach(link => {
-                            const text = link.textContent.trim();
-                            const href = link.getAttribute('href');
-                            const icon = link.querySelector('i') ? link.querySelector('i').className : 'feather icon-circle';
-                
-                            if (text && href && href !== 'javascript:') {
-                                menuItems.push({
-                                    title: text,
-                                    url: href,
-                                    icon: icon,
-                                    path: 'Main Menu'
-                                });
-                            }
-                        });
-                
-                        // Get submenu items
-                        document.querySelectorAll('.pcoded-submenu li a').forEach(link => {
-                            const text = link.textContent.trim();
-                            const href = link.getAttribute('href');
-                
-                            if (text && href && href !== 'javascript:') {
-                                // Find parent menu item
-                                let parentText = 'Menu';
-                                const submenu = link.closest('.pcoded-submenu');
-                                if (submenu) {
-                                    const parentLink = submenu.previousElementSibling;
-                                    if (parentLink && parentLink.querySelector('.pcoded-mtext')) {
-                                        parentText = parentLink.querySelector('.pcoded-mtext').textContent.trim();
-                                    }
-                                }
-                
-                                menuItems.push({
-                                    title: text,
-                                    url: href,
-                                    icon: 'feather icon-arrow-right',
-                                    path: parentText
-                                });
-                            }
-                        });
-                    }
-                
-                    // Perform search
-                    function performSearch(query) {
-                        if (!query.trim()) {
-                            searchResults.style.display = 'none';
-                            return;
-                        }
-                
-                        const results = menuItems.filter(item =>
-                            item.title.toLowerCase().includes(query.toLowerCase()) ||
-                            item.path.toLowerCase().includes(query.toLowerCase())
-                        );
-                
-                        renderSearchResults(results);
-                    }
-                
-                    // Render search results
-                    function renderSearchResults(results) {
-                        if (results.length === 0) {
-                            searchResultsList.innerHTML = '<div class="search-no-results">No menu items found</div>';
-                            searchResults.style.display = 'block';
-                            return;
-                        }
-                
-                        const html = results.map(result => `
-                            <div class="search-result-item" data-url="${result.url}">
-                                <i class="${result.icon}"></i>
-                                <div>
-                                    <div class="search-result-title">${highlightMatch(result.title, searchInput.value)}</div>
-                                    <div class="search-result-path">${result.path}</div>
-                                </div>
-                            </div>
-                        `).join('');
-                
-                        searchResultsList.innerHTML = html;
-                        searchResults.style.display = 'block';
-                
-                        // Add click handlers
-                        document.querySelectorAll('.search-result-item').forEach(item => {
-                            item.addEventListener('click', function() {
-                                const url = this.dataset.url;
-                                if (url && url !== '#') {
-                                    window.location.href = url;
-                                }
-                                searchResults.style.display = 'none';
-                                searchInput.value = '';
-                            });
-                        });
-                    }
-                
-                    // Highlight matching text
-                    function highlightMatch(text, query) {
-                        if (!query) return text;
-                        const regex = new RegExp(`(${query})`, 'gi');
-                        return text.replace(regex, '<mark>$1</mark>');
-                    }
-                
-                    // Event listeners
-                    searchInput.addEventListener('input', function() {
-                        clearTimeout(searchTimeout);
-                        const query = this.value.trim();
-                
-                        if (query.length > 0) {
-                            searchTimeout = setTimeout(() => performSearch(query), 300);
-                        } else {
-                            searchResults.style.display = 'none';
-                        }
-                    });
-                
-                    searchInput.addEventListener('focus', function() {
-                        if (this.value.trim().length > 0) {
-                            performSearch(this.value.trim());
-                        }
-                    });
-                
-                    searchInput.addEventListener('keydown', function(e) {
-                        if (e.key === 'Escape') {
-                            searchResults.style.display = 'none';
-                            this.blur();
-                        } else if (e.key === 'Enter') {
-                            // Navigate to first result
-                            const firstResult = document.querySelector('.search-result-item');
-                            if (firstResult) {
-                                firstResult.click();
-                            }
-                        }
-                    });
-                
-                    // Close search when clicking outside
-                    document.addEventListener('click', function(e) {
-                        if (!e.target.closest('.main-search')) {
-                            searchResults.style.display = 'none';
-                        }
-                    });
-                
-                    // Clear search
-                    if (searchClose) {
-                        searchClose.addEventListener('click', function() {
-                            searchInput.value = '';
-                            searchResults.style.display = 'none';
-                            searchInput.focus();
-                        });
-                    }
-                
-                    // Initialize menu collection
-                    collectMenuItems();
-                
-                    // Re-collect menu items when sidebar changes (for dynamic menus)
-                    const observer = new MutationObserver(function(mutations) {
-                        mutations.forEach(function(mutation) {
-                            if (mutation.type === 'childList') {
-                                collectMenuItems();
-                            }
-                        });
-                    });
-                
-                    const sidebar = document.querySelector('.pcoded-inner-navbar');
-                    if (sidebar) {
-                        observer.observe(sidebar, { childList: true, subtree: true });
-                    }
-                });
-                </script>
-                
+                <?php endif; ?> 
                 <li data-username="accounts" class="nav-item <?php echo basename($_SERVER['PHP_SELF']) == 'accounts.php' ? 'active' : ''; ?>">
                     <a href="accounts.php" class="nav-link">
                         <span class="pcoded-micon"><i class="feather icon-briefcase"></i></span>
@@ -1348,425 +1813,32 @@ input[type="button"] {
                 </li>
             </ul>
         </div>
+        <div class="navbar-brand user-profile-section" style="position: absolute; bottom: 0; width: 100%; border-top: 1px solid rgba(255,255,255,0.1); background: #4099ff; z-index: 10;">
+            <div style="padding: 8px 15px; display: flex; align-items: center; justify-content: space-between;">
+                <div style="display: flex; align-items: center; gap: 8px; flex: 1; min-width: 0;">
+                    <a href="profile.php" style="text-decoration: none; flex-shrink: 0;">
+                        <img class="rounded-circle" style="width:28px; height:28px; cursor: pointer; transition: opacity 0.3s ease;" onmouseover="this.style.opacity='0.8'" onmouseout="this.style.opacity='1'" src="<?= $imagePath ?>" alt="user-avatar">
+                    </a>
+                    <div style="flex: 1; min-width: 0; overflow: hidden;">
+                        <div style="color: #ffffff; font-size: 11px; font-weight: 500; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; line-height: 1.2;"><?= htmlspecialchars($user['name'] ?? 'User') ?></div>
+                        <div style="color: rgba(255,255,255,0.7); font-size: 9px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; line-height: 1.2;"><?= htmlspecialchars($user['email'] ?? '') ?></div>
+                    </div>
+                </div>
+                <div style="display: flex; gap: 1px; flex-shrink: 0;">
+                    <a href="profile.php" class="nav-link" style="padding: 4px; border-radius: 3px; color: #ffffff; transition: all 0.3s ease;" onmouseover="this.style.background='rgba(255,255,255,0.15)'" onmouseout="this.style.background='transparent'">
+                        <i class="feather icon-person" style="font-size: 12px;"></i>
+                    </a>
+                    <a href="logout.php" class="nav-link" style="padding: 4px; border-radius: 3px; color: #ffffff; transition: all 0.3s ease;" onmouseover="this.style.background='rgba(255,255,255,0.15)'" onmouseout="this.style.background='transparent'">
+                        <i class="feather icon-log-out" style="font-size: 12px;"></i>
+                    </a>
+                </div>
+            </div>
+        </div>
     </div>
 </nav>
 <!-- [ navigation menu ] end -->
 
 
-<!-- [ Header ] start -->
-<header class="navbar pcoded-header navbar-expand-lg navbar-light">
-    <div class="m-header">
-        <a class="mobile-menu" id="mobile-collapse1" href="javascript:"><span></span></a>
-        <a href="dashboard.php" class="b-brand">
-            <div class="b-bg">
-                <img class="rounded-circle" style="width:40px;" src="../uploads/logo/<?= htmlspecialchars($settings['logo']) ?>" alt="activity-user">
-            </div>
-            <span class="b-title"><?= htmlspecialchars($settings['agency_name']) ?></span>
-        </a>
-    </div>
-    <a class="mobile-menu" id="mobile-header" href="javascript:">
-        <i class="feather icon-more-horizontal"></i>
-    </a>
-    <div class="collapse navbar-collapse">
-        <ul class="navbar-nav mr-auto">
-            <li><a href="javascript:" class="full-screen" onclick="javascript:toggleFullScreen()"><i class="feather icon-maximize"></i></a></li>
-            <li class="nav-item">
-                <div class="main-search">
-                    <div class="input-group">
-                        <input type="text" id="m-search" class="form-control" placeholder="Search menu...">
-                        <a href="javascript:" class="input-group-append search-close">
-                            <i class="feather icon-x input-group-text"></i>
-                        </a>
-                        <span class="input-group-append search-btn btn btn-primary">
-                            <i class="feather icon-search input-group-text"></i>
-                        </span>
-                    </div>
-                    <div id="search-results" class="search-results-dropdown" style="display: none;">
-                        <div id="search-results-list"></div>
-                    </div>
-                </div>
-            </li>
-        </ul>
-        <ul class="navbar-nav ml-auto">
-            <li>
-                <div class="dropdown">
-                    <a href="javascript:void(0)" class="dropdown-toggle" data-toggle="dropdown">
-                        <i class="icon feather icon-globe"></i>
-                    </a>
-                    <div class="dropdown-menu dropdown-menu-right">
-                        <a href="../language_switcher.php?lang=en" class="dropdown-item <?= get_current_lang() == 'en' ? 'active' : '' ?>">
-                            English
-                        </a>
-                        <a href="../language_switcher.php?lang=fa" class="dropdown-item <?= get_current_lang() == 'fa' ? 'active' : '' ?>">
-                            دری
-                        </a>
-                        <a href="../language_switcher.php?lang=ps" class="dropdown-item <?= get_current_lang() == 'ps' ? 'active' : '' ?>">
-                            پښتو
-                        </a>
-                    </div>
-                </div>
-            </li>
-            <li>
-                <div class="dropdown drp-user">
-                    <a href="javascript:void(0)" class="dropdown-toggle" data-toggle="dropdown">
-                        <i class="icon feather icon-settings"></i>
-                    </a>
-                    <div class="dropdown-menu dropdown-menu-right profile-notification">
-                        <div class="pro-head">
-                            <img src="<?= $imagePath ?>" class="img-radius" alt="User-Profile-Image">
-                            <span><?= !empty($user['name']) ? htmlspecialchars($user['name']) : 'Guest'; ?></span>
-                            <span class="text-muted"><?= !empty($user['role']) ? htmlspecialchars($user['role']) : 'User'; ?></span>
-                            <a href="logout.php" class="dud-logout" title="Logout">
-                                <i class="feather icon-log-out"></i>
-                            </a>
-                        </div>
-                        <ul class="pro-body">
-                            <li>
-                                <a href="javascript:void(0)" class="dropdown-item" data-toggle="modal" data-target="#profileModal">
-                                    <i class="feather icon-user"></i> <?= __('profile') ?>
-                                </a>
-                            </li>
-                            <li>
-                                <a href="javascript:void(0)" class="dropdown-item" data-toggle="modal" data-target="#settingsModal">
-                                    <i class="feather icon-settings"></i> <?= __('settings') ?>
-                                </a>
-                            </li>
-                            <li>
-                                <a href="logout.php" class="dropdown-item">
-                                    <i class="feather icon-log-out"></i> <?= __('logout') ?>
-                                </a>
-                            </li>
-                        </ul>
-                    </div>
-                </div>
-            </li>
-        </ul>
-    </div>
-</header>
-<!-- [ Header ] end -->
-
-<?php if (is_rtl()): ?>
-<!-- Critical RTL Mobile Sidebar CSS -->
-<style>
-/* Mobile overrides */
-@media (max-width: 991px) {
-    /* Basic positioning */
-    html[dir="rtl"] .pcoded-navbar,
-    body.rtl .pcoded-navbar {
-        right: -100% !important;
-        left: auto !important;
-        transform: translateX(0) !important;
-        transition: all 0.3s ease-in-out !important;
-        position: fixed !important;
-        height: 100% !important;
-        z-index: 1030 !important;
-        display: none !important;
-    }
-
-    /* When menu is open */
-    html[dir="rtl"] .pcoded-navbar.mob-open,
-    body.rtl .pcoded-navbar.mob-open {
-        right: 0 !important;
-        left: auto !important;
-        display: block !important;
-    }
-
-    /* Header and container */
-    html[dir="rtl"] .pcoded-header,
-    body.rtl .pcoded-header,
-    html[dir="rtl"] .pcoded-main-container,
-    body.rtl .pcoded-main-container {
-        margin-right: 0 !important;
-        margin-left: 0 !important;
-        width: 100% !important;
-    }
-    
-    /* Overlay */
-    .mobile-menu-overlay {
-        position: fixed;
-        top: 0;
-        left: 0;
-        right: 0;
-        bottom: 0;
-        background: rgba(0,0,0,0.5);
-        z-index: 999;
-        display: none;
-    }
-    
-    /* Show overlay */
-    html[dir="rtl"] .pcoded-navbar.mob-open + .mobile-menu-overlay,
-    body.rtl .pcoded-navbar.mob-open + .mobile-menu-overlay {
-        display: block !important;
-    }
-}
-</style>
-<script>
-// Fix mobile sidebar for RTL
-document.addEventListener('DOMContentLoaded', function() {
-    // Mobile menu toggle functionality
-    var mobileToggles = document.querySelectorAll('.mobile-menu, #mobile-collapse1, #mobile-header');
-    mobileToggles.forEach(function(toggle) {
-        toggle.addEventListener('click', function() {
-            var sidebar = document.querySelector('.pcoded-navbar');
-            if (!sidebar) return;
-            
-            if (sidebar.classList.contains('mob-open')) {
-                sidebar.classList.remove('mob-open');
-                sidebar.style.right = '-100%';
-                sidebar.style.display = 'none';
-            } else {
-                sidebar.classList.add('mob-open');
-                sidebar.style.right = '0';
-                sidebar.style.display = 'block';
-            }
-            
-            // Manage overlay
-            var overlay = document.querySelector('.mobile-menu-overlay');
-            if (!overlay) {
-                overlay = document.createElement('div');
-                overlay.className = 'mobile-menu-overlay';
-                document.body.appendChild(overlay);
-                
-                overlay.addEventListener('click', function() {
-                    if (sidebar) {
-                        sidebar.classList.remove('mob-open');
-                        sidebar.style.right = '-100%';
-                        sidebar.style.display = 'none';
-                        overlay.style.display = 'none';
-                    }
-                });
-            }
-            
-            overlay.style.display = sidebar.classList.contains('mob-open') ? 'block' : 'none';
-        });
-    });
-});
-</script>
-
-<!-- RTL Mobile Sidebar Fix Script -->
-<script>
-// Fix mobile sidebar toggle in RTL mode
-document.addEventListener('DOMContentLoaded', function() {
-    if (document.documentElement.dir === 'rtl' || document.body.classList.contains('rtl')) {
-        console.log('RTL Mobile sidebar fix loaded');
-        
-        // Get all toggle buttons
-        var toggleButtons = document.querySelectorAll('.mobile-menu, #mobile-collapse1, #mobile-collapse, #mobile-header');
-        
-        // Replace each button with a clone to remove existing event listeners
-        toggleButtons.forEach(function(button) {
-            var newButton = button.cloneNode(true);
-            if (button.parentNode) {
-                button.parentNode.replaceChild(newButton, button);
-            }
-            
-            // Add our custom event listener
-            newButton.addEventListener('click', function(e) {
-                console.log('Mobile toggle clicked in RTL mode');
-                e.preventDefault();
-                e.stopPropagation();
-                
-                var sidebar = document.querySelector('.pcoded-navbar');
-                if (!sidebar) return;
-                
-                // Toggle sidebar
-                if (sidebar.classList.contains('mob-open')) {
-                    // Close sidebar
-                    sidebar.classList.remove('mob-open');
-                    sidebar.style.right = '-100%';
-                    sidebar.style.display = 'none';
-                } else {
-                    // Open sidebar
-                    sidebar.classList.add('mob-open');
-                    sidebar.style.right = '0';
-                    sidebar.style.display = 'block';
-                }
-                
-                // Handle overlay
-                var overlay = document.querySelector('.mobile-menu-overlay');
-                if (!overlay) {
-                    // Create overlay if it doesn't exist
-                    overlay = document.createElement('div');
-                    overlay.className = 'mobile-menu-overlay';
-                    overlay.style.position = 'fixed';
-                    overlay.style.top = '0';
-                    overlay.style.left = '0';
-                    overlay.style.right = '0';
-                    overlay.style.bottom = '0';
-                    overlay.style.background = 'rgba(0,0,0,0.5)';
-                    overlay.style.zIndex = '999';
-                    
-                    // Close sidebar when overlay is clicked
-                    overlay.addEventListener('click', function() {
-                        if (sidebar) {
-                            sidebar.classList.remove('mob-open');
-                            sidebar.style.right = '-100%';
-                            sidebar.style.display = 'none';
-                        }
-                        this.style.display = 'none';
-                    });
-                    
-                    document.body.appendChild(overlay);
-                }
-                
-                // Show/hide overlay based on sidebar state
-                overlay.style.display = sidebar.classList.contains('mob-open') ? 'block' : 'none';
-            });
-        });
-        
-        // Set initial sidebar state
-        var sidebar = document.querySelector('.pcoded-navbar');
-        if (sidebar && window.innerWidth <= 991) {
-            if (!sidebar.classList.contains('mob-open')) {
-                sidebar.style.right = '-100%';
-                sidebar.style.left = 'auto';
-            }
-        }
-        
-        // Handle window resize
-        window.addEventListener('resize', function() {
-            var sidebar = document.querySelector('.pcoded-navbar');
-            if (!sidebar) return;
-            
-            if (window.innerWidth <= 991) {
-                // Mobile view
-                if (!sidebar.classList.contains('mob-open')) {
-                    sidebar.style.right = '-100%';
-                    sidebar.style.display = 'none';
-                }
-            } else {
-                // Desktop view
-                sidebar.style.right = '0';
-                sidebar.style.display = 'block';
-            }
-        });
-        
-        // Fix dropdown menus in header for RTL
-        console.log('Fixing header dropdowns for RTL');
-        
-        // Apply RTL fixes to header dropdown menus
-        var headerDropdowns = document.querySelectorAll('.pcoded-header .dropdown');
-        headerDropdowns.forEach(function(dropdown) {
-            // Fix dropdown-menu positioning
-            var menu = dropdown.querySelector('.dropdown-menu');
-            if (menu) {
-                menu.style.right = 'auto';
-                menu.style.left = '0';
-                menu.style.textAlign = 'right';
-                
-                // Set proper dropdown position when toggled
-                var toggle = dropdown.querySelector('.dropdown-toggle');
-                if (toggle) {
-                    toggle.addEventListener('click', function() {
-                        setTimeout(function() {
-                            if (menu.classList.contains('show')) {
-                                // Get the toggle button's position
-                                var toggleRect = toggle.getBoundingClientRect();
-                                
-                                // Set menu position to match toggle width
-                                menu.style.left = '0';
-                                menu.style.right = 'auto';
-                                
-                                // Ensure menu stays within screen bounds
-                                var menuRect = menu.getBoundingClientRect();
-                                if (menuRect.left < 0) {
-                                    menu.style.left = '0';
-                                }
-                            }
-                        }, 0);
-                    });
-                }
-                
-                // Fix dropdown items alignment
-                var items = menu.querySelectorAll('.dropdown-item');
-                items.forEach(function(item) {
-                    item.style.textAlign = 'right';
-                    item.style.direction = 'rtl';
-                });
-            }
-        });
-    }
-});
-</script>
-
-<!-- Header RTL Fix for Dropdowns -->
-<style>
-/* RTL header dropdown fixes */
-html[dir="rtl"] .pcoded-header .dropdown .dropdown-menu,
-body.rtl .pcoded-header .dropdown .dropdown-menu {
-    text-align: right !important;
-    left: 0 !important;
-    right: auto !important;
-    transform-origin: top left !important;
-}
-
-html[dir="rtl"] .pcoded-header .dropdown .dropdown-menu:before,
-body.rtl .pcoded-header .dropdown .dropdown-menu:before {
-    left: 10px !important;
-    right: auto !important;
-}
-
-html[dir="rtl"] .dropdown-menu-right,
-body.rtl .dropdown-menu-right {
-    left: 0 !important;
-    right: auto !important;
-}
-
-html[dir="rtl"] .pcoded-header .dropdown .dropdown-menu .dropdown-item,
-body.rtl .pcoded-header .dropdown .dropdown-menu .dropdown-item {
-    text-align: right !important;
-    direction: rtl !important;
-}
-
-/* Fix profile dropdown */
-html[dir="rtl"] .pcoded-header .dropdown .profile-notification,
-body.rtl .pcoded-header .dropdown .profile-notification {
-    width: 290px !important;
-    left: 0 !important;
-    right: auto !important;
-}
-
-html[dir="rtl"] .pcoded-header .dropdown .profile-notification .pro-head,
-body.rtl .pcoded-header .dropdown .profile-notification .pro-head {
-    display: flex !important;
-    flex-direction: row-reverse !important;
-    text-align: right !important;
-}
-
-html[dir="rtl"] .pcoded-header .dropdown .profile-notification .pro-body li,
-body.rtl .pcoded-header .dropdown .profile-notification .pro-body li {
-    text-align: right !important;
-}
-
-html[dir="rtl"] .pcoded-header .dropdown .profile-notification .pro-body li a,
-body.rtl .pcoded-header .dropdown .profile-notification .pro-body li a {
-    display: flex !important;
-    align-items: center !important;
-    flex-direction: row-reverse !important;
-    text-align: right !important;
-}
-
-html[dir="rtl"] .pcoded-header .dropdown .profile-notification .pro-body li a i,
-body.rtl .pcoded-header .dropdown .profile-notification .pro-body li a i {
-    margin-right: 0 !important;
-    margin-left: 10px !important;
-}
-
-/* Prevent dropdowns from going offscreen */
-@media (min-width: 992px) {
-    html[dir="rtl"] .navbar-nav .dropdown-menu,
-    body.rtl .navbar-nav .dropdown-menu {
-        position: absolute !important;
-    }
-}
-
-/* RTL language dropdown specific fixes */
-html[dir="rtl"] .icon.feather.icon-globe + .dropdown-menu,
-body.rtl .icon.feather.icon-globe + .dropdown-menu {
-    min-width: 160px !important;
-}
-</style>
-<?php endif; ?>
 
 <?php if (hasFeature('inter_tenant_chat', $allowed_features)): ?>
 <!-- Floating Chat Widget -->
@@ -1861,7 +1933,50 @@ body.rtl .icon.feather.icon-globe + .dropdown-menu {
     </div>
     <iframe id="alqChatFrame" class="alq-chat-iframe" src="../chat.php?embed=1" loading="lazy" referrerpolicy="no-referrer"></iframe>
 </div>
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    // Ensure mobile menu toggle works
+    const mobileToggle = document.getElementById('mobile-collapse');
+    if (mobileToggle) {
+        mobileToggle.addEventListener('click', function(e) {
+            e.preventDefault();
+            e.stopPropagation();
+            console.log('Mobile menu toggle clicked');
 
+            // Check if we're on mobile (screen width < 992px)
+            if (window.innerWidth < 992) {
+                const navbar = document.querySelector('.pcoded-navbar');
+                const overlay = document.querySelector('.mobile-menu-overlay');
+                if (navbar) {
+                    const isOpen = navbar.classList.contains('open');
+                    if (isOpen) {
+                        // Close sidebar
+                        navbar.classList.remove('open');
+                        if (overlay) {
+                            overlay.classList.remove('show');
+                        }
+                    } else {
+                        // Open sidebar as overlay
+                        navbar.classList.add('mobile-overlay', 'open');
+                        if (overlay) {
+                            overlay.classList.add('show');
+                        } else {
+                            // Create overlay if it doesn't exist
+                            const newOverlay = document.createElement('div');
+                            newOverlay.className = 'mobile-menu-overlay show';
+                            newOverlay.addEventListener('click', function() {
+                                navbar.classList.remove('open');
+                                newOverlay.classList.remove('show');
+                            });
+                            document.body.appendChild(newOverlay);
+                        }
+                    }
+                }
+            }
+        });
+    }
+});
+</script>
 <script>
 (function() {
     var fab = document.getElementById('alqChatFab');
@@ -1939,3 +2054,4 @@ body.rtl .icon.feather.icon-globe + .dropdown-menu {
 })();
 </script>
 <?php endif; ?>
+

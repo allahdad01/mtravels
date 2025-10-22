@@ -634,8 +634,6 @@ require_once('../includes/conn.php');
     <?php include '../modals/umrah/create_family_modal.php'; ?>
     <?php include '../modals/umrah/transaction_modal.php'; ?>
     <?php include '../modals/umrah/edit_family_modal.php'; ?>
-    <?php include '../modals/umrah/profile_modal.php'; ?>
-    <?php include '../modals/umrah/settings_modal.php'; ?>
     <?php include '../modals/umrah/refund_modal.php'; ?>
     <?php include '../modals/umrah/multi_ticket_invoice_modal.php'; ?>
     <?php include '../modals/umrah/completion_details_modal.php'; ?>
@@ -698,7 +696,6 @@ require_once('../includes/conn.php');
     <script src="js/umrah/refund.js?v=1"></script>
     <script src="js/umrah/idcard.js"></script>
     <script src="js/umrah/groupTickets.js"></script>
-    <script src="js/umrah/profile.js"></script>
     <script src="js/umrah/family.js"></script>
     <script src="js/umrah/generations.js"></script>
     <script src="js/umrah/generations_received_form.js"></script>

@@ -1933,7 +1933,6 @@ $clientAccounts = $clientAccounts->get_result()->fetch_all(MYSQLI_ASSOC);
     <!-- Account filters scripts -->
     <script src="js/filters.js"></script>
     <script src="js/toast-notifications.js"></script>
-    <script src="js/profile-management.js"></script>
     <script src="js/printing.js"></script>
     <script src="js/account-management.js"></script>
     <script src="js/account-funding.js"></script>

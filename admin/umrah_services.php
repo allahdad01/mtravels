@@ -22,7 +22,7 @@ require_once('../includes/conn.php');
 ?>
 
 <?php include '../includes/header.php'; ?>
-<link rel="stylesheet" href="css/modal-styles.css">>
+<link rel="stylesheet" href="css/modal-styles.css">
 <link rel="stylesheet" href="css/ticket-form.css">
 <link rel="stylesheet" href="css/umrah-management.css">
 <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/sweetalert2@11.7.32/dist/sweetalert2.min.css">

@@ -310,7 +310,6 @@ try {
                 <div class="main-body">
                     <div class="page-wrapper">
                         <!-- [ Main Content ] start -->
-                        <div class="container mt-4">
                             <div class="d-flex justify-content-between align-items-center mb-4">
                                 <h2><?= __('activity_log') ?></h2>
                                 <?php if (!empty($logs)): ?>
@@ -552,40 +551,42 @@ try {
                                                                                         <h6><?= __('old_values') ?>:</h6>
                                                                                         <div class="p-3 bg-light rounded json-content">
                                                                                             <pre class="mb-0"><?php 
-    // Check if the value is not null before decoding
-    if ($log['old_values'] !== null && $log['old_values'] !== '') {
-        // Decode the JSON with UTF-8 handling
-        $old_values = json_decode($log['old_values'], true);
-        if ($old_values !== null) {
-            echo h(json_encode($old_values, JSON_PRETTY_PRINT | JSON_UNESCAPED_UNICODE));
-        } else {
-            // Fallback if JSON is invalid
-            echo h($log['old_values']);
-        }
-    } else {
-            echo '<em class="text-muted">'.__('no_data').'</em>';
-    }
-?></pre>
+                                                                                            // Check if the value is not null before decoding
+                                                                                            if ($log['old_values'] !== null && $log['old_values'] !== '') {
+                                                                                                // Decode the JSON with UTF-8 handling
+                                                                                                $old_values = json_decode($log['old_values'], true);
+                                                                                                if ($old_values !== null) {
+                                                                                                    echo h(json_encode($old_values, JSON_PRETTY_PRINT | JSON_UNESCAPED_UNICODE));
+                                                                                                } else {
+                                                                                                    // Fallback if JSON is invalid
+                                                                                                    echo h($log['old_values']);
+                                                                                                }
+                                                                                            } else {
+                                                                                                    echo '<em class="text-muted">'.__('no_data').'</em>';
+                                                                                            }
+                                                                                            ?>
+                                                                                            </pre>
                                                                                         </div>
                                                                                     </div>
                                                                                     <div class="col-md-6">
                                                                                         <h6><?= __('new_values') ?>:</h6>
                                                                                         <div class="p-3 bg-light rounded json-content">
                                                                                             <pre class="mb-0"><?php 
-    // Check if the value is not null before decoding
-    if ($log['new_values'] !== null && $log['new_values'] !== '') {
-        // Decode the JSON with UTF-8 handling
-        $new_values = json_decode($log['new_values'], true);
-        if ($new_values !== null) {
-            echo h(json_encode($new_values, JSON_PRETTY_PRINT | JSON_UNESCAPED_UNICODE));
-        } else {
-            // Fallback if JSON is invalid
-            echo h($log['new_values']);
-        }
-    } else {
-                echo '<em class="text-muted">'.__('no_data').'</em>';
-    }
-?></pre>
+                                                                                            // Check if the value is not null before decoding
+                                                                                            if ($log['new_values'] !== null && $log['new_values'] !== '') {
+                                                                                                // Decode the JSON with UTF-8 handling
+                                                                                                $new_values = json_decode($log['new_values'], true);
+                                                                                                if ($new_values !== null) {
+                                                                                                    echo h(json_encode($new_values, JSON_PRETTY_PRINT | JSON_UNESCAPED_UNICODE));
+                                                                                                } else {
+                                                                                                    // Fallback if JSON is invalid
+                                                                                                    echo h($log['new_values']);
+                                                                                                }
+                                                                                            } else {
+                                                                                                        echo '<em class="text-muted">'.__('no_data').'</em>';
+                                                                                            }
+                                                                                            ?>
+                                                                                            </pre>
                                                                                         </div>
                                                                                     </div>
                                                                                 </div>
@@ -710,7 +711,7 @@ try {
                                 </div>
                                 <?php endif; ?>
                             </div>
-                        </div>
+                        
                         <!-- [ Main Content ] end -->
                     </div>
                 </div>
