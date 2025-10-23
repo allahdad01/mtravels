@@ -93,17 +93,36 @@ try {
 // Handle HesabPay redirect
 if (isset($_GET['payment'], $_GET['subscription_id'])) {
     $payment_status = $_GET['payment'];
-    $sub_id = intval($_GET['subscription_id']);
+    $subscription_id_raw = $_GET['subscription_id'];
 
-    // Safely decode JSON from data param
+    // Handle malformed URL where ? is used instead of & after subscription_id
+    $sub_id = 0;
     $data = null;
-    if (!empty($_GET['data'])) {
-        $raw = urldecode($_GET['data']);
-        $data = json_decode($raw, true);
-        if ($data === null && strpos($raw, '{') !== false) {
-            // fallback for malformed JSON
-            $raw = str_replace(['\\"', "'"], ['"', '"'], $raw);
+    if (strpos($subscription_id_raw, '?') !== false) {
+        // Parse subscription_id=1?data=... as subscription_id=1&data=...
+        list($sub_id_str, $data_query) = explode('?', $subscription_id_raw, 2);
+        $sub_id = intval($sub_id_str);
+        parse_str($data_query, $data_params);
+        if (isset($data_params['data'])) {
+            $raw = urldecode($data_params['data']);
             $data = json_decode($raw, true);
+            if ($data === null && strpos($raw, '{') !== false) {
+                // fallback for malformed JSON
+                $raw = str_replace(['\\"', "'"], ['"', '"'], $raw);
+                $data = json_decode($raw, true);
+            }
+        }
+    } else {
+        $sub_id = intval($subscription_id_raw);
+        // Safely decode JSON from data param
+        if (!empty($_GET['data'])) {
+            $raw = urldecode($_GET['data']);
+            $data = json_decode($raw, true);
+            if ($data === null && strpos($raw, '{') !== false) {
+                // fallback for malformed JSON
+                $raw = str_replace(['\\"', "'"], ['"', '"'], $raw);
+                $data = json_decode($raw, true);
+            }
         }
     }
 
@@ -120,10 +139,10 @@ if (isset($_GET['payment'], $_GET['subscription_id'])) {
                 // Insert payment record
                 $stmt2 = $pdo->prepare("
                     INSERT INTO subscription_payments
-                    (subscription_id, amount, currency, payment_method, payment_date, processed_by, transaction_id)
-                    VALUES (?, ?, ?, 'HesabPay', CURDATE(), ?, ?)
+                    (subscription_id, amount, currency, payment_method, payment_date, processed_by, transaction_id, receipt_number)
+                    VALUES (?, ?, ?, 'HesabPay', CURDATE(), ?, ?, ?)
                 ");
-                $stmt2->execute([$sub_id, $subscription['amount'], $subscription['currency'], $processed_by, $transaction_id]);
+                $stmt2->execute([$sub_id, $subscription['amount'], $subscription['currency'], $processed_by, $transaction_id, $transaction_id]);
 
                 // Update subscription
                 $pdo->prepare("
