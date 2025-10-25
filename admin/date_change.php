@@ -326,9 +326,11 @@ if ($transactionQuery && $transactionQuery->num_rows > 0) {
                                                             
                                                             <td class="text-center">
                                                                 <div class="btn-group" role="group">
+                                                                    <?php if ($isAgencyClient): ?>
                                                                     <button type="button" class="btn btn-sm btn-primary" onclick="manageTransactions(<?= $ticket['id'] ?>)" title="<?= __('manage_transactions') ?>">
                                                                         <i class="fa fa-credit-card"></i>
                                                                     </button>
+                                                                    <?php endif; ?>
                                                                     <button type="button" class="btn btn-sm btn-warning" onclick="printAgreement(<?= $ticket['id'] ?>)" title="<?= __('print_agreement') ?>">
                                                                         <i class="feather icon-printer"></i>
                                                                     </button>

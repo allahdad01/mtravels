@@ -283,6 +283,14 @@ foreach ($suppliers as $supplier) {
                                                     <?php 
                                                     $counter = ($page - 1) * $recordsPerPage + 1; // Start counter based on page
                                                     foreach ($tickets as $ticket): ?>
+                                                        <?php
+                                                        $isAgencyClient = false;
+                                                        $clientQuery = $conn->query("SELECT client_type FROM clients WHERE name = '{$ticket['ticket']['sold_to']}' AND tenant_id = $tenant_id");
+                                                        if ($clientQuery && $clientQuery->num_rows > 0) {
+                                                            $clientRow = $clientQuery->fetch_assoc();
+                                                            $isAgencyClient = ($clientRow['client_type'] === 'agency');
+                                                        }
+                                                        ?>
                                                         <tr>
                                                             <td><?= $counter++ ?></td>
                                                             <td>
@@ -297,9 +305,11 @@ foreach ($suppliers as $supplier) {
                                                                         <button class="dropdown-item" onclick="editTicket(<?= $ticket['ticket']['id'] ?>)">
                                                                             <i class="feather icon-edit-2 text-warning mr-2"></i> <?= __('edit') ?>
                                                                         </button>
+                                                                        <?php if ($isAgencyClient): ?>
                                                                         <button class="dropdown-item" onclick="manageTransactions(<?= $ticket['ticket']['id'] ?>)">
                                                                             <i class="fas fa-dollar-sign text-success mr-2"></i> <?= __('manage_transactions') ?>
                                                                         </button>
+                                                                        <?php endif; ?>
                                                                         <div class="dropdown-divider"></div>
 
                                                                         <button class="dropdown-item text-danger" onclick="deleteTicket(<?= $ticket['ticket']['id'] ?>)">

@@ -112,6 +112,16 @@ $version = '?v=' . time();
                                                 </thead>
                                                 <tbody id="ticketTable">
                                                     <?php foreach ($tickets as $index => $ticket): ?>
+                                                        <?php
+                                                        $soldTo = $ticket['sold_to_name'];
+                                                        $isAgencyClient = false;
+
+                                                        $clientQuery = $conn->query("SELECT client_type FROM clients WHERE name = '$soldTo'");
+                                                        if ($clientQuery && $clientQuery->num_rows > 0) {
+                                                            $clientRow = $clientQuery->fetch_assoc();
+                                                            $isAgencyClient = ($clientRow['client_type'] === 'agency');
+                                                        }
+                                                        ?>
                                                     <tr>
                                                         <td class="text-center"><?= $index + 1 ?></td>
                                                         <td class="text-center">
@@ -121,9 +131,11 @@ $version = '?v=' . time();
                                                                         <i class="feather icon-more-horizontal"></i>
                                                                     </button>
                                                                 <div class="dropdown-menu dropdown-menu-right">
+                                                                    <?php if ($isAgencyClient): ?>
                                                                     <a class="dropdown-item" href="javascript:void(0)" onclick="manageTransactions(<?= $ticket['id'] ?>)">
                                                                         <i class="fas fa-dollar-sign mr-2"></i><?= __('manage_payments') ?>
                                                                     </a>
+                                                                    <?php endif; ?>
                                                                     <a class="dropdown-item" href="javascript:void(0)" onclick="printRefundAgreement(<?= $ticket['id'] ?>)">
                                                                         <i class="feather icon-file mr-2"></i><?= __('print_refund_agreement') ?>
                                                                     </a>

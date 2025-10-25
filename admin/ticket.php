@@ -219,9 +219,11 @@ include '../includes/header.php';
                                                                         <button class="dropdown-item" onclick="editTicket(<?= $ticket['ticket']['id'] ?>)">
                                                                             <i class="feather icon-edit-2 text-warning mr-2"></i> <?= __('edit') ?>
                                                                         </button>
+                                                                        <?php if ($isAgencyClient): ?>
                                                                         <button class="dropdown-item" onclick="manageTransactions(<?= $ticket['ticket']['id'] ?>)">
                                                                             <i class="fas fa-dollar-sign text-success mr-2"></i> <?= __('manage_transactions') ?>
                                                                         </button>
+                                                                        <?php endif; ?>
                                                                         <div class="dropdown-divider"></div>
                                                                         <button class="dropdown-item text-danger" onclick="deleteTicket(<?= $ticket['ticket']['id'] ?>)">
                                                                             <i class="feather icon-trash-2 mr-2"></i> <?= __('delete') ?>

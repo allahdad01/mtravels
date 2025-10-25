@@ -33,7 +33,7 @@ $bookings = [];
 // Fetch bookings data with all necessary fields
 try {
     $stmt = $pdo->prepare("
-        SELECT 
+        SELECT
             hb.id,
             CONCAT(hb.title, ' ', hb.first_name, ' ', hb.last_name) as guest_name,
             hb.gender,
@@ -43,6 +43,7 @@ try {
             hb.accommodation_details,
             hb.issue_date,
             hb.supplier_id,
+            hb.sold_to,
             hb.contact_no,
             hb.base_amount,
             hb.sold_amount,
@@ -529,11 +530,20 @@ require_once('../includes/utils.php');
                                                                         title="<?= __('edit_booking') ?>">
                                                                     <i class="feather icon-edit-2 text-warning"></i>
                                                                 </button>
-                                                                <button type="button" class="btn btn-icon btn-light mr-2" 
+                                                                <?php
+                                                                $isAgencyClient = false;
+                                                                $clientQuery = $conn->query("SELECT client_type FROM clients WHERE id = '{$booking['sold_to']}' AND tenant_id = $tenant_id");
+                                                                if ($clientQuery && $clientQuery->num_rows > 0) {
+                                                                    $clientRow = $clientQuery->fetch_assoc();
+                                                                    $isAgencyClient = ($clientRow['client_type'] === 'agency');
+                                                                }
+                                                                if ($isAgencyClient): ?>
+                                                                <button type="button" class="btn btn-icon btn-light mr-2"
                                                                         onclick="manageTransactions(<?= $booking['id'] ?>)"
                                                                         title="<?= __('manage_transactions') ?>">
                                                                     <i class="fas fa-dollar-sign text-success"></i>
                                                                 </button>
+                                                                <?php endif; ?>
                                                                 <div class="dropdown">
                                                                     <button type="button" class="btn btn-icon btn-light" 
                                                                             data-toggle="dropdown" aria-haspopup="true" 

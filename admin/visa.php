@@ -320,9 +320,11 @@ foreach ($visas as $key => $visa) {
                                                                             <button class="dropdown-item" onclick="editVisa(<?= $visa['id'] ?>)">
                                                                                 <i class="feather icon-edit-2 text-warning mr-2"></i> <?= __('edit') ?>
                                                                             </button>
+                                                                            <?php if ($isAgencyClient): ?>
                                                                             <button class="dropdown-item" onclick="openTransactionTab(<?= $visa['id'] ?>, <?= htmlspecialchars($visa['sold']) ?>, '<?= htmlspecialchars($visa['currency']) ?>')">
                                                                                 <i class="fas fa-dollar-sign text-success mr-2"></i> <?= __('transactions') ?>
                                                                             </button>
+                                                                            <?php endif; ?>
                                                                             <button class="dropdown-item" 
                                                                                     onclick="openRefundModal(<?= $visa['id'] ?>, <?= htmlspecialchars($visa['sold']) ?>, <?= htmlspecialchars($visa['profit']) ?>, '<?= htmlspecialchars($visa['currency']) ?>')">
                                                                                 <i class="feather icon-refresh-cw text-warning mr-2"></i> <?= __('refund_visa') ?>

@@ -263,9 +263,11 @@ if ($weightsResult && $weightsResult->num_rows > 0) {
                                                             </td>
 
                                                             <td class="text-right">
+                                                                <?php if ($isAgencyClient): ?>
                                                                 <button class="btn btn-icon btn-sm btn-primary" onclick="manageTransactions(<?= $weight['id'] ?>)" title="<?= __('manage_transactions') ?>">
                                                                     <i class="feather icon-credit-card"></i>
                                                                 </button>
+                                                                <?php endif; ?>
                                                                 <button class="btn btn-icon btn-sm btn-info" onclick="editWeight(<?= $weight['id'] ?>)" title="<?= __('edit_weight') ?>">
                                                                     <i class="feather icon-edit"></i>
                                                                 </button>
