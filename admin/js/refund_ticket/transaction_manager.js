@@ -162,6 +162,10 @@ const transactionManager = {
                                 onclick="transactionManager.editTransaction(${tx.id}, '${cleanDescription.replace(/'/g,"\\'")}', ${amount}, '${tx.created_at}')">
                                 <i class="feather icon-edit"></i>
                             </button>
+                                                            <button class="btn btn-info btn-sm mr-1" title="Print Receipt"
+                                        onclick="printReceipt(${tx.id})">
+                                    <i class="feather icon-printer"></i>
+                                </button>
                             <button class="btn btn-danger btn-sm" title="Delete Transaction"
                                 onclick="transactionManager.deleteTransaction(${tx.id})">
                                 <i class="feather icon-trash-2"></i>
@@ -458,7 +462,10 @@ const transactionManager = {
         }
     }
 };
-
+    // Print receipt function
+    function printReceipt(transactionId) {
+        window.open(`print_refund_receipt.php?id=${transactionId}`, '_blank');
+    }
 // Initialize transaction manager when document is ready
 $(document).ready(function() {
     transactionManager.init();

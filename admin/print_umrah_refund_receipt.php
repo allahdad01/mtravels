@@ -1,0 +1,407 @@
+<?php
+// Include security module
+require_once 'security.php';
+
+// Include language helper
+require_once '../includes/language_helpers.php';
+
+// Enforce authentication
+enforce_auth();
+
+// Database connection
+require_once('../includes/db.php');
+include '../includes/conn.php';
+
+// Get transaction ID from URL
+$transaction_id = isset($_GET['id']) ? (int)$_GET['id'] : 0;
+
+if (!$transaction_id) {
+    die(__('invalid_transaction_id'));
+}
+
+// Fetch transaction details with umrah refund information
+$query = "
+    SELECT
+        mat.*,
+        ur.refund_type,
+        ur.reason,
+        ur.refund_amount as refund_amount,
+        ur.currency as refund_currency,
+        ur.exchange_rate,
+        ub.booking_id,
+        ub.name as passenger_name,
+        ub.flight_date as departure_date,
+        ub.return_date,
+        ub.sold_price as sold,
+        ub.currency as booking_currency,
+        uc.name as client_name,
+        us.name as supplier_name,
+        f.head_of_family as family_head,
+        f.package_type
+    FROM main_account_transactions mat
+    LEFT JOIN umrah_refunds ur ON mat.reference_id = ur.id AND mat.transaction_of = 'umrah_refund'
+    LEFT JOIN umrah_bookings ub ON ur.booking_id = ub.booking_id
+    LEFT JOIN clients uc ON ub.sold_to = uc.id
+    LEFT JOIN suppliers us ON ub.supplier = us.id
+    LEFT JOIN families f ON ub.family_id = f.family_id
+    WHERE mat.id = ? AND mat.transaction_of = 'umrah_refund'
+";
+
+$stmt = $conn->prepare($query);
+$stmt->bind_param("i", $transaction_id);
+$stmt->execute();
+$result = $stmt->get_result();
+
+if ($result->num_rows === 0) {
+    die(__('transaction_not_found'));
+}
+
+$transaction = $result->fetch_assoc();
+
+// Fetch company settings
+try {
+    $settingStmt = $pdo->query("SELECT * FROM settings WHERE id = 1");
+    $settings = $settingStmt->fetch(PDO::FETCH_ASSOC);
+} catch (PDOException $e) {
+    error_log("Settings Error: " . $e->getMessage());
+    $settings = ['agency_name' => 'Default Name'];
+}
+?>
+
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title><?php echo __('refund_receipt'); ?> - <?php echo htmlspecialchars($transaction['description']); ?></title>
+
+    <!-- Bootstrap CSS -->
+    <link rel="stylesheet" href="../assets/css/bootstrap.min.css">
+    <link rel="stylesheet" href="../assets/fonts/fontawesome/css/fontawesome-all.min.css">
+    <link rel="stylesheet" href="../assets/css/style.css">
+
+    <style>
+        @media print {
+            .no-print {
+                display: none !important;
+            }
+            body {
+                font-size: 12px;
+            }
+            .receipt-container {
+                max-width: 100% !important;
+                margin: 0 !important;
+            }
+        }
+
+        .receipt-container {
+            max-width: 800px;
+            margin: 20px auto;
+            padding: 20px;
+            border: 1px solid #ddd;
+            border-radius: 8px;
+            background: white;
+        }
+
+        .receipt-header {
+            border-bottom: 2px solid #dc3545;
+            padding-bottom: 20px;
+            margin-bottom: 10px;
+        }
+
+        .header-row {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: -25px;
+        }
+
+        .agency-name {
+            font-size: 18px;
+            font-weight: bold;
+            color: #333;
+            flex: 1;
+        }
+
+        .receipt-title {
+            font-size: 24px;
+            font-weight: bold;
+            color: #dc3545;
+            text-align: center;
+            flex: 2;
+        }
+
+        .company-logo {
+            flex: 1;
+            text-align: right;
+        }
+
+        .company-logo img {
+            max-height: 80px;
+            max-width: 120px;
+        }
+
+        .receipt-details {
+            margin-bottom: 30px;
+        }
+
+        .detail-row {
+            display: flex;
+            justify-content: space-between;
+            margin-bottom: 8px;
+            padding: 5px 0;
+            position: relative;
+        }
+
+        .detail-row::after {
+            content: '';
+            position: absolute;
+            bottom: 0;
+            left: 0;
+            right: 0;
+            border-bottom: 1px dotted #999;
+            margin-top: 5px;
+        }
+
+        .detail-label {
+            font-weight: bold;
+            color: #333;
+            background: white;
+            padding-right: 10px;
+            z-index: 1;
+            position: relative;
+        }
+
+        .detail-value {
+            color: #666;
+            background: white;
+            padding-left: 10px;
+            z-index: 1;
+            position: relative;
+        }
+
+        .amount-section {
+            background: #f8f9fa;
+            padding: 20px;
+            border-radius: 8px;
+            margin: 20px 0;
+            text-align: center;
+            position: relative;
+        }
+
+        .amount-label {
+            font-size: 16px;
+            color: #666;
+            margin-bottom: 10px;
+        }
+
+        .amount-value {
+            font-size: 28px;
+            font-weight: bold;
+            color: #dc3545;
+            margin-bottom: 40px;
+            background: #dc3545;
+            color: white;
+            padding: 10px 20px;
+            border-radius: 5px;
+            display: inline-block;
+        }
+
+        .signature-section {
+            display: flex;
+            justify-content: space-between;
+            position: absolute;
+            bottom: 20px;
+            left: 20px;
+            right: 20px;
+        }
+
+        .signature-box {
+            flex: 1;
+        }
+
+        .signature-box:first-child {
+            text-align: left;
+        }
+
+        .signature-box:last-child {
+            text-align: right;
+        }
+
+        /* Removed middle line between signatures */
+
+        .signature-label {
+            font-size: 12px;
+            color: #666;
+            margin-bottom: 20px;
+            font-weight: bold;
+        }
+
+        .signature-line {
+            border-bottom: 1px solid #333;
+            width: 120px;
+            height: 25px;
+        }
+
+        .signature-box:first-child .signature-line {
+            margin-left: 0;
+        }
+
+        .signature-box:last-child .signature-line {
+            margin-left: auto;
+            margin-right: 0;
+        }
+
+        .footer-note {
+            text-align: center;
+            font-size: 12px;
+            color: #999;
+            margin-top: 5px;
+            padding-top: 5px;
+            border-top: 1px solid #eee;
+        }
+
+        .print-btn {
+            position: fixed;
+            top: 20px;
+            right: 20px;
+            z-index: 1000;
+        }
+    </style>
+</head>
+<body>
+    <div class="container-fluid">
+        <div class="receipt-container">
+            <!-- Print Button -->
+            <div class="no-print print-btn">
+                <button onclick="window.print()" class="btn btn-primary">
+                    <i class="fas fa-print"></i> <?php echo __('print'); ?>
+                </button>
+                <button onclick="window.close()" class="btn btn-secondary ml-2">
+                    <i class="fas fa-times"></i> <?php echo __('close'); ?>
+                </button>
+            </div>
+
+            <!-- Receipt Header -->
+            <div class="receipt-header">
+                <div class="header-row">
+                    <div class="agency-name">
+                        <?php echo htmlspecialchars($settings['agency_name'] ?? 'Travel Agency'); ?>
+                    </div>
+                    <div class="receipt-title">Umrah Refund Receipt</div>
+                    <div class="company-logo">
+                        <img src="../uploads/<?= htmlspecialchars($settings['logo']); ?>" alt="Company Logo">
+                    </div>
+                </div>
+            </div>
+
+            <!-- Receipt Details -->
+            <div class="receipt-details">
+                <div class="detail-row">
+                    <span class="detail-label"><?php echo __('receipt_number'); ?>:</span>
+                    <span class="detail-value">#<?php echo $transaction['id']; ?></span>
+                </div>
+
+                <div class="detail-row">
+                    <span class="detail-label"><?php echo __('date'); ?>:</span>
+                    <span class="detail-value"><?php echo date('M d, Y H:i', strtotime($transaction['created_at'])); ?></span>
+                </div>
+
+                <div class="detail-row">
+                    <span class="detail-label"><?php echo __('payment_type'); ?>:</span>
+                    <span class="detail-value"><?php echo $transaction['type'] === 'credit' ? __('refunded') : __('paid'); ?></span>
+                </div>
+
+                <div class="detail-row">
+                    <span class="detail-label"><?php echo __('description'); ?>:</span>
+                    <span class="detail-value"><?php echo htmlspecialchars($transaction['description']); ?></span>
+                </div>
+
+                <?php if (!empty($transaction['refund_type'])): ?>
+                <div class="detail-row">
+                    <span class="detail-label"><?php echo __('refund_type'); ?>:</span>
+                    <span class="detail-value"><?php echo htmlspecialchars($transaction['refund_type']); ?></span>
+                </div>
+                <?php endif; ?>
+
+                <?php if (!empty($transaction['reason'])): ?>
+                <div class="detail-row">
+                    <span class="detail-label"><?php echo __('reason'); ?>:</span>
+                    <span class="detail-value"><?php echo htmlspecialchars($transaction['reason']); ?></span>
+                </div>
+                <?php endif; ?>
+
+                <?php if (!empty($transaction['booking_id'])): ?>
+                <hr>
+                <h6><?php echo __('umrah_information'); ?></h6>
+
+                <div class="detail-row">
+                    <span class="detail-label"><?php echo __('passenger_name'); ?>:</span>
+                    <span class="detail-value"><?php echo htmlspecialchars($transaction['passenger_name']); ?></span>
+                </div>
+
+                <div class="detail-row">
+                    <span class="detail-label"><?php echo __('family_head'); ?>:</span>
+                    <span class="detail-value"><?php echo htmlspecialchars($transaction['family_head']); ?></span>
+                </div>
+
+                <div class="detail-row">
+                    <span class="detail-label"><?php echo __('package_type'); ?>:</span>
+                    <span class="detail-value"><?php echo htmlspecialchars($transaction['package_type']); ?></span>
+                </div>
+
+                <?php if (!empty($transaction['return_date'])): ?>
+                <div class="detail-row">
+                    <span class="detail-label"><?php echo __('return_date'); ?>:</span>
+                    <span class="detail-value"><?php echo htmlspecialchars($transaction['return_date']); ?></span>
+                </div>
+                <?php endif; ?>
+
+                <div class="detail-row">
+                    <span class="detail-label"><?php echo __('client'); ?>:</span>
+                    <span class="detail-value"><?php echo htmlspecialchars($transaction['client_name']); ?></span>
+                </div>
+
+                <?php endif; ?>
+            </div>
+
+            <!-- Amount Section -->
+            <div class="amount-section">
+                <div class="amount-label"><?php echo __('refund_amount'); ?></div>
+                <div class="amount-value">
+                    <?php echo htmlspecialchars($transaction['currency']); ?> <?php echo number_format(abs($transaction['amount']), 2); ?>
+                </div>
+
+                <!-- Signature Section -->
+                <div class="signature-section">
+                    <div class="signature-box">
+                        <div class="signature-label">Customer Sign</div>
+                        <div class="signature-line"></div>
+                    </div>
+                    <div class="signature-box">
+                        <div class="signature-label">Authorized Sign & Stamp</div>
+                        <div class="signature-line"></div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Footer Note -->
+            <div class="footer-note">
+                Thank you for choosing our Umrah services<br>
+                <?php echo htmlspecialchars($settings['address'] ?? ''); ?> | <?php echo htmlspecialchars($settings['phone'] ?? ''); ?>
+            </div>
+        </div>
+    </div>
+
+    <!-- Bootstrap JS -->
+    <script src="../assets/js/vendor-all.min.js"></script>
+    <script src="../assets/plugins/bootstrap/js/bootstrap.min.js"></script>
+
+    <script>
+        // Auto-print when page loads (optional)
+        // window.onload = function() {
+        //     window.print();
+        // };
+    </script>
+</body>
+</html>

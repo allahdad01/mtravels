@@ -130,6 +130,10 @@ function loadTransactions(weightId) {
                                     <button class="btn btn-primary btn-sm" onclick="editWeightTransaction(${tx.id}, '${(tx.remarks||'').replace(/'/g,"\\'")}', ${amount}, '${tx.transaction_date}', '${currency}', ${tx.exchange_rate || 'null'})">
                                         <i class="feather icon-edit"></i>
                                     </button>
+                                                                    <button class="btn btn-info btn-sm mr-1" title="Print Receipt"
+                                        onclick="printReceipt(${tx.id})">
+                                    <i class="feather icon-printer"></i>
+                                </button>
                                     <button class="btn btn-danger btn-sm" onclick="deleteTransaction(${tx.id}, ${$('#weightId').val()}, ${amount})">
                                         <i class="feather icon-trash-2"></i>
                                     </button>
@@ -591,3 +595,7 @@ function formatDate(dateString) {
         day: 'numeric'
     });
 }
+    // Print receipt function
+    function printReceipt(transactionId) {
+        window.open(`print_weight_receipt.php?id=${transactionId}`, '_blank');
+    }

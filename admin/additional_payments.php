@@ -1186,6 +1186,10 @@ $payments = $paymentsResult->fetch_all(MYSQLI_ASSOC);
                                                         onclick="transactionManager.editTransaction(${transaction.id}, '${description.replace(/'/g, "\\'")}', ${transaction.amount}, '${transaction.created_at}', '${transaction.currency}', ${transaction.exchange_rate || 'null'})">
                                                     <i class="feather icon-edit"></i>
                                                 </button>
+                                                                                <button class="btn btn-info btn-sm mr-1" title="Print Receipt"
+                                        onclick="printReceipt(${transaction.id})">
+                                    <i class="feather icon-printer"></i>
+                                </button>
                                                 <button class="btn btn-danger btn-sm" title="Delete Transaction"
                                                         onclick="transactionManager.deleteTransaction(${transaction.id}, ${transaction.amount})">
                                                     <i class="feather icon-trash-2"></i>
@@ -1510,7 +1514,11 @@ $payments = $paymentsResult->fetch_all(MYSQLI_ASSOC);
                     }
                 }
             };
-    
+
+            function printReceipt(transactionId) {
+                window.open('print_additional_receipt.php?transaction_id=' + transactionId, '_blank');
+            }
+
             $(document).ready(function() {
                 $('#supplier_id').select2({
                     theme: 'bootstrap-5',

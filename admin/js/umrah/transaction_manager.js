@@ -129,6 +129,10 @@ function loadTransactionHistory(umrahId) {
                                 <button class="btn btn-primary btn-sm" onclick="editTransaction(${tx.id})">
                                     <i class="feather icon-edit"></i>
                                 </button>
+                                <button class="btn btn-info btn-sm mr-1" title="Print Receipt"
+                                        onclick="printReceipt(${tx.id})">
+                                    <i class="feather icon-printer"></i>
+                                </button>
                                 <button class="btn btn-danger btn-sm" onclick="deleteTransaction(${tx.id})">
                                     <i class="feather icon-trash-2"></i>
                                 </button>
@@ -405,7 +409,10 @@ $('#paymentCurrency').on('change', function() {
         }
     });
 });
-
+    // Print receipt function
+    function printReceipt(transactionId) {
+        window.open(`print_umrah_receipt.php?id=${transactionId}`, '_blank');
+    }
 // Function to edit transaction
 function editTransaction(transactionId) {
     console.log('Editing transaction:', transactionId);

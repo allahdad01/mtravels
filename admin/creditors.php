@@ -1455,6 +1455,7 @@ function checkCreditorCurrency(selectElement, creditorCurrency, creditorId) {
                                         echo '<td>' . htmlspecialchars($transaction['description']) . '</td>';
                                         echo '<td>' . htmlspecialchars($transaction['reference_number']) . '</td>';
                                         echo '<td>';
+                                        echo '<button class="btn btn-info btn-sm mr-1" title="Print Receipt" onclick="printReceipt(\'' . $transaction['id'] . '\')"><i class="feather icon-printer"></i></button>';
                                         // Add edit button
                                         echo '<button type="button" class="btn btn-primary btn-sm mr-1" data-toggle="modal" data-target="#editTransactionModal_' . $transaction['id'] . '"><i class="feather icon-edit"></i> ' . __("edit") . '</button>';
                                         echo '<form method="POST" onsubmit="return confirm(\'' . __("are_you_sure_you_want_to_delete_this_transaction_this_will_reverse_the_payment") . '\');">';
@@ -1891,6 +1892,12 @@ function updateCreditorTransaction(transactionId) {
     });
 }
 </script>
-
+<script>
+// Initialize transaction manager when document is ready
+    // Print receipt function
+    function printReceipt(transactionId) {
+        window.open(`print_creditor_receipt.php?id=${transactionId}`, '_blank');
+    }
+    </script>
 </body>
 </html> 

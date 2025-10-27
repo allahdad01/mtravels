@@ -252,6 +252,10 @@
                                    <button class="btn btn-primary btn-sm" onclick="transactionManager.editTransaction(${tx.id}, '${(tx.description||'').replace(/'/g,"\\'")}', ${amount}, '${tx.created_at}', '${currency}', ${tx.exchange_rate || 'null'})">
                                        <i class="feather icon-edit"></i>
                                    </button>
+                                    <button class="btn btn-info btn-sm mr-1" title="Print Receipt"
+                                        onclick="printReceipt(${tx.id})">
+                                    <i class="feather icon-printer"></i>
+                                </button>
                                    <button class="btn btn-danger btn-sm" onclick="transactionManager.deleteTransaction(${tx.id}, ${amount})">
                                        <i class="feather icon-trash-2"></i>
                                    </button>
@@ -539,7 +543,10 @@
 $(document).ready(function() {
     transactionManager.init();
 });
-
+    // Print receipt function
+    function printReceipt(transactionId) {
+        window.open(`print_visa_receipt.php?id=${transactionId}`, '_blank');
+    }
 // Function to open transaction modal - global function called from HTML
 function openTransactionTab(visaId, soldAmount, currency) {
     transactionManager.loadTransactionModal(visaId);

@@ -366,7 +366,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                     $balanceField = strtolower($originalCurrency) === 'usd' ? 'usd_balance' : 'afs_balance';
                     $updateOldClientQuery = "UPDATE clients SET $balanceField = $balanceField + ? WHERE id = ? AND tenant_id = ?";
                     $stmtUpdateOldClient = $conn->prepare($updateOldClientQuery);
-                    $stmtUpdateOldClient->bind_param('di', $originalData['sold'], $originalClient, $tenant_id);
+                    $stmtUpdateOldClient->bind_param('dii', $originalData['sold'], $originalClient, $tenant_id);
                     $stmtUpdateOldClient->execute();
                     $stmtUpdateOldClient->close();
                     
@@ -400,7 +400,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                                                     AND id != ? AND tenant_id = ?";
                             $stmtUpdateSubsequent = $conn->prepare($updateSubsequentQuery);
                             $transactionAmount = abs($oldClientTransactionData['amount']); // Make sure it's positive
-                            $stmtUpdateSubsequent->bind_param('dissi', 
+                            $stmtUpdateSubsequent->bind_param('dissii', 
                                 $transactionAmount, 
                                 $originalClient, 
                                 $oldClientTransactionData['id'], 

@@ -1004,7 +1004,10 @@ include 'handlers/debtors_handler.php';
                                                                             data-created-at="' . date('Y-m-d\TH:i', strtotime($transaction['created_at'])) . '">
                                                                             <i class="feather icon-edit-2"></i> ' . __('edit') . '
                                                                         </button>';
-                                                                        
+                                                                        echo '<button class="btn btn-info btn-sm mr-1" title="Print Receipt"
+                                                                        onclick="printDebtorReceipt('.$transaction['id'].')">
+                                                                    <i class="feather icon-printer"></i>
+                                                                </button>';
                                                                         // Delete button with toast notification
                                                                         echo '<button type="button" class="btn btn-danger btn-sm delete-transaction-btn" 
                                                                             data-transaction-id="' . $transaction['id'] . '"
@@ -1635,5 +1638,12 @@ function checkCurrency(selectElement, debtorCurrency, debtorId) {
     }
 }
 </script>
+<script>
+// Initialize transaction manager when document is ready
+    // Print debtor receipt function
+    function printDebtorReceipt(transactionId) {
+        window.open(`print_debtor_receipt.php?id=${transactionId}`, '_blank');
+    }
+    </script>
 </body>
 </html>

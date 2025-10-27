@@ -1229,7 +1229,7 @@ require_once('../includes/utils.php');
                                         <input type="number" class="form-control" id="transactionExchangeRate"
                                             name="exchange_rate" step="0.01" placeholder="Enter exchange rate">
                                     </div>
-                                    </div>
+                                    
 
                                     <div class="form-group">
                                         <label for="paymentDescription">
@@ -1239,7 +1239,7 @@ require_once('../includes/utils.php');
                                                 name="payment_description" rows="2" required
                                                 placeholder="Enter payment description"></textarea>
                                     </div>
-
+                                    </div>
                                     <div class="text-right mt-3">
                                         <button type="button" class="btn btn-secondary" data-toggle="collapse" 
                                                 data-target="#addTransactionForm">
