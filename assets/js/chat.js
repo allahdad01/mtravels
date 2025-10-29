@@ -117,16 +117,66 @@
 		function updateHeaderAvatar(contact) {
 			const avatar = document.getElementById('chatAvatar');
 			if (!avatar) return;
+
+			// Clear existing content and styles
+			avatar.innerHTML = '';
+			avatar.style.background = '';
+			avatar.style.borderRadius = '';
+			avatar.style.overflow = '';
+
 			if (contact && contact.photo) {
+				// Show profile image
 				avatar.style.background = 'none';
 				avatar.style.borderRadius = '50%';
 				avatar.style.overflow = 'hidden';
-				avatar.innerHTML = `<img src="${contact.photo}" alt="${contact.name || 'User'}" style="width:100%;height:100%;object-fit:cover;border-radius:50%;" />`;
+				const img = document.createElement('img');
+				img.src = contact.photo;
+				img.alt = contact.name || 'User';
+				img.style.width = '100%';
+				img.style.height = '100%';
+				img.style.objectFit = 'cover';
+				img.style.borderRadius = '50%';
+				img.onerror = () => {
+					// Fallback to initials if image fails to load
+					showInitialsFallback(contact);
+				};
+				avatar.appendChild(img);
 			} else if (contact) {
-				const initials = (contact.name || '?').trim().split(/\s+/).map(s => s[0]).slice(0,2).join('').toUpperCase();
-				avatar.innerHTML = initials || 'U';
-				avatar.style.background = '';
+				// Show initials fallback
+				showInitialsFallback(contact);
+			} else {
+				// Default fallback
+				avatar.innerHTML = 'U';
+				avatar.style.background = 'var(--chat-primary-solid)';
+				avatar.style.color = 'white';
+				avatar.style.display = 'flex';
+				avatar.style.alignItems = 'center';
+				avatar.style.justifyContent = 'center';
+				avatar.style.fontWeight = '600';
 			}
+		}
+
+		function showInitialsFallback(contact) {
+			const avatar = document.getElementById('chatAvatar');
+			if (!avatar) return;
+
+			const initials = (contact.name || '?').trim().split(/\s+/).map(s => s[0]).slice(0,2).join('').toUpperCase();
+			avatar.innerHTML = initials || 'U';
+			avatar.style.background = 'var(--chat-primary-solid)';
+			avatar.style.color = 'white';
+			avatar.style.display = 'flex';
+			avatar.style.alignItems = 'center';
+			avatar.style.justifyContent = 'center';
+			avatar.style.fontWeight = '600';
+			avatar.style.borderRadius = '50%';
+		}
+
+		function showSidebarInitialsFallback(avatarDiv, initials) {
+			if (!avatarDiv) return;
+
+			avatarDiv.innerHTML = initials || 'U';
+			avatarDiv.style.background = 'var(--chat-primary-solid)';
+			avatarDiv.style.color = 'white';
 		}
 
 		function showNotice(text) { if (elements.noticeEl) elements.noticeEl.textContent = text || ''; }
@@ -146,7 +196,11 @@
 
 		function createMessageElement(text, who = 'me', timestamp = new Date()) {
 			const div = document.createElement('div');
-			div.className = `msg p-3 rounded-lg ${who === 'me' ? 'me bg-green-100 self-end' : 'peer bg-gray-100 self-start'}`;
+			div.className = `message ${who} fade-in`;
+
+			// Create message bubble container
+			const bubble = document.createElement('div');
+			bubble.className = 'message-bubble';
 
 			// Handle reply messages
 			let displayText = text;
@@ -168,37 +222,45 @@
 			// Add reply context if exists
 			if (replyContext) {
 				const replyDiv = document.createElement('div');
-				replyDiv.className = 'reply-context bg-gray-200 p-2 rounded mb-2 border-l-4 border-blue-500 cursor-pointer hover:bg-gray-300 transition-colors';
+				replyDiv.className = 'reply-context';
 				replyDiv.onclick = () => window.scrollToReply(replyContext.replyTo);
 				replyDiv.innerHTML = `
-					<div class="text-xs text-gray-600 mb-1">Replying to:</div>
-					<div class="text-sm text-gray-800 truncate">${replyContext.replyText}</div>
+					<div class="text-xs opacity-70 mb-1">Replying to:</div>
+					<div class="text-sm truncate">${replyContext.replyText}</div>
 				`;
-				div.appendChild(replyDiv);
+				bubble.appendChild(replyDiv);
 			}
 
-			const content = document.createElement('span');
+			// Message text
+			const content = document.createElement('div');
 			content.className = 'message-text';
 			content.textContent = displayText;
-			const timeSpan = document.createElement('span');
-			timeSpan.className = 'text-xs text-gray-500 ml-2';
+			bubble.appendChild(content);
+
+			// Message time
+			const timeSpan = document.createElement('div');
+			timeSpan.className = 'message-time';
 			timeSpan.textContent = timestamp.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
-			div.appendChild(content);
-			div.appendChild(timeSpan);
+			bubble.appendChild(timeSpan);
+
 			// Add ticks for sent messages
 			if (who === 'me') {
 				const ticks = document.createElement('span');
-				ticks.className = 'ticks text-xs text-gray-500 ml-2';
-				div.appendChild(ticks);
+				ticks.className = 'ticks';
+				bubble.appendChild(ticks);
 			}
 
-			// Add dropdown menu for all messages
+			// Add reactions container
+			const reactionsDiv = document.createElement('div');
+			reactionsDiv.className = 'message-reactions';
+			bubble.appendChild(reactionsDiv);
+
+			// Add message actions
 			const actionsDiv = document.createElement('div');
 			actionsDiv.className = 'message-actions';
 			let dropdownItems = '';
 
 			if (who === 'me') {
-				// Options for sent messages
 				dropdownItems = `
 					<div class="message-dropdown-item" onclick="window.replyToMessage(this)">
 						<i class="fas fa-reply"></i>
@@ -216,6 +278,10 @@
 						<i class="fas fa-edit"></i>
 						<span>Edit</span>
 					</div>
+					<div class="message-dropdown-item" onclick="window.showReactionPicker(this)">
+						<i class="fas fa-smile"></i>
+						<span>React</span>
+					</div>
 					<div class="message-dropdown-divider"></div>
 					<div class="message-dropdown-item danger" onclick="window.deleteMessage(this)">
 						<i class="fas fa-trash"></i>
@@ -223,7 +289,6 @@
 					</div>
 				`;
 			} else {
-				// Options for received messages
 				dropdownItems = `
 					<div class="message-dropdown-item" onclick="window.replyToMessage(this)">
 						<i class="fas fa-reply"></i>
@@ -237,6 +302,10 @@
 						<i class="fas fa-copy"></i>
 						<span>Copy</span>
 					</div>
+					<div class="message-dropdown-item" onclick="window.showReactionPicker(this)">
+						<i class="fas fa-smile"></i>
+						<span>React</span>
+					</div>
 					<div class="message-dropdown-divider"></div>
 					<div class="message-dropdown-item danger" onclick="window.deleteMessage(this)">
 						<i class="fas fa-trash"></i>
@@ -246,6 +315,9 @@
 			}
 
 			actionsDiv.innerHTML = `
+				<button class="quick-reaction-btn" onclick="window.showReactionPicker(this)" title="React">
+					<i class="fas fa-smile"></i>
+				</button>
 				<button class="message-menu-btn" onclick="window.toggleMessageMenu(this)" title="Message options">
 					<i class="fas fa-ellipsis-v"></i>
 				</button>
@@ -253,7 +325,17 @@
 					${dropdownItems}
 				</div>
 			`;
-			div.appendChild(actionsDiv);
+			bubble.appendChild(actionsDiv);
+			div.appendChild(bubble);
+
+			// Add avatar for incoming messages
+			if (who === 'incoming') {
+				const avatarDiv = document.createElement('div');
+				avatarDiv.className = 'message-avatar';
+				avatarDiv.innerHTML = '<i class="fas fa-user"></i>';
+				div.insertBefore(avatarDiv, bubble);
+			}
+
 			return div;
 		}
 
@@ -294,6 +376,14 @@
 					ticks.classList.add('text-gray-500');
 				}
 			}
+
+			// Initialize reactions for this message
+			if (messageId) {
+				window.loadMessageReactions(messageId).then(() => {
+					window.updateReactionDisplay(messageId);
+				});
+			}
+
 			return div;
 		}
 
@@ -405,6 +495,10 @@
 						<i class="fas fa-copy"></i>
 						<span>Copy</span>
 					</div>
+					<div class="message-dropdown-item" onclick="window.showReactionPicker(this)">
+						<i class="fas fa-smile"></i>
+						<span>React</span>
+					</div>
 					<div class="message-dropdown-divider"></div>
 					<div class="message-dropdown-item danger" onclick="window.deleteMessage(this)">
 						<i class="fas fa-trash"></i>
@@ -430,6 +524,10 @@
 						<i class="fas fa-copy"></i>
 						<span>Copy</span>
 					</div>
+					<div class="message-dropdown-item" onclick="window.showReactionPicker(this)">
+						<i class="fas fa-smile"></i>
+						<span>React</span>
+					</div>
 					<div class="message-dropdown-divider"></div>
 					<div class="message-dropdown-item danger" onclick="window.deleteMessage(this)">
 						<i class="fas fa-trash"></i>
@@ -439,6 +537,9 @@
 			}
 
 			actionsDiv.innerHTML = `
+				<button class="quick-reaction-btn" onclick="window.showReactionPicker(this)" title="React">
+					<i class="fas fa-smile"></i>
+				</button>
 				<button class="message-menu-btn" onclick="window.toggleMessageMenu(this)" title="Message options">
 					<i class="fas fa-ellipsis-v"></i>
 				</button>
@@ -792,6 +893,304 @@
 		// Make broadcast functions globally available
 		window.broadcastEdit = broadcastEdit;
 		window.broadcastDelete = broadcastDelete;
+
+		// Message Reactions System
+		window.messageReactions = new Map(); // Store reactions per message
+
+		window.showReactionPicker = function(buttonElement) {
+			// Remove any existing reaction picker
+			const existingPicker = document.querySelector('.reaction-picker');
+			if (existingPicker) existingPicker.remove();
+
+			const messageDiv = buttonElement.closest('.msg');
+			const messageId = messageDiv.getAttribute('data-message-id');
+
+			if (!messageId) return;
+
+			// Create reaction picker
+			const picker = document.createElement('div');
+			picker.className = 'reaction-picker';
+			picker.style.cssText = `
+				position: absolute;
+				background: var(--bg-primary);
+				border: 1px solid var(--border-color);
+				border-radius: 0.5rem;
+				padding: 0.5rem;
+				box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1);
+				z-index: 1000;
+				display: flex;
+				gap: 0.25rem;
+			`;
+
+			const reactions = ['👍', '❤️', '😂', '😮', '😢', '😡'];
+
+			reactions.forEach(emoji => {
+				const btn = document.createElement('button');
+				btn.textContent = emoji;
+				btn.style.cssText = `
+					background: none;
+					border: none;
+					font-size: 1.25rem;
+					cursor: pointer;
+					padding: 0.25rem;
+					border-radius: 0.25rem;
+					transition: background-color 0.2s;
+				`;
+				btn.onmouseover = () => btn.style.backgroundColor = 'var(--hover-bg)';
+				btn.onmouseout = () => btn.style.backgroundColor = 'transparent';
+				btn.onclick = () => {
+					window.addReaction(messageId, emoji);
+					picker.remove();
+				};
+				picker.appendChild(btn);
+			});
+
+			// Position the picker
+			const rect = buttonElement.getBoundingClientRect();
+			picker.style.left = rect.left + 'px';
+			picker.style.top = (rect.top - 60) + 'px';
+
+			document.body.appendChild(picker);
+
+			// Close on outside click
+			setTimeout(() => {
+				document.addEventListener('click', function closePicker(e) {
+					if (!picker.contains(e.target)) {
+						picker.remove();
+						document.removeEventListener('click', closePicker);
+					}
+				});
+			}, 1);
+		};
+
+		window.addReaction = async function(messageId, emoji) {
+			if (!messageId) return;
+
+			try {
+				const formData = new FormData();
+				formData.append('message_id', messageId);
+				formData.append('emoji', emoji);
+				formData.append('action', 'add');
+
+				const response = await fetch('api/message_reactions.php', {
+					method: 'POST',
+					credentials: 'include',
+					body: formData
+				});
+
+				const result = await response.json();
+				if (result.ok) {
+					// Reload reactions for this message
+					await window.loadMessageReactions(messageId);
+					window.updateReactionDisplay(messageId);
+
+					// Broadcast to peers
+					if (window.broadcastReaction) {
+						window.broadcastReaction(messageId, emoji);
+					}
+				} else {
+					console.error('Failed to add reaction:', result.error);
+				}
+			} catch (error) {
+				console.error('Error adding reaction:', error);
+			}
+		};
+
+		window.loadMessageReactions = async function(messageId) {
+			try {
+				const response = await fetch(`api/message_reactions.php?message_id=${messageId}`, {
+					credentials: 'include'
+				});
+
+				if (response.ok) {
+					const data = await response.json();
+					const reactions = new Map();
+
+					// Process reactions data
+					for (const [emoji, users] of Object.entries(data.reactions || {})) {
+						for (const user of users) {
+							reactions.set(user.user_id, emoji);
+						}
+					}
+
+					window.messageReactions.set(messageId, reactions);
+				}
+			} catch (error) {
+				console.error('Error loading reactions:', error);
+			}
+		};
+
+		window.updateReactionDisplay = function(messageId) {
+			const messageEl = document.querySelector(`.msg[data-message-id="${messageId}"]`);
+			if (!messageEl) return;
+
+			// Remove existing reaction display
+			const existingReactions = messageEl.querySelector('.message-reactions');
+			if (existingReactions) existingReactions.remove();
+
+			const reactions = window.messageReactions.get(messageId);
+			if (!reactions || reactions.size === 0) return;
+
+			// Group reactions by emoji
+			const reactionCounts = new Map();
+			for (const [userId, emoji] of reactions) {
+				reactionCounts.set(emoji, (reactionCounts.get(emoji) || 0) + 1);
+			}
+
+			// Create reaction display
+			const reactionDiv = document.createElement('div');
+			reactionDiv.className = 'message-reactions';
+			reactionDiv.style.cssText = `
+				display: flex;
+				gap: 0.25rem;
+				margin-top: 0.25rem;
+				flex-wrap: wrap;
+			`;
+
+			for (const [emoji, count] of reactionCounts) {
+				const reactionBtn = document.createElement('button');
+				reactionBtn.textContent = `${emoji} ${count}`;
+				reactionBtn.style.cssText = `
+					background: var(--bg-secondary);
+					border: 1px solid var(--border-color);
+					border-radius: 0.75rem;
+					padding: 0.125rem 0.375rem;
+					font-size: 0.75rem;
+					cursor: pointer;
+					transition: all 0.2s;
+				`;
+				reactionBtn.onmouseover = () => {
+					reactionBtn.style.backgroundColor = 'var(--hover-bg)';
+					reactionBtn.style.transform = 'scale(1.05)';
+				};
+				reactionBtn.onmouseout = () => {
+					reactionBtn.style.backgroundColor = 'var(--bg-secondary)';
+					reactionBtn.style.transform = 'scale(1)';
+				};
+				reactionBtn.onclick = () => window.addReaction(messageId, emoji);
+				reactionDiv.appendChild(reactionBtn);
+			}
+
+			// Add to message
+			const messageBubble = messageEl.querySelector('.message-bubble');
+			if (messageBubble) {
+				messageBubble.appendChild(reactionDiv);
+			} else {
+				// For file messages, add reactions after the message content
+				const messageText = messageEl.querySelector('.message-text');
+				if (messageText) {
+					messageText.insertAdjacentElement('afterend', reactionDiv);
+				} else {
+					// Fallback: add to the message div itself
+					messageEl.appendChild(reactionDiv);
+				}
+			}
+		};
+
+		// Enhanced Theme Management System
+		window.themeManager = {
+			currentTheme: 'light',
+			currentColorTheme: 'default',
+
+			init() {
+				this.loadSavedPreferences();
+				this.setupEventListeners();
+			},
+
+			loadSavedPreferences() {
+				const savedTheme = localStorage.getItem('chat-theme') || 'light';
+				const savedColorTheme = localStorage.getItem('chat-color-theme') || 'default';
+				this.setTheme(savedTheme);
+				this.setColorTheme(savedColorTheme);
+			},
+
+			setTheme(theme) {
+				this.currentTheme = theme;
+				document.documentElement.setAttribute('data-theme', theme);
+				localStorage.setItem('chat-theme', theme);
+
+				const themeText = document.getElementById('themeText');
+				if (themeText) {
+					themeText.textContent = theme === 'dark' ? 'Light Mode' : 'Dark Mode';
+				}
+			},
+
+			setColorTheme(colorTheme) {
+				this.currentColorTheme = colorTheme;
+				document.documentElement.setAttribute('data-color-theme', colorTheme);
+				localStorage.setItem('chat-color-theme', colorTheme);
+			},
+
+			toggleTheme() {
+				const newTheme = this.currentTheme === 'dark' ? 'light' : 'dark';
+				this.setTheme(newTheme);
+			},
+
+			setupEventListeners() {
+				const themeDropdown = document.getElementById('themeDropdown');
+				const themeToggle = document.getElementById('themeToggle');
+				const themeMenu = document.getElementById('themeMenu');
+
+				themeToggle?.addEventListener('click', (e) => {
+					e.preventDefault();
+					e.stopPropagation();
+					themeDropdown?.classList.toggle('open');
+				});
+
+				document.addEventListener('click', (e) => {
+					if (!themeDropdown?.contains(e.target)) {
+						themeDropdown?.classList.remove('open');
+					}
+				});
+			}
+		};
+
+		// Initialize theme manager
+		window.themeManager.init();
+
+		// Message Search System
+		window.searchMessages = function(query) {
+			const messages = document.querySelectorAll('.msg');
+			const searchTerm = query.toLowerCase().trim();
+
+			messages.forEach(msg => {
+				const text = msg.textContent.toLowerCase();
+				if (searchTerm === '' || text.includes(searchTerm)) {
+					msg.style.display = '';
+					if (searchTerm) {
+						// Highlight search term
+						msg.classList.add('search-highlight');
+					} else {
+						msg.classList.remove('search-highlight');
+					}
+				} else {
+					msg.style.display = 'none';
+				}
+			});
+		};
+
+		// Add search highlight styles
+		const searchStyles = document.createElement('style');
+		searchStyles.textContent = `
+			.search-highlight {
+				background-color: rgba(255, 255, 0, 0.3);
+				border-radius: 0.25rem;
+			}
+		`;
+		document.head.appendChild(searchStyles);
+
+		// Make functions globally available
+		window.broadcastReaction = function(messageId, emoji) {
+			// Broadcast reaction to connected peers
+			if (window.broadcastJSON) {
+				window.broadcastJSON({
+					type: 'reaction',
+					messageId: messageId,
+					emoji: emoji,
+					userId: window.ALQ_USER_ID
+				});
+			}
+		};
 
 		// Update parent window unread count
 		function updateParentUnreadCount() {
@@ -1750,12 +2149,40 @@
 				const div = document.createElement('div');
 				div.className = 'contact p-3 border-b border-gray-100 cursor-pointer hover:bg-gray-50';
 				const initials = (c.name || '?').trim().split(/\s+/).map(s => s[0]).slice(0,2).join('').toUpperCase();
-				const avatarHtml = c.photo
-					? `<img src="${c.photo}" alt="${c.name || 'User'}" style="width:40px;height:40px;border-radius:50%;object-fit:cover;flex-shrink:0;" />`
-					: `<div style="width:40px;height:40px;border-radius:50%;background:#2563eb;color:#fff;display:flex;align-items:center;justify-content:center;font-weight:600;flex-shrink:0;">${initials}</div>`;
+
+				// Create avatar element with proper fallback handling
+				const avatarDiv = document.createElement('div');
+				avatarDiv.style.width = '40px';
+				avatarDiv.style.height = '40px';
+				avatarDiv.style.borderRadius = '50%';
+				avatarDiv.style.flexShrink = '0';
+				avatarDiv.style.display = 'flex';
+				avatarDiv.style.alignItems = 'center';
+				avatarDiv.style.justifyContent = 'center';
+				avatarDiv.style.fontWeight = '600';
+
+				if (c.photo) {
+					// Show profile image with error fallback
+					const img = document.createElement('img');
+					img.src = c.photo;
+					img.alt = c.name || 'User';
+					img.style.width = '100%';
+					img.style.height = '100%';
+					img.style.objectFit = 'cover';
+					img.style.borderRadius = '50%';
+					img.onerror = () => {
+						// Fallback to initials if image fails to load
+						showSidebarInitialsFallback(avatarDiv, initials);
+					};
+					avatarDiv.appendChild(img);
+				} else {
+					// Show initials fallback
+					showSidebarInitialsFallback(avatarDiv, initials);
+				}
+
 				div.innerHTML = `
 					<div style="display:flex;gap:12px;align-items:center;">
-						${avatarHtml}
+						<div id="sidebar-avatar-${c.id}"></div>
 						<div style="min-width:0;flex:1;">
 							<div class="font-semibold">${(c.name || '').trim()} (${c.role || ''})<span class="badge"></span></div>
 							<div class="text-sm text-gray-500">${c.agency_name || ''}</div>
@@ -1763,6 +2190,12 @@
 						</div>
 					</div>
 				`;
+
+				// Insert the avatar into the placeholder
+				const avatarPlaceholder = div.querySelector(`#sidebar-avatar-${c.id}`);
+				if (avatarPlaceholder) {
+					avatarPlaceholder.parentNode.replaceChild(avatarDiv, avatarPlaceholder);
+				}
 				div.onclick = () => {
 					for (const el of elements.contactList.children) el.classList.remove('active');
 					div.classList.add('active');
@@ -1840,6 +2273,13 @@
 							const ticks = el.querySelector('.ticks');
 							if (ticks) { ticks.textContent = '✓✓'; ticks.classList.remove('text-gray-500'); ticks.classList.add('text-blue-500'); }
 						}
+					}
+
+					// Load reactions for this message
+					if (m.id) {
+						window.loadMessageReactions(m.id).then(() => {
+							window.updateReactionDisplay(m.id);
+						});
 					}
 				}
 				nextBeforeId = data.next_before_id || 0;

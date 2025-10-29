@@ -38,7 +38,7 @@ try {
                p.name as plan_name, p.price as plan_price
         FROM tenant_subscriptions ts
         LEFT JOIN tenants t ON ts.tenant_id = t.id
-        LEFT JOIN plans p ON ts.plan_id = p.name
+        LEFT JOIN plans p ON ts.plan_id = p.id
         WHERE ts.id = ?
     ");
     $stmt->execute([$subscription_id]);

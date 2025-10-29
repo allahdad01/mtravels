@@ -159,157 +159,140 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 }
                 $oldSupplierIsExternal = (strtolower(trim($oldSupplierType)) === 'external');
                 
-                // If supplier changed and old supplier was external
-                if ($supplier != $originalSupplier && $oldSupplierIsExternal) {
-                    // Get all transactions for the old supplier related to this ticket
-                    $getOldSupplierTransactionsQuery = "SELECT * FROM supplier_transactions 
-                                                       WHERE supplier_id = ? 
-                                                       AND reference_id = ? 
-                                                       AND transaction_of = 'ticket_sale'
-                                                       AND tenant_id = ?
-                                                       ORDER BY transaction_date ASC";
-                    $stmtGetOldSupplierTransactions = $conn->prepare($getOldSupplierTransactionsQuery);
-                    $stmtGetOldSupplierTransactions->bind_param('iii', $originalSupplier, $id, $tenant_id);
-                    $stmtGetOldSupplierTransactions->execute();
-                    $oldSupplierTransactions = $stmtGetOldSupplierTransactions->get_result()->fetch_all(MYSQLI_ASSOC);
-                    $stmtGetOldSupplierTransactions->close();
+// If supplier changed
+if ($supplier != $originalSupplier) {
 
-                    // Calculate total amount from old supplier transactions
-                    $totalAmount = 0;
-                    foreach ($oldSupplierTransactions as $transaction) {
-                        $totalAmount += $transaction['amount'];
-                    }
+    // If old supplier was external, adjust balances
+    if ($oldSupplierIsExternal) {
+        // Get all transactions for the old supplier related to this ticket
+        $getOldSupplierTransactionsQuery = "SELECT * FROM supplier_transactions 
+                                            WHERE supplier_id = ? 
+                                            AND reference_id = ? 
+                                            AND transaction_of = 'ticket_sale'
+                                            AND tenant_id = ?
+                                            ORDER BY transaction_date ASC";
+        $stmtGetOldSupplierTransactions = $conn->prepare($getOldSupplierTransactionsQuery);
+        $stmtGetOldSupplierTransactions->bind_param('iii', $originalSupplier, $id, $tenant_id);
+        $stmtGetOldSupplierTransactions->execute();
+        $oldSupplierTransactions = $stmtGetOldSupplierTransactions->get_result()->fetch_all(MYSQLI_ASSOC);
+        $stmtGetOldSupplierTransactions->close();
 
-                    // Get the transaction we're transferring to get its date
-                    $getTransferTransactionQuery = "SELECT transaction_date FROM supplier_transactions 
-                                                  WHERE supplier_id = ? 
-                                                  AND reference_id = ? 
-                                                  AND transaction_of = 'ticket_sale'
-                                                  AND tenant_id = ?
-                                                  LIMIT 1";
-                    $stmtGetTransferTransaction = $conn->prepare($getTransferTransactionQuery);
-                    $stmtGetTransferTransaction->bind_param('iii', $originalSupplier, $id, $tenant_id);
-                    $stmtGetTransferTransaction->execute();
-                    $transferResult = $stmtGetTransferTransaction->get_result();
-                    $transferDate = $transferResult->fetch_assoc()['transaction_date'];
-                    $stmtGetTransferTransaction->close();
+        // Calculate total amount from old supplier transactions
+        $totalAmount = 0;
+        foreach ($oldSupplierTransactions as $transaction) {
+            $totalAmount += $transaction['amount'];
+        }
 
-                    // Update old supplier balance - ADDING back the amount since we're removing the ticket
-                    // Example: If balance was -5000 and removing amount 200, new balance becomes -4800 (supplier owes less)
-                    $updateOldSupplierQuery = "UPDATE suppliers SET balance = balance + ? WHERE id = ? AND tenant_id = ?";
-                    $stmtUpdateOldSupplier = $conn->prepare($updateOldSupplierQuery);
-                    $stmtUpdateOldSupplier->bind_param('dii', $totalAmount, $originalSupplier, $tenant_id);
-                    $stmtUpdateOldSupplier->execute();
-                    $stmtUpdateOldSupplier->close();
+        // Update old supplier balance (adding back amount)
+        $updateOldSupplierQuery = "UPDATE suppliers SET balance = balance + ? WHERE id = ? AND tenant_id = ?";
+        $stmtUpdateOldSupplier = $conn->prepare($updateOldSupplierQuery);
+        $stmtUpdateOldSupplier->bind_param('dii', $totalAmount, $originalSupplier, $tenant_id);
+        $stmtUpdateOldSupplier->execute();
+        $stmtUpdateOldSupplier->close();
 
-                    // Update subsequent transactions for old supplier - ADDING back the amount
-                    // But only for transactions that occurred after this specific transaction
-                    $updateOldSupplierSubsequentQuery = "UPDATE supplier_transactions
-                                                        SET balance = balance + ?
-                                                        WHERE supplier_id = ?
-                                                        AND id > (
-                                                            SELECT id
-                                                            FROM supplier_transactions
-                                                            WHERE supplier_id = ?
-                                                            AND reference_id = ?
-                                                            AND transaction_of = 'ticket_sale'
-                                                            AND tenant_id = ?
-                                                            LIMIT 1
-                                                        )
-                                                        ORDER BY transaction_date ASC, id ASC";
-                    $stmtUpdateOldSupplierSubsequent = $conn->prepare($updateOldSupplierSubsequentQuery);
-                    $stmtUpdateOldSupplierSubsequent->bind_param('diiii', $totalAmount, $originalSupplier, $originalSupplier, $id, $tenant_id);
-                    $stmtUpdateOldSupplierSubsequent->execute();
-                    $stmtUpdateOldSupplierSubsequent->close();
-
-                    // Check if new supplier is external
-                    $supplierQuery = "SELECT * FROM suppliers WHERE id = ? AND tenant_id = ?";
-                    $stmtSupplier = $conn->prepare($supplierQuery);
-                    $stmtSupplier->bind_param('ii', $supplier, $tenant_id);
-                    $stmtSupplier->execute();
-                    $supplierResult = $stmtSupplier->get_result();
-                    $supplierData = $supplierResult->fetch_assoc();
-                    $stmtSupplier->close();
-
-                    $supplierType = isset($supplierData['supplier_type']) ? $supplierData['supplier_type'] : '';
-                    if (!$supplierType) {
-                        $supplierType = isset($supplierData['type']) ? $supplierData['type'] : '';
-                    }
-                    $isExternal = (strtolower(trim($supplierType)) === 'external');
-
-                    // Only update balances if new supplier is external
-                    if ($isExternal) {
-                        // Get current balance of new supplier
-                        $getCurrentSupplierBalanceQuery = "SELECT balance FROM suppliers WHERE id = ? AND tenant_id = ?";
-                        $stmtGetCurrentSupplierBalance = $conn->prepare($getCurrentSupplierBalanceQuery);
-                        $stmtGetCurrentSupplierBalance->bind_param('ii', $supplier, $tenant_id);
-                        $stmtGetCurrentSupplierBalance->execute();
-                        $stmtGetCurrentSupplierBalance->bind_result($currentSupplierBalance);
-                        $stmtGetCurrentSupplierBalance->fetch();
-                        $stmtGetCurrentSupplierBalance->close();
-
-                        // Update new supplier balance - SUBTRACTING the amount since we're adding a ticket
-                        // Example: If balance was -4800 and adding amount 200, new balance becomes -5000 (supplier owes more)
-                        $newBalance = $currentSupplierBalance - $base;
-                        $updateSupplierQuery = "UPDATE suppliers SET balance = ? WHERE id = ? AND tenant_id = ?";
-                        $stmtUpdateSupplier = $conn->prepare($updateSupplierQuery);
-                        $stmtUpdateSupplier->bind_param('dii', $newBalance, $supplier, $tenant_id);
-                        $stmtUpdateSupplier->execute();
-                        $stmtUpdateSupplier->close();
-
-                        // Check if there are any existing transactions to transfer
-                        $checkExistingTransactionsQuery = "SELECT COUNT(*) FROM supplier_transactions 
-                                                         WHERE supplier_id = ? 
-                                                         AND reference_id = ? 
-                                                         AND transaction_of = 'ticket_sale'
-                                                         AND tenant_id = ?";
-                        $stmtCheckExisting = $conn->prepare($checkExistingTransactionsQuery);
-                        $stmtCheckExisting->bind_param('iii', $originalSupplier, $id, $tenant_id);
-                        $stmtCheckExisting->execute();
-                        $stmtCheckExisting->bind_result($existingCount);
-                        $stmtCheckExisting->fetch();
-                        $stmtCheckExisting->close();
-
-                        if ($existingCount > 0) {
-                            // Update supplier_id in transactions and add note about transfer
-                            $updateTransactionsQuery = "UPDATE supplier_transactions 
-                                                      SET supplier_id = ?,
-                                                          amount = ?,
-                                                          transaction_date = NOW(),
-                                                          balance = ?,
-                                                          remarks = CONCAT(remarks, ' (Transferred from supplier ', ?, ')')
-                                                      WHERE supplier_id = ? 
-                                                      AND reference_id = ? 
-                                                      AND transaction_of = 'ticket_sale'
-                                                      AND tenant_id = ?";
-                            $stmtUpdateTransactions = $conn->prepare($updateTransactionsQuery);
-                            $stmtUpdateTransactions->bind_param('iddiisi', $supplier, $base, $newBalance, $originalSupplier, $originalSupplier, $id, $tenant_id);
-                            $stmtUpdateTransactions->execute();
-                            $stmtUpdateTransactions->close();
-                        } else {
-                            // For a new transaction record, the balance should equal the current supplier balance
-                            // Create new transaction record
-                            $insertSupplierTransactionQuery = "INSERT INTO supplier_transactions (supplier_id, reference_id, transaction_type, amount, balance, remarks, transaction_of, transaction_date, tenant_id, receipt)
-                                                             VALUES (?, ?, 'debit', ?, ?, ?, 'ticket_sale', NOW(), ?, '')";
-                            $stmtInsertSupplierTransaction = $conn->prepare($insertSupplierTransactionQuery);
-                            $description = "Purchase for ticket: $passenger_name ($origin to $destination)";
-                            $stmtInsertSupplierTransaction->bind_param('iiddsisi', $supplier, $id, $base, $newBalance, $description, $tenant_id);
-                            $stmtInsertSupplierTransaction->execute();
-                            $stmtInsertSupplierTransaction->close();
-                        }
-                    }
-
-                    // Delete old supplier transactions for this ticket
-                    $deleteOldTransactionsQuery = "DELETE FROM supplier_transactions 
-                                                 WHERE supplier_id = ? 
-                                                 AND reference_id = ? 
+        // Update subsequent transactions for old supplier (adding back amount)
+        $updateOldSupplierSubsequentQuery = "UPDATE supplier_transactions
+                                             SET balance = balance + ?
+                                             WHERE supplier_id = ?
+                                             AND id > (
+                                                 SELECT id FROM supplier_transactions
+                                                 WHERE supplier_id = ?
+                                                 AND reference_id = ?
                                                  AND transaction_of = 'ticket_sale'
-                                                 AND tenant_id = ?";
-                    $stmtDeleteOldTransactions = $conn->prepare($deleteOldTransactionsQuery);
-                    $stmtDeleteOldTransactions->bind_param('iii', $originalSupplier, $id, $tenant_id);
-                    $stmtDeleteOldTransactions->execute();
-                    $stmtDeleteOldTransactions->close();
-                }
+                                                 AND tenant_id = ?
+                                                 LIMIT 1
+                                             )";
+        $stmtUpdateOldSupplierSubsequent = $conn->prepare($updateOldSupplierSubsequentQuery);
+        $stmtUpdateOldSupplierSubsequent->bind_param('diiii', $totalAmount, $originalSupplier, $originalSupplier, $id, $tenant_id);
+        $stmtUpdateOldSupplierSubsequent->execute();
+        $stmtUpdateOldSupplierSubsequent->close();
+    }
+
+    // Check if new supplier is external
+    $supplierQuery = "SELECT * FROM suppliers WHERE id = ? AND tenant_id = ?";
+    $stmtSupplier = $conn->prepare($supplierQuery);
+    $stmtSupplier->bind_param('ii', $supplier, $tenant_id);
+    $stmtSupplier->execute();
+    $supplierResult = $stmtSupplier->get_result();
+    $supplierData = $supplierResult->fetch_assoc();
+    $stmtSupplier->close();
+
+    $supplierType = isset($supplierData['supplier_type']) ? $supplierData['supplier_type'] : '';
+    if (!$supplierType) {
+        $supplierType = isset($supplierData['type']) ? $supplierData['type'] : '';
+    }
+    $isExternal = (strtolower(trim($supplierType)) === 'external');
+
+    // Only update balances if new supplier is external
+    if ($isExternal) {
+        // Get current balance of new supplier
+        $getCurrentSupplierBalanceQuery = "SELECT balance FROM suppliers WHERE id = ? AND tenant_id = ?";
+        $stmtGetCurrentSupplierBalance = $conn->prepare($getCurrentSupplierBalanceQuery);
+        $stmtGetCurrentSupplierBalance->bind_param('ii', $supplier, $tenant_id);
+        $stmtGetCurrentSupplierBalance->execute();
+        $stmtGetCurrentSupplierBalance->bind_result($currentSupplierBalance);
+        $stmtGetCurrentSupplierBalance->fetch();
+        $stmtGetCurrentSupplierBalance->close();
+
+        // Update new supplier balance
+        $newBalance = $currentSupplierBalance - $base;
+        $updateSupplierQuery = "UPDATE suppliers SET balance = ? WHERE id = ? AND tenant_id = ?";
+        $stmtUpdateSupplier = $conn->prepare($updateSupplierQuery);
+        $stmtUpdateSupplier->bind_param('dii', $newBalance, $supplier, $tenant_id);
+        $stmtUpdateSupplier->execute();
+        $stmtUpdateSupplier->close();
+
+        // Insert or update supplier transactions for external supplier
+        $checkExistingTransactionsQuery = "SELECT COUNT(*) FROM supplier_transactions 
+                                           WHERE supplier_id = ? 
+                                           AND reference_id = ? 
+                                           AND transaction_of = 'ticket_sale'
+                                           AND tenant_id = ?";
+        $stmtCheckExisting = $conn->prepare($checkExistingTransactionsQuery);
+        $stmtCheckExisting->bind_param('iii', $originalSupplier, $id, $tenant_id);
+        $stmtCheckExisting->execute();
+        $stmtCheckExisting->bind_result($existingCount);
+        $stmtCheckExisting->fetch();
+        $stmtCheckExisting->close();
+
+        if ($existingCount > 0) {
+            $updateTransactionsQuery = "UPDATE supplier_transactions 
+                                        SET supplier_id = ?,
+                                            amount = ?,
+                                            transaction_date = NOW(),
+                                            balance = ?,
+                                            remarks = CONCAT(remarks, ' (Transferred from supplier ', ?, ')')
+                                        WHERE supplier_id = ? 
+                                        AND reference_id = ? 
+                                        AND transaction_of = 'ticket_sale'
+                                        AND tenant_id = ?";
+            $stmtUpdateTransactions = $conn->prepare($updateTransactionsQuery);
+            $stmtUpdateTransactions->bind_param('iddiisi', $supplier, $base, $newBalance, $originalSupplier, $originalSupplier, $id, $tenant_id);
+            $stmtUpdateTransactions->execute();
+            $stmtUpdateTransactions->close();
+        } else {
+            $insertSupplierTransactionQuery = "INSERT INTO supplier_transactions (supplier_id, reference_id, transaction_type, amount, balance, remarks, transaction_of, transaction_date, tenant_id, receipt)
+                                               VALUES (?, ?, 'debit', ?, ?, ?, 'ticket_sale', NOW(), ?, '')";
+            $stmtInsertSupplierTransaction = $conn->prepare($insertSupplierTransactionQuery);
+            $description = "Purchase for ticket: $passenger_name ($origin to $destination)";
+            $stmtInsertSupplierTransaction->bind_param('iiddsii', $supplier, $id, $base, $newBalance, $description, $tenant_id);
+            $stmtInsertSupplierTransaction->execute();
+            $stmtInsertSupplierTransaction->close();
+        }
+    }
+
+    // ✅ Always delete old supplier transactions (for all suppliers)
+    $deleteOldTransactionsQuery = "DELETE FROM supplier_transactions 
+                                   WHERE supplier_id = ? 
+                                   AND reference_id = ? 
+                                   AND transaction_of = 'ticket_sale'
+                                   AND tenant_id = ?";
+    $stmtDeleteOldTransactions = $conn->prepare($deleteOldTransactionsQuery);
+    $stmtDeleteOldTransactions->bind_param('iii', $originalSupplier, $id, $tenant_id);
+    $stmtDeleteOldTransactions->execute();
+    $stmtDeleteOldTransactions->close();
+}
+
                 // Handle case where supplier remains the same but price changes
                 else if ($supplier == $originalSupplier && $priceDifference != 0 && $oldSupplierIsExternal) {
                     // Get current supplier balance

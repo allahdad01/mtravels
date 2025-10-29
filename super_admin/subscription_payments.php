@@ -124,7 +124,7 @@ try {
                COALESCE(SUM(sp.amount), 0) as total_paid
         FROM tenant_subscriptions ts
         LEFT JOIN tenants t ON ts.tenant_id = t.id
-        LEFT JOIN plans p ON ts.plan_id = p.name
+        LEFT JOIN plans p ON ts.plan_id = p.id
         LEFT JOIN subscription_payments sp ON ts.id = sp.subscription_id
         GROUP BY ts.id, t.name, t.identifier, p.name, p.price
         ORDER BY ts.created_at DESC
@@ -286,7 +286,7 @@ try {
                                                             </div>
                                                         </td>
                                                         <td>
-                                                            <span class="badge badge-primary"><?= htmlspecialchars($sub['plan_name']) ?></span>
+                                                            <span class="badge badge-primary"><?= htmlspecialchars($sub['plan_name'] ?? 'N/A') ?></span>
                                                         </td>
                                                         <td>
                                                             <span class="badge badge-<?= $sub['status'] === 'active' ? 'success' : ($sub['status'] === 'pending' ? 'warning' : 'danger') ?>">
@@ -294,7 +294,7 @@ try {
                                                             </span>
                                                         </td>
                                                         <td><?= ucfirst(htmlspecialchars($sub['billing_cycle'])) ?></td>
-                                                        <td>$<?= number_format($sub['amount'], 2) ?> <?= htmlspecialchars($sub['currency']) ?></td>
+                                                        <td>$<?= number_format($sub['amount'], 2) ?> <?= htmlspecialchars($sub['currency'] ?? 'USD') ?></td>
                                                         <td>
                                                             <?php if ($sub['last_payment_date']): ?>
                                                             <?= date('M d, Y', strtotime($sub['last_payment_date'])) ?>
@@ -312,7 +312,7 @@ try {
                                                         <td>
                                                             <span class="badge badge-info"><?= $sub['payment_count'] ?> payments</span>
                                                         </td>
-                                                        <td>$<?= number_format($sub['total_paid'], 2) ?></td>
+                                                        <td>$<?= number_format($sub['total_paid'] ?? 0, 2) ?></td>
                                                         <td>
                                                             <button class="btn btn-sm btn-outline-primary" onclick="viewSubscriptionPayments(<?= $sub['id'] ?>)">
                                                                 <i class="feather icon-eye"></i> View
@@ -374,7 +374,7 @@ try {
                                                         <td>
                                                             <span class="badge badge-primary"><?= htmlspecialchars($payment['plan_id']) ?></span>
                                                         </td>
-                                                        <td>$<?= number_format($payment['amount'], 2) ?> <?= htmlspecialchars($payment['currency']) ?></td>
+                                                        <td>$<?= number_format($payment['amount'], 2) ?> <?= htmlspecialchars($payment['currency'] ?? 'USD') ?></td>
                                                         <td><?= htmlspecialchars($payment['payment_method'] ?: 'N/A') ?></td>
                                                         <td><?= htmlspecialchars($payment['receipt_number'] ?: 'N/A') ?></td>
                                                         <td><?= htmlspecialchars($payment['processed_by_name'] ?: 'System') ?></td>
