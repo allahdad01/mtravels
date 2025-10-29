@@ -862,10 +862,10 @@ function displayModernNotifications($stmt, $status) {
 <?php
 
 // Query for tickets booked today with supplier name and transaction status
-$today_query = "SELECT ticket_bookings.*, 
-                       suppliers.name AS supplier_name 
+$today_query = "SELECT ticket_bookings.*,
+                       suppliers.name AS supplier_name
                 FROM ticket_bookings
-                LEFT JOIN suppliers ON ticket_bookings.supplier = suppliers.id
+                LEFT JOIN suppliers ON ticket_bookings.supplier = suppliers.id AND suppliers.tenant_id = ticket_bookings.tenant_id
                 WHERE DATE(ticket_bookings.created_at) = CURDATE()
                   AND ticket_bookings.tenant_id = :tenant_id";
 try {
@@ -877,10 +877,10 @@ try {
 }
 
 // Fetch this week's tickets
-$this_week_query = "SELECT ticket_bookings.*, 
+$this_week_query = "SELECT ticket_bookings.*,
                            suppliers.name AS supplier_name
                     FROM ticket_bookings
-                    LEFT JOIN suppliers ON ticket_bookings.supplier = suppliers.id
+                    LEFT JOIN suppliers ON ticket_bookings.supplier = suppliers.id AND suppliers.tenant_id = ticket_bookings.tenant_id
                     WHERE YEARWEEK(ticket_bookings.created_at, 1) = YEARWEEK(CURDATE(), 1)
                       AND ticket_bookings.tenant_id = :tenant_id";
 try {
@@ -892,10 +892,10 @@ try {
 }
 
 // Fetch this month's tickets
-$this_month_query = "SELECT ticket_bookings.*, 
+$this_month_query = "SELECT ticket_bookings.*,
                             suppliers.name AS supplier_name
                      FROM ticket_bookings
-                     LEFT JOIN suppliers ON ticket_bookings.supplier = suppliers.id
+                     LEFT JOIN suppliers ON ticket_bookings.supplier = suppliers.id AND suppliers.tenant_id = ticket_bookings.tenant_id
                      WHERE YEAR(ticket_bookings.created_at) = YEAR(CURDATE())
                        AND MONTH(ticket_bookings.created_at) = MONTH(CURDATE())
                        AND ticket_bookings.tenant_id = :tenant_id";
@@ -907,8 +907,30 @@ try {
     $this_month_stmt = null;
 }
 
+// Get selected date for departures filter, default to today
+$selected_date = isset($_GET['departure_date']) ? $_GET['departure_date'] : date('Y-m-d');
 
+// Validate date format
+if (!preg_match('/^\d{4}-\d{2}-\d{2}$/', $selected_date)) {
+    $selected_date = date('Y-m-d');
+}
 
+// Query for departures on selected date
+$today_departures_query = "SELECT ticket_bookings.*,
+                                  suppliers.name AS supplier_name,
+                                  ticket_bookings.phone AS passenger_phone
+                           FROM ticket_bookings
+                           LEFT JOIN suppliers ON ticket_bookings.supplier = suppliers.id AND suppliers.tenant_id = ticket_bookings.tenant_id
+
+                           WHERE DATE(ticket_bookings.departure_date) = ? AND ticket_bookings.tenant_id = ?";
+$today_departures_stmt = null;
+try {
+    $today_departures_stmt = $pdo->prepare($today_departures_query);
+    $today_departures_stmt->execute([$selected_date, $tenant_id]);
+} catch (PDOException $e) {
+    error_log("Error fetching departures for date $selected_date: " . $e->getMessage());
+    $today_departures_stmt = null;
+}
 ?>
 
 
@@ -921,8 +943,20 @@ try {
             <h5><?= __('ticket_bookings_overview') ?></h5>
         </div>
             <ul class="nav nav-pills nav-fill" id="ticketTabs" role="tablist">
-                <li class="nav-item">
-                    <a class="nav-link active" id="today-tab" data-toggle="tab" href="#today" role="tab">
+                                            <li class="nav-item">
+                                                <a class="nav-link active" id="departures-tab" data-toggle="tab" href="#today-departures" role="tab">
+                                                    <i class="fas fa-plane mr-1"></i>
+                                                    <?php
+                                                    if ($selected_date === date('Y-m-d')) {
+                                                        echo __('todays_departures');
+                                                    } else {
+                                                        echo 'Departures on ' . date('M d, Y', strtotime($selected_date));
+                                                    }
+                                                    ?>
+                                                </a>
+                                            </li>
+            <li class="nav-item">
+                    <a class="nav-link" id="today-tab" data-toggle="tab" href="#today" role="tab">
                         <i class="feather icon-clock mr-1"></i><?= __('today') ?>
                     </a>
                 </li>
@@ -940,8 +974,112 @@ try {
         </div>
         <div class="card-body p-0">
             <div class="tab-content" id="ticketTabContent">
+                                                            <!-- Today's Departures -->
+                                                            <div class="tab-pane fade show active" id="today-departures" role="tabpanel">
+                                                <!-- Date Filter Form -->
+                                                <div class="mb-3">
+                                                    <form method="GET" class="form-inline">
+                                                        <div class="form-group mr-3">
+                                                            <label for="departure_date" class="mr-2">Select Departure Date:</label>
+                                                            <input type="date" class="form-control" id="departure_date" name="departure_date"
+                                                                   value="<?php echo htmlspecialchars($selected_date); ?>">
+                                                        </div>
+                                                        <button type="submit" class="btn btn-primary">Filter</button>
+                                                        <a href="dashboard.php" class="btn btn-secondary ml-2">Today</a>
+                                                    </form>
+                                                </div>
+                                                <div class="table-responsive">
+                                                    <table class="table table-hover table-striped mb-0">
+                                                        <thead>
+                                                            <tr>
+                                                                <th><?= __('passenger_info') ?></th>
+                                                                <th><?= __('flight_details') ?></th>
+                                                                <th><?= __('route') ?></th>
+                                                                <th><?= __('dates') ?></th>
+                                                                <th><?= __('sold') ?></th>
+                                                            </tr>
+                                                        </thead>
+                                                        <tbody>
+                                                            <?php
+                                                            if ($today_departures_stmt && $today_departures_stmt->rowCount() > 0) {
+                                                                while ($row = $today_departures_stmt->fetch(PDO::FETCH_ASSOC)) {
+                                                            ?>
+                                                                <tr>
+                                                                    <td>
+                                                                        <div class="d-flex align-items-center">
+                                                                            <div class="flex-grow-1">
+                                                                                <h6 class="mb-1"><?= htmlspecialchars($row['passenger_name']) ?></h6>
+                                                                                <small class="text-muted">
+                                                                                    <?= __('pnr') ?>: <?= htmlspecialchars($row['pnr']) ?>
+                                                                                </small>
+                                                                                <?php if (!empty($row['passenger_phone'])): ?>
+                                                                                <small class="d-block text-primary">
+                                                                                    <i class="fas fa-phone-alt mr-1"></i>
+                                                                                    <?= htmlspecialchars($row['passenger_phone']) ?>
+                                                                                </small>
+                                                                                <?php endif; ?>
+                                                                            </div>
+                                                                        </div>
+                                                                    </td>
+                                                                    <td>
+                                                                        <div class="d-flex flex-column">
+                                                                            <span class="font-weight-bold">
+                                                                                <i class="fas fa-plane mr-1"></i>
+                                                                                <?= htmlspecialchars($row['airline']) ?>
+                                                                            </span>
+                                                                            <small class="text-muted">
+                                                                                <?= htmlspecialchars($row['supplier_name']) ?>
+                                                                            </small>
+                                                                        </div>
+                                                                    </td>
+                                                                    <td>
+                                                                        <div class="d-flex flex-column">
+                                                                            <span class="font-weight-bold">
+                                                                                <i class="fas fa-route mr-1"></i>
+                                                                                <?php
+                                                                                $origin = isset($row['origin']) ? htmlspecialchars($row['origin']) : (isset($row['from_city']) ? htmlspecialchars($row['from_city']) : 'N/A');
+                                                                                $destination = isset($row['destination']) ? htmlspecialchars($row['destination']) : (isset($row['to_city']) ? htmlspecialchars($row['to_city']) : 'N/A');
+                                                                                echo $origin . ' → ' . $destination;
+                                                                                ?>
+                                                                            </span>
+                                                                            <small class="text-muted">
+                                                                                <?php
+                                                                                $origin_code = isset($row['origin_code']) ? htmlspecialchars($row['origin_code']) : (isset($row['from_code']) ? htmlspecialchars($row['from_code']) : '');
+                                                                                $destination_code = isset($row['destination_code']) ? htmlspecialchars($row['destination_code']) : (isset($row['to_code']) ? htmlspecialchars($row['to_code']) : '');
+                                                                                if ($origin_code && $destination_code) {
+                                                                                    echo $origin_code . ' → ' . $destination_code;
+                                                                                }
+                                                                                ?>
+                                                                            </small>
+                                                                        </div>
+                                                                    </td>
+                                                                    <td>
+                                                                        <div class="d-flex flex-column">
+                                                                            <small class="text-muted">
+                                                                                <i class="fas fa-calendar-check mr-1"></i>
+                                                                                <?= __('issue') ?>: <?= date('d M Y', strtotime($row['issue_date'])) ?>
+                                                                            </small>
+                                                                            <small class="text-danger font-weight-bold">
+                                                                                <i class="fas fa-plane-departure mr-1"></i>
+                                                                                <?= __('departure') ?>: <?= date('d M Y', strtotime($row['departure_date'])) ?>
+                                                                            </small>
+                                                                        </div>
+                                                                    </td>
+                                                                    <td>
+                                                                        <div class="big mt-1">
+                                                                            <span class="text-success font-weight-bold">
+                                                                                <?= htmlspecialchars($row['sold']) ?>
+                                                                            </span>
+                                                                        </div>
+                                                                    </td>
+                                                                </tr>
+                                                            <?php } } ?>
+                                                        </tbody>
+                                                    </table>
+                                                </div>
+                                            </div>
                 <!-- Today's Tickets -->
-                <div class="tab-pane fade show active" id="today" role="tabpanel">
+                <div class="tab-pane fade" id="today" role="tabpanel">
                     <div class="table-responsive">
                         <table class="table table-hover table-striped mb-0">
                             <thead>

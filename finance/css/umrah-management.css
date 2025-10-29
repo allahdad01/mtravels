@@ -1,0 +1,59 @@
+/* Apply gradient background to card headers matching the sidebar */
+.card-header {
+    background: linear-gradient(135deg, #4099ff 0%, #2ed8b6 100%) !important;
+    color: #ffffff !important;
+    border-bottom: none !important;
+}
+
+.card-header h5 {
+    color: #ffffff !important;
+    margin-bottom: 0 !important;
+}
+
+.card-header .card-header-right {
+    color: #ffffff !important;
+}
+
+.card-header .card-header-right .btn {
+    color: #ffffff !important;
+    border-color: rgba(255, 255, 255, 0.3) !important;
+}
+
+.card-header .card-header-right .btn:hover {
+    background: rgba(255, 255, 255, 0.1) !important;
+    border-color: rgba(255, 255, 255, 0.5) !important;
+}
+.services-table input,
+.services-table select {
+    min-width: 120px; /* Makes sure inputs aren’t too tiny */
+}
+#floatingActionButton {
+    right: 30px;
+}
+
+/* RTL support - position on left side instead */
+html[dir="rtl"] #floatingActionButton {
+    right: auto;
+    left: 30px;
+}
+.member-document-section {
+    border-left: 4px solid #007bff;
+    margin-bottom: 1rem;
+}
+
+.member-document-section .card-header {
+    font-size: 0.95rem;
+}
+
+.table-sm td, .table-sm th {
+    padding: 0.5rem;
+}
+
+.custom-control-input:checked ~ .custom-control-label::before {
+    background-color: #28a745;
+    border-color: #28a745;
+}
+
+.alert-warning {
+    border-left: 4px solid #ffc107;
+}
