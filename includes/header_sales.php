@@ -1514,95 +1514,11 @@ MOBILE SIDEBAR - CLEAN LAYOUT FIX
                                 <i class="feather icon-users"></i> <?= __('chat') ?>
                             </a>
                         </li>
-                        <li class="<?php echo basename($_SERVER['PHP_SELF']) == 'send_messages.php' ? 'active' : ''; ?>">
-                            <a href="send_messages.php">
-                                <i class="feather icon-message-circle"></i> <?= __('send_messages') ?>
-                            </a>
-                        </li>
-                        <li class="<?php echo basename($_SERVER['PHP_SELF']) == 'chat_settings.php' ? 'active' : ''; ?>">
-                            <a href="chat_settings.php">
-                                <i class="feather icon-settings"></i> Chat Settings
-                            </a>
-                        </li>
-                        <li class="<?php echo basename($_SERVER['PHP_SELF']) == 'tenant_peering.php' ? 'active' : ''; ?>">
-                            <a href="tenant_peering.php">
-                                <i class="feather icon-users"></i> Tenant Peering
-                            </a>
-                        </li>
+
                     </ul>
                 </li>
                 <?php endif; ?> 
-                <li data-username="accounts" class="nav-item <?php echo basename($_SERVER['PHP_SELF']) == 'accounts.php' ? 'active' : ''; ?>">
-                    <a href="accounts.php" class="nav-link">
-                        <span class="pcoded-micon"><i class="feather icon-briefcase"></i></span>
-                        <span class="pcoded-mtext"><?= __('accounts') ?></span>
-                    </a>
-                </li>
-                <li data-username="subscription_payments" class="nav-item <?php echo basename($_SERVER['PHP_SELF']) == 'subscription_payments.php' ? 'active' : ''; ?>">
-                    <a href="subscription_payments.php" class="nav-link">
-                        <span class="pcoded-micon"><i class="feather icon-credit-card"></i></span>
-                        <span class="pcoded-mtext"><?= __('subscription_payments') ?></span>
-                    </a>
-                </li>
-                <?php if (hasFeature('debtors', $allowed_features)): ?>
-                <li data-username="debtors" class="nav-item <?php echo basename($_SERVER['PHP_SELF']) == 'debtors.php' ? 'active' : ''; ?>">
-                    <a href="debtors.php" class="nav-link">
-                        <span class="pcoded-micon"><i class="feather icon-users"></i></span>
-                        <span class="pcoded-mtext"><?= __('debtors') ?></span>
-                    </a>
-                </li>
-                <?php endif; ?>
-                <?php if (hasFeature('creditors', $allowed_features)): ?>
-                <li data-username="creditors" class="nav-item <?php echo basename($_SERVER['PHP_SELF']) == 'creditors.php' ? 'active' : ''; ?>">
-                    <a href="creditors.php" class="nav-link">
-                        <span class="pcoded-micon"><i class="feather icon-users"></i></span>
-                        <span class="pcoded-mtext"><?= __('creditors') ?></span>
-                    </a>
-                </li>
-                <?php endif; ?>
-                <?php if (hasFeature('sarafi', $allowed_features)): ?>
-                <li data-username="sarafi" class="nav-item <?php echo basename($_SERVER['PHP_SELF']) == 'sarafi.php' ? 'active' : ''; ?>">
-                    <a href="sarafi.php" class="nav-link">
-                        <span class="pcoded-micon"><i class="feather icon-credit-card"></i></span>
-                        <span class="pcoded-mtext"><?= __('sarafi') ?></span>
-                    </a>
-                </li>
-                <?php endif; ?>
-                <?php if (hasFeature('salary', $allowed_features)): ?>
-                <li data-username="salary" class="nav-item pcoded-hasmenu <?php echo (strpos(basename($_SERVER['PHP_SELF']), 'salary') !== false) ? 'active pcoded-trigger' : ''; ?>">
-                    <a href="javascript:" class="nav-link">
-                        <span class="pcoded-micon"><i class="fas fa-dollar-sign"></i></span>
-                        <span class="pcoded-mtext"><?= __('salary_management') ?></span>
-                    </a>
-                    <ul class="pcoded-submenu">
-                        <li class="<?php echo basename($_SERVER['PHP_SELF']) == 'salary_management.php' ? 'active' : ''; ?>">
-                            <a href="salary_management.php"><?= __('employee_salaries') ?></a>
-                        </li>
-                        <li class="<?php echo basename($_SERVER['PHP_SELF']) == 'salary_payment.php' ? 'active' : ''; ?>">
-                            <a href="salary_payment.php"><?= __('salary_payment') ?></a>
-                        </li>
-                    </ul>
-                </li>
-                <?php endif; ?>
-                <?php if (hasFeature('salary', $allowed_features)): ?>
-                <li data-username="hr" class="nav-item pcoded-hasmenu <?php echo (strpos(basename($_SERVER['PHP_SELF']), 'hr') !== false || strpos(basename($_SERVER['PHP_SELF']), 'employee') !== false) ? 'active pcoded-trigger' : ''; ?>">
-                    <a href="javascript:" class="nav-link">
-                        <span class="pcoded-micon"><i class="feather icon-users"></i></span>
-                        <span class="pcoded-mtext"><?= __('hr_management') ?></span>
-                    </a>
-                    <ul class="pcoded-submenu">
-                        <li class="<?php echo basename($_SERVER['PHP_SELF']) == 'hr.php' ? 'active' : ''; ?>">
-                            <a href="hr.php"><?= __('hr_dashboard') ?></a>
-                        </li>
-                        <li class="<?php echo basename($_SERVER['PHP_SELF']) == 'employee_management.php' ? 'active' : ''; ?>">
-                            <a href="employee_management.php"><?= __('employee_management') ?></a>
-                        </li>
-                        <li class="<?php echo basename($_SERVER['PHP_SELF']) == 'employee_performance.php' ? 'active' : ''; ?>">
-                            <a href="employee_performance.php"><?= __('performance_reviews') ?></a>
-                        </li>
-                    </ul>
-                </li>
-                <?php endif; ?>
+
                
                 <?php
                 $ticketPages = ['ticket.php', 'refund_ticket.php', 'date_change.php', 'ticket_reserve.php', 'ticket_weights.php'];
@@ -1722,57 +1638,7 @@ MOBILE SIDEBAR - CLEAN LAYOUT FIX
                     </ul>
                 </li>
                 <?php endif; ?>
-                <?php if (hasFeature('additional_payments', $allowed_features)): ?>
-                <li data-username="additional_payments" class="nav-item <?php echo basename($_SERVER['PHP_SELF']) == 'additional_payments.php' ? 'active' : ''; ?>">
-                    <a href="additional_payments.php" class="nav-link">
-                        <span class="pcoded-micon"><i class="feather icon-users"></i></span>
-                        <span class="pcoded-mtext"><?= __('additional_payments') ?></span>
-                    </a>
-                </li>
-                <?php endif; ?>
-                <?php if (hasFeature('jv_payments', $allowed_features)): ?>
-                <li data-username="jv_payments" class="nav-item <?php echo basename($_SERVER['PHP_SELF']) == 'jv_payments.php' ? 'active' : ''; ?>">
-                    <a href="jv_payments.php" class="nav-link">
-                        <span class="pcoded-micon"><i class="feather icon-users"></i></span>
-                        <span class="pcoded-mtext"><?= __('jv_payments') ?></span>
-                    </a>
-                </li>
-                <?php endif; ?>
-                <?php if (hasFeature('manage_maktobs', $allowed_features)): ?>
-                <li data-username="manage_maktobs" class="nav-item <?php echo basename($_SERVER['PHP_SELF']) == 'manage_maktobs.php' ? 'active' : ''; ?>">
-                    <a href="manage_maktobs.php" class="nav-link">
-                        <span class="pcoded-micon"><i class="fas fa-file-alt"></i></span>
-                        <span class="pcoded-mtext"><?= __('manage_letters') ?></span>
-                    </a>
-                </li>
-                <?php endif; ?>
-                <?php if (hasFeature('assets', $allowed_features)): ?>
-                <li data-username="assets" class="nav-item <?php echo basename($_SERVER['PHP_SELF']) == 'assets.php' ? 'active' : ''; ?>">
-                    <a href="assets.php" class="nav-link">
-                        <span class="pcoded-micon"><i class="feather icon-users"></i></span>
-                        <span class="pcoded-mtext"><?= __('assets') ?></span>
-                    </a>
-                </li>
-                <?php endif; ?>
-                <li data-username="supplier" class="nav-item <?php echo basename($_SERVER['PHP_SELF']) == 'supplier.php' ? 'active' : ''; ?>">
-                    <a href="supplier.php" class="nav-link">
-                        <span class="pcoded-micon"><i class="feather icon-users"></i></span>
-                        <span class="pcoded-mtext"><?= __('supplier') ?></span>
-                    </a>
-                </li>
-                <li data-username="client" class="nav-item <?php echo basename($_SERVER['PHP_SELF']) == 'client.php' ? 'active' : ''; ?>">
-                    <a href="client.php" class="nav-link">
-                        <span class="pcoded-micon"><i class="feather icon-user"></i></span>
-                        <span class="pcoded-mtext"><?= __('client') ?></span>
-                    </a>
-                </li>
                
-                <li data-username="expense" class="nav-item <?php echo basename($_SERVER['PHP_SELF']) == 'expense_management.php' ? 'active' : ''; ?>">
-                    <a href="expense_management.php" class="nav-link">
-                        <span class="pcoded-micon"><i class="fas fa-dollar-sign"></i></span>
-                        <span class="pcoded-mtext"><?= __('expense_management') ?></span>
-                    </a>
-                </li>
                 <li data-username="report" class="nav-item <?php echo basename($_SERVER['PHP_SELF']) == 'report.php' ? 'active' : ''; ?>">
                     <a href="report.php" class="nav-link">
                         <span class="pcoded-micon"><i class="feather icon-file"></i></span>
@@ -1780,22 +1646,10 @@ MOBILE SIDEBAR - CLEAN LAYOUT FIX
                     </a>
                 </li>
 
-                <li data-username="settings" class="nav-item <?php echo basename($_SERVER['PHP_SELF']) == 'settings.php' ? 'active' : ''; ?>">
-                    <a href="settings.php" class="nav-link">
-                        <span class="pcoded-micon"><i class="feather icon-settings"></i></span>
-                        <span class="pcoded-mtext"><?= __('settings') ?></span>
-                    </a>
-                </li>
                 <li data-username="2fa" class="nav-item <?php echo basename($_SERVER['PHP_SELF']) == 'totp.php' ? 'active' : ''; ?>">
                     <a href="../totp_setup.php" class="nav-link">
                         <span class="pcoded-micon"><i class="feather icon-shield"></i></span>
                         <span class="pcoded-mtext"><?= __('2fa') ?></span>
-                    </a>
-                </li>
-                <li data-username="search" class="nav-item <?php echo basename($_SERVER['PHP_SELF']) == 'search.php' ? 'active' : ''; ?>">
-                    <a href="search.php" class="nav-link">
-                        <span class="pcoded-micon"><i class="feather icon-search"></i></span>
-                        <span class="pcoded-mtext"><?= __('search') ?></span>
                     </a>
                 </li>
                 <li data-username="tutorials" class="nav-item <?php echo basename($_SERVER['PHP_SELF']) == 'tutorials.php' ? 'active' : ''; ?>">
@@ -1805,12 +1659,6 @@ MOBILE SIDEBAR - CLEAN LAYOUT FIX
                     </a>
                 </li>
 
-                <li data-username="activity_log" class="nav-item <?php echo basename($_SERVER['PHP_SELF']) == 'activity_log.php' ? 'active' : ''; ?>">
-                    <a href="activity_log.php" class="nav-link">
-                        <span class="pcoded-micon"><i class="feather icon-activity"></i></span>
-                        <span class="pcoded-mtext"><?= __('activity_log') ?></span>
-                    </a>
-                </li>
             </ul>
         </div>
         <div class="navbar-brand user-profile-section" style="position: absolute; bottom: 0; width: 100%; border-top: 1px solid rgba(255,255,255,0.1); background: #4099ff; z-index: 10;">

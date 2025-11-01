@@ -373,42 +373,6 @@ try {
                         }
                     }
                     
-                    // Add notification for expense update if transaction exists
-                    $txnIdStmt = $pdo->prepare("SELECT id FROM main_account_transactions WHERE reference_id = ? AND transaction_of = 'expense' AND tenant_id = ? ORDER BY id DESC LIMIT 1");
-                    $txnIdStmt->execute([$expenseId, $tenant_id]);
-                    $transaction_id = $txnIdStmt->fetchColumn();
-                    
-                    // Get category name
-                    $categoryStmt = $pdo->prepare("SELECT name FROM expense_categories WHERE id = ? AND tenant_id = ?");
-                    $categoryStmt->execute([$categoryId, $tenant_id]);
-                    $categoryName = $categoryStmt->fetchColumn();
-                    
-                    // Create notification message
-                    $notificationMessage = sprintf(
-                        "Expense updated for category %s: Amount %s %.2f - %s", 
-                        $categoryName,
-                        $currency,
-                        $amount,
-                        $description
-                    );
-                    
-                    // Insert notification
-                    if ($transaction_id) {
-                        $notifStmt = $pdo->prepare("
-                            INSERT INTO notifications 
-                            (transaction_id, transaction_type, message, status, created_at, tenant_id) 
-                            VALUES (?, 'expense_update', ?, 'Unread', NOW(), ?)
-                        ");
-                        $notifStmt->execute([$transaction_id, $notificationMessage, $tenant_id]);
-                    } else {
-                        // If no transaction ID (when using allocation), still create notification
-                        $notifStmt = $pdo->prepare("
-                            INSERT INTO notifications 
-                            (transaction_type, message, status, created_at, tenant_id) 
-                            VALUES ('expense_update', ?, 'Unread', NOW(), ?)
-                        ");
-                        $notifStmt->execute([$notificationMessage, $tenant_id]);
-                    }
                 }
             } else {
                 // INSERTING A NEW EXPENSE
@@ -484,44 +448,47 @@ try {
                 }
             }
             
-            // Get the last inserted transaction ID for notification (if applicable)
-            $transaction_id = null;
-            if (!$allocationId && $mainAccountId) {
-                $txnIdStmt = $pdo->prepare("SELECT id FROM main_account_transactions WHERE reference_id = ? AND transaction_of = 'expense' AND tenant_id = ? ORDER BY id DESC LIMIT 1");
-                $txnIdStmt->execute([$expenseId ?: $ExpenseId, $tenant_id]);
-                $transaction_id = $txnIdStmt->fetchColumn();
-            }
-            
-            // Create notification for admin
-            $categoryStmt = $pdo->prepare("SELECT name FROM expense_categories WHERE id = ? AND tenant_id = ?");
-            $categoryStmt->execute([$categoryId, $tenant_id]);
-            $categoryName = $categoryStmt->fetchColumn();
-            
-            $notificationMessage = sprintf(
-                "New expense added for category %s: Amount %s %.2f - %s", 
-                $categoryName,
-                $currency,
-                $amount,
-                $description
-            );
-            
-                            // Insert notification
+            // Only send notification for new expenses, not updates
+            if (!$expenseId) {
+                // Get the last inserted transaction ID for notification (if applicable)
+                $transaction_id = null;
+                if (!$allocationId && $mainAccountId) {
+                    $txnIdStmt = $pdo->prepare("SELECT id FROM main_account_transactions WHERE reference_id = ? AND transaction_of = 'expense' AND tenant_id = ? ORDER BY id DESC LIMIT 1");
+                    $txnIdStmt->execute([$ExpenseId, $tenant_id]);
+                    $transaction_id = $txnIdStmt->fetchColumn();
+                }
+
+                // Create notification for admin
+                $categoryStmt = $pdo->prepare("SELECT name FROM expense_categories WHERE id = ? AND tenant_id = ?");
+                $categoryStmt->execute([$categoryId, $tenant_id]);
+                $categoryName = $categoryStmt->fetchColumn();
+
+                $notificationMessage = sprintf(
+                    "New expense added for category %s: Amount %s %.2f - %s",
+                    $categoryName,
+                    $currency,
+                    $amount,
+                    $description
+                );
+
+                // Insert notification
                 if ($transaction_id) {
                     $notifStmt = $pdo->prepare("
-                        INSERT INTO notifications 
-                        (transaction_id, transaction_type, message, status, created_at, tenant_id) 
+                        INSERT INTO notifications
+                        (transaction_id, transaction_type, message, status, created_at, tenant_id)
                         VALUES (?, 'expense', ?, 'Unread', NOW(), ?)
                     ");
                     $notifStmt->execute([$transaction_id, $notificationMessage, $tenant_id]);
                 } else {
                     // If no transaction ID (when using allocation), still create notification
                     $notifStmt = $pdo->prepare("
-                        INSERT INTO notifications 
-                        (transaction_type, message, status, created_at, tenant_id) 
+                        INSERT INTO notifications
+                        (transaction_type, message, status, created_at, tenant_id)
                         VALUES ('expense', ?, 'Unread', NOW(), ?)
                     ");
                     $notifStmt->execute([$notificationMessage, $tenant_id]);
                 }
+            }
             
             // Commit transaction
             $pdo->commit();

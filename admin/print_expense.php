@@ -30,10 +30,11 @@ if (isset($_GET['id'])) {
         $errorMessage = "Invalid expense ID.";
     } else {
         // Get expense details
-        $query = "SELECT e.*, ec.name as category_name, ma.name as account_name 
-                  FROM expenses e 
+        $query = "SELECT e.*, ec.name as category_name, ma.name as account_name, mat.receipt as receipt_number
+                  FROM expenses e
                   LEFT JOIN expense_categories ec ON e.category_id = ec.id
                   LEFT JOIN main_account ma ON e.main_account_id = ma.id
+                  LEFT JOIN main_account_transactions mat ON e.id = mat.reference_id AND mat.transaction_of = 'expense'
                   WHERE e.id = ? AND e.tenant_id = ?";
         $stmt = $pdo->prepare($query);
         $stmt->execute([$expenseId, $tenant_id]);
@@ -48,7 +49,6 @@ if (isset($_GET['id'])) {
                 mat.id,
                 mat.type,
                 mat.amount,
-                mat.balance,
                 mat.currency,
                 mat.description,
                 mat.transaction_of,
@@ -68,10 +68,10 @@ if (isset($_GET['id'])) {
 try {
     $settingStmt = $pdo->prepare("SELECT * FROM settings WHERE tenant_id = ?");
     $settingStmt->execute([$tenant_id]);
-    $settings = $settingStmt->fetch(PDO::FETCH_ASSOC) ?: ['agency_name' => 'Default Name'];
+    $agency = $settingStmt->fetch(PDO::FETCH_ASSOC) ?: ['agency_name' => 'Default Name'];
 } catch (PDOException $e) {
     error_log("Settings Error: " . $e->getMessage());
-    $settings = ['agency_name' => 'Default Name'];
+    $agency = ['agency_name' => 'Default Name'];
 }
 ?>
 <!DOCTYPE html>
@@ -229,6 +229,21 @@ try {
                     <th>Account</th>
                     <td><?php echo h($expense['account_name']); ?></td>
                 </tr>
+                <?php if (!empty($expense['receipt_number'])): ?>
+                <tr>
+                    <th>Receipt Number</th>
+                    <td><?php echo h($expense['receipt_number']); ?></td>
+                </tr>
+                <?php endif; ?>
+                <?php if (!empty($expense['receipt_file'])): ?>
+                <tr>
+                    <th>Receipt File</th>
+                    <td>
+                        <img src="../uploads/expense_receipt/<?php echo h($expense['receipt_file']); ?>" alt="Receipt" style="max-width: 200px; max-height: 200px;">
+                        <br><small><?php echo h($expense['receipt_file']); ?></small>
+                    </td>
+                </tr>
+                <?php endif; ?>
                 <?php if (isset($expense['allocation_id']) && $expense['allocation_id']): ?>
                 <tr>
                     <th>Budget Allocation</th>

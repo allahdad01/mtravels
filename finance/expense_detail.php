@@ -36,10 +36,11 @@ if (isset($_GET['id'])) {
         $errorMessage = "Invalid expense ID.";
     } else {
         // Get expense details
-        $query = "SELECT e.*, ec.name as category_name, ma.name as account_name 
-                  FROM expenses e 
+        $query = "SELECT e.*, ec.name as category_name, ma.name as account_name, mat.receipt as receipt_number
+                  FROM expenses e
                   LEFT JOIN expense_categories ec ON e.category_id = ec.id
                   LEFT JOIN main_account ma ON e.main_account_id = ma.id
+                  LEFT JOIN main_account_transactions mat ON e.id = mat.reference_id AND mat.transaction_of = 'expense'
                   WHERE e.id = ? AND e.tenant_id = ?";
         $stmt = $pdo->prepare($query);
         $stmt->execute([$expenseId, $tenant_id]);
@@ -54,7 +55,6 @@ if (isset($_GET['id'])) {
                 mat.id,
                 mat.type,
                 mat.amount,
-                mat.balance,
                 mat.currency,
                 mat.description,
                 mat.transaction_of,
@@ -159,6 +159,22 @@ include '../includes/header_finance.php';
                                                 </span>
                                             </td>
                                         </tr>
+                                        <?php if (!empty($expense['receipt_number'])): ?>
+                                        <tr>
+                                            <th><?= __('receipt_number') ?></th>
+                                            <td><?php echo h($expense['receipt_number']); ?></td>
+                                        </tr>
+                                        <?php endif; ?>
+                                        <?php if (!empty($expense['receipt_file'])): ?>
+                                        <tr>
+                                            <th><?= __('receipt_file') ?></th>
+                                            <td>
+                                                <a href="#" onclick="showReceipt('<?php echo h($expense['receipt_file']); ?>')" class="btn btn-sm btn-info">
+                                                    <i class="feather icon-eye"></i> <?= __('view_receipt') ?>
+                                                </a>
+                                            </td>
+                                        </tr>
+                                        <?php endif; ?>
                                     </table>
                                 </div>
                                 <div class="col-md-6">
@@ -207,7 +223,6 @@ include '../includes/header_finance.php';
                                                 <th><?= __('id') ?></th>
                                                 <th><?= __('type') ?></th>
                                                 <th><?= __('amount') ?></th>
-                                                <th><?= __('balance') ?></th>
                                                 <th><?= __('description') ?></th>
                                                 <th><?= __('transaction_date') ?></th>
                                                
@@ -223,7 +238,6 @@ include '../includes/header_finance.php';
                                                         </span>
                                                     </td>
                                                     <td><?php echo h($transaction['currency']) . ' ' . h(number_format($transaction['amount'], 2)); ?></td>
-                                                    <td><?php echo h($transaction['currency']) . ' ' . h(number_format($transaction['balance'], 2)); ?></td>
                                                     <td><?php echo h($transaction['description']); ?></td>
                                                     <td><?php echo h(date('Y-m-d H:i', strtotime($transaction['transaction_date']))); ?></td>
                                                     
@@ -302,12 +316,12 @@ include '../includes/header_finance.php';
 
 <script>
     function showReceipt(receipt) {
-        const baseUrl = '../uploads/receipts/';
+        const baseUrl = '../uploads/expense_receipt/';
         const receiptUrl = baseUrl + receipt;
-        
+
         document.getElementById('receiptImage').src = receiptUrl;
         document.getElementById('downloadReceipt').href = receiptUrl;
-        
+
         $('#receiptModal').modal('show');
     }
     

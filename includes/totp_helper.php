@@ -21,14 +21,29 @@ class TotpHelper {
     public function generateSecret($userId, $userType, $username, $tenant_id = null) {
         try {
             error_log("TOTP Debug: Starting generateSecret for user $userId ($userType)");
-            
+
+            // Get agency name from settings
+            $agencyName = 'Travel Agency'; // Default fallback
+            if ($tenant_id) {
+                try {
+                    $stmt = $this->pdo->prepare("SELECT agency_name FROM settings WHERE tenant_id = ?");
+                    $stmt->execute([$tenant_id]);
+                    $settings = $stmt->fetch(PDO::FETCH_ASSOC);
+                    if ($settings && !empty($settings['agency_name'])) {
+                        $agencyName = $settings['agency_name'];
+                    }
+                } catch (Exception $e) {
+                    error_log("TOTP Debug: Could not fetch agency name: " . $e->getMessage());
+                }
+            }
+
             // Create a new TOTP instance
             $totp = TOTP::create();
             error_log("TOTP Debug: TOTP instance created");
-            
+
             $totp->setLabel($username);
-            $totp->setIssuer('Travel Agency');
-            error_log("TOTP Debug: Label and issuer set");
+            $totp->setIssuer($agencyName);
+            error_log("TOTP Debug: Label and issuer set to: $agencyName");
             
             $secret = $totp->getSecret();
             error_log("TOTP Debug: Secret generated: " . substr($secret, 0, 10) . "...");
