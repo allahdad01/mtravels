@@ -1,0 +1,354 @@
+.profile-image {
+    width: 120px;
+    height: 120px;
+    object-fit: cover;
+    border: 4px solid #fff;
+    box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+}
+
+.profile-status {
+    position: absolute;
+    bottom: 5px;
+    right: 5px;
+    width: 12px;
+    height: 12px;
+    border-radius: 50%;
+    background-color: #2ed8b6;
+    border: 2px solid #fff;
+}
+
+.profile-status.online {
+    background-color: #2ed8b6;
+}
+
+.info-item label {
+    font-size: 0.75rem;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+}
+
+.info-item p {
+    font-weight: 500;
+}
+
+.activity-timeline {
+    position: relative;
+    padding-left: 30px;
+}
+
+.timeline-item {
+    position: relative;
+    padding-bottom: 15px;
+}
+
+.activity-icon {
+    position: absolute;
+    left: -30px;
+    width: 24px;
+    height: 24px;
+    border-radius: 50%;
+    background-color: #e3f2fd;
+    color: #2196f3;
+    text-align: center;
+    line-height: 24px;
+    font-size: 12px;
+}
+
+.modal-content {
+    border: none;
+    border-radius: 8px;
+    box-shadow: 0 5px 15px rgba(0,0,0,0.2);
+}
+
+.modal-header {
+    border-top-left-radius: 8px;
+    border-top-right-radius: 8px;
+}
+
+.modal-footer {
+    border-bottom-left-radius: 8px;
+    border-bottom-right-radius: 8px;
+}
+
+@media (max-width: 576px) {
+    .profile-image {
+        width: 100px;
+        height: 100px;
+    }
+    
+    .modal-dialog {
+        margin: 0.5rem;
+    }
+}
+/* Updated Modal Styles */
+.modal-lg {
+    max-width: 800px;
+}
+
+.floating-label {
+    position: relative;
+    margin-bottom: 1.5rem;
+}
+
+.floating-label input,
+.floating-label textarea {
+    height: auto;
+    padding: 0.75rem;
+    border: 1px solid #dee2e6;
+    border-radius: 0.5rem;
+    transition: all 0.2s ease;
+    width: 100%;
+    font-size: 1rem;
+}
+
+.floating-label label {
+    position: absolute;
+    top: 50%;
+    left: 0.75rem;
+    transform: translateY(-50%);
+    pointer-events: none;
+    transition: all 0.2s ease;
+    color: #6c757d;
+    margin: 0;
+    padding: 0 0.2rem;
+    background-color: #fff;
+    font-size: 1rem;
+}
+
+.floating-label textarea ~ label {
+    top: 1rem;
+    transform: translateY(0);
+}
+
+/* Active state - when input has value or is focused */
+.floating-label input:focus ~ label,
+.floating-label input:not(:placeholder-shown) ~ label,
+.floating-label textarea:focus ~ label,
+.floating-label textarea:not(:placeholder-shown) ~ label {
+    top: 0;
+    transform: translateY(-50%) scale(0.85);
+    background-color: #fff;
+    color: #4099ff;
+    z-index: 1;
+}
+
+.floating-label input:focus,
+.floating-label textarea:focus {
+    border-color: #4099ff;
+    box-shadow: 0 0 0 0.2rem rgba(64, 153, 255, 0.25);
+    outline: none;
+}
+
+/* Ensure inputs have placeholder to trigger :not(:placeholder-shown) */
+.floating-label input,
+.floating-label textarea {
+    placeholder: " ";
+}
+
+/* Rest of the styles remain the same */
+.profile-upload-preview {
+    width: 150px;
+    height: 150px;
+    object-fit: cover;
+    transition: all 0.3s ease;
+}
+
+.upload-overlay {
+    position: absolute;
+    bottom: 0;
+    right: 0;
+    background: rgba(64, 153, 255, 0.9);
+    width: 35px;
+    height: 35px;
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: white;
+    cursor: pointer;
+    transition: all 0.3s ease;
+}
+
+.upload-overlay:hover {
+    transform: scale(1.1);
+    background: rgba(64, 153, 255, 1);
+}
+
+/* Responsive Adjustments */
+@media (max-width: 768px) {
+    .modal-lg {
+        max-width: 95%;
+        margin: 0.5rem auto;
+    }
+
+    .profile-upload-preview {
+        width: 120px;
+        height: 120px;
+    }
+
+    .modal-body {
+        padding: 1rem !important;
+    }
+
+    .floating-label input,
+    .floating-label textarea {
+        padding: 0.6rem;
+        font-size: 0.95rem;
+    }
+
+    .floating-label label {
+        font-size: 0.95rem;
+    }
+}
+
+@media (max-width: 576px) {
+    .profile-upload-preview {
+        width: 100px;
+        height: 100px;
+    }
+
+    .upload-overlay {
+        width: 30px;
+        height: 30px;
+    }
+
+    .modal-footer {
+        flex-direction: column;
+    }
+
+    .modal-footer button {
+        width: 100%;
+        margin: 0.25rem 0;
+    }
+}
+/* Add some styling for the search input */
+                .search-filter {
+                    margin-bottom: 20px;
+                }
+
+                .search-filter input {
+                    padding: 8px 15px;
+                    border-radius: 4px;
+                    border: 1px solid #ddd;
+                    width: 300px;
+                    transition: all 0.3s ease;
+                }
+
+                .search-filter input:focus {
+                    border-color: #4099ff;
+                    box-shadow: 0 0 5px rgba(64, 153, 255, 0.3);
+                    outline: none;
+                }
+
+                /* Add animation for row display changes */
+                .table tbody tr {
+                    transition: all 0.3s ease;
+                }
+#floatingActionButton {
+    right: 30px;
+}
+
+/* RTL support - position on left side instead */
+html[dir="rtl"] #floatingActionButton {
+    right: auto;
+    left: 30px;
+}
+.passenger-info__avatar {
+    background-color: var(--primary);
+    color: white;
+    width: 40px;
+    height: 40px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    border-radius: 50%;
+    margin-right: 10px;
+    font-weight: bold;
+}
+
+.modal-body .card {
+    margin-bottom: 1.5rem;
+    border-radius: 12px;
+    box-shadow: 0 4px 15px rgba(0,0,0,0.05);
+}
+
+.modal-body .card-header {
+    background-color: #f8f9fa;
+    border-bottom: 1px solid rgba(0,0,0,.125);
+    padding: 0.75rem 1.25rem;
+}
+
+.modal-body .card-body {
+    padding: 1.25rem;
+}
+
+.form-row {
+    display: flex;
+    flex-wrap: wrap;
+    margin-right: -5px;
+    margin-left: -5px;
+}
+
+.form-row > .form-group {
+    padding-right: 5px;
+    padding-left: 5px;
+    margin-bottom: 1rem;
+    flex: 0 0 auto;
+    width: 100%;
+}
+
+@media (min-width: 768px) {
+    .form-row > .form-group {
+        width: auto;
+    }
+    
+    .form-row > .form-group.col-md-4 {
+        width: 33.333333%;
+    }
+}
+
+
+/* Pagination Styles */
+.pagination {
+    display: flex;
+    list-style: none;
+    padding: 0;
+    margin: 0;
+}
+
+.pagination .page-item {
+    margin: 0 2px;
+}
+
+.pagination .page-link {
+    color: #4099ff;
+    background-color: #fff;
+    border: 1px solid #dee2e6;
+    padding: 0.5rem 0.75rem;
+    line-height: 1.25;
+    text-decoration: none;
+    transition: all 0.3s ease;
+}
+
+.pagination .page-item.active .page-link {
+    background-color: #4099ff;
+    border-color: #4099ff;
+    color: white;
+}
+
+.pagination .page-item.disabled .page-link {
+    color: #6c757d;
+    pointer-events: none;
+    background-color: #fff;
+    border-color: #dee2e6;
+}
+
+.pagination .page-link:hover {
+    background-color: #f8f9fa;
+    border-color: #dee2e6;
+}
+
+.dataTables_info {
+    color: #6c757d;
+    font-size: 0.875rem;
+}

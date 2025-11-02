@@ -179,7 +179,7 @@ foreach ($visas as $key => $visa) {
     <link rel="stylesheet" href="css/modal-styles.css">
     <link rel="stylesheet" href="css/visa.css">
 
-    <?php include '../includes/header_sales.php'; ?>
+    <?php include '../includes/header_umrah.php'; ?>
     <style>
 /* Apply gradient background to card headers matching the sidebar */
 .card-header {
@@ -1195,7 +1195,7 @@ document.addEventListener('DOMContentLoaded', function() {
     // Error alerts
     document.querySelectorAll('.alert-danger').forEach(alert => {
         const message = alert.textContent.trim();
-        showToast(message, 'error');                                                                                                
+        showToast(message, 'error');
         alert.remove();
     });
 
