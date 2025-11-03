@@ -44,34 +44,40 @@ try {
     }
 
     // Handle image upload
-    if (isset($_FILES['image']) && $_FILES['image']['error'] === UPLOAD_ERR_OK) {
-        $allowedTypes = ['image/jpeg', 'image/png', 'image/gif'];
-        $fileType = $_FILES['image']['type'];
-        
-        if (!in_array($fileType, $allowedTypes)) {
-            echo json_encode(['success' => false, 'message' => 'Invalid file type. Only JPG, PNG and GIF allowed.']);
-            exit;
-        }
+     if (isset($_FILES['profile_image']) && $_FILES['profile_image']['error'] === UPLOAD_ERR_OK) {
+         $allowedTypes = ['image/jpeg', 'image/png', 'image/gif'];
+         $fileType = $_FILES['profile_image']['type'];
 
-        $fileName = uniqid() . '_' . $_FILES['image']['name'];
-        $uploadPath = '../assets/images/client/' . $fileName;
-        
-        if (move_uploaded_file($_FILES['image']['tmp_name'], $uploadPath)) {
-            // Delete old image if exists
-            $stmt = $pdo->prepare("SELECT image FROM clients WHERE id = ?");
-            $stmt->execute([$_SESSION['user_id']]);
-            $oldImage = $stmt->fetchColumn();
-            if ($oldImage && $oldImage !== 'default-avatar.jpg') {
-                $oldImagePath = '../assets/images/client/' . $oldImage;
-                if (file_exists($oldImagePath)) {
-                    unlink($oldImagePath);
-                }
-            }
+         if (!in_array($fileType, $allowedTypes)) {
+             echo json_encode(['success' => false, 'message' => 'Invalid file type. Only JPG, PNG and GIF allowed.']);
+             exit;
+         }
 
-            $updates[] = "image = ?";
-            $params[] = $fileName;
-        }
-    }
+         $fileName = uniqid() . '_' . $_FILES['profile_image']['name'];
+         $uploadPath = '../assets/images/client/' . $fileName;
+
+         // Create directory if it doesn't exist
+         $uploadDir = '../assets/images/client/';
+         if (!is_dir($uploadDir)) {
+             mkdir($uploadDir, 0755, true);
+         }
+
+         if (move_uploaded_file($_FILES['profile_image']['tmp_name'], $uploadPath)) {
+             // Delete old image if exists
+             $stmt = $pdo->prepare("SELECT image FROM clients WHERE id = ?");
+             $stmt->execute([$_SESSION['user_id']]);
+             $oldImage = $stmt->fetchColumn();
+             if ($oldImage && $oldImage !== 'default-avatar.jpg') {
+                 $oldImagePath = '../assets/images/client/' . $oldImage;
+                 if (file_exists($oldImagePath)) {
+                     unlink($oldImagePath);
+                 }
+             }
+
+             $updates[] = "image = ?";
+             $params[] = $fileName;
+         }
+     }
 
     // Add updated_at timestamp
     $updates[] = "updated_at = CURRENT_TIMESTAMP";

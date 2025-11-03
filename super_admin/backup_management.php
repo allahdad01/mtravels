@@ -1,20 +1,29 @@
 <?php
-// Include database security module for input validation
-require_once 'includes/db_security.php';
-
-// Include security module
-require_once 'security.php';
-
-// Enforce authentication
-enforce_auth();
-
 // Start session if not already started
 if (session_status() === PHP_SESSION_NONE) {
     session_start();
 }
 
-// Check if user is logged in
-if (!isset($_SESSION['user_id']) || $_SESSION['role'] !== 'admin') {
+// Set secure headers
+header("X-XSS-Protection: 1; mode=block");
+header("X-Content-Type-Options: nosniff");
+header("X-Frame-Options: DENY");
+header("Content-Security-Policy: default-src 'self'; script-src 'self' 'unsafe-inline' https://cdn.jsdelivr.net; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com https://cdn.jsdelivr.net; font-src 'self' https://fonts.gstatic.com; img-src 'self' data:;");
+header("Referrer-Policy: strict-origin-when-cross-origin");
+
+// Check session timeout (30 minutes)
+$sessionTimeout = 30 * 60;
+if (isset($_SESSION['last_activity']) && (time() - $_SESSION['last_activity'] > $sessionTimeout)) {
+    session_unset();
+    session_destroy();
+    header('Location: ../login.php?timeout=1');
+    exit();
+}
+$_SESSION['last_activity'] = time();
+
+// Check if user is a super admin
+if (!isset($_SESSION['user_id']) || !isset($_SESSION['role']) || $_SESSION['role'] !== 'super_admin' || !is_null($_SESSION['tenant_id'])) {
+    error_log("Unauthorized access attempt to super admin dashboard: " . ($_SESSION['user_id'] ?? 'unknown') . " - IP: " . $_SERVER['REMOTE_ADDR']);
     header('Location: ../login.php');
     exit();
 }
@@ -326,7 +335,7 @@ function format_bytes($bytes, $precision = 2) {
     </div>
     <!-- [ Pre-loader ] End -->
     
-<?php include '../includes/header.php'; ?>
+<?php include '../includes/header_super_admin.php'; ?>
 
     <!-- [ Main Content ] start -->
     <div class="pcoded-main-container">

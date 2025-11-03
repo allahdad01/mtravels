@@ -142,14 +142,7 @@ $user_id = $_SESSION["user_id"];
 $profilePic = !empty($user['image']) ? htmlspecialchars($user['image']) : 'default-avatar.jpg';
 $imagePath = "../assets/images/client/" . $profilePic;
 
-// Debug output for development (remove in production)
-if (isset($_GET['debug'])) {
-    echo "<pre>";
-    echo "Tenant ID: " . $tenant_id . "\n";
-    echo "Allowed Features: " . print_r($allowed_features, true) . "\n";
-    echo "</pre>";
-    exit();
-}
+
 ?>
 
 
@@ -1582,17 +1575,13 @@ MOBILE SIDEBAR - CLEAN LAYOUT FIX
                         <li class="<?php echo basename($_SERVER['PHP_SELF']) == 'umrah.php' ? 'active' : ''; ?>">
                             <a href="umrah.php"><?= __('umrah_bookings') ?></a>
                         </li>
-                        <li class="<?php echo basename($_SERVER['PHP_SELF']) == 'umrah_services.php' ? 'active' : ''; ?>">
-                            <a href="umrah_services.php"><?= __('umrah_services') ?></a>
-                        </li>
+    
                         <?php if (hasFeature('umrah_refunds', $allowed_features)): ?>
                         <li class="<?php echo basename($_SERVER['PHP_SELF']) == 'umrah_refunds.php' ? 'active' : ''; ?>">
                             <a href="umrah_refunds.php"><?= __('umrah_refunds') ?></a>
                         </li>
                         <?php endif; ?>
-                        <li class="<?php echo basename($_SERVER['PHP_SELF']) == 'umrah_date_changes.php' ? 'active' : ''; ?>">
-                            <a href="umrah_date_changes.php"><?= __('umrah_date_changes') ?></a>
-                        </li>
+                      
                     </ul>
                 </li>
                 <?php endif; ?>
@@ -1655,221 +1644,3 @@ MOBILE SIDEBAR - CLEAN LAYOUT FIX
     </div>
 </nav>
 <!-- [ navigation menu ] end -->
-
-
-
-<?php if (hasFeature('inter_tenant_chat', $allowed_features)): ?>
-<!-- Floating Chat Widget -->
-<style>
-    .alq-chat-fab {
-        position: fixed;
-        bottom: 20px;
-        <?php echo is_rtl() ? 'left' : 'right'; ?>: 20px;
-        width: 56px;
-        height: 56px;
-        border-radius: 50%;
-        background: #2563eb;
-        color: #fff;
-        display: flex;
-        align-items: center;
-        justify-content: center;
-        box-shadow: 0 8px 24px rgba(0,0,0,0.18);
-        cursor: pointer;
-        z-index: 2147483000;
-        transition: transform .15s ease-in-out, box-shadow .15s ease-in-out, background .15s ease-in-out;
-    }
-    .alq-chat-fab:hover { transform: translateY(-2px); box-shadow: 0 10px 28px rgba(0,0,0,0.22); background: #1d4ed8; }
-    .alq-chat-fab i { font-size: 22px; }
-    .alq-chat-fab .unread-badge {
-        position: absolute;
-        top: -8px;
-        <?php echo is_rtl() ? 'left' : 'right'; ?>: -8px;
-        background: #ef4444;
-        color: white;
-        border-radius: 10px;
-        padding: 2px 6px;
-        font-size: 12px;
-        font-weight: 600;
-        min-width: 18px;
-        text-align: center;
-        display: none;
-        z-index: 1;
-    }
-    .alq-chat-fab .unread-badge.show { display: block; }
-    .alq-chat-panel {
-        position: fixed;
-        bottom: 86px;
-        <?php echo is_rtl() ? 'left' : 'right'; ?>: 20px;
-        width: 400px;
-        max-width: calc(100% - 24px);
-        height: 70vh;
-        max-height: 720px;
-        background: #fff;
-        border-radius: 12px;
-        box-shadow: 0 12px 40px rgba(0,0,0,0.24);
-        overflow: hidden;
-        display: none;
-        z-index: 2147483000;
-    }
-    .alq-chat-panel.open { display: block; }
-    .alq-chat-panel__header {
-        height: 48px;
-        background: linear-gradient(135deg, #2563eb 0%, #1d4ed8 100%);
-        color: #fff;
-        display: flex;
-        align-items: center;
-        justify-content: space-between;
-        padding: 0 12px;
-        font-weight: 600;
-    }
-    .alq-chat-panel__actions { display: flex; gap: 6px; }
-    .alq-chat-btn { background: transparent; border: 0; color: #fff; width: 32px; height: 32px; border-radius: 6px; cursor: pointer; }
-    .alq-chat-btn:hover { background: rgba(255,255,255,0.12); }
-    .alq-chat-iframe { width: 100%; height: calc(100% - 48px); border: 0; }
-    @media (max-width: 575.98px) {
-        .alq-chat-panel { width: calc(100% - 20px); height: 80vh; <?php echo is_rtl() ? 'left' : 'right'; ?>: 10px; bottom: 76px; }
-        .alq-chat-fab { bottom: 12px; <?php echo is_rtl() ? 'left' : 'right'; ?>: 12px; }
-    }
-</style>
-
-<div id="alqChatFab" class="alq-chat-fab" title="Chat">
-    <i class="feather icon-message-circle"></i>
-    <span class="unread-badge" id="alqChatUnreadBadge">0</span>
-    <span class="sr-only">Open chat</span>
-</div>
-<div id="alqChatPanel" class="alq-chat-panel" aria-hidden="true">
-    <div class="alq-chat-panel__header">
-        <span>Chat</span>
-        <div class="alq-chat-panel__actions">
-            <button id="alqChatOpenFull" class="alq-chat-btn" title="Open full page">
-                <i class="feather icon-external-link"></i>
-            </button>
-            <button id="alqChatClose" class="alq-chat-btn" title="Close">
-                <i class="feather icon-x"></i>
-            </button>
-        </div>
-    </div>
-    <iframe id="alqChatFrame" class="alq-chat-iframe" src="../chat.php?embed=1" loading="lazy" referrerpolicy="no-referrer"></iframe>
-</div>
-<script>
-document.addEventListener('DOMContentLoaded', function() {
-    // Ensure mobile menu toggle works
-    const mobileToggle = document.getElementById('mobile-collapse');
-    if (mobileToggle) {
-        mobileToggle.addEventListener('click', function(e) {
-            e.preventDefault();
-            e.stopPropagation();
-            console.log('Mobile menu toggle clicked');
-
-            // Check if we're on mobile (screen width < 992px)
-            if (window.innerWidth < 992) {
-                const navbar = document.querySelector('.pcoded-navbar');
-                const overlay = document.querySelector('.mobile-menu-overlay');
-                if (navbar) {
-                    const isOpen = navbar.classList.contains('open');
-                    if (isOpen) {
-                        // Close sidebar
-                        navbar.classList.remove('open');
-                        if (overlay) {
-                            overlay.classList.remove('show');
-                        }
-                    } else {
-                        // Open sidebar as overlay
-                        navbar.classList.add('mobile-overlay', 'open');
-                        if (overlay) {
-                            overlay.classList.add('show');
-                        } else {
-                            // Create overlay if it doesn't exist
-                            const newOverlay = document.createElement('div');
-                            newOverlay.className = 'mobile-menu-overlay show';
-                            newOverlay.addEventListener('click', function() {
-                                navbar.classList.remove('open');
-                                newOverlay.classList.remove('show');
-                            });
-                            document.body.appendChild(newOverlay);
-                        }
-                    }
-                }
-            }
-        });
-    }
-});
-</script>
-<script>
-(function() {
-    var fab = document.getElementById('alqChatFab');
-    var panel = document.getElementById('alqChatPanel');
-    var closeBtn = document.getElementById('alqChatClose');
-    var openFull = document.getElementById('alqChatOpenFull');
-    var unreadBadge = document.getElementById('alqChatUnreadBadge');
-    var currentUnreadCount = 0;
-
-    if (!fab || !panel) return;
-
-    function togglePanel(forceOpen) {
-        var isOpen = panel.classList.contains('open');
-        if (forceOpen === true || !isOpen) {
-            panel.classList.add('open');
-            panel.setAttribute('aria-hidden', 'false');
-            // Mark messages as seen when opening chat
-            if (currentUnreadCount > 0) {
-                markMessagesAsSeen();
-            }
-        } else {
-            panel.classList.remove('open');
-            panel.setAttribute('aria-hidden', 'true');
-        }
-    }
-
-    function updateUnreadBadge(count) {
-        currentUnreadCount = count;
-        if (count > 0) {
-            unreadBadge.textContent = count > 99 ? '99+' : count;
-            unreadBadge.classList.add('show');
-        } else {
-            unreadBadge.classList.remove('show');
-        }
-    }
-
-    function fetchUnreadCount() {
-        fetch('../api/unread_count.php', { credentials: 'include' })
-            .then(response => response.json())
-            .then(data => {
-                if (data.total_unread !== undefined) {
-                    updateUnreadBadge(data.total_unread);
-                }
-            })
-            .catch(error => console.error('Error fetching unread count:', error));
-    }
-
-    function markMessagesAsSeen() {
-        // This will be called when the chat panel is opened
-        // The iframe will handle marking messages as seen
-        var iframe = document.getElementById('alqChatFrame');
-        if (iframe && iframe.contentWindow) {
-            // Send message to iframe to mark messages as seen
-            iframe.contentWindow.postMessage({ type: 'markAsSeen' }, '*');
-        }
-    }
-
-    // Initial fetch
-    fetchUnreadCount();
-
-    // Poll for updates every 30 seconds
-    setInterval(fetchUnreadCount, 30000);
-
-    // Listen for messages from the chat iframe
-    window.addEventListener('message', function(event) {
-        if (event.data && event.data.type === 'unreadCountUpdate') {
-            updateUnreadBadge(event.data.count);
-        }
-    });
-
-    fab.addEventListener('click', function(e) { e.preventDefault(); e.stopPropagation(); togglePanel(); });
-    closeBtn && closeBtn.addEventListener('click', function(e) { e.preventDefault(); togglePanel(false); });
-    openFull && openFull.addEventListener('click', function(e) { e.preventDefault(); window.location.href = '../chat.php'; });
-    document.addEventListener('keydown', function(e) { if (e.key === 'Escape' && panel.classList.contains('open')) togglePanel(false); });
-})();
-</script>
-<?php endif; ?>
-

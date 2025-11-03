@@ -47,12 +47,16 @@ try {
                 SELECT 
                     CASE 
                         WHEN ct.transaction_of = 'ticket_sale' THEN DATE(tb.issue_date)
+                        WHEN ct.transaction_of = 'weight_sale' THEN DATE(twt.issue_date)
                         WHEN ct.transaction_of = 'ticket_reserve' THEN DATE(tr.issue_date)
                         WHEN ct.transaction_of = 'ticket_refund' THEN DATE(rt.created_at)
                         WHEN ct.transaction_of = 'date_change' THEN DATE(dc.created_at)
                         WHEN ct.transaction_of = 'visa_sale' THEN DATE(vs.receive_date)
+                        WHEN ct.transaction_of = 'visa_refund' THEN DATE(vr.refund_date)
                         WHEN ct.transaction_of = 'umrah' THEN DATE(um.entry_date)
+                        WHEN ct.transaction_of = 'umrah_refund' THEN DATE(umr.entry_date)
                         WHEN ct.transaction_of = 'hotel' THEN DATE(hb.issue_date)
+                        WHEN ct.transaction_of = 'hotel_refund' THEN DATE(hr.created_at)
                         WHEN ct.transaction_of = 'fund' THEN DATE(ct.created_at)
                         ELSE DATE(ct.created_at)
                     END as transaction_date,
@@ -68,56 +72,68 @@ try {
                     ct.id as transaction_id,
                     COALESCE(
                         (CASE 
-                            WHEN ct.transaction_of = 'ticket_sale' THEN CONCAT(tb.passenger_name, ' - ', tb.pnr, ' - ', tb.airline, ' - ', ct.transaction_of, ' - ', tb.origin, ' - ', tb.destination) 
-                            WHEN ct.transaction_of = 'ticket_reserve' THEN CONCAT(tr.passenger_name, ' - ', tr.pnr, ' - ', tr.airline, ' - ', ct.transaction_of, ' - ', tr.origin, ' - ', tr.destination)
-                            WHEN ct.transaction_of = 'ticket_refund' THEN CONCAT(rt.passenger_name, ' - ', rt.pnr, ' - ', rt.airline, ' - ', ct.transaction_of, ' - ', rt.origin, ' - ', rt.destination) 
-                            WHEN ct.transaction_of = 'date_change' THEN CONCAT(dc.passenger_name, ' - ', dc.pnr, ' - ', dc.airline, ' - ', ct.transaction_of, ' - ', dc.origin, ' - ', dc.destination) 
-                            WHEN ct.transaction_of = 'visa_sale' THEN CONCAT(vs.applicant_name) 
+                            WHEN ct.transaction_of = 'ticket_sale' THEN CONCAT(tb.passenger_name, ' - ', tb.pnr, ' - ', tb.airline)
+                            WHEN ct.transaction_of = 'weight_sale' THEN CONCAT(twt.passenger_name, ' - ', twt.pnr, ' - ', twt.airline)
+                            WHEN ct.transaction_of = 'ticket_reserve' THEN CONCAT(tr.passenger_name, ' - ', tr.pnr, ' - ', tr.airline)
+                            WHEN ct.transaction_of = 'ticket_refund' THEN CONCAT(rt.passenger_name, ' - ', rt.pnr, ' - ', rt.airline)
+                            WHEN ct.transaction_of = 'date_change' THEN CONCAT(dc.passenger_name, ' - ', dc.pnr, ' - ', dc.airline)
+                            WHEN ct.transaction_of = 'visa_sale' THEN CONCAT(vs.applicant_name)
+                            WHEN ct.transaction_of = 'visa_refund' THEN CONCAT(vsa.applicant_name)
                             WHEN ct.transaction_of = 'umrah' THEN CONCAT(um.name)
-                            WHEN ct.transaction_of = 'hotel' THEN CONCAT(hb.title,hb.first_name, hb.last_name)
-                            WHEN ct.transaction_of = 'fund' THEN CONCAT(usr.name) 
-                            WHEN ct.transaction_of = 'hotel_refund' THEN CONCAT(hb.title,hb.first_name, hb.last_name)
+                            WHEN ct.transaction_of = 'umrah_refund' THEN CONCAT(umr.name)
+                            WHEN ct.transaction_of = 'hotel' THEN CONCAT(hb.title, hb.first_name, hb.last_name)
+                            WHEN ct.transaction_of = 'hotel_refund' THEN CONCAT(hbr.title, hbr.first_name, hbr.last_name)
+                            WHEN ct.transaction_of = 'fund' THEN CONCAT(usr.name)
                             ELSE ''
                         END), 'N/A'
                     ) AS name,
-                     COALESCE(
+                    COALESCE(
                         (CASE 
-                            WHEN ct.transaction_of = 'ticket_sale' THEN CONCAT(tb.pnr) 
+                            WHEN ct.transaction_of = 'ticket_sale' THEN CONCAT(tb.pnr)
+                            WHEN ct.transaction_of = 'weight_sale' THEN CONCAT(twt.pnr)
                             WHEN ct.transaction_of = 'ticket_reserve' THEN CONCAT(tr.pnr)
-                            WHEN ct.transaction_of = 'ticket_refund' THEN CONCAT(rt.pnr) 
-                            WHEN ct.transaction_of = 'date_change' THEN CONCAT(dc.pnr) 
-                            WHEN ct.transaction_of = 'visa_sale' THEN CONCAT(vs.passport_number) 
+                            WHEN ct.transaction_of = 'ticket_refund' THEN CONCAT(rt.pnr)
+                            WHEN ct.transaction_of = 'date_change' THEN CONCAT(dc.pnr)
+                            WHEN ct.transaction_of = 'visa_sale' THEN CONCAT(vs.passport_number)
+                            WHEN ct.transaction_of = 'visa_refund' THEN CONCAT(vsa.passport_number)
                             WHEN ct.transaction_of = 'umrah' THEN CONCAT(um.passport_number)
+                            WHEN ct.transaction_of = 'umrah_refund' THEN CONCAT(umr.passport_number)
                             WHEN ct.transaction_of = 'hotel' THEN CONCAT(hb.order_id)
-                            WHEN ct.transaction_of = 'fund' THEN CONCAT(usr.role) 
-                            WHEN ct.transaction_of = 'hotel_refund' THEN CONCAT(hb.order_id)
+                            WHEN ct.transaction_of = 'hotel_refund' THEN CONCAT(hbr.order_id)
+                            WHEN ct.transaction_of = 'fund' THEN CONCAT(usr.role)
                             ELSE ''
                         END), 'N/A'
                     ) AS pnr,
-                     COALESCE(
+                    COALESCE(
                         (CASE 
-                            WHEN ct.transaction_of = 'ticket_sale' THEN CONCAT(tb.airline,'-',ct.transaction_of)
-                            WHEN ct.transaction_of = 'ticket_reserve' THEN CONCAT(tr.airline,'-',ct.transaction_of)
-                            WHEN ct.transaction_of = 'ticket_refund' THEN CONCAT(rt.airline,'-',ct.transaction_of)
-                            WHEN ct.transaction_of = 'date_change' THEN CONCAT(dc.airline,'-',ct.transaction_of)
-                            WHEN ct.transaction_of = 'visa_sale' THEN CONCAT(vs.status,'-',ct.transaction_of)
-                            WHEN ct.transaction_of = 'hotel' THEN CONCAT(ct.transaction_of)
+                            WHEN ct.transaction_of = 'ticket_sale' THEN CONCAT(tb.airline, ' - ', ct.transaction_of)
+                            WHEN ct.transaction_of = 'weight_sale' THEN CONCAT(twt.airline, ' - Weight: ', tw.weight, 'kg')
+                            WHEN ct.transaction_of = 'ticket_reserve' THEN CONCAT(tr.airline, ' - ', ct.transaction_of)
+                            WHEN ct.transaction_of = 'ticket_refund' THEN CONCAT(rt.airline, ' - ', ct.transaction_of)
+                            WHEN ct.transaction_of = 'date_change' THEN CONCAT(dc.airline, ' - ', ct.transaction_of)
+                            WHEN ct.transaction_of = 'visa_sale' THEN CONCAT(vs.status, ' - ', ct.transaction_of)
+                            WHEN ct.transaction_of = 'visa_refund' THEN CONCAT(vsa.status, ' - ', ct.transaction_of)
                             WHEN ct.transaction_of = 'umrah' THEN CONCAT(ct.transaction_of)
-                            WHEN ct.transaction_of = 'fund' THEN CONCAT(ct.transaction_of)
+                            WHEN ct.transaction_of = 'umrah_refund' THEN CONCAT(ct.transaction_of)
+                            WHEN ct.transaction_of = 'hotel' THEN ct.transaction_of
+                            WHEN ct.transaction_of = 'fund' THEN ct.transaction_of
                             WHEN ct.transaction_of = 'hotel_refund' THEN CONCAT(ct.transaction_of)
                             ELSE ''
                         END), 'N/A'
                     ) AS details,
                     COALESCE(
                         (CASE 
-                            WHEN ct.transaction_of = 'ticket_sale' THEN CONCAT(tb.departure_date) 
+                            WHEN ct.transaction_of = 'ticket_sale' THEN CONCAT(tb.departure_date)
+                            WHEN ct.transaction_of = 'weight_sale' THEN CONCAT(twt.departure_date)
                             WHEN ct.transaction_of = 'ticket_reserve' THEN CONCAT(tr.departure_date)
-                            WHEN ct.transaction_of = 'ticket_refund' THEN CONCAT(rt.departure_date) 
-                            WHEN ct.transaction_of = 'date_change' THEN CONCAT(dc.departure_date) 
-                            WHEN ct.transaction_of = 'visa_sale' THEN CONCAT(vs.applied_date) 
-                            WHEN ct.transaction_of = 'umrah' THEN CONCAT(um.flight_date) 
+                            WHEN ct.transaction_of = 'ticket_refund' THEN CONCAT(rt.departure_date)
+                            WHEN ct.transaction_of = 'date_change' THEN CONCAT(dc.departure_date)
+                            WHEN ct.transaction_of = 'visa_sale' THEN CONCAT(vs.applied_date)
+                            WHEN ct.transaction_of = 'visa_refund' THEN CONCAT(vr.refund_date)
+                            WHEN ct.transaction_of = 'umrah' THEN CONCAT(um.flight_date)
+                            WHEN ct.transaction_of = 'umrah_refund' THEN CONCAT(umr.flight_date)
                             WHEN ct.transaction_of = 'hotel' THEN CONCAT(hb.check_in_date)
-                            WHEN ct.transaction_of = 'fund' THEN CONCAT(' ') 
+                            WHEN ct.transaction_of = 'hotel_refund' THEN CONCAT(hbr.check_in_date)
                             ELSE ''
                         END), 'N/A'
                     ) AS departure_date,
@@ -125,46 +141,59 @@ try {
                         (CASE 
                             WHEN ct.transaction_of = 'ticket_sale' THEN 
                                 CASE 
-                                    WHEN tb.trip_type = 'round_trip' THEN CONCAT(tb.origin,'-',tb.destination,'-',tb.return_destination)
-                                    ELSE CONCAT(tb.origin,'-',tb.destination)
+                                    WHEN tb.trip_type = 'round_trip' THEN CONCAT(tb.origin, '-', tb.destination, '-', tb.return_destination)
+                                    ELSE CONCAT(tb.origin, '-', tb.destination)
                                 END
-                            WHEN ct.transaction_of = 'ticket_reserve' THEN 
+                            WHEN ct.transaction_of = 'ticket_weight' THEN 
                                 CASE 
-                                    WHEN tr.trip_type = 'round_trip' THEN CONCAT(tr.origin,'-',tr.destination,'-',tr.return_destination)
-                                    ELSE CONCAT(tr.origin,'-',tr.destination)
+                                    WHEN twt.trip_type = 'round_trip' THEN CONCAT(twt.origin, '-', twt.destination, '-', twt.return_destination)
+                                    ELSE CONCAT(twt.origin, '-', twt.destination)
                                 END
-                            WHEN ct.transaction_of = 'ticket_refund' THEN CONCAT(rt.origin,'-',rt.destination) 
-                            WHEN ct.transaction_of = 'date_change' THEN CONCAT(dc.origin,'-',dc.destination) 
-                            WHEN ct.transaction_of = 'visa_sale' THEN CONCAT(vs.country,'-',vs.visa_type) 
-                            WHEN ct.transaction_of = 'umrah' THEN CONCAT(um.room_type,'-',um.duration) 
+                            WHEN ct.transaction_of = 'ticket_refund' THEN CONCAT(rt.origin, '-', rt.destination)
+                            WHEN ct.transaction_of = 'date_change' THEN CONCAT(dc.origin, '-', dc.destination)
+                            WHEN ct.transaction_of = 'visa_sale' THEN CONCAT(vs.country, '-', vs.visa_type)
+                            WHEN ct.transaction_of = 'visa_refund' THEN CONCAT(vsa.country, '-', vsa.visa_type)
+                            WHEN ct.transaction_of = 'umrah' THEN CONCAT(um.room_type, '-', um.duration)
+                            WHEN ct.transaction_of = 'umrah_refund' THEN CONCAT(umr.room_type, '-', umr.duration)
                             WHEN ct.transaction_of = 'hotel' THEN CONCAT(hb.accommodation_details)
-                            WHEN ct.transaction_of = 'fund' THEN CONCAT(' ') 
+                            WHEN ct.transaction_of = 'hotel_refund' THEN CONCAT(hbr.accommodation_details)
                             ELSE ''
                         END), 'N/A'
                     ) AS sector,
                     COALESCE(
                         (CASE 
-                            WHEN ct.transaction_of = 'fund' THEN CONCAT(ct.description)
-                            WHEN ct.transaction_of = 'ticket_sale' THEN CONCAT(tb.description)
-                            WHEN ct.transaction_of = 'ticket_reserve' THEN CONCAT(tr.description)
-                            WHEN ct.transaction_of = 'ticket_refund' THEN CONCAT(rt.remarks)
-                            WHEN ct.transaction_of = 'date_change' THEN CONCAT(dc.remarks)
-                            WHEN ct.transaction_of = 'visa_sale' THEN CONCAT(vs.remarks)
-                           
-                            WHEN ct.transaction_of = 'hotel' THEN CONCAT(hb.remarks)
+                            WHEN ct.transaction_of = 'fund' THEN ct.description
+                            WHEN ct.transaction_of = 'ticket_sale' THEN tb.description
+                            WHEN ct.transaction_of = 'weight_sale' THEN CONCAT('Base Price: ', tw.base_price, ' - Sold: ', tw.sold_price, ' - Profit: ', tw.profit, tw.remarks)
+                            WHEN ct.transaction_of = 'ticket_reserve' THEN tr.description
+                            WHEN ct.transaction_of = 'ticket_refund' THEN rt.remarks
+                            WHEN ct.transaction_of = 'date_change' THEN dc.remarks
+                            WHEN ct.transaction_of = 'visa_sale' THEN vs.remarks
+                            WHEN ct.transaction_of = 'visa_refund' THEN vr.reason
+                            WHEN ct.transaction_of = 'umrah' THEN ''
+                            WHEN ct.transaction_of = 'umrah_refund' THEN ur.reason
+                            WHEN ct.transaction_of = 'hotel' THEN hb.remarks
+                            WHEN ct.transaction_of = 'hotel_refund' THEN hr.reason
                             ELSE ''
                         END), 'N/A'
                     ) AS remark
                 FROM client_transactions ct
                 LEFT JOIN ticket_bookings tb ON tb.id = ct.reference_id AND ct.transaction_of = 'ticket_sale'
+                LEFT JOIN ticket_weights tw ON tw.id = ct.reference_id AND ct.transaction_of = 'weight_sale'
+                LEFT JOIN ticket_bookings twt ON twt.id = tw.ticket_id
                 LEFT JOIN ticket_reservations tr ON tr.id = ct.reference_id AND ct.transaction_of = 'ticket_reserve'
                 LEFT JOIN users usr ON usr.id = ct.reference_id AND ct.transaction_of = 'fund'
                 LEFT JOIN refunded_tickets rt ON rt.id = ct.reference_id AND ct.transaction_of = 'ticket_refund'
                 LEFT JOIN date_change_tickets dc ON dc.id = ct.reference_id AND ct.transaction_of = 'date_change'
                 LEFT JOIN visa_applications vs ON vs.id = ct.reference_id AND ct.transaction_of = 'visa_sale'
+                LEFT JOIN visa_refunds vr ON vr.id = ct.reference_id AND ct.transaction_of = 'visa_refund'
+                LEFT JOIN visa_applications vsa ON vsa.id = vr.visa_id AND ct.transaction_of = 'visa_refund'
                 LEFT JOIN umrah_bookings um ON um.booking_id = ct.reference_id AND ct.transaction_of = 'umrah'
+                LEFT JOIN umrah_refunds ur ON ur.id = ct.reference_id AND ct.transaction_of = 'umrah_refund'
+                LEFT JOIN umrah_bookings umr ON umr.booking_id = ur.booking_id
                 LEFT JOIN hotel_bookings hb ON hb.id = ct.reference_id AND ct.transaction_of = 'hotel'
-                
+                LEFT JOIN hotel_refunds hr ON hr.id = ct.reference_id AND ct.transaction_of = 'hotel_refund'
+                LEFT JOIN hotel_bookings hbr ON hbr.id = hr.booking_id
                 WHERE ct.client_id = ?
                 ORDER BY ct.id ASC";
 
@@ -272,10 +301,12 @@ try {
                 SELECT 
                     CASE 
                         WHEN st.transaction_of = 'ticket_sale' THEN DATE(tb.issue_date)
+                        WHEN st.transaction_of = 'weight_sale' THEN DATE(twt.issue_date)
                         WHEN st.transaction_of = 'ticket_reserve' THEN DATE(tr.issue_date)
                         WHEN st.transaction_of = 'ticket_refund' THEN DATE(rt.created_at)
                         WHEN st.transaction_of = 'date_change' THEN DATE(dc.created_at)
                         WHEN st.transaction_of = 'visa_sale' THEN DATE(vs.receive_date)
+                        WHEN st.transaction_of = 'visa_refund' THEN DATE(vr.refund_date)
                         WHEN st.transaction_of = 'hotel' THEN DATE(hb.issue_date)
                         WHEN st.transaction_of = 'umrah' THEN DATE(um.entry_date)
                         WHEN st.transaction_of = 'fund' THEN DATE(st.transaction_date)
@@ -283,18 +314,33 @@ try {
                     END as transaction_date,
                     st.transaction_type as type,
                     st.amount,
-                    st.remarks as description,
+                    COALESCE(
+                        (CASE 
+                            WHEN st.transaction_of = 'fund' THEN CONCAT(st.remarks)
+                            WHEN st.transaction_of = 'ticket_sale' THEN CONCAT(tb.description)
+                            WHEN st.transaction_of = 'weight_sale' THEN CONCAT('Weight: ', tw.weight, 'kg - Base Price: ', tw.base_price, ' - Sold Price: ', tw.sold_price, ' - Profit: ', tw.profit, ' - Exchange Rate: ', tw.exchange_rate, ' - Market Rate: ', tw.market_exchange_rate, ' - ', tw.remarks)
+                            WHEN st.transaction_of = 'ticket_reserve' THEN CONCAT(tr.description)
+                            WHEN st.transaction_of = 'ticket_refund' THEN CONCAT(rt.remarks)
+                            WHEN st.transaction_of = 'date_change' THEN CONCAT(dc.remarks)
+                            WHEN st.transaction_of = 'visa_sale' THEN CONCAT(vs.remarks)
+                            WHEN st.transaction_of = 'visa_refund' THEN CONCAT(vr.reason)
+                            WHEN st.transaction_of = 'hotel' THEN CONCAT(hb.remarks)
+                            ELSE ''
+                        END), 'N/A'
+                    ) AS remark,
                     st.transaction_of,
                     st.reference_id,
                     st.balance, -- Simply include the balance field from supplier_transactions
                     st.receipt,
                     COALESCE(
                         (CASE 
-                            WHEN st.transaction_of = 'ticket_sale' THEN CONCAT(tb.passenger_name, ' - ', tb.pnr, ' - ', tb.airline, ' - ', st.transaction_of, ' - ', tb.origin, ' - ', tb.destination)
-                            WHEN st.transaction_of = 'ticket_reserve' THEN CONCAT(tr.passenger_name, ' - ', tr.pnr, ' - ', tr.airline, ' - ', st.transaction_of, ' - ', tr.origin, ' - ', tr.destination)
-                            WHEN st.transaction_of = 'ticket_refund' THEN CONCAT(rt.passenger_name, ' - ', rt.pnr, ' - ', rt.airline, ' - ', st.transaction_of, ' - ', rt.origin, ' - ', rt.destination)
-                            WHEN st.transaction_of = 'date_change' THEN CONCAT(dc.passenger_name, ' - ', dc.pnr, ' - ', dc.airline, ' - ', st.transaction_of, ' - ', dc.origin, ' - ', dc.destination)
+                            WHEN st.transaction_of = 'ticket_sale' THEN CONCAT(tb.passenger_name, ' - ', tb.pnr, ' - ', tb.airline)
+                            WHEN st.transaction_of = 'weight_sale' THEN CONCAT(twt.passenger_name, ' - ', twt.pnr, ' - ', twt.airline)
+                            WHEN st.transaction_of = 'ticket_reserve' THEN CONCAT(tr.passenger_name, ' - ', tr.pnr, ' - ', tr.airline)
+                            WHEN st.transaction_of = 'ticket_refund' THEN CONCAT(rt.passenger_name, ' - ', rt.pnr, ' - ', rt.airline)
+                            WHEN st.transaction_of = 'date_change' THEN CONCAT(dc.passenger_name, ' - ', dc.pnr, ' - ', dc.airline)
                             WHEN st.transaction_of = 'visa_sale' THEN CONCAT(vs.applicant_name)
+                            WHEN st.transaction_of = 'visa_refund' THEN CONCAT(vsa.applicant_name)
                             WHEN st.transaction_of = 'hotel' THEN CONCAT(hb.title,hb.first_name, hb.last_name)
                             WHEN st.transaction_of = 'umrah' THEN CONCAT(um.name)
                             WHEN st.transaction_of = 'fund' THEN CONCAT(usr.name)
@@ -302,13 +348,15 @@ try {
                             ELSE ''
                         END), 'N/A'
                     ) AS name,
-                     COALESCE(
+                    COALESCE(
                         (CASE 
                             WHEN st.transaction_of = 'ticket_sale' THEN CONCAT(tb.pnr)
+                            WHEN st.transaction_of = 'weight_sale' THEN CONCAT(twt.pnr)
                             WHEN st.transaction_of = 'ticket_reserve' THEN CONCAT(tr.pnr)
                             WHEN st.transaction_of = 'ticket_refund' THEN CONCAT(rt.pnr)
                             WHEN st.transaction_of = 'date_change' THEN CONCAT(dc.pnr)
                             WHEN st.transaction_of = 'visa_sale' THEN CONCAT(vs.passport_number)
+                            WHEN st.transaction_of = 'visa_refund' THEN CONCAT(vsa.passport_number)
                             WHEN st.transaction_of = 'hotel' THEN CONCAT(hb.order_id)
                             WHEN st.transaction_of = 'umrah' THEN CONCAT(um.passport_number)
                             WHEN st.transaction_of = 'fund' THEN CONCAT(usr.role)
@@ -316,16 +364,18 @@ try {
                             ELSE ''
                         END), 'N/A'
                     ) AS pnr,
-                     COALESCE(
+                    COALESCE(
                         (CASE 
-                            WHEN st.transaction_of = 'ticket_sale' THEN CONCAT(tb.airline,'-',st.transaction_of)
-                            WHEN st.transaction_of = 'ticket_reserve' THEN CONCAT(tr.airline,'-',st.transaction_of)
-                            WHEN st.transaction_of = 'ticket_refund' THEN CONCAT(rt.airline,'-',st.transaction_of)
-                            WHEN st.transaction_of = 'date_change' THEN CONCAT(dc.airline,'-',st.transaction_of)
-                            WHEN st.transaction_of = 'visa_sale' THEN CONCAT(vs.status,'-',st.transaction_of)
-                            WHEN st.transaction_of = 'hotel' THEN CONCAT(st.transaction_of)
-                            WHEN st.transaction_of = 'umrah' THEN CONCAT(st.transaction_of)
-                            WHEN st.transaction_of = 'fund' THEN CONCAT(st.transaction_of)
+                            WHEN st.transaction_of = 'ticket_sale' THEN CONCAT(tb.airline, ' - ', st.transaction_of)
+                            WHEN st.transaction_of = 'weight_sale' THEN CONCAT(twt.airline, ' - Weight: ', tw.weight, 'kg')
+                            WHEN st.transaction_of = 'ticket_reserve' THEN CONCAT(tr.airline, ' - ', st.transaction_of)
+                            WHEN st.transaction_of = 'ticket_refund' THEN CONCAT(rt.airline, ' - ', st.transaction_of)
+                            WHEN st.transaction_of = 'date_change' THEN CONCAT(dc.airline, ' - ', st.transaction_of)
+                            WHEN st.transaction_of = 'visa_sale' THEN CONCAT(vs.status, ' - ', st.transaction_of)
+                            WHEN st.transaction_of = 'visa_refund' THEN CONCAT(vsa.status, ' - ', st.transaction_of)
+                            WHEN st.transaction_of = 'hotel' THEN st.transaction_of
+                            WHEN st.transaction_of = 'umrah' THEN st.transaction_of
+                            WHEN st.transaction_of = 'fund' THEN st.transaction_of
                             WHEN st.transaction_of = 'hotel_refund' THEN CONCAT(st.transaction_of)
                             ELSE ''
                         END), 'N/A'
@@ -333,10 +383,12 @@ try {
                     COALESCE(
                         (CASE 
                             WHEN st.transaction_of = 'ticket_sale' THEN tb.departure_date
+                            WHEN st.transaction_of = 'weight_sale' THEN twt.departure_date
                             WHEN st.transaction_of = 'ticket_reserve' THEN tr.departure_date
                             WHEN st.transaction_of = 'ticket_refund' THEN rt.departure_date
                             WHEN st.transaction_of = 'date_change' THEN dc.departure_date
                             WHEN st.transaction_of = 'visa_sale' THEN vs.applied_date
+                            WHEN st.transaction_of = 'visa_refund' THEN vr.refund_date
                             WHEN st.transaction_of = 'hotel' THEN hb.check_in_date
                             WHEN st.transaction_of = 'umrah' THEN um.flight_date
                             WHEN st.transaction_of = 'fund' THEN ' '
@@ -345,24 +397,49 @@ try {
                     ) AS departure_date,
                     COALESCE(
                         (CASE 
-                            WHEN st.transaction_of = 'ticket_sale' THEN CONCAT(tb.origin,'-',tb.destination)
-                            WHEN st.transaction_of = 'ticket_reserve' THEN CONCAT(tr.origin,'-',tr.destination)
-                            WHEN st.transaction_of = 'ticket_refund' THEN CONCAT(rt.origin,'-',rt.destination)
-                            WHEN st.transaction_of = 'date_change' THEN CONCAT(dc.origin,'-',dc.destination)
-                            WHEN st.transaction_of = 'visa_sale' THEN CONCAT(vs.country,'-',vs.visa_type)
+                            WHEN st.transaction_of = 'ticket_sale' THEN 
+                                CASE 
+                                    WHEN tb.trip_type = 'round_trip' THEN CONCAT(tb.origin, '-', tb.destination, '-', tb.return_destination)
+                                    ELSE CONCAT(tb.origin, '-', tb.destination)
+                                END
+                            WHEN st.transaction_of = 'ticket_weight' THEN 
+                                CASE 
+                                    WHEN twt.trip_type = 'round_trip' THEN CONCAT(twt.origin, '-', twt.destination, '-', twt.return_destination)
+                                    ELSE CONCAT(twt.origin, '-', twt.destination)
+                                END
+                            WHEN st.transaction_of = 'ticket_refund' THEN CONCAT(rt.origin, '-', rt.destination)
+                            WHEN st.transaction_of = 'date_change' THEN CONCAT(dc.origin, '-', dc.destination)
+                            WHEN st.transaction_of = 'visa_sale' THEN CONCAT(vs.country, '-', vs.visa_type)
+                            WHEN st.transaction_of = 'visa_refund' THEN CONCAT(vsa.country, '-', vsa.visa_type)
+                            WHEN st.transaction_of = 'umrah' THEN CONCAT(um.room_type, '-', um.duration)
                             WHEN st.transaction_of = 'hotel' THEN CONCAT(hb.accommodation_details)
-                            WHEN st.transaction_of = 'umrah' THEN CONCAT(um.room_type,'-',um.duration)
-                            WHEN st.transaction_of = 'fund' THEN CONCAT(' ')
                             ELSE ''
                         END), 'N/A'
                     ) AS sector,
-                    st.remarks as remark
+                    COALESCE(
+                        (CASE 
+                            WHEN st.transaction_of = 'fund' THEN st.remarks
+                            WHEN st.transaction_of = 'ticket_sale' THEN tb.description
+                            WHEN st.transaction_of = 'weight_sale' THEN CONCAT('Base Price: ', tw.base_price, ' - Sold: ', tw.sold_price, ' - Profit: ', tw.profit, ' - Rate: ', tw.exchange_rate, ' - Market: ', tw.market_exchange_rate, ' - ', tw.remarks)
+                            WHEN st.transaction_of = 'ticket_reserve' THEN tr.description
+                            WHEN st.transaction_of = 'ticket_refund' THEN rt.remarks
+                            WHEN st.transaction_of = 'date_change' THEN dc.remarks
+                            WHEN st.transaction_of = 'visa_sale' THEN vs.remarks
+                            WHEN st.transaction_of = 'visa_refund' THEN vr.reason
+                            WHEN st.transaction_of = 'hotel' THEN hb.remarks
+                            ELSE ''
+                        END), 'N/A'
+                    ) AS remark
                 FROM supplier_transactions st
                 LEFT JOIN ticket_bookings tb ON tb.id = st.reference_id AND st.transaction_of = 'ticket_sale'
+                LEFT JOIN ticket_weights tw ON tw.id = st.reference_id AND st.transaction_of = 'weight_sale'
+                LEFT JOIN ticket_bookings twt ON twt.id = tw.ticket_id
                 LEFT JOIN ticket_reservations tr ON tr.id = st.reference_id AND st.transaction_of = 'ticket_reserve'
                 LEFT JOIN refunded_tickets rt ON rt.id = st.reference_id AND st.transaction_of = 'ticket_refund'
                 LEFT JOIN date_change_tickets dc ON dc.id = st.reference_id AND st.transaction_of = 'date_change'
                 LEFT JOIN visa_applications vs ON vs.id = st.reference_id AND st.transaction_of = 'visa_sale'
+                LEFT JOIN visa_refunds vr ON vr.id = st.reference_id AND st.transaction_of = 'visa_refund'
+                LEFT JOIN visa_applications vsa ON vsa.id = vr.visa_id AND st.transaction_of = 'visa_refund'
                 LEFT JOIN hotel_bookings hb ON hb.id = st.reference_id AND st.transaction_of = 'hotel'
                 LEFT JOIN umrah_bookings um ON um.booking_id = st.reference_id AND st.transaction_of = 'umrah'
                 LEFT JOIN users usr ON usr.id = st.reference_id AND st.transaction_of = 'fund'
@@ -388,10 +465,12 @@ try {
                 SELECT 
                     CASE 
                         WHEN mt.transaction_of = 'ticket_sale' THEN DATE(tb.issue_date)
+                        WHEN mt.transaction_of = 'weight_sale' THEN DATE(twt.issue_date)
                         WHEN mt.transaction_of = 'ticket_reserve' THEN DATE(tr.issue_date)
                         WHEN mt.transaction_of = 'ticket_refund' THEN DATE(rt.created_at)
                         WHEN mt.transaction_of = 'date_change' THEN DATE(dc.created_at)
                         WHEN mt.transaction_of = 'visa_sale' THEN DATE(vs.receive_date)
+                        WHEN mt.transaction_of = 'visa_refund' THEN DATE(vr.refund_date)
                         WHEN mt.transaction_of = 'hotel' THEN DATE(hb.issue_date)
                         WHEN mt.transaction_of = 'umrah' THEN DATE(um.entry_date)
                         WHEN mt.transaction_of = 'fund' THEN DATE(mt.created_at)
@@ -404,7 +483,20 @@ try {
                     END as transaction_date,
                     mt.type,
                     mt.amount,
-                    mt.description,
+                    COALESCE(
+                        (CASE 
+                            WHEN mt.transaction_of = 'fund' THEN CONCAT(mt.description)
+                            WHEN mt.transaction_of = 'ticket_sale' THEN CONCAT(tb.description)
+                            WHEN mt.transaction_of = 'weight_sale' THEN CONCAT('Weight: ', tw.weight, 'kg - Base Price: ', tw.base_price, ' - Sold Price: ', tw.sold_price, ' - Profit: ', tw.profit, ' - Exchange Rate: ', tw.exchange_rate, ' - Market Rate: ', tw.market_exchange_rate, ' - ', tw.remarks)
+                            WHEN mt.transaction_of = 'ticket_reserve' THEN CONCAT(tr.description)
+                            WHEN mt.transaction_of = 'ticket_refund' THEN CONCAT(rt.remarks)
+                            WHEN mt.transaction_of = 'date_change' THEN CONCAT(dc.remarks)
+                            WHEN mt.transaction_of = 'visa_sale' THEN CONCAT(vs.remarks)
+                            WHEN mt.transaction_of = 'visa_refund' THEN CONCAT(vr.reason)
+                            WHEN mt.transaction_of = 'hotel' THEN CONCAT(hb.remarks)
+                            ELSE ''
+                        END), 'N/A'
+                    ) AS remark,
                     mt.transaction_of,
                     mt.reference_id,
                     mt.balance,
@@ -412,10 +504,12 @@ try {
                     COALESCE(
                         (CASE 
                             WHEN mt.transaction_of = 'ticket_sale' THEN CONCAT(tb.passenger_name, ' - ', tb.pnr, ' - ', tb.airline, ' - ', mt.transaction_of, ' - ', tb.origin, ' - ', tb.destination)
+                            WHEN mt.transaction_of = 'weight_sale' THEN CONCAT(twt.passenger_name, ' - ', twt.pnr, ' - ', twt.airline, ' - Weight: ', tw.weight, 'kg - ', twt.origin, ' - ', twt.destination)
                             WHEN mt.transaction_of = 'ticket_reserve' THEN CONCAT(tr.passenger_name, ' - ', tr.pnr, ' - ', tr.airline, ' - ', mt.transaction_of, ' - ', tr.origin, ' - ', tr.destination)
                             WHEN mt.transaction_of = 'ticket_refund' THEN CONCAT(rt.passenger_name, ' - ', rt.pnr, ' - ', rt.airline, ' - ', mt.transaction_of, ' - ', rt.origin, ' - ', rt.destination)
                             WHEN mt.transaction_of = 'date_change' THEN CONCAT(dc.passenger_name, ' - ', dc.pnr, ' - ', dc.airline, ' - ', mt.transaction_of, ' - ', dc.origin, ' - ', dc.destination)
                             WHEN mt.transaction_of = 'visa_sale' THEN CONCAT(vs.applicant_name)
+                            WHEN mt.transaction_of = 'visa_refund' THEN CONCAT(vsa.applicant_name)
                             WHEN mt.transaction_of = 'hotel' THEN CONCAT(hb.title,hb.first_name, hb.last_name)
                             WHEN mt.transaction_of = 'umrah' THEN CONCAT(um.name)
                             WHEN mt.transaction_of = 'hotel_refund' THEN CONCAT(hb.title,hb.first_name, hb.last_name)
@@ -431,10 +525,12 @@ try {
                      COALESCE(
                         (CASE 
                             WHEN mt.transaction_of = 'ticket_sale' THEN CONCAT(tb.pnr)
+                            WHEN mt.transaction_of = 'weight_sale' THEN CONCAT(tb.pnr)
                             WHEN mt.transaction_of = 'ticket_reserve' THEN CONCAT(tr.pnr)
                             WHEN mt.transaction_of = 'ticket_refund' THEN CONCAT(rt.pnr)
                             WHEN mt.transaction_of = 'date_change' THEN CONCAT(dc.pnr)
                             WHEN mt.transaction_of = 'visa_sale' THEN CONCAT(vs.passport_number)
+                            WHEN mt.transaction_of = 'visa_refund' THEN CONCAT(vsa.passport_number)
                             WHEN mt.transaction_of = 'hotel' THEN CONCAT(hb.order_id)
                             WHEN mt.transaction_of = 'umrah' THEN CONCAT(um.passport_number)
                             WHEN mt.transaction_of = 'fund' THEN CONCAT(usr.role)
@@ -449,10 +545,12 @@ try {
                      COALESCE(
                         (CASE 
                             WHEN mt.transaction_of = 'ticket_sale' THEN CONCAT(tb.airline,'-',mt.transaction_of)
+                            WHEN mt.transaction_of = 'weight_sale' THEN CONCAT(twt.airline,'-',mt.transaction_of)
                             WHEN mt.transaction_of = 'ticket_reserve' THEN CONCAT(tr.airline,'-',mt.transaction_of)
                             WHEN mt.transaction_of = 'ticket_refund' THEN CONCAT(rt.airline,'-',mt.transaction_of)
                             WHEN mt.transaction_of = 'date_change' THEN CONCAT(dc.airline,'-',mt.transaction_of)
                             WHEN mt.transaction_of = 'visa_sale' THEN CONCAT(vs.status,'-',mt.transaction_of)
+                            WHEN mt.transaction_of = 'visa_refund' THEN CONCAT(vsa.status,'-',mt.transaction_of)
                             WHEN mt.transaction_of = 'hotel' THEN CONCAT(mt.transaction_of)
                             WHEN mt.transaction_of = 'umrah' THEN CONCAT(mt.transaction_of)
                             WHEN mt.transaction_of = 'fund' THEN CONCAT(mt.transaction_of)
@@ -468,10 +566,12 @@ try {
                     COALESCE(
                         (CASE 
                             WHEN mt.transaction_of = 'ticket_sale' THEN tb.departure_date
+                            WHEN mt.transaction_of = 'weight_sale' THEN twt.departure_date
                             WHEN mt.transaction_of = 'ticket_reserve' THEN tr.departure_date
                             WHEN mt.transaction_of = 'ticket_refund' THEN rt.departure_date
                             WHEN mt.transaction_of = 'date_change' THEN dc.departure_date
                             WHEN mt.transaction_of = 'visa_sale' THEN vs.applied_date
+                            WHEN mt.transaction_of = 'visa_refund' THEN vr.refund_date
                             WHEN mt.transaction_of = 'hotel' THEN hb.check_in_date
                             WHEN mt.transaction_of = 'umrah' THEN um.flight_date
                             WHEN mt.transaction_of = 'fund' THEN ' '
@@ -486,10 +586,12 @@ try {
                     COALESCE(
                         (CASE 
                             WHEN mt.transaction_of = 'ticket_sale' THEN CONCAT(tb.origin,'-',tb.destination)
+                            WHEN mt.transaction_of = 'weight_sale' THEN CONCAT(twt.origin,'-',twt.destination)
                             WHEN mt.transaction_of = 'ticket_reserve' THEN CONCAT(tr.origin,'-',tr.destination)
                             WHEN mt.transaction_of = 'ticket_refund' THEN CONCAT(rt.origin,'-',rt.destination)
                             WHEN mt.transaction_of = 'date_change' THEN CONCAT(dc.origin,'-',dc.destination)
                             WHEN mt.transaction_of = 'visa_sale' THEN CONCAT(vs.country,'-',vs.visa_type)
+                            WHEN mt.transaction_of = 'visa_refund' THEN CONCAT(vsa.country,'-',vsa.visa_type)
                             WHEN mt.transaction_of = 'hotel' THEN CONCAT(hb.accommodation_details)
                             WHEN mt.transaction_of = 'umrah' THEN CONCAT(um.room_type,'-',um.duration)
                             WHEN mt.transaction_of = 'fund' THEN CONCAT(' ')
@@ -504,10 +606,14 @@ try {
                     mt.description as remark
                 FROM main_account_transactions mt
                 LEFT JOIN ticket_bookings tb ON tb.id = mt.reference_id AND mt.transaction_of = 'ticket_sale'
+                LEFT JOIN ticket_weights tw ON tw.id = mt.reference_id AND mt.transaction_of = 'weight_sale'
+                LEFT JOIN ticket_bookings twt ON twt.id = tw.ticket_id
                 LEFT JOIN ticket_reservations tr ON tr.id = mt.reference_id AND mt.transaction_of = 'ticket_reserve'
                 LEFT JOIN refunded_tickets rt ON rt.id = mt.reference_id AND mt.transaction_of = 'ticket_refund'
                 LEFT JOIN date_change_tickets dc ON dc.id = mt.reference_id AND mt.transaction_of = 'date_change'
                 LEFT JOIN visa_applications vs ON vs.id = mt.reference_id AND mt.transaction_of = 'visa_sale'
+                LEFT JOIN visa_refunds vr ON vr.id = mt.reference_id AND mt.transaction_of = 'visa_refund'
+                LEFT JOIN visa_applications vsa ON vsa.id = vr.visa_id AND mt.transaction_of = 'visa_refund'
                 LEFT JOIN hotel_bookings hb ON hb.id = mt.reference_id AND mt.transaction_of = 'hotel'
                 LEFT JOIN umrah_bookings um ON um.booking_id = mt.reference_id AND mt.transaction_of = 'umrah'
                 LEFT JOIN users usr ON usr.id = mt.reference_id AND mt.transaction_of = 'fund'
@@ -534,11 +640,12 @@ try {
             throw new Exception('Invalid report type specified');
     }
 
-    // Get company settings
-    $settingsQuery = "SELECT * FROM settings WHERE id = 1";
-    $stmt = $pdo->prepare($settingsQuery);
-    $stmt->execute();
-    $companySettings = $stmt->fetch(PDO::FETCH_ASSOC);
+    // Get company settings for the current tenant
+$settingsQuery = "SELECT * FROM settings WHERE tenant_id = :tenant_id";
+$stmt = $pdo->prepare($settingsQuery);
+$stmt->execute([':tenant_id' => $tenant_id]);
+$companySettings = $stmt->fetch(PDO::FETCH_ASSOC);
+
 
     // Calculate totals for transactions in date range (for display in transactions table)
     $periodDebit = 0;
@@ -724,7 +831,7 @@ try {
             }
 
             // Centered Logo with enhanced quality
-            $logoPath = '../uploads/' . $companySettings['logo'];
+            $logoPath = '../uploads/logo' . $companySettings['logo'];
             if (file_exists($logoPath)) {
                 $imgSize = getimagesize($logoPath);
                 if ($imgSize !== false) {
