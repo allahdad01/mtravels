@@ -59,11 +59,12 @@ try {
                 <input type="hidden" name="csrf_token" value="<?= htmlspecialchars($_SESSION['csrf_token']); ?>">
                 <div class="input-field">
                   <i class="fas fa-user"></i>
-                  <input type="email" name="email" value="<?= htmlspecialchars($email); ?>" placeholder="Email" />
+                  <input type="email" name="email" value="<?= htmlspecialchars($email); ?>" placeholder="Email" required autocomplete="email" id="email" />
                 </div>
                 <div class="input-field">
                   <i class="fas fa-lock"></i>
-                  <input type="password" name="password" placeholder="Password" />
+                  <input type="password" name="password" placeholder="Password" required autocomplete="current-password" id="password" />
+                  <button type="button" id="togglePassword" class="toggle-password" aria-label="Toggle password visibility" style="position: absolute; right: 15px; top: 50%; transform: translateY(-50%); background: none; border: none; color: #aaa; cursor: pointer; font-size: 18px;"><i class="fas fa-eye"></i></button>
                 </div>
                 <div class="form-check mb-3">
                     <input type="checkbox" class="form-check-input" name="remember" id="remember-me">
@@ -123,6 +124,19 @@ try {
             recoveryForm.style.display = 'none';
             document.querySelector('form').style.display = 'block';
         });
+
+        // Password visibility toggle
+        const togglePassword = document.getElementById('togglePassword');
+        const passwordInput = document.getElementById('password');
+        if (togglePassword && passwordInput) {
+            togglePassword.addEventListener('click', function() {
+                const type = passwordInput.getAttribute('type') === 'password' ? 'text' : 'password';
+                passwordInput.setAttribute('type', type);
+                const icon = this.querySelector('i');
+                icon.classList.toggle('fa-eye');
+                icon.classList.toggle('fa-eye-slash');
+            });
+        }
     });
     </script>
   </body>

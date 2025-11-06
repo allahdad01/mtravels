@@ -73,7 +73,6 @@ if ($ticketsResult) {
                     'sold' => $row['sold'],
                     'price' => $row['price'],
                     'profit' => $row['profit'],
-                    'paymentAmount' => $row['payment_amount'],
                     'gender' => $row['gender'],
                     'currency' => $row['currency'],
 

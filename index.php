@@ -153,7 +153,7 @@ function getSetting($settings, $key, $default = '') {
 }
 
 // Helper function to format currency
-function formatCurrency($amount, $currency = 'USD') {
+function formatCurrency($amount, $currency = 'AFN') {
     return $currency . ' ' . number_format($amount, 2);
 }
 
@@ -614,6 +614,7 @@ try {
         .features-timeline {
             position: relative;
             padding: 2rem 0;
+            perspective: 1000px;
         }
 
         .features-timeline::before {
@@ -632,27 +633,70 @@ try {
         .timeline-item {
             position: relative;
             margin: 4rem 0;
+            display: flex;
+            width: 100%;
+        }
+
+        .timeline-item {
+            position: relative;
+            margin: 4rem 0;
             opacity: 0;
             transform: translateY(30px);
-            animation: fadeInUp 0.6s ease forwards;
             display: flex;
             width: 100%;
         }
 
         .timeline-item:nth-child(odd) {
-            animation-delay: 0.1s;
             justify-content: flex-end;
         }
 
         .timeline-item:nth-child(even) {
-            animation-delay: 0.3s;
             justify-content: flex-start;
         }
 
-        @keyframes fadeInUp {
-            to {
+        .timeline-item.animate:nth-child(odd) {
+            animation: pageTurnLeftToRight 1s ease-out forwards;
+        }
+
+        .timeline-item.animate:nth-child(even) {
+            animation: pageTurnRightToLeft 1s ease-out forwards;
+        }
+
+        .timeline-content {
+            transform-origin: left center;
+        }
+
+        .timeline-item:nth-child(even) .timeline-content {
+            transform-origin: right center;
+        }
+
+        @keyframes pageTurnLeftToRight {
+            0% {
+                opacity: 0;
+                transform: rotateY(-90deg) translateZ(50px);
+            }
+            50% {
+                opacity: 0.5;
+                transform: rotateY(-45deg) translateZ(25px);
+            }
+            100% {
                 opacity: 1;
-                transform: translateY(0);
+                transform: rotateY(0deg) translateZ(0px);
+            }
+        }
+
+        @keyframes pageTurnRightToLeft {
+            0% {
+                opacity: 0;
+                transform: rotateY(90deg) translateZ(50px);
+            }
+            50% {
+                opacity: 0.5;
+                transform: rotateY(45deg) translateZ(25px);
+            }
+            100% {
+                opacity: 1;
+                transform: rotateY(0deg) translateZ(0px);
             }
         }
 
@@ -667,6 +711,7 @@ try {
             position: relative;
             max-width: 45%;
             margin: 0 2rem;
+            transform-style: preserve-3d;
         }
 
         .timeline-content:hover {
@@ -1594,7 +1639,8 @@ try {
                         ['icon' => '🏢', 'title' => 'Assets & Expense Management', 'description' => 'Track company assets, calculate depreciation, schedule maintenance, and manage categorized expenses.'],
                         ['icon' => '📊', 'title' => 'Analytics & Reporting', 'description' => 'Interactive dashboards, KPIs, compliance reports, activity logs, and strategic insights.'],
                         ['icon' => '🧾', 'title' => 'Invoice & Payment Processing', 'description' => 'Automated invoice generation, additional payments, multi-currency receipts, and digital delivery.'],
-                        ['icon' => '👤', 'title' => 'User & Role Management', 'description' => 'Role-based access control with permissions, security, and activity logging.']
+                        ['icon' => '👤', 'title' => 'User & Role Management', 'description' => 'Role-based access control with permissions, security, and activity logging.'],
+                        ['icon' => '👥', 'title' => 'HR Management', 'description' => 'Complete human resources management including employee records, payroll, attendance, performance reviews, and organizational structure.']
                     ];
                 }
 
@@ -1658,6 +1704,7 @@ try {
                     <div class="pricing-features">
                         <?php
                         $planName = strtolower($plan['name']);
+                        $planFeatures = json_decode($plan['features'], true) ?? [];
 
                         // Group features by category for all plans
                         $featureGroups = [
@@ -1695,19 +1742,43 @@ try {
                             ]
                         ];
 
-                        // Display feature groups
-                        $planFeatures = json_decode($plan['features'], true) ?? [];
-                        foreach ($featureGroups as $groupKey => $group) {
-                            $availableFeatures = array_intersect($group['features'], $planFeatures);
-                            if (!empty($availableFeatures)) {
-                                echo '<div class="feature-group">';
-                                echo '<h5 class="feature-group-title">' . htmlspecialchars($group['title']) . '</h5>';
-                                echo '<ul class="feature-group-list">';
-                                foreach ($availableFeatures as $feature) {
-                                    echo '<li class="feature-item">' . htmlspecialchars(formatFeatureName($feature)) . '</li>';
+                        // For plans after the first one, show "Everything in [previous plan] plus:" and only additional features
+                        if ($index > 0) {
+                            $previousPlan = $plans[$index - 1];
+                            $previousPlanFeatures = json_decode($previousPlan['features'], true) ?? [];
+                            $additionalFeatures = array_diff($planFeatures, $previousPlanFeatures);
+
+                            echo '<div class="feature-group">';
+                            echo '<h5 class="feature-group-title" style="color: var(--primary); font-weight: 700;">Everything in ' . htmlspecialchars(formatFeatureName($previousPlan['name'])) . ' plus:</h5>';
+                            echo '<ul class="feature-group-list">';
+
+                            // Show additional features by group
+                            foreach ($featureGroups as $groupKey => $group) {
+                                $groupAdditionalFeatures = array_intersect($group['features'], $additionalFeatures);
+                                if (!empty($groupAdditionalFeatures)) {
+                                    echo '<li class="feature-item" style="font-weight: 600; color: var(--primary);">' . htmlspecialchars($group['title']) . ':</li>';
+                                    foreach ($groupAdditionalFeatures as $feature) {
+                                        echo '<li class="feature-item" style="margin-left: 1rem;">' . htmlspecialchars(formatFeatureName($feature)) . '</li>';
+                                    }
                                 }
-                                echo '</ul>';
-                                echo '</div>';
+                            }
+
+                            echo '</ul>';
+                            echo '</div>';
+                        } else {
+                            // For the first plan (Basic), show all features normally
+                            foreach ($featureGroups as $groupKey => $group) {
+                                $availableFeatures = array_intersect($group['features'], $planFeatures);
+                                if (!empty($availableFeatures)) {
+                                    echo '<div class="feature-group">';
+                                    echo '<h5 class="feature-group-title">' . htmlspecialchars($group['title']) . '</h5>';
+                                    echo '<ul class="feature-group-list">';
+                                    foreach ($availableFeatures as $feature) {
+                                        echo '<li class="feature-item">' . htmlspecialchars(formatFeatureName($feature)) . '</li>';
+                                    }
+                                    echo '</ul>';
+                                    echo '</div>';
+                                }
                             }
                         }
 
@@ -1715,7 +1786,17 @@ try {
                         echo '<div class="feature-group">';
                         echo '<h5 class="feature-group-title">Account & Support</h5>';
                         echo '<ul class="feature-group-list">';
-                        echo '<li class="feature-highlight">Up to ' . htmlspecialchars($plan['max_users']) . ' users</li>';
+                        if ($index > 0) {
+                            $previousPlan = $plans[$index - 1];
+                            $additionalUsers = $plan['max_users'] - $previousPlan['max_users'];
+                            if ($additionalUsers > 0) {
+                                echo '<li class="feature-highlight">Up to ' . htmlspecialchars($plan['max_users']) . ' users (' . $additionalUsers . ' more than ' . htmlspecialchars(formatFeatureName($previousPlan['name'])) . ')</li>';
+                            } else {
+                                echo '<li class="feature-highlight">Up to ' . htmlspecialchars($plan['max_users']) . ' users</li>';
+                            }
+                        } else {
+                            echo '<li class="feature-highlight">Up to ' . htmlspecialchars($plan['max_users']) . ' users</li>';
+                        }
                         echo '<li class="feature-highlight">' . htmlspecialchars($plan['trial_days']) . ' day free trial</li>';
                         echo '</ul>';
                         echo '</div>';
@@ -1904,31 +1985,31 @@ try {
                 <div class="footer-section">
                     <h3><?php echo getSetting($platform_settings, 'footer_product_title', 'Product'); ?></h3>
                     <ul>
-                        <li><a href="#"><?php echo getSetting($platform_settings, 'footer_features', 'Features'); ?></a></li>
-                        <li><a href="#"><?php echo getSetting($platform_settings, 'footer_pricing', 'Pricing'); ?></a></li>
-                        <li><a href="#"><?php echo getSetting($platform_settings, 'footer_integrations', 'Integrations'); ?></a></li>
-                        <li><a href="#"><?php echo getSetting($platform_settings, 'footer_api', 'API Documentation'); ?></a></li>
-                        <li><a href="#"><?php echo getSetting($platform_settings, 'footer_security', 'Security'); ?></a></li>
+                        <li><a href="#features"><?php echo getSetting($platform_settings, 'footer_features', 'Features'); ?></a></li>
+                        <li><a href="#pricing"><?php echo getSetting($platform_settings, 'footer_pricing', 'Pricing'); ?></a></li>
+                        <li><a href="integrations.php"><?php echo getSetting($platform_settings, 'footer_integrations', 'Integrations'); ?></a></li>
+                        <li><a href="api-docs.php"><?php echo getSetting($platform_settings, 'footer_api', 'API Documentation'); ?></a></li>
+                        <li><a href="security.php"><?php echo getSetting($platform_settings, 'footer_security', 'Security'); ?></a></li>
                     </ul>
                 </div>
                 <div class="footer-section">
                     <h3><?php echo getSetting($platform_settings, 'footer_company_title', 'Company'); ?></h3>
                     <ul>
-                        <li><a href="#"><?php echo getSetting($platform_settings, 'footer_about', 'About Us'); ?></a></li>
-                        <li><a href="#"><?php echo getSetting($platform_settings, 'footer_careers', 'Careers'); ?></a></li>
-                        <li><a href="#"><?php echo getSetting($platform_settings, 'footer_press', 'Press'); ?></a></li>
-                        <li><a href="#"><?php echo getSetting($platform_settings, 'footer_blog', 'Blog'); ?></a></li>
-                        <li><a href="#"><?php echo getSetting($platform_settings, 'footer_partners', 'Partners'); ?></a></li>
+                        <li><a href="about.php"><?php echo getSetting($platform_settings, 'footer_about', 'About Us'); ?></a></li>
+                        <li><a href="careers.php"><?php echo getSetting($platform_settings, 'footer_careers', 'Careers'); ?></a></li>
+                        <li><a href="press.php"><?php echo getSetting($platform_settings, 'footer_press', 'Press'); ?></a></li>
+                        <li><a href="blog.php"><?php echo getSetting($platform_settings, 'footer_blog', 'Blog'); ?></a></li>
+                        <li><a href="partners.php"><?php echo getSetting($platform_settings, 'footer_partners', 'Partners'); ?></a></li>
                     </ul>
                 </div>
                 <div class="footer-section">
                     <h3><?php echo getSetting($platform_settings, 'footer_support_title', 'Support'); ?></h3>
                     <ul>
-                        <li><a href="#"><?php echo getSetting($platform_settings, 'footer_help', 'Help Center'); ?></a></li>
-                        <li><a href="#"><?php echo getSetting($platform_settings, 'footer_contact', 'Contact Support'); ?></a></li>
-                        <li><a href="#"><?php echo getSetting($platform_settings, 'footer_status', 'System Status'); ?></a></li>
-                        <li><a href="#"><?php echo getSetting($platform_settings, 'footer_community', 'Community'); ?></a></li>
-                        <li><a href="#"><?php echo getSetting($platform_settings, 'footer_training', 'Training'); ?></a></li>
+                        <li><a href="help.php"><?php echo getSetting($platform_settings, 'footer_help', 'Help Center'); ?></a></li>
+                        <li><a href="#contact"><?php echo getSetting($platform_settings, 'footer_contact', 'Contact Support'); ?></a></li>
+                        <li><a href="status.php"><?php echo getSetting($platform_settings, 'footer_status', 'System Status'); ?></a></li>
+                        <li><a href="community.php"><?php echo getSetting($platform_settings, 'footer_community', 'Community'); ?></a></li>
+                        <li><a href="training.php"><?php echo getSetting($platform_settings, 'footer_training', 'Training'); ?></a></li>
                     </ul>
                 </div>
             </div>
@@ -1987,6 +2068,21 @@ try {
             el.style.transform = 'translateY(30px)';
             el.style.transition = 'opacity 0.6s ease, transform 0.6s ease';
             observer.observe(el);
+        });
+
+        // Features timeline animation observer - individual item animation
+        const timelineObserver = new IntersectionObserver(function(entries) {
+            entries.forEach(entry => {
+                if (entry.isIntersecting) {
+                    entry.target.classList.add('animate');
+                    timelineObserver.unobserve(entry.target);
+                }
+            });
+        }, { threshold: 0.1, rootMargin: '0px 0px -50px 0px' });
+
+        // Observe each timeline item individually
+        document.querySelectorAll('.timeline-item').forEach(item => {
+            timelineObserver.observe(item);
         });
 
         // Counter animation for stats

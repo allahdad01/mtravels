@@ -86,12 +86,7 @@ $weightsQuery = "
                                                     <h5><?= __('ticket_weights_management') ?></h5>
                                                 </div>
                                                 <div class="col text-right">
-                                                     <button type="button" class="btn btn-success" id="generateInvoiceBtn" style="display: none;">
-                                                         <i class="feather icon-file-text mr-2"></i>Generate Invoice
-                                                     </button>
-                                                     <button type="button" class="btn btn-primary" data-toggle="modal" data-target="#addTransactionModal">
-                                                         <i class="feather icon-plus mr-2"></i><?= __('add_weight') ?>
-                                                     </button>
+                                   
                                                  </div>
                                             </div>
                                         </div>

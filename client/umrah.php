@@ -86,9 +86,7 @@ require_once('../includes/conn.php');
                             <th><i class="feather icon-shield mr-2"></i>Tazmin</th>
                             <th><i class="feather icon-check-circle mr-2"></i>Visa Status</th>
                             <th><i class="feather icon-dollar-sign mr-2"></i>Price</th>
-                            <th><i class="feather icon-check mr-2"></i>Paid</th>
-                            <th><i class="feather icon-credit-card mr-2"></i>Bank</th>
-                            <th><i class="feather icon-alert-circle mr-2"></i>Due</th>
+
                             <th><i class="feather icon-settings mr-2"></i>Actions</th>
                         </tr>
                     </thead>
@@ -108,9 +106,6 @@ require_once('../includes/conn.php');
                                         <?= htmlspecialchars($row['visa_status']) ?>
                                     </span></td>
                                     <td class="font-weight-bold"><?= htmlspecialchars($row['total_price']) ?></td>
-                                    <td class="text-success"><?= htmlspecialchars($row['total_paid']) ?></td>
-                                    <td class="text-primary"><?= htmlspecialchars($row['total_paid_to_bank']) ?></td>
-                                    <td class="text-danger"><?= htmlspecialchars($row['total_due']) ?></td>
                                     <td>
                                         <div class="dropdown">
                                             <button class="btn btn-primary btn-sm dropdown-toggle" type="button" id="actionMenu<?= $familyId ?>" data-toggle="dropdown">
@@ -146,13 +141,8 @@ require_once('../includes/conn.php');
                                                                 <th>Return Date</th>
                                                                 <th>Room</th>
                                                                 <th>Duration</th>
-                                                                <th>Base</th>
-                                                                <th>Sold</th>
-                                                                <th>Paid</th>
-                                                                <th>Bank</th>
-                                                                <th>Receipt</th>
-                                                                <th>Due</th>
-                                                                <th>Profit</th>
+                                                                <th>Price</th>
+
                                                             </tr>
                                                         </thead>
                                                         <tbody>
@@ -167,15 +157,12 @@ require_once('../includes/conn.php');
                                                                         <td><?= htmlspecialchars($member['dob']) ?></td>
                                                                         <td><?= htmlspecialchars($member['passport_number']) ?></td>
                                                                         <td><span class="badge badge-info"><?= htmlspecialchars($member['id_type']) ?></span></td>
-                                                                        <td><?= htmlspecialchars($member['flight_date']) ?></td>
-                                                                        <td><?= htmlspecialchars($member['return_date']) ?></td>
+                                                                        <td><?= htmlspecialchars($member['flight_date'] ?? '') ?></td>
+                                                                        <td><?= htmlspecialchars($member['return_date'] ?? '') ?></td>
                                                                         <td><?= htmlspecialchars($member['room_type']) ?></td>
                                                                         <td><?= htmlspecialchars($member['duration']) ?></td>
                                                                         <td><?= htmlspecialchars($member['sold_price']) ?></td>
-                                                                        <td class="text-success"><?= htmlspecialchars($member['paid']) ?></td>
-                                                                        <td><?= htmlspecialchars($member['received_bank_payment']) ?></td>
-                                                                        <td><?= htmlspecialchars($member['bank_receipt_number']) ?></td>
-                                                                        <td class="text-danger"><?= htmlspecialchars($member['due']) ?></td>
+             
                                                                         
                                                                     </tr>
                                                                 <?php }
