@@ -525,7 +525,7 @@ $platform_settings = getPlatformSettings($pdo);
 
             <div class="about-grid">
                 <div class="about-image">
-                    <img src="assets/images/widget/undraw_finance_m6vw.svg" alt="Our Vision" style="max-width: 100%; height: auto;">
+                    <img src="assets/images/widget/our_vision.jpg" alt="Our Vision" style="max-width: 100%; height: auto;">
                 </div>
                 <div class="about-text">
                     <h2>Our Vision</h2>
