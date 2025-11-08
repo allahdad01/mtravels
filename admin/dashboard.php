@@ -72,9 +72,7 @@ if (!file_exists($imagePath)) {
                                             <p class="dashboard-subtitle"><?= __('dashboard_subtitle') ?></p>
                                         </div>
                                         <div class="d-flex flex-wrap">
-                                            <button class="btn btn-primary mr-2 mb-2 mb-md-0" data-toggle="modal" data-target="#profileModal">
-                                                <i class="feather icon-user mr-1"></i><?= __('my_profile') ?>
-                                            </button>
+                                           
                                             <div class="dropdown">
                                                 <button class="btn btn-light dropdown-toggle mb-2 mb-md-0" type="button" id="quickActionsDropdown" data-toggle="dropdown" aria-haspopup="true" aria-expanded="false">
                                                     <i class="feather icon-zap mr-1"></i><?= __('quick_actions') ?>
@@ -1523,7 +1521,6 @@ try {
     <script src="js/dashboard-filters.js"></script>
     <script src="js/dashboard-receipt.js"></script>
     <script src="js/dashboard-debtors.js"></script>
-    <script src="js/dashboard-profile.js"></script>
     <script src="js/dashboard-dues.js"></script>
     
     <script>

@@ -5,7 +5,7 @@ if (session_status() === PHP_SESSION_NONE) {
 }
 
 // Include database connection and handler
-require_once('../handlers/dashboard_handler.php');
+require_once('handlers/dashboard_handler.php');
 
 $tenant_id = $_SESSION['tenant_id'];
 

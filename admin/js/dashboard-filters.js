@@ -125,7 +125,7 @@ $(document).ready(function() {
 
         // Send AJAX request
         $.ajax({
-            url: 'ajax/get_filtered_performance.php',
+            url: 'get_filtered_performance.php',
             type: 'POST',
             data: {
                 filter_date: filterDate
