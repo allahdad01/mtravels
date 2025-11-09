@@ -34,16 +34,16 @@ function getPlatformSettings($pdo) {
 }
 
 // Optimized function to fetch blog posts with caching
-function getBlogPosts($pdo, $tenant_id, $limit = null) {
-    $cache_key = getCacheKey('blog_posts', [$tenant_id, $limit]);
+function getBlogPosts($pdo, $limit = null) {
+    $cache_key = getCacheKey('blog_posts', [$limit]);
 
     if ($cached = getCachedData($cache_key)) {
         return $cached;
     }
 
     try {
-        $sql = "SELECT id, title, slug, excerpt, featured_image, created_at, author_name, read_time FROM blog_posts WHERE tenant_id = ? AND status = 'published' ORDER BY created_at DESC";
-        $params = [$tenant_id];
+        $sql = "SELECT `id`, `title`, `slug`, `content`, `excerpt`, `featured_image`, `author`, `category`, `status`, `created_at`, `updated_at` FROM `blog_posts` WHERE `status` = 'published' ORDER BY `created_at` DESC";
+        $params = [];
 
         if ($limit !== null) {
             $sql .= " LIMIT ?";
@@ -74,7 +74,7 @@ function formatDate($date) {
 
 // Fetch data
 $platform_settings = getPlatformSettings($pdo);
-$blog_posts = getBlogPosts($pdo, $default_tenant_id);
+$blog_posts = getBlogPosts($pdo);
 ?>
 <!DOCTYPE html>
 <html lang="en">
@@ -642,19 +642,21 @@ $blog_posts = getBlogPosts($pdo, $default_tenant_id);
                     <div class="featured-card">
                         <div class="featured-image">
                             <?php if (!empty($featured_post['featured_image'])): ?>
-                                <img src="<?php echo htmlspecialchars($featured_post['featured_image']); ?>" alt="<?php echo htmlspecialchars($featured_post['title']); ?>">
+                                <img src=".<?php echo htmlspecialchars($featured_post['featured_image']); ?>" alt="<?php echo htmlspecialchars($featured_post['title']); ?>">
                             <?php else: ?>
                                 📝
                             <?php endif; ?>
                         </div>
                         <div class="featured-content">
                             <div class="featured-meta">
-                                <div class="blog-author">
-                                    👤 <?php echo htmlspecialchars($featured_post['author_name'] ?? 'MTravels Team'); ?>
-                                </div>
-                                <div class="blog-date"><?php echo formatDate($featured_post['created_at']); ?></div>
-                                <div class="blog-read-time"><?php echo htmlspecialchars($featured_post['read_time'] ?? '5'); ?> min read</div>
+                            <div class="blog-author">
+                            👤 <?php echo htmlspecialchars($featured_post['author'] ?? 'MTravels Team'); ?>
                             </div>
+                            <div class="blog-date"><?php echo formatDate($featured_post['created_at']); ?></div>
+                            <?php if (!empty($featured_post['category'])): ?>
+                                <div class="blog-category"><?php echo htmlspecialchars($featured_post['category']); ?></div>
+                                 <?php endif; ?>
+                             </div>
                             <h2 class="featured-title">
                                 <a href="#"><?php echo htmlspecialchars($featured_post['title']); ?></a>
                             </h2>
@@ -674,19 +676,21 @@ $blog_posts = getBlogPosts($pdo, $default_tenant_id);
                     <div class="blog-card">
                         <div class="blog-image">
                             <?php if (!empty($post['featured_image'])): ?>
-                                <img src="<?php echo htmlspecialchars($post['featured_image']); ?>" alt="<?php echo htmlspecialchars($post['title']); ?>">
+                                <img src=".<?php echo htmlspecialchars($post['featured_image']); ?>" alt="<?php echo htmlspecialchars($post['title']); ?>">
                             <?php else: ?>
                                 📄
                             <?php endif; ?>
                         </div>
                         <div class="blog-content-card">
-                            <div class="blog-meta">
-                                <div class="blog-author">
-                                    👤 <?php echo htmlspecialchars($post['author_name'] ?? 'MTravels Team'); ?>
-                                </div>
-                                <div class="blog-date"><?php echo formatDate($post['created_at']); ?></div>
-                                <div class="blog-read-time"><?php echo htmlspecialchars($post['read_time'] ?? '3'); ?> min read</div>
-                            </div>
+                        <div class="blog-meta">
+                        <div class="blog-author">
+                        👤 <?php echo htmlspecialchars($post['author'] ?? 'MTravels Team'); ?>
+                        </div>
+                        <div class="blog-date"><?php echo formatDate($post['created_at']); ?></div>
+                        <?php if (!empty($post['category'])): ?>
+                            <div class="blog-category"><?php echo htmlspecialchars($post['category']); ?></div>
+                                 <?php endif; ?>
+                             </div>
                             <h3 class="blog-title">
                                 <a href="#"><?php echo htmlspecialchars($post['title']); ?></a>
                             </h3>

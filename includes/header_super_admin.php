@@ -1709,6 +1709,12 @@ $imagePath = "../assets/images/user/" . $profilePic;
                         <span class="pcoded-mtext">Manage Testimonials</span>
                     </a>
                 </li>
+                <li data-username="manage_blog_posts" class="nav-item <?php echo basename($_SERVER['PHP_SELF']) == 'manage_blog_posts.php' ? 'active' : ''; ?>">
+                    <a href="manage_blog_posts.php" class="nav-link">
+                        <span class="pcoded-micon"><i class="feather icon-message-square"></i></span>
+                        <span class="pcoded-mtext">Manage Posts</span>
+                    </a>
+                </li>
                 <li data-username="backup_management" class="nav-item <?php echo basename($_SERVER['PHP_SELF']) == 'backup_management.php' ? 'active' : ''; ?>">
                     <a href="backup_management.php" class="nav-link">
                         <span class="pcoded-micon"><i class="feather icon-message-square"></i></span>
