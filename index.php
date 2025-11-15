@@ -166,6 +166,24 @@ function formatFeatureName($feature) {
 try {
     $platform_settings = getPlatformSettings($pdo);
     $plans = getPlans($pdo);
+
+    // Add dedicated Umrah plan
+    $umrahPlan = [
+        'id' => null,
+        'name' => 'Umrah',
+        'description' => 'Dedicated Umrah management plan with comprehensive family and member management features',
+        'features' => json_encode(['family_management', 'member_management', 'id_card_generation', 'agreement_generation', 'cancellation_generation', 'refund_processing', 'payment_processing', 'multi_currency', 'inter_tenant_chat', 'umrah_bookings', 'umrah_refunds', 'salary', 'financial_statements', 'expense_management']),
+        'price' => 2000,
+        'max_users' => 10,
+        'trial_days' => 14
+    ];
+    $plans[] = $umrahPlan;
+
+    // Re-sort plans by price
+    usort($plans, function($a, $b) {
+        return $a['price'] <=> $b['price'];
+    });
+
     $destinations = getDestinations($pdo, $default_tenant_id);
     $testimonials = getTestimonials($pdo, $default_tenant_id); // Get all testimonials for slider
     $deals = getDeals($pdo, $default_tenant_id);
@@ -1143,7 +1161,7 @@ try {
 
         .pricing-grid {
             display: grid;
-            grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+            grid-template-columns: repeat(4, 1fr);
             gap: 2rem;
         }
 
@@ -1514,6 +1532,11 @@ try {
                 flex-direction: column;
                 align-items: center;
             }
+
+            .pricing-grid {
+                grid-template-columns: 1fr;
+                gap: 1rem;
+            }
         }
 
         @media (max-width: 480px) {
@@ -1697,7 +1720,7 @@ try {
             </div>
             <div class="pricing-grid">
                 <?php foreach ($plans as $index => $plan): ?>
-                <div class="pricing-card <?php echo $index === 1 ? 'popular' : ''; ?>">
+                <div class="pricing-card <?php echo strtolower($plan['name']) === 'enterprise' ? 'popular' : ''; ?>">
                     <div class="pricing-name"><?php echo htmlspecialchars(formatFeatureName($plan['name'])); ?></div>
                     <div class="pricing-price"><?php echo formatCurrency($plan['price']); ?></div>
                     <div class="pricing-period"><?php echo htmlspecialchars(formatFeatureName('per_month')); ?></div>
@@ -1705,6 +1728,12 @@ try {
                         <?php
                         $planName = strtolower($plan['name']);
                         $planFeatures = json_decode($plan['features'], true) ?? [];
+
+                        // Add Umrah features to Enterprise plan
+                        if ($planName === 'enterprise') {
+                            $umrahFeatures = ['family_management', 'member_management', 'id_card_generation', 'agreement_generation', 'cancellation_generation', 'refund_processing', 'payment_processing', 'multi_currency'];
+                            $planFeatures = array_merge($planFeatures, $umrahFeatures);
+                        }
 
                         // Group features by category for all plans
                         $featureGroups = [
@@ -1719,6 +1748,10 @@ try {
                             'visa_services' => [
                                 'title' => 'Visa Services',
                                 'features' => ['visa_applications', 'visa_refunds', 'visa_transactions']
+                            ],
+                            'umrah_services' => [
+                                'title' => 'Umrah Services',
+                                'features' => ['family_management', 'member_management', 'id_card_generation', 'agreement_generation', 'cancellation_generation', 'refund_processing', 'payment_processing', 'multi_currency']
                             ],
                             'financial_management' => [
                                 'title' => 'Financial Management',

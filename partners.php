@@ -326,32 +326,64 @@ $platform_settings = getPlatformSettings($pdo);
             font-weight: 800;
             color: var(--gray-900);
             text-align: center;
+            margin-bottom: 1rem;
+        }
+
+        .partners-subtitle {
+            font-size: 1.1rem;
+            color: var(--gray-600);
+            text-align: center;
             margin-bottom: 4rem;
+            max-width: 600px;
+            margin-left: auto;
+            margin-right: auto;
         }
 
         .partners-grid {
             display: grid;
-            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
-            gap: 3rem;
-            align-items: center;
+            grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+            gap: 2rem;
+            align-items: stretch;
         }
 
         .partner-logo {
             background: var(--white);
-            border-radius: 15px;
-            padding: 2rem;
+            border-radius: 20px;
+            padding: 2.5rem 2rem;
             text-align: center;
             box-shadow: 0 5px 15px rgba(0, 0, 0, 0.05);
             transition: all 0.3s ease;
-            height: 120px;
+            border: 2px solid var(--gray-100);
             display: flex;
+            flex-direction: column;
             align-items: center;
             justify-content: center;
+            min-height: 160px;
         }
 
         .partner-logo:hover {
             transform: translateY(-5px);
-            box-shadow: 0 10px 25px rgba(64, 153, 255, 0.1);
+            box-shadow: 0 15px 35px rgba(64, 153, 255, 0.15);
+            border-color: var(--primary);
+        }
+
+        .partner-icon {
+            font-size: 2.5rem;
+            margin-bottom: 1rem;
+            color: var(--primary);
+        }
+
+        .partner-name {
+            font-size: 1.2rem;
+            font-weight: 700;
+            color: var(--gray-900);
+            margin-bottom: 0.5rem;
+        }
+
+        .partner-description {
+            font-size: 0.9rem;
+            color: var(--gray-600);
+            font-weight: 500;
         }
 
         .partner-logo img {
@@ -382,14 +414,17 @@ $platform_settings = getPlatformSettings($pdo);
         .benefit-item {
             text-align: center;
             padding: 2rem;
-            background: var(--gray-50);
-            border-radius: 15px;
+            background: var(--white);
+            border: 2px solid var(--gray-100);
+            border-radius: 20px;
             transition: all 0.3s ease;
+            box-shadow: 0 5px 15px rgba(0, 0, 0, 0.05);
         }
 
         .benefit-item:hover {
             transform: translateY(-5px);
-            box-shadow: 0 10px 30px rgba(64, 153, 255, 0.1);
+            border-color: var(--primary);
+            box-shadow: 0 15px 35px rgba(64, 153, 255, 0.15);
         }
 
         .benefit-icon {
@@ -442,6 +477,7 @@ $platform_settings = getPlatformSettings($pdo);
             max-width: 600px;
             margin: 0 auto;
             box-shadow: 0 10px 30px rgba(0, 0, 0, 0.05);
+            border: 2px solid var(--gray-100);
         }
 
         .application-form {
@@ -491,21 +527,22 @@ $platform_settings = getPlatformSettings($pdo);
 
         /* CTA Section */
         .partner-cta {
-            background: var(--gray-50);
+            background: linear-gradient(135deg, var(--primary) 0%, var(--secondary) 100%);
             padding: 6rem 0;
             text-align: center;
+            color: white;
         }
 
         .partner-cta h2 {
             font-size: 3rem;
             font-weight: 800;
-            color: var(--gray-900);
+            color: white;
             margin-bottom: 1.5rem;
         }
 
         .partner-cta p {
             font-size: 1.2rem;
-            color: var(--gray-600);
+            color: rgba(255, 255, 255, 0.9);
             margin-bottom: 3rem;
             max-width: 600px;
             margin-left: auto;
@@ -583,6 +620,28 @@ $platform_settings = getPlatformSettings($pdo);
                 grid-template-columns: 1fr;
             }
 
+            .partners-subtitle {
+                font-size: 1rem;
+                margin-bottom: 3rem;
+            }
+
+            .partner-logo {
+                padding: 2rem 1.5rem;
+                min-height: 140px;
+            }
+
+            .partner-icon {
+                font-size: 2rem;
+            }
+
+            .partner-name {
+                font-size: 1.1rem;
+            }
+
+            .partner-description {
+                font-size: 0.85rem;
+            }
+
             .partner-application {
                 padding: 2rem;
             }
@@ -598,6 +657,18 @@ $platform_settings = getPlatformSettings($pdo);
             .partner-cta-buttons {
                 flex-direction: column;
                 align-items: center;
+            }
+
+            .partner-cta {
+                padding: 4rem 0;
+            }
+
+            .partner-cta h2 {
+                font-size: 2.5rem;
+            }
+
+            .partner-cta p {
+                font-size: 1.1rem;
             }
         }
     </style>
@@ -710,30 +781,37 @@ $platform_settings = getPlatformSettings($pdo);
             <!-- Current Partners -->
             <div class="current-partners">
                 <h2>Trusted Partners</h2>
+                <p class="partners-subtitle">We collaborate with industry leaders to deliver exceptional travel solutions</p>
                 <div class="partners-grid">
                     <div class="partner-logo">
-                        <div style="font-size: 2rem; color: var(--primary);">✈️</div>
-                        <div style="font-weight: 600; margin-top: 0.5rem;">Amadeus</div>
+                        <div class="partner-icon">✈️</div>
+                        <div class="partner-name">Amadeus</div>
+                        <div class="partner-description">Global Distribution System</div>
                     </div>
                     <div class="partner-logo">
-                        <div style="font-size: 2rem; color: var(--primary);">🏨</div>
-                        <div style="font-weight: 600; margin-top: 0.5rem;">Booking.com</div>
+                        <div class="partner-icon">🏨</div>
+                        <div class="partner-name">Booking.com</div>
+                        <div class="partner-description">Hotel Booking Platform</div>
                     </div>
                     <div class="partner-logo">
-                        <div style="font-size: 2rem; color: var(--primary);">💳</div>
-                        <div style="font-weight: 600; margin-top: 0.5rem;">Stripe</div>
+                        <div class="partner-icon">💳</div>
+                        <div class="partner-name">Stripe</div>
+                        <div class="partner-description">Payment Processing</div>
                     </div>
                     <div class="partner-logo">
-                        <div style="font-size: 2rem; color: var(--primary);">📧</div>
-                        <div style="font-weight: 600; margin-top: 0.5rem;">Mailchimp</div>
+                        <div class="partner-icon">📧</div>
+                        <div class="partner-name">Mailchimp</div>
+                        <div class="partner-description">Email Marketing</div>
                     </div>
                     <div class="partner-logo">
-                        <div style="font-size: 2rem; color: var(--primary);">🔗</div>
-                        <div style="font-weight: 600; margin-top: 0.5rem;">Zapier</div>
+                        <div class="partner-icon">🔗</div>
+                        <div class="partner-name">Zapier</div>
+                        <div class="partner-description">Automation Platform</div>
                     </div>
                     <div class="partner-logo">
-                        <div style="font-size: 2rem; color: var(--primary);">📊</div>
-                        <div style="font-weight: 600; margin-top: 0.5rem;">Google Analytics</div>
+                        <div class="partner-icon">📊</div>
+                        <div class="partner-name">Google Analytics</div>
+                        <div class="partner-description">Web Analytics</div>
                     </div>
                 </div>
             </div>
@@ -753,7 +831,6 @@ $platform_settings = getPlatformSettings($pdo);
                         <p class="benefit-description">Leverage our cutting-edge technology platform to enhance your offerings and stay ahead of industry trends.</p>
                     </div>
                     <div class="benefit-item">
-                        <div class="benefit-item">
                         <div class="benefit-icon">🤝</div>
                         <h3 class="benefit-title">Strategic Alliance</h3>
                         <p class="benefit-description">Build strategic relationships with a market-leading travel technology company and expand your business network.</p>
@@ -846,7 +923,7 @@ $platform_settings = getPlatformSettings($pdo);
             <p>Our partnership team is here to help you understand the opportunities and answer any questions you may have.</p>
             <div class="partner-cta-buttons">
                 <a href="mailto:partners@mtravels.com" class="btn btn-primary">Contact Partnership Team</a>
-                <a href="index.php#contact" class="btn" style="background: transparent; color: var(--primary); border: 2px solid var(--primary);">Schedule a Call</a>
+                <a href="index.php#contact" class="btn" style="background: transparent; color: white; border: 2px solid white;">Schedule a Call</a>
             </div>
         </div>
     </section>

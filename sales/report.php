@@ -21,7 +21,7 @@ if ($tenant_id) {
     $query = "
         SELECT p.features
         FROM tenant_subscriptions ts
-        JOIN plans p ON ts.plan_id = p.name
+        JOIN plans p ON ts.plan_id = p.id
         WHERE ts.tenant_id = ? AND ts.status = 'active'
         ORDER BY ts.start_date DESC
         LIMIT 1

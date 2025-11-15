@@ -45,13 +45,13 @@ $allowed_features = [];
 
 if ($tenant_id) {
     $query = "
-        SELECT p.features
-        FROM tenant_subscriptions ts
-        JOIN plans p ON ts.plan_id = p.name
-        WHERE ts.tenant_id = ? AND ts.status = 'active'
-        ORDER BY ts.start_date DESC
-        LIMIT 1
-    ";
+            SELECT p.features
+            FROM tenant_subscriptions ts
+            JOIN plans p ON ts.plan_id = p.id
+            WHERE ts.tenant_id = ? AND ts.status = 'active'
+            ORDER BY ts.start_date DESC
+            LIMIT 1
+        ";
     $stmt = $conn->prepare($query);
     $stmt->bind_param('i', $tenant_id);
     $stmt->execute();
@@ -141,6 +141,11 @@ $user_id = $_SESSION["user_id"];
 
 $profilePic = !empty($user['profile_pic']) ? htmlspecialchars($user['profile_pic']) : 'default-avatar.jpg';
 $imagePath = "../assets/images/user/" . $profilePic;
+
+// Calculate remaining session time (30 minutes = 1800 seconds)
+$session_timeout = 1800; // 30 minutes in seconds
+$remaining_time = isset($_SESSION['login_time']) ? $session_timeout - (time() - $_SESSION['login_time']) : $session_timeout;
+$remaining_time = max(0, $remaining_time); // Ensure non-negative
 
 // Debug output for development (remove in production)
 if (isset($_GET['debug'])) {
@@ -1975,6 +1980,41 @@ document.addEventListener('DOMContentLoaded', function() {
             }
         });
     }
+
+    // Session timeout functionality
+    let remainingTime = <?php echo $remaining_time; ?>; // Get remaining time from PHP
+
+    function updateSessionTimer() {
+        if (remainingTime <= 0) {
+            // Auto logout when time expires
+            window.location.href = 'logout.php';
+            return;
+        }
+
+        // Show warning 5 minutes before timeout
+        if (remainingTime === 300) { // 5 minutes = 300 seconds
+            alert('Your session will expire in 5 minutes. Please save your work.');
+        }
+
+        // Show warning 1 minute before timeout
+        if (remainingTime === 60) { // 1 minute = 60 seconds
+            alert('Your session will expire in 1 minute. Please save your work.');
+        }
+
+        remainingTime--;
+    }
+
+    // Update timer every second
+    setInterval(updateSessionTimer, 1000);
+
+    // Reset timer on user activity
+    let activityEvents = ['mousedown', 'mousemove', 'keypress', 'scroll', 'touchstart', 'click'];
+    activityEvents.forEach(function(event) {
+        document.addEventListener(event, function() {
+            // Reset remaining time to full session timeout
+            remainingTime = <?php echo $session_timeout; ?>;
+        }, true);
+    });
 });
 </script>
 <script>

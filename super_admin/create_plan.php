@@ -90,7 +90,7 @@ if (empty($errors)) {
                             VALUES (?, 'create_plan', 'plan', ?, ?, ?, NOW())");
     $details = json_encode(['name' => $name, 'description' => $description, 'price' => $price, 'max_users' => $max_users, 'trial_days' => $trial_days]);
     $ip_address = $_SERVER['REMOTE_ADDR'];
-    $stmt->bind_param('iss', $user_id, $name, $details, $ip_address);
+    $stmt->bind_param('isss', $user_id, $name, $details, $ip_address);
     $stmt->execute();
     $stmt->close();
 
