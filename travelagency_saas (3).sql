@@ -3,7 +3,7 @@
 -- https://www.phpmyadmin.net/
 --
 -- Host: 127.0.0.1
--- Generation Time: Nov 09, 2025 at 06:40 AM
+-- Generation Time: Nov 15, 2025 at 07:01 AM
 -- Server version: 10.4.32-MariaDB
 -- PHP Version: 8.3.16
 
@@ -330,7 +330,11 @@ INSERT INTO `audit_logs` (`id`, `user_id`, `action`, `entity_type`, `entity_id`,
 (41, 14, 'update_testimonial', 'testimonials', 4, 'Updated testimonial for Ahmad Rahimi', '', '2025-10-13 10:16:57'),
 (42, 14, 'update_plan', 'plan', 0, '{\"old_name\":\"basic\",\"new_name\":\"basic\",\"description\":\"Basic plan with access to ticket-related tasks only\",\"price\":\"1500\",\"max_users\":\"10\",\"trial_days\":\"10\",\"status\":\"active\"}', '::1', '2025-11-05 05:45:05'),
 (43, 14, 'update_plan', 'plan', 0, '{\"old_name\":\"pro\",\"new_name\":\"pro\",\"description\":\"Pro plan with ticket-related tasks, visa-related tasks, and inter-tenant chat\",\"price\":\"2800\",\"max_users\":\"15\",\"trial_days\":\"30\",\"status\":\"active\"}', '::1', '2025-11-05 05:45:47'),
-(44, 14, 'update_plan', 'plan', 0, '{\"old_name\":\"enterprise\",\"new_name\":\"enterprise\",\"description\":\"Enterprise plan with all Pro features plus Umrah management\",\"price\":\"5000\",\"max_users\":\"30\",\"trial_days\":\"30\",\"status\":\"active\"}', '::1', '2025-11-05 05:46:16');
+(44, 14, 'update_plan', 'plan', 0, '{\"old_name\":\"enterprise\",\"new_name\":\"enterprise\",\"description\":\"Enterprise plan with all Pro features plus Umrah management\",\"price\":\"5000\",\"max_users\":\"30\",\"trial_days\":\"30\",\"status\":\"active\"}', '::1', '2025-11-05 05:46:16'),
+(45, 14, 'update_subscription', 'subscription', 1, '{\"subscription_id\":1,\"plan_id\":\"1\",\"status\":\"active\",\"billing_cycle\":\"monthly\"}', '::1', '2025-11-15 03:43:24'),
+(46, 14, 'update_subscription', 'subscription', 2, '{\"subscription_id\":2,\"plan_id\":\"1\",\"status\":\"active\",\"billing_cycle\":\"yearly\"}', '::1', '2025-11-15 03:53:42'),
+(47, 14, 'update_tenant', 'tenant', 2, '{\"tenant_id\":2,\"name\":\"Al Wali\",\"subdomain\":\"beta\",\"status\":\"active\"}', '::1', '2025-11-15 03:53:54'),
+(48, 14, 'update_tenant', 'tenant', 1, '{\"tenant_id\":1,\"name\":\"Al Moqadas Travel Agency\",\"subdomain\":\"alpha\",\"status\":\"active\"}', '::1', '2025-11-15 03:54:05');
 
 -- --------------------------------------------------------
 
@@ -1598,9 +1602,10 @@ CREATE TABLE `plans` (
 --
 
 INSERT INTO `plans` (`id`, `name`, `description`, `features`, `price`, `max_users`, `trial_days`, `status`, `created_at`, `updated_at`) VALUES
-(1, 'basic', 'Basic plan with access to ticket-related tasks only', '[\r\n    \"ticket_bookings\",\r\n    \"ticket_reservations\",\r\n    \"refunded_tickets\",\r\n    \"date_change_tickets\",\r\n    \"ticket_weights\"\r\n  ]', 1500.00, 10, 10, 'active', '2025-08-23 11:28:15', '2025-11-05 05:45:05'),
-(2, 'pro', 'Pro plan with ticket-related tasks, visa-related tasks, and inter-tenant chat', '[\r\n    \"ticket_bookings\",\r\n    \"ticket_reservations\",\r\n    \"refunded_tickets\",\r\n    \"date_change_tickets\",\r\n    \"ticket_weights\",\r\n    \"visa_applications\",\r\n    \"visa_refunds\",\r\n    \"visa_transactions\",\r\n    \"inter_tenant_chat\"\r\n  ]', 2800.00, 15, 30, 'active', '2025-08-23 11:28:15', '2025-11-05 05:45:47'),
-(3, 'enterprise', 'Enterprise plan with all Pro features plus Umrah management', '[\r\n    \"ticket_bookings\",\r\n    \"ticket_reservations\", \r\n    \"refunded_tickets\",\r\n    \"date_change_tickets\",\r\n    \"ticket_weights\",\r\n    \"hotel_bookings\",\r\n    \"hotel_refunds\",\r\n    \"visa_applications\",\r\n    \"visa_refunds\",\r\n    \"visa_transactions\", \r\n    \"inter_tenant_chat\",\r\n    \"umrah_bookings\",\r\n    \"umrah_refunds\",\r\n    \"debtors\",\r\n    \"creditors\",\r\n    \"sarafi\",\r\n    \"salary\",\r\n    \"additional_payments\",\r\n    \"jv_payments\",\r\n    \"manage_maktobs\",\r\n    \"assets\",\r\n    \"financial_statements\",\r\n    \"expense_management\"\r\n]', 5000.00, 30, 30, 'active', '2025-08-23 11:28:15', '2025-11-05 05:46:16');
+(1, 'basic', 'Basic plan: Streamline your agency’s ticket operations with this plan. Manage bookings, reservations, refunds, and date changes effortlessly. Keep track of ticket profits, internal expenses, and generate basic financial statements — all automated to save time and reduce errors. Includes internal staff chat for smooth communication.', '[\n    \"ticket_bookings\",\n    \"ticket_reservations\",\n    \"refunded_tickets\",\n    \"date_change_tickets\",\n    \"ticket_weights\",\n    \"financial_statements\",\n    \"inter_tenant_chat\",\n    \"expense_management\"\n  ]\n', 1000.00, 10, 14, 'active', '2025-08-23 11:28:15', '2025-11-13 08:03:57'),
+(2, 'pro', 'Pro plan: Take your agency operations to the next level. Includes all Basic ticket management features, plus full visa and hotel management. Add extra services with automatic profit tracking. Collaborate with other agencies using limited inter-tenant chat, allowing secure trading of tickets, visas, and Umrah services. Advanced financial statements help you monitor profits and expenses easily.', '[\n    \"ticket_bookings\",\n    \"ticket_reservations\",\n    \"refunded_tickets\",\n    \"date_change_tickets\",\n    \"ticket_weights\",\n    \"visa_applications\",\n    \"visa_refunds\",\n    \"visa_transactions\",\n    \"hotel_bookings\",\n    \"hotel_refunds\",\n    \"additional_payments\",\n    \"expense_management\",\n    \"inter_tenant_chat\"\n  ]\n', 2500.00, 15, 14, 'active', '2025-08-23 11:28:15', '2025-11-13 08:04:10'),
+(3, 'enterprise', 'Enterprise plan: The complete solution for large or multi-branch agencies. Includes all Pro features, plus full Umrah management, HR & payroll automation (salaries, JV payments, additional staff payments), debtor/creditor tracking, Sarafi/currency management, assets management, and manage maktobs. Unlimited inter-tenant collaboration allows multiple agencies to trade services seamlessly, while real-time financial statements give you complete control over your agency’s operations.', '[\n    \"ticket_bookings\",\n    \"ticket_reservations\", \n    \"refunded_tickets\",\n    \"date_change_tickets\",\n    \"ticket_weights\",\n    \"hotel_bookings\",\n    \"hotel_refunds\",\n    \"visa_applications\",\n    \"visa_refunds\",\n    \"visa_transactions\", \n    \"inter_tenant_chat\",\n    \"umrah_bookings\",\n    \"umrah_refunds\",\n    \"debtors\",\n    \"creditors\",\n    \"sarafi\",\n    \"salary\",\n    \"additional_payments\",\n    \"jv_payments\",\n    \"manage_maktobs\",\n    \"assets\",\n    \"financial_statements\",\n    \"expense_management\"\n]', 4500.00, 30, 14, 'active', '2025-08-23 11:28:15', '2025-11-13 08:04:36'),
+(4, 'Umrah', 'Features: All the Umrah-specific features (family management, member management, ID card generation, agreement generation, cancellation generation, refund processing, payment processing, multi-currency)', '[\n    \"inter_tenant_chat\",\n    \"umrah_bookings\",\n    \"umrah_refunds\",\n    \"salary\",\n    \"financial_statements\",\n    \"expense_management\"\n]', 2000.00, 10, 14, 'active', '2025-11-15 03:41:26', '2025-11-15 05:50:09');
 
 -- --------------------------------------------------------
 
@@ -2058,8 +2063,8 @@ CREATE TABLE `tenants` (
 --
 
 INSERT INTO `tenants` (`id`, `name`, `subdomain`, `identifier`, `status`, `plan`, `billing_email`, `chat_max_file_bytes`, `chat_allowed_mime_prefixes`, `chat_default_auto_download`, `payment_status`, `payment_due_date`, `last_payment_date`, `payment_warning_sent`, `last_warning_sent`, `created_at`, `updated_at`, `deleted_at`) VALUES
-(1, 'Al Moqadas Travel Agency ', 'alpha', 'tenant-alpha-001', 'active', 'enterprise', 'billing@alpha.com', 26214400, 'image/,video/,audio/,application/pdf,text/', 0, 'current', '2025-10-17', '2025-09-17', 0, NULL, '2025-06-30 19:30:00', '2025-09-17 06:50:55', NULL),
-(2, 'Al Wali', 'beta', 'tenant-beta-002', 'active', 'enterprise', 'billing@beta.com', 26214400, 'image/,video/,audio/,application/pdf,text/', 0, 'current', '2026-09-17', '2025-09-17', 0, '2025-09-17 11:09:30', '2025-07-14 19:30:00', '2025-09-17 06:47:33', NULL),
+(1, 'Al Moqadas Travel Agency', 'alpha', 'tenant-alpha-001', 'active', 'basic', 'billing@alpha.com', 26214400, 'image/,video/,audio/,application/pdf,text/', 0, 'current', '2025-10-17', '2025-09-17', 0, NULL, '2025-06-30 19:30:00', '2025-11-15 03:54:05', NULL),
+(2, 'Al Wali', 'beta', 'tenant-beta-002', 'active', 'basic', 'billing@beta.com', 26214400, 'image/,video/,audio/,application/pdf,text/', 0, 'current', '2026-09-17', '2025-09-17', 0, '2025-09-17 11:09:30', '2025-07-14 19:30:00', '2025-11-15 03:53:54', NULL),
 (3, 'Elite Pilgrimages Gamma', 'gamma', 'tenant-gamma-003', 'deleted', 'enterprise', 'billing@gamma.com', 26214400, 'image/,video/,audio/,application/pdf,text/', 0, 'current', NULL, NULL, 0, NULL, '2025-05-31 19:30:00', '2025-09-09 06:52:26', '2025-09-09 06:52:26'),
 (4, 'Suspended Tours Delta', 'delta', 'tenant-delta-004', 'deleted', 'basic', 'billing@delta.com', 26214400, 'image/,video/,audio/,application/pdf,text/', 0, 'current', NULL, NULL, 0, NULL, '2024-12-31 19:30:00', '2025-08-26 11:12:34', '2025-08-26 11:12:34'),
 (5, 'New Ventures Epsilon', 'epsilon', 'tenant-epsilon-005', 'deleted', 'enterprise', 'billing@epsilon.com', 26214400, 'image/,video/,audio/,application/pdf,text/', 0, 'current', NULL, NULL, 0, NULL, '2025-08-19 19:30:00', '2025-09-09 06:52:30', '2025-09-09 06:52:30'),
@@ -2115,8 +2120,8 @@ CREATE TABLE `tenant_subscriptions` (
 --
 
 INSERT INTO `tenant_subscriptions` (`id`, `tenant_id`, `plan_id`, `status`, `billing_cycle`, `start_date`, `end_date`, `amount`, `currency`, `payment_method`, `last_payment_date`, `next_billing_date`, `transaction_id`, `created_at`, `updated_at`) VALUES
-(1, 1, '3', 'active', 'monthly', '2025-07-23 19:30:00', NULL, 10.00, 'AFN', 'stripe', '2025-10-28 19:30:00', '2026-06-19 19:30:00', 'txn_123456789', '2025-07-23 19:30:00', '2025-10-29 06:52:21'),
-(2, 2, '3', 'active', 'yearly', '2025-07-31 19:30:00', NULL, 0.00, 'USD', 'paypal', '2025-09-16 19:30:00', '2026-09-16 19:30:00', 'txn_987654321', '2025-07-31 19:30:00', '2025-09-17 06:47:33'),
+(1, 1, '1', 'active', 'monthly', '2025-07-23 19:30:00', NULL, 1000.00, 'AFN', 'stripe', '2025-10-28 19:30:00', '0000-00-00 00:00:00', 'txn_123456789', '2025-07-23 19:30:00', '2025-11-15 03:43:24'),
+(2, 2, '1', 'active', 'yearly', '2025-07-31 19:30:00', NULL, 1000.00, 'USD', 'paypal', '2025-09-16 19:30:00', '0000-00-00 00:00:00', 'txn_987654321', '2025-07-31 19:30:00', '2025-11-15 03:53:42'),
 (3, 3, '3', 'active', 'quarterly', '2025-05-31 19:30:00', NULL, 999.99, 'USD', 'stripe', '2025-05-31 19:30:00', '2025-08-31 19:30:00', 'txn_456789123', '2025-05-31 19:30:00', '2025-08-28 12:12:19'),
 (4, 4, '1', 'expired', 'monthly', '2024-12-31 19:30:00', '2025-01-31 19:30:00', 49.99, 'USD', 'stripe', '2024-12-31 19:30:00', NULL, 'txn_111222333', '2024-12-31 19:30:00', '2025-08-28 12:12:23'),
 (5, 5, '2', 'pending', 'monthly', '2025-08-19 19:30:00', NULL, 99.99, 'USD', 'Cash', NULL, '0000-00-00 00:00:00', NULL, '2025-08-19 19:30:00', '2025-08-30 07:39:31');
@@ -3391,7 +3396,7 @@ ALTER TABLE `assets`
 -- AUTO_INCREMENT for table `audit_logs`
 --
 ALTER TABLE `audit_logs`
-  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=45;
+  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=49;
 
 --
 -- AUTO_INCREMENT for table `blog_posts`
@@ -3667,7 +3672,7 @@ ALTER TABLE `performance_reviews`
 -- AUTO_INCREMENT for table `plans`
 --
 ALTER TABLE `plans`
-  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=4;
+  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=5;
 
 --
 -- AUTO_INCREMENT for table `platform_settings`

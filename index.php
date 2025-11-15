@@ -154,7 +154,7 @@ function getSetting($settings, $key, $default = '') {
 
 // Helper function to format currency
 function formatCurrency($amount, $currency = 'AFN') {
-    return $currency . ' ' . number_format($amount, 2);
+    return $currency . ' ' . number_format($amount, 0);
 }
 
 // Helper function to format feature names from snake_case to Title Case
@@ -167,21 +167,35 @@ try {
     $platform_settings = getPlatformSettings($pdo);
     $plans = getPlans($pdo);
 
-    // Add dedicated Umrah plan
-    $umrahPlan = [
-        'id' => null,
-        'name' => 'Umrah',
-        'description' => 'Dedicated Umrah management plan with comprehensive family and member management features',
-        'features' => json_encode(['family_management', 'member_management', 'id_card_generation', 'agreement_generation', 'cancellation_generation', 'refund_processing', 'payment_processing', 'multi_currency', 'inter_tenant_chat', 'umrah_bookings', 'umrah_refunds', 'salary', 'financial_statements', 'expense_management']),
-        'price' => 2000,
-        'max_users' => 10,
-        'trial_days' => 14
-    ];
-    $plans[] = $umrahPlan;
+    // Check if Umrah plan already exists in database, if not add it
+    $umrahExists = false;
+    foreach ($plans as $plan) {
+        if (strtolower($plan['name']) === 'umrah') {
+            $umrahExists = true;
+            break;
+        }
+    }
 
-    // Re-sort plans by price
-    usort($plans, function($a, $b) {
-        return $a['price'] <=> $b['price'];
+    if (!$umrahExists) {
+        // Add dedicated Umrah plan
+        $umrahPlan = [
+            'id' => null,
+            'name' => 'Umrah',
+            'description' => 'Dedicated Umrah management plan with comprehensive family and member management features',
+            'features' => json_encode(['family_management', 'member_management', 'id_card_generation', 'agreement_generation', 'cancellation_generation', 'refund_processing', 'payment_processing', 'multi_currency']),
+            'price' => 2000,
+            'max_users' => 10,
+            'trial_days' => 14
+        ];
+        $plans[] = $umrahPlan;
+    }
+
+    // Custom sort: Umrah, Basic, Pro, Enterprise
+    $planOrder = ['Umrah' => 1, 'Basic' => 2, 'Pro' => 3, 'Professional' => 3, 'Enterprise' => 4];
+    usort($plans, function($a, $b) use ($planOrder) {
+        $aOrder = $planOrder[$a['name']] ?? 99;
+        $bOrder = $planOrder[$b['name']] ?? 99;
+        return $aOrder <=> $bOrder;
     });
 
     $destinations = getDestinations($pdo, $default_tenant_id);
@@ -1755,12 +1769,13 @@ try {
                             ],
                             'financial_management' => [
                                 'title' => 'Financial Management',
-                                'features' => ['debtors', 'creditors', 'sarafi', 'salary', 'additional_payments', 'jv_payments']
+                                'features' => ['debtors', 'creditors', 'sarafi', 'salary', 'additional_payments', 'jv_payments', 'financial_statements']
                             ],
                             'business_operations' => [
                                 'title' => 'Business Operations',
                                 'features' => ['manage_maktobs', 'assets', 'expense_management', 'customer_management', 'supplier_management']
                             ],
+                            
                             'communication' => [
                                 'title' => 'Communication',
                                 'features' => ['inter_tenant_chat']
@@ -1775,8 +1790,45 @@ try {
                             ]
                         ];
 
-                        // For plans after the first one, show "Everything in [previous plan] plus:" and only additional features
-                        if ($index > 0) {
+                        // Special handling for Umrah plan - show specified features
+                        if (strtolower($plan['name']) === 'umrah') {
+                            // Override features for Umrah plan to show specified services
+                            $umrahFeatures = ['family_management', 'member_management', 'id_card_generation', 'agreement_generation', 'cancellation_generation', 'refund_processing', 'payment_processing', 'multi_currency'];
+                            echo '<div class="feature-group">';
+                            echo '<h5 class="feature-group-title">' . htmlspecialchars($featureGroups['umrah_services']['title']) . '</h5>';
+                            echo '<ul class="feature-group-list">';
+                            foreach ($umrahFeatures as $feature) {
+                                echo '<li class="feature-item">' . htmlspecialchars(formatFeatureName($feature)) . '</li>';
+                            }
+                            echo '</ul>';
+                            echo '</div>';
+
+                            // Add Financial Management
+                            echo '<div class="feature-group">';
+                            echo '<h5 class="feature-group-title">' . htmlspecialchars($featureGroups['financial_management']['title']) . '</h5>';
+                            echo '<ul class="feature-group-list">';
+                            echo '<li class="feature-item">' . htmlspecialchars(formatFeatureName('financial_statements')) . '</li>';
+                            echo '</ul>';
+                            echo '</div>';
+
+                            // Add Business Operations
+                            echo '<div class="feature-group">';
+                            echo '<h5 class="feature-group-title">' . htmlspecialchars($featureGroups['business_operations']['title']) . '</h5>';
+                            echo '<ul class="feature-group-list">';
+                            echo '<li class="feature-item">' . htmlspecialchars(formatFeatureName('expense_management')) . '</li>';
+                            echo '</ul>';
+                            echo '</div>';
+
+                            // Add Communication
+                            echo '<div class="feature-group">';
+                            echo '<h5 class="feature-group-title">' . htmlspecialchars($featureGroups['communication']['title']) . '</h5>';
+                            echo '<ul class="feature-group-list">';
+                            echo '<li class="feature-item">' . htmlspecialchars(formatFeatureName('inter_tenant_chat')) . '</li>';
+                            echo '</ul>';
+                            echo '</div>';
+                        }
+                        // For plans after Basic, show "Everything in [previous plan] plus:" and only additional features
+                        elseif ($index > 1) {
                             $previousPlan = $plans[$index - 1];
                             $previousPlanFeatures = json_decode($previousPlan['features'], true) ?? [];
                             $additionalFeatures = array_diff($planFeatures, $previousPlanFeatures);
@@ -2410,3 +2462,4 @@ try {
     </script>
 </body>
 </html>
+

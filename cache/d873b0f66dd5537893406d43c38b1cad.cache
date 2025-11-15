@@ -8,7 +8,7 @@ a:4:{i:0;a:7:{s:2:"id";i:1;s:4:"name";s:5:"basic";s:11:"description";s:337:"Basi
     "inter_tenant_chat",
     "expense_management"
   ]
-";s:5:"price";s:7:"1000.00";s:9:"max_users";i:10;s:10:"trial_days";i:14;}i:1;a:7:{s:2:"id";i:4;s:4:"name";s:5:"Umrah";s:11:"description";s:202:"Features: All the Umrah-specific features (family management, member management, ID card generation, agreement generation, cancellation generation, refund processing, payment processing, multi-currency)";s:8:"features";s:145:"[
+";s:5:"price";s:7:"1000.00";s:9:"max_users";i:10;s:10:"trial_days";i:14;}i:1;a:7:{s:2:"id";i:4;s:4:"name";s:5:"Umrah";s:11:"description";s:202:"Features: All the Umrah-specific features (family management, member management, ID card generation, agreement generation, cancellation generation, refund processing, payment processing, multi-currency)";s:8:"features";s:138:"[
     "inter_tenant_chat",
     "umrah_bookings",
     "umrah_refunds",
