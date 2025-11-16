@@ -19,6 +19,19 @@ if (!isset($_SESSION['user_id'])  || $_SESSION['role'] !== 'admin') {
 // Database connection
 require_once('../includes/db.php');
 
+// Fetch tenant's allowed features
+$allowed_features = [];
+$query = "
+    SELECT p.features
+    FROM tenant_subscriptions ts
+    JOIN plans p ON ts.plan_id = p.id
+    WHERE ts.tenant_id = ? AND ts.status = 'active'
+";
+$stmt = $pdo->prepare($query);
+$stmt->execute([$_SESSION['tenant_id'] ?? 1]);
+if ($row = $stmt->fetch(PDO::FETCH_ASSOC)) {
+    $allowed_features = json_decode($row['features'], true) ?? [];
+}
 
 // Fetch main accounts with tenant filtering
 $mainAccountsQuery = "SELECT * FROM main_account WHERE status = 'active' AND tenant_id = ?";
@@ -1766,12 +1779,15 @@ $(document).ready(function() {
     $(document).on('click', '.category-header', function() {
         $(this).closest('.category-section').find('.expense-list').slideToggle();
     });
-    
+
     // Attach click handler to the comprehensive export button
     $('#exportComprehensiveReport').click(function() {
         exportComprehensiveReport();
     });
 });
+
+// Pass allowed features to JavaScript
+var allowedFeatures = <?= json_encode($allowed_features); ?>;
 
 // Declare chart variables at a higher scope
 let incomeChart, expenseChart, profitLossChart;
@@ -1798,41 +1814,44 @@ function createIncomeChart(data) {
         return;
     }
 
+    // Define feature mappings
+    const featureMappings = [
+        { label: '<?= __('tickets') ?>', feature: 'ticket_bookings', usdKey: 'tickets', afsKey: 'tickets' },
+        { label: '<?= __('ticket_weights') ?>', feature: 'ticket_weights', usdKey: 'ticket_weights', afsKey: 'ticket_weights' },
+        { label: '<?= __('reservations') ?>', feature: 'ticket_reservations', usdKey: 'reservations', afsKey: 'reservations' },
+        { label: '<?= __('refunds') ?>', feature: 'refunded_tickets', usdKey: 'refunds', afsKey: 'refunds' },
+        { label: '<?= __('date_changes') ?>', feature: 'date_change_tickets', usdKey: 'dateChanges', afsKey: 'dateChanges' },
+        { label: '<?= __('visa') ?>', feature: 'visa_applications', usdKey: 'visa', afsKey: 'visa' },
+        { label: '<?= __('umrah') ?>', feature: 'umrah_bookings', usdKey: 'umrah', afsKey: 'umrah' },
+        { label: '<?= __('hotel') ?>', feature: 'hotel_bookings', usdKey: 'hotel', afsKey: 'hotel' },
+        { label: '<?= __('additional_payments') ?>', feature: 'additional_payments', usdKey: 'additionalPayments', afsKey: 'additionalPayments' }
+    ];
+
+    // Filter features based on allowed features
+    const allowedMappings = featureMappings.filter(mapping => {
+        return allowedFeatures.includes(mapping.feature);
+    });
+
+    // Build labels and data arrays based on allowed features
+    const labels = allowedMappings.map(mapping => mapping.label);
+    const usdData = allowedMappings.map(mapping => data[mapping.usdKey]?.USD || 0);
+    const afsData = allowedMappings.map(mapping => data[mapping.afsKey]?.AFS || 0);
+
     incomeChart = new Chart(ctx, {
         type: 'bar',
         data: {
-            labels: ['<?= __('tickets') ?>', '<?= __('ticket_weights') ?>', '<?= __('reservations') ?>', '<?= __('refunds') ?>', '<?= __('date_changes') ?>', '<?= __('visa') ?>', '<?= __('umrah') ?>', '<?= __('hotel') ?>', '<?= __('additional_payments') ?>'],
+            labels: labels,
             datasets: [
                 {
                     label: '<?= __('total_income') ?> (USD)',
-                    data: [
-                        data.tickets.USD || 0,
-                        data.ticket_weights.USD || 0,
-                        data.reservations.USD || 0,
-                        data.refunds.USD || 0,
-                        data.dateChanges.USD || 0,
-                        data.visa.USD || 0,
-                        data.umrah.USD || 0,
-                        data.hotel.USD || 0,
-                        data.additionalPayments.USD || 0
-                    ],
+                    data: usdData,
                     backgroundColor: 'rgba(75, 192, 192, 0.2)',
                     borderColor: 'rgba(75, 192, 192, 1)',
                     borderWidth: 1
                 },
                 {
                     label: '<?= __('total_income') ?> (AFS)',
-                    data: [
-                        data.tickets.AFS || 0,
-                        data.ticket_weights.AFS || 0,
-                        data.reservations.AFS || 0,
-                        data.refunds.AFS || 0,
-                        data.dateChanges.AFS || 0,
-                        data.visa.AFS || 0,
-                        data.umrah.AFS || 0,
-                        data.hotel.AFS || 0,
-                        data.additionalPayments.AFS || 0
-                    ],
+                    data: afsData,
                     backgroundColor: 'rgba(54, 162, 235, 0.2)',
                     borderColor: 'rgba(54, 162, 235, 1)',
                     borderWidth: 1
