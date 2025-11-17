@@ -1785,6 +1785,13 @@ MOBILE SIDEBAR - CLEAN LAYOUT FIX
                     </a>
                 </li>
 
+                <li data-username="excel_import" class="nav-item <?php echo basename($_SERVER['PHP_SELF']) == 'excel_import.php' ? 'active' : ''; ?>">
+                    <a href="excel_import.php" class="nav-link">
+                        <span class="pcoded-micon"><i class="fas fa-file-excel"></i></span>
+                        <span class="pcoded-mtext">Excel Import</span>
+                    </a>
+                </li>
+
                 <li data-username="settings" class="nav-item <?php echo basename($_SERVER['PHP_SELF']) == 'settings.php' ? 'active' : ''; ?>">
                     <a href="settings.php" class="nav-link">
                         <span class="pcoded-micon"><i class="feather icon-settings"></i></span>

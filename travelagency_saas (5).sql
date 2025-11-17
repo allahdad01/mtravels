@@ -3,7 +3,7 @@
 -- https://www.phpmyadmin.net/
 --
 -- Host: 127.0.0.1
--- Generation Time: Nov 16, 2025 at 11:22 AM
+-- Generation Time: Nov 17, 2025 at 11:19 AM
 -- Server version: 10.4.32-MariaDB
 -- PHP Version: 8.3.16
 
@@ -444,7 +444,7 @@ CREATE TABLE `date_change_tickets` (
   `pnr` varchar(255) NOT NULL,
   `origin` varchar(255) NOT NULL,
   `destination` varchar(255) NOT NULL,
-  `phone` varchar(50) NOT NULL,
+  `phone` varchar(50) DEFAULT NULL,
   `airline` varchar(255) NOT NULL,
   `gender` enum('Male','Female','Other') NOT NULL,
   `issue_date` date NOT NULL,
@@ -455,12 +455,61 @@ CREATE TABLE `date_change_tickets` (
   `supplier_penalty` decimal(10,3) NOT NULL,
   `service_penalty` decimal(10,3) NOT NULL,
   `status` enum('Refunded','Pending','Declined') NOT NULL,
-  `receipt` int(11) NOT NULL,
-  `remarks` mediumtext NOT NULL,
+  `remarks` mediumtext DEFAULT NULL,
   `created_by` int(50) NOT NULL,
   `created_at` datetime NOT NULL DEFAULT current_timestamp(),
-  `updated_at` datetime NOT NULL DEFAULT current_timestamp() ON UPDATE current_timestamp()
+  `updated_at` datetime NOT NULL DEFAULT current_timestamp() ON UPDATE current_timestamp(),
+  `imported` tinyint(1) NOT NULL DEFAULT 0
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+--
+-- Dumping data for table `date_change_tickets`
+--
+
+INSERT INTO `date_change_tickets` (`id`, `tenant_id`, `ticket_id`, `supplier`, `sold_to`, `paid_to`, `title`, `passenger_name`, `pnr`, `origin`, `destination`, `phone`, `airline`, `gender`, `issue_date`, `departure_date`, `currency`, `sold`, `base`, `supplier_penalty`, `service_penalty`, `status`, `remarks`, `created_by`, `created_at`, `updated_at`, `imported`) VALUES
+(51, 1, 341, '32', 19, 13, 'Mr', 'John Doe', 'ABC123', 'New York', 'London', '780310431', 'British Airways', 'Male', '2024-01-20', '2024-01-20', 'USD', 550.000, 500.000, 50.000, 25.000, 'Refunded', NULL, 1, '2025-11-17 11:56:08', '2025-11-17 11:56:08', 0),
+(52, 1, 341, '32', 19, 13, 'Mr', 'John Doe', 'ABC123', 'New York', 'London', '780310431', 'British Airways', 'Male', '2024-01-20', '2024-01-20', 'USD', 550.000, 500.000, 50.000, 25.000, 'Refunded', NULL, 1, '2025-11-17 12:00:40', '2025-11-17 12:00:40', 0),
+(53, 1, 341, '32', 19, 13, 'Mr', 'John Doe', 'ABC123', 'New York', 'London', '780310431', 'British Airways', 'Male', '2024-01-20', '2024-01-20', 'USD', 550.000, 500.000, 50.000, 25.000, 'Refunded', NULL, 1, '2025-11-17 12:04:15', '2025-11-17 12:04:15', 0),
+(54, 1, 341, '32', 19, 13, 'Mr', 'John Doe', 'ABC123', 'New York', 'London', '780310431', 'British Airways', 'Male', '2024-01-20', '2024-01-20', 'USD', 550.000, 500.000, 50.000, 25.000, 'Refunded', NULL, 1, '2025-11-17 12:31:28', '2025-11-17 12:31:28', 0),
+(55, 1, 341, '32', 19, 13, 'Mr', 'John Doe', 'ABC123', 'New York', 'London', '780310431', 'British Airways', 'Male', '2024-01-20', '2024-01-20', 'USD', 550.000, 500.000, 50.000, 25.000, 'Refunded', NULL, 1, '2025-11-17 12:52:29', '2025-11-17 12:52:29', 0),
+(56, 1, 341, '32', 19, 13, 'Mr', 'John Doe', 'ABC123', 'New York', 'London', '780310431', 'British Airways', 'Male', '2024-01-20', '2024-01-20', 'USD', 550.000, 500.000, 50.000, 25.000, 'Refunded', NULL, 1, '2025-11-17 12:54:20', '2025-11-17 12:54:20', 0),
+(57, 1, 341, '32', 19, 13, 'Mr', 'John Doe', 'ABC123', 'New York', 'London', '780310431', 'British Airways', 'Male', '2024-01-20', '2024-01-20', 'USD', 550.000, 500.000, 50.000, 25.000, 'Refunded', NULL, 1, '2025-11-17 12:56:40', '2025-11-17 12:56:40', 0),
+(58, 1, 341, '32', 19, 13, 'Mr', 'John Doe', 'ABC123', 'New York', 'London', '780310431', 'British Airways', 'Male', '2024-01-20', '2024-01-20', 'USD', 550.000, 500.000, 50.000, 25.000, 'Refunded', NULL, 1, '2025-11-17 12:57:19', '2025-11-17 12:57:19', 0),
+(59, 1, 341, '32', 19, 13, 'Mr', 'John Doe', 'ABC123', 'New York', 'London', '780310431', 'British Airways', 'Male', '2024-01-20', '2024-01-20', 'USD', 550.000, 500.000, 50.000, 25.000, 'Refunded', NULL, 1, '2025-11-17 13:02:30', '2025-11-17 13:02:30', 0),
+(60, 1, 341, '32', 19, 13, 'Mr', 'John Doe', 'ABC123', 'New York', 'London', '780310431', 'British Airways', 'Male', '2024-01-20', '2024-01-20', 'USD', 550.000, 500.000, 50.000, 25.000, 'Refunded', NULL, 1, '2025-11-17 13:05:44', '2025-11-17 13:05:44', 0),
+(61, 1, 341, '32', 19, 13, 'Mr', 'John Doe', 'ABC123', 'New York', 'London', '780310431', 'British Airways', 'Male', '2024-01-20', '2024-01-20', 'USD', 550.000, 500.000, 50.000, 25.000, 'Refunded', NULL, 1, '2025-11-17 13:06:20', '2025-11-17 13:06:20', 0),
+(62, 1, 341, '32', 19, 13, 'Mr', 'John Doe', 'ABC123', 'New York', 'London', '780310431', 'British Airways', 'Male', '2024-01-20', '2024-01-20', 'USD', 550.000, 500.000, 50.000, 25.000, 'Refunded', NULL, 1, '2025-11-17 13:08:49', '2025-11-17 13:08:49', 0),
+(63, 1, 341, '32', 19, 13, 'Mr', 'John Doe', 'ABC123', 'New York', 'London', '780310431', 'British Airways', 'Male', '2024-01-20', '2024-01-20', 'USD', 550.000, 500.000, 50.000, 25.000, 'Refunded', NULL, 1, '2025-11-17 13:09:23', '2025-11-17 13:09:23', 0),
+(64, 1, 341, '32', 19, 13, 'Mr', 'John Doe', 'ABC123', 'New York', 'London', '780310431', 'British Airways', 'Male', '2024-01-20', '2024-01-20', 'USD', 550.000, 500.000, 50.000, 25.000, 'Refunded', NULL, 1, '2025-11-17 13:12:23', '2025-11-17 13:12:23', 0),
+(65, 1, 341, '32', 19, 13, 'Mr', 'John Doe', 'ABC123', 'New York', 'London', '780310431', 'British Airways', 'Male', '2024-01-20', '2024-01-20', 'USD', 550.000, 500.000, 50.000, 25.000, 'Refunded', NULL, 1, '2025-11-17 13:14:44', '2025-11-17 13:14:44', 0),
+(66, 1, 341, '32', 19, 13, 'Mr', 'John Doe', 'ABC123', 'New York', 'London', '780310431', 'British Airways', 'Male', '2024-01-20', '2024-01-20', 'USD', 550.000, 500.000, 50.000, 25.000, 'Refunded', NULL, 1, '2025-11-17 13:15:20', '2025-11-17 13:15:20', 0),
+(67, 1, 341, '32', 19, 13, 'Mr', 'John Doe', 'ABC123', 'New York', 'London', '780310431', 'British Airways', 'Male', '2024-01-20', '2024-01-20', 'USD', 550.000, 500.000, 50.000, 25.000, 'Refunded', NULL, 1, '2025-11-17 13:16:43', '2025-11-17 13:16:43', 0),
+(68, 1, 341, '32', 19, 13, 'Mr', 'John Doe', 'ABC123', 'New York', 'London', '780310431', 'British Airways', 'Male', '2024-01-20', '2024-01-20', 'USD', 550.000, 500.000, 50.000, 25.000, 'Refunded', NULL, 1, '2025-11-17 13:17:38', '2025-11-17 13:17:38', 0),
+(69, 1, 341, '32', 19, 13, 'Mr', 'John Doe', 'ABC123', 'New York', 'London', '780310431', 'British Airways', 'Male', '2024-01-20', '2024-01-20', 'USD', 550.000, 500.000, 50.000, 25.000, 'Refunded', NULL, 1, '2025-11-17 13:18:39', '2025-11-17 13:18:39', 0),
+(70, 1, 341, '32', 19, 13, 'Mr', 'John Doe', 'ABC123', 'New York', 'London', '780310431', 'British Airways', 'Male', '2024-01-20', '2024-01-20', 'USD', 550.000, 500.000, 50.000, 25.000, 'Refunded', NULL, 1, '2025-11-17 13:19:42', '2025-11-17 13:19:42', 0),
+(71, 1, 341, '32', 19, 13, 'Mr', 'John Doe', 'ABC123', 'New York', 'London', '780310431', 'British Airways', 'Male', '2024-01-20', '2024-01-20', 'USD', 550.000, 500.000, 50.000, 25.000, 'Refunded', NULL, 1, '2025-11-17 13:21:22', '2025-11-17 13:21:22', 0),
+(72, 1, 341, '32', 19, 13, 'Mr', 'John Doe', 'ABC123', 'New York', 'London', '780310431', 'British Airways', 'Male', '2024-01-20', '2024-01-20', 'USD', 550.000, 500.000, 50.000, 25.000, 'Refunded', NULL, 1, '2025-11-17 13:23:32', '2025-11-17 13:23:32', 0),
+(73, 1, 341, '32', 19, 13, 'Mr', 'John Doe', 'ABC123', 'New York', 'London', '780310431', 'British Airways', 'Male', '2024-01-20', '2024-01-20', 'USD', 550.000, 500.000, 50.000, 25.000, 'Refunded', NULL, 1, '2025-11-17 13:24:26', '2025-11-17 13:24:26', 0),
+(74, 1, 341, '32', 19, 13, 'Mr', 'John Doe', 'ABC123', 'New York', 'London', '780310431', 'British Airways', 'Male', '2024-01-20', '2024-01-20', 'USD', 550.000, 500.000, 50.000, 25.000, 'Refunded', NULL, 1, '2025-11-17 13:27:37', '2025-11-17 13:27:37', 0),
+(75, 1, 341, '32', 19, 13, 'Mr', 'John Doe', 'ABC123', 'New York', 'London', '780310431', 'British Airways', 'Male', '2024-01-20', '2024-01-20', 'USD', 550.000, 500.000, 50.000, 25.000, 'Refunded', NULL, 1, '2025-11-17 13:28:28', '2025-11-17 13:28:28', 0),
+(76, 1, 341, '32', 19, 13, 'Mr', 'John Doe', 'ABC123', 'New York', 'London', '780310431', 'British Airways', 'Male', '2024-01-20', '2024-01-20', 'USD', 550.000, 500.000, 50.000, 25.000, 'Refunded', NULL, 1, '2025-11-17 13:31:27', '2025-11-17 13:31:27', 0),
+(77, 1, 341, '32', 19, 13, 'Mr', 'John Doe', 'ABC123', 'New York', 'London', '780310431', 'British Airways', 'Male', '2024-01-20', '2024-01-20', 'USD', 550.000, 500.000, 50.000, 25.000, 'Refunded', NULL, 1, '2025-11-17 13:34:22', '2025-11-17 13:34:22', 0),
+(78, 1, 341, '32', 19, 13, 'Mr', 'John Doe', 'ABC123', 'New York', 'London', '780310431', 'British Airways', 'Male', '2024-01-20', '2024-01-20', 'USD', 550.000, 500.000, 50.000, 25.000, 'Refunded', NULL, 1, '2025-11-17 13:35:14', '2025-11-17 13:35:14', 0),
+(79, 1, 341, '32', 19, 13, 'Mr', 'John Doe', 'ABC123', 'New York', 'London', '780310431', 'British Airways', 'Male', '2024-01-20', '2024-01-20', 'USD', 550.000, 500.000, 50.000, 25.000, 'Refunded', NULL, 1, '2025-11-17 13:37:31', '2025-11-17 13:37:31', 0),
+(80, 1, 341, '32', 19, 13, 'Mr', 'John Doe', 'ABC123', 'New York', 'London', '780310431', 'British Airways', 'Male', '2024-01-20', '2024-01-20', 'USD', 550.000, 500.000, 50.000, 25.000, 'Refunded', NULL, 1, '2025-11-17 13:59:16', '2025-11-17 13:59:16', 0),
+(81, 1, 341, '32', 19, 13, 'Mr', 'John Doe', 'ABC123', 'New York', 'London', '780310431', 'British Airways', 'Male', '2024-01-20', '2024-01-20', 'USD', 550.000, 500.000, 50.000, 25.000, 'Refunded', NULL, 1, '2025-11-17 14:05:07', '2025-11-17 14:05:07', 0),
+(82, 1, 341, '32', 19, 13, 'Mr', 'John Doe', 'ABC123', 'New York', 'London', '780310431', 'British Airways', 'Male', '2024-01-20', '2024-01-20', 'USD', 550.000, 500.000, 50.000, 25.000, 'Refunded', NULL, 1, '2025-11-17 14:05:32', '2025-11-17 14:05:32', 0),
+(83, 1, 341, '32', 19, 13, 'Mr', 'John Doe', 'ABC123', 'New York', 'London', '780310431', 'British Airways', 'Male', '2024-01-20', '2024-01-20', 'USD', 550.000, 500.000, 50.000, 25.000, 'Refunded', NULL, 1, '2025-11-17 14:09:22', '2025-11-17 14:09:22', 0),
+(84, 1, 341, '32', 19, 13, 'Mr', 'John Doe', 'ABC123', 'New York', 'London', '780310431', 'British Airways', 'Male', '2024-01-20', '2024-01-20', 'USD', 550.000, 500.000, 50.000, 25.000, 'Refunded', NULL, 1, '2025-11-17 14:11:41', '2025-11-17 14:11:41', 0),
+(85, 1, 341, '32', 19, 13, 'Mr', 'John Doe', 'ABC123', 'New York', 'London', '780310431', 'British Airways', 'Male', '2024-01-20', '2024-01-20', 'USD', 550.000, 500.000, 50.000, 25.000, 'Refunded', NULL, 1, '2025-11-17 14:14:40', '2025-11-17 14:14:40', 0),
+(86, 1, 341, '32', 19, 13, 'Mr', 'John Doe', 'ABC123', 'New York', 'London', '780310431', 'British Airways', 'Male', '2024-01-20', '2024-01-20', 'USD', 550.000, 500.000, 50.000, 25.000, 'Refunded', NULL, 1, '2025-11-17 14:16:11', '2025-11-17 14:16:11', 0),
+(87, 1, 341, '32', 19, 13, 'Mr', 'John Doe', 'ABC123', 'New York', 'London', '780310431', 'British Airways', 'Male', '2024-01-20', '2024-01-20', 'USD', 550.000, 500.000, 50.000, 25.000, 'Refunded', NULL, 1, '2025-11-17 14:18:02', '2025-11-17 14:18:02', 0),
+(88, 1, 341, '32', 19, 13, 'Mr', 'John Doe', 'ABC123', 'New York', 'London', '780310431', 'British Airways', 'Male', '2024-01-20', '2024-01-20', 'USD', 550.000, 500.000, 50.000, 25.000, 'Refunded', NULL, 1, '2025-11-17 14:18:45', '2025-11-17 14:18:45', 0),
+(89, 1, 341, '32', 19, 13, 'Mr', 'John Doe', 'ABC123', 'New York', 'London', '780310431', 'British Airways', 'Male', '2024-01-20', '2024-01-20', 'USD', 550.000, 500.000, 50.000, 25.000, 'Refunded', NULL, 1, '2025-11-17 14:22:48', '2025-11-17 14:22:48', 0),
+(90, 1, 341, '32', 19, 13, 'Mr', 'John Doe', 'ABC123', 'New York', 'London', '780310431', 'British Airways', 'Male', '2024-01-20', '2024-01-20', 'USD', 550.000, 500.000, 50.000, 25.000, 'Refunded', NULL, 1, '2025-11-17 14:43:00', '2025-11-17 14:43:00', 0),
+(91, 1, 341, '32', 19, 13, 'Mr', 'John Doe', 'ABC123', 'New York', 'London', '780310431', 'British Airways', 'Male', '2024-01-20', '2024-01-20', 'USD', 550.000, 500.000, 50.000, 25.000, 'Refunded', NULL, 1, '2025-11-17 14:44:07', '2025-11-17 14:44:07', 0),
+(92, 1, 341, '32', 19, 13, 'Mr', 'John Doe', 'ABC123', 'New York', 'London', '780310431', 'British Airways', 'Male', '2024-01-20', '2024-01-20', 'USD', 550.000, 500.000, 50.000, 25.000, 'Refunded', NULL, 1, '2025-11-17 14:44:40', '2025-11-17 14:44:40', 0),
+(93, 1, 341, '32', 19, 13, 'Mr', 'John Doe', 'ABC123', 'New York', 'London', '780310431', 'British Airways', 'Male', '2024-01-20', '2024-01-20', 'USD', 550.000, 500.000, 50.000, 25.000, 'Refunded', NULL, 1, '2025-11-17 14:58:16', '2025-11-17 14:58:16', 0);
 
 -- --------------------------------------------------------
 
@@ -757,6 +806,13 @@ CREATE TABLE `families` (
   `updated_at` timestamp NOT NULL DEFAULT current_timestamp() ON UPDATE current_timestamp()
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
+--
+-- Dumping data for table `families`
+--
+
+INSERT INTO `families` (`family_id`, `tenant_id`, `head_of_family`, `contact`, `address`, `province`, `district`, `total_members`, `package_type`, `location`, `tazmin`, `visa_status`, `total_price`, `total_paid`, `total_paid_to_bank`, `total_due`, `created_by`, `created_at`, `updated_at`) VALUES
+(16, 1, 'ali', '780310431', 'test', 'test', 'test', 0, 'all', 'tet', 'done', 'Applied', 0.00, 0.00, 0.00, 0.00, 1, '2025-11-17 09:52:48', '2025-11-17 11:18:11');
+
 -- --------------------------------------------------------
 
 --
@@ -865,11 +921,11 @@ CREATE TABLE `hotel_bookings` (
   `profit` decimal(10,3) DEFAULT NULL,
   `currency` enum('USD','AFS') DEFAULT NULL,
   `remarks` mediumtext DEFAULT NULL,
-  `receipt` varchar(100) NOT NULL,
   `created_by` int(50) NOT NULL,
   `created_at` timestamp NOT NULL DEFAULT current_timestamp(),
   `updated_at` timestamp NOT NULL DEFAULT current_timestamp() ON UPDATE current_timestamp(),
-  `status` enum('active','refunded') NOT NULL DEFAULT 'active'
+  `status` enum('active','refunded') NOT NULL DEFAULT 'active',
+  `imported` tinyint(1) NOT NULL DEFAULT 0
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
 -- --------------------------------------------------------
@@ -1331,7 +1387,7 @@ CREATE TABLE `refunded_tickets` (
   `pnr` varchar(255) NOT NULL,
   `origin` varchar(255) NOT NULL,
   `destination` varchar(255) NOT NULL,
-  `phone` varchar(50) NOT NULL,
+  `phone` varchar(50) DEFAULT NULL,
   `airline` varchar(255) NOT NULL,
   `gender` enum('Male','Female','Other') NOT NULL,
   `issue_date` date NOT NULL,
@@ -1343,12 +1399,12 @@ CREATE TABLE `refunded_tickets` (
   `service_penalty` decimal(10,3) NOT NULL,
   `refund_to_passenger` decimal(10,3) NOT NULL,
   `status` enum('Refunded','Paid','Declined') NOT NULL,
-  `receipt` varchar(100) NOT NULL,
   `remarks` mediumtext NOT NULL,
   `created_by` int(50) NOT NULL,
   `created_at` datetime NOT NULL DEFAULT current_timestamp(),
   `updated_at` datetime NOT NULL DEFAULT current_timestamp() ON UPDATE current_timestamp(),
-  `calculation_method` varchar(11) NOT NULL
+  `calculation_method` varchar(11) NOT NULL,
+  `imported` tinyint(1) NOT NULL DEFAULT 0
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
 -- --------------------------------------------------------
@@ -1793,7 +1849,7 @@ CREATE TABLE `ticket_bookings` (
   `pnr` varchar(100) NOT NULL,
   `origin` varchar(100) NOT NULL,
   `destination` varchar(100) NOT NULL,
-  `phone` varchar(15) NOT NULL,
+  `phone` varchar(15) DEFAULT NULL,
   `airline` varchar(100) NOT NULL,
   `gender` enum('Male','Female','Other') NOT NULL,
   `issue_date` date NOT NULL,
@@ -1812,7 +1868,8 @@ CREATE TABLE `ticket_bookings` (
   `return_date` date DEFAULT NULL,
   `return_origin` varchar(100) DEFAULT NULL,
   `return_destination` varchar(100) DEFAULT NULL,
-  `created_by` int(20) NOT NULL
+  `created_by` int(20) NOT NULL,
+  `imported` tinyint(1) NOT NULL DEFAULT 0
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
 -- --------------------------------------------------------
@@ -1832,7 +1889,7 @@ CREATE TABLE `ticket_reservations` (
   `pnr` varchar(100) NOT NULL,
   `origin` varchar(100) NOT NULL,
   `destination` varchar(100) NOT NULL,
-  `phone` varchar(15) NOT NULL,
+  `phone` varchar(255) DEFAULT NULL,
   `airline` varchar(100) NOT NULL,
   `gender` enum('Male','Female','Other') NOT NULL,
   `issue_date` date NOT NULL,
@@ -1850,7 +1907,8 @@ CREATE TABLE `ticket_reservations` (
   `return_date` date DEFAULT NULL,
   `return_origin` varchar(100) DEFAULT NULL,
   `return_destination` varchar(100) DEFAULT NULL,
-  `created_by` int(50) NOT NULL
+  `created_by` int(50) NOT NULL,
+  `imported` tinyint(1) NOT NULL DEFAULT 0
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
 -- --------------------------------------------------------
@@ -1870,7 +1928,8 @@ CREATE TABLE `ticket_weights` (
   `remarks` text DEFAULT NULL,
   `created_by` int(50) NOT NULL,
   `created_at` datetime NOT NULL,
-  `updated_at` datetime DEFAULT NULL
+  `updated_at` datetime DEFAULT NULL,
+  `imported` tinyint(1) NOT NULL DEFAULT 0
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
 -- --------------------------------------------------------
@@ -1982,7 +2041,8 @@ CREATE TABLE `umrah_bookings` (
   `created_at` timestamp NOT NULL DEFAULT current_timestamp(),
   `updated_at` timestamp NOT NULL DEFAULT current_timestamp() ON UPDATE current_timestamp(),
   `remarks` varchar(100) NOT NULL,
-  `status` enum('active','refunded') NOT NULL DEFAULT 'active'
+  `status` enum('active','refunded') NOT NULL DEFAULT 'active',
+  `imported` tinyint(1) NOT NULL DEFAULT 0
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
 --
@@ -2207,7 +2267,7 @@ CREATE TABLE `visa_applications` (
   `supplier` int(11) NOT NULL,
   `sold_to` int(11) NOT NULL,
   `paid_to` int(10) NOT NULL,
-  `phone` varchar(20) NOT NULL,
+  `phone` varchar(20) DEFAULT '',
   `title` enum('Mr','Mrs','Child') NOT NULL,
   `gender` enum('Male','Female') NOT NULL,
   `applicant_name` varchar(100) NOT NULL,
@@ -2225,7 +2285,8 @@ CREATE TABLE `visa_applications` (
   `remarks` mediumtext DEFAULT NULL,
   `created_at` timestamp NOT NULL DEFAULT current_timestamp(),
   `updated_at` timestamp NOT NULL DEFAULT current_timestamp() ON UPDATE current_timestamp(),
-  `created_by` int(50) NOT NULL
+  `created_by` int(50) NOT NULL,
+  `imported` tinyint(1) NOT NULL DEFAULT 0
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
 -- --------------------------------------------------------
@@ -2516,7 +2577,6 @@ ALTER TABLE `hawala_transfers`
 --
 ALTER TABLE `hotel_bookings`
   ADD PRIMARY KEY (`id`),
-  ADD UNIQUE KEY `tenant_order_id` (`tenant_id`,`order_id`),
   ADD KEY `tenant_id` (`tenant_id`);
 
 --
@@ -3026,7 +3086,7 @@ ALTER TABLE `customer_wallets`
 -- AUTO_INCREMENT for table `date_change_tickets`
 --
 ALTER TABLE `date_change_tickets`
-  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=51;
+  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=94;
 
 --
 -- AUTO_INCREMENT for table `date_change_umrah`
@@ -3104,7 +3164,7 @@ ALTER TABLE `expense_categories`
 -- AUTO_INCREMENT for table `families`
 --
 ALTER TABLE `families`
-  MODIFY `family_id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=16;
+  MODIFY `family_id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=17;
 
 --
 -- AUTO_INCREMENT for table `family_cancellations`
@@ -3134,7 +3194,7 @@ ALTER TABLE `hawala_transfers`
 -- AUTO_INCREMENT for table `hotel_bookings`
 --
 ALTER TABLE `hotel_bookings`
-  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=48;
+  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=54;
 
 --
 -- AUTO_INCREMENT for table `hotel_refunds`
@@ -3248,7 +3308,7 @@ ALTER TABLE `platform_settings`
 -- AUTO_INCREMENT for table `refunded_tickets`
 --
 ALTER TABLE `refunded_tickets`
-  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=102;
+  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=141;
 
 --
 -- AUTO_INCREMENT for table `salary_adjustments`
@@ -3344,19 +3404,19 @@ ALTER TABLE `testimonials`
 -- AUTO_INCREMENT for table `ticket_bookings`
 --
 ALTER TABLE `ticket_bookings`
-  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=341;
+  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=398;
 
 --
 -- AUTO_INCREMENT for table `ticket_reservations`
 --
 ALTER TABLE `ticket_reservations`
-  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=19;
+  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=29;
 
 --
 -- AUTO_INCREMENT for table `ticket_weights`
 --
 ALTER TABLE `ticket_weights`
-  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=18;
+  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=69;
 
 --
 -- AUTO_INCREMENT for table `totp_recovery_codes`
@@ -3380,13 +3440,13 @@ ALTER TABLE `umrah_agreements`
 -- AUTO_INCREMENT for table `umrah_bookings`
 --
 ALTER TABLE `umrah_bookings`
-  MODIFY `booking_id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=67;
+  MODIFY `booking_id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=68;
 
 --
 -- AUTO_INCREMENT for table `umrah_booking_services`
 --
 ALTER TABLE `umrah_booking_services`
-  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=35;
+  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=36;
 
 --
 -- AUTO_INCREMENT for table `umrah_refunds`
@@ -3434,7 +3494,7 @@ ALTER TABLE `user_mutes`
 -- AUTO_INCREMENT for table `visa_applications`
 --
 ALTER TABLE `visa_applications`
-  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=61;
+  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=69;
 
 --
 -- AUTO_INCREMENT for table `visa_refunds`

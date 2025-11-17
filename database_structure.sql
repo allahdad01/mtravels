@@ -1,5 +1,5 @@
 -- Database structure export
--- Generated on: 2025-09-08 15:01:26
+-- Generated on: 2025-11-17 07:33:32
 
 -- Table structure for table `activity_log`
 CREATE TABLE `activity_log` (
@@ -20,9 +20,9 @@ CREATE TABLE `activity_log` (
   KEY `activity_log_action_index` (`action`),
   KEY `tenant_id` (`tenant_id`),
   CONSTRAINT `fk_activity_log_tenant` FOREIGN KEY (`tenant_id`) REFERENCES `tenants` (`id`) ON DELETE CASCADE
-) ENGINE=InnoDB AUTO_INCREMENT=1328 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+) ENGINE=InnoDB AUTO_INCREMENT=2082 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
--- Total rows in `activity_log`: 213
+-- Total rows in `activity_log`: 0
 
 -- Table structure for table `additional_payments`
 CREATE TABLE `additional_payments` (
@@ -48,9 +48,9 @@ CREATE TABLE `additional_payments` (
   KEY `tenant_id` (`tenant_id`),
   CONSTRAINT `additional_payments_ibfk_1` FOREIGN KEY (`client_id`) REFERENCES `clients` (`id`),
   CONSTRAINT `fk_additional_payments_tenant` FOREIGN KEY (`tenant_id`) REFERENCES `tenants` (`id`) ON DELETE CASCADE
-) ENGINE=InnoDB AUTO_INCREMENT=46 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+) ENGINE=InnoDB AUTO_INCREMENT=52 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
--- Total rows in `additional_payments`: 1
+-- Total rows in `additional_payments`: 0
 
 -- Table structure for table `assets`
 CREATE TABLE `assets` (
@@ -77,7 +77,7 @@ CREATE TABLE `assets` (
   CONSTRAINT `fk_assets_tenant` FOREIGN KEY (`tenant_id`) REFERENCES `tenants` (`id`) ON DELETE CASCADE
 ) ENGINE=InnoDB AUTO_INCREMENT=2 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
--- Total rows in `assets`: 1
+-- Total rows in `assets`: 0
 
 -- Table structure for table `audit_logs`
 CREATE TABLE `audit_logs` (
@@ -92,14 +92,13 @@ CREATE TABLE `audit_logs` (
   PRIMARY KEY (`id`),
   KEY `user_id` (`user_id`),
   CONSTRAINT `fk_audit_logs_user` FOREIGN KEY (`user_id`) REFERENCES `users` (`id`) ON DELETE CASCADE
-) ENGINE=InnoDB AUTO_INCREMENT=26 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+) ENGINE=InnoDB AUTO_INCREMENT=55 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
--- Total rows in `audit_logs`: 25
+-- Total rows in `audit_logs`: 54
 
 -- Table structure for table `blog_posts`
 CREATE TABLE `blog_posts` (
   `id` int(11) NOT NULL AUTO_INCREMENT,
-  `tenant_id` int(11) NOT NULL,
   `title` varchar(255) NOT NULL,
   `slug` varchar(255) DEFAULT NULL,
   `content` mediumtext DEFAULT NULL,
@@ -110,13 +109,10 @@ CREATE TABLE `blog_posts` (
   `status` enum('draft','published') DEFAULT 'draft',
   `created_at` timestamp NOT NULL DEFAULT current_timestamp(),
   `updated_at` timestamp NOT NULL DEFAULT current_timestamp() ON UPDATE current_timestamp(),
-  PRIMARY KEY (`id`),
-  UNIQUE KEY `tenant_slug` (`tenant_id`,`slug`),
-  KEY `tenant_id` (`tenant_id`),
-  CONSTRAINT `fk_blog_posts_tenant` FOREIGN KEY (`tenant_id`) REFERENCES `tenants` (`id`) ON DELETE CASCADE
-) ENGINE=InnoDB AUTO_INCREMENT=4 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+  PRIMARY KEY (`id`)
+) ENGINE=InnoDB AUTO_INCREMENT=5 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
--- Total rows in `blog_posts`: 0
+-- Total rows in `blog_posts`: 1
 
 -- Table structure for table `budget_allocations`
 CREATE TABLE `budget_allocations` (
@@ -141,7 +137,7 @@ CREATE TABLE `budget_allocations` (
   CONSTRAINT `fk_budget_allocations_tenant` FOREIGN KEY (`tenant_id`) REFERENCES `tenants` (`id`) ON DELETE CASCADE
 ) ENGINE=InnoDB AUTO_INCREMENT=21 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
--- Total rows in `budget_allocations`: 1
+-- Total rows in `budget_allocations`: 0
 
 -- Table structure for table `chat_messages`
 CREATE TABLE `chat_messages` (
@@ -159,9 +155,9 @@ CREATE TABLE `chat_messages` (
   KEY `fk_cm_from_user` (`from_user_id`),
   CONSTRAINT `fk_cm_from_user` FOREIGN KEY (`from_user_id`) REFERENCES `users` (`id`) ON DELETE CASCADE,
   CONSTRAINT `fk_cm_to_user` FOREIGN KEY (`to_user_id`) REFERENCES `users` (`id`) ON DELETE CASCADE
-) ENGINE=InnoDB AUTO_INCREMENT=39 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+) ENGINE=InnoDB AUTO_INCREMENT=42 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
--- Total rows in `chat_messages`: 36
+-- Total rows in `chat_messages`: 39
 
 -- Table structure for table `client_transactions`
 CREATE TABLE `client_transactions` (
@@ -174,18 +170,18 @@ CREATE TABLE `client_transactions` (
   `currency` enum('USD','AFS') NOT NULL,
   `description` text NOT NULL,
   `created_at` timestamp NOT NULL DEFAULT current_timestamp(),
-  `transaction_of` enum('ticket_sale','visa_sale','ticket_refund','date_change','fund','umrah','hotel','hotel_refund','ticket_reserve','jv_payment','additional_payment','visa_refund','hotel_refund','umrah_refund','additional_payment','weight_sale') NOT NULL,
+  `transaction_of` enum('ticket_sale','visa_sale','ticket_refund','date_change','fund','umrah','hotel','hotel_refund','ticket_reserve','jv_payment','additional_payment','visa_refund','hotel_refund','umrah_refund','additional_payment','weight_sale','umrah_date_change') NOT NULL,
   `reference_id` int(11) DEFAULT NULL,
-  `receipt` int(100) NOT NULL,
+  `receipt` varchar(100) DEFAULT NULL,
   `exchange_rate` decimal(10,5) DEFAULT NULL,
   PRIMARY KEY (`id`),
   KEY `client_id` (`client_id`),
   KEY `tenant_id` (`tenant_id`),
   CONSTRAINT `client_transactions_ibfk_1` FOREIGN KEY (`client_id`) REFERENCES `clients` (`id`),
   CONSTRAINT `fk_client_transactions_tenant` FOREIGN KEY (`tenant_id`) REFERENCES `tenants` (`id`) ON DELETE CASCADE
-) ENGINE=InnoDB AUTO_INCREMENT=482 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+) ENGINE=InnoDB AUTO_INCREMENT=588 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
--- Total rows in `client_transactions`: 9
+-- Total rows in `client_transactions`: 0
 
 -- Table structure for table `clients`
 CREATE TABLE `clients` (
@@ -208,9 +204,27 @@ CREATE TABLE `clients` (
   UNIQUE KEY `tenant_email` (`tenant_id`,`email`),
   KEY `tenant_id` (`tenant_id`),
   CONSTRAINT `fk_clients_tenant` FOREIGN KEY (`tenant_id`) REFERENCES `tenants` (`id`) ON DELETE CASCADE
-) ENGINE=InnoDB AUTO_INCREMENT=20 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+) ENGINE=InnoDB AUTO_INCREMENT=23 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
--- Total rows in `clients`: 2
+-- Total rows in `clients`: 5
+
+-- Table structure for table `contact_messages`
+CREATE TABLE `contact_messages` (
+  `id` int(11) NOT NULL AUTO_INCREMENT,
+  `name` varchar(255) NOT NULL,
+  `email` varchar(255) NOT NULL,
+  `subject` varchar(255) NOT NULL,
+  `message` text NOT NULL,
+  `created_at` timestamp NOT NULL DEFAULT current_timestamp(),
+  `status` enum('unread','read','replied') NOT NULL DEFAULT 'unread',
+  PRIMARY KEY (`id`),
+  KEY `email` (`email`),
+  KEY `created_at` (`created_at`),
+  KEY `status` (`status`),
+  KEY `idx_status_created` (`status`,`created_at`)
+) ENGINE=InnoDB AUTO_INCREMENT=2 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+-- Total rows in `contact_messages`: 0
 
 -- Table structure for table `creditor_transactions`
 CREATE TABLE `creditor_transactions` (
@@ -229,7 +243,7 @@ CREATE TABLE `creditor_transactions` (
   KEY `tenant_id` (`tenant_id`),
   CONSTRAINT `creditor_transactions_ibfk_1` FOREIGN KEY (`creditor_id`) REFERENCES `creditors` (`id`),
   CONSTRAINT `fk_creditor_transactions_tenant` FOREIGN KEY (`tenant_id`) REFERENCES `tenants` (`id`) ON DELETE CASCADE
-) ENGINE=InnoDB AUTO_INCREMENT=16 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+) ENGINE=InnoDB AUTO_INCREMENT=20 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
 -- Total rows in `creditor_transactions`: 0
 
@@ -248,7 +262,7 @@ CREATE TABLE `creditors` (
   PRIMARY KEY (`id`),
   KEY `tenant_id` (`tenant_id`),
   CONSTRAINT `fk_creditors_tenant` FOREIGN KEY (`tenant_id`) REFERENCES `tenants` (`id`) ON DELETE CASCADE
-) ENGINE=InnoDB AUTO_INCREMENT=9 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+) ENGINE=InnoDB AUTO_INCREMENT=16 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
 -- Total rows in `creditors`: 0
 
@@ -264,10 +278,11 @@ CREATE TABLE `customer_wallets` (
   PRIMARY KEY (`id`),
   UNIQUE KEY `tenant_unique_customer_currency` (`tenant_id`,`customer_id`,`currency`),
   KEY `tenant_id` (`tenant_id`),
+  CONSTRAINT `customer_wallets_ibfk_1` FOREIGN KEY (`customer_id`) REFERENCES `customers` (`id`),
   CONSTRAINT `fk_customer_wallets_tenant` FOREIGN KEY (`tenant_id`) REFERENCES `tenants` (`id`) ON DELETE CASCADE
-) ENGINE=InnoDB AUTO_INCREMENT=10 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+) ENGINE=InnoDB AUTO_INCREMENT=13 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
--- Total rows in `customer_wallets`: 2
+-- Total rows in `customer_wallets`: 0
 
 -- Table structure for table `customers`
 CREATE TABLE `customers` (
@@ -283,9 +298,9 @@ CREATE TABLE `customers` (
   PRIMARY KEY (`id`),
   KEY `tenant_id` (`tenant_id`),
   CONSTRAINT `fk_customers_tenant` FOREIGN KEY (`tenant_id`) REFERENCES `tenants` (`id`) ON DELETE CASCADE
-) ENGINE=InnoDB AUTO_INCREMENT=3 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+) ENGINE=InnoDB AUTO_INCREMENT=6 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
--- Total rows in `customers`: 1
+-- Total rows in `customers`: 0
 
 -- Table structure for table `date_change_tickets`
 CREATE TABLE `date_change_tickets` (
@@ -300,7 +315,7 @@ CREATE TABLE `date_change_tickets` (
   `pnr` varchar(255) NOT NULL,
   `origin` varchar(255) NOT NULL,
   `destination` varchar(255) NOT NULL,
-  `phone` varchar(50) NOT NULL,
+  `phone` varchar(50) DEFAULT NULL,
   `airline` varchar(255) NOT NULL,
   `gender` enum('Male','Female','Other') NOT NULL,
   `issue_date` date NOT NULL,
@@ -311,18 +326,69 @@ CREATE TABLE `date_change_tickets` (
   `supplier_penalty` decimal(10,3) NOT NULL,
   `service_penalty` decimal(10,3) NOT NULL,
   `status` enum('Refunded','Pending','Declined') NOT NULL,
-  `receipt` int(11) NOT NULL,
-  `remarks` mediumtext NOT NULL,
+  `remarks` mediumtext DEFAULT NULL,
   `created_by` int(50) NOT NULL,
   `created_at` datetime NOT NULL DEFAULT current_timestamp(),
   `updated_at` datetime NOT NULL DEFAULT current_timestamp() ON UPDATE current_timestamp(),
-  `exchange_rate` decimal(10,5) NOT NULL,
   PRIMARY KEY (`id`),
   KEY `tenant_id` (`tenant_id`),
   CONSTRAINT `fk_date_change_tickets_tenant` FOREIGN KEY (`tenant_id`) REFERENCES `tenants` (`id`) ON DELETE CASCADE
-) ENGINE=InnoDB AUTO_INCREMENT=44 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+) ENGINE=InnoDB AUTO_INCREMENT=53 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
--- Total rows in `date_change_tickets`: 1
+-- Total rows in `date_change_tickets`: 2
+
+-- Table structure for table `date_change_umrah`
+CREATE TABLE `date_change_umrah` (
+  `id` int(11) NOT NULL AUTO_INCREMENT,
+  `umrah_booking_id` int(11) NOT NULL,
+  `family_id` int(11) NOT NULL,
+  `supplier` int(11) DEFAULT NULL,
+  `sold_to` int(11) DEFAULT NULL,
+  `paid_to` int(11) DEFAULT NULL,
+  `passenger_name` varchar(255) NOT NULL,
+  `old_flight_date` date DEFAULT NULL,
+  `new_flight_date` date DEFAULT NULL,
+  `old_return_date` date DEFAULT NULL,
+  `new_return_date` date DEFAULT NULL,
+  `old_duration` varchar(50) DEFAULT NULL,
+  `new_duration` varchar(50) DEFAULT NULL,
+  `old_price` decimal(10,2) DEFAULT 0.00,
+  `new_price` decimal(10,2) DEFAULT 0.00,
+  `price_difference` decimal(10,2) DEFAULT 0.00,
+  `supplier_penalty` decimal(10,2) DEFAULT 0.00,
+  `service_penalty` decimal(10,2) DEFAULT 0.00,
+  `total_penalty` decimal(10,2) DEFAULT 0.00,
+  `currency` varchar(10) DEFAULT 'USD',
+  `exchange_rate` decimal(10,4) DEFAULT 1.0000,
+  `status` enum('Pending','Approved','Rejected','Completed') DEFAULT 'Pending',
+  `approved_by` int(11) DEFAULT NULL,
+  `approved_at` datetime DEFAULT NULL,
+  `processed_by` int(11) DEFAULT NULL,
+  `processed_at` datetime DEFAULT NULL,
+  `remarks` text DEFAULT NULL,
+  `created_by` int(11) DEFAULT NULL,
+  `created_at` timestamp NOT NULL DEFAULT current_timestamp(),
+  `updated_at` timestamp NOT NULL DEFAULT current_timestamp() ON UPDATE current_timestamp(),
+  `tenant_id` int(11) NOT NULL,
+  PRIMARY KEY (`id`),
+  KEY `umrah_booking_id` (`umrah_booking_id`),
+  KEY `family_id` (`family_id`),
+  KEY `supplier` (`supplier`),
+  KEY `sold_to` (`sold_to`),
+  KEY `paid_to` (`paid_to`),
+  KEY `tenant_id` (`tenant_id`),
+  KEY `status` (`status`),
+  KEY `idx_created_at` (`created_at`),
+  KEY `idx_status_created` (`status`,`created_at`),
+  CONSTRAINT `fk_date_change_umrah_booking` FOREIGN KEY (`umrah_booking_id`) REFERENCES `umrah_bookings` (`booking_id`) ON DELETE CASCADE,
+  CONSTRAINT `fk_date_change_umrah_family` FOREIGN KEY (`family_id`) REFERENCES `families` (`family_id`) ON DELETE CASCADE,
+  CONSTRAINT `fk_date_change_umrah_paid_to` FOREIGN KEY (`paid_to`) REFERENCES `main_account` (`id`) ON DELETE SET NULL,
+  CONSTRAINT `fk_date_change_umrah_sold_to` FOREIGN KEY (`sold_to`) REFERENCES `clients` (`id`) ON DELETE SET NULL,
+  CONSTRAINT `fk_date_change_umrah_supplier` FOREIGN KEY (`supplier`) REFERENCES `suppliers` (`id`) ON DELETE SET NULL,
+  CONSTRAINT `fk_date_change_umrah_tenant` FOREIGN KEY (`tenant_id`) REFERENCES `tenants` (`id`) ON DELETE CASCADE
+) ENGINE=InnoDB AUTO_INCREMENT=11 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+-- Total rows in `date_change_umrah`: 0
 
 -- Table structure for table `deals`
 CREATE TABLE `deals` (
@@ -386,9 +452,9 @@ CREATE TABLE `debtor_transactions` (
   KEY `tenant_id` (`tenant_id`),
   CONSTRAINT `debtor_transactions_ibfk_1` FOREIGN KEY (`debtor_id`) REFERENCES `debtors` (`id`) ON DELETE CASCADE,
   CONSTRAINT `fk_debtor_transactions_tenant` FOREIGN KEY (`tenant_id`) REFERENCES `tenants` (`id`) ON DELETE CASCADE
-) ENGINE=InnoDB AUTO_INCREMENT=32 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+) ENGINE=InnoDB AUTO_INCREMENT=46 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
--- Total rows in `debtor_transactions`: 1
+-- Total rows in `debtor_transactions`: 0
 
 -- Table structure for table `debtors`
 CREATE TABLE `debtors` (
@@ -410,9 +476,31 @@ CREATE TABLE `debtors` (
   KEY `tenant_id` (`tenant_id`),
   CONSTRAINT `fk_debtors_main_account` FOREIGN KEY (`main_account_id`) REFERENCES `main_account` (`id`) ON DELETE SET NULL,
   CONSTRAINT `fk_debtors_tenant` FOREIGN KEY (`tenant_id`) REFERENCES `tenants` (`id`) ON DELETE CASCADE
-) ENGINE=InnoDB AUTO_INCREMENT=32 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+) ENGINE=InnoDB AUTO_INCREMENT=41 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
--- Total rows in `debtors`: 1
+-- Total rows in `debtors`: 0
+
+-- Table structure for table `demo_requests`
+CREATE TABLE `demo_requests` (
+  `id` int(11) NOT NULL AUTO_INCREMENT,
+  `name` varchar(255) NOT NULL,
+  `email` varchar(255) NOT NULL,
+  `company` varchar(255) NOT NULL,
+  `phone` varchar(50) DEFAULT NULL,
+  `company_size` varchar(20) DEFAULT NULL,
+  `preferred_date` date DEFAULT NULL,
+  `preferred_time` time DEFAULT NULL,
+  `message` text DEFAULT NULL,
+  `status` enum('pending','contacted','scheduled','completed','cancelled') DEFAULT 'pending',
+  `created_at` timestamp NOT NULL DEFAULT current_timestamp(),
+  `updated_at` timestamp NOT NULL DEFAULT current_timestamp() ON UPDATE current_timestamp(),
+  PRIMARY KEY (`id`),
+  KEY `idx_email` (`email`),
+  KEY `idx_status` (`status`),
+  KEY `idx_created_at` (`created_at`)
+) ENGINE=InnoDB AUTO_INCREMENT=2 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+-- Total rows in `demo_requests`: 1
 
 -- Table structure for table `destinations`
 CREATE TABLE `destinations` (
@@ -434,6 +522,28 @@ CREATE TABLE `destinations` (
 ) ENGINE=InnoDB AUTO_INCREMENT=7 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
 -- Total rows in `destinations`: 0
+
+-- Table structure for table `employee_terminations`
+CREATE TABLE `employee_terminations` (
+  `id` int(11) NOT NULL AUTO_INCREMENT,
+  `employee_id` int(11) NOT NULL,
+  `terminated_by` int(11) NOT NULL,
+  `termination_reason` text NOT NULL,
+  `termination_date` datetime NOT NULL,
+  `tenant_id` int(11) NOT NULL,
+  `created_at` timestamp NOT NULL DEFAULT current_timestamp(),
+  `updated_at` timestamp NOT NULL DEFAULT current_timestamp() ON UPDATE current_timestamp(),
+  PRIMARY KEY (`id`),
+  KEY `employee_id` (`employee_id`),
+  KEY `terminated_by` (`terminated_by`),
+  KEY `tenant_id` (`tenant_id`),
+  KEY `idx_termination_date` (`termination_date`),
+  CONSTRAINT `fk_employee_terminations_employee` FOREIGN KEY (`employee_id`) REFERENCES `users` (`id`) ON DELETE CASCADE,
+  CONSTRAINT `fk_employee_terminations_tenant` FOREIGN KEY (`tenant_id`) REFERENCES `tenants` (`id`) ON DELETE CASCADE,
+  CONSTRAINT `fk_employee_terminations_terminator` FOREIGN KEY (`terminated_by`) REFERENCES `users` (`id`)
+) ENGINE=InnoDB AUTO_INCREMENT=2 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+-- Total rows in `employee_terminations`: 0
 
 -- Table structure for table `exchange_rates`
 CREATE TABLE `exchange_rates` (
@@ -479,7 +589,7 @@ CREATE TABLE `expense_categories` (
   PRIMARY KEY (`id`),
   KEY `tenant_id` (`tenant_id`),
   CONSTRAINT `fk_expense_categories_tenant` FOREIGN KEY (`tenant_id`) REFERENCES `tenants` (`id`) ON DELETE CASCADE
-) ENGINE=InnoDB AUTO_INCREMENT=20 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+) ENGINE=InnoDB AUTO_INCREMENT=23 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
 -- Total rows in `expense_categories`: 2
 
@@ -501,9 +611,9 @@ CREATE TABLE `expenses` (
   KEY `tenant_id` (`tenant_id`),
   CONSTRAINT `expenses_ibfk_1` FOREIGN KEY (`category_id`) REFERENCES `expense_categories` (`id`),
   CONSTRAINT `fk_expenses_tenant` FOREIGN KEY (`tenant_id`) REFERENCES `tenants` (`id`) ON DELETE CASCADE
-) ENGINE=InnoDB AUTO_INCREMENT=213 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+) ENGINE=InnoDB AUTO_INCREMENT=218 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
--- Total rows in `expenses`: 2
+-- Total rows in `expenses`: 0
 
 -- Table structure for table `families`
 CREATE TABLE `families` (
@@ -529,9 +639,9 @@ CREATE TABLE `families` (
   PRIMARY KEY (`family_id`),
   KEY `tenant_id` (`tenant_id`),
   CONSTRAINT `fk_families_tenant` FOREIGN KEY (`tenant_id`) REFERENCES `tenants` (`id`) ON DELETE CASCADE
-) ENGINE=InnoDB AUTO_INCREMENT=9 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+) ENGINE=InnoDB AUTO_INCREMENT=16 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
--- Total rows in `families`: 1
+-- Total rows in `families`: 0
 
 -- Table structure for table `family_cancellations`
 CREATE TABLE `family_cancellations` (
@@ -585,9 +695,9 @@ CREATE TABLE `general_ledger` (
   KEY `tenant_id` (`tenant_id`),
   CONSTRAINT `fk_general_ledger_tenant` FOREIGN KEY (`tenant_id`) REFERENCES `tenants` (`id`) ON DELETE CASCADE,
   CONSTRAINT `general_ledger_ibfk_1` FOREIGN KEY (`transaction_id`) REFERENCES `sarafi_transactions` (`id`)
-) ENGINE=InnoDB AUTO_INCREMENT=5 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+) ENGINE=InnoDB AUTO_INCREMENT=7 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
--- Total rows in `general_ledger`: 2
+-- Total rows in `general_ledger`: 4
 
 -- Table structure for table `hawala_transfers`
 CREATE TABLE `hawala_transfers` (
@@ -608,7 +718,7 @@ CREATE TABLE `hawala_transfers` (
   CONSTRAINT `fk_hawala_transfers_tenant` FOREIGN KEY (`tenant_id`) REFERENCES `tenants` (`id`) ON DELETE CASCADE,
   CONSTRAINT `hawala_transfers_ibfk_1` FOREIGN KEY (`sender_transaction_id`) REFERENCES `sarafi_transactions` (`id`),
   CONSTRAINT `hawala_transfers_ibfk_2` FOREIGN KEY (`receiver_transaction_id`) REFERENCES `sarafi_transactions` (`id`)
-) ENGINE=InnoDB AUTO_INCREMENT=8 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+) ENGINE=InnoDB AUTO_INCREMENT=9 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
 -- Total rows in `hawala_transfers`: 0
 
@@ -635,7 +745,6 @@ CREATE TABLE `hotel_bookings` (
   `currency` enum('USD','AFS') DEFAULT NULL,
   `remarks` mediumtext DEFAULT NULL,
   `receipt` varchar(100) NOT NULL,
-  `exchange_rate` decimal(10,5) NOT NULL,
   `created_by` int(50) NOT NULL,
   `created_at` timestamp NOT NULL DEFAULT current_timestamp(),
   `updated_at` timestamp NOT NULL DEFAULT current_timestamp() ON UPDATE current_timestamp(),
@@ -644,9 +753,9 @@ CREATE TABLE `hotel_bookings` (
   UNIQUE KEY `tenant_order_id` (`tenant_id`,`order_id`),
   KEY `tenant_id` (`tenant_id`),
   CONSTRAINT `fk_hotel_bookings_tenant` FOREIGN KEY (`tenant_id`) REFERENCES `tenants` (`id`) ON DELETE CASCADE
-) ENGINE=InnoDB AUTO_INCREMENT=35 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+) ENGINE=InnoDB AUTO_INCREMENT=48 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
--- Total rows in `hotel_bookings`: 1
+-- Total rows in `hotel_bookings`: 0
 
 -- Table structure for table `hotel_refunds`
 CREATE TABLE `hotel_refunds` (
@@ -670,7 +779,7 @@ CREATE TABLE `hotel_refunds` (
   CONSTRAINT `fk_hotel_refunds_tenant` FOREIGN KEY (`tenant_id`) REFERENCES `tenants` (`id`) ON DELETE CASCADE,
   CONSTRAINT `hotel_refunds_ibfk_1` FOREIGN KEY (`booking_id`) REFERENCES `hotel_bookings` (`id`) ON DELETE CASCADE,
   CONSTRAINT `hotel_refunds_ibfk_2` FOREIGN KEY (`processed_by`) REFERENCES `users` (`id`) ON DELETE SET NULL
-) ENGINE=InnoDB AUTO_INCREMENT=7 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+) ENGINE=InnoDB AUTO_INCREMENT=16 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
 -- Total rows in `hotel_refunds`: 0
 
@@ -714,7 +823,7 @@ CREATE TABLE `jv_payments` (
   KEY `tenant_id` (`tenant_id`),
   CONSTRAINT `fk_jv_payments_tenant` FOREIGN KEY (`tenant_id`) REFERENCES `tenants` (`id`) ON DELETE CASCADE,
   CONSTRAINT `jv_payments_ibfk_2` FOREIGN KEY (`created_by`) REFERENCES `users` (`id`)
-) ENGINE=InnoDB AUTO_INCREMENT=2 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+) ENGINE=InnoDB AUTO_INCREMENT=6 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
 -- Total rows in `jv_payments`: 0
 
@@ -723,11 +832,11 @@ CREATE TABLE `jv_transactions` (
   `id` int(11) NOT NULL AUTO_INCREMENT,
   `tenant_id` int(11) NOT NULL,
   `jv_payment_id` int(11) NOT NULL,
-  `transaction_type` enum('Debit','Credit') NOT NULL,
+  `transaction_type` varchar(100) NOT NULL,
   `amount` decimal(15,3) NOT NULL,
   `balance` decimal(15,3) NOT NULL,
   `currency` enum('USD','AFS') NOT NULL,
-  `description` text NOT NULL,
+  `description` text DEFAULT NULL,
   `reference_id` int(11) DEFAULT NULL,
   `receipt` varchar(100) NOT NULL,
   `created_at` timestamp NOT NULL DEFAULT current_timestamp(),
@@ -737,22 +846,19 @@ CREATE TABLE `jv_transactions` (
   KEY `tenant_id` (`tenant_id`),
   CONSTRAINT `fk_jv_transactions_tenant` FOREIGN KEY (`tenant_id`) REFERENCES `tenants` (`id`) ON DELETE CASCADE,
   CONSTRAINT `jv_transactions_ibfk_1` FOREIGN KEY (`jv_payment_id`) REFERENCES `jv_payments` (`id`) ON DELETE CASCADE
-) ENGINE=InnoDB AUTO_INCREMENT=2 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+) ENGINE=InnoDB AUTO_INCREMENT=4 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
 -- Total rows in `jv_transactions`: 0
 
 -- Table structure for table `login_attempts`
 CREATE TABLE `login_attempts` (
   `id` int(11) NOT NULL AUTO_INCREMENT,
-  `tenant_id` int(11) NOT NULL,
   `email` varchar(255) NOT NULL,
   `time` datetime NOT NULL,
   `ip_address` varchar(50) NOT NULL,
   PRIMARY KEY (`id`),
-  KEY `email` (`email`),
-  KEY `tenant_id` (`tenant_id`),
-  CONSTRAINT `fk_login_attempts_tenant` FOREIGN KEY (`tenant_id`) REFERENCES `tenants` (`id`) ON DELETE CASCADE
-) ENGINE=InnoDB AUTO_INCREMENT=47 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+  KEY `email` (`email`)
+) ENGINE=InnoDB AUTO_INCREMENT=60 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
 -- Total rows in `login_attempts`: 0
 
@@ -768,7 +874,7 @@ CREATE TABLE `login_history` (
   KEY `tenant_id` (`tenant_id`),
   CONSTRAINT `fk_login_history_tenant` FOREIGN KEY (`tenant_id`) REFERENCES `tenants` (`id`) ON DELETE CASCADE,
   CONSTRAINT `login_history_ibfk_1` FOREIGN KEY (`user_id`) REFERENCES `users` (`id`)
-) ENGINE=InnoDB AUTO_INCREMENT=100 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+) ENGINE=InnoDB AUTO_INCREMENT=133 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
 -- Total rows in `login_history`: 17
 
@@ -779,7 +885,7 @@ CREATE TABLE `main_account` (
   `name` varchar(100) NOT NULL,
   `account_type` enum('internal','bank') NOT NULL DEFAULT 'internal',
   `bank_account_number` varchar(50) DEFAULT NULL,
-  `bank_account_afs_number` varchar(100) NOT NULL,
+  `bank_account_afs_number` varchar(100) DEFAULT NULL,
   `bank_name` varchar(100) DEFAULT NULL,
   `usd_balance` decimal(15,3) NOT NULL DEFAULT 0.000,
   `afs_balance` decimal(15,3) NOT NULL DEFAULT 0.000,
@@ -790,9 +896,9 @@ CREATE TABLE `main_account` (
   PRIMARY KEY (`id`),
   KEY `tenant_id` (`tenant_id`),
   CONSTRAINT `fk_main_account_tenant` FOREIGN KEY (`tenant_id`) REFERENCES `tenants` (`id`) ON DELETE CASCADE
-) ENGINE=InnoDB AUTO_INCREMENT=12 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+) ENGINE=InnoDB AUTO_INCREMENT=17 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
--- Total rows in `main_account`: 1
+-- Total rows in `main_account`: 3
 
 -- Table structure for table `main_account_transactions`
 CREATE TABLE `main_account_transactions` (
@@ -807,15 +913,15 @@ CREATE TABLE `main_account_transactions` (
   `created_at` timestamp NOT NULL DEFAULT current_timestamp(),
   `transaction_of` enum('ticket_sale','visa_sale','ticket_refund','date_change','fund','umrah','hotel','hotel_refund','expense','debtor','supplier_fund','client_fund','budget_allocation','ticket_reserve','transfer','additional_payment','creditor','jv_payment','salary_payment','visa_refund','hotel_refund','deposit_sarafi','hawala_sarafi','withdrawal_sarafi','umrah_refund','weight','supplier_fund_withdrawal') NOT NULL,
   `reference_id` int(11) DEFAULT NULL,
-  `receipt` varchar(100) NOT NULL,
-  `original_transaction_id` int(10) DEFAULT NULL,
+  `receipt` varchar(100) DEFAULT NULL,
+  `exchange_rate` decimal(10,5) DEFAULT NULL,
   PRIMARY KEY (`id`),
   KEY `client_id` (`main_account_id`),
   KEY `tenant_id` (`tenant_id`),
   CONSTRAINT `fk_main_account_transactions_tenant` FOREIGN KEY (`tenant_id`) REFERENCES `tenants` (`id`) ON DELETE CASCADE
-) ENGINE=InnoDB AUTO_INCREMENT=878 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+) ENGINE=InnoDB AUTO_INCREMENT=1255 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
--- Total rows in `main_account_transactions`: 14
+-- Total rows in `main_account_transactions`: 0
 
 -- Table structure for table `maktobs`
 CREATE TABLE `maktobs` (
@@ -841,6 +947,23 @@ CREATE TABLE `maktobs` (
 ) ENGINE=InnoDB AUTO_INCREMENT=5 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
 -- Total rows in `maktobs`: 0
+
+-- Table structure for table `message_reactions`
+CREATE TABLE `message_reactions` (
+  `id` int(11) NOT NULL AUTO_INCREMENT,
+  `message_id` int(11) NOT NULL,
+  `user_id` int(11) NOT NULL,
+  `emoji` varchar(10) NOT NULL,
+  `tenant_id` int(11) NOT NULL,
+  `created_at` timestamp NOT NULL DEFAULT current_timestamp(),
+  PRIMARY KEY (`id`),
+  UNIQUE KEY `unique_reaction` (`message_id`,`user_id`,`emoji`),
+  KEY `idx_message_id` (`message_id`),
+  KEY `idx_user_id` (`user_id`),
+  KEY `idx_tenant_id` (`tenant_id`)
+) ENGINE=InnoDB AUTO_INCREMENT=8 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+-- Total rows in `message_reactions`: 4
 
 -- Table structure for table `messages`
 CREATE TABLE `messages` (
@@ -868,8 +991,8 @@ CREATE TABLE `messages` (
 CREATE TABLE `notifications` (
   `id` int(11) NOT NULL AUTO_INCREMENT,
   `tenant_id` int(11) NOT NULL,
-  `transaction_id` int(11) NOT NULL,
-  `transaction_type` enum('visa','supplier','ticket_date_change','ticket_refund','umrah','hotel','hotel_refund','ticket_sale','ticket_reserve','additional_payment','debtor','creditor','deposit_sarafi','hawala_sarafi','withdrawal_sarafi','supplier_fund','client_fund','weight','expense','expense_update','expense_delete','supplier_bonus','umrah_refund','hotel_refund','visa_refund','supplier_fund_withdrawal') NOT NULL DEFAULT 'supplier',
+  `transaction_id` int(11) DEFAULT NULL,
+  `transaction_type` enum('visa','supplier','ticket_date_change','ticket_refund','umrah','hotel','hotel_refund','ticket_sale','ticket_reserve','additional_payment','debtor','creditor','deposit_sarafi','hawala_sarafi','withdrawal_sarafi','supplier_fund','client_fund','weight','expense','expense_update','expense_delete','supplier_bonus','umrah_refund','hotel_refund','visa_refund','supplier_fund_withdrawal','mtravels') NOT NULL DEFAULT 'supplier',
   `message` mediumtext NOT NULL,
   `recipient_role` enum('Admin','Sales','Finance') NOT NULL,
   `status` enum('Unread','Read') DEFAULT 'Unread',
@@ -877,9 +1000,29 @@ CREATE TABLE `notifications` (
   PRIMARY KEY (`id`),
   KEY `tenant_id` (`tenant_id`),
   CONSTRAINT `fk_notifications_tenant` FOREIGN KEY (`tenant_id`) REFERENCES `tenants` (`id`) ON DELETE CASCADE
-) ENGINE=InnoDB AUTO_INCREMENT=682 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+) ENGINE=InnoDB AUTO_INCREMENT=1050 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
--- Total rows in `notifications`: 62
+-- Total rows in `notifications`: 0
+
+-- Table structure for table `payment_sessions`
+CREATE TABLE `payment_sessions` (
+  `id` int(11) NOT NULL AUTO_INCREMENT,
+  `session_id` varchar(255) NOT NULL,
+  `subscription_id` int(11) NOT NULL,
+  `tenant_id` int(11) NOT NULL,
+  `amount` decimal(10,2) NOT NULL,
+  `currency` varchar(10) DEFAULT 'AFN',
+  `status` enum('pending','completed','failed') DEFAULT 'pending',
+  `transaction_id` varchar(255) DEFAULT NULL,
+  `created_at` timestamp NOT NULL DEFAULT current_timestamp(),
+  `updated_at` timestamp NOT NULL DEFAULT current_timestamp() ON UPDATE current_timestamp(),
+  PRIMARY KEY (`id`),
+  UNIQUE KEY `session_id` (`session_id`),
+  KEY `idx_session_id` (`session_id`),
+  KEY `idx_subscription_tenant` (`subscription_id`,`tenant_id`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
+
+-- Total rows in `payment_sessions`: 0
 
 -- Table structure for table `payroll_details`
 CREATE TABLE `payroll_details` (
@@ -931,6 +1074,36 @@ CREATE TABLE `payroll_records` (
 
 -- Total rows in `payroll_records`: 0
 
+-- Table structure for table `performance_reviews`
+CREATE TABLE `performance_reviews` (
+  `id` int(11) NOT NULL AUTO_INCREMENT,
+  `user_id` int(11) NOT NULL,
+  `tenant_id` int(11) NOT NULL,
+  `reviewer_id` int(11) NOT NULL,
+  `review_date` date NOT NULL,
+  `period_start` date NOT NULL,
+  `period_end` date NOT NULL,
+  `overall_rating` decimal(3,2) DEFAULT NULL COMMENT 'Rating from 1.00 to 5.00',
+  `comments` text DEFAULT NULL,
+  `achievements` text DEFAULT NULL,
+  `areas_for_improvement` text DEFAULT NULL,
+  `goals` text DEFAULT NULL,
+  `recommendations` text DEFAULT NULL,
+  `status` enum('draft','submitted','approved','rejected') DEFAULT 'draft',
+  `created_at` timestamp NOT NULL DEFAULT current_timestamp(),
+  `updated_at` timestamp NOT NULL DEFAULT current_timestamp() ON UPDATE current_timestamp(),
+  PRIMARY KEY (`id`),
+  KEY `idx_user_tenant` (`user_id`,`tenant_id`),
+  KEY `idx_reviewer` (`reviewer_id`),
+  KEY `idx_period` (`period_start`,`period_end`),
+  KEY `fk_performance_reviews_tenant` (`tenant_id`),
+  CONSTRAINT `fk_performance_reviews_reviewer` FOREIGN KEY (`reviewer_id`) REFERENCES `users` (`id`) ON DELETE CASCADE,
+  CONSTRAINT `fk_performance_reviews_tenant` FOREIGN KEY (`tenant_id`) REFERENCES `tenants` (`id`) ON DELETE CASCADE,
+  CONSTRAINT `fk_performance_reviews_user` FOREIGN KEY (`user_id`) REFERENCES `users` (`id`) ON DELETE CASCADE
+) ENGINE=InnoDB AUTO_INCREMENT=5 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+-- Total rows in `performance_reviews`: 0
+
 -- Table structure for table `plans`
 CREATE TABLE `plans` (
   `id` int(11) NOT NULL AUTO_INCREMENT,
@@ -945,9 +1118,9 @@ CREATE TABLE `plans` (
   `updated_at` timestamp NOT NULL DEFAULT current_timestamp() ON UPDATE current_timestamp(),
   PRIMARY KEY (`id`),
   UNIQUE KEY `name` (`name`)
-) ENGINE=InnoDB AUTO_INCREMENT=4 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+) ENGINE=InnoDB AUTO_INCREMENT=5 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
--- Total rows in `plans`: 3
+-- Total rows in `plans`: 4
 
 -- Table structure for table `platform_settings`
 CREATE TABLE `platform_settings` (
@@ -960,7 +1133,7 @@ CREATE TABLE `platform_settings` (
   `updated_at` timestamp NOT NULL DEFAULT current_timestamp() ON UPDATE current_timestamp(),
   PRIMARY KEY (`id`),
   UNIQUE KEY `key` (`key`)
-) ENGINE=InnoDB AUTO_INCREMENT=115 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+) ENGINE=InnoDB AUTO_INCREMENT=200 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
 -- Total rows in `platform_settings`: 32
 
@@ -977,7 +1150,7 @@ CREATE TABLE `refunded_tickets` (
   `pnr` varchar(255) NOT NULL,
   `origin` varchar(255) NOT NULL,
   `destination` varchar(255) NOT NULL,
-  `phone` varchar(50) NOT NULL,
+  `phone` varchar(50) DEFAULT NULL,
   `airline` varchar(255) NOT NULL,
   `gender` enum('Male','Female','Other') NOT NULL,
   `issue_date` date NOT NULL,
@@ -989,19 +1162,17 @@ CREATE TABLE `refunded_tickets` (
   `service_penalty` decimal(10,3) NOT NULL,
   `refund_to_passenger` decimal(10,3) NOT NULL,
   `status` enum('Refunded','Paid','Declined') NOT NULL,
-  `receipt` varchar(100) NOT NULL,
   `remarks` mediumtext NOT NULL,
   `created_by` int(50) NOT NULL,
   `created_at` datetime NOT NULL DEFAULT current_timestamp(),
   `updated_at` datetime NOT NULL DEFAULT current_timestamp() ON UPDATE current_timestamp(),
-  `exchange_rate` decimal(10,5) NOT NULL,
   `calculation_method` varchar(11) NOT NULL,
   PRIMARY KEY (`id`),
   KEY `tenant_id` (`tenant_id`),
   CONSTRAINT `fk_refunded_tickets_tenant` FOREIGN KEY (`tenant_id`) REFERENCES `tenants` (`id`) ON DELETE CASCADE
-) ENGINE=InnoDB AUTO_INCREMENT=95 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+) ENGINE=InnoDB AUTO_INCREMENT=102 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
--- Total rows in `refunded_tickets`: 1
+-- Total rows in `refunded_tickets`: 0
 
 -- Table structure for table `salary_adjustments`
 CREATE TABLE `salary_adjustments` (
@@ -1024,7 +1195,7 @@ CREATE TABLE `salary_adjustments` (
   CONSTRAINT `fk_salary_adjustments_tenant` FOREIGN KEY (`tenant_id`) REFERENCES `tenants` (`id`) ON DELETE CASCADE,
   CONSTRAINT `salary_adjustments_ibfk_1` FOREIGN KEY (`user_id`) REFERENCES `users` (`id`) ON DELETE CASCADE,
   CONSTRAINT `salary_adjustments_ibfk_2` FOREIGN KEY (`approved_by`) REFERENCES `users` (`id`)
-) ENGINE=InnoDB AUTO_INCREMENT=2 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+) ENGINE=InnoDB AUTO_INCREMENT=3 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
 -- Total rows in `salary_adjustments`: 1
 
@@ -1052,7 +1223,7 @@ CREATE TABLE `salary_advances` (
   CONSTRAINT `salary_advances_ibfk_2` FOREIGN KEY (`main_account_id`) REFERENCES `main_account` (`id`)
 ) ENGINE=InnoDB AUTO_INCREMENT=10 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
--- Total rows in `salary_advances`: 1
+-- Total rows in `salary_advances`: 0
 
 -- Table structure for table `salary_bonuses`
 CREATE TABLE `salary_bonuses` (
@@ -1070,9 +1241,9 @@ CREATE TABLE `salary_bonuses` (
   KEY `tenant_id` (`tenant_id`),
   CONSTRAINT `fk_salary_bonuses_tenant` FOREIGN KEY (`tenant_id`) REFERENCES `tenants` (`id`) ON DELETE CASCADE,
   CONSTRAINT `salary_bonuses_ibfk_1` FOREIGN KEY (`user_id`) REFERENCES `users` (`id`) ON DELETE CASCADE
-) ENGINE=InnoDB AUTO_INCREMENT=2 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+) ENGINE=InnoDB AUTO_INCREMENT=3 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
--- Total rows in `salary_bonuses`: 0
+-- Total rows in `salary_bonuses`: 1
 
 -- Table structure for table `salary_deductions`
 CREATE TABLE `salary_deductions` (
@@ -1109,10 +1280,11 @@ CREATE TABLE `salary_management` (
   PRIMARY KEY (`id`),
   UNIQUE KEY `tenant_user_id` (`tenant_id`,`user_id`),
   KEY `tenant_id` (`tenant_id`),
-  CONSTRAINT `fk_salary_management_tenant` FOREIGN KEY (`tenant_id`) REFERENCES `tenants` (`id`) ON DELETE CASCADE
-) ENGINE=InnoDB AUTO_INCREMENT=8 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+  CONSTRAINT `fk_salary_management_tenant` FOREIGN KEY (`tenant_id`) REFERENCES `tenants` (`id`) ON DELETE CASCADE,
+  CONSTRAINT `salary_management_ibfk_1` FOREIGN KEY (`user_id`) REFERENCES `users` (`id`) ON DELETE CASCADE
+) ENGINE=InnoDB AUTO_INCREMENT=10 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
--- Total rows in `salary_management`: 1
+-- Total rows in `salary_management`: 0
 
 -- Table structure for table `salary_payments`
 CREATE TABLE `salary_payments` (
@@ -1134,9 +1306,9 @@ CREATE TABLE `salary_payments` (
   KEY `tenant_id` (`tenant_id`),
   CONSTRAINT `fk_salary_payments_tenant` FOREIGN KEY (`tenant_id`) REFERENCES `tenants` (`id`) ON DELETE CASCADE,
   CONSTRAINT `salary_payments_ibfk_2` FOREIGN KEY (`main_account_id`) REFERENCES `main_account` (`id`)
-) ENGINE=InnoDB AUTO_INCREMENT=21 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+) ENGINE=InnoDB AUTO_INCREMENT=23 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
--- Total rows in `salary_payments`: 3
+-- Total rows in `salary_payments`: 0
 
 -- Table structure for table `sarafi_transactions`
 CREATE TABLE `sarafi_transactions` (
@@ -1157,9 +1329,9 @@ CREATE TABLE `sarafi_transactions` (
   KEY `tenant_id` (`tenant_id`),
   CONSTRAINT `fk_sarafi_transactions_tenant` FOREIGN KEY (`tenant_id`) REFERENCES `tenants` (`id`) ON DELETE CASCADE,
   CONSTRAINT `sarafi_transactions_ibfk_1` FOREIGN KEY (`customer_id`) REFERENCES `customers` (`id`) ON DELETE CASCADE
-) ENGINE=InnoDB AUTO_INCREMENT=34 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+) ENGINE=InnoDB AUTO_INCREMENT=48 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
--- Total rows in `sarafi_transactions`: 1
+-- Total rows in `sarafi_transactions`: 0
 
 -- Table structure for table `settings`
 CREATE TABLE `settings` (
@@ -1180,6 +1352,29 @@ CREATE TABLE `settings` (
 
 -- Total rows in `settings`: 2
 
+-- Table structure for table `subscription_payments`
+CREATE TABLE `subscription_payments` (
+  `id` int(11) NOT NULL AUTO_INCREMENT,
+  `subscription_id` int(11) NOT NULL,
+  `amount` decimal(10,2) NOT NULL,
+  `currency` varchar(10) NOT NULL DEFAULT 'USD',
+  `payment_date` date NOT NULL,
+  `payment_method` varchar(50) DEFAULT NULL,
+  `transaction_id` varchar(100) DEFAULT NULL,
+  `receipt_number` varchar(100) DEFAULT NULL,
+  `notes` text DEFAULT NULL,
+  `processed_by` int(11) DEFAULT NULL,
+  `created_at` timestamp NOT NULL DEFAULT current_timestamp(),
+  `updated_at` timestamp NOT NULL DEFAULT current_timestamp() ON UPDATE current_timestamp(),
+  PRIMARY KEY (`id`),
+  KEY `subscription_id` (`subscription_id`),
+  KEY `processed_by` (`processed_by`),
+  CONSTRAINT `fk_subscription_payments_subscription` FOREIGN KEY (`subscription_id`) REFERENCES `tenant_subscriptions` (`id`) ON DELETE CASCADE,
+  CONSTRAINT `fk_subscription_payments_user` FOREIGN KEY (`processed_by`) REFERENCES `users` (`id`) ON DELETE SET NULL
+) ENGINE=InnoDB AUTO_INCREMENT=17 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+-- Total rows in `subscription_payments`: 16
+
 -- Table structure for table `supplier_transactions`
 CREATE TABLE `supplier_transactions` (
   `id` int(11) NOT NULL AUTO_INCREMENT,
@@ -1187,7 +1382,7 @@ CREATE TABLE `supplier_transactions` (
   `supplier_id` int(11) NOT NULL,
   `reference_id` int(100) NOT NULL,
   `transaction_type` enum('Debit','Credit') NOT NULL,
-  `transaction_of` enum('ticket_sale','visa_sale','ticket_refund','date_change','fund','umrah','hotel','hotel_refund','ticket_reserve','jv_payment','visa_refund','hotel_refund','umrah_refund','additional_payment','weight_sale','supplier_bonus','fund_withdrawal') NOT NULL,
+  `transaction_of` enum('ticket_sale','visa_sale','ticket_refund','date_change','fund','umrah','hotel','hotel_refund','ticket_reserve','jv_payment','visa_refund','hotel_refund','umrah_refund','additional_payment','weight_sale','supplier_bonus','fund_withdrawal','umrah_date_change') NOT NULL,
   `amount` decimal(10,3) NOT NULL,
   `balance` decimal(15,3) NOT NULL,
   `remarks` text DEFAULT NULL,
@@ -1197,9 +1392,9 @@ CREATE TABLE `supplier_transactions` (
   PRIMARY KEY (`id`),
   KEY `tenant_id` (`tenant_id`),
   CONSTRAINT `fk_supplier_transactions_tenant` FOREIGN KEY (`tenant_id`) REFERENCES `tenants` (`id`) ON DELETE CASCADE
-) ENGINE=InnoDB AUTO_INCREMENT=796 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+) ENGINE=InnoDB AUTO_INCREMENT=939 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
--- Total rows in `supplier_transactions`: 9
+-- Total rows in `supplier_transactions`: 0
 
 -- Table structure for table `suppliers`
 CREATE TABLE `suppliers` (
@@ -1219,9 +1414,9 @@ CREATE TABLE `suppliers` (
   PRIMARY KEY (`id`),
   KEY `tenant_id` (`tenant_id`),
   CONSTRAINT `fk_suppliers_tenant` FOREIGN KEY (`tenant_id`) REFERENCES `tenants` (`id`) ON DELETE CASCADE
-) ENGINE=InnoDB AUTO_INCREMENT=30 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+) ENGINE=InnoDB AUTO_INCREMENT=57 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
--- Total rows in `suppliers`: 2
+-- Total rows in `suppliers`: 25
 
 -- Table structure for table `tenant_peering`
 CREATE TABLE `tenant_peering` (
@@ -1281,6 +1476,7 @@ CREATE TABLE `tenants` (
   `payment_due_date` date DEFAULT NULL,
   `last_payment_date` date DEFAULT NULL,
   `payment_warning_sent` tinyint(1) NOT NULL DEFAULT 0,
+  `last_warning_sent` datetime DEFAULT NULL,
   `created_at` timestamp NOT NULL DEFAULT current_timestamp(),
   `updated_at` timestamp NOT NULL DEFAULT current_timestamp() ON UPDATE current_timestamp(),
   `deleted_at` timestamp NULL DEFAULT NULL,
@@ -1305,9 +1501,9 @@ CREATE TABLE `testimonials` (
   PRIMARY KEY (`id`),
   KEY `tenant_id` (`tenant_id`),
   CONSTRAINT `fk_testimonials_tenant` FOREIGN KEY (`tenant_id`) REFERENCES `tenants` (`id`) ON DELETE CASCADE
-) ENGINE=InnoDB AUTO_INCREMENT=4 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+) ENGINE=InnoDB AUTO_INCREMENT=10 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
--- Total rows in `testimonials`: 0
+-- Total rows in `testimonials`: 6
 
 -- Table structure for table `ticket_bookings`
 CREATE TABLE `ticket_bookings` (
@@ -1322,7 +1518,7 @@ CREATE TABLE `ticket_bookings` (
   `pnr` varchar(100) NOT NULL,
   `origin` varchar(100) NOT NULL,
   `destination` varchar(100) NOT NULL,
-  `phone` varchar(15) NOT NULL,
+  `phone` varchar(15) DEFAULT NULL,
   `airline` varchar(100) NOT NULL,
   `gender` enum('Male','Female','Other') NOT NULL,
   `issue_date` date NOT NULL,
@@ -1342,14 +1538,12 @@ CREATE TABLE `ticket_bookings` (
   `return_origin` varchar(100) DEFAULT NULL,
   `return_destination` varchar(100) DEFAULT NULL,
   `created_by` int(20) NOT NULL,
-  `exchange_rate` decimal(10,5) DEFAULT NULL,
-  `market_exchange_rate` decimal(10,5) DEFAULT NULL,
   PRIMARY KEY (`id`),
   KEY `tenant_id` (`tenant_id`),
   CONSTRAINT `fk_ticket_bookings_tenant` FOREIGN KEY (`tenant_id`) REFERENCES `tenants` (`id`) ON DELETE CASCADE
-) ENGINE=InnoDB AUTO_INCREMENT=322 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+) ENGINE=InnoDB AUTO_INCREMENT=358 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
--- Total rows in `ticket_bookings`: 2
+-- Total rows in `ticket_bookings`: 17
 
 -- Table structure for table `ticket_reservations`
 CREATE TABLE `ticket_reservations` (
@@ -1363,7 +1557,7 @@ CREATE TABLE `ticket_reservations` (
   `pnr` varchar(100) NOT NULL,
   `origin` varchar(100) NOT NULL,
   `destination` varchar(100) NOT NULL,
-  `phone` varchar(15) NOT NULL,
+  `phone` varchar(15) DEFAULT NULL,
   `airline` varchar(100) NOT NULL,
   `gender` enum('Male','Female','Other') NOT NULL,
   `issue_date` date NOT NULL,
@@ -1381,16 +1575,13 @@ CREATE TABLE `ticket_reservations` (
   `return_date` date DEFAULT NULL,
   `return_origin` varchar(100) DEFAULT NULL,
   `return_destination` varchar(100) DEFAULT NULL,
-  `payment_currency` varchar(10) DEFAULT NULL,
   `created_by` int(50) NOT NULL,
-  `exchange_rate` decimal(10,5) DEFAULT NULL,
-  `market_exchange_rate` decimal(10,5) DEFAULT NULL,
   PRIMARY KEY (`id`),
   KEY `tenant_id` (`tenant_id`),
   CONSTRAINT `fk_ticket_reservations_tenant` FOREIGN KEY (`tenant_id`) REFERENCES `tenants` (`id`) ON DELETE CASCADE
-) ENGINE=InnoDB AUTO_INCREMENT=12 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+) ENGINE=InnoDB AUTO_INCREMENT=19 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
--- Total rows in `ticket_reservations`: 1
+-- Total rows in `ticket_reservations`: 0
 
 -- Table structure for table `ticket_weights`
 CREATE TABLE `ticket_weights` (
@@ -1401,8 +1592,6 @@ CREATE TABLE `ticket_weights` (
   `base_price` decimal(10,2) NOT NULL,
   `sold_price` decimal(10,2) NOT NULL,
   `profit` decimal(10,2) NOT NULL,
-  `market_exchange_rate` decimal(10,5) NOT NULL,
-  `exchange_rate` decimal(10,5) NOT NULL,
   `remarks` text DEFAULT NULL,
   `created_by` int(50) NOT NULL,
   `created_at` datetime NOT NULL,
@@ -1410,9 +1599,9 @@ CREATE TABLE `ticket_weights` (
   PRIMARY KEY (`id`),
   KEY `tenant_id` (`tenant_id`),
   CONSTRAINT `fk_ticket_weights_tenant` FOREIGN KEY (`tenant_id`) REFERENCES `tenants` (`id`) ON DELETE CASCADE
-) ENGINE=InnoDB AUTO_INCREMENT=8 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+) ENGINE=InnoDB AUTO_INCREMENT=28 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
--- Total rows in `ticket_weights`: 0
+-- Total rows in `ticket_weights`: 10
 
 -- Table structure for table `totp_recovery_codes`
 CREATE TABLE `totp_recovery_codes` (
@@ -1428,7 +1617,7 @@ CREATE TABLE `totp_recovery_codes` (
   KEY `user_id` (`user_id`,`user_type`),
   KEY `tenant_id` (`tenant_id`),
   CONSTRAINT `fk_totp_recovery_codes_tenant` FOREIGN KEY (`tenant_id`) REFERENCES `tenants` (`id`) ON DELETE CASCADE
-) ENGINE=InnoDB AUTO_INCREMENT=41 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+) ENGINE=InnoDB AUTO_INCREMENT=57 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
 -- Total rows in `totp_recovery_codes`: 8
 
@@ -1446,7 +1635,7 @@ CREATE TABLE `totp_secrets` (
   UNIQUE KEY `tenant_user_unique` (`tenant_id`,`user_id`,`user_type`),
   KEY `tenant_id` (`tenant_id`),
   CONSTRAINT `fk_totp_secrets_tenant` FOREIGN KEY (`tenant_id`) REFERENCES `tenants` (`id`) ON DELETE CASCADE
-) ENGINE=InnoDB AUTO_INCREMENT=10 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+) ENGINE=InnoDB AUTO_INCREMENT=12 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
 -- Total rows in `totp_secrets`: 1
 
@@ -1462,16 +1651,40 @@ CREATE TABLE `umrah_agreements` (
   KEY `booking_id` (`booking_id`),
   KEY `tenant_id` (`tenant_id`),
   CONSTRAINT `fk_umrah_agreements_tenant` FOREIGN KEY (`tenant_id`) REFERENCES `tenants` (`id`) ON DELETE CASCADE
-) ENGINE=InnoDB AUTO_INCREMENT=16 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
+) ENGINE=InnoDB AUTO_INCREMENT=18 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
 
--- Total rows in `umrah_agreements`: 3
+-- Total rows in `umrah_agreements`: 0
+
+-- Table structure for table `umrah_booking_services`
+CREATE TABLE `umrah_booking_services` (
+  `id` int(11) NOT NULL AUTO_INCREMENT,
+  `tenant_id` int(11) NOT NULL,
+  `booking_id` int(11) NOT NULL,
+  `service_type` enum('ticket','visa','hotel','transport','all') NOT NULL,
+  `supplier_id` int(11) NOT NULL,
+  `base_price` decimal(10,3) NOT NULL DEFAULT 0.000,
+  `sold_price` decimal(10,3) NOT NULL DEFAULT 0.000,
+  `profit` decimal(10,3) NOT NULL DEFAULT 0.000,
+  `currency` enum('USD','AFS') NOT NULL,
+  `created_at` timestamp NOT NULL DEFAULT current_timestamp(),
+  `updated_at` timestamp NOT NULL DEFAULT current_timestamp() ON UPDATE current_timestamp(),
+  PRIMARY KEY (`id`),
+  KEY `booking_id` (`booking_id`),
+  KEY `supplier_id` (`supplier_id`),
+  KEY `tenant_id` (`tenant_id`),
+  KEY `service_type` (`service_type`),
+  CONSTRAINT `fk_ub_services_booking` FOREIGN KEY (`booking_id`) REFERENCES `umrah_bookings` (`booking_id`) ON DELETE CASCADE,
+  CONSTRAINT `fk_ub_services_supplier` FOREIGN KEY (`supplier_id`) REFERENCES `suppliers` (`id`),
+  CONSTRAINT `fk_ub_services_tenant` FOREIGN KEY (`tenant_id`) REFERENCES `tenants` (`id`) ON DELETE CASCADE
+) ENGINE=InnoDB AUTO_INCREMENT=35 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+-- Total rows in `umrah_booking_services`: 0
 
 -- Table structure for table `umrah_bookings`
 CREATE TABLE `umrah_bookings` (
   `booking_id` int(11) NOT NULL AUTO_INCREMENT,
   `tenant_id` int(11) NOT NULL,
   `family_id` int(11) DEFAULT NULL,
-  `supplier` int(11) NOT NULL,
   `sold_to` int(11) NOT NULL,
   `paid_to` int(11) NOT NULL,
   `entry_date` date DEFAULT NULL,
@@ -1500,7 +1713,6 @@ CREATE TABLE `umrah_bookings` (
   `created_by` int(50) NOT NULL,
   `created_at` timestamp NOT NULL DEFAULT current_timestamp(),
   `updated_at` timestamp NOT NULL DEFAULT current_timestamp() ON UPDATE current_timestamp(),
-  `exchange_rate` decimal(10,5) NOT NULL,
   `remarks` varchar(100) NOT NULL,
   `status` enum('active','refunded') NOT NULL DEFAULT 'active',
   PRIMARY KEY (`booking_id`),
@@ -1510,99 +1722,9 @@ CREATE TABLE `umrah_bookings` (
   KEY `tenant_id` (`tenant_id`),
   CONSTRAINT `fk_umrah_bookings_tenant` FOREIGN KEY (`tenant_id`) REFERENCES `tenants` (`id`) ON DELETE CASCADE,
   CONSTRAINT `umrah_bookings_ibfk_1` FOREIGN KEY (`family_id`) REFERENCES `families` (`family_id`) ON DELETE SET NULL
-) ENGINE=InnoDB AUTO_INCREMENT=51 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+) ENGINE=InnoDB AUTO_INCREMENT=67 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
--- Total rows in `umrah_bookings`: 2
-
--- Table structure for table `umrah_cancellations`
-CREATE TABLE `umrah_cancellations` (
-  `id` int(11) NOT NULL AUTO_INCREMENT,
-  `tenant_id` int(11) NOT NULL,
-  `booking_id` int(11) NOT NULL,
-  `filename` varchar(255) NOT NULL,
-  `reason` text DEFAULT NULL,
-  `returned_items` longtext CHARACTER SET utf8mb4 COLLATE utf8mb4_bin DEFAULT NULL CHECK (json_valid(`returned_items`)),
-  `cancellation_fee` decimal(10,2) DEFAULT 0.00,
-  `refund_amount` decimal(10,2) DEFAULT 0.00,
-  `currency` varchar(10) DEFAULT 'USD',
-  `status` enum('pending','approved','rejected') DEFAULT 'pending',
-  `processed_by` int(11) DEFAULT NULL,
-  `approved_by` int(11) DEFAULT NULL,
-  `created_by` int(11) NOT NULL,
-  `created_at` timestamp NOT NULL DEFAULT current_timestamp(),
-  `updated_at` timestamp NOT NULL DEFAULT current_timestamp() ON UPDATE current_timestamp(),
-  PRIMARY KEY (`id`),
-  KEY `booking_id` (`booking_id`),
-  KEY `created_by` (`created_by`),
-  KEY `processed_by` (`processed_by`),
-  KEY `approved_by` (`approved_by`),
-  KEY `tenant_id` (`tenant_id`),
-  CONSTRAINT `fk_umrah_cancellations_tenant` FOREIGN KEY (`tenant_id`) REFERENCES `tenants` (`id`) ON DELETE CASCADE,
-  CONSTRAINT `umrah_cancellations_approved_by_fk` FOREIGN KEY (`approved_by`) REFERENCES `users` (`id`) ON DELETE SET NULL ON UPDATE CASCADE,
-  CONSTRAINT `umrah_cancellations_booking_fk` FOREIGN KEY (`booking_id`) REFERENCES `umrah_bookings` (`booking_id`) ON DELETE CASCADE ON UPDATE CASCADE,
-  CONSTRAINT `umrah_cancellations_created_by_fk` FOREIGN KEY (`created_by`) REFERENCES `users` (`id`) ON UPDATE CASCADE,
-  CONSTRAINT `umrah_cancellations_processed_by_fk` FOREIGN KEY (`processed_by`) REFERENCES `users` (`id`) ON DELETE SET NULL ON UPDATE CASCADE
-) ENGINE=InnoDB AUTO_INCREMENT=33 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
-
--- Total rows in `umrah_cancellations`: 0
-
--- Table structure for table `umrah_completions`
-CREATE TABLE `umrah_completions` (
-  `id` int(11) NOT NULL AUTO_INCREMENT,
-  `tenant_id` int(11) NOT NULL,
-  `booking_id` int(11) NOT NULL,
-  `filename` varchar(255) NOT NULL,
-  `document_details` text DEFAULT NULL,
-  `additional_notes` text DEFAULT NULL,
-  `created_by` int(11) NOT NULL,
-  `created_at` datetime NOT NULL,
-  PRIMARY KEY (`id`),
-  KEY `booking_id` (`booking_id`),
-  KEY `created_by` (`created_by`),
-  KEY `tenant_id` (`tenant_id`),
-  CONSTRAINT `fk_completion_booking` FOREIGN KEY (`booking_id`) REFERENCES `umrah_bookings` (`booking_id`) ON DELETE CASCADE,
-  CONSTRAINT `fk_completion_user` FOREIGN KEY (`created_by`) REFERENCES `users` (`id`) ON DELETE NO ACTION,
-  CONSTRAINT `fk_umrah_completions_tenant` FOREIGN KEY (`tenant_id`) REFERENCES `tenants` (`id`) ON DELETE CASCADE
-) ENGINE=InnoDB AUTO_INCREMENT=24 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
-
--- Total rows in `umrah_completions`: 1
-
--- Table structure for table `umrah_document_receipts`
-CREATE TABLE `umrah_document_receipts` (
-  `id` int(11) NOT NULL AUTO_INCREMENT,
-  `tenant_id` int(11) NOT NULL,
-  `booking_id` int(11) NOT NULL,
-  `filename` varchar(255) DEFAULT NULL,
-  `created_by` int(11) NOT NULL,
-  `created_at` datetime NOT NULL,
-  `notes` text DEFAULT NULL,
-  PRIMARY KEY (`id`),
-  KEY `booking_id` (`booking_id`),
-  KEY `created_by` (`created_by`),
-  KEY `tenant_id` (`tenant_id`),
-  CONSTRAINT `fk_document_receipts_booking` FOREIGN KEY (`booking_id`) REFERENCES `umrah_bookings` (`booking_id`) ON DELETE CASCADE ON UPDATE CASCADE,
-  CONSTRAINT `fk_document_receipts_user` FOREIGN KEY (`created_by`) REFERENCES `users` (`id`) ON DELETE CASCADE ON UPDATE CASCADE,
-  CONSTRAINT `fk_umrah_document_receipts_tenant` FOREIGN KEY (`tenant_id`) REFERENCES `tenants` (`id`) ON DELETE CASCADE
-) ENGINE=InnoDB AUTO_INCREMENT=16 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci COMMENT='Stores records of document receipts for Umrah bookings';
-
--- Total rows in `umrah_document_receipts`: 0
-
--- Table structure for table `umrah_documents`
-CREATE TABLE `umrah_documents` (
-  `id` int(11) NOT NULL AUTO_INCREMENT,
-  `tenant_id` int(11) NOT NULL,
-  `receipt_id` int(11) NOT NULL,
-  `document_type` varchar(100) NOT NULL,
-  `is_original` tinyint(1) NOT NULL DEFAULT 0,
-  `notes` text DEFAULT NULL,
-  PRIMARY KEY (`id`),
-  KEY `receipt_id` (`receipt_id`),
-  KEY `tenant_id` (`tenant_id`),
-  CONSTRAINT `fk_documents_receipt` FOREIGN KEY (`receipt_id`) REFERENCES `umrah_document_receipts` (`id`) ON DELETE CASCADE ON UPDATE CASCADE,
-  CONSTRAINT `fk_umrah_documents_tenant` FOREIGN KEY (`tenant_id`) REFERENCES `tenants` (`id`) ON DELETE CASCADE
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci COMMENT='Stores individual documents received from Umrah guests';
-
--- Total rows in `umrah_documents`: 0
+-- Total rows in `umrah_bookings`: 0
 
 -- Table structure for table `umrah_refunds`
 CREATE TABLE `umrah_refunds` (
@@ -1613,7 +1735,6 @@ CREATE TABLE `umrah_refunds` (
   `refund_amount` decimal(10,2) NOT NULL,
   `reason` text NOT NULL,
   `currency` varchar(10) NOT NULL DEFAULT 'USD',
-  `exchange_rate` decimal(10,4) DEFAULT 1.0000,
   `processed` tinyint(1) DEFAULT 0,
   `processed_by` int(11) DEFAULT NULL,
   `transaction_id` int(11) DEFAULT NULL,
@@ -1624,7 +1745,7 @@ CREATE TABLE `umrah_refunds` (
   KEY `processed_by` (`processed_by`),
   KEY `tenant_id` (`tenant_id`),
   CONSTRAINT `fk_umrah_refunds_tenant` FOREIGN KEY (`tenant_id`) REFERENCES `tenants` (`id`) ON DELETE CASCADE
-) ENGINE=InnoDB AUTO_INCREMENT=19 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+) ENGINE=InnoDB AUTO_INCREMENT=26 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
 -- Total rows in `umrah_refunds`: 0
 
@@ -1640,12 +1761,13 @@ CREATE TABLE `umrah_transactions` (
   `payment_amount` decimal(10,3) NOT NULL,
   `receipt` varchar(10) NOT NULL,
   `currency` varchar(3) NOT NULL DEFAULT 'USD',
+  `exchange_rate` decimal(10,3) DEFAULT NULL,
   `created_at` timestamp NOT NULL DEFAULT current_timestamp(),
   PRIMARY KEY (`id`),
   KEY `visa_id` (`umrah_booking_id`),
   KEY `tenant_id` (`tenant_id`),
   CONSTRAINT `fk_umrah_transactions_tenant` FOREIGN KEY (`tenant_id`) REFERENCES `tenants` (`id`) ON DELETE CASCADE
-) ENGINE=InnoDB AUTO_INCREMENT=45 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+) ENGINE=InnoDB AUTO_INCREMENT=97 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
 -- Total rows in `umrah_transactions`: 0
 
@@ -1739,12 +1861,13 @@ CREATE TABLE `users` (
   `totp_enabled` tinyint(1) NOT NULL DEFAULT 0,
   `fired` tinyint(1) DEFAULT 0,
   `fired_at` datetime DEFAULT NULL,
+  `updated_at` datetime DEFAULT NULL,
   `deleted_at` datetime DEFAULT NULL,
   PRIMARY KEY (`id`),
   UNIQUE KEY `tenant_email` (`tenant_id`,`email`),
   KEY `tenant_id` (`tenant_id`),
   CONSTRAINT `fk_users_tenant` FOREIGN KEY (`tenant_id`) REFERENCES `tenants` (`id`) ON DELETE CASCADE
-) ENGINE=InnoDB AUTO_INCREMENT=18 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+) ENGINE=InnoDB AUTO_INCREMENT=19 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
 -- Total rows in `users`: 5
 
@@ -1773,14 +1896,13 @@ CREATE TABLE `visa_applications` (
   `remarks` mediumtext DEFAULT NULL,
   `created_at` timestamp NOT NULL DEFAULT current_timestamp(),
   `updated_at` timestamp NOT NULL DEFAULT current_timestamp() ON UPDATE current_timestamp(),
-  `exchange_rate` decimal(10,5) NOT NULL,
   `created_by` int(50) NOT NULL,
   PRIMARY KEY (`id`),
   KEY `tenant_id` (`tenant_id`),
   CONSTRAINT `fk_visa_applications_tenant` FOREIGN KEY (`tenant_id`) REFERENCES `tenants` (`id`) ON DELETE CASCADE
-) ENGINE=InnoDB AUTO_INCREMENT=50 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+) ENGINE=InnoDB AUTO_INCREMENT=61 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
--- Total rows in `visa_applications`: 1
+-- Total rows in `visa_applications`: 0
 
 -- Table structure for table `visa_refunds`
 CREATE TABLE `visa_refunds` (
@@ -1791,7 +1913,6 @@ CREATE TABLE `visa_refunds` (
   `refund_amount` decimal(10,2) NOT NULL,
   `reason` mediumtext NOT NULL,
   `currency` varchar(10) NOT NULL DEFAULT 'USD',
-  `exchange_rate` decimal(10,4) NOT NULL DEFAULT 1.0000,
   `refund_date` datetime DEFAULT current_timestamp(),
   `processed` tinyint(1) DEFAULT 0,
   `processed_by` int(11) DEFAULT NULL,
@@ -1801,51 +1922,7 @@ CREATE TABLE `visa_refunds` (
   KEY `tenant_id` (`tenant_id`),
   CONSTRAINT `fk_visa_refunds_tenant` FOREIGN KEY (`tenant_id`) REFERENCES `tenants` (`id`) ON DELETE CASCADE,
   CONSTRAINT `visa_refunds_ibfk_1` FOREIGN KEY (`visa_id`) REFERENCES `visa_applications` (`id`) ON DELETE CASCADE
-) ENGINE=InnoDB AUTO_INCREMENT=4 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+) ENGINE=InnoDB AUTO_INCREMENT=10 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
--- Total rows in `visa_refunds`: 1
-
--- Table structure for table `visa_transactions`
-CREATE TABLE `visa_transactions` (
-  `id` int(11) NOT NULL AUTO_INCREMENT,
-  `tenant_id` int(11) NOT NULL,
-  `visa_id` int(11) NOT NULL,
-  `transaction_type` enum('Debit','Credit','','') NOT NULL,
-  `payment_date` date NOT NULL,
-  `payment_description` varchar(255) DEFAULT NULL,
-  `payment_amount` decimal(10,3) NOT NULL,
-  `receipt` varchar(10) NOT NULL,
-  `currency` varchar(3) NOT NULL DEFAULT 'USD',
-  `created_at` timestamp NOT NULL DEFAULT current_timestamp(),
-  PRIMARY KEY (`id`),
-  KEY `visa_id` (`visa_id`),
-  KEY `tenant_id` (`tenant_id`),
-  CONSTRAINT `fk_visa_transactions_tenant` FOREIGN KEY (`tenant_id`) REFERENCES `tenants` (`id`) ON DELETE CASCADE,
-  CONSTRAINT `visa_transactions_ibfk_1` FOREIGN KEY (`visa_id`) REFERENCES `visa_applications` (`id`) ON DELETE CASCADE
-) ENGINE=InnoDB AUTO_INCREMENT=69 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
-
--- Total rows in `visa_transactions`: 1
-
--- Table structure for table `subscription_payments`
-CREATE TABLE `subscription_payments` (
-  `id` int(11) NOT NULL AUTO_INCREMENT,
-  `subscription_id` int(11) NOT NULL,
-  `amount` decimal(10,2) NOT NULL,
-  `currency` varchar(10) NOT NULL DEFAULT 'USD',
-  `payment_date` date NOT NULL,
-  `payment_method` varchar(50) DEFAULT NULL,
-  `transaction_id` varchar(100) DEFAULT NULL,
-  `receipt_number` varchar(100) DEFAULT NULL,
-  `notes` text DEFAULT NULL,
-  `processed_by` int(11) DEFAULT NULL,
-  `created_at` timestamp NOT NULL DEFAULT current_timestamp(),
-  `updated_at` timestamp NOT NULL DEFAULT current_timestamp() ON UPDATE current_timestamp(),
-  PRIMARY KEY (`id`),
-  KEY `subscription_id` (`subscription_id`),
-  KEY `processed_by` (`processed_by`),
-  CONSTRAINT `fk_subscription_payments_subscription` FOREIGN KEY (`subscription_id`) REFERENCES `tenant_subscriptions` (`id`) ON DELETE CASCADE,
-  CONSTRAINT `fk_subscription_payments_user` FOREIGN KEY (`processed_by`) REFERENCES `users` (`id`) ON DELETE SET NULL
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
-
--- Total rows in `subscription_payments`: 0
+-- Total rows in `visa_refunds`: 0
 

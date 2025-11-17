@@ -133,14 +133,14 @@ $debtors = [];
 try {
     switch($type) {
         case 'ticket':
-            $mainQuery = "SELECT tb.id, CONCAT(tb.title, ' ', tb.passenger_name) as name, tb.pnr, tb.phone, tb.currency, tb.sold as total_amount, tb.issue_date as date FROM ticket_bookings tb JOIN clients c ON tb.sold_to = c.id WHERE c.client_type = 'agency' AND tb.tenant_id = ?";
+            $mainQuery = "SELECT tb.id, CONCAT(tb.title, ' ', tb.passenger_name) as name, tb.pnr, tb.phone, tb.currency, tb.sold as total_amount, tb.issue_date as date FROM ticket_bookings tb JOIN clients c ON tb.sold_to = c.id WHERE c.client_type = 'agency' AND tb.tenant_id = ? AND tb.imported = 0";
             $transactionTable = 'main_account_transactions';
             $amountField = 'amount';
             $referenceField = 'reference_id';
             $transactionOf = 'ticket_sale';
             break;
         case 'ticket_reserve':
-            $mainQuery = "SELECT tb.id, CONCAT(tb.title, ' ', tb.passenger_name) as name, tb.pnr, tb.phone, tb.currency, tb.sold as total_amount, tb.issue_date as date FROM ticket_reservations tb JOIN clients c ON tb.sold_to = c.id WHERE c.client_type = 'agency' AND tb.tenant_id = ?";
+            $mainQuery = "SELECT tb.id, CONCAT(tb.title, ' ', tb.passenger_name) as name, tb.pnr, tb.phone, tb.currency, tb.sold as total_amount, tb.issue_date as date FROM ticket_reservations tb JOIN clients c ON tb.sold_to = c.id WHERE c.client_type = 'agency' AND tb.tenant_id = ? AND tb.imported = 0";
             $transactionTable = 'main_account_transactions';
             $amountField = 'amount';
             $referenceField = 'reference_id';
@@ -148,7 +148,7 @@ try {
             break;
 
             case 'weight':
-                $mainQuery = "SELECT tw.id, CONCAT(tb.title, ' ', tb.passenger_name) as name, tb.pnr, tb.phone, tb.currency, tw.sold_price as total_amount, tw.created_at as date FROM ticket_weights tw JOIN ticket_bookings tb ON tw.ticket_id = tb.id JOIN clients c ON tb.sold_to = c.id WHERE c.client_type = 'agency' AND tw.tenant_id = ?";
+                $mainQuery = "SELECT tw.id, CONCAT(tb.title, ' ', tb.passenger_name) as name, tb.pnr, tb.phone, tb.currency, tw.sold_price as total_amount, tw.created_at as date FROM ticket_weights tw JOIN ticket_bookings tb ON tw.ticket_id = tb.id JOIN clients c ON tb.sold_to = c.id WHERE c.client_type = 'agency' AND tw.tenant_id = ? AND tw.imported = 0";
                 $transactionTable = 'main_account_transactions';
                 $amountField = 'amount';
                 $referenceField = 'reference_id';
@@ -156,7 +156,7 @@ try {
                 break;
 
         case 'datechange':
-            $mainQuery = "SELECT dc.id, CONCAT(dc.title, ' ', dc.passenger_name) as name, dc.pnr, dc.phone, dc.currency, (dc.supplier_penalty + dc.service_penalty) as total_amount, dc.created_at as date FROM date_change_tickets dc JOIN clients c ON dc.sold_to = c.id WHERE c.client_type = 'agency' AND dc.tenant_id = ?";
+            $mainQuery = "SELECT dc.id, CONCAT(dc.title, ' ', dc.passenger_name) as name, dc.pnr, dc.phone, dc.currency, (dc.supplier_penalty + dc.service_penalty) as total_amount, dc.created_at as date FROM date_change_tickets dc JOIN clients c ON dc.sold_to = c.id WHERE c.client_type = 'agency' AND dc.tenant_id = ? AND dc.imported = 0";
             $transactionTable = 'main_account_transactions';
             $amountField = 'amount';
             $referenceField = 'reference_id';
@@ -164,7 +164,7 @@ try {
             break;
 
         case 'refunded':
-            $mainQuery = "SELECT rt.id, CONCAT(rt.title, ' ', rt.passenger_name) as name, rt.pnr, rt.phone, rt.currency, rt.refund_to_passenger as total_amount, rt.issue_date as date FROM refunded_tickets rt JOIN clients c ON rt.sold_to = c.id WHERE c.client_type = 'agency' AND rt.tenant_id = ?";
+            $mainQuery = "SELECT rt.id, CONCAT(rt.title, ' ', rt.passenger_name) as name, rt.pnr, rt.phone, rt.currency, rt.refund_to_passenger as total_amount, rt.issue_date as date FROM refunded_tickets rt JOIN clients c ON rt.sold_to = c.id WHERE c.client_type = 'agency' AND rt.tenant_id = ? AND rt.imported = 0";
             $transactionTable = 'main_account_transactions';
             $amountField = 'amount';
             $referenceField = 'reference_id';
@@ -172,7 +172,7 @@ try {
             break;
 
         case 'umrah':
-            $mainQuery = "SELECT u.booking_id as id, u.name, fa.contact as phone, u.currency, u.sold_price as total_amount, u.entry_date as date FROM umrah_bookings u LEFT JOIN families fa ON u.family_id = fa.family_id JOIN clients c ON u.sold_to = c.id WHERE c.client_type = 'agency' and u.status = 'active' AND u.tenant_id = ?";
+            $mainQuery = "SELECT u.booking_id as id, u.name, fa.contact as phone, u.currency, u.sold_price as total_amount, u.entry_date as date FROM umrah_bookings u LEFT JOIN families fa ON u.family_id = fa.family_id JOIN clients c ON u.sold_to = c.id WHERE c.client_type = 'agency' and u.status = 'active' AND u.tenant_id = ? AND u.imported = 0";
             $transactionTable = 'umrah_transactions';
             $amountField = 'payment_amount';
             $referenceField = 'umrah_booking_id';
@@ -180,7 +180,7 @@ try {
             break;
 
         case 'visa':
-            $mainQuery = "SELECT v.id, CONCAT(v.title, ' ', v.applicant_name) as name, v.passport_number as pnr, v.phone, v.currency, v.sold as total_amount, v.receive_date as date FROM visa_applications v JOIN clients c ON v.sold_to = c.id WHERE c.client_type = 'agency' and v.status != 'refunded' AND v.tenant_id = ?";
+            $mainQuery = "SELECT v.id, CONCAT(v.title, ' ', v.applicant_name) as name, v.passport_number as pnr, v.phone, v.currency, v.sold as total_amount, v.receive_date as date FROM visa_applications v JOIN clients c ON v.sold_to = c.id WHERE c.client_type = 'agency' and v.status != 'refunded' AND v.tenant_id = ? AND v.imported = 0";
             $transactionTable = 'main_account_transactions';
             $amountField = 'amount';
             $referenceField = 'reference_id';
@@ -188,7 +188,7 @@ try {
             break;
 
         case 'hotel':
-            $mainQuery = "SELECT h.id, CONCAT(h.title, ' ', h.first_name, ' ', h.last_name) as name, h.order_id as pnr, h.contact_no as phone, h.currency, h.sold_amount as total_amount, h.issue_date as date FROM hotel_bookings h JOIN clients c ON h.sold_to = c.id WHERE c.client_type = 'agency' and h.status = 'active' AND h.tenant_id = ?";
+            $mainQuery = "SELECT h.id, CONCAT(h.title, ' ', h.first_name, ' ', h.last_name) as name, h.order_id as pnr, h.contact_no as phone, h.currency, h.sold_amount as total_amount, h.issue_date as date FROM hotel_bookings h JOIN clients c ON h.sold_to = c.id WHERE c.client_type = 'agency' and h.status = 'active' AND h.tenant_id = ? AND h.imported = 0";
             $transactionTable = 'main_account_transactions';
             $amountField = 'amount';
             $referenceField = 'reference_id';

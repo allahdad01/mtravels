@@ -1,10 +1,7 @@
 <?php
 /**
- * Get application settings
- * @param mysqli $conection_db Database connection
- * @return array|null Settings array or null if not found
+ * Common utility functions for the application
  */
-function getSettings($conection_db) {
-    return getSettingsMysqli($conection_db);
-}
-?> 
+
+// Add any additional utility functions here as needed
+?>
