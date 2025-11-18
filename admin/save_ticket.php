@@ -333,12 +333,41 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         $activity_log_stmt->execute();
         $activity_log_stmt->close();
 
+        // Send ticket notification email to client
+        require_once '../includes/functions.php';
+
+        // Get client email
+        $stmt_client_email = $conn->prepare("SELECT email FROM clients WHERE id = ? AND tenant_id = ?");
+        $stmt_client_email->bind_param("ii", $soldTo, $tenant_id);
+        $stmt_client_email->execute();
+        $stmt_client_email->bind_result($client_email);
+        $stmt_client_email->fetch();
+        $stmt_client_email->close();
+
+        if (!empty($client_email)) {
+            // Prepare ticket details for email
+            $ticketDetails = "
+                <div style='background: #f8f9fa; padding: 15px; border-radius: 5px; margin: 10px 0;'>
+                    <h4 style='margin-top: 0; color: #333;'>Flight Details:</h4>
+                    <p><strong>PNR:</strong> {$pnr}</p>
+                    <p><strong>Route:</strong> {$origin} → {$destination}</p>
+                    <p><strong>Airline:</strong> {$airline}</p>
+                    <p><strong>Departure:</strong> " . date('M d, Y', strtotime($departureDate)) . "</p>
+                    <p><strong>Passengers:</strong> " . count($passengers) . "</p>
+                    " . (!empty($returnDate) ? "<p><strong>Return Date:</strong> " . date('M d, Y', strtotime($returnDate)) . "</p>" : "") . "
+                </div>
+            ";
+
+            // Send notification email
+            sendTicketNotification($client_email, $client_name, 'Flight Ticket', $ticketDetails);
+        }
+
         // Commit transaction
         $conn->commit();
 
         // Return success response
         echo json_encode([
-            "status" => "success", 
+            "status" => "success",
             "message" => "Ticket booked successfully for " . count($passengers) . " passenger(s).",
             "totals" => [
                 "base" => $totalBase,

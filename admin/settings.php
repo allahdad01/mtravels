@@ -137,22 +137,117 @@ require_once('../includes/db.php');
                                     <div class="form-group">
                                         <label for="logo"><?= __('logo') ?></label>
                                         <div class="custom-file">
-                                            <input type="file" class="custom-file-input" id="logo" name="logo" 
+                                            <input type="file" class="custom-file-input" id="logo" name="logo"
                                                    accept="image/*" onchange="previewImage(this);">
                                             <label class="custom-file-label" for="logo"><?= __('choose_file') ?></label>
                                         </div>
                                         <div class="logo-preview mt-3">
                                             <?php if ($settings['logo']): ?>
-                                                <img src="../uploads/logo/<?= htmlspecialchars($settings['logo']); ?>" 
+                                                <img src="../uploads/logo/<?= htmlspecialchars($settings['logo']); ?>"
                                                      alt="Logo" id="logoPreview" class="img-thumbnail">
                                             <?php else: ?>
-                                                <img src="../assets/images/default-logo.png" 
+                                                <img src="../assets/images/default-logo.png"
                                                      alt="Default Logo" id="logoPreview" class="img-thumbnail">
                                             <?php endif; ?>
                                         </div>
-                                        <input type="hidden" name="existing_logo" 
+                                        <input type="hidden" name="existing_logo"
                                                value="<?= htmlspecialchars($settings['logo']); ?>">
                                     </div>
+                                </div>
+                            </div>
+
+                            <!-- SMTP Configuration Section -->
+                            <div class="row mt-4">
+                                <div class="col-12">
+                                    <h5 class="mb-3"><i class="feather icon-mail mr-2"></i>SMTP Configuration</h5>
+                                    <div class="card border-primary">
+                                        <div class="card-body">
+                                            <div class="row">
+                                                <div class="col-md-6">
+                                                    <div class="form-group">
+                                                        <label for="smtp_host">SMTP Host</label>
+                                                        <input type="text" class="form-control" id="smtp_host" name="smtp_host"
+                                                               value="<?= htmlspecialchars($settings['smtp_host'] ?? '') ?>"
+                                                               placeholder="smtp.gmail.com">
+                                                    </div>
+                                                </div>
+                                                <div class="col-md-3">
+                                                    <div class="form-group">
+                                                        <label for="smtp_port">SMTP Port</label>
+                                                        <input type="number" class="form-control" id="smtp_port" name="smtp_port"
+                                                               value="<?= htmlspecialchars($settings['smtp_port'] ?? '') ?>"
+                                                               placeholder="587" min="1" max="65535">
+                                                    </div>
+                                                </div>
+                                                <div class="col-md-3">
+                                                    <div class="form-group">
+                                                        <label for="smtp_encryption">Encryption</label>
+                                                        <select class="form-control" id="smtp_encryption" name="smtp_encryption">
+                                                            <option value="">None</option>
+                                                            <option value="tls" <?= ($settings['smtp_encryption'] ?? '') === 'tls' ? 'selected' : '' ?>>TLS</option>
+                                                            <option value="ssl" <?= ($settings['smtp_encryption'] ?? '') === 'ssl' ? 'selected' : '' ?>>SSL</option>
+                                                        </select>
+                                                    </div>
+                                                </div>
+                                            </div>
+
+                                            <div class="row">
+                                                <div class="col-md-6">
+                                                    <div class="form-group">
+                                                        <label for="smtp_username">SMTP Username</label>
+                                                        <input type="text" class="form-control" id="smtp_username" name="smtp_username"
+                                                               value="<?= htmlspecialchars($settings['smtp_username'] ?? '') ?>"
+                                                               placeholder="your-email@gmail.com">
+                                                    </div>
+                                                </div>
+                                                <div class="col-md-6">
+                                                    <div class="form-group">
+                                                        <label for="smtp_password">SMTP Password</label>
+                                                        <input type="password" class="form-control" id="smtp_password" name="smtp_password"
+                                                               value="<?= htmlspecialchars($settings['smtp_password'] ?? '') ?>"
+                                                               placeholder="Your SMTP password">
+                                                    </div>
+                                                </div>
+                                            </div>
+
+                                            <div class="row">
+                                                <div class="col-md-6">
+                                                    <div class="form-group">
+                                                        <label for="smtp_from_email">From Email</label>
+                                                        <input type="email" class="form-control" id="smtp_from_email" name="smtp_from_email"
+                                                               value="<?= htmlspecialchars($settings['smtp_from_email'] ?? '') ?>"
+                                                               placeholder="noreply@yourdomain.com">
+                                                    </div>
+                                                </div>
+                                                <div class="col-md-6">
+                                                    <div class="form-group">
+                                                        <label for="smtp_from_name">From Name</label>
+                                                        <input type="text" class="form-control" id="smtp_from_name" name="smtp_from_name"
+                                                               value="<?= htmlspecialchars($settings['smtp_from_name'] ?? '') ?>"
+                                                               placeholder="Your Agency Name">
+                                                    </div>
+                                                </div>
+                                            </div>
+
+                                            <!-- Test Email Section -->
+                                            <div class="row">
+                                                <div class="col-md-6">
+                                                    <div class="form-group">
+                                                        <label for="test_email">Test Email Address</label>
+                                                        <input type="email" class="form-control" id="test_email" name="test_email"
+                                                               placeholder="test@example.com">
+                                                    </div>
+                                                </div>
+                                                <div class="col-md-6 d-flex align-items-end">
+                                                    <button type="button" class="btn btn-info" id="testEmailBtn">
+                                                        <i class="feather icon-send mr-2"></i>Send Test Email
+                                                    </button>
+                                                </div>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
                                 </div>
                             </div>
 
@@ -301,8 +396,106 @@ document.querySelector('.custom-file-input').addEventListener('change', function
     nextSibling.innerHTML = fileName;
 });
 
-// Auto-hide alert after 5 seconds
+// Test Email functionality
 document.addEventListener('DOMContentLoaded', function() {
+    const testEmailBtn = document.getElementById('testEmailBtn');
+    if (testEmailBtn) {
+        testEmailBtn.addEventListener('click', function() {
+            const testEmail = document.getElementById('test_email').value;
+            const smtpHost = document.getElementById('smtp_host').value;
+            const smtpUsername = document.getElementById('smtp_username').value;
+            const smtpPassword = document.getElementById('smtp_password').value;
+
+            if (!testEmail) {
+                alert('Please enter a test email address.');
+                return;
+            }
+
+            if (!smtpHost || !smtpUsername || !smtpPassword) {
+                alert('Please configure SMTP settings first.');
+                return;
+            }
+
+            // Show loading
+            testEmailBtn.disabled = true;
+            testEmailBtn.innerHTML = '<i class="feather icon-loader mr-2"></i>Sending...';
+
+            // Send test email
+            fetch('send_test_email.php', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify({
+                    test_email: testEmail,
+                    smtp_host: smtpHost,
+                    smtp_port: document.getElementById('smtp_port').value,
+                    smtp_encryption: document.getElementById('smtp_encryption').value,
+                    smtp_username: smtpUsername,
+                    smtp_password: smtpPassword,
+                    smtp_from_email: document.getElementById('smtp_from_email').value,
+                    smtp_from_name: document.getElementById('smtp_from_name').value
+                })
+            })
+            .then(response => {
+                if (!response.ok) {
+                    throw new Error('Network response was not ok: ' + response.status);
+                }
+                return response.json();
+            })
+            .then(data => {
+                if (data.success) {
+                    // Show success message
+                    showNotification('Test email sent successfully to ' + testEmail, 'success');
+                } else {
+                    // Show error message
+                    showNotification('Failed to send test email: ' + (data.message || 'Unknown error'), 'error');
+                }
+            })
+            .catch(error => {
+                console.error('Error:', error);
+                showNotification('Error sending test email. Please check your configuration and try again.', 'error');
+            })
+            .finally(() => {
+                // Reset button
+                testEmailBtn.disabled = false;
+                testEmailBtn.innerHTML = '<i class="feather icon-send mr-2"></i>Send Test Email';
+            });
+        });
+    }
+
+    // Notification function
+    function showNotification(message, type = 'info') {
+        // Remove existing notifications
+        const existingNotifications = document.querySelectorAll('.notification-toast');
+        existingNotifications.forEach(notification => notification.remove());
+
+        // Create notification element
+        const notification = document.createElement('div');
+        notification.className = `alert alert-${type === 'error' ? 'danger' : type} alert-dismissible fade show notification-toast`;
+        notification.style.cssText = 'position: fixed; top: 20px; right: 20px; z-index: 9999; min-width: 300px; box-shadow: 0 4px 6px rgba(0,0,0,0.1);';
+        notification.innerHTML = `
+            <div class="d-flex align-items-center">
+                <i class="feather icon-${type === 'success' ? 'check-circle' : type === 'error' ? 'alert-circle' : 'info'} mr-2"></i>
+                <strong>${message}</strong>
+            </div>
+            <button type="button" class="close" data-dismiss="alert" aria-label="Close">
+                <span aria-hidden="true">&times;</span>
+            </button>
+        `;
+
+        // Add to page
+        document.body.appendChild(notification);
+
+        // Auto-hide after 5 seconds
+        setTimeout(function() {
+            $(notification).fadeOut('slow', function() {
+                $(this).remove();
+            });
+        }, 5000);
+    }
+
+    // Auto-hide alert after 5 seconds
     const alert = document.querySelector('.alert');
     if (alert) {
         setTimeout(function() {

@@ -92,8 +92,17 @@ if (empty($errors)) {
     $user_id = $conn->insert_id;
     $stmt->close();
 
+    // Send credentials email to user and tenant (using platform SMTP for super admin actions)
+    require_once '../includes/functions.php';
+    sendUserCredentialsEmail($email, $name, $password, $role, $tenant_id);
+
+    // Also send notification to tenant admin about new user (if tenant exists)
+    if ($tenant_id) {
+        sendTenantUserNotificationEmail($tenant_id, $name, $email, $role);
+    }
+
     // Log action
-    $stmt = $conn->prepare("INSERT INTO audit_logs (user_id, action, entity_type, entity_id, details, ip_address, created_at) 
+    $stmt = $conn->prepare("INSERT INTO audit_logs (user_id, action, entity_type, entity_id, details, ip_address, created_at)
                             VALUES (?, 'create_user', 'user', ?, ?, ?, NOW())");
     $details = json_encode(['name' => $name, 'email' => $email, 'role' => $role, 'tenant_id' => $tenant_id]);
     $ip_address = $_SERVER['REMOTE_ADDR'];

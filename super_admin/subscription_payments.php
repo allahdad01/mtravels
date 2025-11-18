@@ -81,6 +81,11 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 }
 
                 $pdo->commit();
+
+                // Send payment confirmation email to tenant
+                require_once '../includes/functions.php';
+                sendPaymentConfirmationEmail($tenant_id, $amount, $currency, $payment_date, $billing_cycle);
+
                 // Redirect to prevent form resubmission
                 header('Location: subscription_payments.php?success=1');
                 exit();

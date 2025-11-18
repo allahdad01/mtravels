@@ -142,6 +142,34 @@ if ($stmt->execute()) {
         $service_stmt->close();
     }
 
+    // Send email notification to client
+    require_once '../includes/functions.php';
+
+    // Get client email
+    $stmt_client_email = $conn->prepare("SELECT email FROM clients WHERE id = ? AND tenant_id = ?");
+    $stmt_client_email->bind_param("ii", $soldTo, $tenant_id);
+    $stmt_client_email->execute();
+    $client_email_result = $stmt_client_email->get_result();
+    $client_email_data = $client_email_result->fetch_assoc();
+    $client_email = $client_email_data['email'];
+    $stmt_client_email->close();
+
+    if (!empty($client_email)) {
+        $currency = isset($processed_services[0]['currency']) ? $processed_services[0]['currency'] : 'USD';
+        $ticketDetails = "
+            <strong>Booking ID:</strong> {$umrah_id}<br>
+            <strong>Passenger Name:</strong> {$name}<br>
+            <strong>Flight Date:</strong> {$flight_date}<br>
+            <strong>Return Date:</strong> {$return_date}<br>
+            <strong>Room Type:</strong> {$room_type}<br>
+            <strong>Total Amount:</strong> {$total_sold_price} {$currency}<br>
+            <strong>Amount Paid:</strong> {$amount_paid} {$currency}<br>
+            <strong>Due Amount:</strong> {$due} {$currency}
+        ";
+
+        sendTicketNotification($client_email, $client_name, 'Umrah', $ticketDetails);
+    }
+
     echo json_encode(["success" => true]);
 } else {
     echo json_encode(["success" => false, "error" => $stmt->error]);

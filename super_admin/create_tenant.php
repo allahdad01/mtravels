@@ -90,9 +90,13 @@ if (empty($errors)) {
     $stmt->execute();
     $stmt->close();
 
+    // Send welcome email to tenant
+    require_once '../includes/functions.php';
+    sendTenantWelcomeEmail($billing_email, $name, $agency_name, $subdomain);
+
     // Log action
     $user_id = $_SESSION['user_id'];
-    $stmt = $conn->prepare("INSERT INTO audit_logs (user_id, action, entity_type, entity_id, details, ip_address, created_at) 
+    $stmt = $conn->prepare("INSERT INTO audit_logs (user_id, action, entity_type, entity_id, details, ip_address, created_at)
                             VALUES (?, 'create_tenant', 'tenant', ?, ?, ?, NOW())");
     $details = json_encode(['name' => $name, 'subdomain' => $subdomain, 'identifier' => $identifier, 'plan' => $plan]);
     $ip_address = $_SERVER['REMOTE_ADDR'];

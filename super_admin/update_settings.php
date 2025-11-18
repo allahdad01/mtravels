@@ -48,6 +48,15 @@ $default_currency = $_POST['default_currency'] ?? '';
 $max_users_per_tenant = $_POST['max_users_per_tenant'] ?? '';
 $api_enabled = $_POST['api_enabled'] ?? '';
 
+// SMTP configuration
+$smtp_host = $_POST['smtp_host'] ?? '';
+$smtp_port = $_POST['smtp_port'] ?? '';
+$smtp_encryption = $_POST['smtp_encryption'] ?? '';
+$smtp_username = $_POST['smtp_username'] ?? '';
+$smtp_password = $_POST['smtp_password'] ?? '';
+$smtp_from_email = $_POST['smtp_from_email'] ?? '';
+$smtp_from_name = $_POST['smtp_from_name'] ?? '';
+
 // Handle file uploads
 $platform_logo = $_FILES['platform_logo'] ?? null;
 $platform_favicon = $_FILES['platform_favicon'] ?? null;
@@ -74,6 +83,19 @@ if (!empty($support_email) && !filter_var($support_email, FILTER_VALIDATE_EMAIL)
 }
 if (!empty($contact_email) && !filter_var($contact_email, FILTER_VALIDATE_EMAIL)) {
     $errors[] = "Invalid contact email format.";
+}
+if (!empty($smtp_from_email) && !filter_var($smtp_from_email, FILTER_VALIDATE_EMAIL)) {
+    $errors[] = "Invalid SMTP from email format.";
+}
+
+// Validate SMTP port
+if (!empty($smtp_port) && (!is_numeric($smtp_port) || $smtp_port < 1 || $smtp_port > 65535)) {
+    $errors[] = "SMTP port must be a number between 1 and 65535.";
+}
+
+// Validate SMTP encryption
+if (!empty($smtp_encryption) && !in_array($smtp_encryption, ['tls', 'ssl'])) {
+    $errors[] = "SMTP encryption must be either 'tls' or 'ssl'.";
 }
 
 // Validate URL formats
@@ -175,6 +197,14 @@ if (empty($errors)) {
         ['key' => 'default_currency', 'value' => $default_currency, 'type' => 'string', 'description' => 'Default currency for new tenants'],
         ['key' => 'max_users_per_tenant', 'value' => $max_users_per_tenant, 'type' => 'integer', 'description' => 'Maximum users allowed per tenant on basic plan'],
         ['key' => 'api_enabled', 'value' => $api_enabled, 'type' => 'boolean', 'description' => 'Whether API access is enabled globally'],
+        // SMTP settings
+        ['key' => 'smtp_host', 'value' => $smtp_host, 'type' => 'string', 'description' => 'SMTP server hostname'],
+        ['key' => 'smtp_port', 'value' => $smtp_port, 'type' => 'integer', 'description' => 'SMTP server port'],
+        ['key' => 'smtp_encryption', 'value' => $smtp_encryption, 'type' => 'string', 'description' => 'SMTP encryption type (tls/ssl)'],
+        ['key' => 'smtp_username', 'value' => $smtp_username, 'type' => 'string', 'description' => 'SMTP authentication username'],
+        ['key' => 'smtp_password', 'value' => $smtp_password, 'type' => 'string', 'description' => 'SMTP authentication password'],
+        ['key' => 'smtp_from_email', 'value' => $smtp_from_email, 'type' => 'string', 'description' => 'Email address to send from'],
+        ['key' => 'smtp_from_name', 'value' => $smtp_from_name, 'type' => 'string', 'description' => 'Name to display in sent emails'],
     ];
 
     // Handle file uploads - only add to settings if new files were uploaded
@@ -215,7 +245,13 @@ if (empty($errors)) {
         'max_users_per_tenant' => $max_users_per_tenant,
         'api_enabled' => $api_enabled,
         'logo_updated' => !!$platform_logo_path,
-        'favicon_updated' => !!$platform_favicon_path
+        'favicon_updated' => !!$platform_favicon_path,
+        'smtp_host' => $smtp_host,
+        'smtp_port' => $smtp_port,
+        'smtp_encryption' => $smtp_encryption,
+        'smtp_username' => $smtp_username,
+        'smtp_from_email' => $smtp_from_email,
+        'smtp_from_name' => $smtp_from_name
     ]);
     $ip_address = $_SERVER['REMOTE_ADDR'];
     $stmt->bind_param('iss', $user_id, $details, $ip_address);

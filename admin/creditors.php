@@ -249,6 +249,23 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['pay'])) {
                 throw new Exception("Failed to create notification");
             }
             
+            // Send email notification to creditor
+            require_once '../includes/functions.php';
+    
+            // Get creditor email
+            $stmt_creditor_email = $conn->prepare("SELECT email FROM creditors WHERE id = ? AND tenant_id = ?");
+            $stmt_creditor_email->bind_param("ii", $creditor_id, $tenant_id);
+            $stmt_creditor_email->execute();
+            $creditor_email_result = $stmt_creditor_email->get_result();
+            $creditor_email_data = $creditor_email_result->fetch_assoc();
+            $creditor_email = $creditor_email_data['email'];
+            $stmt_creditor_email->close();
+    
+            if (!empty($creditor_email)) {
+                $message = "Payment of {$converted_amount} {$creditor_currency} has been processed. " . (!empty($exchange_info) ? $exchange_info : "");
+                sendAccountNotification($creditor_email, $creditor['name'], 'creditor', $new_balance, $creditor_currency, $message);
+            }
+    
             $conn->commit();
             $_SESSION['success_message'] = __("payment_processed_successfully");
         } else {

@@ -298,6 +298,33 @@ $supplier = isset($_POST['supplier']) ? DbSecurity::validateInput($_POST['suppli
     $stmtLog->execute();
     $stmtLog->close();
 
+    // Send email notification to client
+    require_once '../includes/functions.php';
+
+    // Get client email
+    $stmt_client_email = $conn->prepare("SELECT email FROM clients WHERE id = ? AND tenant_id = ?");
+    $stmt_client_email->bind_param("ii", $soldTo, $tenant_id);
+    $stmt_client_email->execute();
+    $client_email_result = $stmt_client_email->get_result();
+    $client_email_data = $client_email_result->fetch_assoc();
+    $client_email = $client_email_data['email'];
+    $stmt_client_email->close();
+
+    if (!empty($client_email)) {
+        $ticketDetails = "
+            <strong>Application ID:</strong> {$visaApplicationId}<br>
+            <strong>Applicant Name:</strong> {$applicantName}<br>
+            <strong>Passport Number:</strong> {$passportNumber}<br>
+            <strong>Country:</strong> {$country}<br>
+            <strong>Visa Type:</strong> {$visaType}<br>
+            <strong>Applied Date:</strong> {$appliedDate}<br>
+            <strong>Issued Date:</strong> {$issuedDate}<br>
+            <strong>Total Amount:</strong> {$sold} {$currency}
+        ";
+
+        sendTicketNotification($client_email, $clientName, 'Visa', $ticketDetails);
+    }
+
     echo json_encode(['status' => 'success', 'message' => 'Visa application, transaction, and notification added successfully.']);
 } catch (Exception $e) {
     $conn->rollback();

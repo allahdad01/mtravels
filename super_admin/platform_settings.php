@@ -644,27 +644,118 @@ input:checked + .slider:before {
                                                 </div>
                                             </div>
 
+                                            <!-- SMTP Configuration Section -->
+                                            <div class="settings-section">
+                                                <div class="section-title">
+                                                    <div class="section-icon">📧</div>
+                                                    SMTP Configuration
+                                                </div>
+
+                                                <div class="row">
+                                                    <div class="col-md-6">
+                                                        <div class="form-group">
+                                                            <label for="smtp_host">SMTP Host</label>
+                                                            <input type="text" class="form-control" id="smtp_host" name="smtp_host"
+                                                                   value="<?= htmlspecialchars($settings_map['smtp_host'] ?? '') ?>"
+                                                                   placeholder="smtp.gmail.com">
+                                                        </div>
+                                                    </div>
+                                                    <div class="col-md-3">
+                                                        <div class="form-group">
+                                                            <label for="smtp_port">SMTP Port</label>
+                                                            <input type="number" class="form-control" id="smtp_port" name="smtp_port"
+                                                                   value="<?= htmlspecialchars($settings_map['smtp_port'] ?? '') ?>"
+                                                                   placeholder="587" min="1" max="65535">
+                                                        </div>
+                                                    </div>
+                                                    <div class="col-md-3">
+                                                        <div class="form-group">
+                                                            <label for="smtp_encryption">Encryption</label>
+                                                            <select class="form-control" id="smtp_encryption" name="smtp_encryption">
+                                                                <option value="">None</option>
+                                                                <option value="tls" <?= ($settings_map['smtp_encryption'] ?? '') === 'tls' ? 'selected' : '' ?>>TLS</option>
+                                                                <option value="ssl" <?= ($settings_map['smtp_encryption'] ?? '') === 'ssl' ? 'selected' : '' ?>>SSL</option>
+                                                            </select>
+                                                        </div>
+                                                    </div>
+                                                </div>
+
+                                                <div class="row">
+                                                    <div class="col-md-6">
+                                                        <div class="form-group">
+                                                            <label for="smtp_username">SMTP Username</label>
+                                                            <input type="text" class="form-control" id="smtp_username" name="smtp_username"
+                                                                   value="<?= htmlspecialchars($settings_map['smtp_username'] ?? '') ?>"
+                                                                   placeholder="your-email@gmail.com">
+                                                        </div>
+                                                    </div>
+                                                    <div class="col-md-6">
+                                                        <div class="form-group">
+                                                            <label for="smtp_password">SMTP Password</label>
+                                                            <input type="password" class="form-control" id="smtp_password" name="smtp_password"
+                                                                   value="<?= htmlspecialchars($settings_map['smtp_password'] ?? '') ?>"
+                                                                   placeholder="Your SMTP password">
+                                                        </div>
+                                                    </div>
+                                                </div>
+
+                                                <div class="row">
+                                                    <div class="col-md-6">
+                                                        <div class="form-group">
+                                                            <label for="smtp_from_email">From Email</label>
+                                                            <input type="email" class="form-control" id="smtp_from_email" name="smtp_from_email"
+                                                                   value="<?= htmlspecialchars($settings_map['smtp_from_email'] ?? '') ?>"
+                                                                   placeholder="noreply@yourdomain.com">
+                                                        </div>
+                                                    </div>
+                                                    <div class="col-md-6">
+                                                        <div class="form-group">
+                                                            <label for="smtp_from_name">From Name</label>
+                                                            <input type="text" class="form-control" id="smtp_from_name" name="smtp_from_name"
+                                                                   value="<?= htmlspecialchars($settings_map['smtp_from_name'] ?? '') ?>"
+                                                                   placeholder="Your Platform Name">
+                                                        </div>
+                                                    </div>
+                                                </div>
+
+                                                <!-- Test Email Section -->
+                                                <div class="row">
+                                                    <div class="col-md-6">
+                                                        <div class="form-group">
+                                                            <label for="test_email">Test Email Address</label>
+                                                            <input type="email" class="form-control" id="test_email" name="test_email"
+                                                                   placeholder="test@example.com">
+                                                        </div>
+                                                    </div>
+                                                    <div class="col-md-6 d-flex align-items-end">
+                                                        <button type="button" class="btn btn-info" id="testEmailBtn">
+                                                            <i class="feather icon-send mr-2"></i>Send Test Email
+                                                        </button>
+                                                    </div>
+                                                </div>
+                                            </div>
+
                                             <!-- Platform Configuration Section -->
                                             <div class="settings-section">
                                                 <div class="section-title">
                                                     <div class="section-icon">⚙️</div>
                                                     Platform Configuration
                                                 </div>
-                                                
+
                                                 <div class="row">
                                                     <div class="col-md-4">
                                                         <div class="form-group">
                                                             <label for="default_currency">Default Currency</label>
-                                                            <input type="text" class="form-control" id="default_currency" name="default_currency" 
-                                                                   value="<?= htmlspecialchars($settings_map['default_currency'] ?? '') ?>" 
+                                                            <input type="text" class="form-control" id="default_currency" name="default_currency"
+                                                                   value="<?= htmlspecialchars($settings_map['default_currency'] ?? '') ?>"
                                                                    placeholder="USD" maxlength="3" required>
                                                         </div>
                                                     </div>
                                                     <div class="col-md-4">
                                                         <div class="form-group">
                                                             <label for="max_users_per_tenant">Max Users Per Tenant</label>
-                                                            <input type="number" class="form-control" id="max_users_per_tenant" name="max_users_per_tenant" 
-                                                                   value="<?= htmlspecialchars($settings_map['max_users_per_tenant'] ?? '') ?>" 
+                                                            <input type="number" class="form-control" id="max_users_per_tenant" name="max_users_per_tenant"
+                                                                   value="<?= htmlspecialchars($settings_map['max_users_per_tenant'] ?? '') ?>"
                                                                    placeholder="100" min="1" required>
                                                         </div>
                                                     </div>
@@ -675,7 +766,7 @@ input:checked + .slider:before {
                                                                 <span class="mr-2">Disabled</span>
                                                                 <label class="toggle-switch">
                                                                     <input type="hidden" name="api_enabled" value="false">
-                                                                    <input type="checkbox" id="api_enabled" name="api_enabled" value="true" 
+                                                                    <input type="checkbox" id="api_enabled" name="api_enabled" value="true"
                                                                            <?= ($settings_map['api_enabled'] ?? '') === 'true' ? 'checked' : '' ?>>
                                                                     <span class="slider"></span>
                                                                 </label>
@@ -1005,6 +1096,66 @@ document.addEventListener('DOMContentLoaded', function() {
             if (hiddenInput) {
                 hiddenInput.value = this.checked ? 'true' : 'false';
             }
+        });
+    }
+
+    // Test Email functionality
+    const testEmailBtn = document.getElementById('testEmailBtn');
+    if (testEmailBtn) {
+        testEmailBtn.addEventListener('click', function() {
+            const testEmail = document.getElementById('test_email').value;
+            const smtpHost = document.getElementById('smtp_host').value;
+            const smtpUsername = document.getElementById('smtp_username').value;
+            const smtpPassword = document.getElementById('smtp_password').value;
+
+            if (!testEmail) {
+                showNotification('Please enter a test email address.', 'error');
+                return;
+            }
+
+            if (!smtpHost || !smtpUsername || !smtpPassword) {
+                showNotification('Please configure SMTP settings first.', 'error');
+                return;
+            }
+
+            // Show loading
+            testEmailBtn.disabled = true;
+            testEmailBtn.innerHTML = '<i class="feather icon-loader mr-2"></i>Sending...';
+
+            // Send test email
+            fetch('send_test_email.php', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify({
+                    test_email: testEmail,
+                    smtp_host: smtpHost,
+                    smtp_port: document.getElementById('smtp_port').value,
+                    smtp_encryption: document.getElementById('smtp_encryption').value,
+                    smtp_username: smtpUsername,
+                    smtp_password: smtpPassword,
+                    smtp_from_email: document.getElementById('smtp_from_email').value,
+                    smtp_from_name: document.getElementById('smtp_from_name').value
+                })
+            })
+            .then(response => response.json())
+            .then(data => {
+                if (data.success) {
+                    showNotification('Test email sent successfully!', 'success');
+                } else {
+                    showNotification('Failed to send test email: ' + data.message, 'error');
+                }
+            })
+            .catch(error => {
+                console.error('Error:', error);
+                showNotification('Error sending test email. Please try again.', 'error');
+            })
+            .finally(() => {
+                // Reset button
+                testEmailBtn.disabled = false;
+                testEmailBtn.innerHTML = '<i class="feather icon-send mr-2"></i>Send Test Email';
+            });
         });
     }
 });

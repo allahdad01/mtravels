@@ -10,7 +10,8 @@
         "endroid/qr-code": "^5.1",
         "moment/moment": "^2.30",
         "mpdf/mpdf": "^8.2",
-        "predis/predis": "^2.2"
+        "predis/predis": "^2.2",
+        "phpmailer/phpmailer": "^7.0"
     },
     "config": {
         "allow-plugins": {

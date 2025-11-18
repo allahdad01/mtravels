@@ -30,6 +30,15 @@ $title = isset($_POST['title']) ? DbSecurity::validateInput($_POST['title'], 'st
 // Validate agency_name
 $agency_name = isset($_POST['agency_name']) ? DbSecurity::validateInput($_POST['agency_name'], 'string', ['maxlength' => 255]) : null;
 
+// Validate SMTP settings
+$smtp_host = isset($_POST['smtp_host']) ? DbSecurity::validateInput($_POST['smtp_host'], 'string', ['maxlength' => 255]) : null;
+$smtp_port = isset($_POST['smtp_port']) ? DbSecurity::validateInput($_POST['smtp_port'], 'int', ['min' => 1, 'max' => 65535]) : null;
+$smtp_encryption = isset($_POST['smtp_encryption']) ? DbSecurity::validateInput($_POST['smtp_encryption'], 'string', ['maxlength' => 10]) : null;
+$smtp_username = isset($_POST['smtp_username']) ? DbSecurity::validateInput($_POST['smtp_username'], 'string', ['maxlength' => 255]) : null;
+$smtp_password = isset($_POST['smtp_password']) ? DbSecurity::validateInput($_POST['smtp_password'], 'string', ['maxlength' => 255]) : null;
+$smtp_from_email = isset($_POST['smtp_from_email']) ? DbSecurity::validateInput($_POST['smtp_from_email'], 'email') : null;
+$smtp_from_name = isset($_POST['smtp_from_name']) ? DbSecurity::validateInput($_POST['smtp_from_name'], 'string', ['maxlength' => 255]) : null;
+
 // Validate id
 $id = isset($_POST['id']) ? DbSecurity::validateInput($_POST['id'], 'int', ['min' => 0]) : null;
 
@@ -49,8 +58,17 @@ $id = isset($_POST['id']) ? DbSecurity::validateInput($_POST['id'], 'int', ['min
     $address = $_POST['address'];
     $logo = $_FILES['logo'];
 
+    // SMTP settings
+    $smtp_host = $_POST['smtp_host'] ?? '';
+    $smtp_port = $_POST['smtp_port'] ?? '';
+    $smtp_encryption = $_POST['smtp_encryption'] ?? '';
+    $smtp_username = $_POST['smtp_username'] ?? '';
+    $smtp_password = $_POST['smtp_password'] ?? '';
+    $smtp_from_email = $_POST['smtp_from_email'] ?? '';
+    $smtp_from_name = $_POST['smtp_from_name'] ?? '';
+
     // Get current settings for activity log
-    $getCurrentSettingsQuery = "SELECT agency_name, title, phone, email, address, logo FROM settings WHERE id = ? AND tenant_id = ?";
+    $getCurrentSettingsQuery = "SELECT agency_name, title, phone, email, address, logo, smtp_host, smtp_port, smtp_encryption, smtp_username, smtp_from_email, smtp_from_name FROM settings WHERE id = ? AND tenant_id = ?";
     $getCurrentSettingsStmt = $conn->prepare($getCurrentSettingsQuery);
     $getCurrentSettingsStmt->bind_param("ii", $id, $tenant_id);
     $getCurrentSettingsStmt->execute();
@@ -76,15 +94,18 @@ $id = isset($_POST['id']) ? DbSecurity::validateInput($_POST['id'], 'int', ['min
         $logo_path = $_POST['existing_logo'];
     }
 
-    // Update query to save logo name (not full path)
+    // Update query to save logo name and SMTP settings (not full path)
     $query = "
         UPDATE settings SET
-            agency_name = ?, title = ?, phone = ?, email = ?, address = ?, logo = ?
+            agency_name = ?, title = ?, phone = ?, email = ?, address = ?, logo = ?,
+            smtp_host = ?, smtp_port = ?, smtp_encryption = ?, smtp_username = ?, smtp_password = ?, smtp_from_email = ?, smtp_from_name = ?
         WHERE id = ? AND tenant_id = ?
     ";
 
     $stmt = $conn->prepare($query);
-    $stmt->bind_param("ssssssii", $agency_name, $title, $phone, $email, $address, $logo_path, $id, $tenant_id);
+    $stmt->bind_param("sssssssssssssii", $agency_name, $title, $phone, $email, $address, $logo_path,
+                     $smtp_host, $smtp_port, $smtp_encryption, $smtp_username, $smtp_password, $smtp_from_email, $smtp_from_name,
+                     $id, $tenant_id);
     $stmt->execute();
 
     if ($stmt->affected_rows > 0) {
@@ -101,9 +122,15 @@ $id = isset($_POST['id']) ? DbSecurity::validateInput($_POST['id'], 'int', ['min
             'phone' => $oldSettings['phone'],
             'email' => $oldSettings['email'],
             'address' => $oldSettings['address'],
-            'logo' => $oldSettings['logo']
+            'logo' => $oldSettings['logo'],
+            'smtp_host' => $oldSettings['smtp_host'] ?? '',
+            'smtp_port' => $oldSettings['smtp_port'] ?? '',
+            'smtp_encryption' => $oldSettings['smtp_encryption'] ?? '',
+            'smtp_username' => $oldSettings['smtp_username'] ?? '',
+            'smtp_from_email' => $oldSettings['smtp_from_email'] ?? '',
+            'smtp_from_name' => $oldSettings['smtp_from_name'] ?? ''
         ]);
-        
+
         // Create new values JSON
         $newValues = json_encode([
             'id' => $id,
@@ -112,7 +139,13 @@ $id = isset($_POST['id']) ? DbSecurity::validateInput($_POST['id'], 'int', ['min
             'phone' => $phone,
             'email' => $email,
             'address' => $address,
-            'logo' => $logo_path
+            'logo' => $logo_path,
+            'smtp_host' => $smtp_host,
+            'smtp_port' => $smtp_port,
+            'smtp_encryption' => $smtp_encryption,
+            'smtp_username' => $smtp_username,
+            'smtp_from_email' => $smtp_from_email,
+            'smtp_from_name' => $smtp_from_name
         ]);
         
         // Insert activity log

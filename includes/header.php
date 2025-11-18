@@ -1823,6 +1823,12 @@ MOBILE SIDEBAR - CLEAN LAYOUT FIX
                         <span class="pcoded-mtext"><?= __('activity_log') ?></span>
                     </a>
                 </li>
+                <li data-username="email_analytics" class="nav-item <?php echo basename($_SERVER['PHP_SELF']) == 'email_analytics.php' ? 'active' : ''; ?>">
+                    <a href="email_analytics.php" class="nav-link">
+                        <span class="pcoded-micon"><i class="feather icon-mail"></i></span>
+                        <span class="pcoded-mtext">Email Analytics</span>
+                    </a>
+                </li>
             </ul>
         </div>
         <div class="navbar-brand user-profile-section" style="position: absolute; bottom: 0; width: 100%; border-top: 1px solid rgba(255,255,255,0.1); background: #4099ff; z-index: 10;">
