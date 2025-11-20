@@ -4834,5 +4834,11 @@ return [
 'add_new_members' => 'نوي غړي وراضافه کړئ',
 'common_information' => 'عمومي معلومات',
 'update_booking' => 'اصلاح کول',
+'months_to_pay' => 'د تادیې میاشتې',
+'salary_already_paid_for_this_month' => 'د دې میاشتې معاش لا دمخه ورکړل شوی',
+'enter_payment_details' => 'د پېسو د ورکړې معلومات ولیکئ',
+'payment_amounts' => 'د پیسو اندازه‌ګانې',
+'enter_account_name' => 'د حساب نوم ولیکئ',
+
 
 ];

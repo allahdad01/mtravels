@@ -39,16 +39,20 @@ function sendEmail($to, $subject, $body, $isHtml = true, $emailType = 'general',
         $tenantName = 'MTravels'; // Default fallback
 
         if (isset($tenant_id) && $tenant_id) {
-            global $conn;
-            $stmt = $conn->prepare("SELECT name FROM tenants WHERE id = ?");
+            global $conn, $conection_db;
+            $db = isset($conn) ? $conn : (isset($conection_db) ? $conection_db : null);
+            
+            if ($db !== null) {
+                $stmt = $db->prepare("SELECT name FROM tenants WHERE id = ?");
             $stmt->bind_param("i", $tenant_id);
             $stmt->execute();
-            $result = $stmt->get_result();
-            $tenant = $result->fetch_assoc();
-            if ($tenant) {
-                $tenantName = $tenant['name'];
+                $result = $stmt->get_result();
+                $tenant = $result->fetch_assoc();
+                if ($tenant) {
+                    $tenantName = $tenant['name'];
+                }
+                $stmt->close();
             }
-            $stmt->close();
         }
 
         // Recipients
@@ -88,9 +92,15 @@ function sendEmail($to, $subject, $body, $isHtml = true, $emailType = 'general',
 
 // Record email tracking
 function recordEmailTracking($emailId, $recipientEmail, $emailType, $tenantId) {
-    global $conn;
+    global $conn, $conection_db;
+    $db = isset($conn) ? $conn : (isset($conection_db) ? $conection_db : null);
+    
+    if ($db === null) {
+        error_log("No database connection available in recordEmailTracking");
+        return false;
+    }
 
-    $stmt = $conn->prepare("INSERT INTO email_tracking (email_id, recipient_email, email_type, tenant_id) VALUES (?, ?, ?, ?)");
+    $stmt = $db->prepare("INSERT INTO email_tracking (email_id, recipient_email, email_type, tenant_id) VALUES (?, ?, ?, ?)");
     $stmt->bind_param("sssi", $emailId, $recipientEmail, $emailType, $tenantId);
     $stmt->execute();
     $stmt->close();
@@ -108,8 +118,15 @@ function getPlatformSettings() {
     static $settings = null;
 
     if ($settings === null) {
-        global $conn;
-        $stmt = $conn->prepare("SELECT `key`, `value` FROM platform_settings");
+        global $conn, $conection_db;
+        $db = isset($conn) ? $conn : (isset($conection_db) ? $conection_db : null);
+        
+        if ($db === null) {
+            error_log("No database connection available in getPlatformSettings");
+            return [];
+        }
+        
+        $stmt = $db->prepare("SELECT `key`, `value` FROM platform_settings");
         $stmt->execute();
         $result = $stmt->get_result();
         $settings = [];
@@ -124,14 +141,20 @@ function getPlatformSettings() {
 
 // Get tenant-specific SMTP settings (fallback to platform settings)
 function getTenantSMTPSettings($tenantId = null) {
-    global $conn;
+    global $conn, $conection_db;
+    $db = isset($conn) ? $conn : (isset($conection_db) ? $conection_db : null);
+    
+    if ($db === null) {
+        error_log("No database connection available in getTenantSMTPSettings");
+        return [];
+    }
 
     if (!$tenantId) {
         return getPlatformSettings();
     }
 
     // Check if tenant has custom SMTP settings in settings table
-    $stmt = $conn->prepare("SELECT smtp_host, smtp_port, smtp_encryption, smtp_username, smtp_password, smtp_from_email, smtp_from_name FROM settings WHERE tenant_id = ?");
+    $stmt = $db->prepare("SELECT smtp_host, smtp_port, smtp_encryption, smtp_username, smtp_password, smtp_from_email, smtp_from_name FROM settings WHERE tenant_id = ?");
     $stmt->bind_param("i", $tenantId);
     $stmt->execute();
     $result = $stmt->get_result();
@@ -158,16 +181,20 @@ function sendTicketNotification($clientEmail, $clientName, $ticketType, $ticketD
     $tenantName = 'MTravels'; // Default fallback
 
     if (isset($tenant_id) && $tenant_id) {
-        global $conn;
-        $stmt = $conn->prepare("SELECT name FROM tenants WHERE id = ?");
-        $stmt->bind_param("i", $tenant_id);
-        $stmt->execute();
-        $result = $stmt->get_result();
-        $tenant = $result->fetch_assoc();
-        if ($tenant) {
-            $tenantName = $tenant['name'];
+        global $conn, $conection_db;
+        $db = isset($conn) ? $conn : (isset($conection_db) ? $conection_db : null);
+        
+        if ($db !== null) {
+            $stmt = $db->prepare("SELECT name FROM tenants WHERE id = ?");
+            $stmt->bind_param("i", $tenant_id);
+            $stmt->execute();
+            $result = $stmt->get_result();
+            $tenant = $result->fetch_assoc();
+            if ($tenant) {
+                $tenantName = $tenant['name'];
+            }
+            $stmt->close();
         }
-        $stmt->close();
     }
 
     $subject = "New {$ticketType} Ticket Added - {$tenantName}";
@@ -222,16 +249,20 @@ function sendVisaNotification($clientEmail, $clientName, $applicationId, $applic
     $tenantName = 'MTravels'; // Default fallback
 
     if (isset($tenant_id) && $tenant_id) {
-        global $conn;
-        $stmt = $conn->prepare("SELECT name FROM tenants WHERE id = ?");
-        $stmt->bind_param("i", $tenant_id);
-        $stmt->execute();
-        $result = $stmt->get_result();
-        $tenant = $result->fetch_assoc();
-        if ($tenant) {
-            $tenantName = $tenant['name'];
+        global $conn, $conection_db;
+        $db = isset($conn) ? $conn : (isset($conection_db) ? $conection_db : null);
+        
+        if ($db !== null) {
+            $stmt = $db->prepare("SELECT name FROM tenants WHERE id = ?");
+            $stmt->bind_param("i", $tenant_id);
+            $stmt->execute();
+            $result = $stmt->get_result();
+            $tenant = $result->fetch_assoc();
+            if ($tenant) {
+                $tenantName = $tenant['name'];
+            }
+            $stmt->close();
         }
-        $stmt->close();
     }
 
     $subject = "New Visa Application Added - {$tenantName}";
@@ -293,16 +324,20 @@ function sendHotelNotification($clientEmail, $clientName, $bookingId, $guestName
     $tenantName = 'MTravels'; // Default fallback
 
     if (isset($tenant_id) && $tenant_id) {
-        global $conn;
-        $stmt = $conn->prepare("SELECT name FROM tenants WHERE id = ?");
-        $stmt->bind_param("i", $tenant_id);
-        $stmt->execute();
-        $result = $stmt->get_result();
-        $tenant = $result->fetch_assoc();
-        if ($tenant) {
-            $tenantName = $tenant['name'];
+        global $conn, $conection_db;
+        $db = isset($conn) ? $conn : (isset($conection_db) ? $conection_db : null);
+        
+        if ($db !== null) {
+            $stmt = $db->prepare("SELECT name FROM tenants WHERE id = ?");
+            $stmt->bind_param("i", $tenant_id);
+            $stmt->execute();
+            $result = $stmt->get_result();
+            $tenant = $result->fetch_assoc();
+            if ($tenant) {
+                $tenantName = $tenant['name'];
+            }
+            $stmt->close();
         }
-        $stmt->close();
     }
 
     $subject = "New Hotel Booking Added - {$tenantName}";
@@ -362,16 +397,20 @@ function sendUmrahNotification($clientEmail, $clientName, $bookingId, $passenger
     $tenantName = 'MTravels'; // Default fallback
 
     if (isset($tenant_id) && $tenant_id) {
-        global $conn;
-        $stmt = $conn->prepare("SELECT name FROM tenants WHERE id = ?");
-        $stmt->bind_param("i", $tenant_id);
-        $stmt->execute();
-        $result = $stmt->get_result();
-        $tenant = $result->fetch_assoc();
-        if ($tenant) {
-            $tenantName = $tenant['name'];
+        global $conn, $conection_db;
+        $db = isset($conn) ? $conn : (isset($conection_db) ? $conection_db : null);
+        
+        if ($db !== null) {
+            $stmt = $db->prepare("SELECT name FROM tenants WHERE id = ?");
+            $stmt->bind_param("i", $tenant_id);
+            $stmt->execute();
+            $result = $stmt->get_result();
+            $tenant = $result->fetch_assoc();
+            if ($tenant) {
+                $tenantName = $tenant['name'];
+            }
+            $stmt->close();
         }
-        $stmt->close();
     }
 
     $subject = "New Umrah Booking Added - {$tenantName}";
@@ -433,16 +472,20 @@ function sendTicketReservationNotification($clientEmail, $clientName, $ticketId,
     $tenantName = 'MTravels'; // Default fallback
 
     if (isset($tenant_id) && $tenant_id) {
-        global $conn;
-        $stmt = $conn->prepare("SELECT name FROM tenants WHERE id = ?");
-        $stmt->bind_param("i", $tenant_id);
-        $stmt->execute();
-        $result = $stmt->get_result();
-        $tenant = $result->fetch_assoc();
-        if ($tenant) {
-            $tenantName = $tenant['name'];
+        global $conn, $conection_db;
+        $db = isset($conn) ? $conn : (isset($conection_db) ? $conection_db : null);
+        
+        if ($db !== null) {
+            $stmt = $db->prepare("SELECT name FROM tenants WHERE id = ?");
+            $stmt->bind_param("i", $tenant_id);
+            $stmt->execute();
+            $result = $stmt->get_result();
+            $tenant = $result->fetch_assoc();
+            if ($tenant) {
+                $tenantName = $tenant['name'];
+            }
+            $stmt->close();
         }
-        $stmt->close();
     }
 
     $subject = "New Flight Ticket Reservation - {$tenantName}";
@@ -504,16 +547,20 @@ function sendSalaryAdvanceNotification($employeeEmail, $employeeName, $advanceId
     $tenantName = 'MTravels'; // Default fallback
 
     if (isset($tenant_id) && $tenant_id) {
-        global $conn;
-        $stmt = $conn->prepare("SELECT name FROM tenants WHERE id = ?");
-        $stmt->bind_param("i", $tenant_id);
-        $stmt->execute();
-        $result = $stmt->get_result();
-        $tenant = $result->fetch_assoc();
-        if ($tenant) {
-            $tenantName = $tenant['name'];
+        global $conn, $conection_db;
+        $db = isset($conn) ? $conn : (isset($conection_db) ? $conection_db : null);
+        
+        if ($db !== null) {
+            $stmt = $db->prepare("SELECT name FROM tenants WHERE id = ?");
+            $stmt->bind_param("i", $tenant_id);
+            $stmt->execute();
+            $result = $stmt->get_result();
+            $tenant = $result->fetch_assoc();
+            if ($tenant) {
+                $tenantName = $tenant['name'];
+            }
+            $stmt->close();
         }
-        $stmt->close();
     }
 
     $subject = "Salary Advance Processed - {$tenantName}";
@@ -572,8 +619,15 @@ function sendSalaryPaymentNotification($employeeEmail, $employeeName, $paymentId
     $tenantName = 'MTravels'; // Default fallback
 
     if (isset($tenant_id) && $tenant_id) {
-        global $conn;
-        $stmt = $conn->prepare("SELECT name FROM tenants WHERE id = ?");
+        global $conn, $conection_db;
+        $db = isset($conn) ? $conn : (isset($conection_db) ? $conection_db : null);
+        
+        if ($db === null) {
+            error_log("No database connection available in sendSalaryPaymentNotification");
+            return false;
+        }
+        
+        $stmt = $db->prepare("SELECT name FROM tenants WHERE id = ?");
         $stmt->bind_param("i", $tenant_id);
         $stmt->execute();
         $result = $stmt->get_result();
@@ -643,16 +697,20 @@ function sendAccountNotification($email, $name, $type, $amount, $currency, $mess
     $tenantName = 'MTravels'; // Default fallback
 
     if (isset($tenant_id) && $tenant_id) {
-        global $conn;
-        $stmt = $conn->prepare("SELECT name FROM tenants WHERE id = ?");
-        $stmt->bind_param("i", $tenant_id);
-        $stmt->execute();
-        $result = $stmt->get_result();
-        $tenant = $result->fetch_assoc();
-        if ($tenant) {
-            $tenantName = $tenant['name'];
+        global $conn, $conection_db;
+        $db = isset($conn) ? $conn : (isset($conection_db) ? $conection_db : null);
+        
+        if ($db !== null) {
+            $stmt = $db->prepare("SELECT name FROM tenants WHERE id = ?");
+            $stmt->bind_param("i", $tenant_id);
+            $stmt->execute();
+            $result = $stmt->get_result();
+            $tenant = $result->fetch_assoc();
+            if ($tenant) {
+                $tenantName = $tenant['name'];
+            }
+            $stmt->close();
         }
-        $stmt->close();
     }
 
     $subject = "Account Update - {$accountType} Balance - {$tenantName}";
@@ -789,27 +847,31 @@ function sendUserCredentialsEmail($userEmail, $userName, $password, $role, $tena
     $agencyName = '';
 
     if ($tenantId) {
-        global $conn;
-        $stmt = $conn->prepare("SELECT name, subdomain FROM tenants WHERE id = ?");
-        $stmt->bind_param("i", $tenantId);
-        $stmt->execute();
-        $result = $stmt->get_result();
-        $tenant = $result->fetch_assoc();
-        if ($tenant) {
-            $tenantName = $tenant['name'];
-            $subdomain = $tenant['subdomain'];
+        global $conn, $conection_db;
+        $db = isset($conn) ? $conn : (isset($conection_db) ? $conection_db : null);
+        
+        if ($db !== null) {
+            $stmt = $db->prepare("SELECT name, subdomain FROM tenants WHERE id = ?");
+            $stmt->bind_param("i", $tenantId);
+            $stmt->execute();
+            $result = $stmt->get_result();
+            $tenant = $result->fetch_assoc();
+            if ($tenant) {
+                $tenantName = $tenant['name'];
+                $subdomain = $tenant['subdomain'];
 
-            // Get agency name from settings
-            $stmt2 = $conn->prepare("SELECT agency_name FROM settings WHERE tenant_id = ?");
-            $stmt2->bind_param("i", $tenantId);
-            $stmt2->execute();
-            $settings = $stmt2->get_result()->fetch_assoc();
-            if ($settings && $settings['agency_name']) {
-                $agencyName = $settings['agency_name'];
+                // Get agency name from settings
+                $stmt2 = $db->prepare("SELECT agency_name FROM settings WHERE tenant_id = ?");
+                $stmt2->bind_param("i", $tenantId);
+                $stmt2->execute();
+                $settings = $stmt2->get_result()->fetch_assoc();
+                if ($settings && $settings['agency_name']) {
+                    $agencyName = $settings['agency_name'];
+                }
+                $stmt2->close();
             }
-            $stmt2->close();
+            $stmt->close();
         }
-        $stmt->close();
     }
 
     $roleDisplay = ucfirst(str_replace('_', ' ', $role));
@@ -897,10 +959,16 @@ function sendUserCredentialsEmail($userEmail, $userName, $password, $role, $tena
 
 // Send notification to tenant admin about new user creation
 function sendTenantUserNotificationEmail($tenantId, $userName, $userEmail, $userRole) {
-    global $conn;
+    global $conn, $conection_db;
+    $db = isset($conn) ? $conn : (isset($conection_db) ? $conection_db : null);
+    
+    if ($db === null) {
+        error_log("No database connection available in sendTenantUserNotificationEmail");
+        return false;
+    }
 
     // Get tenant information
-    $stmt = $conn->prepare("SELECT name, billing_email, subdomain FROM tenants WHERE id = ?");
+    $stmt = $db->prepare("SELECT name, billing_email, subdomain FROM tenants WHERE id = ?");
     $stmt->bind_param("i", $tenantId);
     $stmt->execute();
     $result = $stmt->get_result();
@@ -918,7 +986,7 @@ function sendTenantUserNotificationEmail($tenantId, $userName, $userEmail, $user
 
     // Get agency name from settings
     $agencyName = '';
-    $stmt = $conn->prepare("SELECT agency_name FROM settings WHERE tenant_id = ?");
+    $stmt = $db->prepare("SELECT agency_name FROM settings WHERE tenant_id = ?");
     $stmt->bind_param("i", $tenantId);
     $stmt->execute();
     $settings = $stmt->get_result()->fetch_assoc();
@@ -994,10 +1062,16 @@ function sendTenantUserNotificationEmail($tenantId, $userName, $userEmail, $user
 
 // Send payment confirmation email to tenant
 function sendPaymentConfirmationEmail($tenantId, $amount, $currency, $paymentDate, $billingCycle) {
-    global $conn;
+    global $conn, $conection_db;
+    $db = isset($conn) ? $conn : (isset($conection_db) ? $conection_db : null);
+    
+    if ($db === null) {
+        error_log("No database connection available in sendPaymentConfirmationEmail");
+        return false;
+    }
 
     // Get tenant information
-    $stmt = $conn->prepare("SELECT name, billing_email, subdomain FROM tenants WHERE id = ?");
+    $stmt = $db->prepare("SELECT name, billing_email, subdomain FROM tenants WHERE id = ?");
     $stmt->bind_param("i", $tenantId);
     $stmt->execute();
     $result = $stmt->get_result();
@@ -1015,7 +1089,7 @@ function sendPaymentConfirmationEmail($tenantId, $amount, $currency, $paymentDat
 
     // Get agency name from settings
     $agencyName = '';
-    $stmt = $conn->prepare("SELECT agency_name FROM settings WHERE tenant_id = ?");
+    $stmt = $db->prepare("SELECT agency_name FROM settings WHERE tenant_id = ?");
     $stmt->bind_param("i", $tenantId);
     $stmt->execute();
     $settings = $stmt->get_result()->fetch_assoc();
@@ -1135,14 +1209,16 @@ function generateTicketPDF($bookingData, $tenantId) {
     $mpdf->SetSubject('Flight Ticket');
     
     // Get agency settings for header
-    global $conn;
+    global $conn, $conection_db;
+    $db = isset($conn) ? $conn : (isset($conection_db) ? $conection_db : null);
+    
     $agencyName = 'MTravels';
     $agencyEmail = 'info@mtravels.com';
     $agencyPhone = '+93 (0) 123 456 789';
     $agencyAddress = '';
     
-    if ($tenantId) {
-        $stmt = $conn->prepare("SELECT agency_name, email, phone, address FROM settings WHERE tenant_id = ?");
+    if ($tenantId && $db !== null) {
+        $stmt = $db->prepare("SELECT agency_name, email, phone, address FROM settings WHERE tenant_id = ?");
         $stmt->bind_param("i", $tenantId);
         $stmt->execute();
         $result = $stmt->get_result();
@@ -1538,16 +1614,20 @@ function sendTicketNotificationWithAttachment($email, $name, $subject, $body, $a
         $tenantName = 'MTravels'; // Default fallback
         
         if (isset($tenant_id) && $tenant_id) {
-            global $conn;
-            $stmt = $conn->prepare("SELECT name FROM tenants WHERE id = ?");
-            $stmt->bind_param("i", $tenant_id);
-            $stmt->execute();
-            $result = $stmt->get_result();
-            $tenant = $result->fetch_assoc();
-            if ($tenant) {
-                $tenantName = $tenant['name'];
+            global $conn, $conection_db;
+            $db = isset($conn) ? $conn : (isset($conection_db) ? $conection_db : null);
+            
+            if ($db !== null) {
+                $stmt = $db->prepare("SELECT name FROM tenants WHERE id = ?");
+                $stmt->bind_param("i", $tenant_id);
+                $stmt->execute();
+                $result = $stmt->get_result();
+                $tenant = $result->fetch_assoc();
+                if ($tenant) {
+                    $tenantName = $tenant['name'];
+                }
+                $stmt->close();
             }
-            $stmt->close();
         }
         
         // Recipients

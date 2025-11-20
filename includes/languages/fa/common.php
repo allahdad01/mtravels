@@ -4961,5 +4961,11 @@ return [
 'add_new_members' => 'افزودن اعضای جدید',
 'common_information' => 'اطلاعات عمومی',
 'update_booking' => 'اصلاح کردن',
+'months_to_pay' => 'ماه‌های قابل پرداخت',
+'salary_already_paid_for_this_month' => 'معاش این ماه قبلاً پرداخت شده است',
+'enter_payment_details' => 'جزئیات پرداخت را وارد کنید',
+'payment_amounts' => 'مبالغ پرداخت',
+'enter_account_name' => 'نام حساب را وارد کنید',
+
 
 ];

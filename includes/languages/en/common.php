@@ -5268,6 +5268,12 @@ return [
 'add_new_members' => 'Add New Members',
 'common_information' => 'Common Information',
 'update_booking' => 'Update Booking',
+'months_to_pay' => 'Months to Pay',
+'salary_already_paid_for_this_month' => 'Salary already paid for this month',
+'enter_payment_details' => 'Enter payment details',
+'payment_amounts' => 'Payment amounts',
+'enter_account_name' => 'Enter account name',
+
 
 
 ];
