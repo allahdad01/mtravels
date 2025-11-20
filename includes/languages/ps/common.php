@@ -4826,6 +4826,13 @@ return [
 'bonus_details' => 'د بونس جزئیات',
 'add_supplier_bonus' => 'د عرضه کوونکي بونس اضافه کړئ',
 'no_transactions_found_for_this_supplier' => 'د دې عرضه کوونکي لپاره هېڅ راکړې ورکړې ونه موندل شوې',
-
+'select_id_type' => 'د پېژندپاڼې ډول وټاکئ',
+'select_duration' => 'موده وټاکئ',
+'select_room_type' => 'د خونې ډول وټاکئ',
+'service_info' => 'د خدمت معلومات',
+'pricing_info' => 'د بیې معلومات',
+'add_new_members' => 'نوي غړي وراضافه کړئ',
+'common_information' => 'عمومي معلومات',
+'update_booking' => 'اصلاح کول',
 
 ];

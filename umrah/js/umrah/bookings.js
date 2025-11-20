@@ -18,10 +18,10 @@ $(document).off('submit', '#umrahForm').on('submit', '#umrahForm', function(even
     .then(data => {
         console.log("Server Response:", data);
         if (data.success) {
-            alert("umrah_record_added_successfully");
+            alert("Umrah record added successfully");
             location.reload();
         } else {
-            alert("error: " + (data.message || "failed_to_add_record"));
+            alert("error: " + (data.message || "Failed to add record"));
             submitBtn.disabled = false;
             submitBtn.innerHTML = originalHtml;
         }
@@ -56,14 +56,14 @@ $('#editFamilyForm').off('submit').on('submit', function(e) {
                 alert("error: " + response.message);
                 console.error("Update failed:", response);
                 submitButton.prop('disabled', false);
-                submitButton.html('save_changes');
+                submitButton.html('Save changes');
             }
         },
         error: function(xhr, status, error) {
             alert("an_error_occurred");
             console.error("AJAX Error:", status, error, xhr.responseText);
             submitButton.prop('disabled', false);
-            submitButton.html('save_changes');
+            submitButton.html('Save changes');
         }
     });
 });
@@ -77,7 +77,7 @@ $(document).ready(function() {
         const submitBtn = $(this).find('button[type="submit"]');
         const originalHtml = submitBtn.html();
         submitBtn.prop('disabled', true);
-        submitBtn.html('<i class="feather icon-loader"></i> adding...');
+        submitBtn.html('<i class="feather icon-loader"></i> Adding...');
         
         const formData = new FormData(this);
         const umrahId = $('#transactionUmrahIdInput').val();
@@ -92,82 +92,31 @@ $(document).ready(function() {
                 try {
                     const result = JSON.parse(response);
                     if (result.success) {
-                        alert('transaction_added_successfully');
+                        alert('Transaction added successfully');
                         $('#addTransactionForm').collapse('hide');
                         $('#umrahTransactionForm')[0].reset();
                         fetchTransactions(umrahId, parseFloat($('#totalAmount').text().replace('$', '')));
                     } else {
-                        alert('error: ' + (result.message || 'failed_to_add_transaction'));
+                        alert('error: ' + (result.message || 'Failed to add transaction'));
                         submitBtn.prop('disabled', false);
                         submitBtn.html(originalHtml);
                     }
                 } catch (e) {
                     console.error('Error processing response:', e);
-                    alert('error_processing_the_request');
+                    alert('Error processing the request');
                     submitBtn.prop('disabled', false);
                     submitBtn.html(originalHtml);
                 }
             },
             error: function(xhr, status, error) {
                 console.error('AJAX Error:', error);
-                alert('error_adding_transaction');
+                alert('Error adding transaction');
                 submitBtn.prop('disabled', false);
                 submitBtn.html(originalHtml);
             }
         });
     });
     
-    // Use one() for the profile form to ensure it only runs once
-    $('#updateProfileForm').off('submit').on('submit', function(e) {
-        e.preventDefault();
-        
-        const submitBtn = this.querySelector('button[type="submit"]');
-        const originalHtml = submitBtn.innerHTML;
-        submitBtn.disabled = true;
-        submitBtn.innerHTML = '<i class="feather icon-loader"></i> saving...';
-        
-        const newPassword = document.getElementById('newPassword').value;
-        const confirmPassword = document.getElementById('confirmPassword').value;
-        const currentPassword = document.getElementById('currentPassword').value;
-
-        // Password validation logic
-        if (newPassword || confirmPassword || currentPassword) {
-            if (!currentPassword) {
-                alert('please_enter_your_current_password');
-                submitBtn.disabled = false;
-                submitBtn.innerHTML = originalHtml;
-                return;
-            }
-            // Other password validations...
-        }
-        
-        const formData = new FormData(this);
-        
-        fetch('update_client_profile.php', {
-            method: 'POST',
-            body: formData
-        })
-        .then(response => response.json())
-        .then(data => {
-            if (data.success) {
-                alert(data.message);
-                document.getElementById('currentPassword').value = '';
-                document.getElementById('newPassword').value = '';
-                document.getElementById('confirmPassword').value = '';
-                location.reload();
-            } else {
-                alert(data.message || 'failed_to_update_profile');
-                submitBtn.disabled = false;
-                submitBtn.innerHTML = originalHtml;
-            }
-        })
-        .catch(error => {
-            console.error('Error:', error);
-            alert('an_error_occurred_while_updating_the_profile');
-            submitBtn.disabled = false;
-            submitBtn.innerHTML = originalHtml;
-        });
-    });
 });
 
 // Modify the createFamilyForm submission to use jQuery's off().on() pattern
@@ -177,7 +126,7 @@ function submitCreateFamilyForm() {
     const submitBtn = document.querySelector('#createFamilyForm button[type="submit"]');
     const originalHtml = submitBtn.innerHTML;
     submitBtn.disabled = true;
-    submitBtn.innerHTML = '<i class="feather icon-loader"></i> creating...';
+    submitBtn.innerHTML = '<i class="feather icon-loader"></i> Creating...';
     
     fetch('create_family.php', {
         method: 'POST',
@@ -185,7 +134,7 @@ function submitCreateFamilyForm() {
     }).then(response => response.json())
       .then(data => {
           if(data.success) {
-                alert("family_created_successfully");
+                alert("Family created successfully");
               location.reload();
           } else {
               alert("error_creating_family");
@@ -195,7 +144,7 @@ function submitCreateFamilyForm() {
       })
       .catch(error => {
           console.error("Error:", error);
-          alert("an_error_occurred_while_creating_the_family");
+          alert("An error occurred while creating the family");
           submitBtn.disabled = false;
           submitBtn.innerHTML = originalHtml;
       });
@@ -220,12 +169,12 @@ function openEditFamilyModal(familyId, headOfFamily, contact,
 }
 
 function deleteFamily(familyId) {
-    if (confirm('are_you_sure_you_want_to_delete_this_family')) {
+    if (confirm('Are you sure you want to delete this family')) {
         const deleteBtn = event.target.closest('button');
         if (deleteBtn) {
             const originalHtml = deleteBtn.innerHTML;
             deleteBtn.disabled = true;
-            deleteBtn.innerHTML = '<i class="feather icon-loader"></i> deleting...';
+            deleteBtn.innerHTML = '<i class="feather icon-loader"></i> Deleting...';
         }
         
         fetch('delete_family.php', {
@@ -236,10 +185,10 @@ function deleteFamily(familyId) {
         .then(response => response.json())
         .then(data => {
             if (data.success) {
-                alert('family_deleted_successfully');
+                alert('Family deleted successfully');
                 location.reload();
             } else {
-                alert('error_deleting_family: ' + data.message);
+                alert('Error deleting family: ' + data.message);
                 if (deleteBtn) {
                     deleteBtn.disabled = false;
                     deleteBtn.innerHTML = originalHtml;
@@ -248,7 +197,7 @@ function deleteFamily(familyId) {
         })
         .catch(error => {
             console.error('Error:', error);
-            alert('an_error_occurred_while_deleting_the_family');
+            alert('An error occurred while deleting the family');
             if (deleteBtn) {
                 deleteBtn.disabled = false;
                 deleteBtn.innerHTML = originalHtml;
@@ -258,7 +207,7 @@ function deleteFamily(familyId) {
 }
 
 function deleteBooking(bookingId) {
-    if (!confirm("are_you_sure_you_want_to_delete_this_booking")) {
+    if (!confirm("Are you sure you want to delete this booking")) {
         return;
     }
 
@@ -266,7 +215,7 @@ function deleteBooking(bookingId) {
     if (deleteBtn) {
         const originalHtml = deleteBtn.innerHTML;
         deleteBtn.disabled = true;
-        deleteBtn.innerHTML = '<i class="feather icon-loader"></i> deleting...';
+        deleteBtn.innerHTML = '<i class="feather icon-loader"></i> Deleting...';
     }
 
     fetch("delete_booking.php", {
@@ -279,10 +228,10 @@ function deleteBooking(bookingId) {
     .then(response => response.json())
     .then(data => {
         if (data.success) {
-            alert("booking_deleted_successfully");
+            alert("Booking deleted successfully");
             location.reload();
         } else {
-            alert("error: " + (data.message || "failed_to_delete_booking"));
+            alert("error: " + (data.message || "Failed to delete booking"));
             if (deleteBtn) {
                 deleteBtn.disabled = false;
                 deleteBtn.innerHTML = originalHtml;
@@ -291,7 +240,7 @@ function deleteBooking(bookingId) {
     })
     .catch(error => {
         console.error("Error:", error);
-        alert("an_error_occurred");
+        alert("An error occurred");
         if (deleteBtn) {
             deleteBtn.disabled = false;
             deleteBtn.innerHTML = originalHtml;
@@ -300,7 +249,7 @@ function deleteBooking(bookingId) {
 }
 
 function deleteTransaction(transactionId) {
-    if (confirm('are_you_sure_you_want_to_delete_this_transaction')) {
+    if (confirm('Are you sure you want to delete this transaction')) {
         const deleteBtn = event.target.closest('button');
         const originalHtml = deleteBtn.innerHTML;
         deleteBtn.disabled = true;
@@ -314,19 +263,19 @@ function deleteTransaction(transactionId) {
         .then(response => response.json())
         .then(data => {
             if (data.success) {
-                alert('transaction_deleted_successfully');
+                alert('Transaction deleted successfully');
                 const umrahId = document.getElementById('transactionUmrahId').textContent;
                 const soldAmount = parseFloat(document.getElementById('totalAmount').textContent.replace('$', ''));
                 fetchTransactions(umrahId, soldAmount);
             } else {
-                alert('error_deleting_transaction: ' + data.message);
+                alert('Error deleting transaction: ' + data.message);
                 deleteBtn.disabled = false;
                 deleteBtn.innerHTML = originalHtml;
             }
         })
         .catch(error => {
             console.error('Error deleting transaction:', error);
-            alert('an_error_occurred_while_deleting_the_transaction');
+            alert('An error occurred while deleting the transaction');
             deleteBtn.disabled = false;
             deleteBtn.innerHTML = originalHtml;
         });

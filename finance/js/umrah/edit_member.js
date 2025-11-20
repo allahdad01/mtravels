@@ -1,94 +1,83 @@
-// Edit modal service management functions
 let editServiceRowCounter = 0;
 
 function addEditServiceRow(serviceType = '', supplierId = '', basePrice = 0, soldPrice = 0, serviceId = null) {
     editServiceRowCounter++;
     const rowId = 'editServiceRow_' + editServiceRowCounter;
 
-    const suppliersOptions = suppliersData.map(supplier =>
-        `<option value="${supplier.id}" data-currency="${supplier.currency}" ${supplierId == supplier.id ? 'selected' : ''}>${supplier.name}</option>`
-    ).join('');
+    const suppliersOptions = suppliersData.map(s => `<option value="${s.id}" data-currency="${s.currency}">${s.name}</option>`).join('');
 
     const rowHtml = `
-        <tr id="${rowId}" data-service-id="${serviceId || ''}">
-            <td>
-                <select class="form-control edit-service-type" name="edit_services[${editServiceRowCounter}][service_type]" required>
-                    <option value="">Select Service Type</option>
-                    <option value="all" ${serviceType === 'all' ? 'selected' : ''}>All Services</option>
-                    <option value="ticket" ${serviceType === 'ticket' ? 'selected' : ''}>Ticket</option>
-                    <option value="visa" ${serviceType === 'visa' ? 'selected' : ''}>Visa</option>
-                    <option value="hotel" ${serviceType === 'hotel' ? 'selected' : ''}>Hotel</option>
-                    <option value="transport" ${serviceType === 'transport' ? 'selected' : ''}>Transport</option>
-                </select>
-            </td>
-            <td>
-                <select class="form-control edit-service-supplier" name="edit_services[${editServiceRowCounter}][supplier_id]" required>
-                    <option value="">Select Supplier</option>
-                    ${suppliersOptions}
-                </select>
-            </td>
-            <td>
-                <input type="text" class="form-control edit-service-currency" name="edit_services[${editServiceRowCounter}][currency]" readonly>
-            </td>
-            <td>
-                <input type="number" class="form-control edit-service-base-price" name="edit_services[${editServiceRowCounter}][base_price]"
-                       value="${basePrice}" min="0" step="0.01" required>
-            </td>
-            <td>
-                <input type="number" class="form-control edit-service-sold-price" name="edit_services[${editServiceRowCounter}][sold_price]"
-                       value="${soldPrice}" min="0" step="0.01" required>
-            </td>
-            <td>
-                <input type="number" class="form-control edit-service-profit" name="edit_services[${editServiceRowCounter}][profit]" readonly>
-            </td>
-            <td>
-                <button type="button" class="btn btn-sm btn-danger remove-edit-service-btn" onclick="removeEditServiceRow('${rowId}')">
-                    <i class="feather icon-trash-2"></i>
-                </button>
-            </td>
-        </tr>
+        <div id="${rowId}" class="edit-service-row-grid" data-service-id="${serviceId || ''}">
+            <div class="edit-grid-column-1">
+                <div class="form-group">
+                    <label>Service Type</label>
+                    <select class="form-control edit-service-type" name="edit_services[${editServiceRowCounter}][service_type]" required>
+                        <option value="">Select Service Type</option>
+                        <option value="all" ${serviceType==='all'?'selected':''}>All Services</option>
+                        <option value="ticket" ${serviceType==='ticket'?'selected':''}>Ticket</option>
+                        <option value="visa" ${serviceType==='visa'?'selected':''}>Visa</option>
+                        <option value="hotel" ${serviceType==='hotel'?'selected':''}>Hotel</option>
+                        <option value="transport" ${serviceType==='transport'?'selected':''}>Transport</option>
+                    </select>
+                </div>
+                <div class="form-group">
+                    <label>Supplier</label>
+                    <select class="form-control edit-service-supplier" name="edit_services[${editServiceRowCounter}][supplier_id]" required>
+                        <option value="">Select Supplier</option>
+                        ${suppliersOptions}
+                    </select>
+                </div>
+                <div class="form-group">
+                    <label>Currency</label>
+                    <input type="text" class="form-control edit-service-currency" name="edit_services[${editServiceRowCounter}][currency]" readonly>
+                </div>
+            </div>
+            <div class="edit-grid-column-2">
+                <div class="form-group">
+                    <label>Base Price</label>
+                    <input type="number" class="form-control edit-service-base-price" name="edit_services[${editServiceRowCounter}][base_price]" value="${basePrice}" min="0" step="0.01" required>
+                </div>
+                <div class="form-group">
+                    <label>Sold Price</label>
+                    <input type="number" class="form-control edit-service-sold-price" name="edit_services[${editServiceRowCounter}][sold_price]" value="${soldPrice}" min="0" step="0.01" required>
+                </div>
+                <div class="form-group">
+                    <label>Profit</label>
+                    <input type="number" class="form-control edit-service-profit" name="edit_services[${editServiceRowCounter}][profit]" readonly>
+                </div>
+            </div>
+            <div class="edit-grid-column-3">
+                
+                <div class="form-group">
+                    <label>&nbsp;</label>
+                    <button type="button" class="btn btn-sm btn-danger btn-block" onclick="removeEditServiceRow('${rowId}')">
+                        <i class="feather icon-trash-2"></i> Remove
+                    </button>
+                </div>
+            </div>
+        </div>
     `;
 
-    $('#editServicesTableBody').append(rowHtml);
-
-    // Set currency if supplier is selected
-    if (supplierId) {
-        const selectedSupplier = suppliersData.find(s => s.id == supplierId);
-        if (selectedSupplier) {
-            $(`#${rowId} .edit-service-currency`).val(selectedSupplier.currency);
-        }
-    }
-
+    $('.edit-services-grid-body').append(rowHtml);
+    if(supplierId) $(`#${rowId} .edit-service-supplier`).val(supplierId).trigger('change');
     updateEditTotals();
 }
 
-function removeEditServiceRow(rowId) {
-    $('#' + rowId).remove();
-    updateEditTotals();
-}
+function removeEditServiceRow(rowId) { $('#' + rowId).remove(); updateEditTotals(); }
 
 function updateEditTotals() {
-    let totalBase = 0;
-    let totalSold = 0;
-    let totalProfit = 0;
+    let totalBase=0, totalSold=0, totalProfit=0;
     const discount = parseFloat($('#editDiscount').val()) || 0;
-
-    $('#editServicesTableBody tr').each(function() {
-        const basePrice = parseFloat($(this).find('.edit-service-base-price').val()) || 0;
-        const soldPrice = parseFloat($(this).find('.edit-service-sold-price').val()) || 0;
-        const profit = soldPrice - basePrice;
-
+    $('.edit-services-grid-body .edit-service-row-grid').each(function() {
+        const base = parseFloat($(this).find('.edit-service-base-price').val()) || 0;
+        const sold = parseFloat($(this).find('.edit-service-sold-price').val()) || 0;
+        const profit = sold - base;
         $(this).find('.edit-service-profit').val(profit.toFixed(2));
-
-        totalBase += basePrice;
-        totalSold += soldPrice;
-        totalProfit += profit;
+        totalBase += base; totalSold += sold; totalProfit += profit;
     });
-
-    // Apply discount to sold price
     const discountedSold = totalSold - discount;
     const finalProfit = discountedSold - totalBase;
-
+    
     // Update visible totals
     $('#editTotalBasePrice').val(totalBase.toFixed(2));
     $('#editTotalSoldPrice').val(discountedSold.toFixed(2));
@@ -128,29 +117,21 @@ function updateEditTotals() {
         $('#editTotalProfitHidden').val(finalProfit.toFixed(2));
     }
 
-    // Update due
-    const paid = parseFloat($('#editPaidAmount')?.val() || 0); // if you have a paid field
+    // Update due amount if needed
+    const paid = parseFloat($('#editPaidAmount')?.val() || 0);
     const due = discountedSold - paid;
     $('#editDue').val(due.toFixed(2));
 }
 
 
-// Event handlers for edit modal
+// Event bindings
+$(document).on('click', '#editAddServiceBtn', () => addEditServiceRow());
 $(document).on('change', '.edit-service-supplier', function() {
-    const selectedOption = $(this).find('option:selected');
-    const currency = selectedOption.data('currency') || '';
-    $(this).closest('tr').find('.edit-service-currency').val(currency);
+    const currency = $(this).find('option:selected').data('currency') || '';
+    $(this).closest('.edit-service-row-grid').find('.edit-service-currency').val(currency);
 });
+$(document).on('input', '.edit-service-base-price, .edit-service-sold-price, #editDiscount', updateEditTotals);
 
-$(document).on('input', '.edit-service-base-price, .edit-service-sold-price, #editDiscount', function() {
-    updateEditTotals();
-});
-
-$(document).on('click', '#editAddServiceBtn', function() {
-    addEditServiceRow();
-});
-
-// Edit form submission
 $(document).on('submit', '#editMemberForm', function(event) {
     event.preventDefault();
     console.log("Edit form submitted!");
@@ -158,7 +139,7 @@ $(document).on('submit', '#editMemberForm', function(event) {
     const submitBtn = event.target.querySelector('button[type="submit"]');
     const originalHtml = submitBtn.innerHTML;
     submitBtn.disabled = true;
-    submitBtn.innerHTML = '<i class="feather icon-loader"></i> updating...';
+    submitBtn.innerHTML = '<i class="feather icon-loader"></i> Updating...';
 
     let formData = new FormData(event.target);
 
@@ -170,36 +151,32 @@ $(document).on('submit', '#editMemberForm', function(event) {
     .then(data => {
         console.log("Server Response:", data);
         if (data.success) {
-            alert("umrah_member_updated_successfully");
+            alert("Umrah member updated successfully");
             location.reload();
         } else {
-            alert("error: " + (data.message || "failed_to_update_member"));
+            alert("error: " + (data.message || "Failed to update member"));
             submitBtn.disabled = false;
             submitBtn.innerHTML = originalHtml;
         }
     })
     .catch(error => {
         console.error("Error:", error);
-        alert("an_error_occurred");
+        alert("An error occurred");
         submitBtn.disabled = false;
         submitBtn.innerHTML = originalHtml;
     });
 });
 
-// Initialize with one empty row
-$(document).ready(function() {
-    loadSuppliers().then(() => {
-        addServiceRow();
-    });
-});
+// Ensure at least one service row when modal opens for new entries (not for editing existing data)
+// This is handled by openEditMemberModal function for editing existing members
 
 function openEditMemberModal(bookingId) {
     console.log('Opening edit modal for booking:', bookingId);
 
     // Show loading state
     Swal.fire({
-        title: '<?= __("loading") ?>',
-        text: '<?= __("please_wait") ?>',
+        title: 'Loading',
+        text: 'Please wait',
         allowOutsideClick: false,
         didOpen: () => {
             Swal.showLoading();
@@ -235,10 +212,10 @@ function openEditMemberModal(bookingId) {
                 document.getElementById('editRemarks').value = member.remarks || '';
 
                 // Clear existing services
-                $('#editServicesTableBody').empty();
+                $('.edit-services-grid-body').empty();
 
                 // Ensure suppliers are loaded before adding rows
-                var addRows = () => {
+                const addRows = () => {
                     if (member.services && member.services.length > 0) {
                         member.services.forEach(service => {
                             addEditServiceRow(service.service_type, service.supplier_id, service.base_price, service.sold_price, service.service_id);
@@ -247,13 +224,20 @@ function openEditMemberModal(bookingId) {
                         // Add one empty row if no services
                         addEditServiceRow();
                     }
+                    
+                    // Update totals after all services are loaded
+                    updateEditTotals();
                 };
 
-                if (suppliersData.length === 0) {
-                    loadSuppliers().then(addRows);
-                } else {
-                    addRows();
-                }
+                const loadData = () => {
+                    if (suppliersData.length === 0) {
+                        loadSuppliers().then(addRows);
+                    } else {
+                        addRows();
+                    }
+                };
+
+                loadData();
 
                 // Close loading and show modal
                 Swal.close();
@@ -261,8 +245,8 @@ function openEditMemberModal(bookingId) {
             } else {
                 Swal.fire({
                     icon: 'error',
-                    title: '<?= __("error") ?>',
-                    text: data.message || '<?= __("failed_to_load_member_details") ?>'
+                    title: 'Error',
+                    text: data.message || 'Failed to load member details'
                 });
             }
         })
@@ -270,8 +254,8 @@ function openEditMemberModal(bookingId) {
             console.error('Error:', error);
             Swal.fire({
                 icon: 'error',
-                title: '<?= __("error") ?>',
-                text: '<?= __("failed_to_load_member_details") ?>'
+                title: 'Error',
+                text: 'Failed to load member details'
             });
         });
 }

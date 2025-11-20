@@ -16,36 +16,58 @@ function addServiceRow(serviceType = '', supplierId = '', basePrice = 0, soldPri
     const suppliersOptions = suppliersData.map(s => `<option value="${s.id}" data-currency="${s.currency}">${s.name}</option>`).join('');
 
     const rowHtml = `
-        <tr id="${rowId}">
-            <td>
-                <select class="form-control service-type" name="services[${serviceRowCounter}][service_type]" required>
-                    <option value="">Select Service Type</option>
-                    <option value="all" ${serviceType==='all'?'selected':''}>All Services</option>
-                    <option value="ticket" ${serviceType==='ticket'?'selected':''}>Ticket</option>
-                    <option value="visa" ${serviceType==='visa'?'selected':''}>Visa</option>
-                    <option value="hotel" ${serviceType==='hotel'?'selected':''}>Hotel</option>
-                    <option value="transport" ${serviceType==='transport'?'selected':''}>Transport</option>
-                </select>
-            </td>
-            <td>
-                <select class="form-control service-supplier" name="services[${serviceRowCounter}][supplier_id]" required>
-                    <option value="">Select Supplier</option>
-                    ${suppliersOptions}
-                </select>
-            </td>
-            <td><input type="text" class="form-control service-currency" name="services[${serviceRowCounter}][currency]" readonly></td>
-            <td><input type="number" class="form-control service-base-price" name="services[${serviceRowCounter}][base_price]" value="${basePrice}" min="0" step="0.01" required></td>
-            <td><input type="number" class="form-control service-sold-price" name="services[${serviceRowCounter}][sold_price]" value="${soldPrice}" min="0" step="0.01" required></td>
-            <td><input type="number" class="form-control service-profit" name="services[${serviceRowCounter}][profit]" readonly></td>
-            <td>
-                <button type="button" class="btn btn-sm btn-danger" onclick="removeServiceRow('${rowId}')">
-                    <i class="feather icon-trash-2"></i>
-                </button>
-            </td>
-        </tr>
+        <div id="${rowId}" class="service-row-grid">
+            <div class="grid-column-1">
+                <div class="form-group">
+                    <label>Service Type</label>
+                    <select class="form-control service-type" name="services[${serviceRowCounter}][service_type]" required>
+                        <option value="">Select Service Type</option>
+                        <option value="all" ${serviceType==='all'?'selected':''}>All Services</option>
+                        <option value="ticket" ${serviceType==='ticket'?'selected':''}>Ticket</option>
+                        <option value="visa" ${serviceType==='visa'?'selected':''}>Visa</option>
+                        <option value="hotel" ${serviceType==='hotel'?'selected':''}>Hotel</option>
+                        <option value="transport" ${serviceType==='transport'?'selected':''}>Transport</option>
+                    </select>
+                </div>
+                <div class="form-group">
+                    <label>Supplier</label>
+                    <select class="form-control service-supplier" name="services[${serviceRowCounter}][supplier_id]" required>
+                        <option value="">Select Supplier</option>
+                        ${suppliersOptions}
+                    </select>
+                </div>
+                <div class="form-group">
+                    <label>Currency</label>
+                    <input type="text" class="form-control service-currency" name="services[${serviceRowCounter}][currency]" readonly>
+                </div>
+            </div>
+            <div class="grid-column-2">
+                <div class="form-group">
+                    <label>Base Price</label>
+                    <input type="number" class="form-control service-base-price" name="services[${serviceRowCounter}][base_price]" value="${basePrice}" min="0" step="0.01" required>
+                </div>
+                <div class="form-group">
+                    <label>Sold Price</label>
+                    <input type="number" class="form-control service-sold-price" name="services[${serviceRowCounter}][sold_price]" value="${soldPrice}" min="0" step="0.01" required>
+                </div>
+                <div class="form-group">
+                    <label>Profit</label>
+                    <input type="number" class="form-control service-profit" name="services[${serviceRowCounter}][profit]" readonly>
+                </div>
+            </div>
+            <div class="grid-column-3">
+                
+                <div class="form-group">
+                    <label>&nbsp;</label>
+                    <button type="button" class="btn btn-sm btn-danger btn-block" onclick="removeServiceRow('${rowId}')">
+                        <i class="feather icon-trash-2"></i> Remove
+                    </button>
+                </div>
+            </div>
+        </div>
     `;
 
-    $('#servicesTableBody').append(rowHtml);
+    $('.services-grid-body').append(rowHtml);
     if(supplierId) $(`#${rowId} .service-supplier`).val(supplierId).trigger('change');
     updateTotals();
 }
@@ -55,7 +77,7 @@ function removeServiceRow(rowId) { $('#' + rowId).remove(); updateTotals(); }
 function updateTotals() {
     let totalBase=0, totalSold=0, totalProfit=0;
     const discount = parseFloat($('#discount').val()) || 0;
-    $('#servicesTableBody tr').each(function() {
+    $('.services-grid-body .service-row-grid').each(function() {
         const base = parseFloat($(this).find('.service-base-price').val()) || 0;
         const sold = parseFloat($(this).find('.service-sold-price').val()) || 0;
         const profit = sold - base;
@@ -72,13 +94,13 @@ function updateTotals() {
 $(document).on('click', '#addServiceBtn', () => addServiceRow());
 $(document).on('change', '.service-supplier', function() {
     const currency = $(this).find('option:selected').data('currency') || '';
-    $(this).closest('tr').find('.service-currency').val(currency);
+    $(this).closest('.service-row-grid').find('.service-currency').val(currency);
 });
 $(document).on('input', '.service-base-price, .service-sold-price, #discount', updateTotals);
 
 // Ensure at least one service row when modal opens
 $('#umrahModal').on('shown.bs.modal', function() {
-    if ($('#servicesTableBody tr').length === 0) {
+    if ($('.services-grid-body .service-row-grid').length === 0) {
         loadSuppliers().then(() => addServiceRow());
     }
 });

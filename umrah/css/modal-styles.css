@@ -198,4 +198,345 @@
 
 .modal-body::-webkit-scrollbar-thumb:hover {
     background: #2ed8b6;
-} 
+}
+
+/* Services Grid Layout */
+.services-grid-wrapper {
+    display: flex;
+    flex-direction: column;
+    gap: 1rem;
+}
+
+.services-grid-header {
+    display: grid;
+    grid-template-columns: 1fr 1fr 1fr;
+    gap: 1rem;
+}
+
+.header-item {
+    font-weight: 600;
+    color: #6c757d;
+    padding: 0.75rem;
+    background-color: #f8f9fa;
+    border: 1px solid #dee2e6;
+    text-align: center;
+    border-radius: 0.375rem;
+}
+
+.header-column-1 {
+    grid-column: 1;
+}
+
+.header-column-2 {
+    grid-column: 2;
+}
+
+.header-column-3 {
+    grid-column: 3;
+}
+
+.services-grid-body {
+    display: flex;
+    flex-direction: column;
+    gap: 1rem;
+}
+
+.service-row-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr 1fr;
+    gap: 1rem;
+    padding: 1rem;
+    border: 1px solid #dee2e6;
+    border-radius: 0.5rem;
+    background-color: #fff;
+    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+}
+
+.service-row-grid:nth-child(even) {
+    background-color: #f8f9fa;
+}
+
+.grid-column-1, .grid-column-2, .grid-column-3 {
+    display: flex;
+    flex-direction: column;
+    gap: 0.75rem;
+}
+
+.grid-column-1 {
+    grid-column: 1;
+}
+
+.grid-column-2 {
+    grid-column: 2;
+}
+
+.grid-column-3 {
+    grid-column: 3;
+}
+
+.service-row-grid .form-group {
+    margin-bottom: 0;
+}
+
+.service-row-grid .form-group label {
+    font-size: 0.875rem;
+    font-weight: 500;
+    margin-bottom: 0.25rem;
+    color: #495057;
+}
+
+.service-row-grid .form-control {
+    font-size: 0.875rem;
+    padding: 0.5rem 0.75rem;
+}
+
+.services-grid-footer {
+    display: grid;
+    grid-template-columns: 1fr 1fr 1fr;
+    gap: 1rem;
+}
+
+.footer-item {
+    padding: 0.75rem;
+    background-color: #f8f9fa;
+    border: 1px solid #dee2e6;
+    border-radius: 0.375rem;
+}
+
+.footer-column-1 {
+    grid-column: 1;
+    display: flex;
+    align-items: center;
+    font-weight: 600;
+}
+
+.footer-column-2 {
+    grid-column: 2;
+}
+
+.footer-column-3 {
+    grid-column: 3;
+}
+
+/* Total Inputs Styling */
+.total-inputs {
+    display: flex;
+    flex-direction: column;
+    gap: 0.5rem;
+}
+
+.total-input-group {
+    display: flex;
+    flex-direction: column;
+    gap: 0.25rem;
+}
+
+.total-input-group label {
+    font-size: 0.8rem;
+    font-weight: 500;
+    color: #6c757d;
+    margin-bottom: 0;
+}
+
+.total-input-group .form-control {
+    font-size: 0.875rem;
+    font-weight: 500;
+    text-align: center;
+    background-color: #f8f9fa;
+    border-color: #dee2e6;
+}
+
+/* Edit Modal Grid Styles - Same as Add Modal */
+.edit-services-grid-wrapper {
+    display: flex;
+    flex-direction: column;
+    gap: 1rem;
+}
+
+.edit-services-grid-header {
+    display: grid;
+    grid-template-columns: 1fr 1fr 1fr;
+    gap: 1rem;
+}
+
+.edit-header-item {
+    font-weight: 600;
+    color: #6c757d;
+    padding: 0.75rem;
+    background-color: #f8f9fa;
+    border: 1px solid #dee2e6;
+    text-align: center;
+    border-radius: 0.375rem;
+}
+
+.edit-header-column-1 {
+    grid-column: 1;
+}
+
+.edit-header-column-2 {
+    grid-column: 2;
+}
+
+.edit-header-column-3 {
+    grid-column: 3;
+}
+
+.edit-services-grid-body {
+    display: flex;
+    flex-direction: column;
+    gap: 1rem;
+}
+
+.edit-service-row-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr 1fr;
+    gap: 1rem;
+    padding: 1rem;
+    border: 1px solid #dee2e6;
+    border-radius: 0.5rem;
+    background-color: #fff;
+    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+}
+
+.edit-service-row-grid:nth-child(even) {
+    background-color: #f8f9fa;
+}
+
+.edit-grid-column-1, .edit-grid-column-2, .edit-grid-column-3 {
+    display: flex;
+    flex-direction: column;
+    gap: 0.75rem;
+}
+
+.edit-grid-column-1 {
+    grid-column: 1;
+}
+
+.edit-grid-column-2 {
+    grid-column: 2;
+}
+
+.edit-grid-column-3 {
+    grid-column: 3;
+}
+
+.edit-service-row-grid .form-group {
+    margin-bottom: 0;
+}
+
+.edit-service-row-grid .form-group label {
+    font-size: 0.875rem;
+    font-weight: 500;
+    margin-bottom: 0.25rem;
+    color: #495057;
+}
+
+.edit-service-row-grid .form-control {
+    font-size: 0.875rem;
+    padding: 0.5rem 0.75rem;
+}
+
+.edit-services-grid-footer {
+    display: grid;
+    grid-template-columns: 1fr 1fr 1fr;
+    gap: 1rem;
+}
+
+.edit-footer-item {
+    padding: 0.75rem;
+    background-color: #f8f9fa;
+    border: 1px solid #dee2e6;
+    border-radius: 0.375rem;
+}
+
+.edit-footer-column-1 {
+    grid-column: 1;
+    display: flex;
+    align-items: center;
+    font-weight: 600;
+}
+
+.edit-footer-column-2 {
+    grid-column: 2;
+}
+
+.edit-footer-column-3 {
+    grid-column: 3;
+}
+
+/* Edit Total Inputs Styling */
+.edit-total-inputs {
+    display: flex;
+    flex-direction: column;
+    gap: 0.5rem;
+}
+
+.edit-total-input-group {
+    display: flex;
+    flex-direction: column;
+    gap: 0.25rem;
+}
+
+.edit-total-input-group label {
+    font-size: 0.8rem;
+    font-weight: 500;
+    color: #6c757d;
+    margin-bottom: 0;
+}
+
+.edit-total-input-group .form-control {
+    font-size: 0.875rem;
+    font-weight: 500;
+    text-align: center;
+    background-color: #f8f9fa;
+    border-color: #dee2e6;
+}
+
+/* Responsive Grid */
+@media (max-width: 992px) {
+    .services-grid-header,
+    .services-grid-footer,
+    .edit-services-grid-header,
+    .edit-services-grid-footer {
+        grid-template-columns: 1fr;
+        gap: 0.5rem;
+    }
+    
+    .service-row-grid,
+    .edit-service-row-grid {
+        grid-template-columns: 1fr;
+        gap: 0.75rem;
+        padding: 0.75rem;
+    }
+    
+    .grid-column-1, .grid-column-2, .grid-column-3,
+    .edit-grid-column-1, .edit-grid-column-2, .edit-grid-column-3 {
+        grid-column: 1;
+    }
+    
+    .header-item,
+    .footer-item,
+    .edit-header-item,
+    .edit-footer-item {
+        padding: 0.5rem;
+        font-size: 0.875rem;
+        text-align: left;
+    }
+    
+    .total-inputs,
+    .edit-total-inputs {
+        flex-direction: row;
+        justify-content: space-between;
+    }
+    
+    .total-input-group,
+    .edit-total-input-group {
+        flex: 1;
+        margin-right: 0.5rem;
+    }
+    
+    .total-input-group:last-child,
+    .edit-total-input-group:last-child {
+        margin-right: 0;
+    }
+}

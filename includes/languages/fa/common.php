@@ -4953,6 +4953,13 @@ return [
 'bonus_details' => 'جزئیات بونس',
 'add_supplier_bonus' => 'افزودن بونس تأمین‌کننده',
 'no_transactions_found_for_this_supplier' => 'هیچ تراکنشی برای این تأمین‌کننده یافت نشد',
-
+'select_id_type' => 'نوعیتِ شناسنامه را انتخاب کنید',
+'select_duration' => 'مدت را انتخاب کنید',
+'select_room_type' => 'نوعیتِ اتاق را انتخاب کنید',
+'service_info' => 'اطلاعات خدمات',
+'pricing_info' => 'اطلاعات قیمت‌گذاری',
+'add_new_members' => 'افزودن اعضای جدید',
+'common_information' => 'اطلاعات عمومی',
+'update_booking' => 'اصلاح کردن',
 
 ];

@@ -73,32 +73,42 @@
                             </button>
                         </div>
                         <div class="card-body">
-                            <div class="table-responsive">
-                                <table class="table table-bordered services-table" id="editServicesTable">
-                                    <thead class="thead-light">
-                                        <tr>
-                                            <th width="18%"><?= __('service_type') ?></th>
-                                            <th width="22%"><?= __('supplier') ?></th>
-                                            <th width="10%"><?= __('currency') ?></th>
-                                            <th width="15%"><?= __('base_price') ?></th>
-                                            <th width="15%"><?= __('sold_price') ?></th>
-                                            <th width="15%"><?= __('profit') ?></th>
-                                            <th width="5%"><?= __('actions') ?></th>
-                                        </tr>
-                                    </thead>
-                                    <tbody id="editServicesTableBody">
-                                        <!-- Service rows will be added here -->
-                                    </tbody>
-                                    <tfoot>
-                                        <tr>
-                                            <td colspan="3" class="text-right font-weight-bold"><?= __('total') ?>:</td>
-                                            <td><input type="number" class="form-control form-control-sm" id="editTotalBasePrice" readonly value="0"></td>
-                                            <td><input type="number" class="form-control form-control-sm" id="editTotalSoldPrice" readonly value="0"></td>
-                                            <td><input type="number" class="form-control form-control-sm" id="editTotalProfit" readonly value="0"></td>
-                                            <td></td>
-                                        </tr>
-                                    </tfoot>
-                                </table>
+                            <div class="edit-services-grid-wrapper">
+                                <div class="edit-services-grid-header">
+                                    <div class="edit-header-item edit-header-column-1"><?= __('service_info') ?></div>
+                                    <div class="edit-header-item edit-header-column-2"><?= __('pricing_info') ?></div>
+                                    <div class="edit-header-item edit-header-column-3"><?= __('actions') ?></div>
+                                </div>
+                                <div id="editServicesTableBody" class="edit-services-grid-body">
+                                    <!-- Service rows will be added here -->
+                                </div>
+                                <div class="edit-services-grid-footer">
+                                    <div class="edit-footer-item edit-footer-column-1">
+                                        <strong><?= __('total') ?>:</strong>
+                                    </div>
+                                    <div class="edit-footer-item edit-footer-column-2">
+                                        <div class="edit-total-inputs">
+                                            <div class="edit-total-input-group">
+                                                <label><?= __('base_price') ?>:</label>
+                                                <input type="number" class="form-control form-control-sm" id="editTotalBasePrice" readonly value="0">
+                                            </div>
+                                            <div class="edit-total-input-group">
+                                                <label><?= __('sold_price') ?>:</label>
+                                                <input type="number" class="form-control form-control-sm" id="editTotalSoldPrice" readonly value="0">
+                                            </div>
+                                        </div>
+                                    </div>
+                                    <div class="edit-footer-item edit-footer-column-3">
+                                        <div class="edit-total-input-group">
+                                            <label><?= __('discount') ?>:</label>
+                                            <input type="number" class="form-control form-control-sm" id="editDiscount" name="discount" value="0" min="0" step="0.01">
+                                        </div>
+                                        <div class="edit-total-input-group">
+                                            <label><?= __('profit') ?>:</label>
+                                            <input type="number" class="form-control form-control-sm" id="editTotalProfit" readonly value="0">
+                                        </div>
+                                    </div>
+                                </div>
                             </div>
                         </div>
                     </div>
@@ -168,7 +178,17 @@
                                 <option value="Mother-in-law"><?= __('mother_in_law') ?></option>
                             </select>
                         </div>
-
+                        <div class="form-group col-md-4">
+                            <label for="editRoom_type"><?= __('room_type') ?></label>
+                            <select class="form-control" id="editRoom_type" name="room_type" required>
+                                <option value=""><?= __('select_room_type') ?></option>
+                                <option value="1 Bed"><?= __('1_bed') ?></option>
+                                <option value="2 Beds"><?= __('2_beds') ?></option>
+                                <option value="3 Beds"><?= __('3_beds') ?></option>
+                                <option value="Shared"><?= __('shared') ?></option>
+                                <option value="No Room"><?= __('no_room') ?></option>
+                            </select>
+                        </div>
                     </div>
 
                     <!-- Third Row: Passport Number, ID Type, Flight Date -->
@@ -234,30 +254,6 @@
                             </select>
                         </div>
                     </div>
-
-                    <!-- Room Type -->
-                    <div class="row">
-                        <div class="form-group col-md-12">
-                            <label for="editRoom_type"><?= __('room_type') ?></label>
-                            <select class="form-control" id="editRoom_type" name="room_type" required>
-                                <option value="1 Bed"><?= __('1_bed') ?></option>
-                                <option value="2 Beds"><?= __('2_beds') ?></option>
-                                <option value="3 Beds"><?= __('3_beds') ?></option>
-                                <option value="Shared"><?= __('shared') ?></option>
-                                <option value="No Room"><?= __('no_room') ?></option>
-                            </select>
-                        </div>
-                    </div>
-
-                    <!-- Discount (applied to total sold price) -->
-                    <div class="row">
-                        <div class="form-group col-md-12">
-                            <label for="editDiscount"><?= __('discount') ?> (<?= __('applied_to_total_sold_price') ?>)</label>
-                            <input type="number" class="form-control" id="editDiscount" name="discount" value="0" min="0" step="0.01">
-                        </div>
-                    </div>
-
-
 
                     <!-- Eighth Row: Due Amount and Additional Fields -->
                     <div class="row">

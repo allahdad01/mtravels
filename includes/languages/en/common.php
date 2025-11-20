@@ -5260,6 +5260,14 @@ return [
 'aed_balance' => 'AED Balance',
 'bonus_details' => 'Bonus Details',
 'add_supplier_bonus' => 'Add Supplier Bonus',
+'select_id_type' => 'Select ID Type',
+'select_duration' => 'Select Duration',
+'select_room_type' => 'Select Room Type',
+'service_info' => 'Service Info',
+'pricing_info' => 'Pricing Info',
+'add_new_members' => 'Add New Members',
+'common_information' => 'Common Information',
+'update_booking' => 'Update Booking',
 
 
 ];
