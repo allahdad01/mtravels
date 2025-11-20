@@ -4839,6 +4839,12 @@ return [
 'enter_payment_details' => 'د پېسو د ورکړې معلومات ولیکئ',
 'payment_amounts' => 'د پیسو اندازه‌ګانې',
 'enter_account_name' => 'د حساب نوم ولیکئ',
+'member_payments' => 'د غړي پیمنټې',
+'family_transaction_management' => 'د کورنۍ د معاملو مدیریت',
+'family_details' => 'د کورنۍ تفصیلات',
+'add_family_transactions' => 'د کورنۍ معاملې اضافه کړئ',
+'family_members_transactions' => 'د کورنۍ غړو معاملې',
+'family_transaction' => 'د کورنۍ معامله',
 
 
 ];

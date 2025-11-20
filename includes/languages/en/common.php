@@ -5273,6 +5273,12 @@ return [
 'enter_payment_details' => 'Enter payment details',
 'payment_amounts' => 'Payment amounts',
 'enter_account_name' => 'Enter account name',
+'family_transaction' => 'Family transaction',
+'family_transaction_management' => 'Family transaction management',
+'family_details' => 'Family details',
+'add_family_transactions' => 'Add family transactions',
+'family_members_transactions' => 'Family members transactions',
+'member_payments' => 'Member payments',
 
 
 

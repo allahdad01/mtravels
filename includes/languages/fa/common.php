@@ -4966,6 +4966,12 @@ return [
 'enter_payment_details' => 'جزئیات پرداخت را وارد کنید',
 'payment_amounts' => 'مبالغ پرداخت',
 'enter_account_name' => 'نام حساب را وارد کنید',
+'family_transaction' => 'تراکنش خانواده',
+'family_transaction_management' => 'مدیریت تراکنش‌های خانواده',
+'family_details' => 'جزئیات خانواده',
+'add_family_transactions' => 'اضافه‌کردن تراکنش‌های خانواده',
+'family_members_transactions' => 'تراکنش‌های اعضای خانواده',
+'member_payments' => 'پرداخت‌های اعضا',
 
 
 ];
