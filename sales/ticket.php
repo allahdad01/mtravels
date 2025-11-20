@@ -997,7 +997,7 @@ include '../includes/header_sales.php';
                                 </div>
 
                                 <div class="form-row">
-                                    <div class="form-group col-md-3">
+                                    <div class="form-group col-md-12">
                                         <label for="airline">
                                             <i class="feather icon-plane mr-1"></i><?= __('airline') ?>
                                         </label>
@@ -1008,19 +1008,19 @@ include '../includes/header_sales.php';
                                 </div>
 
                                 <div class="form-row">
-                                    <div class="form-group col-md-3">
+                                    <div class="form-group col-md-4">
                                         <label for="issueDate">
                                             <i class="feather icon-calendar mr-1"></i><?= __('issue_date') ?>
                                         </label>
                                         <input type="date" class="form-control" id="issueDate" name="issueDate" required>
                                     </div>
-                                    <div class="form-group col-md-3">
+                                    <div class="form-group col-md-4">
                                         <label for="departureDate">
                                             <i class="feather icon-calendar mr-1"></i><?= __('departure_date') ?>
                                         </label>
                                         <input type="date" class="form-control" id="departureDate" name="departureDate" required>
                                     </div>
-                                    <div id="returnDateField" class="form-group col-md-3" style="display: none;">
+                                    <div id="returnDateField" class="form-group col-md-4" style="display: none;">
                                         <label for="returnDate">
                                             <i class="feather icon-calendar mr-1"></i><?= __('return_date') ?>
                                         </label>
@@ -1038,13 +1038,13 @@ include '../includes/header_sales.php';
                             </div>
                             <div class="card-body">
                                 <div class="form-row">
-                                    <div class="form-group col-md-4">
+                                    <div class="form-group col-md-6">
                                         <label for="curr">
                                             <i class="feather icon-dollar-sign mr-1"></i><?= __('currency') ?>
                                         </label>
                                         <input class="form-control" id="curr" name="curr" required readonly>
                                     </div>
-                                    <div class="form-group col-md-8">
+                                    <div class="form-group col-md-6">
                                         <label for="paidTo">
                                             <i class="feather icon-credit-card mr-1"></i><?= __('paid_to') ?>
                                         </label>
@@ -1092,13 +1092,11 @@ include '../includes/header_sales.php';
                                     </div>
                                 </div>
                             
-                                <div class="form-row">
-                                    <div class="form-group col-md-12">
-                                        <label for="description">
-                                            <i class="feather icon-file-text mr-1"></i><?= __('description') ?>
-                                        </label>
-                                        <input type="text" class="form-control" id="description" name="description">
-                                    </div>
+                                <div class="form-group">
+                                    <label for="description">
+                                        <i class="feather icon-file-text mr-1"></i><?= __('description') ?>
+                                    </label>
+                                    <textarea class="form-control" id="description" name="description" rows="3" placeholder="<?= __('enter_description') ?>"></textarea>
                                 </div>
                             </div>
                         </div>

@@ -1,7 +1,7 @@
 // Comprehensive global airlines database
 const AIRLINES = [
     // Middle East & Central Asia (Expanded)
-    { code: 'KM', name: 'KamAir (KM)' },
+    { code: 'RQ', name: 'KamAir (RQ)' },
     { code: 'IR', name: 'Iran Air (IR)' },
     { code: 'W5', name: 'Mahan Airlines (W5)' },
     { code: 'EP', name: 'Iran Aseman Airlines (EP)' },

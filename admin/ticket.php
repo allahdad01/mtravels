@@ -1211,7 +1211,7 @@ include '../includes/header.php';
                                 </div>
 
                                 <div class="form-row">
-                                    <div class="form-group col-md-3">
+                                    <div class="form-group col-md-12">
                                         <label for="airline">
                                             <i class="feather icon-plane mr-1"></i><?= __('airline') ?>
                                         </label>
@@ -1222,19 +1222,19 @@ include '../includes/header.php';
                                 </div>
 
                                 <div class="form-row">
-                                    <div class="form-group col-md-3">
+                                    <div class="form-group col-md-4">
                                         <label for="issueDate">
                                             <i class="feather icon-calendar mr-1"></i><?= __('issue_date') ?>
                                         </label>
                                         <input type="date" class="form-control" id="issueDate" name="issueDate" required>
                                     </div>
-                                    <div class="form-group col-md-3">
+                                    <div class="form-group col-md-4">
                                         <label for="departureDate">
                                             <i class="feather icon-calendar mr-1"></i><?= __('departure_date') ?>
                                         </label>
                                         <input type="date" class="form-control" id="departureDate" name="departureDate" required>
                                     </div>
-                                    <div id="returnDateField" class="form-group col-md-3" style="display: none;">
+                                    <div id="returnDateField" class="form-group col-md-4" style="display: none;">
                                         <label for="returnDate">
                                             <i class="feather icon-calendar mr-1"></i><?= __('return_date') ?>
                                         </label>
@@ -1252,13 +1252,13 @@ include '../includes/header.php';
                             </div>
                             <div class="card-body">
                                 <div class="form-row">
-                                    <div class="form-group col-md-4">
+                                    <div class="form-group col-md-6">
                                         <label for="curr">
                                             <i class="feather icon-dollar-sign mr-1"></i><?= __('currency') ?>
                                         </label>
                                         <input class="form-control" id="curr" name="curr" required readonly>
                                     </div>
-                                    <div class="form-group col-md-8">
+                                    <div class="form-group col-md-6">
                                         <label for="paidTo">
                                             <i class="feather icon-credit-card mr-1"></i><?= __('paid_to') ?>
                                         </label>
@@ -1306,13 +1306,11 @@ include '../includes/header.php';
                                     </div>
                                 </div>
                             
-                                <div class="form-row">
-                                    <div class="form-group col-md-12">
-                                        <label for="description">
-                                            <i class="feather icon-file-text mr-1"></i><?= __('description') ?>
-                                        </label>
-                                        <input type="text" class="form-control" id="description" name="description">
-                                    </div>
+                                <div class="form-group">
+                                    <label for="description">
+                                        <i class="feather icon-file-text mr-1"></i><?= __('description') ?>
+                                    </label>
+                                    <textarea class="form-control" id="description" name="description" rows="3" placeholder="<?= __('enter_description') ?>"></textarea>
                                 </div>
                             </div>
                         </div>
@@ -1479,165 +1477,240 @@ include '../includes/header.php';
                     </div>
                     <div class="modal-body">
                         <input type="hidden" id="editTicketId" name="id">
-                    <div class="form-row">
-                        <div class="form-group col-md-3">
-                            <label for="supplier"><?= __('supplier') ?></label>
-                            <select class="form-control" id="editSupplier" name="supplier" required readonly>
-                                <option value=""><?= __('select_supplier') ?></option>
-                                <?php foreach ($suppliers as $supplier): ?>
-                                <option value="<?= $supplier['id'] ?>"><?= $supplier['name'] ?></option>
-                                <?php endforeach; ?>
-                            </select>
+                        
+                        <!-- Client and Trip Information -->
+                        <div class="card">
+                            <div class="card-header bg-light">
+                                <h6 class="mb-0"><?= __('booking_details') ?></h6>
+                            </div>
+                            <div class="card-body">
+                                <div class="form-row">
+                                    <div class="form-group col-md-4">
+                                        <label for="editSupplier">
+                                            <i class="feather icon-user mr-1"></i><?= __('supplier') ?>
+                                        </label>
+                                        <select class="form-control selectpicker" id="editSupplier" name="supplier" required readonly
+                                                data-live-search="true" data-style="btn-light">
+                                            <option value=""><?= __('select_supplier') ?></option>
+                                            <?php foreach ($suppliers as $supplier): ?>
+                                                <option value="<?= $supplier['id'] ?>" data-tokens="<?= $supplier['name'] ?>"><?= $supplier['name'] ?></option>
+                                            <?php endforeach; ?>
+                                        </select>
+                                    </div>
+                                    
+                                    <div class="form-group col-md-4">
+                                        <label for="editSoldTo">
+                                            <i class="feather icon-users mr-1"></i><?= __('sold_to') ?>
+                                        </label>
+                                        <select class="form-control selectpicker" id="editSoldTo" name="soldTo" required readonly
+                                                data-live-search="true" data-style="btn-light">
+                                            <option value=""><?= __('select_client') ?></option>
+                                            <?php
+                                            if ($conn->connect_error) {
+                                                echo "<option value=''>Database connection failed</option>";
+                                            } else {
+                                                $result = $conn->query("SELECT id, name, usd_balance, afs_balance FROM clients where status = 'active' AND tenant_id = $tenant_id");
+                                                while ($row = $result->fetch_assoc()) {
+                                                    echo "<option value='{$row['id']}' data-tokens='{$row['name']}'>{$row['name']}</option>";
+                                                }
+                                            }
+                                            ?>
+                                        </select>
+                                    </div>
+                                    
+                                    <div class="form-group col-md-4">
+                                        <label for="editTripType">
+                                            <i class="feather icon-repeat mr-1"></i><?= __('trip_type') ?>
+                                        </label>
+                                        <select class="form-control selectpicker" id="editTripType" name="tripType" required
+                                                data-style="btn-light">
+                                            <option value="one_way"><?= __('one_way') ?></option>
+                                            <option value="round_trip"><?= __('round_trip') ?></option>
+                                        </select>
+                                    </div>
+                                </div>
+                            </div>
                         </div>
-                        <div class="form-group col-md-3">
-                            <label for="editSoldTo"><?= __('sold_to') ?></label>
-                            <select class="form-control" id="editSoldTo" name="soldTo" required readonly>
-                                <option value=""><?= __('select_client') ?></option>
-                                <?php 
-                                // Fetch main accounts from the database
-                                if ($conn->connect_error) {
-                                    echo "<option value=''>Database connection failed</option>";
-                                } else {
-                                    $result = $conn->query("SELECT id, name, usd_balance, afs_balance FROM clients where status = 'active' AND tenant_id = $tenant_id");
-                                    while ($row = $result->fetch_assoc()) {
-                                        echo "<option value='{$row['id']}'>
-                                                {$row['name']}
-                                            </option>";
-                                    }
-                                }
-                                ?>
-                            </select>
-                        </div>
-                        <div class="form-group col-md-3">
-                            <label for="editTripType"><?= __('trip_type') ?></label>
-                            <select class="form-control" id="editTripType" name="tripType" required>
-                                <option value="one_way"><?= __('one_way') ?></option>
-                                <option value="round_trip"><?= __('round_trip') ?></option>
-                            </select>
-                        </div>
-                        <div class="form-group col-md-3">
-                            <label for="editTitle"><?= __('title') ?></label>
-                            <select class="form-control" id="editTitle" name="title" required>
-                                <option value="Mr"><?= __('mr') ?></option>
-                                <option value="Mrs"><?= __('mrs') ?></option>
-                                <option value="Child"><?= __('child') ?></option>
-                            </select>
-                        </div>
-                    </div>
-                    
-                    <div class="form-row">
-                        <div class="form-group col-md-3">
-                            <label for="editGender"><?= __('gender') ?></label>
-                            <select class="form-control" id="editGender" name="gender" required>
-                                <option value="Male"><?= __('male') ?></option>
-                                <option value="Female"><?= __('female') ?></option>
-                            </select>
-                        </div>
-                        <div class="form-group col-md-3">
-                            <label for="editPassengerName"><?= __('passenger_name') ?></label>
-                            <input type="text" class="form-control" id="editPassengerName" name="passengerName" required>
-                        </div>
-                        <div class="form-group col-md-3">
-                            <label for="editPhone"><?= __('phone') ?></label>
-                            <input type="text" class="form-control" id="editPhone" name="phone" required>
-                        </div>
-                        <div class="form-group col-md-3">
-                            <label for="editPnr"><?= __('pnr') ?></label>
-                            <input type="text" class="form-control" id="editPnr" name="pnr" required>
-                        </div>
-                    </div>
 
-                    <div class="form-row">
-                        <div class="form-group col-md-3">
-                            <label for="editOrigin"><?= __('from') ?></label>
-                            <input type="text" class="form-control" id="editOrigin" name="origin" required>
+                        <!-- Passenger Information Section -->
+                        <div class="card">
+                            <div class="card-header bg-light">
+                                <h6 class="mb-0"><?= __('passenger_information') ?></h6>
+                            </div>
+                            <div class="card-body">
+                                <div class="form-row">
+                                    <div class="form-group col-md-2">
+                                        <label for="editTitle">
+                                            <i class="feather icon-user mr-1"></i><?= __('title') ?>
+                                        </label>
+                                        <select class="form-control select2" id="editTitle" name="title" required>
+                                            <option value="Mr"><?= __('mr') ?></option>
+                                            <option value="Mrs"><?= __('mrs') ?></option>
+                                            <option value="Child"><?= __('child') ?></option>
+                                        </select>
+                                    </div>
+                                    <div class="form-group col-md-2">
+                                        <label for="editGender">
+                                            <i class="feather icon-user mr-1"></i><?= __('gender') ?>
+                                        </label>
+                                        <select class="form-control select2" id="editGender" name="gender" required>
+                                            <option value="Male"><?= __('male') ?></option>
+                                            <option value="Female"><?= __('female') ?></option>
+                                        </select>
+                                    </div>
+                                    <div class="form-group col-md-4">
+                                        <label for="editPassengerName">
+                                            <i class="feather icon-user mr-1"></i><?= __('passenger_name') ?>
+                                        </label>
+                                        <input type="text" class="form-control" id="editPassengerName" name="passengerName" required>
+                                    </div>
+                                    <div class="form-group col-md-4">
+                                        <label for="editPhone">
+                                            <i class="feather icon-phone mr-1"></i><?= __('phone') ?>
+                                        </label>
+                                        <input type="text" class="form-control" id="editPhone" name="phone" required>
+                                    </div>
+                                </div>
+                            </div>
                         </div>
-                        <div class="form-group col-md-3">
-                            <label for="editDestination"><?= __('to') ?></label>
-                            <input type="text" class="form-control" id="editDestination" name="destination" required>
+
+                        <!-- Flight Details -->
+                        <div class="card">
+                            <div class="card-header bg-light">
+                                <h6 class="mb-0"><?= __('flight_details') ?></h6>
+                            </div>
+                            <div class="card-body">
+                                <div class="form-row">
+                                    <div class="form-group col-md-3">
+                                        <label for="editPnr">
+                                            <i class="feather icon-hash mr-1"></i><?= __('pnr') ?>
+                                        </label>
+                                        <input type="text" class="form-control" id="editPnr" name="pnr" required>
+                                    </div>
+                                    <div class="form-group col-md-3">
+                                        <label for="editOrigin">
+                                            <i class="feather icon-map-pin mr-1"></i><?= __('from') ?>
+                                        </label>
+                                        <input type="text" class="form-control" id="editOrigin" name="origin" required>
+                                    </div>
+                                    <div class="form-group col-md-3">
+                                        <label for="editDestination">
+                                            <i class="feather icon-map-pin mr-1"></i><?= __('to') ?>
+                                        </label>
+                                        <input type="text" class="form-control" id="editDestination" name="destination" required>
+                                    </div>
+                                    <div id="editReturnJourneyFields" class="form-group col-md-3" style="display: none;">
+                                        <label for="editReturnDestination">
+                                            <i class="feather icon-map-pin mr-1"></i><?= __('return_to') ?>
+                                        </label>
+                                        <input type="text" class="form-control" id="editReturnDestination" name="returnDestination">
+                                    </div>
+                                </div>
+
+                                <div class="form-row">
+                                    <div class="form-group col-md-12">
+                                        <label for="editAirline">
+                                            <i class="feather icon-plane mr-1"></i><?= __('airline') ?>
+                                        </label>
+                                        <select class="form-control select2" id="editAirline" name="airline" required>
+                                            <!-- Airlines will be populated by JavaScript -->
+                                        </select>
+                                    </div>
+                                </div>
+
+                                <div class="form-row">
+                                    <div class="form-group col-md-4">
+                                        <label for="editIssueDate">
+                                            <i class="feather icon-calendar mr-1"></i><?= __('issue_date') ?>
+                                        </label>
+                                        <input type="date" class="form-control" id="editIssueDate" name="issueDate" required>
+                                    </div>
+                                    <div class="form-group col-md-4">
+                                        <label for="editDepartureDate">
+                                            <i class="feather icon-calendar mr-1"></i><?= __('departure_date') ?>
+                                        </label>
+                                        <input type="date" class="form-control" id="editDepartureDate" name="departureDate" required>
+                                    </div>
+                                    <div id="editReturnDateField" class="form-group col-md-4" style="display: none;">
+                                        <label for="editReturnDate">
+                                            <i class="feather icon-calendar mr-1"></i><?= __('return_date') ?>
+                                        </label>
+                                        <input type="date" class="form-control" id="editReturnDate" name="returnDate">
+                                    </div>
+                                </div>
+                            </div>
                         </div>
-                        <div class="form-group col-md-3">
-                            <label for="editAirline"><?= __('airline') ?></label>
-                            <select class="form-control" id="editAirline" name="airline" required>
-                                <!-- Airline options go here -->
-                                
-                            </select>
-                        </div>
-                        <div id="editReturnJourneyFields" style="display: none;">
-                            <div class="form-group col-md-3">
-                                <label for="editReturnDestination"><?= __('return_to') ?></label>
-                                <input type="text" class="form-control" id="editReturnDestination" name="returnDestination">
+
+                        <!-- Payment Information -->
+                        <div class="card">
+                            <div class="card-header bg-light">
+                                <h6 class="mb-0"><?= __('payment_information') ?></h6>
+                            </div>
+                            <div class="card-body">
+                                <div class="form-row">
+                                    <div class="form-group col-md-6">
+                                        <label for="editCurr">
+                                            <i class="feather icon-dollar-sign mr-1"></i><?= __('currency') ?>
+                                        </label>
+                                        <input class="form-control" id="editCurr" name="curr" required readonly>
+                                    </div>
+                                    <div class="form-group col-md-6">
+                                        <label for="editPaidTo">
+                                            <i class="feather icon-credit-card mr-1"></i><?= __('paid_to') ?>
+                                        </label>
+                                        <select class="form-control select2" id="editPaidTo" name="paidTo" required readonly>
+                                            <option value=""><?= __('select_main_account') ?></option>
+                                            <?php
+                                            if ($conn->connect_error) {
+                                                echo "<option value=''>Database connection failed</option>";
+                                            } else {
+                                                $result = $conn->query("SELECT id, name, usd_balance, afs_balance FROM main_account where status = 'active' AND tenant_id = $tenant_id");
+                                                while ($row = $result->fetch_assoc()) {
+                                                    echo "<option value='{$row['id']}'>{$row['name']}</option>";
+                                                }
+                                            }
+                                            ?>
+                                        </select>
+                                    </div>
+                                </div>
+                            
+                                <!-- Payment Totals Section -->
+                                <div class="form-row">
+                                    <div class="form-group col-md-3">
+                                        <label for="editBase">
+                                            <i class="feather icon-dollar-sign mr-1"></i><?= __('base') ?>
+                                        </label>
+                                        <input type="number" class="form-control" id="editBase" name="base" step="any" required>
+                                    </div>
+                                    <div class="form-group col-md-3">
+                                        <label for="editSold">
+                                            <i class="feather icon-dollar-sign mr-1"></i><?= __('sold') ?>
+                                        </label>
+                                        <input type="number" class="form-control" id="editSold" name="sold" step="any" required>
+                                    </div>
+                                    <div class="form-group col-md-3">
+                                        <label for="editDiscount">
+                                            <i class="feather icon-minus-circle mr-1"></i><?= __('discount') ?>
+                                        </label>
+                                        <input type="number" class="form-control" id="editDiscount" name="discount" value="0" step="any">
+                                    </div>
+                                    <div class="form-group col-md-3">
+                                        <label for="editPro">
+                                            <i class="feather icon-plus-circle mr-1"></i><?= __('profit') ?>
+                                        </label>
+                                        <input type="number" class="form-control" id="editPro" name="pro" readonly>
+                                    </div>
+                                </div>
+                            
+                                <div class="form-group">
+                                    <label for="editDescription">
+                                        <i class="feather icon-file-text mr-1"></i><?= __('description') ?>
+                                    </label>
+                                    <textarea class="form-control" id="editDescription" name="description" rows="3" placeholder="<?= __('enter_description') ?>"></textarea>
+                                </div>
                             </div>
                         </div>
                     </div>
-
-                    <div class="form-row">
-                        <div class="form-group col-md-3">
-                            <label for="editIssueDate"><?= __('issue_date') ?></label>
-                            <input type="date" class="form-control" id="editIssueDate" name="issueDate" required>
-                        </div>
-                        <div class="form-group col-md-3">
-                            <label for="editDepartureDate"><?= __('departure_date') ?></label>
-                            <input type="date" class="form-control" id="editDepartureDate" name="departureDate" required>
-                        </div>
-                        <div id="editReturnDateField" class="form-group col-md-3" style="display: none;">
-                            <label for="editReturnDate"><?= __('return_date') ?></label>
-                            <input type="date" class="form-control" id="editReturnDate" name="returnDate">
-                        </div>
-                        <div class="form-group col-md-3">
-                            <label for="editBase"><?= __('base') ?></label>
-                            <input type="number" class="form-control" id="editBase" name="base" step="any" required>
-                        </div>
-                    </div>
-
-                    <div class="form-row">
-                        <div class="form-group col-md-3">
-                            <label for="editSold"><?= __('sold') ?></label>
-                            <input type="number" class="form-control" id="editSold" name="sold" step="any" required>
-                        </div>
-                        <div class="form-group col-md-3">
-                            <label for="editDiscount"><?= __('discount') ?></label>
-                            <input type="number" class="form-control" id="editDiscount" name="discount" step="any" value="0">
-                        </div>
-                        <div class="form-group col-md-3">
-                            <label for="editPro"><?= __('profit') ?></label>
-                            <input type="number" class="form-control" id="editPro" name="pro" step="any" required readonly>
-                        </div>
-                        
-                        <div class="form-group col-md-3">
-                            <label for="editCurr"><?= __('currency') ?></label>
-                            <input class="form-control" id="editCurr" name="curr" required>
-                        </div>
-                        <div class="form-group col-md-3">
-                            <label for="editPaidTo"><?= __('paid_to') ?></label>
-                            <select class="form-control" id="editPaidTo" name="paidTo" required readonly>
-                                <option value=""><?= __('select_main_account') ?></option>
-                                <?php 
-                                // Fetch main accounts from the database
-                                if ($conn->connect_error) {
-                                    echo "<option value=''>Database connection failed</option>";
-                                } else {
-                                    $result = $conn->query("SELECT id, name, usd_balance, afs_balance FROM main_account where status = 'active' AND tenant_id = $tenant_id");
-                                    while ($row = $result->fetch_assoc()) {
-                                        echo "<option value='{$row['id']}'>
-                                                {$row['name']}
-                                            </option>";
-                                    }
-                                }
-                                ?>
-                            </select>
-                        </div>
-                    </div>
-
-                    <div class="form-row">
-                        <div class="form-group col-md-12">
-                            <label for="editDescription"><?= __('description') ?></label>
-                            <input type="text" class="form-control" id="editDescription" name="description">
-                        </div>
-                    </div>
-
-                    
-                </div>
                 <div class="modal-footer">
                     <button type="button" class="btn btn-secondary" data-dismiss="modal"><?= __('close') ?></button>
                     <button type="submit" class="btn btn-primary"><?= __('save_changes') ?></button>
