@@ -10,13 +10,13 @@ function generateTazminAgreement(bookingId) {
 
     // Prompt for guarantor name
     Swal.fire({
-        title: '<?= __("enter_guarantor_name") ?>',
+        title: 'Eenter guarantor name',
         input: 'text',
-        inputLabel: '<?= __("guarantor_name") ?>',
+        inputLabel: 'Guarantor Name',
         showCancelButton: true,
         inputValidator: (value) => {
             if (!value) {
-                return '<?= __("guarantor_name_required") ?>';
+                return 'Guarantor name required';
             }
         }
     }).then((result) => {
@@ -33,8 +33,8 @@ function generateFamilyTazmin(familyId) {
     if (!familyId) {
         Swal.fire({
             icon: 'error',
-            title: '<?= __("error") ?>',
-            text: '<?= __("invalid_family") ?>'
+            title: 'Error',
+            text: 'Invalid family'
         });
         return;
     }
@@ -46,13 +46,13 @@ function generateFamilyTazmin(familyId) {
             if (data.success && data.bookings && data.bookings.length > 0) {
                 // Prompt for guarantor name
                 Swal.fire({
-                    title: '<?= __("enter_guarantor_name") ?>',
+                    title: 'Enter guarantor name',
                     input: 'text',
-                    inputLabel: '<?= __("guarantor_name") ?>',
+                    inputLabel: 'Guarantor name',
                     showCancelButton: true,
                     inputValidator: (value) => {
                         if (!value) {
-                            return '<?= __("guarantor_name_required") ?>';
+                            return 'Guarantor name required';
                         }
                     }
                 }).then((result) => {
@@ -66,8 +66,8 @@ function generateFamilyTazmin(familyId) {
             } else {
                 Swal.fire({
                     icon: 'warning',
-                    title: '<?= __("no_members") ?>',
-                    text: '<?= __("no_family_members_found") ?>'
+                    title: 'No members',
+                    text: 'No family members found'
                 });
             }
         })
@@ -75,8 +75,8 @@ function generateFamilyTazmin(familyId) {
             console.error('Error:', error);
             Swal.fire({
                 icon: 'error',
-                title: '<?= __("error") ?>',
-                text: '<?= __("failed_to_fetch_family_members") ?>'
+                title: 'Error',
+                text: 'Failed to fetch family members'
             });
         });
 }
