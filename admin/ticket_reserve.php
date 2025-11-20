@@ -1617,29 +1617,6 @@ foreach ($suppliers as $supplier) {
     <!-- Add Bootstrap-select JS -->
     <script src="https://cdn.jsdelivr.net/npm/bootstrap-select@1.13.14/dist/js/bootstrap-select.min.js"></script>
     
-    <script>
-        $(document).ready(function() {
-            // Initialize Bootstrap Select for supplier dropdown
-            $('#supplier').selectpicker({
-                style: 'btn-light',
-                size: 4,
-                liveSearch: true
-            });
-
-            // Initialize Bootstrap Select for soldTo dropdown
-            $('#soldTo').selectpicker({
-                style: 'btn-light',
-                size: 4,
-                liveSearch: true
-            });
-
-            // Initialize Bootstrap Select for tripType dropdown
-            $('#tripType').selectpicker({
-                style: 'btn-light',
-                size: 4
-            });
-        });
-    </script>
     
     <style>
         /* Existing styles... */

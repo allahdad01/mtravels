@@ -1031,7 +1031,7 @@ foreach ($visas as $key => $visa) {
                                                         </div>
                                                         <div class="modal-footer">
                                                             <button type="button" class="btn btn-secondary" data-dismiss="modal"><?= __('close') ?></button>
-                                                            <button type="submit" class="btn btn-primary"><?= __('add_visa') ?></button>
+                                                            <button type="submit" class="btn btn-primary" data-no-protection><?= __('add_visa') ?></button>
                                                         </div>
                                                     </form>
                                                 </div>
@@ -1643,6 +1643,7 @@ foreach ($visas as $key => $visa) {
          <script src="js/visa/visa_refund.js"></script>
          <script src="js/visa/transaction_manager.js"></script>
          <script src="js/visa/search.js"></script>
+
 
    
 <script>

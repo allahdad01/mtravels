@@ -50,7 +50,7 @@ $main_accounts = $stmt->get_result()->fetch_all(MYSQLI_ASSOC);
                 <h5 class="modal-title"><?= __('new_customer') ?></h5>
                 <button type="button" class="close" data-dismiss="modal">&times;</button>
             </div>
-            <form method="POST" action="handlers/create_customer.php">
+            <form method="POST" action="handlers/create_customer.php" id="customerForm">
                 <div class="modal-body">
                     <div class="form-group">
                         <label><?= __('full_name') ?></label>

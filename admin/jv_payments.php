@@ -1386,6 +1386,66 @@ try {
 
 
     <script>
+    // Button Protection System for JV Payments
+    class JvButtonProtection {
+        constructor() {
+            this.init();
+        }
+
+        init() {
+            this.protectFormButtons();
+            this.protectDeleteButtons();
+        }
+
+        protectButton(button, loadingText = 'Processing...', duration = 2000) {
+            if (button && !button.disabled) {
+                const originalText = button.innerHTML;
+                button.disabled = true;
+                button.innerHTML = `<i class="fas fa-spinner fa-spin mr-1"></i>${loadingText}`;
+
+                setTimeout(() => {
+                    button.disabled = false;
+                    button.innerHTML = originalText;
+                }, duration);
+            }
+        }
+
+        protectFormButtons() {
+            // Protect form submit buttons
+            const formButtons = [
+                { formId: '#clientSupplierForm', buttonSelector: 'button[type="submit"]', text: 'Processing Payment...' },
+                { formId: '#editClientSupplierForm', buttonSelector: 'button[type="submit"]', text: 'Updating Payment...' }
+            ];
+
+            formButtons.forEach(({ formId, buttonSelector, text }) => {
+                const form = document.querySelector(formId);
+                if (form) {
+                    const button = form.querySelector(buttonSelector);
+                    if (button) {
+                        form.addEventListener('submit', () => {
+                            this.protectButton(button, text, 3000);
+                        });
+                    }
+                }
+            });
+        }
+
+        protectDeleteButtons() {
+            // Protect delete buttons
+            document.addEventListener('click', (e) => {
+                if (e.target.closest('.delete-cs-btn')) {
+                    const button = e.target.closest('button');
+                    if (button) {
+                        this.protectButton(button, 'Deleting...', 2000);
+                    }
+                }
+            });
+        }
+    }
+
+    // Initialize button protection
+    const jvButtonProtection = new JvButtonProtection();
+
     $(document).ready(function() {
         // Initialize DataTable
         if ($.fn.DataTable) {

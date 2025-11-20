@@ -194,7 +194,7 @@ function sendTicketNotification($clientEmail, $clientName, $ticketType, $ticketD
                 <p>A new <strong>{$ticketType}</strong> ticket has been added to your account.</p>
 
                 <div class='ticket-info'>
-                    <h4>Ticket Details:</h4>
+                    <h4>{$ticketType} Details:</h4>
                     {$ticketDetails}
                 </div>
 
@@ -213,6 +213,426 @@ function sendTicketNotification($clientEmail, $clientName, $ticketType, $ticketD
     ";
 
     return sendEmail($clientEmail, $subject, $body, true, 'ticket_notification', $clientName, $tenant_id);
+}
+
+// Send visa application notification email
+function sendVisaNotification($clientEmail, $clientName, $applicationId, $applicantName, $passportNumber, $country, $visaType, $appliedDate, $issuedDate, $sold, $currency) {
+    // Get tenant name for subject
+    global $tenant_id;
+    $tenantName = 'MTravels'; // Default fallback
+
+    if (isset($tenant_id) && $tenant_id) {
+        global $conn;
+        $stmt = $conn->prepare("SELECT name FROM tenants WHERE id = ?");
+        $stmt->bind_param("i", $tenant_id);
+        $stmt->execute();
+        $result = $stmt->get_result();
+        $tenant = $result->fetch_assoc();
+        if ($tenant) {
+            $tenantName = $tenant['name'];
+        }
+        $stmt->close();
+    }
+
+    $subject = "New Visa Application Added - {$tenantName}";
+
+    $body = "
+    <html>
+    <head>
+        <style>
+            body { font-family: Arial, sans-serif; line-height: 1.6; color: #333; }
+            .container { max-width: 600px; margin: 0 auto; padding: 20px; }
+            .header { background: linear-gradient(135deg, #28a745 0%, #20c997 100%); color: white; padding: 20px; text-align: center; border-radius: 8px 8px 0 0; }
+            .content { background: #f8f9fa; padding: 20px; border-radius: 0 0 8px 8px; }
+            .visa-info { background: white; padding: 15px; border-radius: 5px; margin: 15px 0; border-left: 4px solid #28a745; }
+            .footer { text-align: center; margin-top: 20px; color: #666; font-size: 12px; }
+        </style>
+    </head>
+    <body>
+        <div class='container'>
+            <div class='header'>
+                <h2>{$tenantName} - New Visa Application</h2>
+            </div>
+            <div class='content'>
+                <p>Dear {$clientName},</p>
+                <p>A new <strong>visa application</strong> has been added to your account.</p>
+
+                <div class='visa-info'>
+                    <h4>Visa Application Details:</h4>
+                    <p><strong>Application ID:</strong> {$applicationId}</p>
+                    <p><strong>Applicant Name:</strong> {$applicantName}</p>
+                    <p><strong>Passport Number:</strong> {$passportNumber}</p>
+                    <p><strong>Country:</strong> {$country}</p>
+                    <p><strong>Visa Type:</strong> {$visaType}</p>
+                    <p><strong>Applied Date:</strong> {$appliedDate}</p>
+                    <p><strong>Issued Date:</strong> {$issuedDate}</p>
+                    <p><strong>Total Amount:</strong> {$sold} {$currency}</p>
+                </div>
+
+                <p>Please log in to your account to view the complete application details and track the status.</p>
+
+                <p>If you have any questions about this visa application, please don't hesitate to contact our support team.</p>
+
+                <p>Best regards,<br>{$tenantName} Team</p>
+            </div>
+            <div class='footer'>
+                <p>This is an automated notification. Please do not reply to this email.</p>
+            </div>
+        </div>
+    </body>
+    </html>
+    ";
+
+    return sendEmail($clientEmail, $subject, $body, true, 'visa_notification', $clientName, $tenant_id);
+}
+
+// Send hotel booking notification email
+function sendHotelNotification($clientEmail, $clientName, $bookingId, $guestName, $checkInDate, $checkOutDate, $accommodationDetails, $soldAmount, $currency) {
+    // Get tenant name for subject
+    global $tenant_id;
+    $tenantName = 'MTravels'; // Default fallback
+
+    if (isset($tenant_id) && $tenant_id) {
+        global $conn;
+        $stmt = $conn->prepare("SELECT name FROM tenants WHERE id = ?");
+        $stmt->bind_param("i", $tenant_id);
+        $stmt->execute();
+        $result = $stmt->get_result();
+        $tenant = $result->fetch_assoc();
+        if ($tenant) {
+            $tenantName = $tenant['name'];
+        }
+        $stmt->close();
+    }
+
+    $subject = "New Hotel Booking Added - {$tenantName}";
+
+    $body = "
+    <html>
+    <head>
+        <style>
+            body { font-family: Arial, sans-serif; line-height: 1.6; color: #333; }
+            .container { max-width: 600px; margin: 0 auto; padding: 20px; }
+            .header { background: linear-gradient(135deg, #007bff 0%, #0056b3 100%); color: white; padding: 20px; text-align: center; border-radius: 8px 8px 0 0; }
+            .content { background: #f8f9fa; padding: 20px; border-radius: 0 0 8px 8px; }
+            .hotel-info { background: white; padding: 15px; border-radius: 5px; margin: 15px 0; border-left: 4px solid #007bff; }
+            .footer { text-align: center; margin-top: 20px; color: #666; font-size: 12px; }
+        </style>
+    </head>
+    <body>
+        <div class='container'>
+            <div class='header'>
+                <h2>{$tenantName} - New Hotel Booking</h2>
+            </div>
+            <div class='content'>
+                <p>Dear {$clientName},</p>
+                <p>A new <strong>hotel booking</strong> has been added to your account.</p>
+
+                <div class='hotel-info'>
+                    <h4>Hotel Booking Details:</h4>
+                    <p><strong>Booking ID:</strong> {$bookingId}</p>
+                    <p><strong>Guest Name:</strong> {$guestName}</p>
+                    <p><strong>Check-in Date:</strong> {$checkInDate}</p>
+                    <p><strong>Check-out Date:</strong> {$checkOutDate}</p>
+                    <p><strong>Accommodation:</strong> {$accommodationDetails}</p>
+                    <p><strong>Total Amount:</strong> {$soldAmount} {$currency}</p>
+                </div>
+
+                <p>Please log in to your account to view the complete booking details and manage your reservation.</p>
+
+                <p>If you have any questions about this hotel booking, please don't hesitate to contact our support team.</p>
+
+                <p>Best regards,<br>{$tenantName} Team</p>
+            </div>
+            <div class='footer'>
+                <p>This is an automated notification. Please do not reply to this email.</p>
+            </div>
+        </div>
+    </body>
+    </html>
+    ";
+
+    return sendEmail($clientEmail, $subject, $body, true, 'hotel_notification', $clientName, $tenant_id);
+}
+
+// Send umrah booking notification email
+function sendUmrahNotification($clientEmail, $clientName, $bookingId, $passengerName, $flightDate, $returnDate, $roomType, $totalAmount, $amountPaid, $dueAmount, $currency) {
+    // Get tenant name for subject
+    global $tenant_id;
+    $tenantName = 'MTravels'; // Default fallback
+
+    if (isset($tenant_id) && $tenant_id) {
+        global $conn;
+        $stmt = $conn->prepare("SELECT name FROM tenants WHERE id = ?");
+        $stmt->bind_param("i", $tenant_id);
+        $stmt->execute();
+        $result = $stmt->get_result();
+        $tenant = $result->fetch_assoc();
+        if ($tenant) {
+            $tenantName = $tenant['name'];
+        }
+        $stmt->close();
+    }
+
+    $subject = "New Umrah Booking Added - {$tenantName}";
+
+    $body = "
+    <html>
+    <head>
+        <style>
+            body { font-family: Arial, sans-serif; line-height: 1.6; color: #333; }
+            .container { max-width: 600px; margin: 0 auto; padding: 20px; }
+            .header { background: linear-gradient(135deg, #6f42c1 0%, #5a2d91 100%); color: white; padding: 20px; text-align: center; border-radius: 8px 8px 0 0; }
+            .content { background: #f8f9fa; padding: 20px; border-radius: 0 0 8px 8px; }
+            .umrah-info { background: white; padding: 15px; border-radius: 5px; margin: 15px 0; border-left: 4px solid #6f42c1; }
+            .footer { text-align: center; margin-top: 20px; color: #666; font-size: 12px; }
+        </style>
+    </head>
+    <body>
+        <div class='container'>
+            <div class='header'>
+                <h2>{$tenantName} - New Umrah Booking</h2>
+            </div>
+            <div class='content'>
+                <p>Dear {$clientName},</p>
+                <p>A new <strong>Umrah booking</strong> has been added to your account.</p>
+
+                <div class='umrah-info'>
+                    <h4>Umrah Booking Details:</h4>
+                    <p><strong>Booking ID:</strong> {$bookingId}</p>
+                    <p><strong>Passenger Name:</strong> {$passengerName}</p>
+                    <p><strong>Flight Date:</strong> {$flightDate}</p>
+                    <p><strong>Return Date:</strong> {$returnDate}</p>
+                    <p><strong>Room Type:</strong> {$roomType}</p>
+                    <p><strong>Total Amount:</strong> {$totalAmount} {$currency}</p>
+                    <p><strong>Amount Paid:</strong> {$amountPaid} {$currency}</p>
+                    <p><strong>Due Amount:</strong> {$dueAmount} {$currency}</p>
+                </div>
+
+                <p>Please log in to your account to view the complete booking details and manage your Umrah package.</p>
+
+                <p>If you have any questions about this Umrah booking, please don't hesitate to contact our support team.</p>
+
+                <p>Best regards,<br>{$tenantName} Team</p>
+            </div>
+            <div class='footer'>
+                <p>This is an automated notification. Please do not reply to this email.</p>
+            </div>
+        </div>
+    </body>
+    </html>
+    ";
+
+    return sendEmail($clientEmail, $subject, $body, true, 'umrah_notification', $clientName, $tenant_id);
+}
+
+// Send ticket reservation notification email
+function sendTicketReservationNotification($clientEmail, $clientName, $ticketId, $passengerName, $pnr, $origin, $destination, $airline, $departureDate, $returnDate, $sold, $currency) {
+    // Get tenant name for subject
+    global $tenant_id;
+    $tenantName = 'MTravels'; // Default fallback
+
+    if (isset($tenant_id) && $tenant_id) {
+        global $conn;
+        $stmt = $conn->prepare("SELECT name FROM tenants WHERE id = ?");
+        $stmt->bind_param("i", $tenant_id);
+        $stmt->execute();
+        $result = $stmt->get_result();
+        $tenant = $result->fetch_assoc();
+        if ($tenant) {
+            $tenantName = $tenant['name'];
+        }
+        $stmt->close();
+    }
+
+    $subject = "New Flight Ticket Reservation - {$tenantName}";
+
+    $body = "
+    <html>
+    <head>
+        <style>
+            body { font-family: Arial, sans-serif; line-height: 1.6; color: #333; }
+            .container { max-width: 600px; margin: 0 auto; padding: 20px; }
+            .header { background: linear-gradient(135deg, #fd7e14 0%, #e55100 100%); color: white; padding: 20px; text-align: center; border-radius: 8px 8px 0 0; }
+            .content { background: #f8f9fa; padding: 20px; border-radius: 0 0 8px 8px; }
+            .ticket-info { background: white; padding: 15px; border-radius: 5px; margin: 15px 0; border-left: 4px solid #fd7e14; }
+            .footer { text-align: center; margin-top: 20px; color: #666; font-size: 12px; }
+        </style>
+    </head>
+    <body>
+        <div class='container'>
+            <div class='header'>
+                <h2>{$tenantName} - Flight Ticket Reservation</h2>
+            </div>
+            <div class='content'>
+                <p>Dear {$clientName},</p>
+                <p>A new <strong>flight ticket reservation</strong> has been added to your account.</p>
+
+                <div class='ticket-info'>
+                    <h4>Flight Reservation Details:</h4>
+                    <p><strong>Reservation ID:</strong> {$ticketId}</p>
+                    <p><strong>Passenger Name:</strong> {$passengerName}</p>
+                    <p><strong>PNR:</strong> {$pnr}</p>
+                    <p><strong>Route:</strong> {$origin} → {$destination}</p>
+                    <p><strong>Airline:</strong> {$airline}</p>
+                    <p><strong>Departure Date:</strong> {$departureDate}</p>
+                    " . (!empty($returnDate) ? "<p><strong>Return Date:</strong> {$returnDate}</p>" : "") . "
+                    <p><strong>Total Amount:</strong> {$sold} {$currency}</p>
+                </div>
+
+                <p>Please log in to your account to view the complete reservation details and manage your booking.</p>
+
+                <p>If you have any questions about this flight reservation, please don't hesitate to contact our support team.</p>
+
+                <p>Best regards,<br>{$tenantName} Team</p>
+            </div>
+            <div class='footer'>
+                <p>This is an automated notification. Please do not reply to this email.</p>
+            </div>
+        </div>
+    </body>
+    </html>
+    ";
+
+    return sendEmail($clientEmail, $subject, $body, true, 'ticket_reservation_notification', $clientName, $tenant_id);
+}
+
+// Send salary advance notification email
+function sendSalaryAdvanceNotification($employeeEmail, $employeeName, $advanceId, $amount, $currency, $advanceDate, $description, $receipt) {
+    // Get tenant name for subject
+    global $tenant_id;
+    $tenantName = 'MTravels'; // Default fallback
+
+    if (isset($tenant_id) && $tenant_id) {
+        global $conn;
+        $stmt = $conn->prepare("SELECT name FROM tenants WHERE id = ?");
+        $stmt->bind_param("i", $tenant_id);
+        $stmt->execute();
+        $result = $stmt->get_result();
+        $tenant = $result->fetch_assoc();
+        if ($tenant) {
+            $tenantName = $tenant['name'];
+        }
+        $stmt->close();
+    }
+
+    $subject = "Salary Advance Processed - {$tenantName}";
+
+    $body = "
+    <html>
+    <head>
+        <style>
+            body { font-family: Arial, sans-serif; line-height: 1.6; color: #333; }
+            .container { max-width: 600px; margin: 0 auto; padding: 20px; }
+            .header { background: linear-gradient(135deg, #dc3545 0%, #c82333 100%); color: white; padding: 20px; text-align: center; border-radius: 8px 8px 0 0; }
+            .content { background: #f8f9fa; padding: 20px; border-radius: 0 0 8px 8px; }
+            .advance-info { background: white; padding: 15px; border-radius: 5px; margin: 15px 0; border-left: 4px solid #dc3545; }
+            .footer { text-align: center; margin-top: 20px; color: #666; font-size: 12px; }
+        </style>
+    </head>
+    <body>
+        <div class='container'>
+            <div class='header'>
+                <h2>{$tenantName} - Salary Advance</h2>
+            </div>
+            <div class='content'>
+                <p>Dear {$employeeName},</p>
+                <p>Your <strong>salary advance</strong> has been processed successfully.</p>
+
+                <div class='advance-info'>
+                    <h4>Advance Details:</h4>
+                    <p><strong>Advance ID:</strong> {$advanceId}</p>
+                    <p><strong>Amount:</strong> {$amount} {$currency}</p>
+                    <p><strong>Advance Date:</strong> {$advanceDate}</p>
+                    <p><strong>Receipt:</strong> {$receipt}</p>
+                    " . (!empty($description) ? "<p><strong>Description:</strong> {$description}</p>" : "") . "
+                </div>
+
+                <p>Please note that this advance will be deducted from your upcoming salary payments.</p>
+
+                <p>If you have any questions about this advance, please contact the HR department.</p>
+
+                <p>Best regards,<br>{$tenantName} HR Team</p>
+            </div>
+            <div class='footer'>
+                <p>This is an automated notification. Please do not reply to this email.</p>
+            </div>
+        </div>
+    </body>
+    </html>
+    ";
+
+    return sendEmail($employeeEmail, $subject, $body, true, 'salary_advance_notification', $employeeName, $tenant_id);
+}
+
+// Send salary payment notification email
+function sendSalaryPaymentNotification($employeeEmail, $employeeName, $paymentId, $amount, $currency, $paymentDate, $paymentForMonth, $paymentType, $description, $receipt) {
+    // Get tenant name for subject
+    global $tenant_id;
+    $tenantName = 'MTravels'; // Default fallback
+
+    if (isset($tenant_id) && $tenant_id) {
+        global $conn;
+        $stmt = $conn->prepare("SELECT name FROM tenants WHERE id = ?");
+        $stmt->bind_param("i", $tenant_id);
+        $stmt->execute();
+        $result = $stmt->get_result();
+        $tenant = $result->fetch_assoc();
+        if ($tenant) {
+            $tenantName = $tenant['name'];
+        }
+        $stmt->close();
+    }
+
+    $subject = "Salary Payment Processed - {$tenantName}";
+
+    $body = "
+    <html>
+    <head>
+        <style>
+            body { font-family: Arial, sans-serif; line-height: 1.6; color: #333; }
+            .container { max-width: 600px; margin: 0 auto; padding: 20px; }
+            .header { background: linear-gradient(135deg, #28a745 0%, #20c997 100%); color: white; padding: 20px; text-align: center; border-radius: 8px 8px 0 0; }
+            .content { background: #f8f9fa; padding: 20px; border-radius: 0 0 8px 8px; }
+            .payment-info { background: white; padding: 15px; border-radius: 5px; margin: 15px 0; border-left: 4px solid #28a745; }
+            .footer { text-align: center; margin-top: 20px; color: #666; font-size: 12px; }
+        </style>
+    </head>
+    <body>
+        <div class='container'>
+            <div class='header'>
+                <h2>{$tenantName} - Salary Payment</h2>
+            </div>
+            <div class='content'>
+                <p>Dear {$employeeName},</p>
+                <p>Your <strong>salary payment</strong> has been processed successfully.</p>
+
+                <div class='payment-info'>
+                    <h4>Payment Details:</h4>
+                    <p><strong>Payment ID:</strong> {$paymentId}</p>
+                    <p><strong>Amount:</strong> {$amount} {$currency}</p>
+                    <p><strong>Payment Date:</strong> {$paymentDate}</p>
+                    <p><strong>For Month:</strong> {$paymentForMonth}</p>
+                    <p><strong>Payment Type:</strong> " . ucfirst($paymentType) . "</p>
+                    <p><strong>Receipt:</strong> {$receipt}</p>
+                    " . (!empty($description) ? "<p><strong>Description:</strong> {$description}</p>" : "") . "
+                </div>
+
+                <p>Your salary has been processed and will be reflected in your account accordingly.</p>
+
+                <p>If you have any questions about this payment, please contact the HR department.</p>
+
+                <p>Best regards,<br>{$tenantName} HR Team</p>
+            </div>
+            <div class='footer'>
+                <p>This is an automated notification. Please do not reply to this email.</p>
+            </div>
+        </div>
+    </body>
+    </html>
+    ";
+
+    return sendEmail($employeeEmail, $subject, $body, true, 'salary_payment_notification', $employeeName, $tenant_id);
 }
 
 // Send notification to debtors/creditors
@@ -693,5 +1113,471 @@ function calculateNextBillingDate($payment_date, $billing_cycle) {
     }
 
     return $date->format('Y-m-d');
+}
+
+// Generate PDF ticket from booking data
+function generateTicketPDF($bookingData, $tenantId) {
+    require_once '../vendor/autoload.php';
+    
+    // Create new PDF document
+    $mpdf = new \Mpdf\Mpdf([
+        'mode' => 'utf-8',
+        'format' => 'A4',
+        'margin_left' => 15,
+        'margin_right' => 15,
+        'margin_top' => 15,
+        'margin_bottom' => 15
+    ]);
+    
+    // Set PDF properties
+    $mpdf->SetTitle('Flight Ticket - ' . $bookingData['pnr']);
+    $mpdf->SetAuthor('MTravels');
+    $mpdf->SetSubject('Flight Ticket');
+    
+    // Get agency settings for header
+    global $conn;
+    $agencyName = 'MTravels';
+    $agencyEmail = 'info@mtravels.com';
+    $agencyPhone = '+93 (0) 123 456 789';
+    $agencyAddress = '';
+    
+    if ($tenantId) {
+        $stmt = $conn->prepare("SELECT agency_name, email, phone, address FROM settings WHERE tenant_id = ?");
+        $stmt->bind_param("i", $tenantId);
+        $stmt->execute();
+        $result = $stmt->get_result();
+        $settings = $result->fetch_assoc();
+        if ($settings) {
+            $agencyName = $settings['agency_name'] ?: 'MTravels';
+            $agencyEmail = $settings['email'] ?: 'info@mtravels.com';
+            $agencyPhone = $settings['phone'] ?: '+93 (0) 123 456 789';
+            $agencyAddress = $settings['address'] ?: '';
+        }
+        $stmt->close();
+    }
+    
+    // Format dates for display
+    function formatFlightDate($dateTime) {
+        if (empty($dateTime) || trim($dateTime) === '') return '';
+        $date = DateTime::createFromFormat('Y-m-d H:i', trim($dateTime));
+        return $date ? $date->format('H:i / d. M. Y') : $dateTime;
+    }
+    
+    $formattedDeparture = formatFlightDate($bookingData['departure_date']);
+    $formattedReturn = !empty($bookingData['return_date']) ? formatFlightDate($bookingData['return_date']) : '';
+    
+    // Build HTML content for PDF with professional layout
+    $html = '
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            font-size: 11pt;
+            color: #000;
+            margin: 0;
+            padding: 20px;
+            line-height: 1.3;
+            background-color: white;
+        }
+        
+        .container {
+            max-width: 800px;
+            margin: 0 auto;
+            background: white;
+            box-shadow: 0 0 10px rgba(0,0,0,0.1);
+            padding: 30px;
+        }
+        
+        .header {
+            margin-bottom: 20px;
+            padding-bottom: 15px;
+            border-bottom: 2px solid #2c3e50;
+            display: table;
+            width: 100%;
+        }
+        
+        .header-left,
+        .header-center,
+        .header-right {
+            display: table-cell;
+            vertical-align: middle;
+            width: 33.33%;
+        }
+        
+        .header-left { text-align: left; }
+        .header-center { text-align: center; }
+        .header-right { text-align: right; }
+        
+        .company-name {
+            font-size: 18pt;
+            font-weight: bold;
+            color: #2c3e50;
+            text-transform: uppercase;
+            margin: 0;
+        }
+        
+        .contact-info {
+            font-size: 10pt;
+            color: #666;
+            line-height: 1.4;
+        }
+        
+        .contact-email {
+            font-weight: bold;
+            color: #2c3e50;
+        }
+        
+        .flight-details-header {
+            font-size: 14pt;
+            font-weight: bold;
+            color: #333;
+            margin: 25px 0 5px 0;
+        }
+        
+        .pnr-display {
+            font-size: 12pt;
+            color: #e74c3c;
+            font-weight: bold;
+            margin-bottom: 20px;
+        }
+        
+        .flight-section {
+            margin: 20px 0;
+            border: 1px solid #ddd;
+            border-radius: 8px;
+            overflow: hidden;
+        }
+        
+        .section-header {
+            background-color: #f8f9fa;
+            padding: 12px 15px;
+            font-weight: bold;
+            font-size: 12pt;
+            color: #2c3e50;
+            border-bottom: 1px solid #ddd;
+        }
+        
+        .outbound { border-left: 4px solid #27ae60; }
+        .return { border-left: 4px solid #e67e22; }
+        
+        .flight-layout-table {
+            width: 100%;
+            border-collapse: collapse;
+        }
+        
+        .flight-layout-table td {
+            vertical-align: top;
+            padding: 15px;
+            border: none;
+        }
+        
+        .flight-departs {
+            width: 40%;
+        }
+        
+        .flight-center {
+            width: 20%;
+            text-align: center;
+            border-left: 1px solid #ddd;
+            border-right: 1px solid #ddd;
+        }
+        
+        .flight-arrives {
+            width: 40%;
+            text-align: right;
+        }
+        
+        .flight-label {
+            font-size: 11pt;
+            font-weight: bold;
+            color: #666;
+            margin-bottom: 8px;
+        }
+        
+        .flight-city {
+            font-size: 16pt;
+            font-weight: bold;
+            color: #000;
+            margin-bottom: 5px;
+        }
+        
+        .flight-time {
+            font-size: 11pt;
+            color: #333;
+        }
+        
+        .flight-number {
+            font-size: 14pt;
+            font-weight: bold;
+            color: #000;
+            margin-bottom: 8px;
+        }
+        
+        .plane-icon {
+            font-size: 18pt;
+            color: #666;
+        }
+        
+        .passengers-header {
+            font-size: 14pt;
+            font-weight: bold;
+            margin: 30px 0 15px 0;
+            color: #2c3e50;
+            text-decoration: underline;
+        }
+        
+        .passengers-table {
+            width: 100%;
+            border-collapse: collapse;
+            margin-top: 10px;
+            font-size: 10pt;
+        }
+        
+        .passengers-table th {
+            background-color: #2c3e50;
+            color: white;
+            font-weight: bold;
+            padding: 10px 8px;
+            border: 1px solid #2c3e50;
+            text-align: left;
+        }
+        
+        .passengers-table tr:nth-child(even) {
+            background-color: #f9f9f9;
+        }
+        
+        .sno-col {
+            width: 50px;
+            text-align: center;
+            font-weight: bold;
+        }
+        
+        .name-col {
+            width: 35%;
+        }
+        
+        .title-col {
+            width: 25%;
+            font-weight: bold;
+        }
+        
+        .footer {
+            text-align: center;
+            margin-top: 30px;
+            color: #666;
+            font-size: 12px;
+            border-top: 1px solid #ddd;
+            padding-top: 15px;
+        }
+    </style>
+    
+    <div class="container">
+        <div class="header">
+            <div class="header-left">
+                <strong>' . strtoupper($agencyName) . '</strong>
+            </div>
+            <div class="header-center">
+                <div class="company-name">' . htmlspecialchars($agencyName) . '</div>
+            </div>
+            <div class="header-right">
+                <div class="contact-info">
+                    <div class="contact-email">' . htmlspecialchars($agencyEmail) . '</div>
+                    <div>' . htmlspecialchars($agencyPhone) . '</div>
+                    ' . (!empty($agencyAddress) ? '<div style="font-size: 9pt; margin-top: 2px;">' . htmlspecialchars($agencyAddress) . '</div>' : '') . '
+                </div>
+            </div>
+        </div>
+
+        <div class="flight-details-header">Your Flight Details</div>
+        <div class="pnr-display">PNR: ' . htmlspecialchars($bookingData['pnr']) . '</div>
+
+        <!-- Outbound Journey -->
+        <div class="flight-section outbound">
+            <div class="section-header">
+                🛫 Outbound Journey
+            </div>
+            <table class="flight-layout-table">
+                <tr>
+                    <td class="flight-departs">
+                        <div class="flight-label">Departs</div>
+                        <div class="flight-city">' . strtoupper($bookingData['origin']) . '</div>
+                        <div class="flight-time">' . $formattedDeparture . '</div>
+                    </td>
+                    <td class="flight-center">
+                        <div class="flight-number">' . strtoupper($bookingData['airline']) . '</div>
+                        <div class="plane-icon">✈</div>
+                    </td>
+                    <td class="flight-arrives">
+                        <div class="flight-label">Arrives</div>
+                        <div class="flight-city">' . strtoupper($bookingData['destination']) . '</div>
+                        <div class="flight-time">' . $formattedDeparture . '</div>
+                    </td>
+                </tr>
+            </table>
+        </div>';
+
+    if (!empty($formattedReturn)) {
+        $html .= '
+        <!-- Return Journey -->
+        <div class="flight-section return">
+            <div class="section-header">
+                🛬 Return Journey
+            </div>
+            <table class="flight-layout-table">
+                <tr>
+                    <td class="flight-departs">
+                        <div class="flight-label">Departs</div>
+                        <div class="flight-city">' . strtoupper($bookingData['destination']) . '</div>
+                        <div class="flight-time">' . $formattedReturn . '</div>
+                    </td>
+                    <td class="flight-center">
+                        <div class="flight-number">' . strtoupper($bookingData['airline']) . '</div>
+                        <div class="plane-icon">✈</div>
+                    </td>
+                    <td class="flight-arrives">
+                        <div class="flight-label">Arrives</div>
+                        <div class="flight-city">' . strtoupper($bookingData['origin']) . '</div>
+                        <div class="flight-time">' . $formattedReturn . '</div>
+                    </td>
+                </tr>
+            </table>
+        </div>';
+    }
+
+    $html .= '
+        <div class="passengers-header">Passengers Details</div>
+        
+        <table class="passengers-table">
+            <thead>
+                <tr>
+                    <th class="sno-col">S/NO</th>
+                    <th class="name-col">First Name</th>
+                    <th class="name-col">Last Name</th>
+                    <th class="title-col">Title</th>
+                </tr>
+            </thead>
+            <tbody>';
+    
+    foreach ($bookingData['passengers'] as $index => $passenger) {
+        $nameParts = explode(' ', trim($passenger['name']), 2);
+        $firstName = strtoupper($nameParts[0] ?? '');
+        $lastName = strtoupper($nameParts[1] ?? '');
+        
+        $html .= '
+                <tr>
+                    <td class="sno-col">' . ($index + 1) . '</td>
+                    <td>' . htmlspecialchars($firstName) . '</td>
+                    <td>' . htmlspecialchars($lastName) . '</td>
+                    <td>' . htmlspecialchars($passenger['title'] ?? '') . '</td>
+                </tr>';
+    }
+    
+    $html .= '
+            </tbody>
+        </table>
+        
+        <div class="footer">
+            <p><strong>Issue Date:</strong> ' . date('d. M. Y', strtotime($bookingData['issue_date'])) . '</p>
+            <p>This is a computer-generated ticket. Please verify all details before travel.</p>
+            <p>Generated on: ' . date('M d, Y H:i:s') . '</p>
+        </div>
+    </div>';
+    
+    // Write HTML to PDF
+    $mpdf->WriteHTML($html);
+    
+    // Create uploads directory if it doesn't exist
+    $uploadDir = '../uploads/tickets/';
+    if (!is_dir($uploadDir)) {
+        mkdir($uploadDir, 0755, true);
+    }
+    
+    // Generate unique filename
+    $filename = 'ticket_' . $bookingData['pnr'] . '_' . time() . '.pdf';
+    $filepath = $uploadDir . $filename;
+    
+    // Save PDF to file
+    $mpdf->Output($filepath, 'F');
+    
+    return $filepath;
+}
+
+// Send ticket notification email with PDF attachment
+function sendTicketNotificationWithAttachment($email, $name, $subject, $body, $attachmentPath) {
+    require_once '../vendor/autoload.php';
+    
+    // Get SMTP settings
+    global $tenant_id;
+    $smtpSettings = getTenantSMTPSettings($tenant_id);
+    
+    if (empty($smtpSettings['smtp_host']) || empty($smtpSettings['smtp_username']) || empty($smtpSettings['smtp_password'])) {
+        error_log("SMTP settings not configured for tenant: " . ($tenant_id ?? 'platform'));
+        return false;
+    }
+    
+    $mail = new PHPMailer\PHPMailer\PHPMailer(true);
+    
+    try {
+        // Server settings
+        $mail->isSMTP();
+        $mail->Host = $smtpSettings['smtp_host'];
+        $mail->SMTPAuth = true;
+        $mail->Username = $smtpSettings['smtp_username'];
+        $mail->Password = $smtpSettings['smtp_password'];
+        
+        if (!empty($smtpSettings['smtp_encryption'])) {
+            if ($smtpSettings['smtp_encryption'] === 'tls') {
+                $mail->SMTPSecure = PHPMailer\PHPMailer\PHPMailer::ENCRYPTION_STARTTLS;
+            } elseif ($smtpSettings['smtp_encryption'] === 'ssl') {
+                $mail->SMTPSecure = PHPMailer\PHPMailer\PHPMailer::ENCRYPTION_SMTPS;
+            }
+        }
+        
+        $mail->Port = !empty($smtpSettings['smtp_port']) ? (int)$smtpSettings['smtp_port'] : 587;
+        
+        // Get tenant name for sender
+        $tenantName = 'MTravels'; // Default fallback
+        
+        if (isset($tenant_id) && $tenant_id) {
+            global $conn;
+            $stmt = $conn->prepare("SELECT name FROM tenants WHERE id = ?");
+            $stmt->bind_param("i", $tenant_id);
+            $stmt->execute();
+            $result = $stmt->get_result();
+            $tenant = $result->fetch_assoc();
+            if ($tenant) {
+                $tenantName = $tenant['name'];
+            }
+            $stmt->close();
+        }
+        
+        // Recipients
+        $mail->setFrom(
+            !empty($smtpSettings['smtp_from_email']) ? $smtpSettings['smtp_from_email'] : $smtpSettings['smtp_username'],
+            $tenantName
+        );
+        $mail->addAddress($email, $name);
+        
+        // Content
+        $mail->isHTML(true);
+        $mail->Subject = $subject;
+        $mail->Body = $body;
+        $mail->AltBody = strip_tags($body);
+        
+        // Add PDF attachment
+        if (file_exists($attachmentPath)) {
+            $mail->addAttachment($attachmentPath, 'Flight_Ticket.pdf');
+        }
+        
+        $mail->send();
+        
+        // Record email in tracking table
+        $emailId = uniqid('email_', true);
+        recordEmailTracking($emailId, $email, 'ticket_notification_with_pdf', $tenant_id);
+        
+        return true;
+    } catch (Exception $e) {
+        error_log("Email sending failed: " . $mail->ErrorInfo);
+        return false;
+    }
 }
 ?>

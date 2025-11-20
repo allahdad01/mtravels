@@ -3,7 +3,7 @@
 session_start();
 
 // Check if the user is logged in, if not then redirect to login page
-if (!isset($_SESSION["loggedin"]) || $_SESSION["loggedin"] !== true) {
+if (!isset($_SESSION["loggedin"]) || $_SESSION["loggedin"] !== true || $_SESSION["role"] !== "admin") {
     header("location: ../access_denied.php");
     exit;
 }
@@ -163,6 +163,35 @@ if ($_SERVER["REQUEST_METHOD"] == "POST" && isset($_GET["advance_user_id"])) {
                 // Commit transaction
                 mysqli_commit($conection_db);
                 
+                // Send email notification to employee
+                require_once '../includes/functions.php';
+
+                // Get employee email
+                $email_sql = "SELECT email FROM users WHERE id = ? AND tenant_id = ?";
+                $email_stmt = mysqli_prepare($conection_db, $email_sql);
+                mysqli_stmt_bind_param($email_stmt, "ii", $advance_user_id, $tenant_id);
+                mysqli_stmt_execute($email_stmt);
+                mysqli_stmt_store_result($email_stmt);
+                
+                if (mysqli_stmt_num_rows($email_stmt) == 1) {
+                    mysqli_stmt_bind_result($email_stmt, $employee_email);
+                    mysqli_stmt_fetch($email_stmt);
+                    
+                    if (!empty($employee_email)) {
+                        sendSalaryAdvanceNotification(
+                            $employee_email,
+                            $employee_name,
+                            $advance_id,
+                            $amount,
+                            $currency,
+                            $advance_date,
+                            $description,
+                            $receipt
+                        );
+                    }
+                }
+                mysqli_stmt_close($email_stmt);
+                
                 // Redirect back to the same employee's page with success message
                 header("location: salary_advances.php?advance_user_id=" . $advance_user_id . "&success=1");
                 exit();
@@ -183,7 +212,7 @@ if ($_SERVER["REQUEST_METHOD"] == "POST" && isset($_GET["advance_user_id"])) {
 
 
     <!-- [ Header ] start -->
-    <?php include("../includes/header_finance.php"); ?>
+    <?php include("../includes/header.php"); ?>
     <link rel="stylesheet" href="css/modal-styles.css">
     <!-- [ Header ] end -->
 

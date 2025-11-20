@@ -6,7 +6,7 @@ $(document).off('submit', '#umrahForm').on('submit', '#umrahForm', function(even
     const submitBtn = event.target.querySelector('button[type="submit"]');
     const originalHtml = submitBtn.innerHTML;
     submitBtn.disabled = true;
-    submitBtn.innerHTML = '<i class="feather icon-loader"></i> adding...';
+    submitBtn.innerHTML = '<i class="fas fa-spinner fa-spin mr-1"></i>Adding Booking...';
 
     let formData = new FormData(event.target);
 
@@ -41,7 +41,7 @@ $('#editFamilyForm').off('submit').on('submit', function(e) {
     let form = $(this);
     let submitButton = form.find('button[type="submit"]');
     submitButton.prop('disabled', true);
-    submitButton.html('<i class="fa fa-spinner fa-spin"></i> saving...');
+    submitButton.html('<i class="fas fa-spinner fa-spin mr-1"></i>Saving Changes...');
 
     $.ajax({
         url: 'update_family.php',

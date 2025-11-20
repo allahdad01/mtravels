@@ -1,3 +1,6 @@
+// Global submission flag to prevent multiple submissions
+let isHotelTransactionSubmitting = false;
+
 /**
  * Transaction Management Module for Hotel Bookings
  */
@@ -10,8 +13,20 @@ const transactionManager = {
 
     // Bind all event listeners
     bindEvents: function() {
-        $('#hotelTransactionForm').on('submit', (e) => this.handleTransactionSubmit.call(this, e));
-        $('#editTransactionForm').on('submit', (e) => this.handleEditTransactionSubmit.call(this, e));
+        // Remove any existing handlers first to prevent duplicates
+        $('#hotelTransactionForm').off('submit').on('submit', this.handleTransactionSubmit.bind(this));
+        
+        // Additional protection: Disable button on click to prevent multiple submissions
+        $('#hotelTransactionForm button[type="submit"]').off('click').on('click', function(e) {
+            if (isHotelTransactionSubmitting) {
+                console.log('Button click ignored during submission');
+                e.preventDefault();
+                e.stopPropagation();
+                return false;
+            }
+        });
+        
+        $('#editTransactionForm').off('submit').on('submit', (e) => this.handleEditTransactionSubmit.call(this, e));
         $('#paymentCurrency').on('change', this.toggleExchangeRateField.bind(this));
         $('#editPaymentCurrency').on('change', this.toggleEditExchangeRateField.bind(this));
     },
@@ -52,6 +67,25 @@ const transactionManager = {
             $('#editExchangeRateField').hide();
             $('#editTransactionExchangeRate').attr('required', false);
             $('#editTransactionExchangeRate').val(''); // Clear value when hidden
+        }
+    },
+
+    // Disable/Enable submit button helper
+    setSubmitButtonState: function(disabled, text) {
+        const $submitBtn = $('#hotelTransactionForm button[type="submit"]');
+        console.log('Setting button state to:', disabled);
+        $submitBtn.prop('disabled', disabled);
+        
+        if (disabled) {
+            // Store original text if not already stored
+            if (!$submitBtn.data('original-text')) {
+                $submitBtn.data('original-text', $submitBtn.html());
+            }
+            $submitBtn.html(`<i class="feather icon-loader spin"></i> ${text || 'Processing...'}`);
+        } else {
+            // Restore original text
+            const originalText = $submitBtn.data('original-text') || 'Submit';
+            $submitBtn.html(originalText);
         }
     },
 
@@ -264,26 +298,48 @@ const transactionManager = {
         });
     },
 
-    // Handle transaction form submission
+    // Handle transaction form submission with double-submit prevention
     handleTransactionSubmit: function(e) {
         e.preventDefault();
+        e.stopPropagation();
+
+        console.log('Form submission triggered, isHotelTransactionSubmitting:', isHotelTransactionSubmitting);
+
+        // PREVENTION #1: Check if already submitting
+        if (isHotelTransactionSubmitting) {
+            console.log('Form submission already in progress, ignoring duplicate request');
+            return false;
+        }
+
+        // Set submitting flag immediately
+        isHotelTransactionSubmitting = true;
+        console.log('Set isHotelTransactionSubmitting to true');
+
+        // PREVENTION #2: Disable submit button immediately
+        this.setSubmitButtonState(true, 'Submitting...');
 
         const form = e.target; // Get form from event target
+        console.log('Form element:', form);
 
         // Check if form is valid HTMLFormElement
         if (!(form instanceof HTMLFormElement)) {
             console.error('Form is not a valid HTMLFormElement:', form);
             showToast('Error: Invalid form element', 'error');
-            return;
+            isHotelTransactionSubmitting = false;
+            this.setSubmitButtonState(false);
+            return false;
         }
 
         const formData = new FormData(form);
         const bookingId = formData.get('booking_id');
+        console.log('Booking ID:', bookingId);
 
         if (!bookingId) {
             console.error('No booking ID in form');
             showToast('Error: Missing booking ID', 'error');
-            return;
+            isHotelTransactionSubmitting = false;
+            this.setSubmitButtonState(false);
+            return false;
         }
 
         // Combine date and time
@@ -293,13 +349,27 @@ const transactionManager = {
             formData.set('payment_date', `${date} ${time}`);
         }
 
+        const self = this;
+
+        console.log('Starting AJAX request...');
+
+        // Set a backup timeout to re-enable the form in case something goes wrong
+        const backupTimeout = setTimeout(() => {
+            console.log('Backup timeout triggered, re-enabling form');
+            isHotelTransactionSubmitting = false;
+            self.setSubmitButtonState(false);
+        }, 35000); // 35 seconds (5 seconds after the main timeout)
+
         $.ajax({
             url: 'add_hotel_transaction.php',
             type: 'POST',
             data: formData,
             processData: false,
             contentType: false,
+            timeout: 30000, // 30 second timeout
             success: function(response) {
+                console.log('AJAX success:', response);
+                clearTimeout(backupTimeout); // Clear backup timeout
                 try {
                     const result = typeof response === 'string' ? JSON.parse(response) : response;
 
@@ -319,9 +389,26 @@ const transactionManager = {
             },
             error: function(xhr, status, error) {
                 console.error('AJAX Error:', error);
-                showToast('Error adding transaction', 'error');
+                console.error('Response:', xhr.responseText);
+                clearTimeout(backupTimeout); // Clear backup timeout
+                
+                // Show appropriate error message
+                if (status === 'timeout') {
+                    showToast('Request timed out. Please check your connection and try again.', 'error');
+                } else {
+                    showToast('Error adding transaction. Please try again.', 'error');
+                }
+            },
+            complete: function() {
+                console.log('AJAX complete, re-enabling form');
+                // CRITICAL: Always re-enable form in complete callback
+                // This runs whether success or error
+                isHotelTransactionSubmitting = false;
+                self.setSubmitButtonState(false);
             }
         });
+
+        return false;
     },
 
     // Edit transaction

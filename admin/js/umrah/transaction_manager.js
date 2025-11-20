@@ -324,10 +324,16 @@ $(document).ready(function() {
                         $('#receiptNumberField').hide();
 
                     } else {
+                        // Re-enable submit button on business logic error
+                        submitBtn.prop('disabled', false);
+                        submitBtn.html(originalHtml);
                         alert('error: ' + (result.message || 'failed_to_add_transaction'));
                     }
                 } catch (e) {
                     console.error('Error processing response:', e, response);
+                    // Re-enable submit button on parsing error
+                    submitBtn.prop('disabled', false);
+                    submitBtn.html(originalHtml);
                     alert('error_processing_the_request');
                 }
             },
@@ -340,6 +346,14 @@ $(document).ready(function() {
                 alert('error_adding_transaction');
             }
         });
+
+        // Re-enable submit button after 10 seconds as safety measure
+        setTimeout(function() {
+            if (submitBtn.prop('disabled')) {
+                submitBtn.prop('disabled', false);
+                submitBtn.html(originalHtml);
+            }
+        }, 10000);
     });
     
 
@@ -588,10 +602,16 @@ $(document).ready(function() {
                         const soldAmount = parseFloat($('#totalAmount').text().replace(/[^\d.]/g, '')) || 0;
                         loadTransactionHistory(umrahId);
                     } else {
+                        // Re-enable submit button on business logic error
+                        submitBtn.prop('disabled', false);
+                        submitBtn.html(originalHtml);
                         alert('error_updating_transaction: ' + (result.message || 'unknown_error'));
                     }
                 } catch (e) {
                     console.error('Error processing response:', e, response);
+                    // Re-enable submit button on parsing error
+                    submitBtn.prop('disabled', false);
+                    submitBtn.html(originalHtml);
                     alert('error_processing_the_server_response');
                 }
             },
@@ -604,6 +624,14 @@ $(document).ready(function() {
                 alert('error_updating_transaction');
             }
         });
+
+        // Re-enable submit button after 10 seconds as safety measure
+        setTimeout(function() {
+            if (submitBtn.prop('disabled')) {
+                submitBtn.prop('disabled', false);
+                submitBtn.html(originalHtml);
+            }
+        }, 10000);
     });
     
     // Add edit button to transaction rows

@@ -70,8 +70,6 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     // Validate base_amount
     $base_amount = isset($_POST['base_amount']) ? DbSecurity::validateInput($_POST['base_amount'], 'float', ['min' => 0]) : null;
 
-    // Validate receipt
-    $receipt = isset($_POST['receipt']) ? DbSecurity::validateInput($_POST['receipt'], 'string', ['maxlength' => 100]) : '';
 
     // Validate booking_id
     $booking_id = isset($_POST['booking_id']) ? DbSecurity::validateInput($_POST['booking_id'], 'int', ['min' => 0]) : null;
@@ -80,7 +78,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 
     try {
         // Get original values to calculate differences
-        $originalQuery = "SELECT base_amount, sold_amount, supplier_id, sold_to, currency, receipt FROM hotel_bookings WHERE id = ? AND tenant_id = ?";
+        $originalQuery = "SELECT base_amount, sold_amount, supplier_id, sold_to, currency FROM hotel_bookings WHERE id = ? AND tenant_id = ?";
         $stmtOriginal = $pdo->prepare($originalQuery);
         $stmtOriginal->execute([$booking_id, $tenant_id]);
         $originalData = $stmtOriginal->fetch(PDO::FETCH_ASSOC);
@@ -761,7 +759,6 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             sold_to = :sold_to,
             paid_to = :paid_to,
             remarks = :remarks,
-            receipt = :receipt,
             updated_at = NOW()
             WHERE id = :booking_id AND tenant_id = :tenant_id";
 
@@ -786,7 +783,6 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             ':sold_to' => $_POST['sold_to'],
             ':paid_to' => $_POST['paid_to'],
             ':remarks' => $_POST['remarks'],
-            ':receipt' => $receipt,
             ':tenant_id' => $tenant_id
         ];
 
@@ -810,7 +806,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 'currency' => $originalData['currency'] ?? '',
                 'supplier_id' => $originalData['supplier_id'] ?? 0,
                 'sold_to' => $originalData['sold_to'] ?? 0,
-                'receipt' => $originalData['receipt'] ?? ''
+
             ];
             
             // Prepare new values
@@ -831,7 +827,6 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 'sold_to' => $_POST['sold_to'],
                 'paid_to' => $_POST['paid_to'],
                 'remarks' => $_POST['remarks'],
-                'receipt' => $receipt
             ];
             
             // Insert activity log

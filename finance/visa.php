@@ -1031,7 +1031,7 @@ foreach ($visas as $key => $visa) {
                                                         </div>
                                                         <div class="modal-footer">
                                                             <button type="button" class="btn btn-secondary" data-dismiss="modal"><?= __('close') ?></button>
-                                                            <button type="submit" class="btn btn-primary"><?= __('add_visa') ?></button>
+                                                            <button type="submit" class="btn btn-primary" data-no-protection><?= __('add_visa') ?></button>
                                                         </div>
                                                     </form>
                                                 </div>

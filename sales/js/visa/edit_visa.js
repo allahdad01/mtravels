@@ -132,11 +132,11 @@ function editVisa(id) {
         .then(response => response.json())
         .then(data => {
             if (data.success) {
-                alert('visa_updated_successfully');
+                showToast('visa_updated_successfully', 'success');
                 $('#editVisaModal').modal('hide');
                 location.reload(); // Refresh page after updating
             } else {
-                    alert('error_updating_visa: ' + data.message);
+                showToast('error_updating_visa: ' + data.message, 'error');
                 // Re-enable the button if there's an error
                 submitButton.disabled = false;
                 submitButton.innerHTML = 'save_changes';
@@ -144,7 +144,7 @@ function editVisa(id) {
         })
         .catch(error => {
             console.error('Error updating visa:', error);
-            alert('an_unexpected_error_occurred');
+            showToast('an_unexpected_error_occurred', 'error');
             // Re-enable the button if there's an error
             submitButton.disabled = false;
             submitButton.innerHTML = 'save_changes';

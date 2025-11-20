@@ -128,6 +128,7 @@
         
         // Get the submit button
         const submitButton = $(this).find('button[type="submit"]');
+        const originalText = submitButton.html();
         
         // If the form is already being submitted, return
         if (submitButton.prop('disabled')) {
@@ -142,10 +143,10 @@
         const visaId = $('#visa_id').val();
         
         if (!visaId) {
-            alert('visa_id_is_missing');
-            // Re-enable the submit button
+            // Re-enable the submit button on validation error
             submitButton.prop('disabled', false);
-            submitButton.html('<i class="feather icon-check mr-1"></i> add_transaction');
+            submitButton.html(originalText);
+            alert('visa_id_is_missing');
             return;
         }
 
@@ -179,25 +180,35 @@
                         $('#transactionExchangeRate').val('');
                         transactionManager.loadTransactionHistory(visaId);
                     } else {
+                        // Re-enable the submit button on business logic error
+                        submitButton.prop('disabled', false);
+                        submitButton.html(originalText);
                         alert('Error adding transaction: ' + (result.message || 'Unknown error'));
                     }
                 } catch (e) {
                     console.error('Error parsing response:', e);
-                    alert('error_processing_the_request');
-                } finally {
-                    // Re-enable the submit button
+                    // Re-enable the submit button on parsing error
                     submitButton.prop('disabled', false);
-                    submitButton.html('<i class="feather icon-check mr-1"></i> add_transaction');
+                    submitButton.html(originalText);
+                    alert('error_processing_the_request');
                 }
             },
             error: function(xhr, status, error) {
                 console.error('AJAX Error:', error);
                 alert('error_adding_transaction');
-                // Re-enable the submit button
+                // Re-enable the submit button on network error
                 submitButton.prop('disabled', false);
-                submitButton.html('<i class="feather icon-check mr-1"></i> add_transaction');
+                submitButton.html(originalText);
             }
         });
+
+        // Re-enable submit button after 10 seconds as safety measure
+        setTimeout(function() {
+            if (submitButton.prop('disabled')) {
+                submitButton.prop('disabled', false);
+                submitButton.html(originalText);
+            }
+        }, 10000);
     },
 
    // Load transaction history
@@ -393,6 +404,8 @@
             e.preventDefault();
             
             const submitButton = $(this).find('button[type="submit"]');
+            const originalText = submitButton.html();
+            
             if (submitButton.prop('disabled')) return;
             
             submitButton.prop('disabled', true);
@@ -424,18 +437,28 @@
                         $('#editTransactionModal').modal('hide');
                         transactionManager.loadTransactionHistory(currentVisaId);
                     } else {
+                        // Re-enable submit button on business logic error
+                        submitButton.prop('disabled', false);
+                        submitButton.html(originalText);
                         alert('error: ' + (response.message || 'unknown_error'));
                     }
                 })
                 .fail(function(xhr, status, error) {
                     console.error('AJAX Error:', error);
                     console.error('Response:', xhr.responseText);
-                    alert('error_updating_transaction');
-                })
-                .always(function() {
+                    // Re-enable submit button on network error
                     submitButton.prop('disabled', false);
-                    submitButton.html('<i class="feather icon-check mr-1"></i> save_changes');
+                    submitButton.html(originalText);
+                    alert('error_updating_transaction');
                 });
+
+            // Re-enable submit button after 10 seconds as safety measure
+            setTimeout(function() {
+                if (submitButton.prop('disabled')) {
+                    submitButton.prop('disabled', false);
+                    submitButton.html(originalText);
+                }
+            }, 10000);
         });
 
         // Show the modal

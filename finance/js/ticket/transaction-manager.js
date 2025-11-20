@@ -1,5 +1,7 @@
-// Transaction Management
+// Transaction Management with Double-Submit Prevention
 const transactionManager = {
+    isSubmitting: false, // Flag to track submission state
+
     // Initialize transaction modal and form handlers
     init: function() {
         this.bindEvents();
@@ -20,7 +22,6 @@ const transactionManager = {
         const today = now.toISOString().split('T')[0];
         $('#paymentDate').val(today);
 
-        // Format time as HH:MM:SS
         const hours = String(now.getHours()).padStart(2, '0');
         const minutes = String(now.getMinutes()).padStart(2, '0');
         const seconds = String(now.getSeconds()).padStart(2, '0');
@@ -37,207 +38,307 @@ const transactionManager = {
         } else {
             $('#exchangeRateField').hide();
             $('#transactionExchangeRate').attr('required', false);
-            $('#transactionExchangeRate').val(''); // Clear value when hidden
+            $('#transactionExchangeRate').val('');
         }
     },
 
     // Toggle exchange rate field for edit form
     toggleEditExchangeRateField: function() {
-        // Always show exchange rate field for edit form
-        $('#editExchangeRateField').show();
-        $('#editTransactionExchangeRate').attr('required', true);
+        const selectedCurrency = $('#editPaymentCurrency').val();
+        const baseCurrency = window.ticketCurrency;
+        if (selectedCurrency && baseCurrency && selectedCurrency !== baseCurrency) {
+            $('#editExchangeRateField').show();
+            $('#editTransactionExchangeRate').attr('required', true);
+        } else {
+            $('#editExchangeRateField').hide();
+            $('#editTransactionExchangeRate').attr('required', false);
+            $('#editTransactionExchangeRate').val('');
+        }
     },
 
-     // Load and display transaction modal
-loadTransactionModal: function(ticketId) {
-    $.ajax({
-        url: 'get_ticket_bookings.php',
-        type: 'GET',
-        data: { id: ticketId },
-        dataType: 'json',
-        success: function(response) {
-            if (response.success) {
-                const booking = response.booking;
-
-                // Set guest name and PNR
-                $('#trans-guest-name').text(`${booking.title} ${booking.passenger_name}`);
-                $('#trans-order-id').text(booking.pnr);
-
-                // Total sold amount (in booking.currency)
-                const originalAmount = parseFloat(booking.sold);
-                $('#totalAmount').text(`${booking.currency} ${originalAmount.toFixed(2)}`);
-
-                // Exchange rate will be set from transaction data
-                $('#exchangeRateDisplay').text('Loading...');
-
-                // Exchanged amount will be calculated from transaction data
-                $('#exchangedAmount').text('Loading...');
-
-                // Set booking ID in the form
-                $('#booking_id').val(ticketId);
-
-                // Store ticket currency for exchange rate logic
-                window.ticketCurrency = booking.currency;
-
-                // Load previous transaction history
-                transactionManager.loadTransactionHistory(ticketId);
-
-                // Show modal
-                $('#transactionsModal').modal('show');
-            } else {
-                alert('error_fetching_booking_details: ' + (response.message || 'unknown_error'));
+    // Disable/Enable submit button helper
+    setSubmitButtonState: function(disabled, text) {
+        const $submitBtn = $('#hotelTransactionForm button[type="submit"]');
+        $submitBtn.prop('disabled', disabled);
+        
+        if (disabled) {
+            // Store original text if not already stored
+            if (!$submitBtn.data('original-text')) {
+                $submitBtn.data('original-text', $submitBtn.html());
             }
-        },
-        error: function(xhr, status, error) {
-            console.error('AJAX Error:', error);
-            alert('error_fetching_booking_details');
+            $submitBtn.html(`<i class="feather icon-loader spin"></i> ${text || 'Processing...'}`);
+        } else {
+            // Restore original text
+            const originalText = $submitBtn.data('original-text') || 'Submit';
+            $submitBtn.html(originalText);
         }
-    });
-},
+    },
 
+    // Handle transaction form submission with double-submit prevention
+    handleTransactionSubmit: function(e) {
+        e.preventDefault();
+        e.stopPropagation();
 
-loadTransactionHistory: function(ticketId) {
-    $.ajax({
-        url: 'get_ticket_transactions.php',
-        type: 'GET',
-        data: { ticket_id: ticketId },
-        dataType: 'json',
-        success: function(transactions) {
-            try {
-                const tbody = $('#transactionTableBody');
-                tbody.empty();
+        // PREVENTION #1: Check if already submitting
+        if (this.isSubmitting) {
+            console.log('Form submission already in progress, ignoring duplicate request');
+            return false;
+        }
 
-                if (!Array.isArray(transactions) || transactions.length === 0) {
-                    tbody.html('<tr><td colspan="6" class="text-center">No transactions found</td></tr>');
-                    $('#exchangeRateDisplay').text('No exchange rates found');
-                    $('#exchangedAmount').text('No conversions available');
-                    return;
+        // Set submitting flag
+        this.isSubmitting = true;
+
+        // PREVENTION #2: Disable submit button
+        this.setSubmitButtonState(true, 'Submitting...');
+
+        // Gather form data
+        const formData = {
+            booking_id: $('#booking_id').val(),
+            payment_date: $('#paymentDate').val(),
+            payment_time: $('#paymentTime').val(),
+            payment_amount: $('#paymentAmount').val(),
+            payment_currency: $('#paymentCurrency').val(),
+            payment_description: $('#paymentDescription').val()
+        };
+
+        // Add exchange rate if field is visible
+        if ($('#exchangeRateField').is(':visible')) {
+            formData.payment_exchange_rate = $('#transactionExchangeRate').val();
+        }
+
+        // Validate form data
+        const requiredFields = ['booking_id', 'payment_date', 'payment_time', 'payment_amount', 'payment_currency', 'payment_description'];
+        for (let field of requiredFields) {
+            if (!formData[field]) {
+                alert(`Please fill in the ${field.replace('_', ' ')} field`);
+                // Re-enable form on validation error
+                this.isSubmitting = false;
+                this.setSubmitButtonState(false);
+                return false;
+            }
+        }
+
+        // Combine date and time
+        const paymentDateTime = `${formData.payment_date} ${formData.payment_time}`;
+
+        // Prepare AJAX data
+        const ajaxData = {
+            booking_id: formData.booking_id,
+            payment_date: paymentDateTime,
+            payment_amount: formData.payment_amount,
+            payment_currency: formData.payment_currency,
+            payment_description: formData.payment_description
+        };
+
+        if (formData.payment_exchange_rate) {
+            ajaxData.payment_exchange_rate = formData.payment_exchange_rate;
+        }
+
+        // PREVENTION #3: Add timestamp to make request unique
+        ajaxData.submission_timestamp = Date.now();
+
+        const self = this;
+
+        $.ajax({
+            url: 'add_ticket_payment.php',
+            type: 'POST',
+            data: ajaxData,
+            dataType: 'json',
+            timeout: 30000, // 30 second timeout
+            success: function(response) {
+                if (response.success) {
+                    $('#addTransactionForm').collapse('hide');
+                    self.loadTransactionHistory(formData.booking_id);
+                    alert('Transaction added successfully');
+                    $('#hotelTransactionForm')[0].reset();
+                    self.setDefaultDateTime();
+                    $('#exchangeRateField').hide();
+                    $('#transactionExchangeRate').attr('required', false);
+                    $('#transactionExchangeRate').val('');
+                } else {
+                    alert('Error adding transaction: ' + (response.message || 'Unknown error'));
                 }
+            },
+            error: function(xhr, status, error) {
+                console.error('AJAX Error:', error);
+                console.error('Response:', xhr.responseText);
+                
+                // Show appropriate error message
+                if (status === 'timeout') {
+                    alert('Request timed out. Please check your connection and try again.');
+                } else {
+                    alert('Error adding transaction. Please try again.');
+                }
+            },
+            complete: function() {
+                // CRITICAL: Always re-enable form in complete callback
+                // This runs whether success or error
+                self.isSubmitting = false;
+                self.setSubmitButtonState(false);
+            }
+        });
 
-                const baseCurrency = window.ticketCurrency || 'USD';
-                const totalAmount = parseFloat($('#totalAmount').text().split(' ')[1]) || 0;
+        return false;
+    },
 
-                // Collect exchange rates from DB transactions
-                let rates = {}; // { EUR: 87, AFS: 70, DARHAM: 18.5 }
-                transactions.forEach(tx => {
-                    if (tx.currency !== baseCurrency && tx.exchange_rate) {
-                        rates[tx.currency] = parseFloat(tx.exchange_rate);
+    // Rest of your existing methods...
+    loadTransactionModal: function(ticketId) {
+        $.ajax({
+            url: 'get_ticket_bookings.php',
+            type: 'GET',
+            data: { id: ticketId },
+            dataType: 'json',
+            success: function(response) {
+                if (response.success) {
+                    const booking = response.booking;
+                    $('#trans-guest-name').text(`${booking.title} ${booking.passenger_name}`);
+                    $('#trans-order-id').text(booking.pnr);
+                    const originalAmount = parseFloat(booking.sold);
+                    $('#totalAmount').text(`${booking.currency} ${originalAmount.toFixed(2)}`);
+                    $('#exchangeRateDisplay').text('Loading...');
+                    $('#exchangedAmount').text('Loading...');
+                    $('#booking_id').val(ticketId);
+                    window.ticketCurrency = booking.currency;
+                    transactionManager.loadTransactionHistory(ticketId);
+                    $('#transactionsModal').modal('show');
+                } else {
+                    alert('error_fetching_booking_details: ' + (response.message || 'unknown_error'));
+                }
+            },
+            error: function(xhr, status, error) {
+                console.error('AJAX Error:', error);
+                alert('error_fetching_booking_details');
+            }
+        });
+    },
+
+    loadTransactionHistory: function(ticketId) {
+        $.ajax({
+            url: 'get_ticket_transactions.php',
+            type: 'GET',
+            data: { ticket_id: ticketId },
+            dataType: 'json',
+            success: function(transactions) {
+                try {
+                    const tbody = $('#transactionTableBody');
+                    tbody.empty();
+
+                    if (!Array.isArray(transactions) || transactions.length === 0) {
+                        tbody.html('<tr><td colspan="6" class="text-center">No transactions found</td></tr>');
+                        $('#exchangeRateDisplay').text('No exchange rates found');
+                        $('#exchangedAmount').text('No conversions available');
+                        return;
                     }
-                });
 
-                // Track currencies present in transactions
-                let hasCurrency = { USD: false, AFS: false, EUR: false, DARHAM: false };
+                    const baseCurrency = window.ticketCurrency || 'USD';
+                    const totalAmount = parseFloat($('#totalAmount').text().split(' ')[1]) || 0;
 
-                // Render transactions table
-                transactions.forEach(tx => {
-                    const currency = tx.currency;
-                    const amount = parseFloat(tx.amount);
-                    const exchangeRate = tx.exchange_rate ? parseFloat(tx.exchange_rate) : null;
-
-                    if (currency in hasCurrency) hasCurrency[currency] = true;
-
-                    tbody.append(`
-                        <tr>
-                            <td>${transactionManager.formatDate(tx.created_at)}</td>
-                            <td>${tx.description || ''}</td>
-                            <td>${tx.type === 'credit' ? 'Received' : 'Paid'}</td>
-                            <td>${currency} ${amount.toFixed(2)}</td>
-                            <td>${exchangeRate || 'N/A'}</td>
-                            <td class="text-center">
-                                <button class="btn btn-primary btn-sm" onclick="transactionManager.editTransaction(${tx.id}, '${(tx.description||'').replace(/'/g,"\\'")}', ${amount}, '${tx.created_at}', '${currency}', ${tx.exchange_rate || 'null'})">
-                                    <i class="feather icon-edit"></i>
-                                </button>
-                                <button class="btn btn-info btn-sm mr-1" title="Print Receipt"
-                                        onclick="printReceipt(${tx.id})">
-                                    <i class="feather icon-printer"></i>
-                                </button>
-                                <button class="btn btn-danger btn-sm" onclick="transactionManager.deleteTransaction(${tx.id}, ${amount})">
-                                    <i class="feather icon-trash-2"></i>
-                                </button>
-                            </td>
-                        </tr>
-                    `);
-                });
-
-                // Display exchange rates
-                const exchangeText = Object.entries(rates).map(([cur,val]) => `${cur}: ${val}`).join(', ');
-                $('#exchangeRateDisplay').text(exchangeText || 'No exchange rates found');
-
-                // Calculate total paid in base currency
-                let totalPaidBase = 0;
-                transactions.forEach(tx => {
-                    const amount = parseFloat(tx.amount);
-                    const currency = tx.currency;
-
-                    if (currency === baseCurrency) {
-                        totalPaidBase += amount;
-                    } else if (rates[currency]) {
-                        // Convert foreign currency to base currency
-                        if (baseCurrency === 'AFS') totalPaidBase += amount * rates[currency];
-                        else totalPaidBase += amount / rates[currency];
-                    }
-                });
-
-                const remainingBase = Math.max(0, totalAmount - totalPaidBase);
-
-                // Display paid and remaining amounts for each currency
-                ['USD','AFS','EUR','DARHAM'].forEach(cur => {
-                    if (hasCurrency[cur]) {
-                        const paid = transactions.filter(t => t.currency === cur)
-                                                 .reduce((a,b) => a + parseFloat(b.amount), 0);
-                        $(`#paidAmount${cur==='DARHAM'?'AED':cur}`).text(`${cur==='DARHAM'?'AED':cur} ${paid.toFixed(2)}`);
-
-                        let remaining = 0;
-                        if (cur === baseCurrency) {
-                            remaining = remainingBase;
-                        } else if (rates[cur]) {
-                            // Convert base currency remaining to foreign
-                            if (baseCurrency === 'AFS') remaining = remainingBase / rates[cur];
-                            else remaining = remainingBase * rates[cur];
-                        } else {
-                            remaining = 'N/A';
+                    let rates = {};
+                    transactions.forEach(tx => {
+                        if (tx.currency !== baseCurrency && tx.exchange_rate) {
+                            rates[tx.currency] = parseFloat(tx.exchange_rate);
                         }
+                    });
 
-                        $(`#remainingAmount${cur==='DARHAM'?'AED':cur}`).text(`${cur==='DARHAM'?'AED':cur} ${typeof remaining==='number'?remaining.toFixed(2):remaining}`);
-                    }
-                });
+                    let hasCurrency = { USD: false, AFS: false, EUR: false, DARHAM: false };
 
-                // Display exchanged amounts
-                const exchangedAmounts = [];
-                exchangedAmounts.push(`${baseCurrency} ${totalAmount.toFixed(2)}`);
-                Object.keys(rates).forEach(cur => {
-                    const val = (baseCurrency === 'AFS') ? totalAmount / rates[cur] : totalAmount * rates[cur];
-                    exchangedAmounts.push(`${cur} ${val.toFixed(2)}`);
-                });
-                $('#exchangedAmount').text(exchangedAmounts.join(', '));
+                    transactions.forEach(tx => {
+                        const currency = tx.currency;
+                        const amount = parseFloat(tx.amount);
+                        const exchangeRate = tx.exchange_rate ? parseFloat(tx.exchange_rate) : null;
 
-                // Show/hide currency sections
-                $('#usdSection').toggle(hasCurrency.USD);
-                $('#afsSection').toggle(hasCurrency.AFS);
-                $('#eurSection').toggle(hasCurrency.EUR);
-                $('#aedSection').toggle(hasCurrency.DARHAM);
+                        if (currency in hasCurrency) hasCurrency[currency] = true;
 
-            } catch(e) {
-                console.error('Error parsing transactions:', e);
+                        tbody.append(`
+                            <tr>
+                                <td>${transactionManager.formatDate(tx.created_at)}</td>
+                                <td>${tx.description || ''}</td>
+                                <td>${tx.type === 'credit' ? 'Received' : 'Paid'}</td>
+                                <td>${currency} ${amount.toFixed(2)}</td>
+                                <td>${exchangeRate || 'N/A'}</td>
+                                <td class="text-center">
+                                    <button class="btn btn-primary btn-sm" onclick="transactionManager.editTransaction(${tx.id}, '${(tx.description||'').replace(/'/g,"\\'")}', ${amount}, '${tx.created_at}', '${currency}', ${tx.exchange_rate || 'null'})">
+                                        <i class="feather icon-edit"></i>
+                                    </button>
+                                    <button class="btn btn-info btn-sm mr-1" title="Print Receipt"
+                                            onclick="printReceipt(${tx.id})">
+                                        <i class="feather icon-printer"></i>
+                                    </button>
+                                    <button class="btn btn-danger btn-sm" onclick="transactionManager.deleteTransaction(${tx.id}, ${amount})">
+                                        <i class="feather icon-trash-2"></i>
+                                    </button>
+                                </td>
+                            </tr>
+                        `);
+                    });
+
+                    const exchangeText = Object.entries(rates).map(([cur,val]) => `${cur}: ${val}`).join(', ');
+                    $('#exchangeRateDisplay').text(exchangeText || 'No exchange rates found');
+
+                    let totalPaidBase = 0;
+                    transactions.forEach(tx => {
+                        const amount = parseFloat(tx.amount);
+                        const currency = tx.currency;
+
+                        if (currency === baseCurrency) {
+                            totalPaidBase += amount;
+                        } else if (rates[currency]) {
+                            if (baseCurrency === 'AFS') totalPaidBase += amount * rates[currency];
+                            else totalPaidBase += amount / rates[currency];
+                        }
+                    });
+
+                    const remainingBase = Math.max(0, totalAmount - totalPaidBase);
+
+                    ['USD','AFS','EUR','DARHAM'].forEach(cur => {
+                        if (hasCurrency[cur]) {
+                            const paid = transactions.filter(t => t.currency === cur)
+                                                     .reduce((a,b) => a + parseFloat(b.amount), 0);
+                            $(`#paidAmount${cur==='DARHAM'?'AED':cur}`).text(`${cur==='DARHAM'?'AED':cur} ${paid.toFixed(2)}`);
+
+                            let remaining = 0;
+                            if (cur === baseCurrency) {
+                                remaining = remainingBase;
+                            } else if (rates[cur]) {
+                                if (baseCurrency === 'AFS') remaining = remainingBase / rates[cur];
+                                else remaining = remainingBase * rates[cur];
+                            } else {
+                                remaining = 'N/A';
+                            }
+
+                            $(`#remainingAmount${cur==='DARHAM'?'AED':cur}`).text(`${cur==='DARHAM'?'AED':cur} ${typeof remaining==='number'?remaining.toFixed(2):remaining}`);
+                        }
+                    });
+
+                    const exchangedAmounts = [];
+                    exchangedAmounts.push(`${baseCurrency} ${totalAmount.toFixed(2)}`);
+                    Object.keys(rates).forEach(cur => {
+                        const val = (baseCurrency === 'AFS') ? totalAmount / rates[cur] : totalAmount * rates[cur];
+                        exchangedAmounts.push(`${cur} ${val.toFixed(2)}`);
+                    });
+                    $('#exchangedAmount').text(exchangedAmounts.join(', '));
+
+                    $('#usdSection').toggle(hasCurrency.USD);
+                    $('#afsSection').toggle(hasCurrency.AFS);
+                    $('#eurSection').toggle(hasCurrency.EUR);
+                    $('#aedSection').toggle(hasCurrency.DARHAM);
+
+                } catch(e) {
+                    console.error('Error parsing transactions:', e);
+                    $('#transactionTableBody').html('<tr><td colspan="6" class="text-center">error_loading_transactions</td></tr>');
+                    $('#exchangeRateDisplay').text('Error loading exchange rates');
+                    $('#exchangedAmount').text('Error calculating amounts');
+                }
+            },
+            error: function(xhr, status, error){
+                console.error('Error loading transactions:', error);
                 $('#transactionTableBody').html('<tr><td colspan="6" class="text-center">error_loading_transactions</td></tr>');
                 $('#exchangeRateDisplay').text('Error loading exchange rates');
                 $('#exchangedAmount').text('Error calculating amounts');
             }
-        },
-        error: function(xhr, status, error){
-            console.error('Error loading transactions:', error);
-            $('#transactionTableBody').html('<tr><td colspan="6" class="text-center">error_loading_transactions</td></tr>');
-            $('#exchangeRateDisplay').text('Error loading exchange rates');
-            $('#exchangedAmount').text('Error calculating amounts');
-        }
-    });
-},
+        });
+    },
 
-
-
-
-
-    // Update format date function to handle SQL datetime
     formatDate: function(dateString) {
         if (!dateString) return 'N/A';
         const date = new Date(dateString);
@@ -248,26 +349,15 @@ loadTransactionHistory: function(ticketId) {
         });
     },
 
-    // Add edit transaction function
     editTransaction: function(transactionId, description, amount, createdAt, currency, exchangeRate) {
-        // Parse the datetime string
         const dateTime = new Date(createdAt);
-        
-        // Format date for input field (YYYY-MM-DD)
         const formattedDate = dateTime.toISOString().split('T')[0];
-        
-        // Format time for input field (HH:MM:SS)
         const hours = String(dateTime.getHours()).padStart(2, '0');
         const minutes = String(dateTime.getMinutes()).padStart(2, '0');
         const seconds = String(dateTime.getSeconds()).padStart(2, '0');
         const formattedTime = `${hours}:${minutes}:${seconds}`;
-        
-        // Get the current ticket ID from the booking_id field
         const ticketId = $('#booking_id').val();
-        
-        console.log('Current ticket ID:', ticketId); // Debug log
-        
-        // Create edit transaction modal if it doesn't exist
+
         if (!$('#editTransactionModal').length) {
             const modalHtml = `
                 <div class="modal fade" id="editTransactionModal" tabindex="-1" role="dialog">
@@ -330,12 +420,13 @@ loadTransactionHistory: function(ticketId) {
                                                 <label for="editPaymentCurrency">
                                                     <i class="feather icon-dollar-sign mr-1"></i>Currency
                                                 </label>
-                                                <select class="form-control" id="editPaymentCurrency" name="payment_currency" required disabled>
+                                                <select class="form-control" id="editPaymentCurrency" name="payment_currency" required>
                                                     <option value="USD">USD</option>
                                                     <option value="AFS">AFS</option>
                                                     <option value="EUR">EUR</option>
                                                     <option value="DARHAM">DARHAM</option>
                                                 </select>
+                                                <input type="hidden" id="editPaymentCurrencyHidden" name="payment_currency_actual">
                                             </div>
                                         </div>
                                         <div class="col-md-6">
@@ -364,48 +455,71 @@ loadTransactionHistory: function(ticketId) {
             `;
             $('body').append(modalHtml);
 
-            // Bind the change event for the edit currency select
             $('#editPaymentCurrency').on('change', transactionManager.toggleEditExchangeRateField.bind(transactionManager));
 
-            // Add submit handler for the edit form
+            // Handle edit form submission with double-submit prevention
+            let isEditSubmitting = false;
+            
             $('#editTransactionForm').on('submit', function(e) {
                 e.preventDefault();
+                e.stopPropagation();
                 
-                // Create FormData from the form
+                // Prevent double submission
+                if (isEditSubmitting) {
+                    console.log('Edit form submission already in progress');
+                    return false;
+                }
+                
+                isEditSubmitting = true;
+                const $submitBtn = $('#editTransactionForm button[type="submit"]');
+                const originalBtnHtml = $submitBtn.html();
+                $submitBtn.prop('disabled', true).html('<i class="feather icon-loader spin"></i> Saving...');
+                
                 const formData = new FormData(this);
-                
-                // Explicitly set the ticket ID again to ensure it's included
                 const currentTicketId = $('#booking_id').val();
                 formData.set('ticket_id', currentTicketId);
                 
-                // Ensure transaction_id and ticket_id are set
+                // Use the hidden currency field value since the select is disabled
+                const actualCurrency = $('#editPaymentCurrencyHidden').val();
+                if (actualCurrency) {
+                    formData.set('payment_currency', actualCurrency);
+                }
+                
+                // Log form data for debugging
+                console.log('Edit Form Data:');
+                for (let pair of formData.entries()) {
+                    console.log(pair[0] + ': ' + pair[1]);
+                }
+                
                 if (!formData.get('transaction_id')) {
                     alert('Error: Missing transaction ID');
-                    return;
+                    isEditSubmitting = false;
+                    $submitBtn.prop('disabled', false).html(originalBtnHtml);
+                    return false;
                 }
                 
                 if (!formData.get('ticket_id')) {
                     alert('Error: Missing ticket ID');
-                    return;
+                    isEditSubmitting = false;
+                    $submitBtn.prop('disabled', false).html(originalBtnHtml);
+                    return false;
                 }
                 
-                // Combine date and time into a datetime string in MySQL format
+                // Remove required attribute from hidden exchange rate field before validation
+                if ($('#editExchangeRateField').is(':hidden')) {
+                    $('#editTransactionExchangeRate').removeAttr('required');
+                }
+                
                 const date = formData.get('payment_date');
                 const time = formData.get('payment_time');
                 if (date && time) {
                     formData.set('payment_date', `${date} ${time}`);
+                    formData.delete('payment_time'); // Remove separate time field
                 }
 
-                // Add exchange rate if provided
                 const exchangeRate = $('#editTransactionExchangeRate').val();
                 if (exchangeRate && $('#editExchangeRateField').is(':visible')) {
                     formData.set('payment_exchange_rate', exchangeRate);
-                }
-                
-                // Log the form data for debugging
-                console.log('Submitting transaction update with data:');
-                for (let pair of formData.entries()) {
-                    console.log(pair[0] + ': ' + pair[1]);
                 }
                 
                 $.ajax({
@@ -414,7 +528,9 @@ loadTransactionHistory: function(ticketId) {
                     data: formData,
                     processData: false,
                     contentType: false,
+                    timeout: 30000,
                     success: function(response) {
+                        console.log('Edit response:', response);
                         try {
                             const result = typeof response === 'string' ? JSON.parse(response) : response;
                             if (result.success) {
@@ -426,19 +542,31 @@ loadTransactionHistory: function(ticketId) {
                             }
                         } catch (e) {
                             console.error('Error parsing response:', e);
+                            console.error('Raw response:', response);
                             alert('Error processing the request');
                         }
                     },
                     error: function(xhr, status, error) {
                         console.error('AJAX Error:', error);
+                        console.error('Status:', status);
                         console.error('Response:', xhr.responseText);
-                        alert('Error updating transaction');
+                        
+                        if (status === 'timeout') {
+                            alert('Request timed out. Please try again.');
+                        } else {
+                            alert('Error updating transaction. Check console for details.');
+                        }
+                    },
+                    complete: function() {
+                        isEditSubmitting = false;
+                        $submitBtn.prop('disabled', false).html(originalBtnHtml);
                     }
                 });
+                
+                return false;
             });
         }
         
-        // Populate the edit form with the current values
         $('#editTransactionId').val(transactionId);
         $('#editTicketId').val(ticketId);
         $('#originalAmount').val(amount);
@@ -446,14 +574,10 @@ loadTransactionHistory: function(ticketId) {
         $('#editPaymentTime').val(formattedTime);
         $('#editPaymentAmount').val(parseFloat(amount).toFixed(2));
         $('#editPaymentDescription').val(description);
-
-        // Set the currency from the transaction
         $('#editPaymentCurrency').val(currency);
 
-        // Show exchange rate field (always shown for edit)
         transactionManager.toggleEditExchangeRateField();
 
-        // Set exchange rate from parameter
         if (exchangeRate && exchangeRate !== 'null') {
             $('#editTransactionExchangeRate').val(exchangeRate);
             $('#editExchangeRateField').show();
@@ -462,23 +586,9 @@ loadTransactionHistory: function(ticketId) {
             $('#editTransactionExchangeRate').val('');
         }
         
-        // Log values for debugging
-        console.log('Edit Transaction:', {
-            transactionId: transactionId,
-            ticketId: ticketId,
-            amount: amount,
-            date: formattedDate,
-            time: formattedTime,
-            description: description,
-            currency: currency,
-            exchangeRate: exchangeRate
-        });
-        
-        // Show the modal
         $('#editTransactionModal').modal('show');
     },
 
-    // Update delete transaction function to match your endpoint
     deleteTransaction: function(transactionId, amount) {
         if (!confirm('Are you sure you want to delete this transaction?')) {
             return;
@@ -486,7 +596,6 @@ loadTransactionHistory: function(ticketId) {
 
         const ticketId = $('#booking_id').val();
 
-        // Send as form data instead of JSON
         $.ajax({
             url: 'delete_ticket_payment.php',
             type: 'POST',
@@ -518,102 +627,17 @@ loadTransactionHistory: function(ticketId) {
                 showToast('Error deleting transaction', 'error');
             }
         });
-    },
-
-    // Handle transaction form submission
-    handleTransactionSubmit: function(e) {
-        e.preventDefault(); // Prevent default form submission
-        e.stopPropagation(); // Stop event from bubbling up
-
-        // Gather form data manually to ensure all fields are captured
-        const formData = {
-            booking_id: $('#booking_id').val(),
-            payment_date: $('#paymentDate').val(),
-            payment_time: $('#paymentTime').val(),
-            payment_amount: $('#paymentAmount').val(),
-            payment_currency: $('#paymentCurrency').val(),
-            payment_description: $('#paymentDescription').val()
-        };
-
-        // Add exchange rate if field is visible
-        if ($('#exchangeRateField').is(':visible')) {
-            formData.payment_exchange_rate = $('#transactionExchangeRate').val();
-        }
-
-        // Validate form data
-        const requiredFields = ['booking_id', 'payment_date', 'payment_time', 'payment_amount', 'payment_currency', 'payment_description'];
-        for (let field of requiredFields) {
-            if (!formData[field]) {
-                alert(`Please fill in the ${field.replace('_', ' ')} field`);
-                return;
-            }
-        }
-
-        // Combine date and time
-        const paymentDateTime = `${formData.payment_date} ${formData.payment_time}`;
-
-        // Send AJAX request to add transaction
-        const ajaxData = {
-            booking_id: formData.booking_id,
-            payment_date: paymentDateTime,
-            payment_amount: formData.payment_amount,
-            payment_currency: formData.payment_currency,
-            payment_description: formData.payment_description
-        };
-
-        // Add exchange rate if provided
-        if (formData.payment_exchange_rate) {
-            ajaxData.payment_exchange_rate = formData.payment_exchange_rate;
-        }
-
-        $.ajax({
-            url: 'add_ticket_payment.php', // Use correct endpoint for ticket reservations
-            type: 'POST',
-            data: ajaxData,
-            dataType: 'json',
-            success: function(response) {
-                if (response.success) {
-                    // Close the transaction form
-                    $('#addTransactionForm').collapse('hide');
-                    
-                    // Reload transaction history
-                    transactionManager.loadTransactionHistory(formData.booking_id);
-                    
-                    // Show success message
-                    alert('Transaction added successfully');
-                    
-                    // Reset the form
-                    $('#hotelTransactionForm')[0].reset();
-                    transactionManager.setDefaultDateTime();
-
-                    // Reset exchange rate field
-                    $('#exchangeRateField').hide();
-                    $('#transactionExchangeRate').attr('required', false);
-                    $('#transactionExchangeRate').val('');
-                } else {
-                    alert('Error adding transaction: ' + (response.message || 'Unknown error'));
-                }
-            },
-            error: function(xhr, status, error) {
-                console.error('AJAX Error:', error);
-                console.error('Response:', xhr.responseText);
-                alert('Error adding transaction');
-            }
-        });
-
-        return false; // Ensure form is not submitted
     }
 };
-    // Print receipt function
-    function printReceipt(transactionId) {
-        window.open(`print_receipt.php?id=${transactionId}`, '_blank');
-    }
-// Initialize transaction manager when document is ready
+
+function printReceipt(transactionId) {
+    window.open(`print_receipt.php?id=${transactionId}`, '_blank');
+}
+
 $(document).ready(function() {
     transactionManager.init();
 });
 
-// Global function to manage transactions (called from HTML)
 function manageTransactions(ticketId) {
     transactionManager.loadTransactionModal(ticketId);
-} 
+}

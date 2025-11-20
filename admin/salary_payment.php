@@ -172,6 +172,75 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
                 // Commit transaction
                 mysqli_commit($conection_db);
                 
+                // Send email notification to employee
+                require_once '../includes/functions.php';
+
+                // Get employee email and name
+                $email_sql = "SELECT email, name FROM users WHERE id = ? AND tenant_id = ?";
+                $email_stmt = mysqli_prepare($conection_db, $email_sql);
+                mysqli_stmt_bind_param($email_stmt, "ii", $user_id, $tenant_id);
+                mysqli_stmt_execute($email_stmt);
+                mysqli_stmt_store_result($email_stmt);
+                
+                if (mysqli_stmt_num_rows($email_stmt) == 1) {
+                    mysqli_stmt_bind_result($email_stmt, $employee_email, $employee_name);
+                    mysqli_stmt_fetch($email_stmt);
+                    
+                    if (!empty($employee_email)) {
+                        // For regular payments, we create notifications for each month
+                        if ($payment_type == 'regular' && $months_to_pay > 1) {
+                            // Send notifications for each month
+                            for ($i = 0; $i < $months_to_pay; $i++) {
+                                $this_month_for = date('Y-m-01', strtotime("+{$i} month", strtotime($payment_for_month)));
+                                $this_receipt = $receipt . '-' . ($i + 1);
+                                
+                                // Get the specific payment ID for this month
+                                $payment_id_sql = "SELECT id FROM salary_payments WHERE user_id = ? AND payment_for_month = ? AND receipt = ? AND tenant_id = ?";
+                                $payment_id_stmt = mysqli_prepare($conection_db, $payment_id_sql);
+                                mysqli_stmt_bind_param($payment_id_stmt, "issi", $user_id, $this_month_for, $this_receipt, $tenant_id);
+                                mysqli_stmt_execute($payment_id_stmt);
+                                mysqli_stmt_store_result($payment_id_stmt);
+                                
+                                if (mysqli_stmt_num_rows($payment_id_stmt) == 1) {
+                                    mysqli_stmt_bind_result($payment_id_stmt, $payment_id);
+                                    mysqli_stmt_fetch($payment_id_stmt);
+                                    
+                                    sendSalaryPaymentNotification(
+                                        $employee_email,
+                                        $employee_name,
+                                        $payment_id,
+                                        $amount,
+                                        $currency,
+                                        $payment_date,
+                                        date('Y-m', strtotime($this_month_for)),
+                                        $payment_type,
+                                        $description,
+                                        $this_receipt
+                                    );
+                                }
+                                mysqli_stmt_close($payment_id_stmt);
+                            }
+                        } else {
+                            // For single payments (including advances, bonuses, other), use the last inserted payment ID
+                            $last_payment_id = mysqli_insert_id($conection_db);
+                            
+                            sendSalaryPaymentNotification(
+                                $employee_email,
+                                $employee_name,
+                                $last_payment_id,
+                                $amount,
+                                $currency,
+                                $payment_date,
+                                date('Y-m', strtotime($payment_for_month)),
+                                $payment_type,
+                                $description,
+                                $receipt
+                            );
+                        }
+                    }
+                }
+                mysqli_stmt_close($email_stmt);
+                
                 // Redirect to success page
                 header("location: salary_payment.php?success=1");
                 exit();

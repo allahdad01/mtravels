@@ -21,96 +21,15 @@ if (!isset($_SESSION['user_id'])  || $_SESSION['role'] !== 'admin') {
 // Database connection
 require_once('../includes/db.php');
 
-// First, define pagination variables
-$itemsPerPage = 10;
-$currentPage = isset($_GET['page']) ? max(1, intval($_GET['page'])) : 1;
-$offset = ($currentPage - 1) * $itemsPerPage;
+// Load hotel bookings using handler (similar to ticket listing)
+include 'handlers/hotel_handler.php';
 
-// Initialize variables
-$bookings = [];
-
-
-// Fetch bookings data with all necessary fields
-try {
-    $stmt = $pdo->prepare("
-        SELECT
-            hb.id,
-            CONCAT(hb.title, ' ', hb.first_name, ' ', hb.last_name) as guest_name,
-            hb.gender,
-            hb.order_id,
-            hb.check_in_date,
-            hb.check_out_date,
-            hb.accommodation_details,
-            hb.issue_date,
-            hb.supplier_id,
-            hb.sold_to,
-            hb.contact_no,
-            hb.base_amount,
-            hb.sold_amount,
-            hb.profit,
-            hb.currency,
-            hb.remarks,
-            hb.receipt,
-            s.name as supplier_name,
-            c.name as client_name,
-            ma.name as paid_to_name,
-            u.name as created_by
-        FROM hotel_bookings hb
-        LEFT JOIN suppliers s ON hb.supplier_id = s.id
-        LEFT JOIN clients c ON hb.sold_to = c.id
-        LEFT JOIN main_account ma ON hb.paid_to = ma.id
-        LEFT JOIN users u ON hb.created_by = u.id
-        WHERE hb.tenant_id = :tenant_id
-        ORDER BY hb.id DESC
-        LIMIT :offset, :itemsPerPage
-    ");
-    
-    $stmt->bindValue(':offset', $offset, PDO::PARAM_INT);
-    $stmt->bindValue(':itemsPerPage', $itemsPerPage, PDO::PARAM_INT);
-    $stmt->bindValue(':tenant_id', (int)$tenant_id, PDO::PARAM_INT);
-    $stmt->execute();
-    $bookings = $stmt->fetchAll(PDO::FETCH_ASSOC);
-
-    // For debugging
-    error_log("Bookings fetched successfully: " . count($bookings) . " records");
-} catch (PDOException $e) {
-    error_log("Error fetching bookings: " . $e->getMessage());
-    $bookings = [];
-}
-
-// Get total number of records for pagination
-try {
-    $stmt = $pdo->prepare("SELECT COUNT(*) as total FROM hotel_bookings WHERE tenant_id = ?");
-    $stmt->execute([$tenant_id]);
-    $totalRecords = $stmt->fetch(PDO::FETCH_ASSOC)['total'];
-    $totalPages = ceil($totalRecords / $itemsPerPage);
-    
-    
-    // Calculate start and end record numbers
-    $startRecord = $offset + 1;
-    $endRecord = min($offset + $itemsPerPage, $totalRecords);
-
-} catch (PDOException $e) {
-    error_log("Error fetching pagination data: " . $e->getMessage());
-    $totalRecords = 0;
-    $totalPages = 1;
-    $startRecord = 0;
-    $endRecord = 0;
-}
-
-// Validate current page
-if ($currentPage > $totalPages && $totalPages > 0) {
-    $currentPage = $totalPages;
-    // Recalculate offset
-    $offset = ($currentPage - 1) * $itemsPerPage;
-}
-
-// Ensure all variables have default values
-$totalPages = $totalPages ?? 1;
-$startRecord = $startRecord ?? 0;
-$endRecord = $endRecord ?? 0;
 // Include utility functions
 require_once('../includes/utils.php');
+
+$paginationPattern = empty($search)
+    ? '?page='
+    : '?search=' . urlencode($search) . '&page=';
 
 ?>
 
@@ -404,15 +323,24 @@ require_once('../includes/utils.php');
                                     </div>
                                     <div class="button-group d-flex flex-column flex-md-row align-items-stretch align-items-md-center w-100 w-md-auto">
                                         <div class="search-box mb-2 mb-md-0 mr-md-3 w-100 w-md-auto">
-                                            <div class="input-group">
-                                                <input type="text" class="form-control" id="searchBookings"
+                                            <form class="input-group" method="get">
+                                                <input type="text"
+                                                       class="form-control"
+                                                       id="searchBookings"
+                                                       name="search"
+                                                       value="<?= htmlspecialchars($search ?? '') ?>"
                                                        placeholder="<?= __('search_bookings') ?>">
                                                 <div class="input-group-append">
-                                                    <span class="input-group-text">
-                                                        <i class="feather icon-search"></i>
-                                                    </span>
+                                                    <button class="btn btn-primary" type="submit">
+                                                        <i class="feather icon-search mr-1"></i><?= __('search') ?>
+                                                    </button>
+                                                    <?php if (!empty($search)): ?>
+                                                        <a href="hotel.php" class="btn btn-outline-secondary">
+                                                            <i class="feather icon-x mr-1"></i><?= __('clear') ?>
+                                                        </a>
+                                                    <?php endif; ?>
                                                 </div>
-                                            </div>
+                                            </form>
                                         </div>
                                         <div class="d-flex flex-row justify-content-between justify-content-md-start w-100 w-md-auto">
                                             <a href="hotel_refunds.php" class="btn btn-outline-warning btn-sm mr-2 flex-fill flex-md-auto">
@@ -532,10 +460,17 @@ require_once('../includes/utils.php');
                                                                 </button>
                                                                 <?php
                                                                 $isAgencyClient = false;
-                                                                $clientQuery = $conn->query("SELECT client_type FROM clients WHERE id = '{$booking['sold_to']}' AND tenant_id = $tenant_id");
-                                                                if ($clientQuery && $clientQuery->num_rows > 0) {
-                                                                    $clientRow = $clientQuery->fetch_assoc();
-                                                                    $isAgencyClient = ($clientRow['client_type'] === 'agency');
+                                                                if (!empty($booking['sold_to'])) {
+                                                                    try {
+                                                                        $clientStmt = $pdo->prepare("SELECT client_type FROM clients WHERE id = ? AND tenant_id = ?");
+                                                                        $clientStmt->execute([$booking['sold_to'], $tenant_id]);
+                                                                        $clientRow = $clientStmt->fetch(PDO::FETCH_ASSOC);
+                                                                        if ($clientRow) {
+                                                                            $isAgencyClient = ($clientRow['client_type'] === 'agency');
+                                                                        }
+                                                                    } catch (PDOException $e) {
+                                                                        error_log("Error checking client type: " . $e->getMessage());
+                                                                    }
                                                                 }
                                                                 if ($isAgencyClient): ?>
                                                                 <button type="button" class="btn btn-icon btn-light mr-2"
@@ -594,7 +529,7 @@ require_once('../includes/utils.php');
                                         </div>
                                         <div class="col-auto">
                                             <nav>
-                                                <?= generatePagination($currentPage, $totalPages) ?>
+                                                <?= generatePagination($currentPage, $totalPages, $paginationPattern) ?>
                                             </nav>
                                         </div>
                                     </div>
@@ -880,7 +815,7 @@ require_once('../includes/utils.php');
                     <button type="button" class="btn btn-secondary" data-dismiss="modal">
                         <i class="feather icon-x mr-2"></i><?= __('cancel') ?>
                     </button>
-                    <button type="button" class="btn btn-primary" onclick="addHotelBookingForm()">
+                    <button type="button" class="btn btn-primary" data-submit onclick="addHotelBookingForm()">
                         <i class="feather icon-check mr-2"></i><?= __('add_booking') ?>
                     </button>
                 </div>

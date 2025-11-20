@@ -246,6 +246,34 @@ $title = isset($_POST['title']) ? DbSecurity::validateInput($_POST['title'], 'st
         $stmt_log->execute();
         $stmt_log->close();
         
+        // Send email notification to client
+        require_once '../includes/functions.php';
+
+        // Get client email and name
+        $stmt_client_email = $conn->prepare("SELECT email, name FROM clients WHERE id = ? AND tenant_id = ?");
+        $stmt_client_email->bind_param("ii", $sold_to, $tenant_id);
+        $stmt_client_email->execute();
+        $client_email_result = $stmt_client_email->get_result();
+        $client_email_data = $client_email_result->fetch_assoc();
+        $client_email = $client_email_data['email'];
+        $client_name = $client_email_data['name'];
+        $stmt_client_email->close();
+
+        if (!empty($client_email)) {
+            $guestName = $title . ' ' . $first_name . ' ' . $last_name;
+            sendHotelNotification(
+                $client_email,
+                $client_name,
+                $booking_id,
+                $guestName,
+                $check_in_date,
+                $check_out_date,
+                $accommodation_details,
+                $sold_amount,
+                $currency
+            );
+        }
+
         echo json_encode(["success" => true, "message" => "Hotel booking added successfully."]);
 
     } catch (Exception $e) {

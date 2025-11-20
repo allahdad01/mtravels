@@ -31,6 +31,13 @@ document.getElementById('supplier').addEventListener('change', function () {
 });
 document.getElementById('bookTicketForm').addEventListener('submit', function (event) {
     event.preventDefault(); // Prevent default form submission
+    const submitBtn = this.querySelector('input[type="submit"], button[type="submit"]');
+    if (submitBtn) {
+        submitBtn.disabled = true; // Disable button to prevent multiple clicks
+        submitBtn.dataset.originalText = submitBtn.textContent || submitBtn.value; // Store original text
+        submitBtn.textContent = submitBtn.value = 'Loading...'; // Show loading state
+    }
+
     const formData = new FormData(this); // Collect form data
 
     fetch('save_ticket_reserve.php', {
@@ -40,15 +47,24 @@ document.getElementById('bookTicketForm').addEventListener('submit', function (e
     .then(response => response.json()) // Parse JSON response
     .then(data => {
         if (data.status === 'success') { // Check for status
-            alert(data.message); // Show success message
+            showToast(data.message, 'success');
+            $('#bookTicketModal').modal('hide');
             location.reload(); // Reload page
         } else {
-            alert('Error: ' + data.message); // Display specific error message
+            showToast('Error: ' + data.message, 'error'); // Display specific error message
+        }
+        if (submitBtn) {
+            submitBtn.disabled = false; // Re-enable button
+            submitBtn.textContent = submitBtn.value = submitBtn.dataset.originalText; // Restore original text
         }
     })
     .catch(error => {
         console.error('Error:', error); // Log error
-        alert('An unexpected error occurred.');
+        showToast('An unexpected error occurred.', 'error');
+        if (submitBtn) {
+            submitBtn.disabled = false; // Re-enable button
+            submitBtn.textContent = submitBtn.value = submitBtn.dataset.originalText; // Restore original text
+        }
     });
 });
 function deleteTicket(id) {

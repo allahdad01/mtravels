@@ -333,37 +333,419 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         $activity_log_stmt->execute();
         $activity_log_stmt->close();
 
-        // Send ticket notification email to client
-        require_once '../includes/functions.php';
-
-        // Get client email
-        $stmt_client_email = $conn->prepare("SELECT email FROM clients WHERE id = ? AND tenant_id = ?");
-        $stmt_client_email->bind_param("ii", $soldTo, $tenant_id);
-        $stmt_client_email->execute();
-        $stmt_client_email->bind_result($client_email);
-        $stmt_client_email->fetch();
-        $stmt_client_email->close();
-
-        if (!empty($client_email)) {
-            // Prepare ticket details for email
-            $ticketDetails = "
-                <div style='background: #f8f9fa; padding: 15px; border-radius: 5px; margin: 10px 0;'>
-                    <h4 style='margin-top: 0; color: #333;'>Flight Details:</h4>
-                    <p><strong>PNR:</strong> {$pnr}</p>
-                    <p><strong>Route:</strong> {$origin} → {$destination}</p>
-                    <p><strong>Airline:</strong> {$airline}</p>
-                    <p><strong>Departure:</strong> " . date('M d, Y', strtotime($departureDate)) . "</p>
-                    <p><strong>Passengers:</strong> " . count($passengers) . "</p>
-                    " . (!empty($returnDate) ? "<p><strong>Return Date:</strong> " . date('M d, Y', strtotime($returnDate)) . "</p>" : "") . "
-                </div>
-            ";
-
-            // Send notification email
-            sendTicketNotification($client_email, $client_name, 'Flight Ticket', $ticketDetails);
-        }
-
         // Commit transaction
         $conn->commit();
+
+        // Send ticket notification email to client with PDF attachment
+        require_once '../includes/functions.php';
+
+        // Get client email and name
+        $stmt_client_email = $conn->prepare("SELECT email, name FROM clients WHERE id = ? AND tenant_id = ?");
+        $stmt_client_email->bind_param("ii", $soldTo, $tenant_id);
+        $stmt_client_email->execute();
+        $client_email_result = $stmt_client_email->get_result();
+        $client_email_data = $client_email_result->fetch_assoc();
+        $client_email = $client_email_data['email'];
+        $client_name = $client_email_data['name'];
+        $stmt_client_email->close();
+
+        // Get agency settings
+        $stmt_agency = $conn->prepare("SELECT agency_name, email, phone, address FROM settings WHERE tenant_id = ?");
+        $stmt_agency->bind_param("i", $tenant_id);
+        $stmt_agency->execute();
+        $agency_result = $stmt_agency->get_result();
+        $agency_data = $agency_result->fetch_assoc();
+        $agencyName = $agency_data['agency_name'] ?? 'MTravels';
+        $agencyEmail = $agency_data['email'] ?? 'info@mtravels.com';
+        $agencyPhone = $agency_data['phone'] ?? '+93 (0) 123 456 789';
+        $agencyAddress = $agency_data['address'] ?? '';
+        $stmt_agency->close();
+
+        if (!empty($client_email)) {
+            // Prepare booking data for PDF
+            $bookingData = [
+                'pnr' => $pnr,
+                'issue_date' => $issueDate,
+                'airline' => $airline,
+                'origin' => $origin,
+                'destination' => $destination,
+                'departure_date' => $departureDate,
+                'return_destination' => $returnDestination,
+                'return_date' => $returnDate,
+                'passengers' => array_map(function($passenger) {
+                    return [
+                        'name' => $passenger['name'],
+                        'title' => $passenger['title'],
+                    ];
+                }, $passengers)
+            ];
+
+            // Generate PDF
+            $pdfPath = generateTicketPDF($bookingData, $tenant_id);
+
+            // Prepare email subject and body with professional flight ticket style
+            $subject = "Flight Ticket Confirmation - {$pnr}";
+            
+            // Format departure and return dates
+            $formattedDeparture = date('H:i / d. M. Y', strtotime($departureDate));
+            $formattedReturn = !empty($returnDate) ? date('H:i / d. M. Y', strtotime($returnDate)) : '';
+            
+            // Create passenger details table rows
+            $passengerRows = '';
+            foreach ($passengers as $index => $passenger) {
+                $nameParts = explode(' ', trim($passenger['name']), 2);
+                $firstName = strtoupper($nameParts[0] ?? '');
+                $lastName = strtoupper($nameParts[1] ?? '');
+                $passengerRows .= "
+                    <tr>
+                        <td style='padding: 8px; border: 1px solid #ddd; text-align: center; font-weight: bold;'>" . ($index + 1) . "</td>
+                        <td style='padding: 8px; border: 1px solid #ddd;'>" . htmlspecialchars($firstName) . "</td>
+                        <td style='padding: 8px; border: 1px solid #ddd;'>" . htmlspecialchars($lastName) . "</td>
+                        <td style='padding: 8px; border: 1px solid #ddd;'>" . htmlspecialchars($passenger['title'] ?? '') . "</td>
+                    </tr>
+                ";
+            }
+            
+            $body = "
+            <html>
+            <head>
+                <style>
+                    body {
+                        font-family: Arial, sans-serif;
+                        font-size: 11pt;
+                        color: #000;
+                        margin: 0;
+                        padding: 0;
+                        line-height: 1.3;
+                        background-color: white;
+                    }
+                    
+                    .container {
+                        max-width: 800px;
+                        margin: 0 auto;
+                        background: white;
+                        box-shadow: 0 0 10px rgba(0,0,0,0.1);
+                        padding: 30px;
+                    }
+                    
+                    .header {
+                        margin-bottom: 20px;
+                        padding-bottom: 15px;
+                        border-bottom: 2px solid #2c3e50;
+                        display: table;
+                        width: 100%;
+                    }
+                    
+                    .header-left,
+                    .header-center,
+                    .header-right {
+                        display: table-cell;
+                        vertical-align: middle;
+                        width: 33.33%;
+                    }
+                    
+                    .header-left { text-align: left; }
+                    .header-center { text-align: center; }
+                    .header-right { text-align: right; }
+                    
+                    .company-name {
+                        font-size: 18pt;
+                        font-weight: bold;
+                        color: #2c3e50;
+                        text-transform: uppercase;
+                        margin: 0;
+                    }
+                    
+                    .contact-info {
+                        font-size: 10pt;
+                        color: #666;
+                        line-height: 1.4;
+                    }
+                    
+                    .contact-email {
+                        font-weight: bold;
+                        color: #2c3e50;
+                    }
+                    
+                    .flight-details-header {
+                        font-size: 14pt;
+                        font-weight: bold;
+                        color: #333;
+                        margin: 25px 0 5px 0;
+                    }
+                    
+                    .pnr-display {
+                        font-size: 12pt;
+                        color: #e74c3c;
+                        font-weight: bold;
+                        margin-bottom: 20px;
+                    }
+                    
+                    .flight-section {
+                        margin: 20px 0;
+                        border: 1px solid #ddd;
+                        border-radius: 8px;
+                        overflow: hidden;
+                    }
+                    
+                    .section-header {
+                        background-color: #f8f9fa;
+                        padding: 12px 15px;
+                        font-weight: bold;
+                        font-size: 12pt;
+                        color: #2c3e50;
+                        border-bottom: 1px solid #ddd;
+                    }
+                    
+                    .outbound { border-left: 4px solid #27ae60; }
+                    .return { border-left: 4px solid #e67e22; }
+                    
+                    .flight-layout-table {
+                        width: 100%;
+                        border-collapse: collapse;
+                    }
+                    
+                    .flight-layout-table td {
+                        vertical-align: top;
+                        padding: 15px;
+                        border: none;
+                    }
+                    
+                    .flight-departs {
+                        width: 40%;
+                    }
+                    
+                    .flight-center {
+                        width: 20%;
+                        text-align: center;
+                        border-left: 1px solid #ddd;
+                        border-right: 1px solid #ddd;
+                    }
+                    
+                    .flight-arrives {
+                        width: 40%;
+                        text-align: right;
+                    }
+                    
+                    .flight-label {
+                        font-size: 11pt;
+                        font-weight: bold;
+                        color: #666;
+                        margin-bottom: 8px;
+                    }
+                    
+                    .flight-city {
+                        font-size: 16pt;
+                        font-weight: bold;
+                        color: #000;
+                        margin-bottom: 5px;
+                    }
+                    
+                    .flight-time {
+                        font-size: 11pt;
+                        color: #333;
+                    }
+                    
+                    .flight-number {
+                        font-size: 14pt;
+                        font-weight: bold;
+                        color: #000;
+                        margin-bottom: 8px;
+                    }
+                    
+                    .plane-icon {
+                        font-size: 18pt;
+                        color: #666;
+                    }
+                    
+                    .passengers-header {
+                        font-size: 14pt;
+                        font-weight: bold;
+                        margin: 30px 0 15px 0;
+                        color: #2c3e50;
+                        text-decoration: underline;
+                    }
+                    
+                    .passengers-table {
+                        width: 100%;
+                        border-collapse: collapse;
+                        margin-top: 10px;
+                        font-size: 10pt;
+                    }
+                    
+                    .passengers-table th {
+                        background-color: #2c3e50;
+                        color: white;
+                        font-weight: bold;
+                        padding: 10px 8px;
+                        border: 1px solid #2c3e50;
+                        text-align: left;
+                    }
+                    
+                    .passengers-table tr:nth-child(even) {
+                        background-color: #f9f9f9;
+                    }
+                    
+                    .sno-col {
+                        width: 50px;
+                        text-align: center;
+                        font-weight: bold;
+                    }
+                    
+                    .name-col {
+                        width: 35%;
+                    }
+                    
+                    .passport-col {
+                        width: 25%;
+                        font-weight: bold;
+                    }
+                    
+                    .amount-info {
+                        background-color: #f8f9fa;
+                        border-left: 5px solid #2c3e50;
+                        border-radius: 5px;
+                        padding: 15px;
+                        margin: 20px 0;
+                        font-size: 11pt;
+                    }
+                    
+                    .amount-total {
+                        font-size: 14pt;
+                        font-weight: bold;
+                        color: #27ae60;
+                        text-align: center;
+                        margin-top: 10px;
+                    }
+                    
+                    .footer {
+                        text-align: center;
+                        margin-top: 30px;
+                        color: #666;
+                        font-size: 12px;
+                        border-top: 1px solid #ddd;
+                        padding-top: 15px;
+                    }
+                </style>
+            </head>
+            <body>
+                <div class='container'>
+                    <div class='header'>
+                        <div class='header-left'>
+                            <strong>" . strtoupper($agencyName) . "</strong>
+                        </div>
+                        <div class='header-center'>
+                            <div class='company-name'>{$agencyName}</div>
+                        </div>
+                        <div class='header-right'>
+                            <div class='contact-info'>
+                                <div class='contact-email'>{$agencyEmail}</div>
+                                <div>{$agencyPhone}</div>
+                                " . (!empty($agencyAddress) ? "<div style='font-size: 9pt; margin-top: 2px;'>{$agencyAddress}</div>" : "") . "
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class='flight-details-header'>Your Flight Details</div>
+                    <div class='pnr-display'>PNR: {$pnr}</div>
+
+                    <!-- Outbound Journey -->
+                    <div class='flight-section outbound'>
+                        <div class='section-header'>
+                            🛫 Outbound Journey
+                        </div>
+                        <table class='flight-layout-table'>
+                            <tr>
+                                <td class='flight-departs'>
+                                    <div class='flight-label'>Departs</div>
+                                    <div class='flight-city'>" . strtoupper($origin) . "</div>
+                                    <div class='flight-time'>{$formattedDeparture}</div>
+                                </td>
+                                <td class='flight-center'>
+                                    <div class='flight-number'>" . strtoupper($airline) . "</div>
+                                    <div class='plane-icon'>✈</div>
+                                </td>
+                                <td class='flight-arrives'>
+                                    <div class='flight-label'>Arrives</div>
+                                    <div class='flight-city'>" . strtoupper($destination) . "</div>
+                                    <div class='flight-time'>{$formattedDeparture}</div>
+                                </td>
+                            </tr>
+                        </table>
+                    </div>";
+
+                    if (!empty($returnDate)) {
+                        $body .= "
+                    <!-- Return Journey -->
+                    <div class='flight-section return'>
+                        <div class='section-header'>
+                            🛬 Return Journey
+                        </div>
+                        <table class='flight-layout-table'>
+                            <tr>
+                                <td class='flight-departs'>
+                                    <div class='flight-label'>Departs</div>
+                                    <div class='flight-city'>" . strtoupper($destination) . "</div>
+                                    <div class='flight-time'>{$formattedReturn}</div>
+                                </td>
+                                <td class='flight-center'>
+                                    <div class='flight-number'>" . strtoupper($airline) . "</div>
+                                    <div class='plane-icon'>✈</div>
+                                </td>
+                                <td class='flight-arrives'>
+                                    <div class='flight-label'>Arrives</div>
+                                    <div class='flight-city'>" . strtoupper($origin) . "</div>
+                                    <div class='flight-time'>{$formattedReturn}</div>
+                                </td>
+                            </tr>
+                        </table>
+                    </div>";
+                    }
+
+                    $body .= "
+                    <div class='passengers-header'>Passengers Details</div>
+                    
+                    <table class='passengers-table'>
+                        <thead>
+                            <tr>
+                                <th class='sno-col'>S/NO</th>
+                                <th class='name-col'>First Name</th>
+                                <th class='name-col'>Last Name</th>
+                                <th class='passport-col'>Title</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {$passengerRows}
+                        </tbody>
+                    </table>
+                    
+                    <div class='amount-info'>
+                        <strong>Booking Details:</strong><br>
+                        Issue Date: " . date('d. M. Y', strtotime($issueDate)) . "<br>
+                        Currency: {$currency}<br>
+                        Total Passengers: " . count($passengers) . "
+                        <div class='amount-total'>Total Amount: {$totalSold} {$currency}</div>
+                    </div>
+
+                    <div class='footer'>
+                        <p><strong>Please find your detailed ticket confirmation attached as a PDF.</strong></p>
+                        <p>If you have any questions about this booking, please don't hesitate to contact our support team.</p>
+                        <p>Best regards,<br><strong>{$agencyName} Team</strong></p>
+                        <p style='margin-top: 20px; font-size: 10px;'>This is an automated notification. Please do not reply to this email.</p>
+                    </div>
+                </div>
+            </body>
+            </html>
+            ";
+
+            // Send notification email with PDF attachment
+            sendTicketNotificationWithAttachment($client_email, $client_name, $subject, $body, $pdfPath);
+
+            // Clean up temporary PDF file
+            if (file_exists($pdfPath)) {
+                unlink($pdfPath);
+            }
+        }
 
         // Return success response
         echo json_encode([

@@ -1,5 +1,7 @@
 // Transaction Management
 const transactionManager = {
+    isSubmitting: false, // Flag to track submission state
+
     // Initialize transaction modal and form handlers
     init: function() {
         this.bindEvents();
@@ -298,6 +300,20 @@ const transactionManager = {
     // Handle edit transaction form submission
     handleEditTransactionSubmit: function(e) {
         e.preventDefault();
+
+        if (transactionManager.isSubmitting) return;
+
+        transactionManager.isSubmitting = true;
+
+        // Disable submit button and update button to prevent multiple clicks
+        const submitBtn = $(this).find('button[type="submit"]');
+        const updateBtn = $('#updateTransactionBtn');
+        const originalText = submitBtn.html();
+        const originalUpdateText = updateBtn.html();
+        submitBtn.prop('disabled', true);
+        updateBtn.prop('disabled', true);
+        submitBtn.html('<i class="feather icon-refresh-cw mr-2 spinner-border spinner-border-sm" role="status" aria-hidden="true"></i>Saving...');
+        updateBtn.html('<i class="feather icon-refresh-cw mr-2 spinner-border spinner-border-sm" role="status" aria-hidden="true"></i>Saving...');
         
         const form = $(this);
         const formData = new FormData(form[0]);
@@ -327,20 +343,50 @@ const transactionManager = {
         $('#editExchangeRate').val('');
         $('#editExchangeRateField').hide();
     } else {
+        // Re-enable submit button on business logic error
+        submitBtn.prop('disabled', false);
+        submitBtn.html(originalText);
         transactionManager.showToast('Error updating transaction: ' + (result.message || 'Unknown error'), 'error');
     }
+    transactionManager.isSubmitting = false;
 },
     error: function(xhr, status, error) {
         console.error('AJAX Error:', error);
+        // Re-enable submit button on network error
+        submitBtn.prop('disabled', false);
+        submitBtn.html(originalText);
         transactionManager.showToast('Error updating transaction', 'error');
+        transactionManager.isSubmitting = false;
     }
 });
+
+    // Re-enable submit button and update button after 10 seconds as safety measure
+    setTimeout(function() {
+        if (submitBtn.prop('disabled')) {
+            submitBtn.prop('disabled', false);
+            submitBtn.html(originalText);
+        }
+        if (updateBtn.prop('disabled')) {
+            updateBtn.prop('disabled', false);
+            updateBtn.html(originalUpdateText);
+        }
+    }, 10000);
 
     },
 
     // Handle transaction form submission (add new transaction)
     handleTransactionSubmit: function(e) {
         e.preventDefault();
+
+        if (transactionManager.isSubmitting) return;
+
+        transactionManager.isSubmitting = true;
+
+        // Disable submit button to prevent multiple clicks
+        const submitBtn = $(this).find('button[type="submit"]');
+        const originalText = submitBtn.html();
+        submitBtn.prop('disabled', true);
+        submitBtn.html('<i class="feather icon-refresh-cw mr-2 spinner-border spinner-border-sm" role="status" aria-hidden="true"></i>Saving...');
 
         const form = $(this);
         const formData = new FormData(form[0]);

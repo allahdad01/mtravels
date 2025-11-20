@@ -10,6 +10,10 @@
                     timerProgressBar: true
                 });
             }
+
+// Global submission flag to prevent multiple submissions
+let isHotelRefundTransactionSubmitting = false;
+
 // Transaction Management System
 const transactionManager = {
     
@@ -21,7 +25,19 @@ const transactionManager = {
 
     // Bind all event listeners
     bindEvents: function() {
-        $('#hotelTransactionForm').off('submit').on('submit', this.handleTransactionSubmit);
+        // Remove any existing handlers first to prevent duplicates
+        $('#hotelTransactionForm').off('submit').on('submit', this.handleTransactionSubmit.bind(this));
+        
+        // Additional protection: Disable button on click to prevent multiple submissions
+        $('#hotelTransactionForm button[type="submit"]').off('click').on('click', function(e) {
+            if (isHotelRefundTransactionSubmitting) {
+                console.log('Button click ignored during submission');
+                e.preventDefault();
+                e.stopPropagation();
+                return false;
+            }
+        });
+        
         $('#paymentCurrency').on('change', this.handleCurrencyChange);
         $('#paymentCurrency').on('change', this.toggleExchangeRateField.bind(this));
         $('#editPaymentCurrency').on('change', this.toggleEditExchangeRateField.bind(this));
@@ -225,15 +241,47 @@ const transactionManager = {
         });
     },
 
-    // Handle transaction form submission
+    // Disable/Enable submit button helper
+    setSubmitButtonState: function(disabled, text) {
+        const $submitBtn = $('#hotelTransactionForm button[type="submit"]');
+        console.log('Setting refund button state to:', disabled);
+        $submitBtn.prop('disabled', disabled);
+        
+        if (disabled) {
+            // Store original text if not already stored
+            if (!$submitBtn.data('original-text')) {
+                $submitBtn.data('original-text', $submitBtn.html());
+            }
+            $submitBtn.html(`<i class="fas fa-spinner fa-spin"></i> ${text || 'Processing...'}`);
+        } else {
+            // Restore original text
+            const originalText = $submitBtn.data('original-text') || 'Submit';
+            $submitBtn.html(originalText);
+        }
+    },
+
+    // Handle transaction form submission with double-submit prevention
     handleTransactionSubmit: function(e) {
         e.preventDefault();
+        e.stopPropagation();
+
+        console.log('Refund form submission triggered, isHotelRefundTransactionSubmitting:', isHotelRefundTransactionSubmitting);
+
+        // PREVENTION #1: Check if already submitting
+        if (isHotelRefundTransactionSubmitting) {
+            console.log('Refund form submission already in progress, ignoring duplicate request');
+            return false;
+        }
+
+        // Set submitting flag immediately
+        isHotelRefundTransactionSubmitting = true;
+        console.log('Set isHotelRefundTransactionSubmitting to true');
+
+        // PREVENTION #2: Disable submit button immediately
+        this.setSubmitButtonState(true, 'Processing...');
         
-        const submitButton = $(this).find('button[type="submit"]');
-        submitButton.prop('disabled', true);
-        submitButton.html('<i class="fas fa-spinner fa-spin"></i> processing...');
-        
-        const formData = new FormData(this);
+        const form = e.target; // Get form from event target
+        const formData = new FormData(form);
         
         // Add date/time if they exist
         if ($('#paymentDate').length > 0 && $('#paymentTime').length > 0) {
@@ -253,13 +301,36 @@ const transactionManager = {
         const refundId = $('#refund_id').val();
         formData.set('booking_id', refundId);
         
+        // Validate required fields
+        if (!refundId) {
+            console.error('No refund ID in form');
+            showToast('error: Missing refund ID');
+            isHotelRefundTransactionSubmitting = false;
+            this.setSubmitButtonState(false);
+            return false;
+        }
+
+        const self = this;
+
+        console.log('Starting refund AJAX request...');
+
+        // Set a backup timeout to re-enable the form in case something goes wrong
+        const backupTimeout = setTimeout(() => {
+            console.log('Backup timeout triggered, re-enabling refund form');
+            isHotelRefundTransactionSubmitting = false;
+            self.setSubmitButtonState(false);
+        }, 35000); // 35 seconds (5 seconds after the main timeout)
+        
         $.ajax({
             url: 'add_hotel_refund_transactoin.php',
             type: 'POST',
             data: formData,
             processData: false,
             contentType: false,
+            timeout: 30000, // 30 second timeout
             success: function(response) {
+                console.log('Refund AJAX success:', response);
+                clearTimeout(backupTimeout); // Clear backup timeout
                 try {
                     const result = typeof response === 'string' ? JSON.parse(response) : response;
                     if (result.success) {
@@ -269,23 +340,31 @@ const transactionManager = {
                         $('#hotelTransactionForm')[0].reset();
                         transactionManager.setDefaultDateTime();
                     } else {
+                        // Re-enable submit button on business logic error
                         showToast('error_adding_transaction: ' + (result.message || 'unknown_error'));
                     }
                 } catch (e) {
                     console.error('Error parsing response:', e);
+                    // Re-enable submit button on parsing error
                     showToast('error_processing_the_request');
-                } finally {
-                    submitButton.prop('disabled', false);
-                    submitButton.html('<i class="feather icon-check mr-1"></i>add_transaction');
                 }
             },
             error: function(xhr, status, error) {
-                console.error('AJAX Error:', error);
+                console.error('Refund AJAX Error:', error);
+                console.error('Response:', xhr.responseText);
+                clearTimeout(backupTimeout); // Clear backup timeout
                 showToast('error_adding_transaction');
-                submitButton.prop('disabled', false);
-                submitButton.html('<i class="feather icon-check mr-1"></i>add_transaction');
+            },
+            complete: function() {
+                console.log('Refund AJAX complete, re-enabling form');
+                // CRITICAL: Always re-enable form in complete callback
+                // This runs whether success or error
+                isHotelRefundTransactionSubmitting = false;
+                self.setSubmitButtonState(false);
             }
         });
+
+        return false;
     },
 
     // Edit transaction
@@ -412,6 +491,12 @@ const transactionManager = {
         $(document).off('submit', '#editTransactionForm').on('submit', '#editTransactionForm', function(e) {
             e.preventDefault();
 
+            // Disable submit button to prevent multiple clicks
+            const submitBtn = $(this).find('button[type="submit"]');
+            const originalText = submitBtn.html();
+            submitBtn.prop('disabled', true);
+            submitBtn.html('<i class="feather icon-refresh-cw mr-2 spinner-border spinner-border-sm" role="status" aria-hidden="true"></i>Saving...');
+
             // Create FormData from the form
             const formData = new FormData(this);
 
@@ -421,11 +506,17 @@ const transactionManager = {
 
             // Ensure transaction_id and refund_id are set
             if (!formData.get('transaction_id')) {
+                // Re-enable submit button on validation error
+                submitBtn.prop('disabled', false);
+                submitBtn.html(originalText);
                 alert('Error: Missing transaction ID');
                 return;
             }
 
             if (!formData.get('refund_id')) {
+                // Re-enable submit button on validation error
+                submitBtn.prop('disabled', false);
+                submitBtn.html(originalText);
                 alert('Error: Missing refund ID');
                 return;
             }
@@ -463,19 +554,36 @@ const transactionManager = {
                             $('#editTransactionModal').modal('hide');
                             transactionManager.loadTransactionHistory(currentRefundId);
                         } else {
+                            // Re-enable submit button on business logic error
+                            submitBtn.prop('disabled', false);
+                            submitBtn.html(originalText);
                             showToast('Error updating transaction: ' + (result.message || 'Unknown error'));
                         }
                     } catch (e) {
                         console.error('Error parsing response:', e);
+                        // Re-enable submit button on parsing error
+                        submitBtn.prop('disabled', false);
+                        submitBtn.html(originalText);
                         showToast('Error processing the request');
                     }
                 },
                 error: function(xhr, status, error) {
                     console.error('AJAX Error:', error);
                     console.error('Response:', xhr.responseText);
+                    // Re-enable submit button on network error
+                    submitBtn.prop('disabled', false);
+                    submitBtn.html(originalText);
                     showToast('Error updating transaction');
                 }
             });
+
+            // Re-enable submit button after 10 seconds as safety measure
+            setTimeout(function() {
+                if (submitBtn.prop('disabled')) {
+                    submitBtn.prop('disabled', false);
+                    submitBtn.html(originalText);
+                }
+            }, 10000);
         });
 
         // Populate the edit form with the current values

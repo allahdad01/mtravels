@@ -187,7 +187,7 @@ try {
             SELECT tb.id, tb.currency, tb.sold
             FROM ticket_reservations tb
             JOIN clients c ON tb.sold_to = c.id
-            WHERE c.client_type = 'agency' AND tb.tenant_id = :tenant_id AND tb.imported = 0
+            WHERE c.client_type = 'agency' AND tb.tenant_id = :tenant_id AND tb.imported = '0'
         ";
         $stmt = $pdo->prepare($ticketReserveQuery);
         $stmt->execute(['tenant_id' => $tenant_id]);
@@ -234,7 +234,7 @@ try {
             FROM ticket_weights tw
             JOIN ticket_bookings tb ON tw.ticket_id = tb.id
             JOIN clients c ON tb.sold_to = c.id
-            WHERE c.client_type = 'agency' AND tb.tenant_id = :tenant_id AND tb.imported = 0
+            WHERE c.client_type = 'agency' AND tb.tenant_id = :tenant_id AND tb.imported = '0'
         ";
         $stmt = $pdo->prepare($ticketWeightsQuery);
         $stmt->execute(['tenant_id' => $tenant_id]);
@@ -281,7 +281,7 @@ try {
             SELECT dc.id, dc.currency, dc.supplier_penalty + dc.service_penalty as total_amount
             FROM date_change_tickets dc
             JOIN clients c ON dc.sold_to = c.id
-            WHERE c.client_type = 'agency' AND dc.tenant_id = :tenant_id AND dc.imported = 0
+            WHERE c.client_type = 'agency' AND dc.tenant_id = :tenant_id AND dc.imported = '0'
         ";
         $stmt = $pdo->prepare($dateChangeQuery);
         $stmt->execute(['tenant_id' => $tenant_id]);
@@ -328,7 +328,7 @@ try {
             SELECT rt.id, rt.currency, rt.refund_to_passenger as total_amount
             FROM refunded_tickets rt
             JOIN clients c ON rt.sold_to = c.id
-            WHERE c.client_type = 'agency' AND rt.tenant_id = :tenant_id AND rt.imported = 0
+            WHERE c.client_type = 'agency' AND rt.tenant_id = :tenant_id AND rt.imported = '0'
         ";
         $stmt = $pdo->prepare($refundedTicketQuery);
         $stmt->execute(['tenant_id' => $tenant_id]);
@@ -375,7 +375,7 @@ try {
             SELECT u.booking_id, u.currency, u.sold_price
             FROM umrah_bookings u
             JOIN clients c ON u.sold_to = c.id
-            WHERE c.client_type = 'agency' AND u.status = 'active' AND u.tenant_id = :tenant_id AND u.imported = 0
+            WHERE c.client_type = 'agency' AND u.status = 'active' AND u.tenant_id = :tenant_id AND u.imported = '0'
         ";
         $stmt = $pdo->prepare($umrahQuery);
         $stmt->execute(['tenant_id' => $tenant_id]);
@@ -422,7 +422,7 @@ try {
             SELECT v.id, v.currency, v.sold
             FROM visa_applications v
             JOIN clients c ON v.sold_to = c.id
-            WHERE c.client_type = 'agency' AND v.status != 'refunded' AND v.tenant_id = :tenant_id AND v.imported = 0
+            WHERE c.client_type = 'agency' AND v.status != 'refunded' AND v.tenant_id = :tenant_id AND v.imported = '0'
         ";
         $stmt = $pdo->prepare($visaQuery);
         $stmt->execute(['tenant_id' => $tenant_id]);
@@ -469,7 +469,7 @@ try {
             SELECT h.id, h.currency, h.sold_amount
             FROM hotel_bookings h
             JOIN clients c ON h.sold_to = c.id
-            WHERE c.client_type = 'agency' AND h.status = 'active' AND h.tenant_id = :tenant_id AND h.imported = 0
+            WHERE c.client_type = 'agency' AND h.status = 'active' AND h.tenant_id = :tenant_id AND h.imported = '0'
         ";
         $stmt = $pdo->prepare($hotelQuery);
         $stmt->execute(['tenant_id' => $tenant_id]);

@@ -1085,160 +1085,8 @@ $clientAccounts = $clientAccounts->get_result()->fetch_all(MYSQLI_ASSOC);
 </form>
 
 
-<!-- Transfer Modal -->
-<div class="modal fade modern-modal" id="transferModal" tabindex="-1" role="dialog" aria-labelledby="transferModalLabel" aria-hidden="true">
-    <div class="modal-dialog modal-dialog-centered">
-        <div class="modal-content">
-            <div class="modal-header bg-primary text-white">
-                <h5 class="modal-title" id="transferModalLabel">
-                    <i class="feather icon-exchange mr-2"></i><?= __('transfer_balance') ?>
-                </h5>
-                <button type="button" class="close text-white" data-dismiss="modal" aria-label="Close">
-                    <span aria-hidden="true">&times;</span>
-                </button>
-            </div>
-            <div class="modal-body">
-                <form id="transferForm">
-                    <div class="row">
-                        <div class="col-md-6">
-                    <div class="form-group">
-                        <label for="fromAccount"><?= __('from_account') ?></label>
-                                <div class="input-group">
-                                    <div class="input-group-prepend">
-                                        <span class="input-group-text bg-light"><i class="feather icon-credit-card"></i></span>
-                                    </div>
-                        <select class="form-control" id="fromAccount" name="fromAccount" required>
-                            <option value=""><?= __('select_account') ?></option>
-                            <?php foreach ($mainAccounts as $account): ?>
-                            <option value="<?= $account['id'] ?>"><?= htmlspecialchars($account['name']) ?></option>
-                            <?php endforeach; ?>
-                        </select>
-                    </div>
-                            </div>
-                        </div>
-                        <div class="col-md-6">
-                    <div class="form-group">
-                        <label for="fromCurrency"><?= __('from_currency') ?></label>
-                                <div class="input-group">
-                                    <div class="input-group-prepend">
-                                        <span class="input-group-text bg-light"><i class="feather icon-dollar-sign"></i></span>
-                                    </div>
-                        <select class="form-control" id="fromCurrency" name="fromCurrency" required>
-                            <option value=""><?= __('select_currency') ?></option>
-                            <option value="USD"><?= __('usd') ?></option>
-                            <option value="AFS"><?= __('afs') ?></option>
-                            <option value="EUR"><?= __('eur') ?></option>
-                            <option value="DARHAM"><?= __('darham') ?></option>
-                        </select>
-                    </div>
-                            </div>
-                        </div>
-                    </div>
-                    
-                    <div class="transfer-separator position-relative my-4">
-                        <hr>
-                        <div class="transfer-icon bg-primary text-white">
-                            <i class="feather icon-arrow-down"></i>
-                        </div>
-                    </div>
-                    
-                    <div class="row">
-                        <div class="col-md-6">
-                    <div class="form-group">
-                        <label for="toAccount"><?= __('to_account') ?></label>
-                                <div class="input-group">
-                                    <div class="input-group-prepend">
-                                        <span class="input-group-text bg-light"><i class="feather icon-credit-card"></i></span>
-                                    </div>
-                        <select class="form-control" id="toAccount" name="toAccount" required>
-                            <option value=""><?= __('select_account') ?></option>
-                            <?php foreach ($mainAccounts as $account): ?>
-                            <option value="<?= $account['id'] ?>"><?= htmlspecialchars($account['name']) ?></option>
-                            <?php endforeach; ?>
-                        </select>
-                    </div>
-                            </div>
-                        </div>
-                        <div class="col-md-6">
-                    <div class="form-group">
-                        <label for="toCurrency"><?= __('to_currency') ?></label>
-                                <div class="input-group">
-                                    <div class="input-group-prepend">
-                                        <span class="input-group-text bg-light"><i class="feather icon-dollar-sign"></i></span>
-                                    </div>
-                        <select class="form-control" id="toCurrency" name="toCurrency" required>
-                            <option value=""><?= __('select_currency') ?></option>
-                            <option value="USD"><?= __('usd') ?></option>
-                            <option value="AFS"><?= __('afs') ?></option>
-                            <option value="EUR"><?= __('eur') ?></option>
-                            <option value="DARHAM"><?= __('darham') ?></option>
-                        </select>
-                    </div>
-                            </div>
-                        </div>
-                    </div>
-                    
-                    <div class="row">
-                        <div class="col-md-6">
-                    <div class="form-group">
-                        <label for="amount"><?= __('amount') ?></label>
-                                <div class="input-group">
-                                    <div class="input-group-prepend">
-                                        <span class="input-group-text bg-light"><i class="fas fa-coins"></i></span>
-                                    </div>
-                        <input type="number" class="form-control" id="amount" name="amount" step="0.01" required>
-                    </div>
-                            </div>
-                        </div>
-                        <div class="col-md-6">
-                    <div class="form-group">
-                        <label for="exchangeRate"><?= __('exchange_rate') ?></label>
-                                <div class="input-group">
-                                    <div class="input-group-prepend">
-                                        <span class="input-group-text bg-light"><i class="feather icon-percent"></i></span>
-                                    </div>
-                        <input type="number" class="form-control" id="exchangeRate" name="exchangeRate" step="0.01" required>
-                    </div>
-                            </div>
-                        </div>
-                    </div>
-                    
-                    <div class="form-group mb-0">
-                        <label for="description"><?= __('description') ?></label>
-                        <textarea class="form-control" id="description" name="description" rows="2" placeholder="<?= __('enter_transaction_details') ?>"></textarea>
-                    </div>
-                </form>
-            </div>
-            <div class="modal-footer">
-                <button type="button" class="btn btn-outline-secondary" data-dismiss="modal">
-                    <i class="feather icon-x mr-1"></i><?= __('cancel') ?>
-                </button>
-                <button type="button" class="btn btn-primary" id="transferBtn">
-                    <i class="feather icon-check mr-1"></i><?= __('transfer') ?>
-                </button>
-            </div>
-        </div>
-    </div>
-</div>
 
-<style>
-.transfer-separator {
-    text-align: center;
-}
 
-.transfer-icon {
-    display: inline-flex;
-    align-items: center;
-    justify-content: center;
-    width: 32px;
-    height: 32px;
-    border-radius: 50%;
-    position: absolute;
-    top: 50%;
-    left: 50%;
-    transform: translate(-50%, -50%);
-}
-</style>
 
 <!-- Fund Supplier Modal -->
 <div class="modal fade modern-modal" id="fundSupplierModal" tabindex="-1" role="dialog" aria-labelledby="fundSupplierModalLabel" aria-hidden="true">
@@ -1681,100 +1529,8 @@ $clientAccounts = $clientAccounts->get_result()->fetch_all(MYSQLI_ASSOC);
     </div>
 </div>
 
-<!-- Edit Main Account Modal -->
-<div class="modal fade modern-modal" id="editMainAccountModal" tabindex="-1" aria-labelledby="editMainAccountModalLabel" aria-hidden="true">
-    <div class="modal-dialog modal-dialog-centered">
-        <div class="modal-content">
-            <div class="modal-header bg-primary text-white">
-                <h5 class="modal-title" id="editMainAccountModalLabel">
-                    <i class="feather icon-edit mr-2"></i><?= __('edit_main_account') ?>
-                </h5>
-                <button type="button" class="close text-white" data-dismiss="modal" aria-label="Close">
-                    <span aria-hidden="true">&times;</span>
-                </button>
-            </div>
-            <form id="editMainAccountForm">
-                <div class="modal-body">
-                    <input type="hidden" id="edit_account_id" name="account_id">
-                    
-                    <div class="mb-3">
-                        <label for="edit_account_name" class="form-label"><?= __('account_name') ?></label>
-                        <div class="input-group">
-                            <div class="input-group-prepend">
-                                <span class="input-group-text bg-light"><i class="feather icon-briefcase"></i></span>
-                    </div>
-                            <input type="text" id="edit_account_name" name="account_name" class="form-control" placeholder="<?= __('enter_account_name') ?>" required>
-                        </div>
-                    </div>
-                    
-                    <div class="mb-3">
-                        <label for="edit_account_type" class="form-label"><?= __('account_type') ?></label>
-                        <div class="input-group">
-                            <div class="input-group-prepend">
-                                <span class="input-group-text bg-light"><i class="feather icon-tag"></i></span>
-                            </div>
-                        <select id="edit_account_type" name="account_type" class="form-control" required>
-                            <option value="internal"><?= __('internal_account') ?></option>
-                            <option value="bank"><?= __('bank_account') ?></option>
-                        </select>
-                    </div>
-                    </div>
-                    
-                    <!-- Bank account specific fields - shown/hidden based on account type -->
-                    <div id="edit_bankFields" style="display: none;">
-                        <div class="mb-3">
-                            <label for="edit_bank_account_number" class="form-label"><?= __('bank_account_usd_number') ?></label>
-                            <div class="input-group">
-                                <div class="input-group-prepend">
-                                    <span class="input-group-text bg-light"><i class="feather icon-hash"></i></span>
-                                </div>
-                                <input type="text" id="edit_bank_account_number" name="bank_account_number" class="form-control" placeholder="<?= __('enter_bank_account_number') ?>">
-                            </div>
-                        </div>
-                        <div class="mb-3">
-                            <label for="bank_account_afs_number" class="form-label"><?= __('bank_account_afs_number') ?></label>
-                            <div class="input-group">
-                                <div class="input-group-prepend">
-                                    <span class="input-group-text bg-light"><i class="feather icon-hash"></i></span>
-                                </div>
-                                <input type="text" id="bank_account_afs_number" name="bank_account_afs_number" class="form-control" placeholder="<?= __('enter_bank_account_afs_number') ?>">
-                            </div>
-                        </div>
-                    </div>
-                    <div class="mb-3">
-                        <label for="edit_status" class="form-label"><?= __('status') ?></label>
-                        <div class="input-group">
-                            <div class="input-group-prepend">
-                                <span class="input-group-text bg-light"><i class="feather icon-toggle-right"></i></span>
-                            </div>
-                                <select id="edit_status" name="status" class="form-control" required>
-                                    <option value="active"><?= __('active') ?></option>
-                                    <option value="inactive"><?= __('inactive') ?></option>
-                                </select>
-                            </div>
-                        </div>
-                    
-                        <div class="alert alert-warning small mb-0">
-                            <div class="d-flex">
-                                <i class="feather icon-alert-circle mr-2 mt-1"></i>
-                                <div>
-                                    <strong><?= __('note') ?>:</strong> <?= __('editing_an_account_doesnt_affect_its_transaction_history') ?>. <?= __('this_will_only_update_the_account_information') ?>.
-                                </div>
-                            </div>
-                        </div>
-                    </div>
-                <div class="modal-footer">
-                    <button type="button" class="btn btn-outline-secondary" data-dismiss="modal">
-                        <i class="feather icon-x mr-1"></i><?= __('cancel') ?>
-                    </button>
-                    <button type="submit" class="btn btn-primary" id="saveEditMainAccountBtn">
-                        <i class="feather icon-save mr-1"></i><?= __('save_changes') ?>
-                    </button>
-                </div>
-            </form>
-        </div>
-    </div>
-</div>
+
+
 
     <!-- Required Js -->
     <script src="../assets/js/vendor-all.min.js"></script>
@@ -1783,6 +1539,198 @@ $clientAccounts = $clientAccounts->get_result()->fetch_all(MYSQLI_ASSOC);
     <script src="../assets/js/client-search.js"></script>
 
 
+
+     <!-- Enhanced Button Protection Script -->
+ <script>
+    // Enhanced button protection for all accounts forms
+    document.addEventListener('DOMContentLoaded', function() {
+        
+        // Function to protect form submission
+        function protectFormSubmission(form, buttonName, loadingText) {
+            form.addEventListener('submit', function(e) {
+                console.log(`Accounts form submitted with button: ${buttonName}`);
+                
+                const submitBtn = this.querySelector(`button[name="${buttonName}"]`) || 
+                                this.querySelector(`#${buttonName}`) ||
+                                this.querySelector(`button[type="submit"]`);
+                
+                if (submitBtn && !submitBtn.disabled) {
+                    // Disable button and show loading state
+                    submitBtn.disabled = true;
+                    submitBtn.classList.add('btn-loading');
+                    
+                    // Use Feather icons with proper spinning animation
+                    const loadingHtml = `<i class="feather icon-refresh-cw mr-1" style="animation: spin 1s linear infinite;"></i>${loadingText}`;
+                    submitBtn.innerHTML = loadingHtml;
+                    
+                    // Add CSS for spinner animation if not exists
+                    if (!document.querySelector('#accounts-spinner-styles')) {
+                        const style = document.createElement('style');
+                        style.id = 'accounts-spinner-styles';
+                        style.textContent = `
+                            @keyframes spin {
+                                0% { transform: rotate(0deg); }
+                                100% { transform: rotate(360deg); }
+                            }
+                            .btn-loading {
+                                pointer-events: none;
+                                opacity: 0.7;
+                            }
+                            .spinner {
+                                animation: spin 1s linear infinite;
+                            }
+                        `;
+                        document.head.appendChild(style);
+                    }
+                    
+                    console.log(`Button ${buttonName} disabled and loading state shown`);
+                }
+            });
+        }
+
+
+        // Protect the Fund Supplier form
+        const fundSupplierModal = document.getElementById('fundSupplierModal');
+        if (fundSupplierModal) {
+            const fundSupplierForm = document.getElementById('fundSupplierForm');
+            if (fundSupplierForm) {
+                protectFormSubmission(fundSupplierForm, 'fund_supplier', 'Funding Account...');
+            }
+        }
+
+        // Protect the Withdraw Supplier form
+        const withdrawSupplierModal = document.getElementById('withdrawSupplierModal');
+        if (withdrawSupplierModal) {
+            const withdrawSupplierForm = document.getElementById('withdrawSupplierForm');
+            if (withdrawSupplierForm) {
+                protectFormSubmission(withdrawSupplierForm, 'withdraw_supplier', 'Processing Withdrawal...');
+            }
+        }
+
+        // Protect the Add Bonus form
+        const addBonusModal = document.getElementById('addBonusModal');
+        if (addBonusModal) {
+            const addBonusForm = document.getElementById('addBonusForm');
+            if (addBonusForm) {
+                protectFormSubmission(addBonusForm, 'add_bonus', 'Adding Bonus...');
+            }
+        }
+
+        // Protect the Partial Payment form
+        const partialPaymentModal = document.getElementById('partialPaymentModal');
+        if (partialPaymentModal) {
+            const partialPaymentForm = document.getElementById('partialPaymentForm');
+            if (partialPaymentForm) {
+                // This form uses a button with ID instead of name
+                const submitBtn = partialPaymentForm.querySelector('#processPaymentBtn');
+                if (submitBtn) {
+                    submitBtn.addEventListener('click', function(e) {
+                        e.preventDefault();
+                        if (this.disabled || this.classList.contains('processing')) {
+                            console.log('Payment button already processing, preventing double click');
+                            return false;
+                        }
+                        
+                        this.disabled = true;
+                        this.classList.add('btn-loading');
+                        this.innerHTML = '<i class="feather icon-refresh-cw mr-1" style="animation: spin 1s linear infinite;"></i>Processing Payment...';
+                        
+                        // Form validation and submission logic
+                        if (validatePartialPaymentForm()) {
+                            // Add your form submission logic here
+                            console.log('Payment form being processed');
+                        } else {
+                            // Re-enable button if validation fails
+                            setTimeout(() => {
+                                this.disabled = false;
+                                this.classList.remove('btn-loading');
+                                this.innerHTML = '<i class="feather icon-check-circle mr-1"></i>Process Payment';
+                            }, 1000);
+                        }
+                    });
+                }
+            }
+        }
+
+        // Function to validate partial payment form
+        function validatePartialPaymentForm() {
+            const requiredFields = ['paymentCurrency', 'totalAmount', 'exchangeRate', 'usdAmount', 'afsAmount', 'clientMainAccount'];
+            let isValid = true;
+            
+            requiredFields.forEach(fieldId => {
+                const field = document.getElementById(fieldId);
+                if (!field || !field.value) {
+                    field?.classList.add('is-invalid');
+                    isValid = false;
+                } else {
+                    field.classList.remove('is-invalid');
+                }
+            });
+            
+            if (!isValid) {
+                // Show validation message
+                console.log('Partial payment form validation failed');
+            }
+            
+            return isValid;
+        }
+
+        // Enhanced click protection for all submit buttons in accounts page
+        const allSubmitButtons = document.querySelectorAll('button[type="submit"], .btn-confirm, #transferBtn, #processPaymentBtn, #saveEditMainAccountBtn, #submit-remarks-btn');
+        allSubmitButtons.forEach(button => {
+            // Add single click protection
+            button.addEventListener('click', function(e) {
+                // Check if already processing
+                if (this.disabled || this.classList.contains('processing') || this.classList.contains('btn-loading')) {
+                    console.log('Accounts button already processing, preventing double click');
+                    e.preventDefault();
+                    e.stopPropagation();
+                    return false;
+                }
+                
+                // Mark as processing immediately
+                this.classList.add('processing');
+                
+                // Remove processing class after a short delay (in case form doesn't submit)
+                setTimeout(() => {
+                    this.classList.remove('processing');
+                }, 3000);
+            }, true);
+        });
+
+        // Special handling for fund account buttons (inline buttons in cards)
+        const fundAccountButtons = document.querySelectorAll('.fund-account-btn');
+        fundAccountButtons.forEach(button => {
+            button.addEventListener('click', function(e) {
+                e.preventDefault();
+                
+                if (this.disabled || this.classList.contains('processing')) {
+                    console.log('Fund account button already processing');
+                    return false;
+                }
+                
+                const accountId = this.getAttribute('data-account-id');
+                const amount = document.getElementById(`amount-${accountId}`)?.value;
+                const currency = document.getElementById(`currency-${accountId}`)?.value;
+                
+                if (!amount || !currency) {
+                    console.log('Amount and currency are required');
+                    return false;
+                }
+                
+                // Show loading state
+                this.disabled = true;
+                this.classList.add('processing');
+                this.innerHTML = '<i class="feather icon-refresh-cw mr-1" style="animation: spin 1s linear infinite;"></i>Funding...';
+                
+                // Your funding logic here
+                console.log(`Funding account ${accountId} with ${amount} ${currency}`);
+            });
+        });
+
+        console.log('Button protection initialized for all accounts forms');
+    });
+</script>
     
     <!-- Date Range Picker -->
     <script type="text/javascript" src="../assets/plugins/daterangepicker/moment.min.js"></script>

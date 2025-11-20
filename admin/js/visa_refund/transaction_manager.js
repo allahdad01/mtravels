@@ -1,5 +1,6 @@
     // Transaction Management System
     const transactionManager = {
+        isSubmitting: false, // Flag to track submission state for preventing multiple submissions
         // Initialize transaction modal and form handlers
         init: function() {
             this.bindEvents();
@@ -202,6 +203,7 @@
 
             // Get the submit button
             const submitButton = $(this).find('button[type="submit"]');
+            const originalText = submitButton.html();
 
             // If the form is already being submitted, return
             if (submitButton.prop('disabled')) {
@@ -210,16 +212,16 @@
 
             // Disable the submit button
             submitButton.prop('disabled', true);
-            submitButton.html('<i class="fas fa-spinner fa-spin"></i> processing...');
+            submitButton.html('<i class="fas fa-spinner fa-spin"></i> Processing...');
 
             const formData = new FormData(this);
             const refundId = $('#refund_id').val();
 
             if (!refundId) {
-                alert('refund_id_is_missing');
-                // Re-enable the submit button
+                // Re-enable the submit button on validation error
                 submitButton.prop('disabled', false);
-                submitButton.html('<i class="feather icon-check mr-1"></i> add_transaction');
+                submitButton.html(originalText);
+                alert('refund_id_is_missing');
                 return;
             }
 
@@ -266,25 +268,35 @@
                             $('#transactionExchangeRate').val('');
                             transactionManager.loadTransactionHistory(refundId);
                         } else {
+                            // Re-enable submit button on business logic error
+                            submitButton.prop('disabled', false);
+                            submitButton.html(originalText);
                             alert('Error adding transaction: ' + (result.message || 'Unknown error'));
                         }
                     } catch (e) {
                         console.error('Error parsing response:', e);
-                        alert('error_processing_the_request');
-                    } finally {
-                        // Re-enable the submit button
+                        // Re-enable submit button on parsing error
                         submitButton.prop('disabled', false);
-                        submitButton.html('<i class="feather icon-check mr-1"></i> add_transaction');
+                        submitButton.html(originalText);
+                        alert('Error processing the request');
                     }
                 },
                 error: function(xhr, status, error) {
                     console.error('AJAX Error:', error);
                     alert('error_adding_transaction');
-                    // Re-enable the submit button
+                    // Re-enable submit button on network error
                     submitButton.prop('disabled', false);
-                    submitButton.html('<i class="feather icon-check mr-1"></i> add_transaction');
+                    submitButton.html(originalText);
                 }
             });
+
+            // Re-enable submit button after 10 seconds as safety measure
+            setTimeout(function() {
+                if (submitButton.prop('disabled')) {
+                    submitButton.prop('disabled', false);
+                    submitButton.html(originalText);
+                }
+            }, 10000);
         },
 
         // Edit transaction
@@ -376,7 +388,7 @@
                         }
                     } catch (e) {
                         console.error('Error parsing response:', e);
-                        alert('error_processing_the_request');
+                        alert('Error processing the request');
                     }
                 },
                 error: function(xhr, status, error) {
@@ -476,6 +488,8 @@
         e.preventDefault();
         
         const submitButton = $(this).find('button[type="submit"]');
+        const originalText = submitButton.html();
+        
         submitButton.prop('disabled', true);
         submitButton.html('<i class="fas fa-spinner fa-spin"></i> processing...');
         
@@ -513,21 +527,33 @@
                         transactionManager.loadTransactionHistory(refundId);
                         alert('transaction_updated_successfully');
                     } else {
+                        // Re-enable submit button on business logic error
+                        submitButton.prop('disabled', false);
+                        submitButton.html(originalText);
                         alert('error_updating_transaction: ' + (result.message || 'unknown_error'));
                     }
                 } catch (e) {
                     console.error('Error parsing response:', e);
-                    alert('error_processing_the_request');
-                } finally {
+                    // Re-enable submit button on parsing error
                     submitButton.prop('disabled', false);
-                    submitButton.html('<i class="feather icon-save mr-1"></i> save_changes');
+                    submitButton.html(originalText);
+                    alert('error_processing_the_request');
                 }
             },
             error: function(xhr, status, error) {
                 console.error('AJAX Error:', error);
-                alert('error_updating_transaction');
+                // Re-enable submit button on network error
                 submitButton.prop('disabled', false);
-                submitButton.html('<i class="feather icon-save mr-1"></i> save_changes');
+                submitButton.html(originalText);
+                alert('error_updating_transaction');
             }
         });
+
+        // Re-enable submit button after 10 seconds as safety measure
+        setTimeout(function() {
+            if (submitButton.prop('disabled')) {
+                submitButton.prop('disabled', false);
+                submitButton.html(originalText);
+            }
+        }, 10000);
     });

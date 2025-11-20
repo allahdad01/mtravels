@@ -14,10 +14,11 @@ document.getElementById('addVisaForm').addEventListener('submit', function (even
     .then(response => response.json())
     .then(data => {
         if (data.status === 'success') {
-            alert(data.message);
+            showToast(data.message, 'success');
+            $('#addVisaModal').modal('hide');
             location.reload();
         } else {
-            alert('Error: ' + data.message);
+            showToast('Error: ' + data.message, 'error');
             // Re-enable the button if there's an error
             submitButton.disabled = false;
             submitButton.innerHTML = 'add_visa';
@@ -25,7 +26,7 @@ document.getElementById('addVisaForm').addEventListener('submit', function (even
     })
     .catch(error => {
         console.error('Error:', error);
-            alert('an_unexpected_error_occurred');
+        showToast('an_unexpected_error_occurred', 'error');
         // Re-enable the button if there's an error
         submitButton.disabled = false;
         submitButton.innerHTML = 'add_visa';

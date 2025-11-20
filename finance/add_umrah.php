@@ -142,6 +142,41 @@ if ($stmt->execute()) {
         $service_stmt->close();
     }
 
+    // Send email notification to client
+    require_once '../includes/functions.php';
+
+    // Get client email and name for notification
+    $client_email = '';
+    $client_name = '';
+    
+    $stmt_client_email = $conn->prepare("SELECT email, name FROM clients WHERE id = ? AND tenant_id = ?");
+    $stmt_client_email->bind_param("ii", $soldTo, $tenant_id);
+    $stmt_client_email->execute();
+    $client_email_result = $stmt_client_email->get_result();
+    $client_email_data = $client_email_result->fetch_assoc();
+    if ($client_email_data) {
+        $client_email = $client_email_data['email'];
+        $client_name = $client_email_data['name'];
+    }
+    $stmt_client_email->close();
+
+    if (!empty($client_email)) {
+        $currency = isset($processed_services[0]['currency']) ? $processed_services[0]['currency'] : 'USD';
+        sendUmrahNotification(
+            $client_email,
+            $client_name,
+            $umrah_id,
+            $name,
+            $flight_date,
+            $return_date,
+            $room_type,
+            $total_sold_price,
+            $amount_paid,
+            $due,
+            $currency
+        );
+    }
+
     echo json_encode(["success" => true]);
 } else {
     echo json_encode(["success" => false, "error" => $stmt->error]);

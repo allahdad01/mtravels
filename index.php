@@ -620,182 +620,185 @@ try {
 
         /* Features Section */
         .features {
-            padding: 6rem 0;
-            background: var(--white);
+            padding: 8rem 0;
+            background: linear-gradient(135deg, #f8fafc 0%, #e2e8f0 100%);
+            position: relative;
+            overflow: hidden;
+        }
+
+        .features::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background: url('data:image/svg+xml,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100"><defs><pattern id="features-bg" width="20" height="20" patternUnits="userSpaceOnUse"><circle cx="10" cy="10" r="1" fill="rgba(64, 153, 255, 0.05)"/></pattern></defs><rect width="100" height="100" fill="url(%23features-bg)"/></svg>');
+            opacity: 0.5;
         }
 
         .section-header {
             text-align: center;
-            margin-bottom: 4rem;
+            margin-bottom: 5rem;
+            position: relative;
+            z-index: 1;
         }
 
         .section-header h2 {
-            font-size: 3rem;
-            font-weight: 800;
-            color: var(--gray-900);
-            margin-bottom: 1rem;
+            font-size: 3.5rem;
+            font-weight: 900;
+            background: linear-gradient(135deg, var(--primary) 0%, var(--primary-dark) 100%);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+            margin-bottom: 1.5rem;
+            position: relative;
+        }
+
+        .section-header h2::after {
+            content: '';
+            position: absolute;
+            bottom: -15px;
+            left: 50%;
+            transform: translateX(-50%);
+            width: 120px;
+            height: 6px;
+            background: linear-gradient(135deg, var(--primary), var(--secondary));
+            border-radius: 3px;
+            box-shadow: 0 4px 15px rgba(64, 153, 255, 0.3);
         }
 
         .section-header p {
-            font-size: 1.2rem;
+            font-size: 1.3rem;
             color: var(--gray-600);
-            max-width: 600px;
+            max-width: 700px;
             margin: 0 auto;
+            line-height: 1.6;
         }
 
-        .features-timeline {
+        .features-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(350px, 1fr));
+            gap: 3rem;
             position: relative;
-            padding: 2rem 0;
-            perspective: 1000px;
+            z-index: 1;
         }
 
-        .features-timeline::before {
-            content: '';
-            position: absolute;
-            left: 50%;
-            top: 0;
-            bottom: 0;
-            width: 4px;
-            background: linear-gradient(to bottom, var(--primary) 0%, var(--secondary) 100%);
-            transform: translateX(-50%);
-            border-radius: 2px;
-            box-shadow: 0 0 20px rgba(64, 153, 255, 0.3);
-        }
-
-        .timeline-item {
+        .feature-card {
+            background: var(--white);
+            border-radius: 25px;
+            padding: 3rem 2.5rem;
+            box-shadow: 0 20px 60px rgba(0, 0, 0, 0.08);
+            border: 1px solid rgba(255, 255, 255, 0.8);
+            transition: all 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275);
             position: relative;
-            margin: 4rem 0;
-            display: flex;
-            width: 100%;
-        }
-
-        .timeline-item {
-            position: relative;
-            margin: 4rem 0;
+            overflow: hidden;
             opacity: 0;
-            transform: translateY(30px);
-            display: flex;
-            width: 100%;
+            transform: translateY(50px) scale(0.9);
+            animation: featureFadeInUp 0.8s ease-out forwards;
         }
 
-        .timeline-item:nth-child(odd) {
-            justify-content: flex-end;
-        }
-
-        .timeline-item:nth-child(even) {
-            justify-content: flex-start;
-        }
-
-        .timeline-item.animate:nth-child(odd) {
-            animation: pageTurnLeftToRight 1s ease-out forwards;
-        }
-
-        .timeline-item.animate:nth-child(even) {
-            animation: pageTurnRightToLeft 1s ease-out forwards;
-        }
-
-        .timeline-content {
-            transform-origin: left center;
-        }
-
-        .timeline-item:nth-child(even) .timeline-content {
-            transform-origin: right center;
-        }
-
-        @keyframes pageTurnLeftToRight {
-            0% {
-                opacity: 0;
-                transform: rotateY(-90deg) translateZ(50px);
-            }
-            50% {
-                opacity: 0.5;
-                transform: rotateY(-45deg) translateZ(25px);
-            }
-            100% {
-                opacity: 1;
-                transform: rotateY(0deg) translateZ(0px);
-            }
-        }
-
-        @keyframes pageTurnRightToLeft {
-            0% {
-                opacity: 0;
-                transform: rotateY(90deg) translateZ(50px);
-            }
-            50% {
-                opacity: 0.5;
-                transform: rotateY(45deg) translateZ(25px);
-            }
-            100% {
-                opacity: 1;
-                transform: rotateY(0deg) translateZ(0px);
-            }
-        }
-
-        .timeline-content {
-            background: rgba(255, 255, 255, 0.95);
-            backdrop-filter: blur(20px);
-            border: 1px solid rgba(255, 255, 255, 0.3);
-            border-radius: 20px;
-            padding: 2.5rem;
-            box-shadow: 0 15px 35px rgba(0, 0, 0, 0.1);
-            transition: all 0.4s ease;
-            position: relative;
-            max-width: 45%;
-            margin: 0 2rem;
-            transform-style: preserve-3d;
-        }
-
-        .timeline-content:hover {
-            transform: translateY(-8px) scale(1.02);
-            box-shadow: 0 25px 50px rgba(64, 153, 255, 0.15);
-        }
-
-        .timeline-item::after {
+        .feature-card::before {
             content: '';
             position: absolute;
-            top: 50%;
-            left: 50%;
-            width: 20px;
-            height: 20px;
+            top: 0;
+            left: 0;
+            right: 0;
+            height: 4px;
             background: linear-gradient(135deg, var(--primary), var(--secondary));
-            border-radius: 50%;
-            border: 4px solid white;
-            box-shadow: 0 0 15px rgba(64, 153, 255, 0.6);
-            transform: translate(-50%, -50%);
+            transform: scaleX(0);
+            transition: transform 0.4s ease;
+        }
+
+        .feature-card:hover::before {
+            transform: scaleX(1);
+        }
+
+        .feature-card:hover {
+            transform: translateY(-15px) scale(1.03);
+            box-shadow: 0 35px 80px rgba(64, 153, 255, 0.15);
+        }
+
+        @keyframes featureFadeInUp {
+            to {
+                opacity: 1;
+                transform: translateY(0) scale(1);
+            }
+        }
+
+        .feature-card-inner {
+            position: relative;
             z-index: 2;
         }
 
-        .timeline-content .feature-icon {
-            width: 70px;
-            height: 70px;
-            background: linear-gradient(135deg, var(--primary), var(--secondary));
-            border-radius: 18px;
+        .feature-icon-wrapper {
+            position: relative;
+            margin-bottom: 2rem;
+        }
+
+        .feature-icon {
+            width: 80px;
+            height: 80px;
+            background: linear-gradient(135deg, var(--primary) 0%, var(--secondary) 100%);
+            border-radius: 20px;
             display: flex;
             align-items: center;
             justify-content: center;
-            font-size: 1.8rem;
-            margin-bottom: 1.5rem;
-            position: relative;
+            font-size: 2.2rem;
             color: white;
-            box-shadow: 0 8px 25px rgba(64, 153, 255, 0.3);
+            position: relative;
+            box-shadow: 0 15px 35px rgba(64, 153, 255, 0.3);
+            transition: all 0.3s ease;
         }
 
-        .timeline-content h3 {
-            font-size: 1.4rem;
+        .feature-card:hover .feature-icon {
+            transform: scale(1.1) rotate(5deg);
+            box-shadow: 0 20px 45px rgba(64, 153, 255, 0.4);
+        }
+
+        .feature-icon::after {
+            content: '';
+            position: absolute;
+            inset: -5px;
+            background: linear-gradient(135deg, var(--primary), var(--secondary));
+            border-radius: 25px;
+            opacity: 0.2;
+            z-index: -1;
+            filter: blur(10px);
+        }
+
+        .feature-content h3 {
+            font-size: 1.5rem;
             font-weight: 700;
-            color: var(--primary);
-            margin-bottom: 1rem;
+            color: var(--gray-900);
+            margin-bottom: 1.2rem;
+            position: relative;
         }
 
-        .timeline-content p {
-            color: var(--gray-700);
+        .feature-content h3::after {
+            content: '';
+            position: absolute;
+            bottom: -5px;
+            left: 0;
+            width: 50px;
+            height: 3px;
+            background: linear-gradient(135deg, var(--primary), var(--secondary));
+            border-radius: 2px;
+            transition: width 0.3s ease;
+        }
+
+        .feature-card:hover .feature-content h3::after {
+            width: 100px;
+        }
+
+        .feature-content p {
+            color: var(--gray-600);
             line-height: 1.7;
-            margin-bottom: 1.5rem;
+            margin-bottom: 2rem;
             font-size: 1rem;
         }
 
-        .timeline-content .feature-link {
+        .feature-link {
             color: var(--primary);
             text-decoration: none;
             font-weight: 600;
@@ -803,15 +806,42 @@ try {
             align-items: center;
             gap: 0.5rem;
             transition: all 0.3s ease;
-            padding: 0.5rem 1rem;
-            border-radius: 25px;
+            padding: 0.8rem 1.5rem;
+            border-radius: 30px;
             background: rgba(64, 153, 255, 0.1);
+            border: 2px solid transparent;
+            position: relative;
+            overflow: hidden;
         }
 
-        .timeline-content .feature-link:hover {
-            gap: 1rem;
-            background: var(--primary);
+        .feature-link::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: -100%;
+            width: 100%;
+            height: 100%;
+            background: linear-gradient(135deg, var(--primary), var(--secondary));
+            transition: left 0.4s ease;
+            z-index: -1;
+        }
+
+        .feature-link:hover::before {
+            left: 0;
+        }
+
+        .feature-link:hover {
             color: white;
+            gap: 1rem;
+            transform: translateX(5px);
+            border-color: var(--primary);
+        }
+
+        .feature-link span {
+            transition: transform 0.3s ease;
+        }
+
+        .feature-link:hover span {
             transform: translateX(5px);
         }
 
@@ -1658,7 +1688,7 @@ try {
                 <h2><?php echo getSetting($platform_settings, 'features_title', 'Everything You Need to Scale'); ?></h2>
                 <p><?php echo getSetting($platform_settings, 'features_subtitle', 'Comprehensive tools designed specifically for travel agencies to manage, grow, and optimize their business operations.'); ?></p>
             </div>
-            <div class="features-timeline">
+            <div class="features-grid">
                 <?php
                 $features = json_decode(getSetting($platform_settings, 'features_list', '[]'), true);
                 if (empty($features)) {
@@ -1682,12 +1712,17 @@ try {
                 }
 
                 foreach ($features as $index => $feature) {
-                    echo '<div class="timeline-item">';
-                    echo '<div class="timeline-content">';
+                    $delay = $index * 0.1; // Staggered animation delay
+                    echo '<div class="feature-card" style="animation-delay: ' . $delay . 's;">';
+                    echo '<div class="feature-card-inner">';
+                    echo '<div class="feature-icon-wrapper">';
                     echo '<div class="feature-icon">' . htmlspecialchars($feature['icon'] ?? '🚀') . '</div>';
+                    echo '</div>';
+                    echo '<div class="feature-content">';
                     echo '<h3>' . htmlspecialchars($feature['title'] ?? 'Feature Title') . '</h3>';
                     echo '<p>' . htmlspecialchars($feature['description'] ?? 'Feature description') . '</p>';
-                    echo '<a href="book-demo.php" class="feature-link">Try it now →</a>';
+                    echo '<a href="book-demo.php" class="feature-link">Try it now <span>→</span></a>';
+                    echo '</div>';
                     echo '</div>';
                     echo '</div>';
                 }

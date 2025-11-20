@@ -1478,6 +1478,246 @@ while ($row = $result->fetch_assoc()) {
         });
     </script>
 
+ <!-- Enhanced Button Protection Script -->
+ <script>
+    // Enhanced button protection for all forms
+    document.addEventListener('DOMContentLoaded', function() {
+        
+        // Function to protect form submission
+        function protectFormSubmission(form, buttonName, loadingText) {
+            form.addEventListener('submit', function(e) {
+                console.log(`Form submitted with button: ${buttonName}`);
+                
+                const submitBtn = this.querySelector(`button[name="${buttonName}"]`);
+                if (submitBtn && !submitBtn.disabled) {
+                    // Disable button and show loading state
+                    submitBtn.disabled = true;
+                    submitBtn.classList.add('btn-loading');
+                    
+                    // Use Feather icons with proper spinning animation
+                    const loadingHtml = `<i class="feather icon-refresh-cw mr-1" style="animation: spin 1s linear infinite;"></i>${loadingText}`;
+                    submitBtn.innerHTML = loadingHtml;
+                    
+                    // Add CSS for spinner animation if not exists
+                    if (!document.querySelector('#spinner-styles')) {
+                        const style = document.createElement('style');
+                        style.id = 'spinner-styles';
+                        style.textContent = `
+                            @keyframes spin {
+                                0% { transform: rotate(0deg); }
+                                100% { transform: rotate(360deg); }
+                            }
+                            .btn-loading {
+                                pointer-events: none;
+                                opacity: 0.7;
+                            }
+                            .spinner {
+                                animation: spin 1s linear infinite;
+                            }
+                        `;
+                        document.head.appendChild(style);
+                    }
+                    
+                    console.log(`Button ${buttonName} disabled and loading state shown`);
+                }
+            });
+        }
+
+        // Protect the Deposit form
+        const depositModal = document.getElementById('depositModal');
+        if (depositModal) {
+            const depositForm = depositModal.querySelector('form');
+            if (depositForm) {
+                protectFormSubmission(depositForm, 'add_deposit', 'Adding Deposit...');
+            }
+        }
+
+        // Protect the Withdrawal form
+        const withdrawalModal = document.getElementById('withdrawalModal');
+        if (withdrawalModal) {
+            const withdrawalForm = withdrawalModal.querySelector('form');
+            if (withdrawalForm) {
+                protectFormSubmission(withdrawalForm, 'add_withdrawal', 'Processing Withdrawal...');
+            }
+        }
+
+        // Protect the Hawala Transfer form
+        const hawalaModal = document.getElementById('hawalaModal');
+        if (hawalaModal) {
+            const hawalaForm = hawalaModal.querySelector('form');
+            if (hawalaForm) {
+                protectFormSubmission(hawalaForm, 'add_hawala', 'Processing Hawala...');
+            }
+        }
+
+        // Protect the Currency Exchange form
+        const exchangeModal = document.getElementById('exchangeModal');
+        if (exchangeModal) {
+            const exchangeForm = exchangeModal.querySelector('form');
+            if (exchangeForm) {
+                protectFormSubmission(exchangeForm, 'add_exchange', 'Processing Exchange...');
+            }
+        }
+
+        // Protect the Customer form
+        const customerModal = document.getElementById('customerModal');
+        if (customerModal) {
+            const customerForm = customerModal.querySelector('form');
+            if (customerForm) {
+                protectFormSubmission(customerForm, 'add_customer', 'Adding Customer...');
+            }
+        }
+
+        // Enhanced click protection for all submit buttons
+        const allSubmitButtons = document.querySelectorAll('button[type="submit"]');
+        allSubmitButtons.forEach(button => {
+            // Add single click protection
+            button.addEventListener('click', function(e) {
+                // Check if already processing
+                if (this.disabled || this.classList.contains('processing') || this.classList.contains('btn-loading')) {
+                    console.log('Button already processing, preventing double click');
+                    e.preventDefault();
+                    e.stopPropagation();
+                    return false;
+                }
+                
+                // Mark as processing immediately
+                this.classList.add('processing');
+                
+                // Remove processing class after a short delay (in case form doesn't submit)
+                setTimeout(() => {
+                    this.classList.remove('processing');
+                }, 3000);
+            }, true);
+        });
+
+        console.log('Button protection initialized for all sarafi forms');
+    });
+    </script>
+
+    <!-- Toast Notification System -->
+    <script>
+        function showToast(message, type = 'success') {
+            const toast = document.createElement('div');
+            toast.className = `toast ${type}`;
+            
+            let icon = 'check-circle';
+            if (type === 'error') icon = 'alert-circle';
+            if (type === 'warning') icon = 'alert-triangle';
+            
+            toast.innerHTML = `
+                <div class="toast-content">
+                    <i class="feather icon-${icon} mr-2"></i>
+                    <span>${message}</span>
+                </div>
+                <button type="button" class="close ml-2" onclick="this.parentElement.remove();">
+                    <span>&times;</span>
+                </button>
+            `;
+            
+            document.querySelector('.toast-container').appendChild(toast);
+            
+            // Auto dismiss after 5 seconds
+            setTimeout(() => {
+                toast.style.opacity = '0';
+                setTimeout(() => toast.remove(), 300);
+            }, 5000);
+        }
+
+        // Convert PHP alerts to toasts on page load
+        document.addEventListener('DOMContentLoaded', function() {
+            <?php if (isset($success_message)): ?>
+            showToast(<?= json_encode($success_message) ?>, 'success');
+            <?php endif; ?>
+            
+            <?php if (isset($error_message)): ?>
+            showToast(<?= json_encode($error_message) ?>, 'error');
+            <?php endif; ?>
+        });
+
+        // Update AJAX success/error handlers to use toasts
+        function handleAjaxSuccess(response, successMessage) {
+            if (response.success) {
+                showToast(successMessage || response.message, 'success');
+                setTimeout(() => location.reload(), 1000);
+            } else {
+                showToast(response.message || '<?= __("operation_failed") ?>', 'error');
+            }
+        }
+
+        function handleAjaxError(error) {
+            console.error('Error:', error);
+            showToast('<?= __("operation_failed") ?>', 'error');
+        }
+
+        // Update delete functions to use toasts
+        function deleteDeposit(transactionId, amount) {
+            if (confirm('<?= __("confirm_delete_deposit") ?>')) {
+                fetch('delete_sarafi_deposit.php', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/x-www-form-urlencoded',
+                    },
+                    body: `transaction_id=${transactionId}&amount=${amount}`
+                })
+                .then(response => response.json())
+                .then(data => handleAjaxSuccess(data, '<?= __("deposit_deleted_successfully") ?>'))
+                .catch(handleAjaxError);
+            }
+        }
+
+        function deleteWithdrawal(transactionId, amount) {
+            if (confirm('<?= __("confirm_delete_withdrawal") ?>')) {
+                fetch('delete_sarafi_withdrawal.php', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/x-www-form-urlencoded',
+                    },
+                    body: `transaction_id=${transactionId}&amount=${amount}`
+                })
+                .then(response => response.json())
+                .then(data => handleAjaxSuccess(data, '<?= __("withdrawal_deleted_successfully") ?>'))
+                .catch(handleAjaxError);
+            }
+        }
+
+        function deleteHawala(transactionId, amount) {
+            if (confirm('<?= __("confirm_delete_hawala") ?>')) {
+                fetch('delete_sarafi_hawala.php', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/x-www-form-urlencoded',
+                    },
+                    body: `transaction_id=${transactionId}&amount=${amount}`
+                })
+                .then(response => response.json())
+                .then(data => handleAjaxSuccess(data, '<?= __("hawala_deleted_successfully") ?>'))
+                .catch(handleAjaxError);
+            }
+        }
+
+        // Update delete exchange handler
+        $(document).on('click', '.delete-exchange', function(e) {
+            e.preventDefault();
+            const transactionId = $(this).data('id');
+            
+            if (confirm('<?= __("confirm_delete_exchange") ?>')) {
+                $.ajax({
+                    url: 'delete_sarafi_exchange.php',
+                    type: 'POST',
+                    data: {
+                        transaction_id: transactionId
+                    },
+                    dataType: 'json',
+                    success: function(response) {
+                        handleAjaxSuccess(response, '<?= __("exchange_deleted_successfully") ?>');
+                    },
+                    error: handleAjaxError
+                });
+            }
+        });
+    </script>
+
 <script>
 // Print transaction details
 $(document).on('click', '.print-transaction', function() {

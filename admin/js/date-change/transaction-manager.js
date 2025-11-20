@@ -1,5 +1,7 @@
 // Transaction Management
 const transactionManager = {
+    isSubmitting: false, // Flag to track submission state
+
     // Initialize transaction modal and form handlers
     init: function() {
         this.bindEvents();
@@ -175,14 +177,18 @@ const transactionManager = {
                 
                 // Display financial information
                 const currency = ticketData.currency || 'USD';
-                const soldAmount = parseFloat(ticketData.sold) || 0;
+                const soldAmount = parseFloat(ticketData.sold || ticketData.amount || ticketData.total) || 0;
                 const exchangeRate = parseFloat(ticketData.exchange_rate) || 1;
+
+                console.log('Ticket data:', ticketData);
+                console.log('Sold amount:', soldAmount, 'Currency:', currency);
 
                 // Store ticket currency for exchange rate logic
                 window.ticketCurrency = currency;
 
                 // Display original amount
                 $('#totalAmount').text(`${currency} ${soldAmount.toFixed(2)}`);
+                console.log('Setting totalAmount to:', `${currency} ${soldAmount.toFixed(2)}`);
 
                 // Display exchange rate
                 $('#exchangeRateDisplay').text(exchangeRate.toFixed(4));
@@ -349,11 +355,24 @@ const transactionManager = {
     // Handle transaction form submission
     handleTransactionSubmit: function(e) {
         e.preventDefault();
-        
+
+        // Prevent multiple submissions
+        if (transactionManager.isSubmitting) {
+            return;
+        }
+
+        transactionManager.isSubmitting = true;
+
+        // Disable submit button to prevent multiple clicks
+        const submitBtn = $(this).find('button[type="submit"]');
+        const originalText = submitBtn.html();
+        submitBtn.prop('disabled', true);
+        submitBtn.html('<i class="feather icon-refresh-cw mr-2 spinner-border spinner-border-sm" role="status" aria-hidden="true"></i>Adding...');
+
         const form = $(this);
         const formData = new FormData(form[0]);
         const ticketId = formData.get('booking_id');
-        
+
         // Combine date and time into a single datetime value
         const date = formData.get('payment_date');
         const time = formData.get('payment_time') || '00:00:00';
@@ -368,7 +387,7 @@ const transactionManager = {
                 formData.set('exchange_rate', exchangeRate);
             }
         }
-        
+
         $.ajax({
             url: 'add_date_change_ticket_payment.php',
             type: 'POST',
@@ -378,8 +397,13 @@ const transactionManager = {
             success: function(response) {
                 try {
                     const result = typeof response === 'string' ? JSON.parse(response) : response;
-                    
+
                     if (result.success) {
+                        // Reset submission flag and re-enable submit button
+                        transactionManager.isSubmitting = false;
+                        submitBtn.prop('disabled', false);
+                        submitBtn.html(originalText);
+
                         // Reset form and collapse it
                         transactionManager.resetForm();
                         $('#addTransactionForm').collapse('hide');
@@ -390,21 +414,42 @@ const transactionManager = {
                         // Show success toast
                         transactionManager.showToast('Transaction added successfully!', 'success');
                     } else {
+                        // Reset submission flag and re-enable submit button on business logic error
+                        transactionManager.isSubmitting = false;
+                        submitBtn.prop('disabled', false);
+                        submitBtn.html(originalText);
                         transactionManager.showToast('Error: ' + (result.message || 'Failed to add transaction'), 'error');
                         console.error('Server response:', result);
                     }
                 } catch (e) {
                     console.error('Error parsing response:', e);
                     console.error('Raw response:', response);
+                    // Reset submission flag and re-enable submit button on parsing error
+                    transactionManager.isSubmitting = false;
+                    submitBtn.prop('disabled', false);
+                    submitBtn.html(originalText);
                     transactionManager.showToast('Error processing the request', 'error');
                 }
             },
             error: function(xhr, status, error) {
                 console.error('AJAX Error:', error);
                 console.error('Response:', xhr.responseText);
+                // Reset submission flag and re-enable submit button on network error
+                transactionManager.isSubmitting = false;
+                submitBtn.prop('disabled', false);
+                submitBtn.html(originalText);
                 transactionManager.showToast('Error adding transaction. Please try again.', 'error');
             }
         });
+
+        // Re-enable submit button after 10 seconds as safety measure
+        setTimeout(function() {
+            if (submitBtn.prop('disabled')) {
+                transactionManager.isSubmitting = false;
+                submitBtn.prop('disabled', false);
+                submitBtn.html(originalText);
+            }
+        }, 10000);
     },
     
     // Edit transaction
@@ -490,6 +535,12 @@ const transactionManager = {
     handleEditTransactionSubmit: function(e) {
         e.preventDefault();
 
+        // Disable submit button to prevent multiple clicks
+        const submitBtn = $(this).find('button[type="submit"]');
+        const originalText = submitBtn.html();
+        submitBtn.prop('disabled', true);
+        submitBtn.html('<i class="feather icon-refresh-cw mr-2 spinner-border spinner-border-sm" role="status" aria-hidden="true"></i>Saving...');
+
         const form = $(this);
         const formData = new FormData(form[0]);
         const ticketId = formData.get('booking_id');
@@ -529,21 +580,38 @@ const transactionManager = {
                         // Show success toast
                         transactionManager.showToast('Transaction updated successfully!', 'success');
                     } else {
+                        // Re-enable submit button on business logic error
+                        submitBtn.prop('disabled', false);
+                        submitBtn.html(originalText);
                         transactionManager.showToast('Error: ' + (result.message || 'Failed to update transaction'), 'error');
                         console.error('Server response:', result);
                     }
                 } catch (e) {
                     console.error('Error parsing response:', e);
                     console.error('Raw response:', response);
+                    // Re-enable submit button on parsing error
+                    submitBtn.prop('disabled', false);
+                    submitBtn.html(originalText);
                     transactionManager.showToast('Error processing the request', 'error');
                 }
             },
             error: function(xhr, status, error) {
                 console.error('AJAX Error:', error);
                 console.error('Response:', xhr.responseText);
+                // Re-enable submit button on network error
+                submitBtn.prop('disabled', false);
+                submitBtn.html(originalText);
                 transactionManager.showToast('Error updating transaction. Please try again.', 'error');
             }
         });
+
+        // Re-enable submit button after 10 seconds as safety measure
+        setTimeout(function() {
+            if (submitBtn.prop('disabled')) {
+                submitBtn.prop('disabled', false);
+                submitBtn.html(originalText);
+            }
+        }, 10000);
     },
     
     // Delete transaction

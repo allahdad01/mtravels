@@ -288,6 +288,36 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         // Commit the database transaction
         $conn->commit();
 
+        // Send email notification to client
+        require_once '../includes/functions.php';
+
+        // Get client email
+        $stmt_client_email = $conn->prepare("SELECT email, name FROM clients WHERE id = ? AND tenant_id = ?");
+        $stmt_client_email->bind_param("ii", $soldTo, $tenant_id);
+        $stmt_client_email->execute();
+        $client_email_result = $stmt_client_email->get_result();
+        $client_email_data = $client_email_result->fetch_assoc();
+        $client_email = $client_email_data['email'];
+        $client_name = $client_email_data['name'];
+        $stmt_client_email->close();
+
+        if (!empty($client_email)) {
+            sendTicketReservationNotification(
+                $client_email,
+                $client_name,
+                $ticket_id,
+                $passengerName,
+                $pnr,
+                $origin,
+                $destination,
+                $airline,
+                $departureDate,
+                $returnDate,
+                $sold,
+                $currency
+            );
+        }
+
         // Return a success message as JSON response
         echo json_encode(["status" => "success", "message" => "Ticket booked successfully. Notification sent to admin."]);
     } catch (Exception $e) {

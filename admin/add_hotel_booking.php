@@ -249,26 +249,29 @@ $title = isset($_POST['title']) ? DbSecurity::validateInput($_POST['title'], 'st
         // Send email notification to client
         require_once '../includes/functions.php';
 
-        // Get client email
-        $stmt_client_email = $conn->prepare("SELECT email FROM clients WHERE id = ? AND tenant_id = ?");
+        // Get client email and name
+        $stmt_client_email = $conn->prepare("SELECT email, name FROM clients WHERE id = ? AND tenant_id = ?");
         $stmt_client_email->bind_param("ii", $sold_to, $tenant_id);
         $stmt_client_email->execute();
         $client_email_result = $stmt_client_email->get_result();
         $client_email_data = $client_email_result->fetch_assoc();
         $client_email = $client_email_data['email'];
+        $client_name = $client_email_data['name'];
         $stmt_client_email->close();
 
         if (!empty($client_email)) {
-            $ticketDetails = "
-                <strong>Booking ID:</strong> {$booking_id}<br>
-                <strong>Guest Name:</strong> {$title} {$first_name} {$last_name}<br>
-                <strong>Check-in Date:</strong> {$check_in_date}<br>
-                <strong>Check-out Date:</strong> {$check_out_date}<br>
-                <strong>Accommodation:</strong> {$accommodation_details}<br>
-                <strong>Total Amount:</strong> {$sold_amount} {$currency}
-            ";
-
-            sendTicketNotification($client_email, $clientData['name'], 'Hotel', $ticketDetails);
+            $guestName = $title . ' ' . $first_name . ' ' . $last_name;
+            sendHotelNotification(
+                $client_email,
+                $client_name,
+                $booking_id,
+                $guestName,
+                $check_in_date,
+                $check_out_date,
+                $accommodation_details,
+                $sold_amount,
+                $currency
+            );
         }
 
         echo json_encode(["success" => true, "message" => "Hotel booking added successfully."]);

@@ -455,6 +455,12 @@ loadTransactionModal: function(ticketId) {
             $('#editTransactionForm').on('submit', function(e) {
                 e.preventDefault();
 
+                // Disable submit button to prevent multiple clicks
+                const submitBtn = $(this).find('button[type="submit"]');
+                const originalText = submitBtn.html();
+                submitBtn.prop('disabled', true);
+                submitBtn.html('<i class="feather icon-refresh-cw mr-2 spinner-border spinner-border-sm" role="status" aria-hidden="true"></i>Saving...');
+
                 // Create FormData from the form
                 const formData = new FormData(this);
 
@@ -464,11 +470,17 @@ loadTransactionModal: function(ticketId) {
 
                 // Ensure transaction_id and ticket_id are set
                 if (!formData.get('transaction_id')) {
+                    // Re-enable submit button on validation error
+                    submitBtn.prop('disabled', false);
+                    submitBtn.html(originalText);
                     alert('Error: Missing transaction ID');
                     return;
                 }
 
                 if (!formData.get('ticket_id')) {
+                    // Re-enable submit button on validation error
+                    submitBtn.prop('disabled', false);
+                    submitBtn.html(originalText);
                     alert('Error: Missing ticket ID');
                     return;
                 }
@@ -506,19 +518,36 @@ loadTransactionModal: function(ticketId) {
                                 $('#editTransactionModal').modal('hide');
                                 transactionManager.loadTransactionHistory(currentTicketId);
                             } else {
+                                // Re-enable submit button on business logic error
+                                submitBtn.prop('disabled', false);
+                                submitBtn.html(originalText);
                                 alert('Error updating transaction: ' + (result.message || 'Unknown error'));
                             }
                         } catch (e) {
                             console.error('Error parsing response:', e);
+                            // Re-enable submit button on parsing error
+                            submitBtn.prop('disabled', false);
+                            submitBtn.html(originalText);
                             alert('Error processing the request');
                         }
                     },
                     error: function(xhr, status, error) {
                         console.error('AJAX Error:', error);
                         console.error('Response:', xhr.responseText);
+                        // Re-enable submit button on network error
+                        submitBtn.prop('disabled', false);
+                        submitBtn.html(originalText);
                         alert('Error updating transaction');
                     }
                 });
+
+                // Re-enable submit button after 10 seconds as safety measure
+                setTimeout(function() {
+                    if (submitBtn.prop('disabled')) {
+                        submitBtn.prop('disabled', false);
+                        submitBtn.html(originalText);
+                    }
+                }, 10000);
             });
         }
 

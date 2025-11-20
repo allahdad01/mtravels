@@ -1429,7 +1429,44 @@ include '../includes/header_sales.php';
         // Initial setup
         updatePassengerFields();
     });
-    </script>
+        
+    // Handle book ticket form submission to prevent double-clicking
+    $('#bookTicketForm').on('submit', function(e) {
+        const submitBtn = $(this).find('button[type="submit"]');
+        
+        // Disable the button immediately to prevent multiple clicks
+        submitBtn.prop('disabled', true);
+        
+        // Change button text to show processing state
+        const originalText = submitBtn.html();
+        submitBtn.html('<i class="feather icon-refresh-cw mr-2 spinner-border spinner-border-sm" role="status" aria-hidden="true"></i><?= __('processing') ?>...');
+        
+        // If there's an error or the form submission fails, re-enable the button
+        // This will be handled by the AJAX error callback or form validation
+        setTimeout(function() {
+            if (submitBtn.prop('disabled')) {
+                submitBtn.prop('disabled', false);
+                submitBtn.html(originalText);
+            }
+        }, 5000); // 5 second timeout as safety measure
+    });
+    
+    // Re-enable button if there's an error in form submission
+    $(document).ajaxError(function(event, xhr, settings) {
+        if (settings.url && settings.url.includes('save_ticket.php')) {
+            const submitBtn = $('#bookTicketForm button[type="submit"]');
+            submitBtn.prop('disabled', false);
+            submitBtn.html('<i class="feather icon-check mr-2"></i><?= __('book') ?>');
+        }
+    });
+    
+    // Re-enable button if form validation fails
+    $('#bookTicketForm').on('invalid', function() {
+        const submitBtn = $(this).find('button[type="submit"]');
+        submitBtn.prop('disabled', false);
+        submitBtn.html('<i class="feather icon-check mr-2"></i><?= __('book') ?>');
+    });
+</script>
 
 
 <script>

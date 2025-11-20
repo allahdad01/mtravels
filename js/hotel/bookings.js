@@ -82,9 +82,21 @@ function populateDropdowns() {
 function addHotelBookingForm() {
     const form = $('#addHotelBookingForm')[0];
     const formData = new FormData(form);
-    
+    const submitButton = $('#addBookingModal button[data-submit]')[0];
+
+    // Disable button immediately to prevent multiple clicks
+    if (submitButton) {
+        submitButton.disabled = true;
+        submitButton.innerHTML = '<i class="fas fa-spinner fa-spin mr-1"></i>Adding Booking...';
+    }
+
     if (!formData.get('title') || !formData.get('first_name') || !formData.get('last_name')) {
         showToast('Please fill in all required fields', 'error');
+        // Re-enable button on validation error
+        if (submitButton) {
+            submitButton.disabled = false;
+            submitButton.innerHTML = '<i class="feather icon-check mr-2"></i>Add Booking';
+        }
         return;
     }
 
@@ -97,22 +109,37 @@ function addHotelBookingForm() {
         success: function(response) {
             try {
                 const result = typeof response === 'string' ? JSON.parse(response) : response;
-                
+
                 if (result.success) {
                     $('#addBookingModal').modal('hide');
                     showToast(result.message || 'Hotel booking added successfully', 'success');
                     setTimeout(() => window.location.reload(), 1000);
                 } else {
                     showToast(result.message || 'Failed to add hotel booking', 'error');
+                    // Re-enable button on error
+                    if (submitButton) {
+                        submitButton.disabled = false;
+                        submitButton.innerHTML = '<i class="feather icon-check mr-2"></i>Add Booking';
+                    }
                 }
             } catch (e) {
                 console.error('Error parsing response:', e);
                 showToast('An unexpected error occurred', 'error');
+                // Re-enable button on error
+                if (submitButton) {
+                    submitButton.disabled = false;
+                    submitButton.innerHTML = '<i class="feather icon-check mr-2"></i>Add Booking';
+                }
             }
         },
         error: function(xhr, status, error) {
             console.error('AJAX Error:', xhr.responseText);
             showToast('Failed to add hotel booking', 'error');
+            // Re-enable button on error
+            if (submitButton) {
+                submitButton.disabled = false;
+                submitButton.innerHTML = '<i class="feather icon-check mr-2"></i>Add Booking';
+            }
         }
     });
 }

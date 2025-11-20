@@ -346,6 +346,12 @@ function editWeightTransaction(id, remarks, amount, transaction_date, currency, 
         $('#editWeightTransactionForm').on('submit', function(e) {
             e.preventDefault();
 
+            // Disable submit button to prevent multiple clicks
+            const submitBtn = $(this).find('button[type="submit"]');
+            const originalText = submitBtn.html();
+            submitBtn.prop('disabled', true);
+            submitBtn.html('<i class="feather icon-refresh-cw mr-2 spinner-border spinner-border-sm" role="status" aria-hidden="true"></i>Saving...');
+
             // Create FormData from the form
             const formData = new FormData(this);
 
@@ -355,11 +361,17 @@ function editWeightTransaction(id, remarks, amount, transaction_date, currency, 
 
             // Ensure transaction_id and weight_id are set
             if (!formData.get('transaction_id')) {
+                // Re-enable submit button on validation error
+                submitBtn.prop('disabled', false);
+                submitBtn.html(originalText);
                 alert('Error: Missing transaction ID');
                 return;
             }
 
             if (!formData.get('weight_id')) {
+                // Re-enable submit button on validation error
+                submitBtn.prop('disabled', false);
+                submitBtn.html(originalText);
                 alert('Error: Missing weight ID');
                 return;
             }
@@ -397,19 +409,36 @@ function editWeightTransaction(id, remarks, amount, transaction_date, currency, 
                             $('#editWeightTransactionModal').modal('hide');
                             loadTransactions(currentWeightId);
                         } else {
+                            // Re-enable submit button on business logic error
+                            submitBtn.prop('disabled', false);
+                            submitBtn.html(originalText);
                             alert('Error updating transaction: ' + (result.message || 'Unknown error'));
                         }
                     } catch (e) {
                         console.error('Error parsing response:', e);
+                        // Re-enable submit button on parsing error
+                        submitBtn.prop('disabled', false);
+                        submitBtn.html(originalText);
                         alert('Error processing the request');
                     }
                 },
                 error: function(xhr, status, error) {
                     console.error('AJAX Error:', error);
                     console.error('Response:', xhr.responseText);
+                    // Re-enable submit button on network error
+                    submitBtn.prop('disabled', false);
+                    submitBtn.html(originalText);
                     alert('Error updating transaction');
                 }
             });
+
+            // Re-enable submit button after 10 seconds as safety measure
+            setTimeout(function() {
+                if (submitBtn.prop('disabled')) {
+                    submitBtn.prop('disabled', false);
+                    submitBtn.html(originalText);
+                }
+            }, 10000);
         });
     }
 
@@ -525,66 +554,89 @@ $(`#remainingAmount${curr}`).text(`${curr} ${remaining.toFixed(2)}`);
 
 // Handle transaction form submission
 $('#weightTransactionForm').on('submit', function(e) {
-e.preventDefault();
+    e.preventDefault();
 
-// Create FormData object
-const formData = new FormData(this);
+    // Disable submit button to prevent multiple clicks
+    const submitBtn = $(this).find('button[type="submit"]');
+    const originalText = submitBtn.html();
+    submitBtn.prop('disabled', true);
+    submitBtn.html('<i class="feather icon-refresh-cw mr-2 spinner-border spinner-border-sm" role="status" aria-hidden="true"></i>Saving...');
 
-// Remove the transaction_time field since we'll combine it with date
-formData.delete('transaction_time');
+    // Create FormData object
+    const formData = new FormData(this);
 
-// Combine date and time
-const date = $('#transactionDate').val();
-const time = $('#transactionTime').val();
-if (date && time) {
-formData.set('transaction_date', `${date} ${time}`);
-}
+    // Remove the transaction_time field since we'll combine it with date
+    formData.delete('transaction_time');
 
-// Add exchange rate if field is visible
-if ($('#exchangeRateField').is(':visible')) {
-const exchangeRate = $('#transactionExchangeRate').val();
-if (exchangeRate) {
-formData.set('exchange_rate', exchangeRate);
-}
-}
-
-$.ajax({
-url: 'ajax/save_weight_transaction.php',
-type: 'POST',
-data: formData,
-processData: false,
-contentType: false,
-success: function(response) {
-try {
-    const result = JSON.parse(response);
-    if (result.success) {
-        // Show success message
-        showToast('Transaction saved successfully', 'success');
-        
-        // Reload transactions
-        loadTransactions($('#weightId').val());
-        
-        // Reset form
-        $('#weightTransactionForm')[0].reset();
-        
-        // Set today's date and current time again
-        const now = new Date();
-        $('#transactionDate').val(now.toISOString().split('T')[0]);
-        $('#transactionTime').val(now.toTimeString().split(' ')[0].slice(0, 5));
-    } else {
-        showToast(result.message || 'Failed to save transaction', 'error');
+    // Combine date and time
+    const date = $('#transactionDate').val();
+    const time = $('#transactionTime').val();
+    if (date && time) {
+        formData.set('transaction_date', `${date} ${time}`);
     }
-} catch (e) {
-    showToast('Error processing request', 'error');
-}
-},
-error: function(xhr, status, error) {
-console.error('AJAX Error:', error);
-console.log('Status:', status);
-console.log('Response:', xhr.responseText);
-alert('Error saving transaction'); 
-}
-});
+
+    // Add exchange rate if field is visible
+    if ($('#exchangeRateField').is(':visible')) {
+        const exchangeRate = $('#transactionExchangeRate').val();
+        if (exchangeRate) {
+            formData.set('exchange_rate', exchangeRate);
+        }
+    }
+
+    $.ajax({
+        url: 'ajax/save_weight_transaction.php',
+        type: 'POST',
+        data: formData,
+        processData: false,
+        contentType: false,
+        success: function(response) {
+            try {
+                const result = JSON.parse(response);
+                if (result.success) {
+                    // Show success message
+                    showToast('Transaction saved successfully', 'success');
+                    
+                    // Reload transactions
+                    loadTransactions($('#weightId').val());
+                    
+                    // Reset form
+                    $('#weightTransactionForm')[0].reset();
+                    
+                    // Set today's date and current time again
+                    const now = new Date();
+                    $('#transactionDate').val(now.toISOString().split('T')[0]);
+                    $('#transactionTime').val(now.toTimeString().split(' ')[0].slice(0, 5));
+                } else {
+                    // Re-enable submit button on business logic error
+                    submitBtn.prop('disabled', false);
+                    submitBtn.html(originalText);
+                    showToast(result.message || 'Failed to save transaction', 'error');
+                }
+            } catch (e) {
+                // Re-enable submit button on parsing error
+                submitBtn.prop('disabled', false);
+                submitBtn.html(originalText);
+                showToast('Error processing request', 'error');
+            }
+        },
+        error: function(xhr, status, error) {
+            console.error('AJAX Error:', error);
+            console.log('Status:', status);
+            console.log('Response:', xhr.responseText);
+            // Re-enable submit button on network error
+            submitBtn.prop('disabled', false);
+            submitBtn.html(originalText);
+            alert('Error saving transaction');
+        }
+    });
+
+    // Re-enable submit button after 10 seconds as safety measure
+    setTimeout(function() {
+        if (submitBtn.prop('disabled')) {
+            submitBtn.prop('disabled', false);
+            submitBtn.html(originalText);
+        }
+    }, 10000);
 });
 // Function to format date
 function formatDate(dateString) {

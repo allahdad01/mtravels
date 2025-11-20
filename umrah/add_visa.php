@@ -298,6 +298,35 @@ $supplier = isset($_POST['supplier']) ? DbSecurity::validateInput($_POST['suppli
     $stmtLog->execute();
     $stmtLog->close();
 
+    // Send email notification to client
+    require_once '../includes/functions.php';
+
+    // Get client email and name
+    $stmt_client_email = $conn->prepare("SELECT email, name FROM clients WHERE id = ? AND tenant_id = ?");
+    $stmt_client_email->bind_param("ii", $soldTo, $tenant_id);
+    $stmt_client_email->execute();
+    $client_email_result = $stmt_client_email->get_result();
+    $client_email_data = $client_email_result->fetch_assoc();
+    $client_email = $client_email_data['email'];
+    $client_name = $client_email_data['name'];
+    $stmt_client_email->close();
+
+    if (!empty($client_email)) {
+        sendVisaNotification(
+            $client_email,
+            $client_name,
+            $visaApplicationId,
+            $applicantName,
+            $passportNumber,
+            $country,
+            $visaType,
+            $appliedDate,
+            $issuedDate,
+            $sold,
+            $currency
+        );
+    }
+
     echo json_encode(['status' => 'success', 'message' => 'Visa application, transaction, and notification added successfully.']);
 } catch (Exception $e) {
     $conn->rollback();
