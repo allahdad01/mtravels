@@ -4845,6 +4845,15 @@ return [
 'add_family_transactions' => 'د کورنۍ معاملې اضافه کړئ',
 'family_members_transactions' => 'د کورنۍ غړو معاملې',
 'family_transaction' => 'د کورنۍ معامله',
+'select_action' => 'عملیه وټاکئ',
+'cancel_booking' => 'بکینګ لغوه کړئ',
+'cancel_booking_desc' => 'دا بکینګ لغوه کړئ او ټول اړوند ریکارډونه تازه کړئ',
+'current_values' => 'اوسني ارزښتونه',
+'current_profit:' => 'اوسنی ګټه:',
+'new_profit:' => 'نوې ګټه:',
+'enter_reason' => 'د لامل داخلول',
+'confirm_action' => 'عمل تایید کړئ',
+'selected_action' => 'منتخب شوې عملیه',
 
 
 ];

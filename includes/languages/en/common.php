@@ -5279,6 +5279,15 @@ return [
 'add_family_transactions' => 'Add family transactions',
 'family_members_transactions' => 'Family members transactions',
 'member_payments' => 'Member payments',
+'select_action' => 'Select action',
+'cancel_booking' => 'Cancel booking',
+'cancel_booking_desc' => 'Cancel this booking and update all related records',
+'current_values' => 'Current values',
+'current_profit:' => 'Current profit:',
+'new_profit:' => 'New profit:',
+'enter_reason' => 'Enter reason',
+'confirm_action' => 'Confirm action',
+'selected_action' => 'Selected action',
 
 
 

@@ -4972,6 +4972,15 @@ return [
 'add_family_transactions' => 'اضافه‌کردن تراکنش‌های خانواده',
 'family_members_transactions' => 'تراکنش‌های اعضای خانواده',
 'member_payments' => 'پرداخت‌های اعضا',
+'select_action' => 'عمل را انتخاب کنید',
+'cancel_booking' => 'لغو کردن رزرو',
+'cancel_booking_desc' => 'این رزرو را لغو کرده و تمام سوابق مرتبط را به‌روزرسانی کنید',
+'current_values' => 'مقادیر فعلی',
+'current_profit:' => 'سود فعلی:',
+'new_profit:' => 'سود جدید:',
+'enter_reason' => 'دلیل را وارد کنید',
+'confirm_action' => 'تأیید عمل',
+'selected_action' => 'عمل انتخاب‌شده',
 
 
 ];

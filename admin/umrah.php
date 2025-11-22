@@ -24,7 +24,7 @@ require_once('../includes/conn.php');
 
 
 <?php include '../includes/header.php'; ?>
-<link rel="stylesheet" href="css/modal-styles.css">>
+<link rel="stylesheet" href="css/modal-styles.css">
 <link rel="stylesheet" href="css/ticket-form.css">
 <link rel="stylesheet" href="css/umrah-management.css">
 <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/sweetalert2@11.7.32/dist/sweetalert2.min.css">
@@ -379,6 +379,9 @@ require_once('../includes/conn.php');
                                                                                     <table class="table table-sm mb-0">
                                                                                         <thead class="thead-light">
                                                                                             <tr>
+                                                                                                <th>
+                                                                                                    <input type="checkbox" id="selectAllMembers" onchange="toggleAllMembers()">
+                                                                                                </th>
                                                                                                 <th><?= __('account_info') ?></th>
                                                                                                 <th><?= __('personal_details') ?></th>
                                                                                                 <th><?= __('travel_info') ?></th>
@@ -411,6 +414,15 @@ require_once('../includes/conn.php');
                                                                                             if ($resultMembers->num_rows > 0) {
                                                                                                 while ($member = $resultMembers->fetch_assoc()) { ?>
                                                                                                     <tr class="<?= isset($member['status']) && $member['status'] === 'refunded' ? 'table-danger' : '' ?>">
+                                                                                                        <td>
+                                                                                                            <input type="checkbox" class="member-checkbox" value="<?= $member['booking_id'] ?>"
+                                                                                                                   data-booking-id="<?= $member['booking_id'] ?>"
+                                                                                                                   data-base-price="<?= $member['price'] ?>"
+                                                                                                                   data-sold-price="<?= $member['sold_price'] ?>"
+                                                                                                                   data-current-profit="<?= $member['profit'] ?>"
+                                                                                                                   data-status="<?= $member['status'] ?>"
+                                                                                                                   data-currency="<?= $member['currency'] ?>">
+                                                                                                        </td>
                                                                                                         <td>
                                                                                                             <div><?= __('sold_to') ?>: <?= htmlspecialchars($member['client_name']) ?></div>
                                                                                                             <div><?= __('paid_to') ?>: <?= htmlspecialchars($member['main_account_name']) ?></div>
@@ -513,6 +525,9 @@ require_once('../includes/conn.php');
                                                                                                                     <a class="dropdown-item" href="#" onclick="openRefundModal(<?= $member['booking_id'] ?>, <?= $member['sold_price'] ?>, <?= $member['profit'] ?>, '<?= $member['currency'] ?>'); return false;">
                                                                                                                         <i class="feather icon-refresh-ccw mr-2 text-warning"></i><?= __('process_refund') ?>
                                                                                                                     </a>
+                                                                                                                    <a class="dropdown-item" href="#" onclick="openCancellationReapplyModal(<?= $member['booking_id'] ?>, <?= $member['price'] ?>, <?= $member['sold_price'] ?>, <?= $member['profit'] ?>, '<?= $member['currency'] ?>', '<?= $member['status'] ?>'); return false;">
+                                                                                                                        <i class="feather icon-settings mr-2 text-primary"></i>Manage Booking Status
+                                                                                                                    </a>
                                                                                                                     <a class="dropdown-item" href="#" onclick="openDateChangeModal(<?= $member['booking_id'] ?>, '<?= htmlspecialchars($member['name']) ?>', '<?= htmlspecialchars($member['flight_date']) ?>', '<?= htmlspecialchars($member['return_date']) ?>', '<?= htmlspecialchars($member['duration']) ?>', <?= $member['price'] ?>, '<?= $member['currency'] ?>'); return false;">
                                                                                                                         <i class="feather icon-calendar mr-2 text-info"></i><?= __('request_date_change') ?>
                                                                                                                     </a>
@@ -534,11 +549,25 @@ require_once('../includes/conn.php');
                                                                                                 <?php }
                                                                                             } else { ?>
                                                                                                 <tr>
-                                                                                                    <td colspan="5" class="text-center text-muted"><?= __('no_members_found') ?></td>
+                                                                                                    <td colspan="6" class="text-center text-muted"><?= __('no_members_found') ?></td>
                                                                                                 </tr>
                                                                                             <?php } ?>
                                                                                         </tbody>
                                                                                     </table>
+                                                                                    
+                                                                                    <!-- Bulk Action Buttons -->
+                                                                                    <div class="mt-3">
+                                                                                        <div class="row">
+                                                                                            <div class="col-md-12">
+                                                                                                <button type="button" class="btn btn-warning btn-sm mr-2" onclick="bulkCancelSelected()">
+                                                                                                    <i class="feather icon-x-circle mr-1"></i>Cancel Selected
+                                                                                                </button>
+                                                                                                <button type="button" class="btn btn-success btn-sm" onclick="bulkReapplySelected()">
+                                                                                                    <i class="feather icon-refresh-cw mr-1"></i>Re-apply Selected
+                                                                                                </button>
+                                                                                            </div>
+                                                                                        </div>
+                                                                                    </div>
                                                                                 </div>
                                                                             </div>
                                                                         </div>
@@ -635,6 +664,7 @@ require_once('../includes/conn.php');
     <?php include '../modals/umrah/transaction_modal.php'; ?>
     <?php include '../modals/umrah/edit_family_modal.php'; ?>
     <?php include '../modals/umrah/refund_modal.php'; ?>
+    <?php include '../modals/umrah/cancellation_reapply_modal.php'; ?>
     <?php include '../modals/umrah/multi_ticket_invoice_modal.php'; ?>
     <?php include '../modals/umrah/completion_details_modal.php'; ?>
     <?php include '../modals/umrah/cancellation_details_modal.php'; ?>
@@ -694,6 +724,7 @@ require_once('../includes/conn.php');
     <script src="js/umrah/bookings.js"></script>
     <script src="js/umrah/edit_bookings.js"></script>
     <script src="js/umrah/refund.js?v=1"></script>
+    <script src="js/umrah/cancellation_reapply.js"></script>
     <script src="js/umrah/idcard.js"></script>
     <script src="js/umrah/groupTickets.js"></script>
     <script src="js/umrah/family.js"></script>
