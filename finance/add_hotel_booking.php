@@ -5,8 +5,12 @@ require_once 'includes/db_security.php';
 // Include security module
 require_once 'security.php';
 $tenant_id = $_SESSION['tenant_id'];
+
 // Enforce authentication
 enforce_auth();
+
+// Include WhatsApp Manager for notifications
+require_once '../api/whatsapp/WhatsAppManager.php';
 
 // Database connection
 require_once '../includes/conn.php';
@@ -259,6 +263,9 @@ $title = isset($_POST['title']) ? DbSecurity::validateInput($_POST['title'], 'st
         $client_name = $client_email_data['name'];
         $stmt_client_email->close();
 
+        // Send email notification to client
+        require_once '../includes/functions.php';
+
         if (!empty($client_email)) {
             $guestName = $title . ' ' . $first_name . ' ' . $last_name;
             sendHotelNotification(
@@ -272,6 +279,21 @@ $title = isset($_POST['title']) ? DbSecurity::validateInput($_POST['title'], 'st
                 $sold_amount,
                 $currency
             );
+        }
+
+        // Send WhatsApp notification to client (if configured)
+        try {
+            $whatsappManager = new WhatsAppManager($tenant_id);
+            $whatsapp_result = $whatsappManager->sendBookingNotification('hotel', $booking_id);
+            
+            if ($whatsapp_result['success']) {
+                error_log("WhatsApp notification sent for Hotel booking ID: $booking_id");
+            } else {
+                error_log("WhatsApp notification failed for Hotel booking ID: $booking_id - " . $whatsapp_result['message']);
+            }
+        } catch (Exception $e) {
+            // Don't fail the operation if WhatsApp fails
+            error_log("WhatsApp integration error for Hotel booking ID: $booking_id - " . $e->getMessage());
         }
 
         echo json_encode(["success" => true, "message" => "Hotel booking added successfully."]);

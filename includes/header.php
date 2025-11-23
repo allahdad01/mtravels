@@ -1798,6 +1798,12 @@ MOBILE SIDEBAR - CLEAN LAYOUT FIX
                         <span class="pcoded-mtext"><?= __('settings') ?></span>
                     </a>
                 </li>
+                <li data-username="whatsapp_settings" class="nav-item <?php echo basename($_SERVER['PHP_SELF']) == 'whatsapp_settings.php' ? 'active' : ''; ?>">
+                    <a href="whatsapp_settings.php" class="nav-link">
+                        <span class="pcoded-micon"><i class="feather icon-settings"></i></span>
+                        <span class="pcoded-mtext"><?= __('whatsapp_settings') ?></span>
+                    </a>
+                </li>
                 <li data-username="2fa" class="nav-item <?php echo basename($_SERVER['PHP_SELF']) == 'totp.php' ? 'active' : ''; ?>">
                     <a href="../totp_setup.php" class="nav-link">
                         <span class="pcoded-micon"><i class="feather icon-shield"></i></span>

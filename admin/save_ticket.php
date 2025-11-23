@@ -3,6 +3,7 @@
 if (session_status() === PHP_SESSION_NONE) {
     session_start();
 }
+
 // Include database security module for input validation
 require_once 'includes/db_security.php';
 
@@ -13,8 +14,12 @@ require_once 'security.php';
 enforce_auth();
 $tenant_id = $_SESSION['tenant_id'];
 
+// Include WhatsApp Manager for notifications
+require_once '../api/whatsapp/WhatsAppManager.php';
+
 $username = isset($_SESSION["name"]) ? $_SESSION["name"] : "Unknown User";
 $user_id = isset($_SESSION["user_id"]) ? $_SESSION["user_id"] : 0;
+
 // Establish a connection to the MySQL database
 include '../includes/conn.php';
 
@@ -740,6 +745,21 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 
             // Send notification email with PDF attachment
             sendTicketNotificationWithAttachment($client_email, $client_name, $subject, $body, $pdfPath);
+
+            // Send WhatsApp notification to client (if configured)
+            try {
+                $whatsappManager = new WhatsAppManager($tenant_id);
+                $whatsapp_result = $whatsappManager->sendBookingNotification('ticket', $main_booking_id);
+                
+                if ($whatsapp_result['success']) {
+                    error_log("WhatsApp notification sent for Ticket booking ID: $main_booking_id");
+                } else {
+                    error_log("WhatsApp notification failed for Ticket booking ID: $main_booking_id - " . $whatsapp_result['message']);
+                }
+            } catch (Exception $e) {
+                // Don't fail the operation if WhatsApp fails
+                error_log("WhatsApp integration error for Ticket booking ID: $main_booking_id - " . $e->getMessage());
+            }
 
             // Clean up temporary PDF file
             if (file_exists($pdfPath)) {

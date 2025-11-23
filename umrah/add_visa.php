@@ -1,13 +1,18 @@
 <?php
 session_start();
+
 // Include database security module for input validation
 require_once 'includes/db_security.php';
 
 // Include security module
 require_once 'security.php';
 $tenant_id = $_SESSION['tenant_id'];
+
 // Enforce authentication
 enforce_auth();
+
+// Include WhatsApp Manager for notifications
+require_once '../api/whatsapp/WhatsAppManager.php';
 
 $user_id = $_SESSION['user_id'] ?? 0;
 
@@ -311,6 +316,9 @@ $supplier = isset($_POST['supplier']) ? DbSecurity::validateInput($_POST['suppli
     $client_name = $client_email_data['name'];
     $stmt_client_email->close();
 
+    // Send email notification to client
+    require_once '../includes/functions.php';
+
     if (!empty($client_email)) {
         sendVisaNotification(
             $client_email,
@@ -325,6 +333,21 @@ $supplier = isset($_POST['supplier']) ? DbSecurity::validateInput($_POST['suppli
             $sold,
             $currency
         );
+    }
+
+    // Send WhatsApp notification to client (if configured)
+    try {
+        $whatsappManager = new WhatsAppManager($tenant_id);
+        $whatsapp_result = $whatsappManager->sendBookingNotification('visa', $visaApplicationId);
+        
+        if ($whatsapp_result['success']) {
+            error_log("WhatsApp notification sent for Visa application ID: $visaApplicationId");
+        } else {
+            error_log("WhatsApp notification failed for Visa application ID: $visaApplicationId - " . $whatsapp_result['message']);
+        }
+    } catch (Exception $e) {
+        // Don't fail the operation if WhatsApp fails
+        error_log("WhatsApp integration error for Visa application ID: $visaApplicationId - " . $e->getMessage());
     }
 
     echo json_encode(['status' => 'success', 'message' => 'Visa application, transaction, and notification added successfully.']);
