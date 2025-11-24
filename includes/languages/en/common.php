@@ -5288,6 +5288,15 @@ return [
 'enter_reason' => 'Enter reason',
 'confirm_action' => 'Confirm action',
 'selected_action' => 'Selected action',
+'re_apply_visa' => 'Re-apply Visa',
+'re_applying_a_visa_will_restore_its_original_profit_and_reverse_cancellation_balance_changes' => 'Re-applying a visa will restore its original profit and reverse cancellation balance changes',
+'current_status' => 'Current Status',
+'new_status' => 'New Status',
+'reason_for_re_application' => 'Reason for Re-application',
+'cancel_visa' => 'Cancel Visa',
+'i_confirm_that_i_want_to_cancel_this_visa_application' => 'I confirm that I want to cancel this visa application',
+'i_confirm_that_i_want_to_re_apply_this_visa_application' => 'I confirm that I want to re-apply this visa application',
+'cancelling_a_visa_will_change_its_status_and_prevent_further_processing' => 'Cancelling a visa will change its status and prevent further processing',
 
 
 

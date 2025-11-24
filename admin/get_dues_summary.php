@@ -422,7 +422,7 @@ try {
             SELECT v.id, v.currency, v.sold
             FROM visa_applications v
             JOIN clients c ON v.sold_to = c.id
-            WHERE c.client_type = 'agency' AND v.status != 'refunded' AND v.tenant_id = :tenant_id AND v.imported = '0'
+            WHERE c.client_type = 'agency' AND v.status != 'refunded' AND v.status != 'Cancelled' AND v.tenant_id = :tenant_id AND v.imported = '0'
         ";
         $stmt = $pdo->prepare($visaQuery);
         $stmt->execute(['tenant_id' => $tenant_id]);

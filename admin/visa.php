@@ -276,7 +276,6 @@ foreach ($visas as $key => $visa) {
                                                     <a href="visa_refunds.php" class="btn btn-light btn-sm mr-2">
                                                         <i class="feather icon-refresh-cw mr-1"></i><?= __('visa_refunds') ?>
                                                     </a>
-                                                    
                                                 </div>
                                             </div>
                                             <div class="card-body p-0">
@@ -329,6 +328,16 @@ foreach ($visas as $key => $visa) {
                                                                                     onclick="openRefundModal(<?= $visa['id'] ?>, <?= htmlspecialchars($visa['sold']) ?>, <?= htmlspecialchars($visa['profit']) ?>, '<?= htmlspecialchars($visa['currency']) ?>')">
                                                                                 <i class="feather icon-refresh-cw text-warning mr-2"></i> <?= __('refund_visa') ?>
                                                                             </button>
+                                                                            <button class="dropdown-item" 
+                                                                                    onclick="openCancellationModal(<?= $visa['id'] ?>, '<?= htmlspecialchars($visa['applicant_name']) ?>', '<?= htmlspecialchars($visa['status']) ?>')">
+                                                                                <i class="feather icon-x-circle text-danger mr-2"></i> <?= __('cancel_visa') ?>
+                                                                            </button>
+                                                                            <?php if (in_array(strtolower($visa['status']), ['cancelled', 'rejected', 'withdrawn'])): ?>
+                                                                            <button class="dropdown-item" 
+                                                                                    onclick="openReapplyModal(<?= $visa['id'] ?>, '<?= htmlspecialchars($visa['applicant_name']) ?>', <?= htmlspecialchars($visa['profit']) ?>, <?= htmlspecialchars($visa['base']) ?>, <?= htmlspecialchars($visa['sold']) ?>, '<?= htmlspecialchars($visa['currency']) ?>')">
+                                                                                <i class="feather icon-refresh-ccw text-success mr-2"></i> <?= __('re_apply_visa') ?>
+                                                                            </button>
+                                                                            <?php endif; ?>
                                                                             <div class="dropdown-divider"></div>
                                                                             <button class="dropdown-item text-danger" onclick="deleteVisa(<?= $visa['id'] ?>)">
                                                                                 <i class="feather icon-trash-2 mr-2"></i> <?= __('delete') ?>
@@ -598,6 +607,135 @@ foreach ($visas as $key => $visa) {
                                         </div>
                                     </div>
                                 </div>
+                                <!-- Add Cancellation Visa Modal -->
+                                <div class="modal fade" id="cancelVisaModal" tabindex="-1" role="dialog">
+                                    <div class="modal-dialog" role="document">
+                                        <div class="modal-content">
+                                            <div class="modal-header bg-danger text-white">
+                                                <h5 class="modal-title">
+                                                    <i class="feather icon-x-circle mr-2"></i><?= __('cancel_visa') ?>
+                                                </h5>
+                                                <button type="button" class="close text-white" data-dismiss="modal" aria-label="Close">
+                                                    <span aria-hidden="true">&times;</span>
+                                                </button>
+                                            </div>
+                                            <div class="modal-body">
+                                                <div class="alert alert-warning">
+                                                    <i class="feather icon-alert-triangle mr-2"></i>
+                                                    <span><?= __('cancelling_a_visa_will_change_its_status_and_prevent_further_processing') ?></span>
+                                                </div>
+                                                
+                                                <form id="cancelVisaForm">
+                                                    <input type="hidden" id="cancelVisaId" name="visa_id">
+                                                    <input type="hidden" id="currentStatus" name="current_status">
+                                                    
+                                                    <div class="form-group">
+                                                        <label class="font-weight-bold"><?= __('applicant_name') ?>:</label>
+                                                        <input type="text" class="form-control" id="cancelApplicantName" readonly>
+                                                    </div>
+                                                    
+                                                    <div class="form-group">
+                                                        <label class="font-weight-bold"><?= __('current_status') ?>:</label>
+                                                        <input type="text" class="form-control" id="cancelCurrentStatus" readonly>
+                                                    </div>
+                                                    
+                                                    <div class="form-group">
+                                                        <label class="font-weight-bold"><?= __('new_status') ?>:</label>
+                                                        <select class="form-control" id="cancelNewStatus" name="new_status" required>
+                                                            <option value="Cancelled"><?= __('cancelled') ?></option>
+                                                            <option value="Rejected"><?= __('rejected') ?></option>
+                                                            <option value="Withdrawn"><?= __('withdrawn') ?></option>
+                                                        </select>
+                                                    </div>
+                                                    
+                                                    <div class="form-group">
+                                                        <label for="cancellationReason"><?= __('reason_for_cancellation') ?>:</label>
+                                                        <textarea class="form-control" id="cancellationReason" name="cancellation_reason" rows="3"></textarea>
+                                                    </div>
+                                                    
+                                                    <div class="form-group">
+                                                        <div class="custom-control custom-checkbox">
+                                                            <input type="checkbox" class="custom-control-input" id="confirmCancellation" required>
+                                                            <label class="custom-control-label" for="confirmCancellation">
+                                                                <?= __('i_confirm_that_i_want_to_cancel_this_visa_application') ?>
+                                                            </label>
+                                                        </div>
+                                                    </div>
+                                                </form>
+                                            </div>
+                                            <div class="modal-footer">
+                                                <button type="button" class="btn btn-secondary" data-dismiss="modal"><?= __('close') ?></button>
+                                                <button type="button" class="btn btn-danger" id="processCancellationBtn" disabled><?= __('cancel_visa') ?></button>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+                                <!-- Add Re-apply Visa Modal -->
+                                <div class="modal fade" id="reapplyVisaModal" tabindex="-1" role="dialog">
+                                    <div class="modal-dialog" role="document">
+                                        <div class="modal-content">
+                                            <div class="modal-header bg-success text-white">
+                                                <h5 class="modal-title">
+                                                    <i class="feather icon-refresh-ccw mr-2"></i><?= __('re_apply_visa') ?>
+                                                </h5>
+                                                <button type="button" class="close text-white" data-dismiss="modal" aria-label="Close">
+                                                    <span aria-hidden="true">&times;</span>
+                                                </button>
+                                            </div>
+                                            <div class="modal-body">
+                                                <div class="alert alert-info">
+                                                    <i class="feather icon-info mr-2"></i>
+                                                    <span><?= __('re_applying_a_visa_will_restore_its_original_profit_and_reverse_cancellation_balance_changes') ?></span>
+                                                </div>
+                                                
+                                                <form id="reapplyVisaForm">
+                                                    <input type="hidden" id="reapplyVisaId" name="visa_id">
+                                                    <input type="hidden" id="reapplyOriginalProfit" name="original_profit">
+                                                    <input type="hidden" id="reapplyBaseAmount" name="base_amount">
+                                                    <input type="hidden" id="reapplySoldAmount" name="sold_amount">
+                                                    <input type="hidden" id="reapplyCurrency" name="currency">
+                                                    
+                                                    <div class="form-group">
+                                                        <label class="font-weight-bold"><?= __('applicant_name') ?>:</label>
+                                                        <input type="text" class="form-control" id="reapplyApplicantName" readonly>
+                                                    </div>
+                                                    
+                                                    <div class="form-group">
+                                                        <label class="font-weight-bold"><?= __('current_status') ?>:</label>
+                                                        <input type="text" class="form-control" id="reapplyCurrentStatus" readonly>
+                                                    </div>
+                                                    
+                                                    <div class="form-group">
+                                                        <label class="font-weight-bold"><?= __('new_status') ?>:</label>
+                                                        <select class="form-control" id="reapplyNewStatus" name="new_status" required>
+                                                            <option value="Pending"><?= __('pending') ?></option>
+                                                            <option value="Approved"><?= __('approved') ?></option>
+                                                        </select>
+                                                    </div>
+                                                    
+                                                    <div class="form-group">
+                                                        <label for="reapplyReason"><?= __('reason_for_re_application') ?>:</label>
+                                                        <textarea class="form-control" id="reapplyReason" name="reapply_reason" rows="3" required></textarea>
+                                                    </div>
+                                                    
+                                                    
+                                                    <div class="form-group">
+                                                        <div class="custom-control custom-checkbox">
+                                                            <input type="checkbox" class="custom-control-input" id="confirmReapply" required>
+                                                            <label class="custom-control-label" for="confirmReapply">
+                                                                <?= __('i_confirm_that_i_want_to_re_apply_this_visa_application') ?>
+                                                            </label>
+                                                        </div>
+                                                    </div>
+                                                </form>
+                                            </div>
+                                            <div class="modal-footer">
+                                                <button type="button" class="btn btn-secondary" data-dismiss="modal"><?= __('close') ?></button>
+                                                <button type="button" class="btn btn-success" id="processReapplyBtn" disabled><?= __('re_apply_visa') ?></button>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
                                 <?php include '../includes/admin_footer.php'; ?>
                                 <!-- Visa Details Modal -->
                                 <div class="modal fade" id="detailsModal" tabindex="-1" role="dialog">
@@ -799,6 +937,8 @@ foreach ($visas as $key => $visa) {
                                             return 'warning';
                                         case 'rejected':
                                         case 'refunded':
+                                        case 'cancelled':
+                                        case 'withdrawn':
                                             return 'danger';
                                         default:
                                             return 'secondary';
@@ -1751,6 +1891,165 @@ window.oldAlert = window.alert;
 window.alert = function(message) {
     showToast(message, 'info');
 };
+
+// Cancellation functionality
+function openCancellationModal(visaId, applicantName, currentStatus) {
+    document.getElementById('cancelVisaId').value = visaId;
+    document.getElementById('cancelApplicantName').value = applicantName;
+    document.getElementById('cancelCurrentStatus').value = currentStatus;
+    document.getElementById('currentStatus').value = currentStatus;
+    document.getElementById('cancellationReason').value = '';
+    document.getElementById('confirmCancellation').checked = false;
+    document.getElementById('processCancellationBtn').disabled = true;
+    $('#cancelVisaModal').modal('show');
+}
+
+// Enable/disable process button based on confirmation
+document.addEventListener('DOMContentLoaded', function() {
+    const confirmCheckbox = document.getElementById('confirmCancellation');
+    const processBtn = document.getElementById('processCancellationBtn');
+    
+    if (confirmCheckbox && processBtn) {
+        confirmCheckbox.addEventListener('change', function() {
+            processBtn.disabled = !this.checked;
+        });
+    }
+});
+
+// Process cancellation
+document.getElementById('processCancellationBtn').addEventListener('click', function() {
+    const form = document.getElementById('cancelVisaForm');
+    const formData = new FormData(form);
+    
+    
+    // Disable button and show loading
+    this.disabled = true;
+    this.innerHTML = '<i class="feather icon-loader mr-1"></i>Processing...';
+    
+    // Prepare data for submission
+    const data = {
+        action: 'cancel_visa',
+        visa_id: formData.get('visa_id'),
+        current_status: formData.get('current_status'),
+        new_status: formData.get('new_status'),
+        cancellation_reason: formData.get('cancellation_reason')
+    };
+    
+    // Send AJAX request
+    fetch('../api/visa_cancellation.php', {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json',
+        },
+        body: JSON.stringify(data)
+    })
+    .then(response => response.json())
+    .then(result => {
+        if (result.success) {
+            showToast('Visa cancelled successfully', 'success');
+            $('#cancelVisaModal').modal('hide');
+            // Reload page after short delay
+            setTimeout(() => {
+                location.reload();
+            }, 1500);
+        } else {
+            showToast(result.message || 'Failed to cancel visa', 'error');
+            // Re-enable button
+            this.disabled = false;
+            this.innerHTML = '<?= __("cancel_visa") ?>';
+        }
+    })
+    .catch(error => {
+        console.error('Error:', error);
+        showToast('An error occurred while cancelling the visa', 'error');
+        // Re-enable button
+        this.disabled = false;
+        this.innerHTML = '<?= __("cancel_visa") ?>';
+    });
+});
+
+// Re-apply functionality
+function openReapplyModal(visaId, applicantName, originalProfit, baseAmount, soldAmount, currency) {
+    document.getElementById('reapplyVisaId').value = visaId;
+    document.getElementById('reapplyApplicantName').value = applicantName;
+    document.getElementById('reapplyCurrentStatus').value = 'Cancelled/Rejected/Withdrawn';
+    document.getElementById('reapplyOriginalProfit').value = originalProfit;
+    document.getElementById('reapplyBaseAmount').value = baseAmount;
+    document.getElementById('reapplySoldAmount').value = soldAmount;
+    document.getElementById('reapplyCurrency').value = currency;
+    document.getElementById('reapplyReason').value = '';
+    document.getElementById('confirmReapply').checked = false;
+    document.getElementById('processReapplyBtn').disabled = true;
+    
+    $('#reapplyVisaModal').modal('show');
+}
+
+// Enable/disable process button based on confirmation
+document.addEventListener('DOMContentLoaded', function() {
+    const confirmReapplyCheckbox = document.getElementById('confirmReapply');
+    const processReapplyBtn = document.getElementById('processReapplyBtn');
+    
+    if (confirmReapplyCheckbox && processReapplyBtn) {
+        confirmReapplyCheckbox.addEventListener('change', function() {
+            processReapplyBtn.disabled = !this.checked;
+        });
+    }
+});
+
+// Process re-apply
+document.getElementById('processReapplyBtn').addEventListener('click', function() {
+    const form = document.getElementById('reapplyVisaForm');
+    const formData = new FormData(form);
+    
+    
+    // Disable button and show loading
+    this.disabled = true;
+    this.innerHTML = '<i class="feather icon-loader mr-1"></i>Processing...';
+    
+    // Prepare data for submission
+    const data = {
+        action: 'reapply_visa',
+        visa_id: formData.get('visa_id'),
+        new_status: formData.get('new_status'),
+        reapply_reason: formData.get('reapply_reason'),
+        original_profit: formData.get('original_profit'),
+        base_amount: formData.get('base_amount'),
+        sold_amount: formData.get('sold_amount'),
+        currency: formData.get('currency')
+    };
+    
+    // Send AJAX request
+    fetch('../api/visa_reapply.php', {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json',
+        },
+        body: JSON.stringify(data)
+    })
+    .then(response => response.json())
+    .then(result => {
+        if (result.success) {
+            showToast('Visa re-applied successfully', 'success');
+            $('#reapplyVisaModal').modal('hide');
+            // Reload page after short delay
+            setTimeout(() => {
+                location.reload();
+            }, 1500);
+        } else {
+            showToast(result.message || 'Failed to re-apply visa', 'error');
+            // Re-enable button
+            this.disabled = false;
+            this.innerHTML = '<?= __("re_apply_visa") ?>';
+        }
+    })
+    .catch(error => {
+        console.error('Error:', error);
+        showToast('An error occurred while re-applying the visa', 'error');
+        // Re-enable button
+        this.disabled = false;
+        this.innerHTML = '<?= __("re_apply_visa") ?>';
+    });
+});
 </script>
          
 </body>

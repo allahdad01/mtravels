@@ -4854,6 +4854,15 @@ return [
 'enter_reason' => 'د لامل داخلول',
 'confirm_action' => 'عمل تایید کړئ',
 'selected_action' => 'منتخب شوې عملیه',
+'re_apply_visa' => 'ویزه بیا تطبیق کول',
+'re_applying_a_visa_will_restore_its_original_profit_and_reverse_cancellation_balance_changes' => 'د ویزې بیا تطبیق به اصلي ګټه بېرته راولي او د لغوه کولو توازن بدلونونه به واړوي',
+'current_status' => 'اوسنی حالت',
+'new_status' => 'نوی حالت',
+'reason_for_re_application' => 'د بیا تطبیق دلیل',
+'cancel_visa' => 'ویزه لغوه کول',
+'i_confirm_that_i_want_to_cancel_this_visa_application' => 'زه تأییدوم چې زه غواړم دا د ویزې غوښتنلیک لغوه کړم',
+'i_confirm_that_i_want_to_re_apply_this_visa_application' => 'زه تأییدوم چې زه غواړم دا د ویزې غوښتنلیک بیا تطبیق کړم',
+'cancelling_a_visa_will_change_its_status_and_prevent_further_processing' => 'د ویزې لغوه کول به یې حالت بدل کړي او نور پروسس به ودروي',
 
 
 ];

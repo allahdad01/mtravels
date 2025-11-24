@@ -180,7 +180,7 @@ try {
             break;
 
         case 'visa':
-            $mainQuery = "SELECT v.id, CONCAT(v.title, ' ', v.applicant_name) as name, v.passport_number as pnr, v.phone, v.currency, v.sold as total_amount, v.receive_date as date FROM visa_applications v JOIN clients c ON v.sold_to = c.id WHERE c.client_type = 'agency' and v.status != 'refunded' AND v.tenant_id = ? AND v.imported = 0";
+            $mainQuery = "SELECT v.id, CONCAT(v.title, ' ', v.applicant_name) as name, v.passport_number as pnr, v.phone, v.currency, v.sold as total_amount, v.receive_date as date FROM visa_applications v JOIN clients c ON v.sold_to = c.id WHERE c.client_type = 'agency' and v.status != 'refunded' AND v.status != 'Cancelled' AND v.tenant_id = ? AND v.imported = 0";
             $transactionTable = 'main_account_transactions';
             $amountField = 'amount';
             $referenceField = 'reference_id';

@@ -4,8 +4,8 @@
  * Handles tenant-based WhatsApp notifications for ticket bookings
  */
 
-require_once '../../includes/db.php';
-require_once '../../includes/conn.php';
+require_once __DIR__ . '/../../includes/db.php';
+require_once __DIR__ . '/../../includes/conn.php';
 
 class WhatsAppManager {
     private $pdo;

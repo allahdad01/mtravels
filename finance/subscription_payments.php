@@ -299,7 +299,7 @@ if (isset($_GET['payment'], $_GET['subscription_id'])) {
                                                 <div class="row">
                                                     <div class="col-6">
                                                         <small class="text-muted"><?= __('amount') ?></small>
-                                                        <h6 class="mb-0">$<?= number_format($subscription['amount'], 2) ?> <?= htmlspecialchars($subscription['currency']) ?></h6>
+                                                        <h6 class="mb-0"><?= number_format($subscription['amount'], 2) ?> <?= htmlspecialchars($subscription['currency']) ?></h6>
                                                     </div>
                                                     <div class="col-6">
                                                         <small class="text-muted"><?= __('billing_cycle') ?></small>

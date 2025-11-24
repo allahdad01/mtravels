@@ -4981,6 +4981,15 @@ return [
 'enter_reason' => 'دلیل را وارد کنید',
 'confirm_action' => 'تأیید عمل',
 'selected_action' => 'عمل انتخاب‌شده',
+'re_apply_visa' => 'درخواست مجدد ویزا',
+'re_applying_a_visa_will_restore_its_original_profit_and_reverse_cancellation_balance_changes' => 'درخواست مجدد ویزا سود اصلی را بازمی‌گرداند و تغییرات توازن ناشی از لغو را معکوس می‌کند',
+'current_status' => 'وضعیت فعلی',
+'new_status' => 'وضعیت جدید',
+'reason_for_re_application' => 'دلیل درخواست مجدد',
+'cancel_visa' => 'لغو ویزا',
+'i_confirm_that_i_want_to_cancel_this_visa_application' => 'تأیید می‌کنم که می‌خواهم این درخواست ویزا را لغو کنم',
+'i_confirm_that_i_want_to_re_apply_this_visa_application' => 'تأیید می‌کنم که می‌خواهم این درخواست ویزا را دوباره ثبت کنم',
+'cancelling_a_visa_will_change_its_status_and_prevent_further_processing' => 'لغو ویزا وضعیت آن را تغییر می‌دهد و از ادامهٔ پروسس جلوگیری می‌کند',
 
 
 ];
