@@ -4,6 +4,7 @@ if (session_status() === PHP_SESSION_NONE) {
     session_start();
 }
 $tenant_id = $_SESSION['tenant_id'];
+$branch_id = $_SESSION['branch_id'];
 // Include security module
 require_once '../security.php';
 
@@ -29,7 +30,7 @@ $response = [
 if (isset($_GET['passport']) || isset($_GET['applicant'])) {
     try {
         // Build the query based on search parameters
-        $query = "SELECT 
+        $query = "SELECT
                     va.id,
                     va.title,
                     va.phone,
@@ -43,16 +44,16 @@ if (isset($_GET['passport']) || isset($_GET['applicant'])) {
                     va.base,
                     s.name AS supplier_name,
                     c.name AS client_name
-                FROM 
+                FROM
                     visa_applications va
-                LEFT JOIN 
-                    suppliers s ON va.supplier = s.id
-                LEFT JOIN 
-                    clients c ON va.sold_to = c.id
-                WHERE 1=1 AND va.tenant_id = ?";
+                LEFT JOIN
+                    suppliers s ON va.supplier = s.id AND s.tenant_id = ? AND s.branch_id = ?
+                LEFT JOIN
+                    clients c ON va.sold_to = c.id AND c.tenant_id = ? AND c.branch_id = ?
+                WHERE 1=1 AND va.tenant_id = ? AND va.branch_id = ?";
 
-        $params = [];
-        $types = "";
+        $params = [$tenant_id, $branch_id, $tenant_id, $branch_id, $tenant_id, $branch_id];
+        $types = "iiiiii";
 
         if (isset($_GET['passport']) && !empty($_GET['passport'])) {
             $query .= " AND va.passport_number LIKE ?";

@@ -14,6 +14,7 @@ if (!isset($_SESSION['user_id']) || $_SESSION['role'] !== 'admin') {
     exit();
 }
 $tenant_id = $_SESSION['tenant_id'];
+$branch_id = $_SESSION['branch_id'];
 // Database connection
 require_once('../includes/db.php');
     // Pagination setup
@@ -38,20 +39,20 @@ require_once('../includes/db.php');
     if ($tableExists) {
         // First, count total refunds
         $countQuery = "
-            SELECT COUNT(*) as total 
+            SELECT COUNT(*) as total
             FROM hotel_refunds r
             LEFT JOIN hotel_bookings h ON r.booking_id = h.id
-            WHERE r.tenant_id = ?
+            WHERE r.tenant_id = ? AND r.branch_id = ?
         ";
         $countStmt = $pdo->prepare($countQuery);
-        $countStmt->execute([$tenant_id]);
+        $countStmt->execute([$tenant_id, $branch_id]);
         $countRow = $countStmt->fetch(PDO::FETCH_ASSOC);
         $totalRefunds = $countRow ? (int)$countRow['total'] : 0;
         $totalPages = ceil($totalRefunds / $recordsPerPage);
 
         // Then fetch paginated refunds
         $refundsQuery = "
-            SELECT r.*, h.title, h.first_name, h.last_name, h.check_in_date, h.check_out_date, 
+            SELECT r.*, h.title, h.first_name, h.last_name, h.check_in_date, h.check_out_date,
                    h.accommodation_details, h.currency as booking_currency,
                    u.name as processed_by_name, m.name as account_name,
                    s.name as supplier_name, c.name as client_name
@@ -61,15 +62,16 @@ require_once('../includes/db.php');
             LEFT JOIN main_account m ON h.paid_to = m.id
             LEFT JOIN suppliers s ON h.supplier_id = s.id
             LEFT JOIN clients c ON h.sold_to = c.id
-            WHERE r.tenant_id = ?
+            WHERE r.tenant_id = ? AND r.branch_id = ?
             ORDER BY r.created_at DESC
             LIMIT ? OFFSET ?
         ";
-        
+
         $stmt = $pdo->prepare($refundsQuery);
         $stmt->bindValue(1, (int)$tenant_id, PDO::PARAM_INT);
-        $stmt->bindValue(2, (int)$recordsPerPage, PDO::PARAM_INT);
-        $stmt->bindValue(3, (int)$offset, PDO::PARAM_INT);
+        $stmt->bindValue(2, (int)$branch_id, PDO::PARAM_INT);
+        $stmt->bindValue(3, (int)$recordsPerPage, PDO::PARAM_INT);
+        $stmt->bindValue(4, (int)$offset, PDO::PARAM_INT);
         $stmt->execute();
         $refunds = $stmt->fetchAll(PDO::FETCH_ASSOC);
     }
@@ -931,8 +933,8 @@ include '../includes/header.php';
                                         </label>
                                         <select class="form-control" id="mainAccountId" name="main_account_id" required>
                                             <option value=""><?= __('select_main_account') ?></option>
-                                            <?php 
-                                            $accountsQuery = "SELECT id, name FROM main_account WHERE status = 'active' and tenant_id = $tenant_id";
+                                            <?php
+                                            $accountsQuery = "SELECT id, name FROM main_account WHERE status = 'active' and tenant_id = $tenant_id and branch_id = $branch_id";
                                             $accountsResult = $conn->query($accountsQuery);
                                             if ($accountsResult) {
                                                 while ($account = $accountsResult->fetch_assoc()) {

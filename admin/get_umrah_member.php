@@ -6,6 +6,7 @@ if (session_status() === PHP_SESSION_NONE) {
 // Include security module
 require_once 'security.php';
 $tenant_id = $_SESSION['tenant_id'];
+$branch_id = $_SESSION['branch_id'];
 // Enforce authentication
 enforce_auth();
 
@@ -36,10 +37,10 @@ try {
             LEFT JOIN
                 main_account m ON b.paid_to = m.id
             WHERE
-                b.booking_id = ? AND b.tenant_id = ?";
+                b.booking_id = ? AND b.tenant_id = ? AND b.branch_id = ?";
 
     $stmt = $pdo->prepare($sql);
-    $stmt->execute([$bookingId, $tenant_id]);
+    $stmt->execute([$bookingId, $tenant_id, $branch_id]);
 
     if ($stmt->rowCount() > 0) {
         $member = $stmt->fetch(PDO::FETCH_ASSOC);
@@ -60,11 +61,11 @@ try {
                         LEFT JOIN
                             suppliers s ON ubs.supplier_id = s.id
                         WHERE
-                            ubs.booking_id = ? AND ubs.tenant_id = ?
+                            ubs.booking_id = ? AND ubs.tenant_id = ? AND ubs.branch_id = ?
                         ORDER BY ubs.id";
 
         $servicesStmt = $pdo->prepare($servicesSql);
-        $servicesStmt->execute([$bookingId, $tenant_id]);
+        $servicesStmt->execute([$bookingId, $tenant_id, $branch_id]);
         $services = $servicesStmt->fetchAll(PDO::FETCH_ASSOC);
 
         // Add services to member data

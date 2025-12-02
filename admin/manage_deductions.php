@@ -1,6 +1,8 @@
 <?php
 // Initialize the session
 session_start();
+$tenant_id = $_SESSION['tenant_id'];
+$branch_id = $_SESSION['branch_id'];
 
 // Check if the user is logged in, if not then redirect to login page
 if (!isset($_SESSION["loggedin"]) || $_SESSION["loggedin"] !== true || $_SESSION["role"] !== "admin") {
@@ -56,15 +58,15 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
     // Check input errors before inserting in database
     if (empty($user_id_err) && empty($amount_err) && empty($description_err) && empty($deduction_date_err)) {
         // Prepare an insert statement
-        $sql = "INSERT INTO salary_deductions (tenant_id, user_id, amount, description, deduction_date, type, created_by) 
-                VALUES (?, ?, ?, ?, ?, ?, ?)";
-        
+        $sql = "INSERT INTO salary_deductions (tenant_id, branch_id, user_id, amount, description, deduction_date, type, created_by)
+                VALUES (?, ?, ?, ?, ?, ?, ?, ?)";
+
         if ($stmt = mysqli_prepare($conection_db, $sql)) {
             // Get current user ID as created_by
             $created_by = $_SESSION["user_id"];
-            
+
             // Bind variables to the prepared statement as parameters
-            mysqli_stmt_bind_param($stmt, "iidsssi", $tenant_id, $user_id, $amount, $description, $deduction_date, $type, $created_by);
+            mysqli_stmt_bind_param($stmt, "iiidsssi", $tenant_id, $branch_id, $user_id, $amount, $description, $deduction_date, $type, $created_by);
             
             // Attempt to execute the prepared statement
             if (mysqli_stmt_execute($stmt)) {
@@ -174,10 +176,10 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
                                                 <option value=""><?= __('select_employee') ?></option>
                                                 <?php
                                                 // Get all active users with salary records
-                                                $sql = "SELECT u.id, u.name 
-                                                        FROM users u 
-                                                        JOIN salary_management sm ON u.id = sm.user_id 
-                                                        WHERE sm.status = 'active'
+                                                $sql = "SELECT u.id, u.name
+                                                        FROM users u
+                                                        JOIN salary_management sm ON u.id = sm.user_id
+                                                        WHERE sm.status = 'active' AND u.tenant_id = ? AND u.branch_id = ?
                                                         ORDER BY u.name ASC";
                                                 $result = mysqli_query($conection_db, $sql);
                                                 while ($row = mysqli_fetch_array($result)) {
@@ -286,10 +288,11 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
                                     <tbody>
                                         <?php
                                         // Get all deduction records
-                                        $sql = "SELECT sd.*, u.name as employee_name, a.name as added_by_name 
-                                                FROM salary_deductions sd 
-                                                JOIN users u ON sd.user_id = u.id 
-                                                JOIN users a ON sd.created_by = a.id 
+                                        $sql = "SELECT sd.*, u.name as employee_name, a.name as added_by_name
+                                                FROM salary_deductions sd
+                                                JOIN users u ON sd.user_id = u.id
+                                                JOIN users a ON sd.created_by = a.id
+                                                WHERE sd.tenant_id = ? AND sd.branch_id = ?
                                                 ORDER BY sd.deduction_date DESC";
                                         $result = mysqli_query($conection_db, $sql);
                                         while ($row = mysqli_fetch_array($result)) {

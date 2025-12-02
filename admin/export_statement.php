@@ -18,6 +18,9 @@ if (!isset($_SESSION['user_id'])) {
     exit();
 }
 
+$tenant_id = $_SESSION['tenant_id'];
+$branch_id = $_SESSION['branch_id'];
+
 require_once('../includes/db.php');
 require_once('../vendor/autoload.php'); // For TCPDF
 
@@ -195,10 +198,12 @@ try {
                 LEFT JOIN hotel_refunds hr ON hr.id = ct.reference_id AND ct.transaction_of = 'hotel_refund'
                 LEFT JOIN hotel_bookings hbr ON hbr.id = hr.booking_id
                 WHERE ct.client_id = ?
+                AND ct.tenant_id = ?
+                AND ct.branch_id = ?
                 ORDER BY ct.id ASC";
 
             $stmt = $pdo->prepare($transactionsQuery);
-            $stmt->execute([$entity]);
+            $stmt->execute([$entity, $tenant_id, $branch_id]);
             $rawTransactions = $stmt->fetchAll(PDO::FETCH_ASSOC);
             
             // Process transactions to handle different currencies with same receipt number
@@ -444,11 +449,13 @@ try {
                 LEFT JOIN umrah_bookings um ON um.booking_id = st.reference_id AND st.transaction_of = 'umrah'
                 LEFT JOIN users usr ON usr.id = st.reference_id AND st.transaction_of = 'fund'
                 WHERE st.supplier_id = ?
+                AND st.tenant_id = ?
+                AND st.branch_id = ?
                 AND DATE(st.transaction_date) BETWEEN ? AND ?
                 ORDER BY st.transaction_date ASC, st.id ASC";
 
             $stmt = $pdo->prepare($transactionsQuery);
-            $stmt->execute([$entity, $startDate, $endDate]);
+            $stmt->execute([$entity, $tenant_id, $branch_id, $startDate, $endDate]);
             $transactions = $stmt->fetchAll(PDO::FETCH_ASSOC);
             
             $title = "Supplier Statement of Account";
@@ -625,11 +632,13 @@ try {
                 LEFT JOIN expenses exp ON exp.id = mt.reference_id AND mt.transaction_of = 'expense'
                 LEFT JOIN expense_categories ec ON ec.id = exp.category_id
                 WHERE mt.currency = ?
+                AND mt.tenant_id = ?
+                AND mt.branch_id = ?
                 AND DATE(mt.created_at) BETWEEN ? AND ?
                 ORDER BY mt.created_at ASC, mt.id ASC";
 
             $stmt = $pdo->prepare($transactionsQuery);
-            $stmt->execute([$currency, $startDate, $endDate]);
+            $stmt->execute([$currency, $tenant_id, $branch_id, $startDate, $endDate]);
             $transactions = $stmt->fetchAll(PDO::FETCH_ASSOC);
             
             
@@ -691,16 +700,16 @@ $companySettings = $stmt->fetch(PDO::FETCH_ASSOC);
                 SUM(CASE WHEN transaction_type = 'debit' THEN amount ELSE 0 END) as total_debit,
                 SUM(CASE WHEN transaction_type = 'credit' THEN amount ELSE 0 END) as total_credit
             FROM supplier_transactions
-            WHERE supplier_id = ?";
+            WHERE supplier_id = ? And tenant_id = ? And branch_id = ?";
             
         $stmt = $pdo->prepare($totalQuery);
-        $stmt->execute([$entity]);
+        $stmt->execute([$entity, $tenant_id, $branch_id]);
         $totalData = $stmt->fetch(PDO::FETCH_ASSOC);
         
         // Get current balance directly from suppliers table (suppliers have a balance field)
-        $balanceQuery = "SELECT balance FROM suppliers WHERE id = ?";
+        $balanceQuery = "SELECT balance FROM suppliers WHERE id = ? And tenant_id = ? And branch_id = ?";
         $stmt = $pdo->prepare($balanceQuery);
-        $stmt->execute([$entity]);
+        $stmt->execute([$entity, $tenant_id, $branch_id]);
         $supplierBalance = $stmt->fetch(PDO::FETCH_ASSOC);
         
         $totalDebit = $totalData['total_debit'] ?? 0;
@@ -714,10 +723,10 @@ $companySettings = $stmt->fetch(PDO::FETCH_ASSOC);
                 SUM(CASE WHEN type = 'debit' THEN amount ELSE 0 END) as total_debit,
                 SUM(CASE WHEN type = 'credit' THEN amount ELSE 0 END) as total_credit
             FROM main_account_transactions
-            WHERE currency = ?";
+            WHERE currency = ? And tenant_id = ? And branch_id = ?";
             
         $stmt = $pdo->prepare($totalQuery);
-        $stmt->execute([$currency]);
+        $stmt->execute([$currency, $tenant_id, $branch_id]);
         $totalData = $stmt->fetch(PDO::FETCH_ASSOC);
         
         // Get current balance directly from main_account table based on currency
@@ -726,9 +735,9 @@ $companySettings = $stmt->fetch(PDO::FETCH_ASSOC);
                        (strtolower($currency) == 'darham' ? 'darham_balance' :
                        (strtolower($currency) == 'euro' ? 'euro_balance' : 'balance')));
                        
-        $balanceQuery = "SELECT $balanceField AS balance FROM main_account WHERE id = ?";
+        $balanceQuery = "SELECT $balanceField AS balance FROM main_account WHERE id = ? And tenant_id = ? And branch_id = ?";
         $stmt = $pdo->prepare($balanceQuery);
-        $stmt->execute([$entity]);
+        $stmt->execute([$entity, $tenant_id, $branch_id]);
         $accountBalance = $stmt->fetch(PDO::FETCH_ASSOC);
         
         $totalDebit = $totalData['total_debit'] ?? 0;

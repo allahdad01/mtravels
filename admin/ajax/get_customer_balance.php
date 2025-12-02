@@ -22,11 +22,13 @@ if (!isset($_GET['customer_id']) || !is_numeric($_GET['customer_id'])) {
 }
 
 $customer_id = intval($_GET['customer_id']);
+$tenant_id = $_SESSION['tenant_id'];
+$branch_id = $_SESSION['branch_id'];
 
 try {
     // Get customer balances for all currencies
-    $stmt = $conn->prepare("SELECT currency, balance FROM customer_wallets WHERE customer_id = ?");
-    $stmt->bind_param("i", $customer_id);
+    $stmt = $conn->prepare("SELECT currency, balance FROM customer_wallets WHERE customer_id = ? AND tenant_id = ? AND branch_id = ?");
+    $stmt->bind_param("iii", $customer_id, $tenant_id, $branch_id);
     $stmt->execute();
     $result = $stmt->get_result();
     

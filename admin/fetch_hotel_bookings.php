@@ -8,6 +8,7 @@ enforce_auth();
 // Database connection
 require_once '../includes/conn.php';
 $tenant_id = $_SESSION['tenant_id'];
+$branch_id = $_SESSION['branch_id'];
 // Check connection
 if ($conn->connect_error) {
     die(json_encode(["success" => false, "message" => "Database connection failed"]));
@@ -39,9 +40,9 @@ $sql = "SELECT
         LEFT JOIN suppliers s ON hb.supplier_id = s.id
         LEFT JOIN main_account ma ON hb.paid_to = ma.id
         LEFT JOIN clients cl ON hb.sold_to = cl.id
-        WHERE hb.tenant_id = ?";
+        WHERE hb.tenant_id = ? AND hb.branch_id = ?";
 
-$result = $conn->query($sql, [$tenant_id]);
+$result = $conn->query($sql, [$tenant_id, $branch_id]);
 
 if ($result && $result->num_rows > 0) {
     $bookings = [];

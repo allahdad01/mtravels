@@ -4,6 +4,7 @@ require_once('../includes/db.php');
 include '../includes/conn.php';
 
 $tenant_id = $_SESSION['tenant_id'];
+$branch_id = $_SESSION['branch_id'];
 $user_id   = $_SESSION["user_id"];
 
 // Pagination
@@ -34,15 +35,15 @@ if (!empty($search)) {
 }
 
 // Count total
-$totalCountQuery = "SELECT COUNT(*) as total 
-                    FROM ticket_bookings tb 
-                    WHERE tb.tenant_id = ? $searchCondition";
+$totalCountQuery = "SELECT COUNT(*) as total
+                    FROM ticket_bookings tb
+                    WHERE tb.tenant_id = ? AND tb.branch_id = ? $searchCondition";
 $stmtCount = $conn->prepare($totalCountQuery);
 
 if (!empty($searchCondition)) {
-    $stmtCount->bind_param("s".$searchTypes, $tenant_id, ...$searchParams);
+    $stmtCount->bind_param("s".$searchTypes, $tenant_id, $branch_id, ...$searchParams);
 } else {
-    $stmtCount->bind_param("s", $tenant_id);
+    $stmtCount->bind_param("si", $tenant_id, $branch_id);
 }
 $stmtCount->execute();
 $totalTickets = $stmtCount->get_result()->fetch_assoc()['total'];
@@ -73,16 +74,16 @@ $ticketsQuery = "
         dct.service_penalty AS date_change_service_penalty,
         dct.status AS date_change_status,
         dct.remarks AS date_change_remarks,
-        (SELECT COUNT(*) FROM ticket_weights WHERE ticket_id = tb.id AND tenant_id = tb.tenant_id) as weight_count,
-        (SELECT COALESCE(SUM(weight), 0) FROM ticket_weights WHERE ticket_id = tb.id AND tenant_id = tb.tenant_id) as total_weight
+        (SELECT COUNT(*) FROM ticket_weights WHERE ticket_id = tb.id AND tenant_id = tb.tenant_id AND branch_id = tb.branch_id) as weight_count,
+        (SELECT COALESCE(SUM(weight), 0) FROM ticket_weights WHERE ticket_id = tb.id AND tenant_id = tb.tenant_id AND branch_id = tb.branch_id) as total_weight
     FROM ticket_bookings tb
-    LEFT JOIN refunded_tickets rt ON tb.id = rt.ticket_id
-    LEFT JOIN date_change_tickets dct ON tb.id = dct.ticket_id
-    LEFT JOIN suppliers s ON tb.supplier = s.id
-    LEFT JOIN clients c   ON tb.sold_to = c.id
-    LEFT JOIN main_account ma ON tb.paid_to = ma.id
-    LEFT JOIN users u ON tb.created_by = u.id
-    WHERE tb.tenant_id = ? $searchCondition
+    LEFT JOIN refunded_tickets rt ON tb.id = rt.ticket_id AND rt.tenant_id = tb.tenant_id AND rt.branch_id = tb.branch_id
+    LEFT JOIN date_change_tickets dct ON tb.id = dct.ticket_id AND dct.tenant_id = tb.tenant_id AND dct.branch_id = tb.branch_id
+    LEFT JOIN suppliers s ON tb.supplier = s.id AND s.tenant_id = tb.tenant_id AND s.branch_id = tb.branch_id
+    LEFT JOIN clients c   ON tb.sold_to = c.id AND c.tenant_id = tb.tenant_id AND c.branch_id = tb.branch_id
+    LEFT JOIN main_account ma ON tb.paid_to = ma.id AND ma.tenant_id = tb.tenant_id AND ma.branch_id = tb.branch_id
+    LEFT JOIN users u ON tb.created_by = u.id AND u.tenant_id = tb.tenant_id AND u.branch_id = tb.branch_id
+    WHERE tb.tenant_id = ? AND tb.branch_id = ? $searchCondition
     ORDER BY tb.id DESC
     LIMIT ?, ?
 ";
@@ -91,9 +92,9 @@ $stmt = $conn->prepare($ticketsQuery);
 
 // Bind params
 if (!empty($searchCondition)) {
-    // Add tenant_id, offset, and limit to params
-    $params = array_merge([$tenant_id], $searchParams, [$offset, $results_per_page]);
-    $types  = "s" . $searchTypes . "ii";
+    // Add tenant_id, branch_id, offset, and limit to params
+    $params = array_merge([$tenant_id, $branch_id], $searchParams, [$offset, $results_per_page]);
+    $types  = "i" . $searchTypes . "ii";
 
     // Prepare array for bind_param (needs references)
     $bind_names[] = $types;
@@ -104,7 +105,7 @@ if (!empty($searchCondition)) {
     call_user_func_array([$stmt, 'bind_param'], $bind_names);
 
 } else {
-    $stmt->bind_param("sii", $tenant_id, $offset, $results_per_page);
+    $stmt->bind_param("iiii", $tenant_id, $branch_id, $offset, $results_per_page);
 }
 
 $stmt->execute();
@@ -173,9 +174,9 @@ while ($row = $ticketsResult->fetch_assoc()) {
 $stmt->close();
 
 // Fetch Suppliers
-$suppliersQuery = "SELECT id, name FROM suppliers WHERE status = 'active' AND tenant_id = ?";
+$suppliersQuery = "SELECT id, name FROM suppliers WHERE status = 'active' AND tenant_id = ? AND branch_id = ?";
 $stmt = $conn->prepare($suppliersQuery);
-$stmt->bind_param("s", $tenant_id);
+$stmt->bind_param("si", $tenant_id, $branch_id);
 $stmt->execute();
 $suppliersResult = $stmt->get_result();
 $suppliers = $suppliersResult->fetch_all(MYSQLI_ASSOC);

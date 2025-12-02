@@ -7,14 +7,15 @@ enforce_auth();
 
 require_once('../includes/db.php');
 $tenant_id = $_SESSION['tenant_id'];
+$branch_id = $_SESSION['branch_id'];
 header('Content-Type: application/json');
 
 try {
-    $stmt = $pdo->prepare("SELECT id, name 
-                           FROM clients 
-                           WHERE status = 'active' AND tenant_id = ? 
+    $stmt = $pdo->prepare("SELECT id, name
+                           FROM clients
+                           WHERE status = 'active' AND tenant_id = ? AND branch_id = ?
                            ORDER BY name");
-    $stmt->execute([$tenant_id]);
+    $stmt->execute([$tenant_id, $branch_id]);
     $clients = $stmt->fetchAll(PDO::FETCH_ASSOC);
     echo json_encode($clients);
 } catch (PDOException $e) {

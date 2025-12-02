@@ -8,6 +8,7 @@ require_once '../includes/language_helpers.php';
 // Enforce authentication
 enforce_auth();
 $tenant_id = $_SESSION['tenant_id'];
+$branch_id = $_SESSION['branch_id'];
 // Check if user is logged in
 if (!isset($_SESSION['user_id']) || $_SESSION['role'] !== 'admin') {
     header('Location: ../login.php');
@@ -35,13 +36,13 @@ $totalPages = 0;
 if ($tableExists) {
     // COUNT query
     $countQuery = "
-        SELECT COUNT(*) as total 
+        SELECT COUNT(*) as total
         FROM visa_refunds r
         LEFT JOIN visa_applications v ON r.visa_id = v.id
-        WHERE r.tenant_id = ?
+        WHERE r.tenant_id = ? AND r.branch_id = ?
     ";
     $stmt = $conn->prepare($countQuery);
-    $stmt->bind_param("i", $tenant_id);
+    $stmt->bind_param("ii", $tenant_id, $branch_id);
     $stmt->execute();
     $countResult = $stmt->get_result();
     $totalRefunds = $countResult->fetch_assoc()['total'];
@@ -57,13 +58,17 @@ if ($tableExists) {
         LEFT JOIN users u ON r.processed_by = u.id
         LEFT JOIN main_account_transactions t ON r.transaction_id = t.id
         LEFT JOIN main_account m ON t.main_account_id = m.id
-        WHERE r.tenant_id = ?
+        WHERE r.tenant_id = ? AND r.branch_id = ?
+        AND (v.id IS NULL OR v.branch_id = ?)
+        AND (u.id IS NULL OR u.branch_id = ?)
+        AND (t.id IS NULL OR t.branch_id = ?)
+        AND (m.id IS NULL OR m.branch_id = ?)
         ORDER BY r.refund_date DESC
         LIMIT ? OFFSET ?
     ";
 
     $stmt = $conn->prepare($refundsQuery);
-    $stmt->bind_param("iii", $tenant_id, $recordsPerPage, $offset); // Correct 3 params
+    $stmt->bind_param("iiiiiiii", $tenant_id, $branch_id, $branch_id, $branch_id, $branch_id, $branch_id, $recordsPerPage, $offset); // 8 params
     $stmt->execute();
     $refundsResult = $stmt->get_result();
     $refunds = $refundsResult->fetch_all(MYSQLI_ASSOC);
@@ -481,12 +486,12 @@ if ($tableExists) {
                                         <select class="form-control" id="mainAccountId" name="main_account_id" required>
                                             <option value=""><?= __('select_main_account') ?></option>
                                             <?php 
-                                            $accountsQuery = "SELECT id, name 
-                                                            FROM main_account 
-                                                            WHERE status = 'active' AND tenant_id = ?";
+                                            $accountsQuery = "SELECT id, name
+                                                            FROM main_account
+                                                            WHERE status = 'active' AND tenant_id = ? AND branch_id = ?";
 
                                             $stmt = $conn->prepare($accountsQuery);
-                                            $stmt->bind_param("i", $tenant_id); // "i" because tenant_id is an integer
+                                            $stmt->bind_param("ii", $tenant_id, $branch_id); // "ii" because tenant_id and branch_id are integers
                                             $stmt->execute();
                                             $accountsResult = $stmt->get_result();
 

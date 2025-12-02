@@ -73,13 +73,13 @@ function checkRoleAuthorization() {
         checkTenantPaymentStatus();
     }
 
-    // Admin can access all sections
-    if ($role === 'admin') {
+    // Admin and tenant_super_admin can access all sections
+    if ($role === 'admin' || $role === 'tenant_super_admin') {
         return true;
     }
     
     // Check if user is trying to access a section they don't have permission for
-    if (strpos($current_path, '/admin/') !== false && $role !== 'admin') {
+    if (strpos($current_path, '/admin/') !== false && $role !== 'admin' && $role !== 'tenant_super_admin') {
         header("location: " . determineBasePath() . "access_denied.php");
         exit;
     }
@@ -118,12 +118,13 @@ function determineBasePath() {
     array_pop($path_parts); // Remove the script name
     
     // If in a subdirectory, go back to root
-    if (strpos($_SERVER['SCRIPT_NAME'], '/admin/') !== false || 
+    if (strpos($_SERVER['SCRIPT_NAME'], '/admin/') !== false ||
         strpos($_SERVER['SCRIPT_NAME'], '/sales/') !== false ||
         strpos($_SERVER['SCRIPT_NAME'], '/finance/') !== false ||
         strpos($_SERVER['SCRIPT_NAME'], '/umrah/') !== false ||
         strpos($_SERVER['SCRIPT_NAME'], '/visa/') !== false ||
-        strpos($_SERVER['SCRIPT_NAME'], '/client/') !== false) {
+        strpos($_SERVER['SCRIPT_NAME'], '/client/') !== false ||
+        strpos($_SERVER['SCRIPT_NAME'], '/tenant_super_admin/') !== false) {
         return "../";
     }
     

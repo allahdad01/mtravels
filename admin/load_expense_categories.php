@@ -7,6 +7,7 @@ if (session_status() === PHP_SESSION_NONE) {
 // Database connection
 require_once('../includes/db.php');
 $tenant_id = $_SESSION['tenant_id'];
+$branch_id = $_SESSION['branch_id'];
 // Function to load translation if it exists
 if (!function_exists('__')) {
     function __($key) {
@@ -17,7 +18,8 @@ if (!function_exists('__')) {
 
 try {
     // Query to get all distinct expense categories from the database
-    $stmt = $pdo->query("SELECT * FROM expense_categories where tenant_id = ? ORDER BY name", [$tenant_id]);
+    $stmt = $pdo->prepare("SELECT * FROM expense_categories where tenant_id = ? AND branch_id = ? ORDER BY name");
+    $stmt->execute([$tenant_id, $branch_id]);
     $categories = $stmt->fetchAll(PDO::FETCH_ASSOC);
     
     $data = [];
@@ -40,7 +42,7 @@ try {
     
     // Return success response with categories
     header('Content-Type: application/json');
-    echo json_encode(['success' => true, 'data' => $data], [$tenant_id]);
+    echo json_encode(['success' => true, 'data' => $data]);
     
 } catch (PDOException $e) {
     // Log the error

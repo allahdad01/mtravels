@@ -6,6 +6,7 @@ if (session_status() === PHP_SESSION_NONE) {
 // Include database security module for input validation
 require_once 'includes/db_security.php';
 $tenant_id = $_SESSION['tenant_id'];
+$branch_id = $_SESSION['branch_id'];
 
 // Include security module
 require_once 'security.php';
@@ -67,10 +68,10 @@ try {
     
     // First, get the original transaction to make sure it exists
     $stmt = $pdo->prepare("
-        SELECT * FROM main_account_transactions 
-        WHERE id = ? AND reference_id = ? AND transaction_of = 'hotel' AND tenant_id = ?
+        SELECT * FROM main_account_transactions
+        WHERE id = ? AND reference_id = ? AND transaction_of = 'hotel' AND tenant_id = ? AND branch_id = ?
     ");
-    $stmt->execute([$transactionId, $bookingId, $tenant_id]);
+    $stmt->execute([$transactionId, $bookingId, $tenant_id, $branch_id]);
     $transaction = $stmt->fetch(PDO::FETCH_ASSOC);
     
     if (!$transaction) {
@@ -84,10 +85,10 @@ try {
     
     // Check if this transaction has already been refunded
     $checkRefundStmt = $pdo->prepare("
-        SELECT COUNT(*) FROM main_account_transactions 
-        WHERE description LIKE ? AND transaction_of = 'hotel' AND type = 'refund' AND tenant_id = ?
+        SELECT COUNT(*) FROM main_account_transactions
+        WHERE description LIKE ? AND transaction_of = 'hotel' AND type = 'refund' AND tenant_id = ? AND branch_id = ?
     ");
-    $checkRefundStmt->execute(['%Refund for transaction #' . $transactionId . '%']);
+    $checkRefundStmt->execute(['%Refund for transaction #' . $transactionId . '%', $tenant_id, $branch_id]);
     $refundCount = $checkRefundStmt->fetchColumn();
     
     if ($refundCount > 0) {
@@ -98,12 +99,12 @@ try {
     $mainAccountId = $transaction['main_account_id'];
     
     // Get current main account balance
-    $balanceQuery = $currency === 'USD' 
-        ? "SELECT usd_balance FROM main_account WHERE id = ? AND tenant_id = ?" 
-        : "SELECT afs_balance FROM main_account WHERE id = ? AND tenant_id = ?";
-    
+    $balanceQuery = $currency === 'USD'
+        ? "SELECT usd_balance FROM main_account WHERE id = ? AND tenant_id = ? AND branch_id = ?"
+        : "SELECT afs_balance FROM main_account WHERE id = ? AND tenant_id = ? AND branch_id = ?";
+
     $stmtGetBalance = $pdo->prepare($balanceQuery);
-    $stmtGetBalance->execute([$mainAccountId, $tenant_id]);
+    $stmtGetBalance->execute([$mainAccountId, $tenant_id, $branch_id]);
     $currentBalance = $stmtGetBalance->fetchColumn();
     
     // Calculate new main account balance (subtract for refund)
@@ -111,11 +112,11 @@ try {
     
     // Update main account balance
     $updateQuery = $currency === 'USD'
-        ? "UPDATE main_account SET usd_balance = ? WHERE id = ? AND tenant_id = ?"
-        : "UPDATE main_account SET afs_balance = ? WHERE id = ? AND tenant_id = ?";
-    
+        ? "UPDATE main_account SET usd_balance = ? WHERE id = ? AND tenant_id = ? AND branch_id = ?"
+        : "UPDATE main_account SET afs_balance = ? WHERE id = ? AND tenant_id = ? AND branch_id = ?";
+
     $stmtUpdateBalance = $pdo->prepare($updateQuery);
-    if (!$stmtUpdateBalance->execute([$newBalance, $mainAccountId, $tenant_id])) {
+    if (!$stmtUpdateBalance->execute([$newBalance, $mainAccountId, $tenant_id, $branch_id])) {
         throw new Exception('Failed to update main account balance');
     }
     
@@ -126,11 +127,11 @@ try {
     
     // Insert the refund transaction
     $stmt = $pdo->prepare("
-        INSERT INTO main_account_transactions 
-        (main_account_id, reference_id, transaction_of, type, amount, balance, currency, description, created_by, created_at, tenant_id) 
+        INSERT INTO main_account_transactions
+        (main_account_id, reference_id, transaction_of, type, amount, balance, currency, description, created_by, created_at, tenant_id, branch_id)
         VALUES (?, ?, 'hotel', 'refund', ?, ?, ?, ?, ?, ?, ?, ?)
     ");
-    
+
     $stmt->execute([
         $mainAccountId,
         $bookingId,
@@ -140,7 +141,8 @@ try {
         $refund_description,
         $userId,
         $now,
-        $tenant_id
+        $tenant_id,
+        $branch_id
     ]);
     
     $refundTransactionId = $pdo->lastInsertId();
@@ -164,12 +166,12 @@ try {
     ];
     
     // Insert activity log
-    $activity_log_stmt = $pdo->prepare("INSERT INTO activity_log 
-        (user_id, action_type, table_name, record_id, old_values, new_values, ip_address, user_agent, created_at, tenant_id) 
-        VALUES (?, 'add', 'main_account_transactions', ?, '{}', ?, ?, ?, NOW(), ?)");
-    
+    $activity_log_stmt = $pdo->prepare("INSERT INTO activity_log
+        (user_id, action_type, table_name, record_id, old_values, new_values, ip_address, user_agent, created_at, tenant_id, branch_id)
+        VALUES (?, 'add', 'main_account_transactions', ?, '{}', ?, ?, ?, NOW(), ?, ?)");
+
     $new_values_json = json_encode($new_values);
-    $activity_log_stmt->execute([$user_id, $refundTransactionId, $new_values_json, $ip_address, $user_agent, $tenant_id]);
+    $activity_log_stmt->execute([$user_id, $refundTransactionId, $new_values_json, $ip_address, $user_agent, $tenant_id, $branch_id]);
     
     // Commit the transaction
     $pdo->commit();

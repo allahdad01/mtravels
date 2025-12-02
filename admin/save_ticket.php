@@ -13,6 +13,7 @@ require_once 'security.php';
 // Enforce authentication
 enforce_auth();
 $tenant_id = $_SESSION['tenant_id'];
+$branch_id = $_SESSION['branch_id'];
 
 // Include WhatsApp Manager for notifications
 require_once '../api/whatsapp/WhatsAppManager.php';
@@ -118,8 +119,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 
     try {
         // Check if PNR has already been used 6 or more times
-        $stmt_check_pnr = $conn->prepare("SELECT COUNT(*) FROM ticket_bookings WHERE pnr = ? AND tenant_id = ?");
-        $stmt_check_pnr->bind_param("si", $pnr, $tenant_id);
+        $stmt_check_pnr = $conn->prepare("SELECT COUNT(*) FROM ticket_bookings WHERE pnr = ? AND tenant_id = ? AND branch_id = ?");
+        $stmt_check_pnr->bind_param("sii", $pnr, $tenant_id, $branch_id);
         if (!$stmt_check_pnr->execute()) {
             throw new Exception("Failed to check PNR: " . $stmt_check_pnr->error);
         }
@@ -133,8 +134,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         }
 
         // Fetch supplier details
-        $stmt_check_balance = $conn->prepare("SELECT balance, currency, name, supplier_type FROM suppliers WHERE id = ? AND tenant_id = ?");
-        $stmt_check_balance->bind_param("ii", $supplier_id, $tenant_id);
+        $stmt_check_balance = $conn->prepare("SELECT balance, currency, name, supplier_type FROM suppliers WHERE id = ? AND tenant_id = ? AND branch_id = ?");
+        $stmt_check_balance->bind_param("iii", $supplier_id, $tenant_id, $branch_id);
         if (!$stmt_check_balance->execute()) {
             throw new Exception("Failed to validate supplier balance: " . $stmt_check_balance->error);
         }
@@ -148,8 +149,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         }
 
         // Fetch main account name
-        $stmt_main_account = $conn->prepare("SELECT name FROM main_account WHERE id = ? AND tenant_id = ?");
-        $stmt_main_account->bind_param("ii", $paidTo, $tenant_id);
+        $stmt_main_account = $conn->prepare("SELECT name FROM main_account WHERE id = ? AND tenant_id = ? AND branch_id = ?");
+        $stmt_main_account->bind_param("iii", $paidTo, $tenant_id, $branch_id);
         if (!$stmt_main_account->execute()) {
             throw new Exception("Failed to fetch main account name: " . $stmt_main_account->error);
         }
@@ -158,8 +159,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         $stmt_main_account->close();
 
         // Fetch client details
-        $stmt_client_info = $conn->prepare("SELECT name, usd_balance, afs_balance, client_type FROM clients WHERE id = ? AND tenant_id = ?");
-        $stmt_client_info->bind_param("ii", $soldTo, $tenant_id);
+        $stmt_client_info = $conn->prepare("SELECT name, usd_balance, afs_balance, client_type FROM clients WHERE id = ? AND tenant_id = ? AND branch_id = ?");
+        $stmt_client_info->bind_param("iii", $soldTo, $tenant_id, $branch_id);
         if (!$stmt_client_info->execute()) {
             throw new Exception("Failed to fetch client info: " . $stmt_client_info->error);
         }
@@ -174,10 +175,10 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 
         // Prepare ticket booking statement
         $stmt_ticket = $conn->prepare("INSERT INTO ticket_bookings (
-            supplier, sold_to, paid_to, passenger_name, pnr, origin, destination, airline, departure_date, issue_date, 
-            phone, gender, title, price, sold, discount, profit, currency, description, trip_type, return_destination, return_date, 
-            created_by, tenant_id
-        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)");
+            supplier, sold_to, paid_to, passenger_name, pnr, origin, destination, airline, departure_date, issue_date,
+            phone, gender, title, price, sold, discount, profit, currency, description, trip_type, return_destination, return_date,
+            created_by, tenant_id, branch_id
+        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)");
 
         // Main booking ID to link all passengers
         $main_booking_id = 0;
@@ -203,10 +204,10 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             $totalProfit += $profit;
 
             $stmt_ticket->bind_param(
-                "iiissssssssssddddsssssii",           
+                "iiissssssssssddddsssssiii",
                 $supplier_id, $soldTo, $paidTo, $passengerName, $pnr, $origin, $destination, $airline,
-                $departureDate, $issueDate, $phone, $gender, $title, $base, $sold, $discount, $profit, $currency, 
-                $description, $tripType, $returnDestination, $returnDate, $user_id, $tenant_id
+                $departureDate, $issueDate, $phone, $gender, $title, $base, $sold, $discount, $profit, $currency,
+                $description, $tripType, $returnDestination, $returnDate, $user_id, $tenant_id, $branch_id
             );
             
             if (!$stmt_ticket->execute()) {
@@ -237,10 +238,10 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 
                 // Insert supplier transaction
                 $stmt_transaction = $conn->prepare("INSERT INTO supplier_transactions (
-                    supplier_id, reference_id, transaction_type, amount, balance, remarks, transaction_date, transaction_of, tenant_id
-                ) VALUES (?, ?, 'Debit', ?, ?, ?, NOW(), 'ticket_sale', ?)");
+                    supplier_id, reference_id, transaction_type, amount, balance, remarks, transaction_date, transaction_of, tenant_id, branch_id
+                ) VALUES (?, ?, 'Debit', ?, ?, ?, NOW(), 'ticket_sale', ?, ?)");
                 $remarks = "Base amount of $base $currency deducted for ticket booking for $title $passengerName with PNR: $pnr.";
-                $stmt_transaction->bind_param("iiddsi", $supplier_id, $ticket_id, $base, $new_supplier_balance, $remarks, $tenant_id);
+                $stmt_transaction->bind_param("iiddsii", $supplier_id, $ticket_id, $base, $new_supplier_balance, $remarks, $tenant_id, $branch_id);
                 if (!$stmt_transaction->execute()) {
                     throw new Exception('Failed to create supplier transaction: ' . $stmt_transaction->error);
                 }
@@ -259,10 +260,10 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             } else {
                 // For non-regular suppliers, just record the transaction
                 $stmt_transaction = $conn->prepare("INSERT INTO supplier_transactions (
-                    supplier_id, reference_id, transaction_type, amount, remarks, transaction_date, transaction_of, tenant_id
-                ) VALUES (?, ?, 'Debit', ?, ?, NOW(), 'ticket_sale', ?)");
+                    supplier_id, reference_id, transaction_type, amount, remarks, transaction_date, transaction_of, tenant_id, branch_id
+                ) VALUES (?, ?, 'Debit', ?, ?, NOW(), 'ticket_sale', ?, ?)");
                 $remarks = "Base amount of $base $currency deducted for ticket booking for $title $passengerName with PNR: $pnr.";
-                $stmt_transaction->bind_param("iidsi", $supplier_id, $ticket_id, $base, $remarks, $tenant_id);
+                $stmt_transaction->bind_param("iidsii", $supplier_id, $ticket_id, $base, $remarks, $tenant_id, $branch_id);
                 if (!$stmt_transaction->execute()) {
                     throw new Exception('Failed to create supplier transaction: ' . $stmt_transaction->error);
                 }
@@ -274,11 +275,11 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             
             // Insert client transaction
             $stmt_client_transaction = $conn->prepare("INSERT INTO client_transactions (
-                client_id, type, transaction_of, reference_id, amount, balance, currency, description, created_at, tenant_id
-            ) VALUES (?, 'Debit', 'ticket_sale', ?, ?, ?, ?, ?, NOW(), ?)");
+                client_id, type, transaction_of, reference_id, amount, balance, currency, description, created_at, tenant_id, branch_id
+            ) VALUES (?, 'Debit', 'ticket_sale', ?, ?, ?, ?, ?, NOW(), ?, ?)");
             $description = "Ticket booked for $title $passengerName with PNR: $pnr from $origin to $destination.";
-            
-            $stmt_client_transaction->bind_param("iiddssi", $soldTo, $ticket_id, $sold, $new_client_balance, $currency, $description, $tenant_id);
+
+            $stmt_client_transaction->bind_param("iiddssii", $soldTo, $ticket_id, $sold, $new_client_balance, $currency, $description, $tenant_id, $branch_id);
             if (!$stmt_client_transaction->execute()) {
                 throw new Exception('Failed to log client transaction: ' . $stmt_client_transaction->error);
             }
@@ -287,8 +288,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             // Update client balance for regular clients
             if ($client_type === 'regular') {
                 $balance_column = $currency === 'USD' ? 'usd_balance' : 'afs_balance';
-                $stmt_deduct_client_balance = $conn->prepare("UPDATE clients SET $balance_column = ? WHERE id = ? AND tenant_id = ?");
-                $stmt_deduct_client_balance->bind_param("dii", $new_client_balance, $soldTo, $tenant_id);
+                $stmt_deduct_client_balance = $conn->prepare("UPDATE clients SET $balance_column = ? WHERE id = ? AND tenant_id = ? AND branch_id = ?");
+                $stmt_deduct_client_balance->bind_param("diii", $new_client_balance, $soldTo, $tenant_id, $branch_id);
                 if (!$stmt_deduct_client_balance->execute()) {
                     throw new Exception('Failed to update client balance: ' . $stmt_deduct_client_balance->error);
                 }
@@ -329,12 +330,12 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         
         // Insert activity log
         $record_id = $main_booking_id > 0 ? $main_booking_id : $ticket_id;
-        $activity_log_stmt = $conn->prepare("INSERT INTO activity_log 
-            (user_id, action, table_name, record_id, old_values, new_values, ip_address, user_agent, created_at, tenant_id) 
-            VALUES (?, 'add', 'ticket_bookings', ?, '{}', ?, ?, ?, NOW(), ?)");
-        
+        $activity_log_stmt = $conn->prepare("INSERT INTO activity_log
+            (user_id, action, table_name, record_id, old_values, new_values, ip_address, user_agent, created_at, tenant_id, branch_id)
+            VALUES (?, 'add', 'ticket_bookings', ?, '{}', ?, ?, ?, NOW(), ?, ?)");
+
         $new_values_json = json_encode($new_values);
-        $activity_log_stmt->bind_param("iisssi", $user_id, $record_id, $new_values_json, $ip_address, $user_agent, $tenant_id);
+        $activity_log_stmt->bind_param("iisssii", $user_id, $record_id, $new_values_json, $ip_address, $user_agent, $tenant_id, $branch_id);
         $activity_log_stmt->execute();
         $activity_log_stmt->close();
 
@@ -345,8 +346,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         require_once '../includes/functions.php';
 
         // Get client email and name
-        $stmt_client_email = $conn->prepare("SELECT email, name FROM clients WHERE id = ? AND tenant_id = ?");
-        $stmt_client_email->bind_param("ii", $soldTo, $tenant_id);
+        $stmt_client_email = $conn->prepare("SELECT email, name FROM clients WHERE id = ? AND tenant_id = ? AND branch_id = ?");
+        $stmt_client_email->bind_param("iii", $soldTo, $tenant_id, $branch_id);
         $stmt_client_email->execute();
         $client_email_result = $stmt_client_email->get_result();
         $client_email_data = $client_email_result->fetch_assoc();
@@ -355,8 +356,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         $stmt_client_email->close();
 
         // Get agency settings
-        $stmt_agency = $conn->prepare("SELECT agency_name, email, phone, address FROM settings WHERE tenant_id = ?");
-        $stmt_agency->bind_param("i", $tenant_id);
+        $stmt_agency = $conn->prepare("SELECT agency_name, email, phone, address FROM settings WHERE tenant_id = ? AND branch_id = ?");
+        $stmt_agency->bind_param("ii", $tenant_id, $branch_id);
         $stmt_agency->execute();
         $agency_result = $stmt_agency->get_result();
         $agency_data = $agency_result->fetch_assoc();

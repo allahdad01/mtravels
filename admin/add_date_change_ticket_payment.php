@@ -8,6 +8,7 @@ require_once 'security.php';
 // Enforce authentication
 enforce_auth();
 $tenant_id = $_SESSION['tenant_id'];
+$branch_id = $_SESSION['branch_id'];
 require_once('../includes/db.php');
 
 // Validate payment_currency
@@ -38,8 +39,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         $exchange_rate = floatval($_POST['exchange_rate']);
 
         // Get booking details
-        $stmt = $pdo->prepare("SELECT paid_to, title, passenger_name, pnr FROM date_change_tickets WHERE id = ?");
-        $stmt->execute([$booking_id]);
+        $stmt = $pdo->prepare("SELECT paid_to, title, passenger_name, pnr FROM date_change_tickets WHERE id = ? And tenant_id = ? And branch_id = ?");
+        $stmt->execute([$booking_id, $tenant_id, $branch_id]);
         $booking = $stmt->fetch(PDO::FETCH_ASSOC);
 
         if (!$booking) {
@@ -63,8 +64,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             default:
                 throw new Exception("Unsupported currency: $currency");
         }
-        $stmt = $pdo->prepare("SELECT $balanceField as current_balance FROM main_account WHERE id = ? AND tenant_id = ?");
-        $stmt->execute([$booking['paid_to'], $tenant_id]);
+        $stmt = $pdo->prepare("SELECT $balanceField as current_balance FROM main_account WHERE id = ? AND tenant_id = ? And branch_id = ?");
+        $stmt->execute([$booking['paid_to'], $tenant_id, $branch_id]);
         $balanceResult = $stmt->fetch(PDO::FETCH_ASSOC);
         $newBalance = $balanceResult['current_balance'] + $amount;
 
@@ -72,13 +73,13 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         $pdo->beginTransaction();
 
         // Update main account balance
-        $stmt = $pdo->prepare("UPDATE main_account SET $balanceField = ? WHERE id = ? AND tenant_id = ?");
-        $stmt->execute([$newBalance, $booking['paid_to'], $tenant_id]);
+        $stmt = $pdo->prepare("UPDATE main_account SET $balanceField = ? WHERE id = ? AND tenant_id = ? And branch_id = ?");
+        $stmt->execute([$newBalance, $booking['paid_to'], $tenant_id, $branch_id]);
 
         // Insert transaction record
         $stmt = $pdo->prepare("INSERT INTO main_account_transactions 
-            (main_account_id, type, amount, currency, description, transaction_of, reference_id, balance, created_at, tenant_id, exchange_rate)
-            VALUES (?, 'credit', ?, ?, ?, 'date_change', ?, ?, ?, ?, ?)");
+            (main_account_id, type, amount, currency, description, transaction_of, reference_id, balance, created_at, tenant_id, exchange_rate, branch_id)
+            VALUES (?, 'credit', ?, ?, ?, 'date_change', ?, ?, ?, ?, ?, ?)");
         $stmt->execute([
             $booking['paid_to'],
             $amount,
@@ -88,7 +89,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             $newBalance,
             $payment_date,
             $tenant_id,
-            $exchange_rate
+            $exchange_rate,
+            $branch_id
         ]);
 
         // Get the last inserted ID using PDO's lastInsertId()
@@ -106,11 +108,11 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 
         $notifStmt = $pdo->prepare("
             INSERT INTO notifications 
-            (transaction_id, transaction_type, message, status, created_at, tenant_id) 
-            VALUES (?, 'ticket_date_change', ?, 'Unread', NOW(), ?)
+            (transaction_id, transaction_type, message, status, created_at, tenant_id, branch_id) 
+            VALUES (?, 'ticket_date_change', ?, 'Unread', NOW(), ?, ?)
         ");
         
-        if (!$notifStmt->execute([$transaction_id, $notificationMessage, $tenant_id])) {
+        if (!$notifStmt->execute([$transaction_id, $notificationMessage, $tenant_id, $branch_id])) {
             throw new Exception("Failed to create notification");
         }
 
@@ -135,10 +137,10 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         
         $activityStmt = $pdo->prepare("
             INSERT INTO activity_log 
-            (user_id, action, table_name, record_id, old_values, new_values, ip_address, user_agent, created_at, tenant_id) 
-            VALUES (?, 'add', 'main_account_transactions', ?, ?, ?, ?, ?, NOW(), ?)
+            (user_id, action, table_name, record_id, old_values, new_values, ip_address, user_agent, created_at, tenant_id, branch_id) 
+            VALUES (?, 'add', 'main_account_transactions', ?, ?, ?, ?, ?, NOW(), ?, ?)
         ");
-        $activityStmt->execute([$user_id, $transaction_id, $old_values, $new_values, $ip_address, $user_agent, $tenant_id]);
+        $activityStmt->execute([$user_id, $transaction_id, $old_values, $new_values, $ip_address, $user_agent, $tenant_id, $branch_id]);
         
         echo json_encode(['success' => true]);
 

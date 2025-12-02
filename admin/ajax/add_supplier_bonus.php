@@ -11,6 +11,7 @@ if (session_status() === PHP_SESSION_NONE) {
 $username = isset($_SESSION['name']) ? $_SESSION['name'] : null;
 $user_id = isset($_SESSION['user_id']) ? $_SESSION['user_id'] : null;
 $tenant_id = isset($_SESSION['tenant_id']) ? $_SESSION['tenant_id'] : null;
+$branch_id = isset($_SESSION['branch_id']) ? $_SESSION['branch_id'] : null;
 
 
 require_once '../../includes/db.php';
@@ -39,8 +40,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 
     try {
         // Lock the supplier row to prevent race conditions
-        $stmt = $conn->prepare("SELECT balance, name FROM suppliers WHERE id = ? AND tenant_id = ? FOR UPDATE");
-        $stmt->bind_param("ii", $supplierId, $tenant_id);
+        $stmt = $conn->prepare("SELECT balance, name FROM suppliers WHERE id = ? AND tenant_id = ? AND branch_id = ? FOR UPDATE");
+        $stmt->bind_param("iii", $supplierId, $tenant_id, $branch_id);
         $stmt->execute();
         $result = $stmt->get_result();
         
@@ -55,8 +56,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         
         // Update supplier balance
         $new_balance = $current_balance + $amount;
-        $stmt = $conn->prepare("UPDATE suppliers SET balance = ?, updated_at = NOW() WHERE id = ? AND tenant_id = ?");
-        $stmt->bind_param("did", $new_balance, $supplierId, $tenant_id);
+        $stmt = $conn->prepare("UPDATE suppliers SET balance = ?, updated_at = NOW() WHERE id = ? AND tenant_id = ? AND branch_id = ?");
+        $stmt->bind_param("diii", $new_balance, $supplierId, $tenant_id, $branch_id);
         $stmt->execute();
         
         if ($stmt->affected_rows === 0) {
@@ -79,8 +80,10 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 remarks,
                 balance,
                 receipt,
-                tenant_id
+                tenant_id,
+                branch_id
             ) VALUES (
+                ?,
                 ?,
                 ?,
                 ?,
@@ -97,7 +100,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             throw new Exception("Failed to prepare statement for transaction insertion: " . $conn->error);
         }
         
-        $stmt->bind_param("issssssss", 
+        $stmt->bind_param("issssssssi",
             $supplierId,
             $transactionType,
             $amount,
@@ -106,7 +109,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             $completeRemarks,
             $new_balance,
             $receipt,
-            $tenant_id
+            $tenant_id,
+            $branch_id
         );
         
         if (!$stmt->execute()) {
@@ -123,10 +127,12 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 transaction_id,
                 transaction_type,
                 tenant_id,
+                branch_id,
                 message,
                 status,
                 created_at
             ) VALUES (
+                ?,
                 ?,
                 ?,
                 ?,
@@ -139,7 +145,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         $transaction_type = 'supplier_bonus';
         $status = 'Unread';
         $notificationStmt = $conn->prepare($notificationQuery);
-        $notificationStmt->bind_param('isssi', $lastInsertId, $transaction_type, $tenant_id, $notificationMessage, $status);
+        $notificationStmt->bind_param('ississi', $lastInsertId, $transaction_type, $tenant_id, $branch_id, $notificationMessage, $status);
         if (!$notificationStmt->execute()) {
             throw new Exception("Failed to send notification to admin.");
         }
@@ -163,11 +169,11 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         $user_agent = $_SERVER['HTTP_USER_AGENT'] ?? '';
         
         $activityStmt = $conn->prepare("
-            INSERT INTO activity_log 
-            (user_id, tenant_id, action, table_name, record_id, old_values, new_values, ip_address, user_agent, created_at) 
-            VALUES (?, ?, 'bonus', 'suppliers', ?, ?, ?, ?, ?, NOW())
+            INSERT INTO activity_log
+            (user_id, tenant_id, branch_id, action, table_name, record_id, old_values, new_values, ip_address, user_agent, created_at)
+            VALUES (?, ?, ?, 'bonus', 'suppliers', ?, ?, ?, ?, ?, NOW())
         ");
-        $activityStmt->bind_param("iisssss", $user_id, $tenant_id, $supplierId, $old_values, $new_values, $ip_address, $user_agent);
+        $activityStmt->bind_param("iiisssss", $user_id, $tenant_id, $branch_id, $supplierId, $old_values, $new_values, $ip_address, $user_agent);
         $activityStmt->execute();
 
         $conn->commit();

@@ -6,6 +6,7 @@ if (session_status() === PHP_SESSION_NONE) {
 // Include security module
 require_once 'security.php';
 $tenant_id = $_SESSION['tenant_id'];
+$branch_id = $_SESSION['branch_id'];
 // Include language helper
 require_once '../includes/language_helpers.php';
 
@@ -462,8 +463,8 @@ $paginationPattern = empty($search)
                                                                 $isAgencyClient = false;
                                                                 if (!empty($booking['sold_to'])) {
                                                                     try {
-                                                                        $clientStmt = $pdo->prepare("SELECT client_type FROM clients WHERE id = ? AND tenant_id = ?");
-                                                                        $clientStmt->execute([$booking['sold_to'], $tenant_id]);
+                                                                        $clientStmt = $pdo->prepare("SELECT client_type FROM clients WHERE id = ? AND tenant_id = ? AND branch_id = ?");
+                                                                        $clientStmt->execute([$booking['sold_to'], $tenant_id, $branch_id]);
                                                                         $clientRow = $clientStmt->fetch(PDO::FETCH_ASSOC);
                                                                         if ($clientRow) {
                                                                             $isAgencyClient = ($clientRow['client_type'] === 'agency');

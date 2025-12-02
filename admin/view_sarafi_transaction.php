@@ -13,6 +13,7 @@ require_once 'security.php';
 // Enforce authentication
 enforce_auth();
 $tenant_id = $_SESSION['tenant_id'];
+$branch_id = $_SESSION['branch_id'];
 require_once('../includes/db.php');
 
 // Check if user is logged in
@@ -45,9 +46,9 @@ try {
         JOIN customers c ON st.customer_id = c.id
         JOIN main_account_transactions mat ON st.id = mat.reference_id
         JOIN main_account ma ON mat.main_account_id = ma.id
-        WHERE st.id = ? AND st.tenant_id = ?
+        WHERE st.id = ? AND st.tenant_id = ? AND st.branch_id = ? AND c.branch_id = ? AND mat.branch_id = ? AND ma.branch_id = ?
     ");
-    $stmt->execute([$transaction_id, $tenant_id]);
+    $stmt->execute([$transaction_id, $tenant_id, $branch_id, $branch_id, $branch_id, $branch_id]);
     $transaction = $stmt->fetch(PDO::FETCH_ASSOC);
 
     if (!$transaction) {
@@ -57,11 +58,11 @@ try {
 
     // Get customer wallet balance at the time of transaction
     $stmt = $pdo->prepare("
-        SELECT balance 
-        FROM customer_wallets 
-        WHERE customer_id = ? AND currency = ? AND tenant_id = ?
+        SELECT balance
+        FROM customer_wallets
+        WHERE customer_id = ? AND currency = ? AND tenant_id = ? AND branch_id = ?
     ");
-    $stmt->execute([$transaction['customer_id'], $transaction['currency'], $tenant_id]);
+    $stmt->execute([$transaction['customer_id'], $transaction['currency'], $tenant_id, $branch_id]);
     $wallet = $stmt->fetch(PDO::FETCH_ASSOC);
 
     // Format response data
@@ -98,15 +99,15 @@ try {
     // If it's a hawala transaction, add hawala-specific details
     if ($transaction['type'] === 'hawala_sarafi') {
         $stmt = $pdo->prepare("
-            SELECT 
+            SELECT
                 h.*,
                 rc.name as receiver_name,
                 rc.phone as receiver_phone
             FROM hawala_transfers h
             LEFT JOIN customers rc ON h.receiver_id = rc.id
-            WHERE h.sarafi_transaction_id = ? AND h.tenant_id = ?
+            WHERE h.sarafi_transaction_id = ? AND h.tenant_id = ? AND h.branch_id = ? AND (rc.id IS NULL OR rc.branch_id = ?)
         ");
-        $stmt->execute([$transaction_id, $tenant_id]);
+        $stmt->execute([$transaction_id, $tenant_id, $branch_id, $branch_id]);
         $hawala = $stmt->fetch(PDO::FETCH_ASSOC);
 
         if ($hawala) {

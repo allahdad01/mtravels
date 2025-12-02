@@ -22,6 +22,7 @@ if (!$ticketId || !$weight || !$basePrice || !$soldPrice) {
     exit;
 }
 $tenant_id = $_SESSION['tenant_id'];
+$branch_id = $_SESSION['branch_id'];
 try {
     // Start transaction
     $conn->begin_transaction();
@@ -31,11 +32,11 @@ try {
         SELECT t.*, s.currency as supplier_currency, s.supplier_type, s.balance as supplier_balance, s.name as supplier_name,
                c.name as client_name, c.client_type, c.usd_balance, c.afs_balance
         FROM ticket_bookings t
-        LEFT JOIN suppliers s ON t.supplier = s.id
-        LEFT JOIN clients c ON t.sold_to = c.id
-        WHERE t.id = ? AND t.tenant_id = ?
+        LEFT JOIN suppliers s ON t.supplier = s.id AND s.tenant_id = ? AND s.branch_id = ?
+        LEFT JOIN clients c ON t.sold_to = c.id AND c.tenant_id = ? AND c.branch_id = ?
+        WHERE t.id = ? AND t.tenant_id = ? AND t.branch_id = ?
     ");
-    $stmt_ticket->bind_param('ii', $ticketId, $tenant_id);
+    $stmt_ticket->bind_param('iiiiii', $tenant_id, $branch_id, $tenant_id, $branch_id, $ticketId, $tenant_id, $branch_id);
     $stmt_ticket->execute();
     $ticket_result = $stmt_ticket->get_result();
     $ticket_details = $ticket_result->fetch_assoc();
@@ -47,12 +48,12 @@ try {
 
     // Step 2: Insert into ticket_weights table
     $stmt = $conn->prepare("
-        INSERT INTO ticket_weights 
-        (ticket_id, weight, base_price, sold_price, profit, remarks, created_at, updated_at, tenant_id) 
-        VALUES (?, ?, ?, ?, ?, ?, NOW(), NOW(), ?)
+        INSERT INTO ticket_weights
+        (ticket_id, weight, base_price, sold_price, profit, remarks, created_at, updated_at, tenant_id, branch_id)
+        VALUES (?, ?, ?, ?, ?, ?, NOW(), NOW(), ?, ?)
     ");
-    
-    $stmt->bind_param('iddddsi', $ticketId, $weight, $basePrice, $soldPrice, $profit, $remarks, $tenant_id);
+
+    $stmt->bind_param('iddddsii', $ticketId, $weight, $basePrice, $soldPrice, $profit, $remarks, $tenant_id, $branch_id);
     
     if (!$stmt->execute()) {
         throw new Exception('Failed to save weight data');
@@ -66,19 +67,20 @@ try {
         
         // Insert supplier transaction
         $stmt_supplier = $conn->prepare("
-            INSERT INTO supplier_transactions 
-            (supplier_id, reference_id, transaction_type, amount, balance, remarks, transaction_date, transaction_of, tenant_id) 
-            VALUES (?, ?, 'Debit', ?, ?, ?, NOW(), 'weight_sale', ?)
+            INSERT INTO supplier_transactions
+            (supplier_id, reference_id, transaction_type, amount, balance, remarks, transaction_date, transaction_of, tenant_id, branch_id)
+            VALUES (?, ?, 'Debit', ?, ?, ?, NOW(), 'weight_sale', ?, ?)
         ");
-        
+
         $supplier_remarks = "Base amount of {$basePrice} {$ticket_details['supplier_currency']} deducted for weight transaction.";
-        $stmt_supplier->bind_param("iiddsi", 
-            $ticket_details['supplier'], 
-            $weightId, 
-            $basePrice, 
-            $new_supplier_balance, 
+        $stmt_supplier->bind_param("iiddsii",
+            $ticket_details['supplier'],
+            $weightId,
+            $basePrice,
+            $new_supplier_balance,
             $supplier_remarks,
-            $tenant_id
+            $tenant_id,
+            $branch_id
         );
         
         if (!$stmt_supplier->execute()) {
@@ -86,8 +88,8 @@ try {
         }
         
         // Update supplier balance
-        $stmt_update_supplier = $conn->prepare("UPDATE suppliers SET balance = ? WHERE id = ? AND tenant_id = ?");
-        $stmt_update_supplier->bind_param("did", $new_supplier_balance, $ticket_details['supplier'], $tenant_id);
+        $stmt_update_supplier = $conn->prepare("UPDATE suppliers SET balance = ? WHERE id = ? AND tenant_id = ? AND branch_id = ?");
+        $stmt_update_supplier->bind_param("diii", $new_supplier_balance, $ticket_details['supplier'], $tenant_id, $branch_id);
         
         if (!$stmt_update_supplier->execute()) {
             throw new Exception('Failed to update supplier balance');
@@ -95,18 +97,19 @@ try {
     } else {
         // For non-External suppliers, just record the transaction without balance
         $stmt_supplier = $conn->prepare("
-            INSERT INTO supplier_transactions 
-            (supplier_id, reference_id, transaction_type, amount, remarks, transaction_date, transaction_of, tenant_id) 
-            VALUES (?, ?, 'Debit', ?, ?, NOW(), 'weight_sale', ?)
+            INSERT INTO supplier_transactions
+            (supplier_id, reference_id, transaction_type, amount, remarks, transaction_date, transaction_of, tenant_id, branch_id)
+            VALUES (?, ?, 'Debit', ?, ?, NOW(), 'weight_sale', ?, ?)
         ");
-        
+
         $supplier_remarks = "Base amount of {$basePrice} {$ticket_details['supplier_currency']} deducted for weight transaction.";
-        $stmt_supplier->bind_param("iidsi", 
-            $ticket_details['supplier'], 
-            $weightId, 
-            $basePrice, 
+        $stmt_supplier->bind_param("iidsii",
+            $ticket_details['supplier'],
+            $weightId,
+            $basePrice,
             $supplier_remarks,
-            $tenant_id
+            $tenant_id,
+            $branch_id
         );
         
         if (!$stmt_supplier->execute()) {
@@ -124,20 +127,21 @@ try {
         
         // Insert client transaction
         $stmt_client = $conn->prepare("
-            INSERT INTO client_transactions 
-            (client_id, type, transaction_of, reference_id, amount, balance, currency, description, created_at, tenant_id) 
-            VALUES (?, 'Debit', 'weight_sale', ?, ?, ?, ?, ?, NOW(), ?)
+            INSERT INTO client_transactions
+            (client_id, type, transaction_of, reference_id, amount, balance, currency, description, created_at, tenant_id, branch_id)
+            VALUES (?, 'Debit', 'weight_sale', ?, ?, ?, ?, ?, NOW(), ?, ?)
         ");
-        
+
         $client_description = "Weight transaction: {$weight}kg at {$soldPrice} {$ticket_details['currency']}.";
-        $stmt_client->bind_param("iiddssi", 
-            $ticket_details['sold_to'], 
-            $weightId, 
-            $soldPrice, 
-            $new_client_balance, 
-            $ticket_details['currency'], 
+        $stmt_client->bind_param("iiddssii",
+            $ticket_details['sold_to'],
+            $weightId,
+            $soldPrice,
+            $new_client_balance,
+            $ticket_details['currency'],
             $client_description,
-            $tenant_id
+            $tenant_id,
+            $branch_id
         );
         
         if (!$stmt_client->execute()) {
@@ -147,8 +151,8 @@ try {
         // Update client balance for regular clients
         if ($ticket_details['client_type'] === 'regular') {
             $balance_column = $ticket_details['currency'] === 'USD' ? 'usd_balance' : 'afs_balance';
-            $stmt_update_client = $conn->prepare("UPDATE clients SET $balance_column = ? WHERE id = ? AND tenant_id = ?");
-            $stmt_update_client->bind_param("did", $new_client_balance, $ticket_details['sold_to'], $tenant_id);
+            $stmt_update_client = $conn->prepare("UPDATE clients SET $balance_column = ? WHERE id = ? AND tenant_id = ? AND branch_id = ?");
+            $stmt_update_client->bind_param("diii", $new_client_balance, $ticket_details['sold_to'], $tenant_id, $branch_id);
             
             if (!$stmt_update_client->execute()) {
                 throw new Exception('Failed to update client balance');
@@ -174,12 +178,12 @@ try {
     ]);
     
     $stmt = $conn->prepare("
-        INSERT INTO activity_log 
-        (user_id, tenant_id, action, table_name, record_id, old_values, new_values, ip_address, user_agent, created_at) 
-        VALUES (?, ?, 'create', 'ticket_weights', ?, NULL, ?, ?, ?, NOW())
+        INSERT INTO activity_log
+        (user_id, tenant_id, action, table_name, record_id, old_values, new_values, ip_address, user_agent, created_at, branch_id)
+        VALUES (?, ?, 'create', 'ticket_weights', ?, NULL, ?, ?, ?, NOW(), ?)
     ");
-    
-    $stmt->bind_param("iisssi", $user_id, $tenant_id, $weightId, $new_values, $ip_address, $user_agent);
+
+    $stmt->bind_param("iissssi", $user_id, $tenant_id, $weightId, $new_values, $ip_address, $user_agent, $branch_id);
     
     if (!$stmt->execute()) {
         throw new Exception('Failed to log activity');

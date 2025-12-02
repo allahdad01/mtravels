@@ -5,6 +5,7 @@ require_once 'security.php';
 // Enforce authentication
 enforce_auth();
 $tenant_id = $_SESSION['tenant_id'];
+$branch_id = $_SESSION['branch_id'];
 require_once '../includes/conn.php';
 
 $data = json_decode(file_get_contents("php://input"), true);
@@ -12,13 +13,13 @@ if ($_SERVER["REQUEST_METHOD"] == "POST" && isset($data['id'])) {
     $refundId = intval($data['id']);
 
     // Step 1: Fetch Hotel Refund Details
-    $query = "SELECT hr.*, h.sold_to, h.supplier_id, h.sold_amount, h.base_amount, c.client_type 
-              FROM hotel_refunds hr 
-              JOIN hotel_bookings h ON hr.booking_id = h.id 
-              LEFT JOIN clients c ON h.sold_to = c.id 
-              WHERE hr.id = ? AND hr.tenant_id = ?";
+    $query = "SELECT hr.*, h.sold_to, h.supplier_id, h.sold_amount, h.base_amount, c.client_type
+              FROM hotel_refunds hr
+              JOIN hotel_bookings h ON hr.booking_id = h.id
+              LEFT JOIN clients c ON h.sold_to = c.id
+              WHERE hr.id = ? AND hr.tenant_id = ? AND hr.branch_id = ? AND h.tenant_id = ? AND h.branch_id = ? AND c.tenant_id = ? AND c.branch_id = ?";
     $stmt = $conn->prepare($query);
-    $stmt->bind_param("ii", $refundId, $tenant_id);
+    $stmt->bind_param("iiiiiii", $refundId, $tenant_id, $branch_id, $tenant_id, $branch_id, $tenant_id, $branch_id);
     $stmt->execute();
     $result = $stmt->get_result();
     
@@ -43,11 +44,11 @@ if ($_SERVER["REQUEST_METHOD"] == "POST" && isset($data['id'])) {
     try {
         // Step 2: Reverse Client Transactions (Only If Client is Regular)
         if ($clientType === 'regular') {
-            $clientTransactions = "SELECT id, amount, type, created_at FROM client_transactions 
-                                 WHERE client_id = ? AND transaction_of = 'hotel_refund' 
-                                 AND reference_id = ? AND tenant_id = ?";
+            $clientTransactions = "SELECT id, amount, type, created_at FROM client_transactions
+                                 WHERE client_id = ? AND transaction_of = 'hotel_refund'
+                                 AND reference_id = ? AND tenant_id = ? AND branch_id = ?";
             $stmt = $conn->prepare($clientTransactions);
-            $stmt->bind_param("iii", $clientId, $refundId, $tenant_id);
+            $stmt->bind_param("iiii", $clientId, $refundId, $tenant_id, $branch_id);
             $stmt->execute();
             $clientResults = $stmt->get_result();
 
@@ -58,39 +59,39 @@ if ($_SERVER["REQUEST_METHOD"] == "POST" && isset($data['id'])) {
 
                 // Adjust Client Balance with Correct Reversal Logic
                 $clientBalanceField = ($currency == 'USD') ? 'usd_balance' : 'afs_balance';
-                
+
                 // Reverse logic: If original was 'credit', subtract; if 'debit', add.
-                $adjustClientBalance = "UPDATE clients 
-                                      SET $clientBalanceField = $clientBalanceField " . ($row['type'] == 'credit' ? '-' : '+') . " ? 
-                                      WHERE id = ? AND tenant_id = ?";
+                $adjustClientBalance = "UPDATE clients
+                                      SET $clientBalanceField = $clientBalanceField " . ($row['type'] == 'credit' ? '-' : '+') . " ?
+                                      WHERE id = ? AND tenant_id = ? AND branch_id = ?";
                 $stmt = $conn->prepare($adjustClientBalance);
-                $stmt->bind_param("dii", $amount, $clientId, $tenant_id);
+                $stmt->bind_param("diii", $amount, $clientId, $tenant_id, $branch_id);
                 $stmt->execute();
 
                 // Update subsequent transactions' running balances
-                $updateSubsequentBalances = "UPDATE client_transactions 
-                                           SET balance = balance " . ($row['type'] == 'credit' ? '-' : '+') . " ? 
-                                           WHERE client_id = ? 
-                                           AND id > ? 
+                $updateSubsequentBalances = "UPDATE client_transactions
+                                           SET balance = balance " . ($row['type'] == 'credit' ? '-' : '+') . " ?
+                                           WHERE client_id = ?
+                                           AND id > ?
                                            AND currency = ?
-                                           AND tenant_id = ?
+                                           AND tenant_id = ? AND branch_id = ?
                                            ORDER BY created_at ASC";
                 $stmtUpdate = $conn->prepare($updateSubsequentBalances);
-                $stmtUpdate->bind_param("dissi", $amount, $clientId, $transaction_id, $currency, $tenant_id);
+                $stmtUpdate->bind_param("dissis", $amount, $clientId, $transaction_id, $currency, $tenant_id, $branch_id);
                 $stmtUpdate->execute();
 
                 // Delete Client Transaction
-                $deleteClientTransaction = "DELETE FROM client_transactions WHERE id = ? AND tenant_id = ?";
+                $deleteClientTransaction = "DELETE FROM client_transactions WHERE id = ? AND tenant_id = ? AND branch_id = ?";
                 $stmt = $conn->prepare($deleteClientTransaction);
-                $stmt->bind_param("ii", $transaction_id, $tenant_id);
+                $stmt->bind_param("iii", $transaction_id, $tenant_id, $branch_id);
                 $stmt->execute();
             }
         } else {
             $clientTransactions = "SELECT id, amount, type, created_at FROM client_transactions
                                  WHERE client_id = ? AND transaction_of = 'hotel_refund'
-                                 AND reference_id = ? AND tenant_id = ?";
+                                 AND reference_id = ? AND tenant_id = ? AND branch_id = ?";
             $stmt = $conn->prepare($clientTransactions);
-            $stmt->bind_param("iii", $clientId, $refundId, $tenant_id);
+            $stmt->bind_param("iiii", $clientId, $refundId, $tenant_id, $branch_id);
             $stmt->execute();
             $clientResults = $stmt->get_result();
 
@@ -98,20 +99,20 @@ if ($_SERVER["REQUEST_METHOD"] == "POST" && isset($data['id'])) {
                 $transaction_id = $row['id'];
 
                 // Delete Client Transaction
-                $deleteClientTransaction = "DELETE FROM client_transactions WHERE id = ? AND tenant_id = ?";
+                $deleteClientTransaction = "DELETE FROM client_transactions WHERE id = ? AND tenant_id = ? AND branch_id = ?";
                 $stmt = $conn->prepare($deleteClientTransaction);
-                $stmt->bind_param("ii", $transaction_id, $tenant_id);
+                $stmt->bind_param("iii", $transaction_id, $tenant_id, $branch_id);
                 $stmt->execute();
             }
         }
 
         // Step 3: Reverse Supplier Transactions
         if ($supplierId) {
-            $supplierTransactions = "SELECT id, amount, transaction_type, transaction_date FROM supplier_transactions 
-                                   WHERE supplier_id = ? AND transaction_of = 'hotel_refund' 
-                                   AND reference_id = ? AND tenant_id = ?";
+            $supplierTransactions = "SELECT id, amount, transaction_type, transaction_date FROM supplier_transactions
+                                   WHERE supplier_id = ? AND transaction_of = 'hotel_refund'
+                                   AND reference_id = ? AND tenant_id = ? AND branch_id = ?";
             $stmt = $conn->prepare($supplierTransactions);
-            $stmt->bind_param("iii", $supplierId, $refundId, $tenant_id);
+            $stmt->bind_param("iiii", $supplierId, $refundId, $tenant_id, $branch_id);
             $stmt->execute();
             $supplierResults = $stmt->get_result();
 
@@ -121,9 +122,9 @@ if ($_SERVER["REQUEST_METHOD"] == "POST" && isset($data['id'])) {
                 $transaction_id = $row['id'];
                 
                 // Check Supplier Type
-                $supplierTypeQuery = "SELECT supplier_type FROM suppliers WHERE id = ? AND tenant_id = ?";
+                $supplierTypeQuery = "SELECT supplier_type FROM suppliers WHERE id = ? AND tenant_id = ? AND branch_id = ?";
                 $stmt = $conn->prepare($supplierTypeQuery);
-                $stmt->bind_param("ii", $supplierId, $tenant_id);
+                $stmt->bind_param("iii", $supplierId, $tenant_id, $branch_id);
                 $stmt->execute();
                 $supplierTypeResult = $stmt->get_result();
                 $supplierTypeRow = $supplierTypeResult->fetch_assoc();
@@ -131,40 +132,40 @@ if ($_SERVER["REQUEST_METHOD"] == "POST" && isset($data['id'])) {
 
                 if ($supplierType === 'External') {
                     // Adjust Supplier Balance
-                    $adjustSupplierBalance = "UPDATE suppliers 
-                                            SET balance = balance " . ($row['transaction_type'] == 'Credit' ? '-' : '+') . " ? 
-                                            WHERE id = ? AND tenant_id = ?";
+                    $adjustSupplierBalance = "UPDATE suppliers
+                                            SET balance = balance " . ($row['transaction_type'] == 'Credit' ? '-' : '+') . " ?
+                                            WHERE id = ? AND tenant_id = ? AND branch_id = ?";
                     $stmt = $conn->prepare($adjustSupplierBalance);
-                    $stmt->bind_param("dii", $amount, $supplierId, $tenant_id);
+                    $stmt->bind_param("diii", $amount, $supplierId, $tenant_id, $branch_id);
                     $stmt->execute();
                     
                     // Update subsequent transactions' running balances
-                    $updateSubsequentSupplierBalances = "UPDATE supplier_transactions 
-                                                       SET balance = balance " . ($row['transaction_type'] == 'Credit' ? '-' : '+') . " ? 
-                                                       WHERE supplier_id = ? 
+                    $updateSubsequentSupplierBalances = "UPDATE supplier_transactions
+                                                       SET balance = balance " . ($row['transaction_type'] == 'Credit' ? '-' : '+') . " ?
+                                                       WHERE supplier_id = ?
                                                        AND id > ?
-                                                       AND tenant_id = ?
+                                                       AND tenant_id = ? AND branch_id = ?
                                                        ORDER BY transaction_date ASC";
                     $stmtUpdate = $conn->prepare($updateSubsequentSupplierBalances);
-                    $stmtUpdate->bind_param("disi", $amount, $supplierId, $transaction_id, $tenant_id);
+                    $stmtUpdate->bind_param("disii", $amount, $supplierId, $transaction_id, $tenant_id, $branch_id);
                     $stmtUpdate->execute();
     
                 }
 
                 // Delete Supplier Transaction
-                $deleteSupplierTransaction = "DELETE FROM supplier_transactions WHERE id = ? AND tenant_id = ?";
+                $deleteSupplierTransaction = "DELETE FROM supplier_transactions WHERE id = ? AND tenant_id = ? AND branch_id = ?";
                 $stmt = $conn->prepare($deleteSupplierTransaction);
-                $stmt->bind_param("ii", $transaction_id, $tenant_id);
+                $stmt->bind_param("iii", $transaction_id, $tenant_id, $branch_id);
                 $stmt->execute();
             }
         }
 
         // Step 4: Handle Main Account Transactions
-        $mainTransactions = "SELECT id, amount, type, currency, created_at, main_account_id 
-                           FROM main_account_transactions 
-                           WHERE reference_id = ? AND transaction_of = 'hotel_refund' AND tenant_id = ?";
+        $mainTransactions = "SELECT id, amount, type, currency, created_at, main_account_id
+                           FROM main_account_transactions
+                           WHERE reference_id = ? AND transaction_of = 'hotel_refund' AND tenant_id = ? AND branch_id = ?";
         $stmt = $conn->prepare($mainTransactions);
-        $stmt->bind_param("ii", $refundId, $tenant_id);
+        $stmt->bind_param("iii", $refundId, $tenant_id, $branch_id);
         $stmt->execute();
         $mainResults = $stmt->get_result();
 
@@ -184,50 +185,50 @@ if ($_SERVER["REQUEST_METHOD"] == "POST" && isset($data['id'])) {
                 case 'DARHAM': $balanceField = 'darham_balance'; break;
                 default: $balanceField = 'afs_balance'; break;
             }
-            $adjustMainBalance = "UPDATE main_account 
-                                SET $balanceField = $balanceField " . ($type == 'credit' ? '-' : '+') . " ? 
-                                WHERE id = ? AND tenant_id = ?";
+            $adjustMainBalance = "UPDATE main_account
+                                SET $balanceField = $balanceField " . ($type == 'credit' ? '-' : '+') . " ?
+                                WHERE id = ? AND tenant_id = ? AND branch_id = ?";
             $stmt = $conn->prepare($adjustMainBalance);
-            $stmt->bind_param("dii", $amount, $mainAccountId, $tenant_id);
+            $stmt->bind_param("diii", $amount, $mainAccountId, $tenant_id, $branch_id);
             $stmt->execute();
 
             // Update subsequent transactions' running balances
-            $updateSubsequentMainBalances = "UPDATE main_account_transactions 
-                                           SET balance = balance " . ($type == 'credit' ? '-' : '+') . " ? 
-                                           WHERE main_account_id = ? 
-                                           AND id > ? 
+            $updateSubsequentMainBalances = "UPDATE main_account_transactions
+                                           SET balance = balance " . ($type == 'credit' ? '-' : '+') . " ?
+                                           WHERE main_account_id = ?
+                                           AND id > ?
                                            AND currency = ?
-                                           AND tenant_id = ?";
+                                           AND tenant_id = ? AND branch_id = ?";
             $stmtUpdate = $conn->prepare($updateSubsequentMainBalances);
-            $stmtUpdate->bind_param("dissi", $amount, $mainAccountId, $transaction_id, $mainCurrency, $tenant_id);
+            $stmtUpdate->bind_param("dissis", $amount, $mainAccountId, $transaction_id, $mainCurrency, $tenant_id, $branch_id);
             $stmtUpdate->execute();
 
             // Delete Main Account Transaction
-            $deleteMainTransaction = "DELETE FROM main_account_transactions WHERE id = ? AND tenant_id = ?";
+            $deleteMainTransaction = "DELETE FROM main_account_transactions WHERE id = ? AND tenant_id = ? AND branch_id = ?";
             $stmt = $conn->prepare($deleteMainTransaction);
-            $stmt->bind_param("ii", $transaction_id, $tenant_id);
+            $stmt->bind_param("iii", $transaction_id, $tenant_id, $branch_id);
             $stmt->execute();
         }
 
         // Step 5: Update Hotel Booking Profit
         if ($refund['refund_type'] === 'full') {
             // For full refund, restore the original profit
-            $updateHotelQuery = "UPDATE hotel_bookings SET profit = ? WHERE id = ? AND tenant_id = ?";
+            $updateHotelQuery = "UPDATE hotel_bookings SET profit = ? WHERE id = ? AND tenant_id = ? AND branch_id = ?";
             $stmt = $conn->prepare($updateHotelQuery);
-            $stmt->bind_param("dii", $profit, $hotelId, $tenant_id);
+            $stmt->bind_param("diii", $profit, $hotelId, $tenant_id, $branch_id);
             $stmt->execute();
         } else {
             // For partial refund, add back the refunded amount to profit
-            $updateHotelQuery = "UPDATE hotel_bookings SET profit = ? WHERE id = ? AND tenant_id = ?";
+            $updateHotelQuery = "UPDATE hotel_bookings SET profit = ? WHERE id = ? AND tenant_id = ? AND branch_id = ?";
             $stmt = $conn->prepare($updateHotelQuery);
-            $stmt->bind_param("dii", $profit, $hotelId, $tenant_id);
+            $stmt->bind_param("diii", $profit, $hotelId, $tenant_id, $branch_id);
             $stmt->execute();
         }
 
         // Step 6: Delete the Refund Record
-        $deleteRefund = "DELETE FROM hotel_refunds WHERE id = ? AND tenant_id = ?";
+        $deleteRefund = "DELETE FROM hotel_refunds WHERE id = ? AND tenant_id = ? AND branch_id = ?";
         $stmt = $conn->prepare($deleteRefund);
-        $stmt->bind_param("ii", $refundId, $tenant_id);
+        $stmt->bind_param("iii", $refundId, $tenant_id, $branch_id);
         $stmt->execute();
 
         // Commit transaction

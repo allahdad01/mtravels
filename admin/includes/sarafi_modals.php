@@ -7,16 +7,17 @@ if (!isset($conn)) {
 // Include language helper
 require_once __DIR__ . '/../../includes/language_helpers.php';
 $tenant_id = $_SESSION['tenant_id'];
+$branch_id = $_SESSION['branch_id'];
 // Fetch customers if not already fetched
 if (!isset($customers)) {
-    $stmt = $conn->prepare("SELECT * FROM customers WHERE status = 'active' AND tenant_id = ? ORDER BY name ASC");
-    $stmt->execute([$tenant_id]);
+    $stmt = $conn->prepare("SELECT * FROM customers WHERE status = 'active' AND tenant_id = ? And branch_id = ? ORDER BY name ASC");
+    $stmt->execute([$tenant_id, $branch_id]);
     $customers = $stmt->get_result()->fetch_all(MYSQLI_ASSOC);
 }
 
 // Fetch main accounts
-$stmt = $conn->prepare("SELECT * FROM main_account WHERE status = 'active' AND tenant_id = ? ORDER BY name ASC");
-$stmt->execute([$tenant_id]);
+$stmt = $conn->prepare("SELECT * FROM main_account WHERE status = 'active' AND tenant_id = ? And branch_id = ? ORDER BY name ASC");
+$stmt->execute([$tenant_id, $branch_id]);
 $main_accounts = $stmt->get_result()->fetch_all(MYSQLI_ASSOC);
 ?>
 

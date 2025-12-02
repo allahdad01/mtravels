@@ -12,6 +12,7 @@ require_once 'security.php';
 // Enforce authentication
 enforce_auth();
 $tenant_id = $_SESSION['tenant_id'];
+$branch_id = $_SESSION['branch_id'];
 $username = isset($_SESSION["name"]) ? $_SESSION["name"] : "Unknown User";
 
 // Connect using mysqli
@@ -53,8 +54,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             $total_amount += $payment_amount;
 
             // Get the umrah booking details
-            $stmt_fetch_umrah_details = $conn->prepare("SELECT paid_to, received_bank_payment, currency as booking_currency FROM umrah_bookings WHERE booking_id = ? AND tenant_id = ?");
-            $stmt_fetch_umrah_details->bind_param("ii", $booking_id, $tenant_id);
+            $stmt_fetch_umrah_details = $conn->prepare("SELECT paid_to, received_bank_payment, currency as booking_currency FROM umrah_bookings WHERE booking_id = ? AND tenant_id = ? And branch_id = ?");
+            $stmt_fetch_umrah_details->bind_param("iii", $booking_id, $tenant_id, $branch_id);
             $stmt_fetch_umrah_details->execute();
             $stmt_fetch_umrah_details->bind_result($paid_to, $received_bank_payment, $booking_currency);
             if (!$stmt_fetch_umrah_details->fetch()) {
@@ -63,8 +64,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             $stmt_fetch_umrah_details->close();
 
             // Get supplier_id from umrah_booking_services
-            $stmt_fetch_supplier_id = $conn->prepare("SELECT supplier_id FROM umrah_booking_services WHERE booking_id = ? AND service_type IN ('all', 'visa') LIMIT 1");
-            $stmt_fetch_supplier_id->bind_param("i", $booking_id);
+            $stmt_fetch_supplier_id = $conn->prepare("SELECT supplier_id FROM umrah_booking_services WHERE booking_id = ? And tenant_id = ? And branch_id = ? AND service_type IN ('all', 'visa') LIMIT 1");
+            $stmt_fetch_supplier_id->bind_param("iii", $booking_id, $tenant_id, $branch_id);
             $stmt_fetch_supplier_id->execute();
             $stmt_fetch_supplier_id->bind_result($supplier_id);
             if (!$stmt_fetch_supplier_id->fetch()) {
@@ -75,8 +76,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             $stmt_fetch_supplier_id->close();
 
             // Insert the transaction
-            $stmt = $conn->prepare("INSERT INTO umrah_transactions (transaction_type, umrah_booking_id, payment_date, transaction_to, payment_description, payment_amount, currency, receipt, tenant_id, exchange_rate) VALUES ('Credit', ?, ?, ?, ?, ?, ?, ?, ?, ?)");
-            $stmt->bind_param("issssssis", $booking_id, $payment_date, $transaction_to, $payment_description, $payment_amount, $payment_currency, $receipt_number, $tenant_id, $exchange_rate);
+            $stmt = $conn->prepare("INSERT INTO umrah_transactions (transaction_type, umrah_booking_id, payment_date, transaction_to, payment_description, payment_amount, currency, receipt, tenant_id, exchange_rate, branch_id) VALUES ('Credit', ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)");
+            $stmt->bind_param("issssssisi", $booking_id, $payment_date, $transaction_to, $payment_description, $payment_amount, $payment_currency, $receipt_number, $tenant_id, $exchange_rate, $branch_id);
 
             if (!$stmt->execute()) {
                 throw new Exception("Failed to add transaction for booking ID: " . $booking_id);
@@ -90,8 +91,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 
             if ($transaction_to_lower === 'bank') {
                 // Get supplier type
-                $stmt_fetch_supplier = $conn->prepare("SELECT supplier_type, currency FROM suppliers WHERE id = ? AND tenant_id = ?");
-                $stmt_fetch_supplier->bind_param("ii", $supplier_id, $tenant_id);
+                $stmt_fetch_supplier = $conn->prepare("SELECT supplier_type, currency FROM suppliers WHERE id = ? AND tenant_id = ? And branch_id = ?");
+                $stmt_fetch_supplier->bind_param("iii", $supplier_id, $tenant_id, $branch_id);
                 $stmt_fetch_supplier->execute();
                 $stmt_fetch_supplier->bind_result($supplier_type, $supplier_currency);
                 if (!$stmt_fetch_supplier->fetch()) {
@@ -101,8 +102,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 
                 if ($supplier_type === 'External') {
                     // Update supplier balance
-                    $stmt_get_supplier_balance = $conn->prepare("SELECT balance FROM suppliers WHERE id = ? AND tenant_id = ?");
-                    $stmt_get_supplier_balance->bind_param("ii", $supplier_id, $tenant_id);
+                    $stmt_get_supplier_balance = $conn->prepare("SELECT balance FROM suppliers WHERE id = ? AND tenant_id = ? And branch_id = ?");
+                    $stmt_get_supplier_balance->bind_param("iii", $supplier_id, $tenant_id, $branch_id);
                     $stmt_get_supplier_balance->execute();
                     $stmt_get_supplier_balance->bind_result($current_supplier_balance);
                     $stmt_get_supplier_balance->fetch();
@@ -110,16 +111,16 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 
                     $new_supplier_balance = $current_supplier_balance + $payment_amount;
 
-                    $stmt_update_supplier = $conn->prepare("UPDATE suppliers SET balance = ? WHERE id = ? AND tenant_id = ?");
-                    $stmt_update_supplier->bind_param("dii", $new_supplier_balance, $supplier_id, $tenant_id);
+                    $stmt_update_supplier = $conn->prepare("UPDATE suppliers SET balance = ? WHERE id = ? AND tenant_id = ? And branch_id = ?");
+                    $stmt_update_supplier->bind_param("diii", $new_supplier_balance, $supplier_id, $tenant_id, $branch_id);
                     if (!$stmt_update_supplier->execute()) {
                         throw new Exception('Failed to update supplier balance for supplier ID: ' . $supplier_id);
                     }
                     $stmt_update_supplier->close();
 
                     // Record supplier transaction
-                    $stmt_insert_supplier_transaction = $conn->prepare("INSERT INTO supplier_transactions (supplier_id, transaction_type, amount, remarks, transaction_of, reference_id, balance, transaction_date, receipt, tenant_id) VALUES (?, ?, ?, ?, 'umrah', ?, ?, NOW(), ?, ?)");
-                    $stmt_insert_supplier_transaction->bind_param("isdsidsi", $supplier_id, 'Credit', $payment_amount, $payment_description, $umrah_transaction_id, $new_supplier_balance, $receipt_number, $tenant_id);
+                    $stmt_insert_supplier_transaction = $conn->prepare("INSERT INTO supplier_transactions (supplier_id, transaction_type, amount, remarks, transaction_of, reference_id, balance, transaction_date, receipt, tenant_id, branch_id) VALUES (?, ?, ?, ?, 'umrah', ?, ?, NOW(), ?, ?, ?)");
+                    $stmt_insert_supplier_transaction->bind_param("isdsidsii", $supplier_id, 'Credit', $payment_amount, $payment_description, $umrah_transaction_id, $new_supplier_balance, $receipt_number, $tenant_id, $branch_id);
                     if (!$stmt_insert_supplier_transaction->execute()) {
                         throw new Exception("Failed to record supplier transaction for booking ID: " . $booking_id);
                     }
@@ -128,10 +129,10 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                     // Update main account balance for internal suppliers
                     $stmt_get_main_balance = $conn->prepare(
                         $payment_currency === 'USD'
-                            ? "SELECT usd_balance FROM main_account WHERE id = ? AND tenant_id = ?"
-                            : "SELECT afs_balance FROM main_account WHERE id = ? AND tenant_id = ?"
+                            ? "SELECT usd_balance FROM main_account WHERE id = ? AND tenant_id = ? And branch_id = ?"
+                            : "SELECT afs_balance FROM main_account WHERE id = ? AND tenant_id = ? And branch_id = ?"
                     );
-                    $stmt_get_main_balance->bind_param("ii", $paid_to, $tenant_id);
+                    $stmt_get_main_balance->bind_param("iii", $paid_to, $tenant_id, $branch_id);
                     $stmt_get_main_balance->execute();
                     $stmt_get_main_balance->bind_result($current_main_balance);
                     $stmt_get_main_balance->fetch();
@@ -141,18 +142,18 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 
                     $stmt_update_main_account = $conn->prepare(
                         $payment_currency === 'USD'
-                            ? "UPDATE main_account SET usd_balance = ? WHERE id = ? AND tenant_id = ?"
-                            : "UPDATE main_account SET afs_balance = ? WHERE id = ? AND tenant_id = ?"
+                            ? "UPDATE main_account SET usd_balance = ? WHERE id = ? AND tenant_id = ? And branch_id = ?"
+                            : "UPDATE main_account SET afs_balance = ? WHERE id = ? AND tenant_id = ? And branch_id = ?"
                     );
-                    $stmt_update_main_account->bind_param("dii", $new_main_balance, $paid_to, $tenant_id);
+                    $stmt_update_main_account->bind_param("diii", $new_main_balance, $paid_to, $tenant_id, $branch_id);
                     if (!$stmt_update_main_account->execute()) {
                         throw new Exception('Failed to update main account balance for booking ID: ' . $booking_id);
                     }
                     $stmt_update_main_account->close();
 
                     // Record main account transaction
-                    $stmt_insert_main_account_transaction = $conn->prepare("INSERT INTO main_account_transactions (main_account_id, type, amount, currency, description, transaction_of, reference_id, balance, created_at, receipt, tenant_id, exchange_rate) VALUES (?, ?, ?, ?, ?, 'umrah', ?, ?, NOW(), ?, ?, ?)");
-                    $stmt_insert_main_account_transaction->bind_param("isdssidsis", $paid_to, 'Credit', $payment_amount, $payment_currency, $payment_description, $umrah_transaction_id, $new_main_balance, $receipt_number, $tenant_id, $exchange_rate);
+                    $stmt_insert_main_account_transaction = $conn->prepare("INSERT INTO main_account_transactions (main_account_id, type, amount, currency, description, transaction_of, reference_id, balance, created_at, receipt, tenant_id, exchange_rate, branch_id) VALUES (?, ?, ?, ?, ?, 'umrah', ?, ?, NOW(), ?, ?, ?, ?)");
+                    $stmt_insert_main_account_transaction->bind_param("isdssidsisi", $paid_to, 'Credit', $payment_amount, $payment_currency, $payment_description, $umrah_transaction_id, $new_main_balance, $receipt_number, $tenant_id, $exchange_rate, $branch_id);
                     if (!$stmt_insert_main_account_transaction->execute()) {
                         throw new Exception("Failed to record main account transaction for booking ID: " . $booking_id);
                     }
@@ -161,16 +162,16 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 
                 // Update received_bank_payment
                 $new_received_bank_payment = $received_bank_payment + $payment_amount;
-                $stmt_update_umrah_booking = $conn->prepare("UPDATE umrah_bookings SET received_bank_payment = ? WHERE booking_id = ? AND tenant_id = ?");
-                $stmt_update_umrah_booking->bind_param("dii", $new_received_bank_payment, $booking_id, $tenant_id);
+                $stmt_update_umrah_booking = $conn->prepare("UPDATE umrah_bookings SET received_bank_payment = ? WHERE booking_id = ? AND tenant_id = ? And branch_id = ?");
+                $stmt_update_umrah_booking->bind_param("diii", $new_received_bank_payment, $booking_id, $tenant_id, $branch_id);
                 if (!$stmt_update_umrah_booking->execute()) {
                     throw new Exception('Failed to update received bank payment for booking ID: ' . $booking_id);
                 }
                 $stmt_update_umrah_booking->close();
 
                 // Update bank receipt number
-                $stmt_update_bank_receipt = $conn->prepare("UPDATE umrah_bookings SET bank_receipt_number = ? WHERE booking_id = ? AND tenant_id = ?");
-                $stmt_update_bank_receipt->bind_param("sii", $receipt_number, $booking_id, $tenant_id);
+                $stmt_update_bank_receipt = $conn->prepare("UPDATE umrah_bookings SET bank_receipt_number = ? WHERE booking_id = ? AND tenant_id = ? And branch_id = ?");
+                $stmt_update_bank_receipt->bind_param("siii", $receipt_number, $booking_id, $tenant_id, $branch_id);
                 if (!$stmt_update_bank_receipt->execute()) {
                     throw new Exception('Failed to update bank receipt number for booking ID: ' . $booking_id);
                 }
@@ -180,10 +181,10 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 // Update main account balance
                 $stmt_get_main_balance = $conn->prepare(
                     $payment_currency === 'USD'
-                        ? "SELECT usd_balance FROM main_account WHERE id = ? AND tenant_id = ?"
-                        : "SELECT afs_balance FROM main_account WHERE id = ? AND tenant_id = ?"
+                        ? "SELECT usd_balance FROM main_account WHERE id = ? AND tenant_id = ? And branch_id = ?"
+                        : "SELECT afs_balance FROM main_account WHERE id = ? AND tenant_id = ? And branch_id = ?"
                 );
-                $stmt_get_main_balance->bind_param("ii", $paid_to, $tenant_id);
+                $stmt_get_main_balance->bind_param("iii", $paid_to, $tenant_id, $branch_id);
                 $stmt_get_main_balance->execute();
                 $stmt_get_main_balance->bind_result($current_main_balance);
                 $stmt_get_main_balance->fetch();
@@ -193,18 +194,18 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 
                 $stmt_update_main_account = $conn->prepare(
                     $payment_currency === 'USD'
-                        ? "UPDATE main_account SET usd_balance = ? WHERE id = ? AND tenant_id = ?"
-                        : "UPDATE main_account SET afs_balance = ? WHERE id = ? AND tenant_id = ?"
+                        ? "UPDATE main_account SET usd_balance = ? WHERE id = ? AND tenant_id = ? And branch_id = ?"
+                        : "UPDATE main_account SET afs_balance = ? WHERE id = ? AND tenant_id = ? And branch_id = ?"
                 );
-                $stmt_update_main_account->bind_param("dii", $new_main_balance, $paid_to, $tenant_id);
+                $stmt_update_main_account->bind_param("diii", $new_main_balance, $paid_to, $tenant_id, $branch_id);
                 if (!$stmt_update_main_account->execute()) {
                     throw new Exception('Failed to update main account balance for booking ID: ' . $booking_id);
                 }
                 $stmt_update_main_account->close();
 
                 // Record main account transaction
-                $stmt_insert_main_account_transaction = $conn->prepare("INSERT INTO main_account_transactions (main_account_id, type, amount, currency, description, transaction_of, reference_id, balance, created_at, receipt, tenant_id, exchange_rate) VALUES (?, 'credit', ?, ?, ?, 'umrah', ?, ?, NOW(), ?, ?, ?)");
-                $stmt_insert_main_account_transaction->bind_param("idssidsis", $paid_to, $payment_amount, $payment_currency, $payment_description, $umrah_transaction_id, $new_main_balance, $receipt_number, $tenant_id, $exchange_rate);
+                $stmt_insert_main_account_transaction = $conn->prepare("INSERT INTO main_account_transactions (main_account_id, type, amount, currency, description, transaction_of, reference_id, balance, created_at, receipt, tenant_id, exchange_rate, branch_id) VALUES (?, 'credit', ?, ?, ?, 'umrah', ?, ?, NOW(), ?, ?, ?, ?)");
+                $stmt_insert_main_account_transaction->bind_param("idssidsisi", $paid_to, $payment_amount, $payment_currency, $payment_description, $umrah_transaction_id, $new_main_balance, $receipt_number, $tenant_id, $exchange_rate, $branch_id);
                 if (!$stmt_insert_main_account_transaction->execute()) {
                     throw new Exception("Failed to record main account transaction for booking ID: " . $booking_id);
                 }
@@ -215,9 +216,9 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             $stmt_get_transactions = $conn->prepare("
                 SELECT payment_amount, currency, exchange_rate
                 FROM umrah_transactions
-                WHERE umrah_booking_id = ? AND transaction_type = 'Credit' AND tenant_id = ?
+                WHERE umrah_booking_id = ? AND transaction_type = 'Credit' AND tenant_id = ? And branch_id = ?
             ");
-            $stmt_get_transactions->bind_param("ii", $booking_id, $tenant_id);
+            $stmt_get_transactions->bind_param("iii", $booking_id, $tenant_id, $branch_id);
             $stmt_get_transactions->execute();
             $transactions_result = $stmt_get_transactions->get_result();
 
@@ -243,16 +244,16 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             $stmt_get_transactions->close();
 
             // Update paid amount
-            $stmt_update_paid = $conn->prepare("UPDATE umrah_bookings SET paid = ? WHERE booking_id = ? AND tenant_id = ?");
-            $stmt_update_paid->bind_param("dii", $total_paid_in_base_currency, $booking_id, $tenant_id);
+            $stmt_update_paid = $conn->prepare("UPDATE umrah_bookings SET paid = ? WHERE booking_id = ? AND tenant_id = ? And branch_id = ?");
+            $stmt_update_paid->bind_param("diii", $total_paid_in_base_currency, $booking_id, $tenant_id, $branch_id);
             if (!$stmt_update_paid->execute()) {
                 throw new Exception('Failed to update paid amount for booking ID: ' . $booking_id);
             }
             $stmt_update_paid->close();
 
             // Update due amount
-            $stmt_update_due = $conn->prepare("UPDATE umrah_bookings SET due = sold_price - paid WHERE booking_id = ? AND tenant_id = ?");
-            $stmt_update_due->bind_param("ii", $booking_id, $tenant_id);
+            $stmt_update_due = $conn->prepare("UPDATE umrah_bookings SET due = sold_price - paid WHERE booking_id = ? AND tenant_id = ? And branch_id = ?");
+            $stmt_update_due->bind_param("iii", $booking_id, $tenant_id, $branch_id);
             if (!$stmt_update_due->execute()) {
                 throw new Exception('Failed to update due amount for booking ID: ' . $booking_id);
             }
@@ -275,8 +276,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 }
 
                 // Get traveler name for this booking
-                $travelerStmt = $conn->prepare("SELECT name FROM umrah_bookings WHERE booking_id = ? AND tenant_id = ?");
-                $travelerStmt->bind_param("ii", $booking_id, $tenant_id);
+                $travelerStmt = $conn->prepare("SELECT name FROM umrah_bookings WHERE booking_id = ? AND tenant_id = ? And branch_id = ?");
+                $travelerStmt->bind_param("iii", $booking_id, $tenant_id, $branch_id);
                 $travelerStmt->execute();
                 $travelerStmt->bind_result($traveler_name);
                 $travelerStmt->fetch();
@@ -284,8 +285,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 
                 // Get the transaction ID for this booking (from the loop above)
                 // We need to get the umrah_transaction_id that was created for this booking
-                $transactionIdStmt = $conn->prepare("SELECT id FROM umrah_transactions WHERE umrah_booking_id = ? AND tenant_id = ? ORDER BY id DESC LIMIT 1");
-                $transactionIdStmt->bind_param("ii", $booking_id, $tenant_id);
+                $transactionIdStmt = $conn->prepare("SELECT id FROM umrah_transactions WHERE umrah_booking_id = ? AND tenant_id = ? And branch_id = ? ORDER BY id DESC LIMIT 1");
+                $transactionIdStmt->bind_param("iii", $booking_id, $tenant_id, $branch_id);
                 $transactionIdStmt->execute();
                 $transactionIdStmt->bind_result($umrah_transaction_id);
                 $transactionIdStmt->fetch();
@@ -294,8 +295,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 // Create individual notification for this member
                 $notification_message = "Customer: $traveler_name has paid: $member_payment_amount $payment_currency to $transaction_to processed by $username for the Umrah booking.";
 
-                $notificationStmt = $conn->prepare("INSERT INTO notifications (transaction_id, transaction_type, message, recipient_role, status, created_at, tenant_id) VALUES (?, ?, ?, ?, ?, NOW(), ?)");
-                $notificationStmt->bind_param("issssi", $umrah_transaction_id, $transaction_type, $notification_message, $recipient_role, $status, $tenant_id);
+                $notificationStmt = $conn->prepare("INSERT INTO notifications (transaction_id, transaction_type, message, recipient_role, status, created_at, tenant_id, branch_id) VALUES (?, ?, ?, ?, ?, NOW(), ?, ?)");
+                $notificationStmt->bind_param("issssii", $umrah_transaction_id, $transaction_type, $notification_message, $recipient_role, $status, $tenant_id, $branch_id);
 
                 if (!$notificationStmt->execute()) {
                     throw new Exception("Failed to create notification for booking ID: $booking_id");
@@ -325,10 +326,10 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 
         $stmt_log = $conn->prepare("
             INSERT INTO activity_log
-            (user_id, action, table_name, record_id, old_values, new_values, ip_address, user_agent, created_at, tenant_id)
-            VALUES (?, 'add', 'umrah_transactions', ?, ?, ?, ?, ?, NOW(), ?)
+            (user_id, action, table_name, record_id, old_values, new_values, ip_address, user_agent, created_at, tenant_id, branch_id)
+            VALUES (?, 'add', 'umrah_transactions', ?, ?, ?, ?, ?, NOW(), ?, ?)
         ");
-        $stmt_log->bind_param("iissssi", $user_id, $family_id, $old_values, $new_values, $ip_address, $user_agent, $tenant_id);
+        $stmt_log->bind_param("iissssii", $user_id, $family_id, $old_values, $new_values, $ip_address, $user_agent, $tenant_id, $branch_id);
         $stmt_log->execute();
         $stmt_log->close();
 

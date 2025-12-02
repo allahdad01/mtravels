@@ -7,6 +7,7 @@ require_once 'includes/db_security.php';
 // Include security module
 require_once 'security.php';
 $tenant_id = $_SESSION['tenant_id'];
+$branch_id = $_SESSION['branch_id'];
 
 // Enforce authentication
 enforce_auth();
@@ -119,8 +120,8 @@ $supplier = isset($_POST['supplier']) ? DbSecurity::validateInput($_POST['suppli
     $conn->begin_transaction();
 
     // Check if supplier is internal or external
-    $stmtSupplier = $conn->prepare("SELECT name, supplier_type,balance FROM suppliers WHERE id = ? AND tenant_id = ?");
-    $stmtSupplier->bind_param("ii", $supplier, $tenant_id);
+    $stmtSupplier = $conn->prepare("SELECT name, supplier_type,balance FROM suppliers WHERE id = ? AND tenant_id = ? AND branch_id = ?");
+    $stmtSupplier->bind_param("iii", $supplier, $tenant_id, $branch_id);
     if (!$stmtSupplier->execute()) {
         throw new Exception("Failed to fetch supplier details.");
     }
@@ -132,8 +133,8 @@ $supplier = isset($_POST['supplier']) ? DbSecurity::validateInput($_POST['suppli
     $stmtSupplier->close();
 
     // Fetch PaidTo account name
-    $stmtAccount = $conn->prepare("SELECT name FROM main_account WHERE id = ? AND tenant_id = ?");
-    $stmtAccount->bind_param("ii", $paidTo, $tenant_id);
+    $stmtAccount = $conn->prepare("SELECT name FROM main_account WHERE id = ? AND tenant_id = ? AND branch_id = ?");
+    $stmtAccount->bind_param("iii", $paidTo, $tenant_id, $branch_id);
     if (!$stmtAccount->execute()) {
         throw new Exception("Failed to execute the query for fetching 'paidto' account.");
     }
@@ -145,8 +146,8 @@ $supplier = isset($_POST['supplier']) ? DbSecurity::validateInput($_POST['suppli
     $stmtAccount->close();
 
     // Fetch client details
-    $stmtClient = $conn->prepare("SELECT name, client_type, usd_balance, afs_balance FROM clients WHERE id = ? AND tenant_id = ?");
-    $stmtClient->bind_param("ii", $soldTo, $tenant_id);
+    $stmtClient = $conn->prepare("SELECT name, client_type, usd_balance, afs_balance FROM clients WHERE id = ? AND tenant_id = ? AND branch_id = ?");
+    $stmtClient->bind_param("iii", $soldTo, $tenant_id, $branch_id);
     if (!$stmtClient->execute()) {
         throw new Exception("Failed to fetch client details.");
     }
@@ -162,14 +163,14 @@ $supplier = isset($_POST['supplier']) ? DbSecurity::validateInput($_POST['suppli
         INSERT INTO visa_applications (
             supplier, sold_to, paid_to, phone, title, gender, applicant_name,
             passport_number, country, visa_type, receive_date, applied_date,
-            issued_date, base, sold, profit, currency, remarks, created_at, updated_at, created_by, tenant_id
-        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, NOW(), NOW(), ?, ?)
+            issued_date, base, sold, profit, currency, remarks, created_at, updated_at, created_by, tenant_id, branch_id
+        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, NOW(), NOW(), ?, ?, ?)
     ");
     $stmtVisa->bind_param(
-        "ssssssssssssssssssii",
+        "sssssssssssssssssssii",
         $supplier, $soldTo, $paidTo, $phone, $title, $gender, $applicantName,
         $passportNumber, $country, $visaType, $receiveDate, $appliedDate,
-        $issuedDate, $base, $sold, $profit, $currency, $description, $user_id, $tenant_id
+        $issuedDate, $base, $sold, $profit, $currency, $description, $user_id, $tenant_id, $branch_id
     );
 
     if (!$stmtVisa->execute()) {
@@ -184,25 +185,26 @@ $supplier = isset($_POST['supplier']) ? DbSecurity::validateInput($_POST['suppli
     $newBalance = ($supplierType === 'External') ? $balance - $base : 0;
     $description = "Visa purchase for $applicantName - $passportNumber";
 
-    $updateSupplierBalance = $conn->prepare("UPDATE suppliers SET balance = balance - ? WHERE id = ? AND tenant_id = ?");
-    $updateSupplierBalance->bind_param("did", $base, $supplier, $tenant_id);
+    $updateSupplierBalance = $conn->prepare("UPDATE suppliers SET balance = balance - ? WHERE id = ? AND tenant_id = ? AND branch_id = ?");
+    $updateSupplierBalance->bind_param("diii", $base, $supplier, $tenant_id, $branch_id);
     $updateSupplierBalance->execute();
     $updateSupplierBalance->close();
 
     $stmtSupplierTrans = $conn->prepare("
         INSERT INTO supplier_transactions (
             supplier_id, transaction_type, amount, transaction_of,
-            reference_id, remarks, transaction_date, balance, tenant_id
-        ) VALUES (?, 'Debit', ?, 'visa_sale', ?, ?, NOW(), ?, ?)
+            reference_id, remarks, transaction_date, balance, tenant_id, branch_id
+        ) VALUES (?, 'Debit', ?, 'visa_sale', ?, ?, NOW(), ?, ?, ?)
     ");
     $stmtSupplierTrans->bind_param(
-        "idsssi", 
-        $supplier, 
+        "idsssii",
+        $supplier,
         $base,
-        $visaApplicationId, 
+        $visaApplicationId,
         $description,
         $newBalance,
-        $tenant_id
+        $tenant_id,
+        $branch_id
     );
 
     if (!$stmtSupplierTrans->execute()) {
@@ -211,8 +213,8 @@ $supplier = isset($_POST['supplier']) ? DbSecurity::validateInput($_POST['suppli
     $stmtSupplierTrans->close();
 
     // Fetch client details and handle balance deduction (only once)
-    $stmtClient = $conn->prepare("SELECT name, client_type, usd_balance, afs_balance FROM clients WHERE id = ? AND tenant_id = ?");
-    $stmtClient->bind_param("ii", $soldTo, $tenant_id);
+    $stmtClient = $conn->prepare("SELECT name, client_type, usd_balance, afs_balance FROM clients WHERE id = ? AND tenant_id = ? And branch_id = ?");
+    $stmtClient->bind_param("iii", $soldTo, $tenant_id, $branch_id);
     if (!$stmtClient->execute()) {
         throw new Exception("Failed to fetch client details.");
     }
@@ -230,11 +232,11 @@ $supplier = isset($_POST['supplier']) ? DbSecurity::validateInput($_POST['suppli
         $newBalance = $currentBalance - $sold;
 
         if ($currency === 'USD') {
-            $stmtUpdateClientBalance = $conn->prepare("UPDATE clients SET usd_balance = usd_balance - ? WHERE id = ? AND tenant_id = ?");
-            $stmtUpdateClientBalance->bind_param("did", $sold, $soldTo, $tenant_id);
+            $stmtUpdateClientBalance = $conn->prepare("UPDATE clients SET usd_balance = usd_balance - ? WHERE id = ? AND tenant_id = ? AND branch_id = ?");
+            $stmtUpdateClientBalance->bind_param("diii", $sold, $soldTo, $tenant_id, $branch_id);
         } elseif ($currency === 'AFS') {
-            $stmtUpdateClientBalance = $conn->prepare("UPDATE clients SET afs_balance = afs_balance - ? WHERE id = ? AND tenant_id = ?");
-            $stmtUpdateClientBalance->bind_param("did", $sold, $soldTo, $tenant_id);
+            $stmtUpdateClientBalance = $conn->prepare("UPDATE clients SET afs_balance = afs_balance - ? WHERE id = ? AND tenant_id = ? AND branch_id = ?");
+            $stmtUpdateClientBalance->bind_param("diii", $sold, $soldTo, $tenant_id, $branch_id);
         } else {
             throw new Exception("Unsupported currency type.");
         }
@@ -248,11 +250,11 @@ $supplier = isset($_POST['supplier']) ? DbSecurity::validateInput($_POST['suppli
         // Insert into client_transactions with balance
         $stmtTransaction = $conn->prepare("
             INSERT INTO client_transactions (
-                client_id, type, currency, amount, balance, transaction_of, description, reference_id, created_at, tenant_id
-            ) VALUES (?, 'Debit', ?, ?, ?, 'visa_sale', ?, ?, NOW(), ?)
+                client_id, type, currency, amount, balance, transaction_of, description, reference_id, created_at, tenant_id, branch_id
+            ) VALUES (?, 'Debit', ?, ?, ?, 'visa_sale', ?, ?, NOW(), ?, ?)
         ");
         $description = "Visa booking for $applicantName";
-        $stmtTransaction->bind_param("isddssi", $soldTo, $currency, $sold, $newBalance, $description, $visaApplicationId, $tenant_id);
+        $stmtTransaction->bind_param("isddssii", $soldTo, $currency, $sold, $newBalance, $description, $visaApplicationId, $tenant_id, $branch_id);
         if (!$stmtTransaction->execute()) {
             throw new Exception('Failed to create client transaction: ' . $stmtTransaction->error);
         }
@@ -261,11 +263,11 @@ $supplier = isset($_POST['supplier']) ? DbSecurity::validateInput($_POST['suppli
         // For non-regular clients, insert transaction without affecting balance
         $stmtTransaction = $conn->prepare("
             INSERT INTO client_transactions (
-                client_id, type, currency, amount, transaction_of, description, reference_id, created_at, tenant_id
-            ) VALUES (?, 'Debit', ?, ?, 'visa_sale', ?, ?, NOW(), ?)
+                client_id, type, currency, amount, transaction_of, description, reference_id, created_at, tenant_id, branch_id
+            ) VALUES (?, 'Debit', ?, ?, 'visa_sale', ?, ?, NOW(), ?, ?)
         ");
         $description = "Visa booking for $applicantName";
-        $stmtTransaction->bind_param("isdssi", $soldTo, $currency, $sold, $description, $visaApplicationId, $tenant_id);
+        $stmtTransaction->bind_param("isdsiii", $soldTo, $currency, $sold, $description, $visaApplicationId, $tenant_id, $branch_id);
         if (!$stmtTransaction->execute()) {
             throw new Exception('Failed to create client transaction: ' . $stmtTransaction->error);
         }
@@ -295,11 +297,11 @@ $supplier = isset($_POST['supplier']) ? DbSecurity::validateInput($_POST['suppli
     $user_agent = $_SERVER['HTTP_USER_AGENT'] ?? '';
     
     $stmtLog = $conn->prepare("
-        INSERT INTO activity_log 
-        (user_id, action, table_name, record_id, old_values, new_values, ip_address, user_agent, created_at, tenant_id) 
-        VALUES (?, 'add', 'visa_applications', ?, ?, ?, ?, ?, NOW(), ?)
+        INSERT INTO activity_log
+        (user_id, action, table_name, record_id, old_values, new_values, ip_address, user_agent, created_at, tenant_id, branch_id)
+        VALUES (?, 'add', 'visa_applications', ?, ?, ?, ?, ?, NOW(), ?, ?)
     ");
-    $stmtLog->bind_param("iissssi", $user_id, $visaApplicationId, $old_values, $new_values, $ip_address, $user_agent, $tenant_id);
+    $stmtLog->bind_param("iissssii", $user_id, $visaApplicationId, $old_values, $new_values, $ip_address, $user_agent, $tenant_id, $branch_id);
     $stmtLog->execute();
     $stmtLog->close();
 
@@ -307,8 +309,8 @@ $supplier = isset($_POST['supplier']) ? DbSecurity::validateInput($_POST['suppli
     require_once '../includes/functions.php';
 
     // Get client email and name
-    $stmt_client_email = $conn->prepare("SELECT email, name FROM clients WHERE id = ? AND tenant_id = ?");
-    $stmt_client_email->bind_param("ii", $soldTo, $tenant_id);
+    $stmt_client_email = $conn->prepare("SELECT email, name FROM clients WHERE id = ? AND tenant_id = ? AND branch_id = ?");
+    $stmt_client_email->bind_param("iii", $soldTo, $tenant_id, $branch_id);
     $stmt_client_email->execute();
     $client_email_result = $stmt_client_email->get_result();
     $client_email_data = $client_email_result->fetch_assoc();

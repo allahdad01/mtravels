@@ -5,6 +5,7 @@ require_once 'includes/db_security.php';
 // Include security module
 require_once 'security.php';
 $tenant_id = $_SESSION['tenant_id'];
+$branch_id = $_SESSION['branch_id'];
 // Include language helper
 require_once '../includes/language_helpers.php';
 
@@ -22,14 +23,13 @@ require_once '../includes/db.php';
 
 // Fetch settings data
 try {
-    $settingStmt = $pdo->prepare("SELECT * FROM settings WHERE tenant_id = ?");
+    $settingStmt = $pdo->query("SELECT * FROM settings WHERE tenant_id = ?");
     $settingStmt->execute([$tenant_id]);
     $settings = $settingStmt->fetch(PDO::FETCH_ASSOC);
 } catch (PDOException $e) {
-    error_log("Database Error: " . $e->getMessage());
+    error_log("Settings Error: " . $e->getMessage());
     $settings = ['agency_name' => 'Default Name'];
 }
-
 // Validate the creditor ID
 if (!isset($_GET['id']) || !is_numeric($_GET['id'])) {
     die("Invalid creditor ID");
@@ -38,8 +38,8 @@ if (!isset($_GET['id']) || !is_numeric($_GET['id'])) {
 $creditor_id = intval($_GET['id']);
 
 // Fetch creditor details
-$stmt = $conn->prepare("SELECT * FROM creditors WHERE id = ? AND tenant_id = ?");
-$stmt->bind_param("ii", $creditor_id, $tenant_id);
+$stmt = $conn->prepare("SELECT * FROM creditors WHERE id = ? AND tenant_id = ? AND branch_id = ?");
+$stmt->bind_param("iii", $creditor_id, $tenant_id, $branch_id);
 $stmt->execute();
 $result = $stmt->get_result();
 $creditor = $result->fetch_assoc();
@@ -49,8 +49,8 @@ if (!$creditor) {
 }
 
 // Fetch creditor transactions
-$stmt = $conn->prepare("SELECT * FROM creditor_transactions WHERE creditor_id = ? AND tenant_id = ? ORDER BY payment_date DESC");
-$stmt->bind_param("ii", $creditor_id, $tenant_id);
+$stmt = $conn->prepare("SELECT * FROM creditor_transactions WHERE creditor_id = ? AND tenant_id = ? AND branch_id = ? ORDER BY payment_date DESC");
+$stmt->bind_param("iii", $creditor_id, $tenant_id, $branch_id);
 $stmt->execute();
 $transResult = $stmt->get_result();
 $transactions = $transResult->fetch_all(MYSQLI_ASSOC);

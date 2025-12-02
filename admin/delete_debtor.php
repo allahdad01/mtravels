@@ -23,6 +23,7 @@ if (!isset($_SESSION['user_id']) || $_SESSION['role'] !== 'admin') {
 }
 
 $tenant_id = $_SESSION['tenant_id'];
+$branch_id = $_SESSION['branch_id'];
 require_once '../includes/conn.php';
 
 // Handle debtor deletion via AJAX
@@ -31,8 +32,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['delete_debtor'])) {
 
     try {
         // Get debtor information
-        $stmt = $conn->prepare("SELECT * FROM debtors WHERE id = ? AND tenant_id = ?");
-        $stmt->bind_param("ii", $debtor_id, $tenant_id);
+        $stmt = $conn->prepare("SELECT * FROM debtors WHERE id = ? AND tenant_id = ? AND branch_id = ?");
+        $stmt->bind_param("iii", $debtor_id, $tenant_id, $branch_id);
         $stmt->execute();
         $result = $stmt->get_result();
         $debtor = $result->fetch_assoc();
@@ -42,8 +43,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['delete_debtor'])) {
         }
 
         // Check if debtor has any transactions
-        $stmt = $conn->prepare("SELECT COUNT(*) as transaction_count FROM debtor_transactions WHERE debtor_id = ? AND tenant_id = ?");
-        $stmt->bind_param("ii", $debtor_id, $tenant_id);
+        $stmt = $conn->prepare("SELECT COUNT(*) as transaction_count FROM debtor_transactions WHERE debtor_id = ? AND tenant_id = ? AND branch_id = ?");
+        $stmt->bind_param("iii", $debtor_id, $tenant_id, $branch_id);
         $stmt->execute();
         $result = $stmt->get_result();
         $transaction_count = $result->fetch_assoc()['transaction_count'];
@@ -61,8 +62,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['delete_debtor'])) {
         $conn->begin_transaction();
 
         // Delete the debtor
-        $stmt = $conn->prepare("DELETE FROM debtors WHERE id = ? AND tenant_id = ?");
-        $stmt->bind_param("ii", $debtor_id, $tenant_id);
+        $stmt = $conn->prepare("DELETE FROM debtors WHERE id = ? AND tenant_id = ? AND branch_id = ?");
+        $stmt->bind_param("iii", $debtor_id, $tenant_id, $branch_id);
         $stmt->execute();
 
         $conn->commit();

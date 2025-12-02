@@ -5,6 +5,7 @@ require_once 'includes/db_security.php';
 // Include security module
 require_once 'security.php';
 $tenant_id = $_SESSION['tenant_id'];
+$branch_id = $_SESSION['branch_id'];
 // Validate confirm_password
 $confirm_password = isset($_POST['confirm_password']) ? DbSecurity::validateInput($_POST['confirm_password'], 'string', ['maxlength' => 255]) : null;
 
@@ -51,10 +52,10 @@ if($_SERVER["REQUEST_METHOD"] == "POST")
     if(empty($new_password_err) && empty($confirm_password_err))
     {
         // Prepare an update statement
-        $sql = "UPDATE users SET password = ? WHERE id = ? AND tenant_id = ?";
+        $sql = "UPDATE users SET password = ? WHERE id = ? AND tenant_id = ? AND branch_id = ?";
         if($stmt = mysqli_prepare($conection_db, $sql)){
             // Bind variables to the prepared statement as parameters
-            mysqli_stmt_bind_param($stmt, "sii", $param_password, $param_id, $tenant_id);
+            mysqli_stmt_bind_param($stmt, "siii", $param_password, $param_id, $tenant_id, $branch_id);
             // Set parameters
             $param_password = password_hash($new_password, PASSWORD_DEFAULT);
             $param_id = $_SESSION["id"];

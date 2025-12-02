@@ -19,6 +19,7 @@ if (!isset($_SESSION['user_id']) || $_SESSION['role'] !== 'admin') {
 }
 
 $tenant_id = $_SESSION['tenant_id'];
+$branch_id = $_SESSION['branch_id'];
 
 try {
     // Query to get weights with related information
@@ -44,7 +45,7 @@ try {
         LEFT JOIN
             clients c ON t.sold_to = c.id
         WHERE
-            tw.tenant_id = ?
+            tw.tenant_id = ? AND tw.branch_id = ?
         ORDER BY
             tw.created_at DESC
     ";
@@ -56,9 +57,9 @@ try {
 
     // Detect type of tenant_id
     if (is_int($tenant_id)) {
-        $stmt->bind_param("i", $tenant_id);
+        $stmt->bind_param("ii", $tenant_id, $branch_id);
     } else {
-        $stmt->bind_param("s", $tenant_id);
+        $stmt->bind_param("si", $tenant_id, $branch_id);
     }
 
     if (!$stmt->execute()) {

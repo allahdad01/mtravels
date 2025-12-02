@@ -13,10 +13,11 @@ if (!$clientId) {
 
 include '../includes/db.php'; // Your DB connection
 $tenant_id = $_SESSION['tenant_id'];
+$branch_id = $_SESSION['branch_id'];
 try {
     // Delete client from database
-    $stmt = $pdo->prepare("DELETE FROM clients WHERE id = ? and tenant_id = ?");
-    $stmt->execute([$clientId, $tenant_id]);
+    $stmt = $pdo->prepare("DELETE FROM clients WHERE id = ? and tenant_id = ? AND branch_id = ?");
+    $stmt->execute([$clientId, $tenant_id, $branch_id]);
 
     if ($stmt->rowCount() > 0) {
         echo json_encode(['success' => true, 'message' => 'Client deleted successfully.']);

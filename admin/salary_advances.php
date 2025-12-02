@@ -8,6 +8,7 @@ if (!isset($_SESSION["loggedin"]) || $_SESSION["loggedin"] !== true || $_SESSION
     exit;
 }
 $tenant_id = $_SESSION['tenant_id'];
+$branch_id = $_SESSION['branch_id'];
 // Include config file
 require_once "../includes/db.php";
 
@@ -26,13 +27,13 @@ if (isset($_GET["advance_user_id"]) && !empty(trim($_GET["advance_user_id"]))) {
     $advance_user_id = trim($_GET["advance_user_id"]);
     
     // Get user information
-    $sql = "SELECT u.name, sm.base_salary, sm.currency 
-            FROM users u 
-            JOIN salary_management sm ON u.id = sm.user_id 
-            WHERE u.id = ? AND u.tenant_id = ?";
-    
+    $sql = "SELECT u.name, sm.base_salary, sm.currency
+            FROM users u
+            JOIN salary_management sm ON u.id = sm.user_id
+            WHERE u.id = ? AND u.tenant_id = ? AND u.branch_id = ?";
+
     if ($stmt = mysqli_prepare($conection_db, $sql)) {
-        mysqli_stmt_bind_param($stmt, "ii", $advance_user_id, $tenant_id);
+        mysqli_stmt_bind_param($stmt, "iii", $advance_user_id, $tenant_id, $branch_id);
         
         if (mysqli_stmt_execute($stmt)) {
             $result = mysqli_stmt_get_result($stmt);
@@ -95,9 +96,9 @@ if ($_SERVER["REQUEST_METHOD"] == "POST" && isset($_GET["advance_user_id"])) {
         
         try {
             // Get current main account balance
-            $sql = "SELECT usd_balance, afs_balance FROM main_account WHERE id = ? AND tenant_id = ?";
+            $sql = "SELECT usd_balance, afs_balance FROM main_account WHERE id = ? AND tenant_id = ? AND branch_id = ?";
             $stmt = mysqli_prepare($conection_db, $sql);
-            mysqli_stmt_bind_param($stmt, "ii", $main_account_id, $tenant_id);
+            mysqli_stmt_bind_param($stmt, "iii", $main_account_id, $tenant_id, $branch_id);
             mysqli_stmt_execute($stmt);
             mysqli_stmt_store_result($stmt);
             
@@ -115,49 +116,49 @@ if ($_SERVER["REQUEST_METHOD"] == "POST" && isset($_GET["advance_user_id"])) {
                 }
                 
                 // Update main account balance
-                $update_sql = ($currency == "USD") 
-                    ? "UPDATE main_account SET usd_balance = usd_balance - ? WHERE id = ? AND tenant_id = ?"
-                    : "UPDATE main_account SET afs_balance = afs_balance - ? WHERE id = ? AND tenant_id = ?";
-                    
+                $update_sql = ($currency == "USD")
+                    ? "UPDATE main_account SET usd_balance = usd_balance - ? WHERE id = ? AND tenant_id = ? AND branch_id = ?"
+                    : "UPDATE main_account SET afs_balance = afs_balance - ? WHERE id = ? AND tenant_id = ? AND branch_id = ?";
+
                 $update_stmt = mysqli_prepare($conection_db, $update_sql);
-                mysqli_stmt_bind_param($update_stmt, "dii", $amount, $main_account_id, $tenant_id);
+                mysqli_stmt_bind_param($update_stmt, "diii", $amount, $main_account_id, $tenant_id, $branch_id);
                 mysqli_stmt_execute($update_stmt);
                 
                 // Insert into salary_advances
-                $insert_sql = "INSERT INTO salary_advances (user_id, main_account_id, amount, currency, advance_date, 
-                              description, receipt, tenant_id) 
-                              VALUES (?, ?, ?, ?, ?, ?, ?, ?)";
-                              
+                $insert_sql = "INSERT INTO salary_advances (user_id, main_account_id, amount, currency, advance_date,
+                              description, receipt, tenant_id, branch_id)
+                              VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)";
+
                 $insert_stmt = mysqli_prepare($conection_db, $insert_sql);
-                mysqli_stmt_bind_param($insert_stmt, "iidssssi", $advance_user_id, $main_account_id, $amount, $currency, 
-                                     $advance_date, $description, $receipt, $tenant_id);
+                mysqli_stmt_bind_param($insert_stmt, "iidssssii", $advance_user_id, $main_account_id, $amount, $currency,
+                                     $advance_date, $description, $receipt, $tenant_id, $branch_id);
                 mysqli_stmt_execute($insert_stmt);
                 
                 // Get the inserted advance ID
                 $advance_id = mysqli_insert_id($conection_db);
 
                 // Also insert into salary_payments as an advance payment
-                $payment_sql = "INSERT INTO salary_payments (user_id, main_account_id, amount, currency, payment_date, 
-                              payment_for_month, payment_type, description, receipt, tenant_id) 
-                              VALUES (?, ?, ?, ?, ?, ?, 'advance', ?, ?, ?)";
-                  
+                $payment_sql = "INSERT INTO salary_payments (user_id, main_account_id, amount, currency, payment_date,
+                              payment_for_month, payment_type, description, receipt, tenant_id, branch_id)
+                              VALUES (?, ?, ?, ?, ?, ?, 'advance', ?, ?, ?, ?)";
+
                 $payment_stmt = mysqli_prepare($conection_db, $payment_sql);
                 $payment_for_month = date("Y-m-01"); // Current month
-                mysqli_stmt_bind_param($payment_stmt, "iidssssss", $advance_user_id, $main_account_id, $amount, $currency, 
-                                     $advance_date, $payment_for_month, $description, $receipt, $tenant_id);
+                mysqli_stmt_bind_param($payment_stmt, "iidsssssii", $advance_user_id, $main_account_id, $amount, $currency,
+                                     $advance_date, $payment_for_month, $description, $receipt, $tenant_id, $branch_id);
                 mysqli_stmt_execute($payment_stmt);
                 
                 // Get the inserted payment ID
                 $payment_id = mysqli_insert_id($conection_db);
                 
                 // Insert into main_account_transactions
-                $transaction_sql = "INSERT INTO main_account_transactions (main_account_id, type, amount, balance, currency, 
-                                  description, transaction_of, reference_id, receipt, tenant_id) 
-                                  VALUES (?, 'debit', ?, ?, ?, ?, 'salary_payment', ?, ?, ?)";
-                                  
+                $transaction_sql = "INSERT INTO main_account_transactions (main_account_id, type, amount, balance, currency,
+                                   description, transaction_of, reference_id, receipt, tenant_id, branch_id)
+                                   VALUES (?, 'debit', ?, ?, ?, ?, 'salary_payment', ?, ?, ?, ?)";
+
                 $transaction_stmt = mysqli_prepare($conection_db, $transaction_sql);
-                mysqli_stmt_bind_param($transaction_stmt, "iddsssss", $main_account_id, $amount, $new_balance, $currency, 
-                                     $description, $payment_id, $receipt, $tenant_id);
+                mysqli_stmt_bind_param($transaction_stmt, "iddsssssi", $main_account_id, $amount, $new_balance, $currency,
+                                      $description, $payment_id, $receipt, $tenant_id, $branch_id);
                 mysqli_stmt_execute($transaction_stmt);
                 
                 // Commit transaction
@@ -167,9 +168,9 @@ if ($_SERVER["REQUEST_METHOD"] == "POST" && isset($_GET["advance_user_id"])) {
                 require_once '../includes/functions.php';
 
                 // Get employee email
-                $email_sql = "SELECT email FROM users WHERE id = ? AND tenant_id = ?";
+                $email_sql = "SELECT email FROM users WHERE id = ? AND tenant_id = ? AND branch_id = ?";
                 $email_stmt = mysqli_prepare($conection_db, $email_sql);
-                mysqli_stmt_bind_param($email_stmt, "ii", $advance_user_id, $tenant_id);
+                mysqli_stmt_bind_param($email_stmt, "iii", $advance_user_id, $tenant_id, $branch_id);
                 mysqli_stmt_execute($email_stmt);
                 mysqli_stmt_store_result($email_stmt);
                 
@@ -390,10 +391,10 @@ if ($_SERVER["REQUEST_METHOD"] == "POST" && isset($_GET["advance_user_id"])) {
                                     <tbody>
                                         <?php
                                         // Get all advances for this user
-                                        $sql = "SELECT * FROM salary_advances WHERE user_id = ? AND tenant_id = ? ORDER BY created_at DESC";
-                                        
+                                        $sql = "SELECT * FROM salary_advances WHERE user_id = ? AND tenant_id = ? AND branch_id = ? ORDER BY created_at DESC";
+
                                         if ($stmt = mysqli_prepare($conection_db, $sql)) {
-                                            mysqli_stmt_bind_param($stmt, "ii", $advance_user_id, $tenant_id);
+                                            mysqli_stmt_bind_param($stmt, "iii", $advance_user_id, $tenant_id, $branch_id);
                                             
                                             if (mysqli_stmt_execute($stmt)) {
                                                 $result = mysqli_stmt_get_result($stmt);

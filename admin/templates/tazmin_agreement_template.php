@@ -7,10 +7,10 @@ if (!isset($_GET['pilgrim_ids']) || empty($_GET['pilgrim_ids'])) {
     exit;
 }
 $tenant_id = $_SESSION['tenant_id'];
-
+$branch_id = $_SESSION['branch_id'];
 // Fetch settings
-$stmt = $conn->prepare("SELECT * FROM settings WHERE tenant_id = ?");
-$stmt->bind_param("i", $tenant_id);
+$stmt = $conn->prepare("SELECT * FROM settings WHERE tenant_id = ? And branch_id = ?");
+$stmt->bind_param("ii", $tenant_id, $branch_id);
 $stmt->execute();
 $result = $stmt->get_result();
 $settings = $result->fetch_assoc();
@@ -19,8 +19,8 @@ $pilgrim_ids = explode(',', $_GET['pilgrim_ids']);
 $pilgrims_info = [];
 
 foreach ($pilgrim_ids as $pilgrim_id) {
-    $stmt = $conn->prepare("SELECT name, passport_number, duration FROM umrah_bookings WHERE booking_id = ? AND tenant_id = ?");
-    $stmt->bind_param("ii", $pilgrim_id, $tenant_id);
+    $stmt = $conn->prepare("SELECT name, passport_number, duration FROM umrah_bookings WHERE booking_id = ? AND tenant_id = ? And branch_id = ?");
+    $stmt->bind_param("iii", $pilgrim_id, $tenant_id, $branch_id);
     $stmt->execute();
     $result = $stmt->get_result();
     if ($row = $result->fetch_assoc()) {

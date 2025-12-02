@@ -11,6 +11,7 @@ enforce_auth();
 
 // Start session if not already started
 $tenant_id = $_SESSION['tenant_id'];
+$branch_id = $_SESSION['branch_id'];
 
 // Get POST data
 $data = json_decode(file_get_contents('php://input'), true);
@@ -32,9 +33,9 @@ $conn->begin_transaction();
 
 try {
     // Get transaction details first (to get supplier_id, amount, currency, type and created_at)
-    $getQuery = "SELECT supplier_id, amount, transaction_type, transaction_date, balance FROM supplier_transactions WHERE id = ? AND tenant_id = ?";
+    $getQuery = "SELECT supplier_id, amount, transaction_type, transaction_date, balance FROM supplier_transactions WHERE id = ? AND tenant_id = ? AND branch_id = ?";
     $getStmt = $conn->prepare($getQuery);
-    $getStmt->bind_param("ii", $transactionId, $tenant_id);
+    $getStmt->bind_param("iii", $transactionId, $tenant_id, $branch_id);
     $getStmt->execute();
     $result = $getStmt->get_result();
     
@@ -53,45 +54,45 @@ try {
     // Update balances of all subsequent supplier transactions
     if ($type === 'Debit') {
         // For DEBIT transactions, we need to add the amount to subsequent balances
-        $updateSubsequentQuery = "UPDATE supplier_transactions 
-                                SET balance = balance + ? 
-                                WHERE supplier_id = ? 
-                                AND id > ? 
-                                AND id != ? AND tenant_id = ?";
+        $updateSubsequentQuery = "UPDATE supplier_transactions
+                                SET balance = balance + ?
+                                WHERE supplier_id = ?
+                                AND id > ?
+                                AND id != ? AND tenant_id = ? AND branch_id = ?";
     } else { // credit
         // For CREDIT transactions, we need to subtract the amount from subsequent balances
-        $updateSubsequentQuery = "UPDATE supplier_transactions 
-                                SET balance = balance - ? 
-                                WHERE supplier_id = ? 
-                                AND id > ? 
-                                AND id != ? AND tenant_id = ?";
+        $updateSubsequentQuery = "UPDATE supplier_transactions
+                                SET balance = balance - ?
+                                WHERE supplier_id = ?
+                                AND id > ?
+                                AND id != ? AND tenant_id = ? AND branch_id = ?";
     }
-    
+
     $updateSubsequentStmt = $conn->prepare($updateSubsequentQuery);
-    $updateSubsequentStmt->bind_param("disii", $amount, $supplierId, $transactionId, $transactionId, $tenant_id);
+    $updateSubsequentStmt->bind_param("disiii", $amount, $supplierId, $transactionId, $transactionId, $tenant_id, $branch_id);
     $updateSubsequentStmt->execute();
     $updateSubsequentStmt->close();
     
     // Reverse the transaction based on its type
     if ($type === 'credit') {
         // For CREDIT transactions, we need to subtract the amount
-        $updateQuery = "UPDATE suppliers SET balance = balance - ? WHERE id = ? AND supplier_type = 'External' AND tenant_id = ?";
+        $updateQuery = "UPDATE suppliers SET balance = balance - ? WHERE id = ? AND supplier_type = 'External' AND tenant_id = ? AND branch_id = ?";
     } else { // debit
         // For DEBIT transactions, we need to add the amount back
-        $updateQuery = "UPDATE suppliers SET balance = balance + ? WHERE id = ? AND supplier_type = 'External' AND tenant_id = ?";
+        $updateQuery = "UPDATE suppliers SET balance = balance + ? WHERE id = ? AND supplier_type = 'External' AND tenant_id = ? AND branch_id = ?";
     }
-    
+
     $updateStmt = $conn->prepare($updateQuery);
-    $updateStmt->bind_param("dii", $amount, $supplierId, $tenant_id);
+    $updateStmt->bind_param("diii", $amount, $supplierId, $tenant_id, $branch_id);
     $updateStmt->execute();
     $updateStmt->close();
 
     // Handle main account transaction if it exists
     if ($transactionId) {
         // Get main account transaction details
-        $mainTxQuery = "SELECT main_account_id, amount, type, currency, created_at FROM main_account_transactions WHERE reference_id = ? AND transaction_of IN ('supplier_fund', 'supplier_fund_withdrawal') AND tenant_id = ?";
+        $mainTxQuery = "SELECT main_account_id, amount, type, currency, created_at FROM main_account_transactions WHERE reference_id = ? AND transaction_of IN ('supplier_fund', 'supplier_fund_withdrawal') AND tenant_id = ? AND branch_id = ?";
         $mainTxStmt = $conn->prepare($mainTxQuery);
-        $mainTxStmt->bind_param("ii", $transactionId, $tenant_id);
+        $mainTxStmt->bind_param("iii", $transactionId, $tenant_id, $branch_id);
         $mainTxStmt->execute();
         $mainTxResult = $mainTxStmt->get_result();
         
@@ -122,45 +123,45 @@ try {
             // Update balances of all subsequent main account transactions
             if ($mainType === 'credit') {
                 // For CREDIT transactions to main account, we need to subtract the amount from subsequent balances
-                $updateMainSubsequentQuery = "UPDATE main_account_transactions 
-                                            SET balance = balance - ? 
-                                            WHERE main_account_id = ? 
-                                            AND currency = ? 
-                                            AND created_at > ? 
-                                            AND reference_id != ? AND tenant_id = ?";
+                $updateMainSubsequentQuery = "UPDATE main_account_transactions
+                                            SET balance = balance - ?
+                                            WHERE main_account_id = ?
+                                            AND currency = ?
+                                            AND created_at > ?
+                                            AND reference_id != ? AND tenant_id = ? AND branch_id = ?";
             } else { // debit
                 // For DEBIT transactions from main account, we need to add the amount to subsequent balances
-                $updateMainSubsequentQuery = "UPDATE main_account_transactions 
-                                            SET balance = balance + ? 
-                                            WHERE main_account_id = ? 
-                                            AND currency = ? 
-                                            AND created_at > ? 
-                                            AND reference_id != ? AND tenant_id = ?";
+                $updateMainSubsequentQuery = "UPDATE main_account_transactions
+                                            SET balance = balance + ?
+                                            WHERE main_account_id = ?
+                                            AND currency = ?
+                                            AND created_at > ?
+                                            AND reference_id != ? AND tenant_id = ? AND branch_id = ?";
             }
-            
+
             $updateMainSubsequentStmt = $conn->prepare($updateMainSubsequentQuery);
-            $updateMainSubsequentStmt->bind_param("dissii", $mainAmount, $mainAccountId, $currency, $mainTxDate, $transactionId, $tenant_id);
+            $updateMainSubsequentStmt->bind_param("dissiii", $mainAmount, $mainAccountId, $currency, $mainTxDate, $transactionId, $tenant_id, $branch_id);
             $updateMainSubsequentStmt->execute();
             $updateMainSubsequentStmt->close();
             
             // Reverse the main account balance
             if ($mainType === 'credit') {
                 // For CREDIT to main account, subtract the amount
-                $mainUpdateQuery = "UPDATE main_account SET {$updateField} = {$updateField} - ? WHERE id = ? AND tenant_id = ?";
+                $mainUpdateQuery = "UPDATE main_account SET {$updateField} = {$updateField} - ? WHERE id = ? AND tenant_id = ? AND branch_id = ?";
             } else { // debit
                 // For DEBIT from main account, add the amount back
-                $mainUpdateQuery = "UPDATE main_account SET {$updateField} = {$updateField} + ? WHERE id = ? AND tenant_id = ?";
+                $mainUpdateQuery = "UPDATE main_account SET {$updateField} = {$updateField} + ? WHERE id = ? AND tenant_id = ? AND branch_id = ?";
             }
-            
+
             $mainUpdateStmt = $conn->prepare($mainUpdateQuery);
-            $mainUpdateStmt->bind_param("dii", $mainAmount, $mainAccountId, $tenant_id);
+            $mainUpdateStmt->bind_param("diii", $mainAmount, $mainAccountId, $tenant_id, $branch_id);
             $mainUpdateStmt->execute();
             $mainUpdateStmt->close();
             
             // Delete the main account transaction
-            $mainDeleteQuery = "DELETE FROM main_account_transactions WHERE reference_id = ? AND transaction_of IN ('supplier_fund', 'supplier_fund_withdrawal') AND tenant_id = ?";
+            $mainDeleteQuery = "DELETE FROM main_account_transactions WHERE reference_id = ? AND transaction_of IN ('supplier_fund', 'supplier_fund_withdrawal') AND tenant_id = ? AND branch_id = ?";
             $mainDeleteStmt = $conn->prepare($mainDeleteQuery);
-            $mainDeleteStmt->bind_param("ii", $transactionId, $tenant_id);
+            $mainDeleteStmt->bind_param("iii", $transactionId, $tenant_id, $branch_id);
             $mainDeleteStmt->execute();
             $mainDeleteStmt->close();
         }
@@ -168,9 +169,9 @@ try {
     }
     
     // Delete the transaction
-    $deleteQuery = "DELETE FROM supplier_transactions WHERE id = ? AND tenant_id = ?";
+    $deleteQuery = "DELETE FROM supplier_transactions WHERE id = ? AND tenant_id = ? AND branch_id = ?";
     $deleteStmt = $conn->prepare($deleteQuery);
-    $deleteStmt->bind_param("ii", $transactionId, $tenant_id);
+    $deleteStmt->bind_param("iii", $transactionId, $tenant_id, $branch_id);
     $deleteStmt->execute();
     $deleteStmt->close();
     
@@ -194,10 +195,10 @@ try {
     
     $stmt_log = $conn->prepare("
         INSERT INTO activity_log 
-        (user_id, action, table_name, record_id, old_values, new_values, ip_address, user_agent, created_at, tenant_id) 
-        VALUES (?, 'delete', 'supplier_transactions', ?, ?, ?, ?, ?, NOW(), ?)
+        (user_id, action, table_name, record_id, old_values, new_values, ip_address, user_agent, created_at, tenant_id, branch_id) 
+        VALUES (?, 'delete', 'supplier_transactions', ?, ?, ?, ?, ?, NOW(), ?, ?)
     ");
-    $stmt_log->bind_param("iissssi", $user_id, $transactionId, $old_values, $new_values, $ip_address, $user_agent, $tenant_id);
+    $stmt_log->bind_param("iissssii", $user_id, $transactionId, $old_values, $new_values, $ip_address, $user_agent, $tenant_id, $branch_id);
     $stmt_log->execute();
     $stmt_log->close();
     

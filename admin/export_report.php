@@ -9,6 +9,7 @@ require_once '../includes/db.php';
 include '../vendor/autoload.php'; // Load PhpSpreadsheet and Dompdf
 $user_role = $_SESSION["role"];
 $tenant_id = $_SESSION['tenant_id'];
+$branch_id = $_SESSION['branch_id'];
 $reportType = $_GET['reportType'];
 $entity = $_GET['entity'];
 $reportCategory = $_GET['reportCategory'];
@@ -39,8 +40,8 @@ try {
         }
         
         if ($entityTable) {
-            $stmt = $pdo->prepare("SELECT name FROM $entityTable WHERE id = ?");
-            $stmt->execute([$entity]);
+            $stmt = $pdo->prepare("SELECT name FROM $entityTable WHERE id = ? AND tenant_id = ? AND branch_id = ?");
+            $stmt->execute([$entity, $tenant_id, $branch_id]);
             $result = $stmt->fetch(PDO::FETCH_ASSOC);
             $entityName = $result ? $result['name'] : '';
         }
@@ -69,43 +70,43 @@ try {
     if ($reportType === 'general') {
         switch($reportCategory) {
             case 'ticket':
-                $query = "SELECT 
-                    tb.id,
-                    tb.pnr,
-                    tb.title,
-                    tb.passenger_name,
-                    tb.phone,
-                    tb.gender,
-                    tb.origin,
-                    tb.destination,
-                    tb.trip_type,
-                    tb.return_destination,
-                    tb.airline,
-                    tb.issue_date,
-                    tb.departure_date,
-                    tb.currency,
-                    tb.price,
-                    tb.sold,
-                    tb.profit,
-                    s.name as supplier_name,
-                    c.name as sold_to_name,
-                    m.name as paid_to_name,
-                    tb.status,
-                    GROUP_CONCAT(mat.receipt SEPARATOR ', ') as receipt,
-                    tb.description,
-                    'normal' as record_type,
-                    NULL as parent_id
-                FROM ticket_bookings tb
-                LEFT JOIN suppliers s ON tb.supplier = s.id
-                LEFT JOIN clients c ON tb.sold_to = c.id
-                LEFT JOIN main_account m ON tb.paid_to = m.id
-                LEFT JOIN main_account_transactions mat 
-                    ON tb.id = mat.reference_id AND mat.transaction_of = 'ticket_sale'
-                WHERE tb.issue_date BETWEEN ? AND ? 
-                AND tb.tenant_id = ?
-                GROUP BY tb.id";
+                $query = "SELECT
+                     tb.id,
+                     tb.pnr,
+                     tb.title,
+                     tb.passenger_name,
+                     tb.phone,
+                     tb.gender,
+                     tb.origin,
+                     tb.destination,
+                     tb.trip_type,
+                     tb.return_destination,
+                     tb.airline,
+                     tb.issue_date,
+                     tb.departure_date,
+                     tb.currency,
+                     tb.price,
+                     tb.sold,
+                     tb.profit,
+                     s.name as supplier_name,
+                     c.name as sold_to_name,
+                     m.name as paid_to_name,
+                     tb.status,
+                     GROUP_CONCAT(mat.receipt SEPARATOR ', ') as receipt,
+                     tb.description,
+                     'normal' as record_type,
+                     NULL as parent_id
+                 FROM ticket_bookings tb
+                 LEFT JOIN suppliers s ON tb.supplier = s.id
+                 LEFT JOIN clients c ON tb.sold_to = c.id
+                 LEFT JOIN main_account m ON tb.paid_to = m.id
+                 LEFT JOIN main_account_transactions mat
+                     ON tb.id = mat.reference_id AND mat.transaction_of = 'ticket_sale'
+                 WHERE tb.issue_date BETWEEN ? AND ?
+                 AND tb.tenant_id = ? AND tb.branch_id = ?
+                 GROUP BY tb.id";
 
-                $params = [$startDate, $endDate, $tenant_id];
+                 $params = [$startDate, $endDate, $tenant_id, $branch_id];
 
                 $headers = ['PNR', 'Title', 'Passenger Name', 'Phone', 'Gender', 
                            'Sector', 'Trip Type', 'Airline',
@@ -116,26 +117,26 @@ try {
                 break;
             
             case 'ticket_reservation':
-                $query = "SELECT 
-                    tb.pnr, tb.title, tb.passenger_name, tb.phone, tb.gender,
-                    tb.origin, tb.destination, tb.trip_type, tb.return_destination,
-                    tb.airline,
-                    tb.issue_date, tb.departure_date,
-                    tb.currency, tb.price, tb.sold, tb.profit,
-                    s.name as supplier_name, 
-                    c.name as sold_to_name,
-                    m.name as paid_to_name,
-                    tb.status, 
-                    GROUP_CONCAT(mat.receipt SEPARATOR ', ') as receipt, 
-                    tb.description
-                    FROM ticket_reservations tb
-                    LEFT JOIN suppliers s ON tb.supplier = s.id
-                    LEFT JOIN clients c ON tb.sold_to = c.id
-                    LEFT JOIN main_account m ON tb.paid_to = m.id   
-                    LEFT JOIN main_account_transactions mat ON tb.id = mat.reference_id and mat.transaction_of = 'ticket_reserve'
-                    WHERE tb.issue_date BETWEEN ? AND ? AND tb.tenant_id = ?
-                    GROUP BY tb.id";
-                $params = [$startDate, $endDate, $tenant_id];
+                $query = "SELECT
+                     tb.pnr, tb.title, tb.passenger_name, tb.phone, tb.gender,
+                     tb.origin, tb.destination, tb.trip_type, tb.return_destination,
+                     tb.airline,
+                     tb.issue_date, tb.departure_date,
+                     tb.currency, tb.price, tb.sold, tb.profit,
+                     s.name as supplier_name,
+                     c.name as sold_to_name,
+                     m.name as paid_to_name,
+                     tb.status,
+                     GROUP_CONCAT(mat.receipt SEPARATOR ', ') as receipt,
+                     tb.description
+                     FROM ticket_reservations tb
+                     LEFT JOIN suppliers s ON tb.supplier = s.id
+                     LEFT JOIN clients c ON tb.sold_to = c.id
+                     LEFT JOIN main_account m ON tb.paid_to = m.id
+                     LEFT JOIN main_account_transactions mat ON tb.id = mat.reference_id and mat.transaction_of = 'ticket_reserve'
+                     WHERE tb.issue_date BETWEEN ? AND ? AND tb.tenant_id = ? AND tb.branch_id = ?
+                     GROUP BY tb.id";
+                 $params = [$startDate, $endDate, $tenant_id, $branch_id];
                 $headers = ['PNR', 'Title', 'Passenger Name', 'Phone', 'Gender', 
                            'Sector', 'Trip Type', 'Airline',
                            'Issue Date', 'Departure Date', 
@@ -145,40 +146,40 @@ try {
                 break;
 
             case 'refund_ticket':
-                $query = "SELECT 
-                    rt.pnr, 
-                    rt.title, 
-                    rt.passenger_name, 
-                    rt.phone, 
+                $query = "SELECT
+                    rt.pnr,
+                    rt.title,
+                    rt.passenger_name,
+                    rt.phone,
                     rt.gender,
-                    rt.origin, 
-                    rt.destination, 
-                    '' as trip_type, 
+                    rt.origin,
+                    rt.destination,
+                    '' as trip_type,
                     '' as return_destination,
                     rt.airline,
-                    rt.issue_date, 
+                    rt.issue_date,
                     rt.departure_date,
-                    rt.currency, 
-                    rt.sold, 
+                    rt.currency,
+                    rt.sold,
                     rt.base as base_amount,
-                    rt.supplier_penalty, 
+                    rt.supplier_penalty,
                     rt.service_penalty,
                     COALESCE(rt.supplier_penalty, 0) + COALESCE(rt.service_penalty, 0) as total_penalty,
                     rt.refund_to_passenger,
                     s.name as supplier_name,
                     c.name as sold_to_name,
                     m.name as paid_to_name,
-                    rt.status, 
-                    GROUP_CONCAT(mat.receipt SEPARATOR ', ') as receipt, 
+                    rt.status,
+                    GROUP_CONCAT(mat.receipt SEPARATOR ', ') as receipt,
                     rt.remarks
                     FROM refunded_tickets rt
                     LEFT JOIN suppliers s ON rt.supplier = s.id
                     LEFT JOIN clients c ON rt.sold_to = c.id
                     LEFT JOIN main_account m ON rt.paid_to = m.id
                     LEFT JOIN main_account_transactions mat ON rt.id = mat.reference_id and mat.transaction_of = 'ticket_refund'
-                    WHERE rt.created_at BETWEEN ? AND ? AND rt.tenant_id = ?
+                    WHERE rt.created_at BETWEEN ? AND ? AND rt.tenant_id = ? AND rt.branch_id = ?
                     GROUP BY rt.id";
-                $params = [$startDate, $endDate, $tenant_id];
+                $params = [$startDate, $endDate, $tenant_id, $branch_id];
                 $headers = [
                     'PNR', 
                     'Title', 
@@ -207,39 +208,39 @@ try {
                 break;
 
             case 'date_change_ticket':
-                $query = "SELECT 
-                    dc.pnr, 
-                    dc.title, 
-                    dc.passenger_name, 
-                    dc.phone, 
+                $query = "SELECT
+                    dc.pnr,
+                    dc.title,
+                    dc.passenger_name,
+                    dc.phone,
                     dc.gender,
-                    dc.origin, 
-                    dc.destination, 
-                    '' as trip_type, 
+                    dc.origin,
+                    dc.destination,
+                    '' as trip_type,
                     '' as return_destination,
                     dc.airline,
-                    dc.issue_date, 
+                    dc.issue_date,
                     dc.departure_date,
-                    dc.currency, 
-                    dc.sold, 
+                    dc.currency,
+                    dc.sold,
                     dc.base,
-                    dc.supplier_penalty, 
+                    dc.supplier_penalty,
                     dc.service_penalty,
                     COALESCE(dc.supplier_penalty, 0) + COALESCE(dc.service_penalty, 0) as total_penalty,
                     s.name as supplier_name,
                     c.name as sold_to_name,
                     m.name as paid_to_name,
-                    dc.status, 
-                    GROUP_CONCAT(mat.receipt SEPARATOR ', ') as receipt, 
+                    dc.status,
+                    GROUP_CONCAT(mat.receipt SEPARATOR ', ') as receipt,
                     dc.remarks
                     FROM date_change_tickets dc
                     LEFT JOIN suppliers s ON dc.supplier = s.id
                     LEFT JOIN clients c ON dc.sold_to = c.id
                     LEFT JOIN main_account m ON dc.paid_to = m.id
                     LEFT JOIN main_account_transactions mat ON dc.id = mat.reference_id and mat.transaction_of = 'date_change'
-                    WHERE dc.created_at BETWEEN ? AND ? AND dc.tenant_id = ?
+                    WHERE dc.created_at BETWEEN ? AND ? AND dc.tenant_id = ? AND dc.branch_id = ?
                     GROUP BY dc.id";
-                $params = [$startDate, $endDate, $tenant_id];
+                $params = [$startDate, $endDate, $tenant_id, $branch_id];
                 $headers = [
                     'PNR', 
                     'Title', 
@@ -267,33 +268,33 @@ try {
                 break;
             
             case 'hotel':
-                $query = "SELECT 
-                    h.order_id, 
-                    h.title, 
-                    CONCAT(h.first_name, ' ', h.last_name) as guest_name,
-                    h.contact_no, 
-                    h.gender,
-                    h.issue_date, 
-                    h.check_in_date,
-                    h.check_out_date,
-                    h.accommodation_details,
-                    h.currency, 
-                    h.base_amount, 
-                    h.sold_amount, 
-                    h.profit,
-                    s.name as supplier_name,
-                    c.name as client_name,
-                    m.name as account_name,
-                    GROUP_CONCAT(mat.receipt SEPARATOR ', ') as receipt,
-                    h.remarks
-                    FROM hotel_bookings h
-                    LEFT JOIN suppliers s ON h.supplier_id = s.id
-                    LEFT JOIN clients c ON h.sold_to = c.id
-                    LEFT JOIN main_account m ON h.paid_to = m.id
-                    LEFT JOIN main_account_transactions mat ON h.id = mat.reference_id and mat.transaction_of = 'hotel'
-                    WHERE h.issue_date BETWEEN ? AND ? AND h.tenant_id = ?
-                    GROUP BY h.id";
-                $params = [$startDate, $endDate, $tenant_id];
+                $query = "SELECT
+                     h.order_id,
+                     h.title,
+                     CONCAT(h.first_name, ' ', h.last_name) as guest_name,
+                     h.contact_no,
+                     h.gender,
+                     h.issue_date,
+                     h.check_in_date,
+                     h.check_out_date,
+                     h.accommodation_details,
+                     h.currency,
+                     h.base_amount,
+                     h.sold_amount,
+                     h.profit,
+                     s.name as supplier_name,
+                     c.name as client_name,
+                     m.name as account_name,
+                     GROUP_CONCAT(mat.receipt SEPARATOR ', ') as receipt,
+                     h.remarks
+                     FROM hotel_bookings h
+                     LEFT JOIN suppliers s ON h.supplier_id = s.id
+                     LEFT JOIN clients c ON h.sold_to = c.id
+                     LEFT JOIN main_account m ON h.paid_to = m.id
+                     LEFT JOIN main_account_transactions mat ON h.id = mat.reference_id and mat.transaction_of = 'hotel'
+                     WHERE h.issue_date BETWEEN ? AND ? AND h.tenant_id = ? AND h.branch_id = ?
+                     GROUP BY h.id";
+                 $params = [$startDate, $endDate, $tenant_id, $branch_id];
                 $headers = [
                     'Order ID', 
                     'Title', 
@@ -334,9 +335,9 @@ try {
                     INNER JOIN hotel_bookings hb ON h.booking_id = hb.id
                     LEFT JOIN suppliers s ON hb.supplier_id = s.id
                     LEFT JOIN clients c ON hb.sold_to = c.id
-                    WHERE h.created_at BETWEEN ? AND ? AND h.tenant_id = ?
+                    WHERE h.created_at BETWEEN ? AND ? AND h.tenant_id = ? AND h.branch_id = ?
                     GROUP BY h.id";
-                $params = [$startDate, $endDate, $tenant_id];
+                $params = [$startDate, $endDate, $tenant_id, $branch_id];
                 $headers = [
                     'Order ID', 
                     'Title', 
@@ -354,11 +355,11 @@ try {
                 break;
             
             case 'expense':
-                $query = "SELECT 
-                    e.id, 
-                    e.description, 
-                    e.date, 
-                    e.amount, 
+                $query = "SELECT
+                    e.id,
+                    e.description,
+                    e.date,
+                    e.amount,
                     e.currency,
                     ec.name as category,
                     m.name as account_name,
@@ -368,10 +369,10 @@ try {
                     LEFT JOIN expense_categories ec ON e.category_id = ec.id
                     LEFT JOIN main_account m ON e.main_account_id = m.id
                     LEFT JOIN budget_allocations ba ON e.allocation_id = ba.id
-                    WHERE e.date BETWEEN ? AND ? AND e.tenant_id = ?"
+                    WHERE e.date BETWEEN ? AND ? AND e.tenant_id = ? AND e.branch_id = ?"
                     . ($expenseCategory && $expenseCategory !== 'all' ? " AND e.category_id = ?" : "") .
                     " ORDER BY e.date DESC";
-                $params = [$startDate, $endDate, $tenant_id];
+                $params = [$startDate, $endDate, $tenant_id, $branch_id];
                 if ($expenseCategory && $expenseCategory !== 'all') {
                     $params[] = $expenseCategory;
                 }
@@ -389,62 +390,62 @@ try {
                 break;
             
             case 'creditor':
-                $query = "SELECT 
-                        c.id, 
-                        c.name as creditor_name,
-                        c.phone,
-                        c.email,
-                        c.address,
-                        c.balance,
-                        c.currency,
-                        c.status,
-                        (SELECT COALESCE(SUM(amount), 0) 
-                         FROM creditor_transactions 
-                         WHERE creditor_id = c.id 
-                         AND transaction_type = 'credit' 
-                         AND payment_date BETWEEN ? AND ?) as paid_amount,
-                        (SELECT COALESCE(SUM(amount), 0) 
-                         FROM creditor_transactions 
-                         WHERE creditor_id = c.id 
-                         AND transaction_type = 'debit' 
-                         AND payment_date BETWEEN ? AND ?) as received_amount
-                        FROM creditors c
-                        WHERE c.tenant_id = ?
-                        ORDER BY c.name ASC";
-                $params = [$startDate, $endDate, $startDate, $endDate, $tenant_id];
+                $query = "SELECT
+                         c.id,
+                         c.name as creditor_name,
+                         c.phone,
+                         c.email,
+                         c.address,
+                         c.balance,
+                         c.currency,
+                         c.status,
+                         (SELECT COALESCE(SUM(amount), 0)
+                          FROM creditor_transactions
+                          WHERE creditor_id = c.id
+                          AND transaction_type = 'credit'
+                          AND payment_date BETWEEN ? AND ? AND tenant_id = ? AND branch_id = ?) as paid_amount,
+                         (SELECT COALESCE(SUM(amount), 0)
+                          FROM creditor_transactions
+                          WHERE creditor_id = c.id
+                          AND transaction_type = 'debit'
+                          AND payment_date BETWEEN ? AND ? AND tenant_id = ? AND branch_id = ?) as received_amount
+                         FROM creditors c
+                         WHERE c.tenant_id = ? AND c.branch_id = ?
+                         ORDER BY c.name ASC";
+                 $params = [$startDate, $endDate, $tenant_id, $branch_id, $startDate, $endDate, $tenant_id, $branch_id, $tenant_id, $branch_id];
                 $headers = ['ID', 'Creditor Name', 'Phone', 'Email', 'Address', 'Balance', 'Currency', 'Status', 'Paid Amount', 'Received Amount'];
                 break;
             
             case 'debtor':
-                $query = "SELECT 
-                        d.id, 
-                        d.name as debtor_name,
-                        d.phone,
-                        d.email,
-                        d.address,
-                        d.balance,
-                        d.currency,
-                        d.status,
-                        (SELECT COALESCE(SUM(amount), 0) 
-                         FROM debtor_transactions 
-                         WHERE debtor_id = d.id 
-                         AND transaction_type = 'debit' 
-                         AND payment_date BETWEEN ? AND ?) as paid_amount,
-                        (SELECT COALESCE(SUM(amount), 0) 
-                         FROM debtor_transactions 
-                         WHERE debtor_id = d.id 
-                         AND transaction_type = 'credit' 
-                         AND payment_date BETWEEN ? AND ?) as received_amount
-                        FROM debtors d
-                        WHERE d.tenant_id = ?
-                        ORDER BY d.name ASC";
-                $params = [$startDate, $endDate, $startDate, $endDate, $tenant_id];
+                $query = "SELECT
+                         d.id,
+                         d.name as debtor_name,
+                         d.phone,
+                         d.email,
+                         d.address,
+                         d.balance,
+                         d.currency,
+                         d.status,
+                         (SELECT COALESCE(SUM(amount), 0)
+                          FROM debtor_transactions
+                          WHERE debtor_id = d.id
+                          AND transaction_type = 'debit'
+                          AND payment_date BETWEEN ? AND ? AND tenant_id = ? AND branch_id = ?) as paid_amount,
+                         (SELECT COALESCE(SUM(amount), 0)
+                          FROM debtor_transactions
+                          WHERE debtor_id = d.id
+                          AND transaction_type = 'credit'
+                          AND payment_date BETWEEN ? AND ? AND tenant_id = ? AND branch_id = ?) as received_amount
+                         FROM debtors d
+                         WHERE d.tenant_id = ? AND d.branch_id = ?
+                         ORDER BY d.name ASC";
+                 $params = [$startDate, $endDate, $tenant_id, $branch_id, $startDate, $endDate, $tenant_id, $branch_id, $tenant_id, $branch_id];
                 $headers = ['ID', 'Debtor Name', 'Phone', 'Email', 'Address', 'Balance', 'Currency', 'Status', 'Paid Amount', 'Received Amount'];
                 break;
             
             case 'additional_payment':
-                $query = "SELECT 
-                    ap.id, 
+                $query = "SELECT
+                    ap.id,
                     ap.payment_type,
                     ap.description,
                     ap.base_amount,
@@ -458,9 +459,9 @@ try {
                     FROM additional_payments ap
                     LEFT JOIN main_account m ON ap.main_account_id = m.id
                     LEFT JOIN users u ON ap.created_by = u.id
-                    WHERE ap.created_at BETWEEN ? AND ? AND ap.tenant_id = ?
+                    WHERE ap.created_at BETWEEN ? AND ? AND ap.tenant_id = ? AND ap.branch_id = ?
                     ORDER BY ap.created_at DESC";
-                $params = [$startDate, $endDate, $tenant_id];
+                $params = [$startDate, $endDate, $tenant_id, $branch_id];
                 $headers = [
                     'ID', 
                     'Payment Type', 
@@ -477,7 +478,7 @@ try {
                 break;
             
             case 'visa':
-                $query = "SELECT 
+                $query = "SELECT
                     v.id,
                     v.passport_number,
                     v.title,
@@ -501,9 +502,9 @@ try {
                     LEFT JOIN suppliers s ON v.supplier = s.id
                     LEFT JOIN clients c ON v.sold_to = c.id
                     LEFT JOIN main_account m ON v.paid_to = m.id
-                    WHERE v.receive_date BETWEEN ? AND ? AND v.tenant_id = ?
+                    WHERE v.receive_date BETWEEN ? AND ? AND v.tenant_id = ? AND v.branch_id = ?
                     ORDER BY v.receive_date DESC";
-                $params = [$startDate, $endDate, $tenant_id];
+                $params = [$startDate, $endDate, $tenant_id, $branch_id];
                 $headers = [
                     'ID', 
                     'Passport Number', 
@@ -529,45 +530,45 @@ try {
             
             case 'umrah':
                 $query = "SELECT
-                    u.booking_id,
-                    u.name,
-                    u.passport_number,
-                    u.dob,
-                    u.flight_date,
-                    u.return_date,
-                    u.duration,
-                    u.room_type,
-                    u.price,
-                    u.sold_price,
-                    u.profit,
-                    u.received_bank_payment,
-                    u.bank_receipt_number,
-                    u.paid, u.due,
-                    u.currency,
-                    f.head_of_family,
-                    f.tazmin,
-                    u.remarks,
-                    f.visa_status,
-                    s.name as supplier_name,
-                    c.name as client_name,
-                    m.name as account_name,
-                    u.created_at,
-                    f.contact,
-                    ur.refund_type as refund_status
-                    FROM umrah_bookings u
-                    LEFT JOIN families f ON u.family_id = f.family_id
-                    LEFT JOIN suppliers s ON u.supplier = s.id
-                    LEFT JOIN clients c ON u.sold_to = c.id
-                    LEFT JOIN main_account m ON u.paid_to = m.id
-                    LEFT JOIN umrah_refunds ur ON u.booking_id = ur.booking_id
-                    WHERE u.entry_date BETWEEN ? AND ? AND u.tenant_id = ?"
-                    . ($umrahFamilyType === 'specific' && $specificFamily ? " AND u.family_id = ?" : "") .
-                    " GROUP BY u.booking_id
-                    ORDER BY u.entry_date DESC";
-                $params = [$startDate, $endDate, $tenant_id];
-                if ($umrahFamilyType === 'specific' && $specificFamily) {
-                    $params[] = $specificFamily;
-                }
+                     u.booking_id,
+                     u.name,
+                     u.passport_number,
+                     u.dob,
+                     u.flight_date,
+                     u.return_date,
+                     u.duration,
+                     u.room_type,
+                     u.price,
+                     u.sold_price,
+                     u.profit,
+                     u.received_bank_payment,
+                     u.bank_receipt_number,
+                     u.paid, u.due,
+                     u.currency,
+                     f.head_of_family,
+                     f.tazmin,
+                     u.remarks,
+                     f.visa_status,
+                     s.name as supplier_name,
+                     c.name as client_name,
+                     m.name as account_name,
+                     u.created_at,
+                     f.contact,
+                     ur.refund_type as refund_status
+                     FROM umrah_bookings u
+                     LEFT JOIN families f ON u.family_id = f.family_id
+                     LEFT JOIN suppliers s ON u.supplier = s.id
+                     LEFT JOIN clients c ON u.sold_to = c.id
+                     LEFT JOIN main_account m ON u.paid_to = m.id
+                     LEFT JOIN umrah_refunds ur ON u.booking_id = ur.booking_id
+                     WHERE u.entry_date BETWEEN ? AND ? AND u.tenant_id = ? AND u.branch_id = ?"
+                     . ($umrahFamilyType === 'specific' && $specificFamily ? " AND u.family_id = ?" : "") .
+                     " GROUP BY u.booking_id
+                     ORDER BY u.entry_date DESC";
+                 $params = [$startDate, $endDate, $tenant_id, $branch_id];
+                 if ($umrahFamilyType === 'specific' && $specificFamily) {
+                     $params[] = $specificFamily;
+                 }
                 // Base headers (shown to everyone)
                 $headers = [
                     'Head of Family',
@@ -615,9 +616,9 @@ try {
                 break;
 
             case 'ticket_weight':
-                $query = "SELECT 
-                    t.pnr, 
-                    t.passenger_name, 
+                $query = "SELECT
+                    t.pnr,
+                    t.passenger_name,
                     tw.weight,
                     tw.base_price,
                     tw.sold_price,
@@ -633,8 +634,8 @@ try {
                     LEFT JOIN suppliers s ON t.supplier = s.id
                     LEFT JOIN clients c ON t.sold_to = c.id
                     LEFT JOIN main_account m ON t.paid_to = m.id
-                    WHERE tw.created_at BETWEEN ? AND ?";
-                $params = [$startDate, $endDate];
+                    WHERE tw.created_at BETWEEN ? AND ? AND tw.tenant_id = ? AND tw.branch_id = ?";
+                $params = [$startDate, $endDate, $tenant_id, $branch_id];
                 $headers = [
                     'PNR',
                     'Passenger Name',
@@ -652,7 +653,7 @@ try {
                 break;
 
             case 'visa_refund':
-                $query = "SELECT 
+                $query = "SELECT
                     va.passport_number,
                     va.applicant_name,
                     vr.refund_type,
@@ -671,8 +672,8 @@ try {
                     LEFT JOIN clients c ON va.sold_to = c.id
                     LEFT JOIN main_account m ON va.paid_to = m.id
                     LEFT JOIN users u ON vr.processed_by = u.id
-                    WHERE vr.refund_date BETWEEN ? AND ?";
-                $params = [$startDate, $endDate];
+                    WHERE vr.refund_date BETWEEN ? AND ? AND vr.tenant_id = ? AND vr.branch_id = ?";
+                $params = [$startDate, $endDate, $tenant_id, $branch_id];
                 $headers = [
                     'Passport Number',
                     'Applicant Name',
@@ -690,7 +691,7 @@ try {
                 break;
 
             case 'hotel_refund':
-                $query = "SELECT 
+                $query = "SELECT
                     hb.order_id,
                     CONCAT(hb.first_name, ' ', hb.last_name) as guest_name,
                     hr.refund_type,
@@ -709,8 +710,8 @@ try {
                     LEFT JOIN clients c ON hb.sold_to = c.id
                     LEFT JOIN main_account m ON hb.paid_to = m.id
                     LEFT JOIN users u ON hr.processed_by = u.id
-                    WHERE hr.created_at BETWEEN ? AND ? AND hr.tenant_id = ?";
-                $params = [$startDate, $endDate, $tenant_id];
+                    WHERE hr.created_at BETWEEN ? AND ? AND hr.tenant_id = ? AND hr.branch_id = ?";
+                $params = [$startDate, $endDate, $tenant_id, $branch_id];
                 $headers = [
                     'Order ID',
                     'Guest Name',
@@ -747,8 +748,8 @@ try {
                     LEFT JOIN clients c ON ub.sold_to = c.id
                     LEFT JOIN main_account m ON ub.paid_to = m.id
                     LEFT JOIN users u ON ur.processed_by = u.id
-                    WHERE ur.created_at BETWEEN ? AND ? AND ur.tenant_id = ?";
-                $params = [$startDate, $endDate, $tenant_id];
+                    WHERE ur.created_at BETWEEN ? AND ? AND ur.tenant_id = ? AND ur.branch_id = ?";
+                $params = [$startDate, $endDate, $tenant_id, $branch_id];
                 $headers = [
                     'Passport Number',
                     'Pilgrim Name',
@@ -771,29 +772,29 @@ try {
                 switch($reportCategory) {
                     case 'ticket':
                         // Get all tickets with their refund and date change records
-                        $query = "SELECT 
+                        $query = "SELECT
                             tb.id,
-                            tb.pnr, 
-                            tb.title, 
-                            tb.passenger_name, 
-                            tb.phone, 
+                            tb.pnr,
+                            tb.title,
+                            tb.passenger_name,
+                            tb.phone,
                             tb.gender,
-                            tb.origin, 
-                            tb.destination, 
-                            tb.trip_type, 
+                            tb.origin,
+                            tb.destination,
+                            tb.trip_type,
                             tb.return_destination,
                             tb.airline,
-                            tb.issue_date, 
+                            tb.issue_date,
                             tb.departure_date,
-                            tb.currency, 
-                            tb.price, 
-                            tb.sold, 
+                            tb.currency,
+                            tb.price,
+                            tb.sold,
                             tb.profit,
-                            s.name as supplier_name, 
+                            s.name as supplier_name,
                             c.name as sold_to_name,
                             m.name as paid_to_name,
-                            tb.status, 
-                            GROUP_CONCAT(mat.receipt SEPARATOR ', ') as receipt, 
+                            tb.status,
+                            GROUP_CONCAT(mat.receipt SEPARATOR ', ') as receipt,
                             tb.description,
                             'normal' as record_type,
                             NULL as parent_id
@@ -802,33 +803,33 @@ try {
                             LEFT JOIN clients c ON tb.sold_to = c.id
                             LEFT JOIN main_account m ON tb.paid_to = m.id
                             LEFT JOIN main_account_transactions mat ON tb.id = mat.reference_id and mat.transaction_of = 'ticket_sale'
-                            WHERE tb.issue_date BETWEEN ? AND ? AND tb.tenant_id = ?
+                            WHERE tb.supplier = ? AND tb.issue_date BETWEEN ? AND ? AND tb.tenant_id = ? AND tb.branch_id = ?
                             GROUP BY tb.id
-                            
+
                             UNION ALL
-                            
-                            SELECT 
+
+                            SELECT
                             rt.id,
-                            rt.pnr, 
-                            rt.title, 
-                            rt.passenger_name, 
-                            rt.phone, 
+                            rt.pnr,
+                            rt.title,
+                            rt.passenger_name,
+                            rt.phone,
                             rt.gender,
-                            rt.origin, 
-                            rt.destination, 
-                            '' as trip_type, 
+                            rt.origin,
+                            rt.destination,
+                            '' as trip_type,
                             '' as return_destination,
                             rt.airline,
-                            rt.issue_date, 
+                            rt.issue_date,
                             rt.departure_date,
-                            rt.currency, 
-                            rt.supplier_penalty as price, 
-                            (COALESCE(rt.supplier_penalty, 0) + COALESCE(rt.service_penalty, 0)) as sold, 
+                            rt.currency,
+                            rt.supplier_penalty as price,
+                            (COALESCE(rt.supplier_penalty, 0) + COALESCE(rt.service_penalty, 0)) as sold,
                             (COALESCE(rt.service_penalty, 0)) as profit,
-                            s.name as supplier_name, 
+                            s.name as supplier_name,
                             c.name as sold_to_name,
                             m.name as paid_to_name,
-                            CONCAT('Refunded - ', rt.status) as status, 
+                            CONCAT('Refunded - ', rt.status) as status,
                             GROUP_CONCAT(mat.receipt SEPARATOR ', ') as receipt,
                             rt.remarks as description,
                             'refund' as record_type,
@@ -838,33 +839,33 @@ try {
                             LEFT JOIN clients c ON rt.sold_to = c.id
                             LEFT JOIN main_account m ON rt.paid_to = m.id
                             LEFT JOIN main_account_transactions mat ON rt.id = mat.reference_id and mat.transaction_of = 'ticket_refund'
-                            WHERE rt.supplier = ? AND rt.created_at BETWEEN ? AND ? AND rt.tenant_id = ?
+                            WHERE rt.supplier = ? AND rt.created_at BETWEEN ? AND ? AND rt.tenant_id = ? AND rt.branch_id = ?
                             GROUP BY rt.id
-                            
+
                             UNION ALL
-                            
-                            SELECT 
+
+                            SELECT
                             dc.id,
-                            dc.pnr, 
-                            dc.title, 
-                            dc.passenger_name, 
-                            dc.phone, 
+                            dc.pnr,
+                            dc.title,
+                            dc.passenger_name,
+                            dc.phone,
                             dc.gender,
-                            dc.origin, 
-                            dc.destination, 
-                            '' as trip_type, 
+                            dc.origin,
+                            dc.destination,
+                            '' as trip_type,
                             '' as return_destination,
                             dc.airline,
-                            dc.issue_date, 
+                            dc.issue_date,
                             dc.departure_date,
-                            dc.currency, 
-                            dc.supplier_penalty as price, 
-                            (COALESCE(dc.supplier_penalty, 0) + COALESCE(dc.service_penalty, 0)) as sold, 
+                            dc.currency,
+                            dc.supplier_penalty as price,
+                            (COALESCE(dc.supplier_penalty, 0) + COALESCE(dc.service_penalty, 0)) as sold,
                             (COALESCE(dc.service_penalty, 0)) as profit,
-                            s.name as supplier_name, 
+                            s.name as supplier_name,
                             c.name as sold_to_name,
                             m.name as paid_to_name,
-                            CONCAT('Date Changed - ', dc.status) as status, 
+                            CONCAT('Date Changed - ', dc.status) as status,
                             GROUP_CONCAT(mat.receipt SEPARATOR ', ') as receipt,
                             dc.remarks as description,
                             'date_change' as record_type,
@@ -874,11 +875,11 @@ try {
                             LEFT JOIN clients c ON dc.sold_to = c.id
                             LEFT JOIN main_account m ON dc.paid_to = m.id
                             LEFT JOIN main_account_transactions mat ON dc.id = mat.reference_id and mat.transaction_of = 'date_change'
-                            WHERE dc.supplier = ? AND dc.created_at BETWEEN ? AND ? AND dc.tenant_id = ?
+                            WHERE dc.supplier = ? AND dc.created_at BETWEEN ? AND ? AND dc.tenant_id = ? AND dc.branch_id = ?
                             GROUP BY dc.id
-                            
+
                             ORDER BY COALESCE(parent_id, id), record_type";
-                        $params = [$entity, $startDate, $endDate, $tenant_id, $entity, $startDate, $endDate, $tenant_id, $entity, $startDate, $endDate, $tenant_id];
+                        $params = [$entity, $startDate, $endDate, $tenant_id, $branch_id, $entity, $startDate, $endDate, $tenant_id, $branch_id, $entity, $startDate, $endDate, $tenant_id, $branch_id];
                         $headers = ['PNR', 'Title', 'Passenger Name', 'Phone', 'Gender', 
                                   'Sector', 'Trip Type', 'Airline',
                                   'Issue Date', 'Departure Date', 
@@ -887,40 +888,40 @@ try {
                                   'Status', 'Receipt', 'Description'];
                         break;
                     case 'refund_ticket':
-                        $query = "SELECT 
-                            rt.pnr, 
-                            rt.title, 
-                            rt.passenger_name, 
-                            rt.phone, 
-                            rt.gender,
-                            rt.origin, 
-                            rt.destination, 
-                            '' as trip_type,
-                            '' as return_destination,
-                            rt.airline,
-                            rt.issue_date, 
-                            rt.departure_date,
-                            rt.currency, 
-                            rt.sold, 
-                            rt.base as base_amount,
-                            rt.supplier_penalty, 
-                            rt.service_penalty,
-                            COALESCE(rt.supplier_penalty, 0) + COALESCE(rt.service_penalty, 0) as total_penalty,
-                            rt.refund_to_passenger,
-                            s.name as supplier_name,
-                            c.name as sold_to_name,
-                            m.name as paid_to_name,
-                            rt.status, 
-                            GROUP_CONCAT(mat.receipt SEPARATOR ', ') as receipt, 
-                            rt.remarks
-                            FROM refunded_tickets rt
-                            LEFT JOIN suppliers s ON rt.supplier = s.id
-                            LEFT JOIN clients c ON rt.sold_to = c.id
-                            LEFT JOIN main_account m ON rt.paid_to = m.id
-                            LEFT JOIN main_account_transactions mat ON rt.id = mat.reference_id and mat.transaction_of = 'ticket_refund'
-                            WHERE rt.created_at BETWEEN ? AND ? AND rt.tenant_id = ?
-                            GROUP BY rt.id";
-                        $params = [$startDate, $endDate, $tenant_id];
+                        $query = "SELECT
+                             rt.pnr,
+                             rt.title,
+                             rt.passenger_name,
+                             rt.phone,
+                             rt.gender,
+                             rt.origin,
+                             rt.destination,
+                             '' as trip_type,
+                             '' as return_destination,
+                             rt.airline,
+                             rt.issue_date,
+                             rt.departure_date,
+                             rt.currency,
+                             rt.sold,
+                             rt.base as base_amount,
+                             rt.supplier_penalty,
+                             rt.service_penalty,
+                             COALESCE(rt.supplier_penalty, 0) + COALESCE(rt.service_penalty, 0) as total_penalty,
+                             rt.refund_to_passenger,
+                             s.name as supplier_name,
+                             c.name as sold_to_name,
+                             m.name as paid_to_name,
+                             rt.status,
+                             GROUP_CONCAT(mat.receipt SEPARATOR ', ') as receipt,
+                             rt.remarks
+                             FROM refunded_tickets rt
+                             LEFT JOIN suppliers s ON rt.supplier = s.id
+                             LEFT JOIN clients c ON rt.sold_to = c.id
+                             LEFT JOIN main_account m ON rt.paid_to = m.id
+                             LEFT JOIN main_account_transactions mat ON rt.id = mat.reference_id and mat.transaction_of = 'ticket_refund'
+                             WHERE rt.created_at BETWEEN ? AND ? AND rt.tenant_id = ? AND rt.branch_id = ?
+                             GROUP BY rt.id";
+                         $params = [$startDate, $endDate, $tenant_id, $branch_id];
                         $headers = [
                             'PNR', 
                             'Title', 
@@ -948,39 +949,39 @@ try {
                         ];
                         break;
                     case 'date_change_ticket':
-                        $query = "SELECT 
-                            dc.pnr, 
-                            dc.title, 
-                            dc.passenger_name, 
-                            dc.phone, 
-                            dc.gender,
-                            dc.origin, 
-                            dc.destination, 
-                            '' as trip_type,
-                            '' as return_destination,
-                            dc.airline,
-                            dc.issue_date, 
-                            dc.departure_date,
-                            dc.currency, 
-                            dc.sold, 
-                            dc.base,
-                            dc.supplier_penalty, 
-                            dc.service_penalty,
-                            COALESCE(dc.supplier_penalty, 0) + COALESCE(dc.service_penalty, 0) as total_penalty,
-                            s.name as supplier_name,
-                            c.name as sold_to_name,
-                            m.name as paid_to_name,
-                            dc.status, 
-                            GROUP_CONCAT(mat.receipt SEPARATOR ', ') as receipt, 
-                            dc.remarks
-                            FROM date_change_tickets dc
-                            LEFT JOIN suppliers s ON dc.supplier = s.id
-                            LEFT JOIN clients c ON dc.sold_to = c.id
-                            LEFT JOIN main_account m ON dc.paid_to = m.id
-                            LEFT JOIN main_account_transactions mat ON dc.id = mat.reference_id and mat.transaction_of = 'date_change'
-                            WHERE dc.created_at BETWEEN ? AND ? AND dc.tenant_id = ?
-                            GROUP BY dc.id";
-                        $params = [$startDate, $endDate, $tenant_id];
+                        $query = "SELECT
+                             dc.pnr,
+                             dc.title,
+                             dc.passenger_name,
+                             dc.phone,
+                             dc.gender,
+                             dc.origin,
+                             dc.destination,
+                             '' as trip_type,
+                             '' as return_destination,
+                             dc.airline,
+                             dc.issue_date,
+                             dc.departure_date,
+                             dc.currency,
+                             dc.sold,
+                             dc.base,
+                             dc.supplier_penalty,
+                             dc.service_penalty,
+                             COALESCE(dc.supplier_penalty, 0) + COALESCE(dc.service_penalty, 0) as total_penalty,
+                             s.name as supplier_name,
+                             c.name as sold_to_name,
+                             m.name as paid_to_name,
+                             dc.status,
+                             GROUP_CONCAT(mat.receipt SEPARATOR ', ') as receipt,
+                             dc.remarks
+                             FROM date_change_tickets dc
+                             LEFT JOIN suppliers s ON dc.supplier = s.id
+                             LEFT JOIN clients c ON dc.sold_to = c.id
+                             LEFT JOIN main_account m ON dc.paid_to = m.id
+                             LEFT JOIN main_account_transactions mat ON dc.id = mat.reference_id and mat.transaction_of = 'date_change'
+                             WHERE dc.created_at BETWEEN ? AND ? AND dc.tenant_id = ? AND dc.branch_id = ?
+                             GROUP BY dc.id";
+                         $params = [$startDate, $endDate, $tenant_id, $branch_id];
                         $headers = [
                             'PNR', 
                             'Title', 
@@ -1012,114 +1013,114 @@ try {
             case 'supplier':
                 switch($reportCategory) {
                     case 'ticket':
-                        $query = "SELECT 
-                            tb.id,
-                            tb.pnr, 
-                            tb.title, 
-                            tb.passenger_name, 
-                            tb.phone, 
-                            tb.gender,
-                            tb.origin, 
-                            tb.destination, 
-                            tb.trip_type, 
-                            tb.return_destination,
-                            tb.airline,
-                            tb.issue_date, 
-                            tb.departure_date,
-                            tb.currency, 
-                            tb.price, 
-                            tb.sold, 
-                            tb.profit,
-                            s.name as supplier_name, 
-                            c.name as sold_to_name,
-                            m.name as paid_to_name,
-                            tb.status, 
-                            GROUP_CONCAT(mat.receipt SEPARATOR ', ') as receipt, 
-                            tb.description,
-                            'normal' as record_type,
-                            NULL as parent_id
-                            FROM ticket_bookings tb
-                            LEFT JOIN suppliers s ON tb.supplier = s.id
-                            LEFT JOIN clients c ON tb.sold_to = c.id
-                            LEFT JOIN main_account m ON tb.paid_to = m.id
-                            LEFT JOIN main_account_transactions mat ON tb.id = mat.reference_id and mat.transaction_of = 'ticket_sale'
-                            WHERE tb.supplier = ? AND tb.issue_date BETWEEN ? AND ? AND tb.tenant_id = ?
-                            GROUP BY tb.id
-                            
-                            UNION ALL
-                            
-                            SELECT 
-                            rt.id,
-                            rt.pnr, 
-                            rt.title, 
-                            rt.passenger_name, 
-                            rt.phone, 
-                            rt.gender,
-                            rt.origin, 
-                            rt.destination, 
-                            '' as trip_type, 
-                            '' as return_destination,
-                            rt.airline,
-                            rt.issue_date, 
-                            rt.departure_date,
-                            rt.currency, 
-                            rt.supplier_penalty as price, 
-                            (COALESCE(rt.supplier_penalty, 0) + COALESCE(rt.service_penalty, 0)) as sold, 
-                            (COALESCE(rt.service_penalty, 0)) as profit,
-                            s.name as supplier_name, 
-                            c.name as sold_to_name,
-                            m.name as paid_to_name,
-                            CONCAT('Refunded - ', rt.status) as status, 
-                            GROUP_CONCAT(mat.receipt SEPARATOR ', ') as receipt,
-                            rt.remarks as description,
-                            'refund' as record_type,
-                            rt.ticket_id as parent_id
-                            FROM refunded_tickets rt
-                            LEFT JOIN suppliers s ON rt.supplier = s.id
-                            LEFT JOIN clients c ON rt.sold_to = c.id
-                            LEFT JOIN main_account m ON rt.paid_to = m.id
-                            LEFT JOIN main_account_transactions mat ON rt.id = mat.reference_id and mat.transaction_of = 'ticket_refund'
-                            WHERE rt.supplier = ? AND rt.created_at BETWEEN ? AND ? AND rt.tenant_id = ?
-                            GROUP BY rt.id
-                            
-                            UNION ALL
-                            
-                            SELECT 
-                            dc.id,
-                            dc.pnr, 
-                            dc.title, 
-                            dc.passenger_name, 
-                            dc.phone, 
-                            dc.gender,
-                            dc.origin, 
-                            dc.destination, 
-                            '' as trip_type, 
-                            '' as return_destination,
-                            dc.airline,
-                            dc.issue_date, 
-                            dc.departure_date,
-                            dc.currency, 
-                            dc.supplier_penalty as price, 
-                            (COALESCE(dc.supplier_penalty, 0) + COALESCE(dc.service_penalty, 0)) as sold, 
-                            (COALESCE(dc.service_penalty, 0)) as profit,
-                            s.name as supplier_name, 
-                            c.name as sold_to_name,
-                            m.name as paid_to_name,
-                            CONCAT('Date Changed - ', dc.status) as status, 
-                            GROUP_CONCAT(mat.receipt SEPARATOR ', ') as receipt,
-                            dc.remarks as description,
-                            'date_change' as record_type,
-                            dc.ticket_id as parent_id
-                            FROM date_change_tickets dc
-                            LEFT JOIN suppliers s ON dc.supplier = s.id
-                            LEFT JOIN clients c ON dc.sold_to = c.id
-                            LEFT JOIN main_account m ON dc.paid_to = m.id
-                            LEFT JOIN main_account_transactions mat ON dc.id = mat.reference_id and mat.transaction_of = 'date_change'
-                            WHERE dc.supplier = ? AND dc.created_at BETWEEN ? AND ? AND dc.tenant_id = ?
-                            GROUP BY dc.id
-                            
-                            ORDER BY COALESCE(parent_id, id), record_type";
-                        $params = [$entity, $startDate, $endDate, $tenant_id, $entity, $startDate, $endDate, $tenant_id, $entity, $startDate, $endDate, $tenant_id];
+                        $query = "SELECT
+                             tb.id,
+                             tb.pnr,
+                             tb.title,
+                             tb.passenger_name,
+                             tb.phone,
+                             tb.gender,
+                             tb.origin,
+                             tb.destination,
+                             tb.trip_type,
+                             tb.return_destination,
+                             tb.airline,
+                             tb.issue_date,
+                             tb.departure_date,
+                             tb.currency,
+                             tb.price,
+                             tb.sold,
+                             tb.profit,
+                             s.name as supplier_name,
+                             c.name as sold_to_name,
+                             m.name as paid_to_name,
+                             tb.status,
+                             GROUP_CONCAT(mat.receipt SEPARATOR ', ') as receipt,
+                             tb.description,
+                             'normal' as record_type,
+                             NULL as parent_id
+                             FROM ticket_bookings tb
+                             LEFT JOIN suppliers s ON tb.supplier = s.id
+                             LEFT JOIN clients c ON tb.sold_to = c.id
+                             LEFT JOIN main_account m ON tb.paid_to = m.id
+                             LEFT JOIN main_account_transactions mat ON tb.id = mat.reference_id and mat.transaction_of = 'ticket_sale'
+                             WHERE tb.supplier = ? AND tb.issue_date BETWEEN ? AND ? AND tb.tenant_id = ? AND tb.branch_id = ?
+                             GROUP BY tb.id
+
+                             UNION ALL
+
+                             SELECT
+                             rt.id,
+                             rt.pnr,
+                             rt.title,
+                             rt.passenger_name,
+                             rt.phone,
+                             rt.gender,
+                             rt.origin,
+                             rt.destination,
+                             '' as trip_type,
+                             '' as return_destination,
+                             rt.airline,
+                             rt.issue_date,
+                             rt.departure_date,
+                             rt.currency,
+                             rt.supplier_penalty as price,
+                             (COALESCE(rt.supplier_penalty, 0) + COALESCE(rt.service_penalty, 0)) as sold,
+                             (COALESCE(rt.service_penalty, 0)) as profit,
+                             s.name as supplier_name,
+                             c.name as sold_to_name,
+                             m.name as paid_to_name,
+                             CONCAT('Refunded - ', rt.status) as status,
+                             GROUP_CONCAT(mat.receipt SEPARATOR ', ') as receipt,
+                             rt.remarks as description,
+                             'refund' as record_type,
+                             rt.ticket_id as parent_id
+                             FROM refunded_tickets rt
+                             LEFT JOIN suppliers s ON rt.supplier = s.id
+                             LEFT JOIN clients c ON rt.sold_to = c.id
+                             LEFT JOIN main_account m ON rt.paid_to = m.id
+                             LEFT JOIN main_account_transactions mat ON rt.id = mat.reference_id and mat.transaction_of = 'ticket_refund'
+                             WHERE rt.supplier = ? AND rt.created_at BETWEEN ? AND ? AND rt.tenant_id = ? AND rt.branch_id = ?
+                             GROUP BY rt.id
+
+                             UNION ALL
+
+                             SELECT
+                             dc.id,
+                             dc.pnr,
+                             dc.title,
+                             dc.passenger_name,
+                             dc.phone,
+                             dc.gender,
+                             dc.origin,
+                             dc.destination,
+                             '' as trip_type,
+                             '' as return_destination,
+                             dc.airline,
+                             dc.issue_date,
+                             dc.departure_date,
+                             dc.currency,
+                             dc.supplier_penalty as price,
+                             (COALESCE(dc.supplier_penalty, 0) + COALESCE(dc.service_penalty, 0)) as sold,
+                             (COALESCE(dc.service_penalty, 0)) as profit,
+                             s.name as supplier_name,
+                             c.name as sold_to_name,
+                             m.name as paid_to_name,
+                             CONCAT('Date Changed - ', dc.status) as status,
+                             GROUP_CONCAT(mat.receipt SEPARATOR ', ') as receipt,
+                             dc.remarks as description,
+                             'date_change' as record_type,
+                             dc.ticket_id as parent_id
+                             FROM date_change_tickets dc
+                             LEFT JOIN suppliers s ON dc.supplier = s.id
+                             LEFT JOIN clients c ON dc.sold_to = c.id
+                             LEFT JOIN main_account m ON dc.paid_to = m.id
+                             LEFT JOIN main_account_transactions mat ON dc.id = mat.reference_id and mat.transaction_of = 'date_change'
+                             WHERE dc.supplier = ? AND dc.created_at BETWEEN ? AND ? AND dc.tenant_id = ? AND dc.branch_id = ?
+                             GROUP BY dc.id
+
+                             ORDER BY COALESCE(parent_id, id), record_type";
+                         $params = [$entity, $startDate, $endDate, $tenant_id, $branch_id, $entity, $startDate, $endDate, $tenant_id, $branch_id, $entity, $startDate, $endDate, $tenant_id, $branch_id];
                         $headers = ['PNR', 'Title', 'Passenger Name', 'Phone', 'Gender', 
                                   'Sector', 'Trip Type', 'Airline',
                                   'Issue Date', 'Departure Date', 
@@ -1128,26 +1129,26 @@ try {
                                   'Status', 'Receipt', 'Description'];
                         break;
                     case 'ticket_reservation':
-                        $query = "SELECT 
-                            tb.pnr, tb.title, tb.passenger_name, tb.phone, tb.gender,
-                            tb.origin, tb.destination, tb.trip_type, tb.return_destination,
-                            tb.airline,
-                            tb.issue_date, tb.departure_date,
-                            tb.currency, tb.price, tb.sold, tb.profit,
-                            s.name as supplier_name, 
-                            c.name as sold_to_name,
-                            m.name as paid_to_name,
-                            tb.status, 
-                            GROUP_CONCAT(mat.receipt SEPARATOR ', ') as receipt, 
-                            tb.description
-                            FROM ticket_reservations tb
-                            LEFT JOIN suppliers s ON tb.supplier = s.id
-                            LEFT JOIN clients c ON tb.sold_to = c.id
-                            LEFT JOIN main_account m ON tb.paid_to = m.id   
-                            LEFT JOIN main_account_transactions mat ON tb.id = mat.reference_id and mat.transaction_of = 'ticket_sale'
-                            WHERE tb.supplier = ? AND tb.issue_date BETWEEN ? AND ? AND tb.tenant_id = ?
-                            GROUP BY tb.id";
-                        $params = [$entity, $startDate, $endDate, $tenant_id];
+                        $query = "SELECT
+                             tb.pnr, tb.title, tb.passenger_name, tb.phone, tb.gender,
+                             tb.origin, tb.destination, tb.trip_type, tb.return_destination,
+                             tb.airline,
+                             tb.issue_date, tb.departure_date,
+                             tb.currency, tb.price, tb.sold, tb.profit,
+                             s.name as supplier_name,
+                             c.name as sold_to_name,
+                             m.name as paid_to_name,
+                             tb.status,
+                             GROUP_CONCAT(mat.receipt SEPARATOR ', ') as receipt,
+                             tb.description
+                             FROM ticket_reservations tb
+                             LEFT JOIN suppliers s ON tb.supplier = s.id
+                             LEFT JOIN clients c ON tb.sold_to = c.id
+                             LEFT JOIN main_account m ON tb.paid_to = m.id
+                             LEFT JOIN main_account_transactions mat ON tb.id = mat.reference_id and mat.transaction_of = 'ticket_sale'
+                             WHERE tb.supplier = ? AND tb.issue_date BETWEEN ? AND ? AND tb.tenant_id = ? AND tb.branch_id = ?
+                             GROUP BY tb.id";
+                         $params = [$entity, $startDate, $endDate, $tenant_id, $branch_id];
                         $headers = ['PNR', 'Title', 'Passenger Name', 'Phone', 'Gender', 
                                    'Sector', 'Trip Type', 'Airline',
                                    'Issue Date', 'Departure Date', 
@@ -1157,28 +1158,28 @@ try {
                         break;
                     
                     case 'refund_ticket':
-                        $query = "SELECT 
-                            rt.pnr, rt.title, rt.passenger_name, rt.phone, rt.gender,
-                            rt.origin, rt.destination, '' as trip_type, 
-                    '' as return_destination, rt.airline,
-                            rt.issue_date, rt.departure_date,
-                            rt.currency, rt.sold, rt.base,
-                            rt.supplier_penalty, rt.service_penalty,
-                            rt.refund_to_passenger,
-                            s.name as supplier_name,
-                            c.name as sold_to_name,
-                            m.name as paid_to_name,
-                            rt.status, 
-                            GROUP_CONCAT(mat.receipt SEPARATOR ', ') as receipt, 
-                            rt.remarks
-                            FROM refunded_tickets rt
-                            LEFT JOIN suppliers s ON rt.supplier = s.id
-                            LEFT JOIN clients c ON rt.sold_to = c.id
-                            LEFT JOIN main_account m ON rt.paid_to = m.id
-                            LEFT JOIN main_account_transactions mat ON rt.id = mat.reference_id and mat.transaction_of = 'ticket_refund'
-                            WHERE rt.supplier = ? AND rt.created_at BETWEEN ? AND ? AND rt.tenant_id = ?
-                            GROUP BY rt.id";
-                        $params = [$entity, $startDate, $endDate, $tenant_id];
+                        $query = "SELECT
+                             rt.pnr, rt.title, rt.passenger_name, rt.phone, rt.gender,
+                             rt.origin, rt.destination, '' as trip_type,
+                     '' as return_destination, rt.airline,
+                             rt.issue_date, rt.departure_date,
+                             rt.currency, rt.sold, rt.base,
+                             rt.supplier_penalty, rt.service_penalty,
+                             rt.refund_to_passenger,
+                             s.name as supplier_name,
+                             c.name as sold_to_name,
+                             m.name as paid_to_name,
+                             rt.status,
+                             GROUP_CONCAT(mat.receipt SEPARATOR ', ') as receipt,
+                             rt.remarks
+                             FROM refunded_tickets rt
+                             LEFT JOIN suppliers s ON rt.supplier = s.id
+                             LEFT JOIN clients c ON rt.sold_to = c.id
+                             LEFT JOIN main_account m ON rt.paid_to = m.id
+                             LEFT JOIN main_account_transactions mat ON rt.id = mat.reference_id and mat.transaction_of = 'ticket_refund'
+                             WHERE rt.supplier = ? AND rt.created_at BETWEEN ? AND ? AND rt.tenant_id = ? AND rt.branch_id = ?
+                             GROUP BY rt.id";
+                         $params = [$entity, $startDate, $endDate, $tenant_id, $branch_id];
                         $headers = ['PNR', 'Title', 'Passenger Name', 'Phone', 'Gender',
                                    'Sector', 'Trip Type', 'Airline',
                                     'Issue Date', 'Departure Date',
@@ -1209,9 +1210,9 @@ try {
                             LEFT JOIN clients c ON dc.sold_to = c.id
                             LEFT JOIN main_account m ON dc.paid_to = m.id
                             LEFT JOIN main_account_transactions mat ON dc.id = mat.reference_id and mat.transaction_of = 'date_change'
-                            WHERE dc.supplier = ? AND dc.created_at BETWEEN ? AND ? AND dc.tenant_id = ?
+                            WHERE dc.supplier = ? AND dc.created_at BETWEEN ? AND ? AND dc.tenant_id = ? AND dc.branch_id = ?
                             GROUP BY dc.id";
-                        $params = [$entity, $startDate, $endDate, $tenant_id];
+                        $params = [$entity, $startDate, $endDate, $tenant_id, $branch_id];
                         $headers = ['PNR', 'Title', 'Passenger Name', 'Phone', 'Gender',
                                    'Sector', 'Trip Type', 'Airline',
                                    'Issue Date', 'Departure Date',
@@ -1281,10 +1282,10 @@ try {
                             LEFT JOIN clients c ON u.sold_to = c.id
                             LEFT JOIN main_account m ON u.paid_to = m.id
                             LEFT JOIN umrah_refunds ur ON u.booking_id = ur.booking_id
-                            WHERE u.entry_date BETWEEN ? AND ? AND u.tenant_id = ?"
+                            WHERE u.entry_date BETWEEN ? AND ? AND u.tenant_id = ? u.branch_id = ?"
                             . ($umrahFamilyType === 'specific' && $specificFamily ? " AND u.family_id = ?" : "") .
                             " ORDER BY u.entry_date DESC";
-                        $params = [$startDate, $endDate, $tenant_id];
+                        $params = [$startDate, $endDate, $tenant_id, $branch_id];
                         if ($umrahFamilyType === 'specific' && $specificFamily) {
                             $params[] = $specificFamily;
                         }
@@ -1348,8 +1349,8 @@ try {
                             LEFT JOIN suppliers s ON t.supplier = s.id
                             LEFT JOIN clients c ON t.sold_to = c.id
                             LEFT JOIN main_account m ON t.paid_to = m.id
-                            WHERE tw.created_at BETWEEN ? AND ? AND tw.tenant_id = ?";
-                        $params = [$startDate, $endDate, $tenant_id];
+                            WHERE tw.created_at BETWEEN ? AND ? AND tw.tenant_id = ? AND tw.branch_id = ?";
+                        $params = [$startDate, $endDate, $tenant_id, $branch_id];
                         $headers = [
                             'PNR',
                             'Passenger Name',
@@ -1386,8 +1387,8 @@ try {
                             LEFT JOIN clients c ON va.sold_to = c.id
                             LEFT JOIN main_account m ON va.paid_to = m.id
                             LEFT JOIN users u ON vr.processed_by = u.id
-                            WHERE vr.refund_date BETWEEN ? AND ? AND vr.tenant_id = ?";
-                        $params = [$startDate, $endDate, $tenant_id];
+                            WHERE vr.refund_date BETWEEN ? AND ? AND vr.tenant_id = ? vr.branch_id = ?";
+                        $params = [$startDate, $endDate, $tenant_id, $branch_id];
                         $headers = [
                             'Passport Number',
                             'Applicant Name',
@@ -1405,14 +1406,14 @@ try {
                         break;
 
                         case 'hotel_refund':
-                            $query = "SELECT 
-                                hb.order_id, 
-                                hb.title, 
+                            $query = "SELECT
+                                hb.order_id,
+                                hb.title,
                                 CONCAT(hb.first_name, ' ', hb.last_name) as guest_name,
-                                hb.contact_no, 
+                                hb.contact_no,
                                 hb.gender,
-                                h.created_at, 
-                                hb.currency, 
+                                h.created_at,
+                                hb.currency,
                                 h.refund_amount,
                                 s.name as supplier_name,
                                 c.name as client_name,
@@ -1422,9 +1423,9 @@ try {
                                 INNER JOIN hotel_bookings hb ON h.booking_id = hb.id
                                 LEFT JOIN suppliers s ON hb.supplier_id = s.id
                                 LEFT JOIN clients c ON hb.sold_to = c.id
-                                WHERE h.created_at BETWEEN ? AND ? AND h.tenant_id = ?
+                                WHERE h.created_at BETWEEN ? AND ? AND h.tenant_id = ? AND h.branch_id = ?
                                 GROUP BY h.id";
-                            $params = [$startDate, $endDate, $tenant_id];
+                            $params = [$startDate, $endDate, $tenant_id, $branch_id];
                             $headers = [
                                 'Order ID', 
                                 'Title', 
@@ -1442,27 +1443,27 @@ try {
                             break;
 
                     case 'umrah_refund':
-                        $query = "SELECT 
-                            ub.passport_number,
-                            ub.name as pilgrim_name,
-                            ur.refund_type,
-                            ur.refund_amount,
-                            ur.currency,
-                            ur.exchange_rate,
-                            ur.created_at,
-                            ur.reason,
-                            s.name as supplier_name,
-                            c.name as client_name,
-                            m.name as account_name,
-                            u.name as processed_by_name
-                            FROM umrah_refunds ur
-                            LEFT JOIN umrah_bookings ub ON ur.booking_id = ub.booking_id
-                            LEFT JOIN suppliers s ON ub.supplier = s.id
-                            LEFT JOIN clients c ON ub.sold_to = c.id
-                            LEFT JOIN main_account m ON ub.paid_to = m.id
-                            LEFT JOIN users u ON ur.processed_by = u.id
-                            WHERE ur.created_at BETWEEN ? AND ? AND ur.tenant_id = ?";
-                        $params = [$startDate, $endDate, $tenant_id];
+                        $query = "SELECT
+                             ub.passport_number,
+                             ub.name as pilgrim_name,
+                             ur.refund_type,
+                             ur.refund_amount,
+                             ur.currency,
+                             ur.exchange_rate,
+                             ur.created_at,
+                             ur.reason,
+                             s.name as supplier_name,
+                             c.name as client_name,
+                             m.name as account_name,
+                             u.name as processed_by_name
+                             FROM umrah_refunds ur
+                             LEFT JOIN umrah_bookings ub ON ur.booking_id = ub.booking_id
+                             LEFT JOIN suppliers s ON ub.supplier = s.id
+                             LEFT JOIN clients c ON ub.sold_to = c.id
+                             LEFT JOIN main_account m ON ub.paid_to = m.id
+                             LEFT JOIN users u ON ur.processed_by = u.id
+                             WHERE ur.created_at BETWEEN ? AND ? AND ur.tenant_id = ? AND ur.branch_id = ?";
+                         $params = [$startDate, $endDate, $tenant_id, $branch_id];
                         $headers = [
                             'Passport Number',
                             'Pilgrim Name',
@@ -1515,43 +1516,7 @@ try {
                             LEFT JOIN clients c ON tb.sold_to = c.id
                             LEFT JOIN main_account m ON tb.paid_to = m.id
                             LEFT JOIN main_account_transactions mat ON tb.id = mat.reference_id and mat.transaction_of = 'ticket_sale'
-                            WHERE tb.sold_to = ? AND tb.issue_date BETWEEN ? AND ? AND tb.tenant_id = ?
-                            GROUP BY tb.id
-                            
-                            UNION ALL
-                            
-                            SELECT 
-                            rt.id,
-                            rt.pnr, 
-                            rt.title, 
-                            rt.passenger_name, 
-                            rt.phone, 
-                            rt.gender,
-                            rt.origin, 
-                            rt.destination, 
-                            '' as trip_type, 
-                            '' as return_destination,
-                            rt.airline,
-                            rt.issue_date, 
-                            rt.departure_date,
-                            rt.currency, 
-                            rt.supplier_penalty as price, 
-                            (COALESCE(rt.supplier_penalty, 0) + COALESCE(rt.service_penalty, 0)) as sold, 
-                            (COALESCE(rt.service_penalty, 0)) as profit,
-                            s.name as supplier_name, 
-                            c.name as sold_to_name,
-                            m.name as paid_to_name,
-                            CONCAT('Refunded - ', rt.status) as status, 
-                            GROUP_CONCAT(mat.receipt SEPARATOR ', ') as receipt,
-                            rt.remarks as description,
-                            'refund' as record_type,
-                            rt.ticket_id as parent_id
-                            FROM refunded_tickets rt
-                            LEFT JOIN suppliers s ON rt.supplier = s.id
-                            LEFT JOIN clients c ON rt.sold_to = c.id
-                            LEFT JOIN main_account m ON rt.paid_to = m.id
-                            LEFT JOIN main_account_transactions mat ON rt.id = mat.reference_id and mat.transaction_of = 'ticket_refund'
-                            WHERE rt.sold_to = ? AND rt.created_at BETWEEN ? AND ? AND rt.tenant_id = ?
+                            WHERE tb.sold_to = ? AND tb.issue_date BETWEEN ? AND ? AND tb.tenant_id = ? AND tb.branch_id = ? 
                             GROUP BY rt.id
                             
                             UNION ALL
@@ -1587,11 +1552,11 @@ try {
                             LEFT JOIN clients c ON dc.sold_to = c.id
                             LEFT JOIN main_account m ON dc.paid_to = m.id
                             LEFT JOIN main_account_transactions mat ON dc.id = mat.reference_id and mat.transaction_of = 'date_change'
-                            WHERE dc.sold_to = ? AND dc.created_at BETWEEN ? AND ? AND dc.tenant_id = ?
+                            WHERE dc.sold_to = ? AND dc.created_at BETWEEN ? AND ? AND dc.tenant_id = ? AND dc.branch_id = ?
                             GROUP BY dc.id
                             
                             ORDER BY COALESCE(parent_id, id), record_type";
-                        $params = [$entity, $startDate, $endDate, $tenant_id, $entity, $startDate, $endDate, $tenant_id, $entity, $startDate, $endDate, $tenant_id];
+                        $params = [$entity, $startDate, $endDate, $tenant_id, $entity, $startDate, $endDate, $tenant_id, $entity, $startDate, $endDate, $tenant_id, $branch_id];
                         $headers = ['PNR', 'Title', 'Passenger Name', 'Phone', 'Gender', 
                                   'Sector', 'Trip Type', 'Airline',
                                   'Issue Date', 'Departure Date', 
@@ -1618,9 +1583,9 @@ try {
                             LEFT JOIN clients c ON tb.sold_to = c.id
                             LEFT JOIN main_account m ON tb.paid_to = m.id   
                             LEFT JOIN main_account_transactions mat ON tb.id = mat.reference_id and mat.transaction_of = 'ticket_sale'
-                            WHERE tb.sold_to = ? AND tb.issue_date BETWEEN ? AND ? AND tb.tenant_id = ?
+                            WHERE tb.sold_to = ? AND tb.issue_date BETWEEN ? AND ? AND tb.tenant_id = ? AND tb.branch_id = ?
                             GROUP BY tb.id";
-                        $params = [$entity, $startDate, $endDate, $tenant_id];
+                        $params = [$entity, $startDate, $endDate, $tenant_id, $branch_id];
                         $headers = ['PNR', 'Title', 'Passenger Name', 'Phone', 'Gender',
                                    'Sector', 'Trip Type', 'Airline',
                                    'Issue Date', 'Departure Date', 
@@ -1650,9 +1615,9 @@ try {
                             LEFT JOIN clients c ON rt.sold_to = c.id
                             LEFT JOIN main_account m ON rt.paid_to = m.id
                             LEFT JOIN main_account_transactions mat ON rt.id = mat.reference_id and mat.transaction_of = 'ticket_refund'
-                            WHERE rt.sold_to = ? AND rt.created_at BETWEEN ? AND ? AND rt.tenant_id = ?
+                            WHERE rt.sold_to = ? AND rt.created_at BETWEEN ? AND ? AND rt.tenant_id = ? And rt.branch_id = ?
                             GROUP BY rt.id";
-                        $params = [$entity, $startDate, $endDate, $tenant_id];
+                        $params = [$entity, $startDate, $endDate, $tenant_id, $branch_id];
                         $headers = ['PNR', 'Title', 'Passenger Name', 'Phone', 'Gender',
                                    'Sector', 'Trip Type', 'Airline',
                                    'Issue Date', 'Departure Date',
@@ -1683,9 +1648,9 @@ try {
                             LEFT JOIN clients c ON dc.sold_to = c.id
                             LEFT JOIN main_account m ON dc.paid_to = m.id
                             LEFT JOIN main_account_transactions mat ON dc.id = mat.reference_id and mat.transaction_of = 'date_change'
-                            WHERE dc.sold_to = ? AND dc.created_at BETWEEN ? AND ? AND dc.tenant_id = ?
+                            WHERE dc.sold_to = ? AND dc.created_at BETWEEN ? AND ? AND dc.tenant_id = ? And dc.branch_id = ?
                             GROUP BY dc.id";
-                        $params = [$entity, $startDate, $endDate, $tenant_id];
+                        $params = [$entity, $startDate, $endDate, $tenant_id, $branch_id];
                         $headers = ['PNR', 'Title', 'Passenger Name', 'Phone', 'Gender',
                                    'Sector', 'Trip Type', 'Airline',
                                    'Issue Date', 'Departure Date',
@@ -1714,9 +1679,9 @@ try {
                             WHERE v." . ($reportType === 'supplier' ? 'supplier' : 
                                         ($reportType === 'client' ? 'sold_to' : 
                                         ($reportType === 'main_account' ? 'paid_to' : 'supplier'))) . " = ? 
-                            AND v.receive_date BETWEEN ? AND ? AND v.tenant_id = ?
+                            AND v.receive_date BETWEEN ? AND ? AND v.tenant_id = ? And v.branch_id = ?
                             GROUP BY v.id";
-                        $params = [$entity, $startDate, $endDate, $tenant_id];
+                        $params = [$entity, $startDate, $endDate, $tenant_id, $branch_id];
                         $headers = ['Applicant Name', 'Passport Number',
                                    'Phone', 'Title', 'Gender',
                                    'Country', 'Visa Type',
@@ -1745,10 +1710,10 @@ try {
                             LEFT JOIN main_account_transactions mat ON u.booking_id = mat.reference_id and mat.transaction_of = 'umrah'
                             Left join families f on u.family_id = f.family_id
                             LEFT JOIN umrah_refunds ur ON u.booking_id = ur.booking_id
-                            WHERE u.sold_to = ? AND u.entry_date BETWEEN ? AND ? AND u.tenant_id = ?"
+                            WHERE u.sold_to = ? AND u.entry_date BETWEEN ? AND ? AND u.tenant_id = ? AND u.branch_id = ?"
                             . ($umrahFamilyType === 'specific' && $specificFamily ? " AND u.family_id = ?" : "") .
                             " GROUP BY u.booking_id";
-                        $params = [$entity, $startDate, $endDate, $tenant_id];
+                        $params = [$entity, $startDate, $endDate, $tenant_id, $branch_id];
                         if ($umrahFamilyType === 'specific' && $specificFamily) {
                             $params[] = $specificFamily;
                         }
@@ -1810,8 +1775,8 @@ try {
                             LEFT JOIN suppliers s ON t.supplier = s.id
                             LEFT JOIN clients c ON t.sold_to = c.id
                             LEFT JOIN main_account m ON t.paid_to = m.id
-                            WHERE t.sold_to = ? AND tw.created_at BETWEEN ? AND ? AND t.tenant_id = ?";
-                        $params = [$entity, $startDate, $endDate, $tenant_id];
+                            WHERE t.sold_to = ? AND tw.created_at BETWEEN ? AND ? AND t.tenant_id = ? AND t.branch_id = ?";
+                        $params = [$entity, $startDate, $endDate, $tenant_id, $branch_id];
                         $headers = [
                             'PNR',
                             'Passenger Name',
@@ -1840,8 +1805,8 @@ try {
                             vr.reason
                             FROM visa_refunds vr
                             LEFT JOIN visa_applications va ON vr.visa_id = va.id
-                            WHERE va.sold_to = ? AND vr.refund_date BETWEEN ? AND ? AND va.tenant_id = ?";
-                        $params = [$entity, $startDate, $endDate, $tenant_id];
+                            WHERE va.sold_to = ? AND vr.refund_date BETWEEN ? AND ? AND va.tenant_id = ? AND va.branch_id = ?";
+                        $params = [$entity, $startDate, $endDate, $tenant_id, $branch_id];
                         $headers = [
                             'Passport Number',
                             'Applicant Name',
@@ -1855,26 +1820,26 @@ try {
                         break;
 
                         case 'hotel_refund':
-                            $query = "SELECT 
-                                hb.order_id, 
-                                hb.title, 
-                                CONCAT(hb.first_name, ' ', hb.last_name) as guest_name,
-                                hb.contact_no, 
-                                hb.gender,
-                                h.created_at, 
-                                hb.currency, 
-                                h.refund_amount,
-                                s.name as supplier_name,
-                                c.name as client_name,
-                                'Refunded' as status,
-                                h.reason
-                                FROM hotel_refunds h
-                                INNER JOIN hotel_bookings hb ON h.booking_id = hb.id
-                                LEFT JOIN suppliers s ON hb.supplier_id = s.id
-                                LEFT JOIN clients c ON hb.sold_to = c.id
-                                WHERE h.created_at BETWEEN ? AND ? AND h.tenant_id = ?
-                                GROUP BY h.id";
-                            $params = [$startDate, $endDate, $tenant_id];
+                            $query = "SELECT
+                                 hb.order_id,
+                                 hb.title,
+                                 CONCAT(hb.first_name, ' ', hb.last_name) as guest_name,
+                                 hb.contact_no,
+                                 hb.gender,
+                                 h.created_at,
+                                 hb.currency,
+                                 h.refund_amount,
+                                 s.name as supplier_name,
+                                 c.name as client_name,
+                                 'Refunded' as status,
+                                 h.reason
+                                 FROM hotel_refunds h
+                                 INNER JOIN hotel_bookings hb ON h.booking_id = hb.id
+                                 LEFT JOIN suppliers s ON hb.supplier_id = s.id
+                                 LEFT JOIN clients c ON hb.sold_to = c.id
+                                 WHERE h.created_at BETWEEN ? AND ? AND h.tenant_id = ? AND h.branch_id = ?
+                                 GROUP BY h.id";
+                             $params = [$startDate, $endDate, $tenant_id, $branch_id];
                             $headers = [
                                 'Order ID', 
                                 'Title', 
@@ -1903,8 +1868,8 @@ try {
                             ur.reason
                             FROM umrah_refunds ur
                             LEFT JOIN umrah_bookings ub ON ur.booking_id = ub.booking_id
-                            WHERE ub.sold_to = ? AND ur.created_at BETWEEN ? AND ? AND ub.tenant_id = ?";
-                        $params = [$entity, $startDate, $endDate, $tenant_id];
+                            WHERE ub.sold_to = ? AND ur.created_at BETWEEN ? AND ? AND ub.tenant_id = ? AND ub.branch_id = ?";
+                        $params = [$entity, $startDate, $endDate, $tenant_id, $branch_id];
                         $headers = [
                             'Passport Number',
                             'Pilgrim Name',
@@ -1953,7 +1918,7 @@ try {
                             LEFT JOIN clients c ON tb.sold_to = c.id
                             LEFT JOIN main_account m ON tb.paid_to = m.id
                             LEFT JOIN main_account_transactions mat ON tb.id = mat.reference_id and mat.transaction_of = 'ticket_sale'
-                            WHERE tb.paid_to = ? AND tb.issue_date BETWEEN ? AND ? AND tb.tenant_id = ?
+                            WHERE tb.paid_to = ? AND tb.issue_date BETWEEN ? AND ? AND tb.tenant_id = ? AND tb.branch_id = ?
                             GROUP BY tb.id
                             
                             UNION ALL
@@ -1989,7 +1954,7 @@ try {
                             LEFT JOIN clients c ON rt.sold_to = c.id
                             LEFT JOIN main_account m ON rt.paid_to = m.id
                             LEFT JOIN main_account_transactions mat ON rt.id = mat.reference_id and mat.transaction_of = 'ticket_refund'
-                            WHERE rt.paid_to = ? AND rt.created_at BETWEEN ? AND ? AND rt.tenant_id = ?
+                            WHERE rt.paid_to = ? AND rt.created_at BETWEEN ? AND ? AND rt.tenant_id = ? AND rt.branch_id = ?
                             GROUP BY rt.id
                             
                             UNION ALL
@@ -2025,11 +1990,11 @@ try {
                             LEFT JOIN clients c ON dc.sold_to = c.id
                             LEFT JOIN main_account m ON dc.paid_to = m.id
                             LEFT JOIN main_account_transactions mat ON dc.id = mat.reference_id and mat.transaction_of = 'date_change'
-                            WHERE dc.paid_to = ? AND dc.created_at BETWEEN ? AND ? AND dc.tenant_id = ?
+                            WHERE dc.paid_to = ? AND dc.created_at BETWEEN ? AND ? AND dc.tenant_id = ? AND dc.branch_id = ?
                             GROUP BY dc.id
                             
                             ORDER BY COALESCE(parent_id, id), record_type";
-                        $params = [$entity, $startDate, $endDate, $tenant_id, $entity, $startDate, $endDate, $tenant_id, $entity, $startDate, $endDate, $tenant_id];
+                        $params = [$entity, $startDate, $endDate, $tenant_id, $branch_id, $entity, $startDate, $endDate, $tenant_id, $branch_id, $entity, $startDate, $endDate, $tenant_id, $branch_id];
                         $headers = ['PNR', 'Title', 'Passenger Name', 'Phone', 'Gender', 
                                   'Sector', 'Trip Type', 'Airline',
                                   'Issue Date', 'Departure Date', 
@@ -2056,9 +2021,9 @@ try {
                             LEFT JOIN clients c ON tb.sold_to = c.id
                             LEFT JOIN main_account m ON tb.paid_to = m.id   
                             LEFT JOIN main_account_transactions mat ON tb.id = mat.reference_id and mat.transaction_of = 'ticket_sale'
-                            WHERE tb.issue_date BETWEEN ? AND ? AND tb.tenant_id = ?
+                            WHERE tb.issue_date BETWEEN ? AND ? AND tb.tenant_id = ? AND tb.branch_id = ?
                             GROUP BY tb.id";
-                        $params = [$startDate, $endDate, $tenant_id];
+                        $params = [$startDate, $endDate, $tenant_id, $branch_id];
                         $headers = ['PNR', 'Title', 'Passenger Name', 'Phone', 'Gender', 
                                    'Sector', 'Trip Type', 'Airline',
                                    'Issue Date', 'Departure Date', 
@@ -2087,9 +2052,9 @@ try {
                             LEFT JOIN clients c ON rt.sold_to = c.id
                             LEFT JOIN main_account m ON rt.paid_to = m.id
                             LEFT JOIN main_account_transactions mat ON rt.id = mat.reference_id and mat.transaction_of = 'ticket_refund'
-                            WHERE rt.paid_to = ? AND rt.created_at BETWEEN ? AND ? AND rt.tenant_id = ?
+                            WHERE rt.paid_to = ? AND rt.created_at BETWEEN ? AND ? AND rt.tenant_id = ? AND rt.branch_id = ?
                             GROUP BY rt.id";
-                        $params = [$entity, $startDate, $endDate, $tenant_id];
+                        $params = [$entity, $startDate, $endDate, $tenant_id, $branch_id];
                         $headers = ['PNR', 'Title', 'Passenger Name', 'Phone', 'Gender',
                                    'Sector', 'Trip Type', 'Airline',
                                     'Issue Date', 'Departure Date',
@@ -2119,9 +2084,9 @@ try {
                             LEFT JOIN clients c ON dc.sold_to = c.id
                             LEFT JOIN main_account m ON dc.paid_to = m.id
                             LEFT JOIN main_account_transactions mat ON dc.id = mat.reference_id and mat.transaction_of = 'date_change'
-                            WHERE dc.paid_to = ? AND dc.created_at BETWEEN ? AND ? AND dc.tenant_id = ?
+                            WHERE dc.paid_to = ? AND dc.created_at BETWEEN ? AND ? AND dc.tenant_id = ? AND dc.branch_id = ?
                             GROUP BY dc.id";
-                        $params = [$entity, $startDate, $endDate, $tenant_id];
+                        $params = [$entity, $startDate, $endDate, $tenant_id, $branch_id];
                         $headers = ['PNR', 'Title', 'Passenger Name', 'Phone', 'Gender',
                                    'Sector', 'Trip Type', 'Airline',
                                    'Issue Date', 'Departure Date',
@@ -2150,9 +2115,9 @@ try {
                             WHERE v." . ($reportType === 'supplier' ? 'supplier' : 
                                         ($reportType === 'client' ? 'sold_to' : 
                                         ($reportType === 'main_account' ? 'paid_to' : 'supplier'))) . " = ? 
-                            AND v.receive_date BETWEEN ? AND ? AND v.tenant_id = ?
+                            AND v.receive_date BETWEEN ? AND ? AND v.tenant_id = ? AND v.branch_id = ?
                             GROUP BY v.id";
-                        $params = [$entity, $startDate, $endDate, $tenant_id];
+                        $params = [$entity, $startDate, $endDate, $tenant_id, $branch_id];
                         $headers = ['Applicant Name', 'Passport Number',
                                    'Phone', 'Title', 'Gender',
                                    'Country', 'Visa Type',
@@ -2181,9 +2146,9 @@ try {
                             LEFT JOIN main_account m ON u.paid_to = m.id
                             LEFT JOIN main_account_transactions mat ON u.booking_id = mat.reference_id and mat.transaction_of = 'umrah'
                             LEFT JOIN umrah_refunds ur ON u.booking_id = ur.booking_id
-                            WHERE u.sold_to = ? AND u.entry_date BETWEEN ? AND ? AND u.tenant_id = ?
+                            WHERE u.sold_to = ? AND u.entry_date BETWEEN ? AND ? AND u.tenant_id = ? and u.branch_id = ?
                             GROUP BY u.booking_id";
-                        $params = [$entity, $startDate, $endDate, $tenant_id];
+                        $params = [$entity, $startDate, $endDate, $tenant_id, $branch_id];
                         // Base headers (shown to everyone)
                         $headers = [
                             'Head of Family',
@@ -2238,10 +2203,10 @@ try {
                             LEFT JOIN expense_categories ec ON e.category_id = ec.id
                             LEFT JOIN main_account m ON e.main_account_id = m.id
                             LEFT JOIN budget_allocations ba ON e.allocation_id = ba.id
-                            WHERE e.main_account_id = ? AND e.date BETWEEN ? AND ?"
+                            WHERE e.main_account_id = ? AND e.date BETWEEN ? AND ? AND e.tenant_id = ? and e.branch_id = ?"
                             . ($expenseCategory && $expenseCategory !== 'all' ? " AND e.category_id = ?" : "") .
                             " ORDER BY e.date DESC";
-                        $params = [$entity, $startDate, $endDate];
+                        $params = [$entity, $startDate, $endDate, $tenant_id, $branch_id];
                         if ($expenseCategory && $expenseCategory !== 'all') {
                             $params[] = $expenseCategory;
                         }
@@ -2277,8 +2242,8 @@ try {
                             LEFT JOIN suppliers s ON t.supplier = s.id
                             LEFT JOIN clients c ON t.sold_to = c.id
                             LEFT JOIN main_account m ON t.paid_to = m.id
-                            WHERE t.paid_to = ? AND tw.created_at BETWEEN ? AND ? AND t.tenant_id = ?";
-                        $params = [$entity, $startDate, $endDate, $tenant_id];
+                            WHERE t.paid_to = ? AND tw.created_at BETWEEN ? AND ? AND t.tenant_id = ? and t.branch_id = ?";
+                        $params = [$entity, $startDate, $endDate, $tenant_id, $branch_id];
                         $headers = [
                             'PNR',
                             'Passenger Name',
@@ -2315,8 +2280,8 @@ try {
                             LEFT JOIN clients c ON va.sold_to = c.id
                             LEFT JOIN main_account m ON va.paid_to = m.id
                             LEFT JOIN users u ON vr.processed_by = u.id
-                            WHERE vr.refund_date BETWEEN ? AND ? AND vr.tenant_id = ?";
-                        $params = [$startDate, $endDate, $tenant_id];
+                            WHERE vr.refund_date BETWEEN ? AND ? AND vr.tenant_id = ? And vr.branch_id = ?";
+                        $params = [$startDate, $endDate, $tenant_id, $branch_id];
                         $headers = [
                             'Passport Number',
                             'Applicant Name',
@@ -2351,9 +2316,9 @@ try {
                                 INNER JOIN hotel_bookings hb ON h.booking_id = hb.id
                                 LEFT JOIN suppliers s ON hb.supplier_id = s.id
                                 LEFT JOIN clients c ON hb.sold_to = c.id
-                                WHERE h.created_at BETWEEN ? AND ? AND h.tenant_id = ?
+                                WHERE h.created_at BETWEEN ? AND ? AND h.tenant_id = ? AND h.branch_id = ?
                                 GROUP BY h.id";
-                            $params = [$startDate, $endDate, $tenant_id];
+                            $params = [$startDate, $endDate, $tenant_id, $branch_id];
                             $headers = [
                                 'Order ID', 
                                 'Title', 
@@ -2371,7 +2336,7 @@ try {
                             break;
 
                     case 'umrah_refund':
-                        $query = "SELECT 
+                        $query = "SELECT
                             ub.passport_number,
                             ub.name as pilgrim_name,
                             ur.refund_type,
@@ -2390,8 +2355,8 @@ try {
                             LEFT JOIN clients c ON ub.sold_to = c.id
                             LEFT JOIN main_account m ON ub.paid_to = m.id
                             LEFT JOIN users u ON ur.processed_by = u.id
-                            WHERE ur.created_at BETWEEN ? AND ? AND ur.tenant_id = ?";
-                        $params = [$startDate, $endDate, $tenant_id];
+                            WHERE ur.created_at BETWEEN ? AND ? AND ur.tenant_id = ? AND ur.branch_id = ?";
+                        $params = [$startDate, $endDate, $tenant_id, $branch_id];
                         $headers = [
                             'Passport Number',
                             'Pilgrim Name',

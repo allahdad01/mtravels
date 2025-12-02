@@ -9,6 +9,7 @@ if (session_status() === PHP_SESSION_NONE) {
     session_start();
 }
 $tenant_id = $_SESSION['tenant_id'];
+$branch_id = $_SESSION['branch_id'];
 
 require_once '../includes/db.php';
 require_once '../vendor/autoload.php';
@@ -21,8 +22,8 @@ $categoryId = $_GET['category_id'];
 
 try {
     // Get category name
-    $categoryStmt = $pdo->prepare("SELECT name FROM expense_categories WHERE id = ? AND tenant_id = ?");
-    $categoryStmt->execute([$categoryId, $tenant_id]);
+    $categoryStmt = $pdo->prepare("SELECT name FROM expense_categories WHERE id = ? AND tenant_id = ? AND branch_id = ?");
+    $categoryStmt->execute([$categoryId, $tenant_id, $branch_id]);
     $category = $categoryStmt->fetch(PDO::FETCH_ASSOC);
 
     if (!$category) {
@@ -33,13 +34,13 @@ try {
     $startDate = date('Y-m-01'); // First day of current month
     $endDate = date('Y-m-t');    // Last day of current month
 
-    $expenseQuery = "SELECT e.*, ma.name as account_name 
-                    FROM expenses e 
-                    LEFT JOIN main_account ma ON e.main_account_id = ma.id 
-                    WHERE e.category_id = ? AND e.date BETWEEN ? AND ? AND e.tenant_id = ?
+    $expenseQuery = "SELECT e.*, ma.name as account_name
+                    FROM expenses e
+                    LEFT JOIN main_account ma ON e.main_account_id = ma.id
+                    WHERE e.category_id = ? AND e.date BETWEEN ? AND ? AND e.tenant_id = ? AND e.branch_id = ?
                     ORDER BY e.date DESC";
     $expenseStmt = $pdo->prepare($expenseQuery);
-    $expenseStmt->execute([$categoryId, $startDate, $endDate, $tenant_id]);
+    $expenseStmt->execute([$categoryId, $startDate, $endDate, $tenant_id, $branch_id]);
     $expenses = $expenseStmt->fetchAll(PDO::FETCH_ASSOC);
 
     // Create new mPDF instance with font configuration

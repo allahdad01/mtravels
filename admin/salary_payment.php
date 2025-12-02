@@ -8,6 +8,7 @@ if (!isset($_SESSION["loggedin"]) || $_SESSION["loggedin"] !== true || $_SESSION
     exit;
 }
 $tenant_id = $_SESSION['tenant_id'];
+$branch_id = $_SESSION['branch_id'];
 // Include config file
 require_once "../includes/db.php";
 
@@ -67,9 +68,9 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
         
         try {
             // Get current main account balance
-            $sql = "SELECT usd_balance, afs_balance FROM main_account WHERE id = ? AND tenant_id = ?";
+            $sql = "SELECT usd_balance, afs_balance FROM main_account WHERE id = ? AND tenant_id = ? AND branch_id = ?";
             $stmt = mysqli_prepare($conection_db, $sql);
-            mysqli_stmt_bind_param($stmt, "ii", $main_account_id, $tenant_id);
+            mysqli_stmt_bind_param($stmt, "iii", $main_account_id, $tenant_id, $branch_id);
             mysqli_stmt_execute($stmt);
             mysqli_stmt_store_result($stmt);
             
@@ -87,14 +88,14 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
                     $this_receipt = $receipt . '-' . ($i + 1);
 
                     // Insert into salary_payments (one row per month)
-                    $insert_sql = "INSERT INTO salary_payments (user_id, main_account_id, amount, currency, payment_date, 
-                                   payment_for_month, payment_type, description, receipt, tenant_id) 
-                                   VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)";
+                    $insert_sql = "INSERT INTO salary_payments (user_id, main_account_id, amount, currency, payment_date,
+                                   payment_for_month, payment_type, description, receipt, tenant_id, branch_id)
+                                   VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)";
 
                     $insert_stmt = mysqli_prepare($conection_db, $insert_sql);
                     mysqli_stmt_bind_param(
                         $insert_stmt,
-                        "iidssssssi",
+                        "iidsssssii",
                         $user_id,
                         $main_account_id,
                         $amount,
@@ -104,7 +105,8 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
                         $payment_type,
                         $description,
                         $this_receipt,
-                        $tenant_id
+                        $tenant_id,
+                        $branch_id
                     );
                     mysqli_stmt_execute($insert_stmt);
 
@@ -115,14 +117,14 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
                     $running_balance = $starting_balance - ($amount * ($i + 1));
 
                     // Insert into main_account_transactions (one per month)
-                    $transaction_sql = "INSERT INTO main_account_transactions (main_account_id, type, amount, balance, currency, 
-                                       description, transaction_of, reference_id, receipt, tenant_id) 
-                                       VALUES (?, 'debit', ?, ?, ?, ?, 'salary_payment', ?, ?, ?)";
+                    $transaction_sql = "INSERT INTO main_account_transactions (main_account_id, type, amount, balance, currency,
+                                       description, transaction_of, reference_id, receipt, tenant_id, branch_id)
+                                       VALUES (?, 'debit', ?, ?, ?, ?, 'salary_payment', ?, ?, ?, ?)";
 
                     $transaction_stmt = mysqli_prepare($conection_db, $transaction_sql);
                     mysqli_stmt_bind_param(
                         $transaction_stmt,
-                        "iddssisi",
+                        "iddssisii",
                         $main_account_id,
                         $amount,
                         $running_balance,
@@ -130,16 +132,17 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
                         $description,
                         $payment_id,
                         $this_receipt,
-                        $tenant_id
+                        $tenant_id,
+                        $branch_id
                     );
                     mysqli_stmt_execute($transaction_stmt);
 
                     // If this is a regular payment, deduct advances per month
                     if ($payment_type == 'regular') {
-                        $advance_sql = "SELECT id, amount, amount_paid FROM salary_advances 
-                                       WHERE user_id = ? AND currency = ? AND repayment_status != 'paid' AND tenant_id = ?";
+                        $advance_sql = "SELECT id, amount, amount_paid FROM salary_advances
+                                       WHERE user_id = ? AND currency = ? AND repayment_status != 'paid' AND tenant_id = ? AND branch_id = ?";
                         $advance_stmt = mysqli_prepare($conection_db, $advance_sql);
-                        mysqli_stmt_bind_param($advance_stmt, "isi", $user_id, $currency, $tenant_id);
+                        mysqli_stmt_bind_param($advance_stmt, "isii", $user_id, $currency, $tenant_id, $branch_id);
                         mysqli_stmt_execute($advance_stmt);
                         $advance_result = mysqli_stmt_get_result($advance_stmt);
 
@@ -152,9 +155,9 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
                             if ($deduction > 0) {
                                 $new_paid = $amount_paid_adv + $deduction;
                                 $status = ($new_paid >= $advance_amount) ? 'paid' : 'partially_paid';
-                                $update_advance_sql = "UPDATE salary_advances SET amount_paid = ?, repayment_status = ? WHERE id = ? AND tenant_id = ?";
+                                $update_advance_sql = "UPDATE salary_advances SET amount_paid = ?, repayment_status = ? WHERE id = ? AND tenant_id = ? AND branch_id = ?";
                                 $update_advance_stmt = mysqli_prepare($conection_db, $update_advance_sql);
-                                mysqli_stmt_bind_param($update_advance_stmt, "dsii", $new_paid, $status, $advance_id, $tenant_id);
+                                mysqli_stmt_bind_param($update_advance_stmt, "dsiii", $new_paid, $status, $advance_id, $tenant_id, $branch_id);
                                 mysqli_stmt_execute($update_advance_stmt);
                             }
                         }
@@ -162,11 +165,11 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
                 }
 
                 // After creating all payments + transactions, update the main account balance once by total
-                $update_sql = ($currency == "USD") 
-                    ? "UPDATE main_account SET usd_balance = usd_balance - ? WHERE id = ?"
-                    : "UPDATE main_account SET afs_balance = afs_balance - ? WHERE id = ?";
+                $update_sql = ($currency == "USD")
+                    ? "UPDATE main_account SET usd_balance = usd_balance - ? WHERE id = ? AND tenant_id = ? AND branch_id = ?"
+                    : "UPDATE main_account SET afs_balance = afs_balance - ? WHERE id = ? AND tenant_id = ? AND branch_id = ?";
                 $update_stmt = mysqli_prepare($conection_db, $update_sql);
-                mysqli_stmt_bind_param($update_stmt, "di", $total_deduction, $main_account_id);
+                mysqli_stmt_bind_param($update_stmt, "diii", $total_deduction, $main_account_id, $tenant_id, $branch_id);
                 mysqli_stmt_execute($update_stmt);
 
                 // Commit transaction
@@ -176,9 +179,9 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
                 require_once '../includes/functions.php';
 
                 // Get employee email and name
-                $email_sql = "SELECT email, name FROM users WHERE id = ? AND tenant_id = ?";
+                $email_sql = "SELECT email, name FROM users WHERE id = ? AND tenant_id = ? AND branch_id = ?";
                 $email_stmt = mysqli_prepare($conection_db, $email_sql);
-                mysqli_stmt_bind_param($email_stmt, "ii", $user_id, $tenant_id);
+                mysqli_stmt_bind_param($email_stmt, "iii", $user_id, $tenant_id, $branch_id);
                 mysqli_stmt_execute($email_stmt);
                 mysqli_stmt_store_result($email_stmt);
                 
@@ -195,9 +198,9 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
                                 $this_receipt = $receipt . '-' . ($i + 1);
                                 
                                 // Get the specific payment ID for this month
-                                $payment_id_sql = "SELECT id FROM salary_payments WHERE user_id = ? AND payment_for_month = ? AND receipt = ? AND tenant_id = ?";
+                                $payment_id_sql = "SELECT id FROM salary_payments WHERE user_id = ? AND payment_for_month = ? AND receipt = ? AND tenant_id = ? AND branch_id = ?";
                                 $payment_id_stmt = mysqli_prepare($conection_db, $payment_id_sql);
-                                mysqli_stmt_bind_param($payment_id_stmt, "issi", $user_id, $this_month_for, $this_receipt, $tenant_id);
+                                mysqli_stmt_bind_param($payment_id_stmt, "issii", $user_id, $this_month_for, $this_receipt, $tenant_id, $branch_id);
                                 mysqli_stmt_execute($payment_id_stmt);
                                 mysqli_stmt_store_result($payment_id_stmt);
                                 

@@ -2,6 +2,7 @@
 // Include security module
 require_once 'security.php';
 $tenant_id = $_SESSION['tenant_id'];
+$branch_id = $_SESSION['branch_id'];
 // Enforce authentication
 enforce_auth();
 
@@ -15,12 +16,11 @@ if ($conn->connect_error) {
 }
 
 // Fetch suppliers
-$sql = "SELECT id, name, currency FROM suppliers WHERE tenant_id = ?";
+$sql = "SELECT id, name, currency FROM suppliers WHERE tenant_id = ? AND branch_id = ?";
 $stmt = $conn->prepare($sql);
-$stmt->bind_param('i', $tenant_id);
+$stmt->bind_param('ii', $tenant_id, $branch_id);
 $stmt->execute();
 $result = $stmt->get_result();
-$result = $conn->query($sql);
 
 if ($result->num_rows > 0) {
     $suppliers = [];

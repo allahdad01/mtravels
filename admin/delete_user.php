@@ -17,6 +17,7 @@ if (!isset($_SERVER['HTTP_X_REQUESTED_WITH']) || strtolower($_SERVER['HTTP_X_REQ
     die(json_encode(['success' => false, 'message' => 'Invalid request method']));
 }
 $tenant_id = $_SESSION['tenant_id'];
+$branch_id = $_SESSION['branch_id'];
 
 // Get JSON data
 $json = file_get_contents('php://input');
@@ -42,8 +43,8 @@ try {
     $pdo->beginTransaction();
 
     // Get user's profile picture before deletion
-    $stmt = $pdo->prepare("SELECT profile_pic FROM users WHERE id = ? AND tenant_id = ?");
-    $stmt->execute([$data['id'], $tenant_id]);
+    $stmt = $pdo->prepare("SELECT profile_pic FROM users WHERE id = ? AND tenant_id = ? AND branch_id = ?");
+    $stmt->execute([$data['id'], $tenant_id, $branch_id]);
     $profile_pic = $stmt->fetchColumn();
 
     if (!$profile_pic) {
@@ -52,8 +53,8 @@ try {
 
     // Delete related records first
     // 1. Delete login history
-    $stmt = $pdo->prepare("DELETE FROM login_history WHERE user_id = ? AND tenant_id = ?");
-    $stmt->execute([$data['id'], $tenant_id]);
+    $stmt = $pdo->prepare("DELETE FROM login_history WHERE user_id = ? AND tenant_id = ? AND branch_id = ?");
+    $stmt->execute([$data['id'], $tenant_id, $branch_id]);
 
     // 2. Delete any other related records (add more if needed)
     // Example:
@@ -61,8 +62,8 @@ try {
     // $stmt->execute([$data['id']]);
 
     // Finally, delete the user
-    $stmt = $pdo->prepare("DELETE FROM users WHERE id = ? AND tenant_id = ?");
-    $stmt->execute([$data['id'], $tenant_id]);
+    $stmt = $pdo->prepare("DELETE FROM users WHERE id = ? AND tenant_id = ? AND branch_id = ?");
+    $stmt->execute([$data['id'], $tenant_id, $branch_id]);
 
     if ($stmt->rowCount() === 0) {
         throw new Exception(__('user_not_found'));

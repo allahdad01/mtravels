@@ -9,6 +9,7 @@ if (session_status() === PHP_SESSION_NONE) {
 }
 
 $tenant_id = $_SESSION['tenant_id'];
+$branch_id = $_SESSION['branch_id'];
 
 // Check if user is logged in and is admin
 if (!isset($_SESSION['user_id']) || $_SESSION['role'] !== 'admin') {
@@ -35,16 +36,16 @@ try {
 
     switch ($report_type) {
         case 'employee_overview':
-            $data = generateEmployeeOverviewReport($pdo, $tenant_id);
+            $data = generateEmployeeOverviewReport($pdo, $tenant_id, $branch_id);
             break;
         case 'termination_summary':
-            $data = generateTerminationSummaryReport($pdo, $tenant_id);
+            $data = generateTerminationSummaryReport($pdo, $tenant_id, $branch_id);
             break;
         case 'role_distribution':
-            $data = generateRoleDistributionReport($pdo, $tenant_id);
+            $data = generateRoleDistributionReport($pdo, $tenant_id, $branch_id);
             break;
         case 'tenure_analysis':
-            $data = generateTenureAnalysisReport($pdo, $tenant_id);
+            $data = generateTenureAnalysisReport($pdo, $tenant_id, $branch_id);
             break;
         default:
             throw new Exception(__('invalid_report_type'));
@@ -75,7 +76,7 @@ try {
     ]);
 }
 
-function generateEmployeeOverviewReport($pdo, $tenant_id) {
+function generateEmployeeOverviewReport($pdo, $tenant_id, $branch_id) {
     // Get all employees with their details
     $stmt = $pdo->prepare("
         SELECT
@@ -92,11 +93,11 @@ function generateEmployeeOverviewReport($pdo, $tenant_id) {
             sm.currency as salary_currency,
             sm.status as salary_status
         FROM users u
-        LEFT JOIN salary_management sm ON u.id = sm.user_id AND sm.tenant_id = u.tenant_id
-        WHERE u.tenant_id = ? AND u.role != 'super_admin'
+        LEFT JOIN salary_management sm ON u.id = sm.user_id AND sm.tenant_id = u.tenant_id AND sm.branch_id = u.branch_id
+        WHERE u.tenant_id = ? AND u.branch_id = ? AND u.role != 'super_admin'
         ORDER BY u.created_at DESC
     ");
-    $stmt->execute([$tenant_id]);
+    $stmt->execute([$tenant_id, $branch_id]);
     $employees = $stmt->fetchAll(PDO::FETCH_ASSOC);
 
     return [
@@ -117,7 +118,7 @@ function generateEmployeeOverviewReport($pdo, $tenant_id) {
     ];
 }
 
-function generateTerminationSummaryReport($pdo, $tenant_id) {
+function generateTerminationSummaryReport($pdo, $tenant_id, $branch_id) {
     // Get termination data
     $stmt = $pdo->prepare("
         SELECT
@@ -129,21 +130,21 @@ function generateTerminationSummaryReport($pdo, $tenant_id) {
         FROM employee_terminations et
         JOIN users u ON et.employee_id = u.id
         LEFT JOIN users t ON et.terminated_by = t.id
-        WHERE et.tenant_id = ?
+        WHERE et.tenant_id = ? AND et.branch_id = ?
         ORDER BY et.termination_date DESC
     ");
-    $stmt->execute([$tenant_id]);
+    $stmt->execute([$tenant_id, $branch_id]);
     $terminations = $stmt->fetchAll(PDO::FETCH_ASSOC);
 
     // Get termination reasons summary
     $stmt = $pdo->prepare("
         SELECT termination_reason, COUNT(*) as count
         FROM employee_terminations
-        WHERE tenant_id = ?
+        WHERE tenant_id = ? AND branch_id = ?
         GROUP BY termination_reason
         ORDER BY count DESC
     ");
-    $stmt->execute([$tenant_id]);
+    $stmt->execute([$tenant_id, $branch_id]);
     $reasons_summary = $stmt->fetchAll(PDO::FETCH_ASSOC);
 
     return [
@@ -163,25 +164,25 @@ function generateTerminationSummaryReport($pdo, $tenant_id) {
     ];
 }
 
-function generateRoleDistributionReport($pdo, $tenant_id) {
+function generateRoleDistributionReport($pdo, $tenant_id, $branch_id) {
     // Get role distribution
     $stmt = $pdo->prepare("
         SELECT role, COUNT(*) as count
         FROM users
-        WHERE tenant_id = ? AND role != 'super_admin' AND fired = 0
+        WHERE tenant_id = ? AND branch_id = ? AND role != 'super_admin' AND fired = 0
         GROUP BY role
         ORDER BY count DESC
     ");
-    $stmt->execute([$tenant_id]);
+    $stmt->execute([$tenant_id, $branch_id]);
     $role_distribution = $stmt->fetchAll(PDO::FETCH_ASSOC);
 
     // Get total active employees
     $stmt = $pdo->prepare("
         SELECT COUNT(*) as total_active
         FROM users
-        WHERE tenant_id = ? AND role != 'super_admin' AND fired = 0
+        WHERE tenant_id = ? AND branch_id = ? AND role != 'super_admin' AND fired = 0
     ");
-    $stmt->execute([$tenant_id]);
+    $stmt->execute([$tenant_id, $branch_id]);
     $total_active = $stmt->fetch(PDO::FETCH_ASSOC)['total_active'];
 
     return [
@@ -197,7 +198,7 @@ function generateRoleDistributionReport($pdo, $tenant_id) {
     ];
 }
 
-function generateTenureAnalysisReport($pdo, $tenant_id) {
+function generateTenureAnalysisReport($pdo, $tenant_id, $branch_id) {
     // Get tenure data
     $stmt = $pdo->prepare("
         SELECT
@@ -210,10 +211,10 @@ function generateTenureAnalysisReport($pdo, $tenant_id) {
             DATEDIFF(CURDATE(), hire_date) as days_employed,
             ROUND(DATEDIFF(CURDATE(), hire_date) / 30, 1) as months_employed
         FROM users
-        WHERE tenant_id = ? AND role != 'super_admin'
+        WHERE tenant_id = ? AND branch_id = ? AND role != 'super_admin'
         ORDER BY hire_date ASC
     ");
-    $stmt->execute([$tenant_id]);
+    $stmt->execute([$tenant_id, $branch_id]);
     $tenure_data = $stmt->fetchAll(PDO::FETCH_ASSOC);
 
     // Calculate averages

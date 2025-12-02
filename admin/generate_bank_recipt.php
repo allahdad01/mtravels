@@ -7,6 +7,7 @@ if (session_status() === PHP_SESSION_NONE) {
     session_start();
 }
 $tenant_id = $_SESSION['tenant_id'];
+$branch_id = $_SESSION['branch_id'];
 
 $family_id = filter_input(INPUT_GET, 'family_id', FILTER_VALIDATE_INT);
 $member_ids_raw = $_GET['member_ids'] ?? '';
@@ -22,9 +23,9 @@ if (!$family_id) {
 
 try {
     // Load agency settings
-    $settingsQuery = "SELECT * FROM settings WHERE tenant_id = ?";
+    $settingsQuery = "SELECT * FROM settings WHERE tenant_id = ? AND branch_id = ?";
     $settingsStmt = $pdo->prepare($settingsQuery);
-    $settingsStmt->execute([$tenant_id]);
+    $settingsStmt->execute([$tenant_id, $branch_id]);
     $settings = $settingsStmt->fetch(PDO::FETCH_ASSOC);
 
     $logoPath = __DIR__ . '../uploads/logo/' . $settings['logo'];
@@ -39,16 +40,16 @@ try {
         $ids = array_filter(array_map('intval', explode(',', $member_ids_raw)));
         if (!empty($ids)) {
             $placeholders = implode(',', array_fill(0, count($ids), '?'));
-            $sql = "SELECT * FROM umrah_bookings WHERE family_id = ? AND tenant_id = ? AND booking_id IN ($placeholders)";
+            $sql = "SELECT * FROM umrah_bookings WHERE family_id = ? AND tenant_id = ? AND branch_id = ? AND booking_id IN ($placeholders)";
             $stmt = $pdo->prepare($sql);
-            $stmt->execute(array_merge([$family_id, $tenant_id], $ids));
+            $stmt->execute(array_merge([$family_id, $tenant_id, $branch_id], $ids));
             $members = $stmt->fetchAll(PDO::FETCH_ASSOC);
         }
     }
     if (empty($members)) {
         // Fallback to all family members if none explicitly selected
-        $stmt = $pdo->prepare("SELECT * FROM umrah_bookings WHERE family_id = ? AND tenant_id = ?");
-        $stmt->execute([$family_id, $tenant_id]);
+        $stmt = $pdo->prepare("SELECT * FROM umrah_bookings WHERE family_id = ? AND tenant_id = ? AND branch_id = ?");
+        $stmt->execute([$family_id, $tenant_id, $branch_id]);
         $members = $stmt->fetchAll(PDO::FETCH_ASSOC);
     }
 

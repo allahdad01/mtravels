@@ -16,6 +16,7 @@ if (!isset($_SESSION['user_id'])  || $_SESSION['role'] !== 'admin') {
     exit();
 }
 $tenant_id = $_SESSION['tenant_id'];
+$branch_id = $_SESSION['branch_id'];
 // Include database connection
 include '../includes/db.php';
 include '../includes/conn.php';
@@ -31,32 +32,32 @@ if (!$debtorId) {
     $error = "No debtor ID provided";
 } else {
     // Get debtor details
-    $debtorQuery = "SELECT * FROM debtors WHERE id = ? AND tenant_id = ?";
-        
-    $stmt = $pdo->prepare($debtorQuery);
-    $stmt->execute([$debtorId, $tenant_id]);
+    $debtorQuery = "SELECT * FROM debtors WHERE id = ? AND tenant_id = ? AND branch_id = ?";
+    
+        $stmt = $pdo->prepare($debtorQuery);
+        $stmt->execute([$debtorId, $tenant_id, $branch_id]);
     $debtorData = $stmt->fetch(PDO::FETCH_ASSOC);
     
     if (!$debtorData) {
         $error = "Debtor not found";
     } else {
         // Get transactions related to this debtor
-        $transactionsQuery = "SELECT 
-                dt.id,
-                dt.debtor_id,
-                dt.amount,
-                dt.currency,
-                dt.transaction_type,
-                dt.description,
-                dt.reference_number,
-                dt.payment_date AS transaction_date,
-                dt.created_at
-            FROM debtor_transactions dt
-            WHERE dt.debtor_id = ? AND dt.tenant_id = ?
-            ORDER BY dt.payment_date DESC";
-            
-        $stmt = $pdo->prepare($transactionsQuery);
-        $stmt->execute([$debtorId, $tenant_id]);
+        $transactionsQuery = "SELECT
+                        dt.id,
+                        dt.debtor_id,
+                        dt.amount,
+                        dt.currency,
+                        dt.transaction_type,
+                        dt.description,
+                        dt.reference_number,
+                        dt.payment_date AS transaction_date,
+                        dt.created_at
+                    FROM debtor_transactions dt
+                    WHERE dt.debtor_id = ? AND dt.tenant_id = ? AND dt.branch_id = ?
+                    ORDER BY dt.payment_date DESC";
+        
+                $stmt = $pdo->prepare($transactionsQuery);
+                $stmt->execute([$debtorId, $tenant_id, $branch_id]);
         $transactions = $stmt->fetchAll(PDO::FETCH_ASSOC);
     }
 }

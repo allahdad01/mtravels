@@ -12,6 +12,7 @@ if (!isset($_SESSION['user_id'])) {
     exit();
 }
 $tenant_id = $_SESSION['tenant_id'];
+$branch_id = $_SESSION['branch_id'];
 // Database connection
 require_once('../includes/db.php');
 require_once('../includes/conn.php');
@@ -44,8 +45,8 @@ if (!in_array($newStatus, ['active', 'inactive'])) {
 
 try {
     // Update the supplier status
-    $stmt = $pdo->prepare("UPDATE suppliers SET status = ?, updated_at = NOW() WHERE id = ? AND tenant_id = ?");
-    $result = $stmt->execute([$newStatus, $supplierId, $tenant_id]);
+    $stmt = $pdo->prepare("UPDATE suppliers SET status = ?, updated_at = NOW() WHERE id = ? AND tenant_id = ? AND branch_id = ?");
+    $result = $stmt->execute([$newStatus, $supplierId, $tenant_id, $branch_id]);
 
     if ($result) {
         // Log status change

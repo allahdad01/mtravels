@@ -6,6 +6,7 @@ if (session_status() === PHP_SESSION_NONE) {
 // Include security module
 require_once 'security.php';
 $tenant_id = $_SESSION['tenant_id'];
+$branch_id = $_SESSION['branch_id'];
 // Enforce authentication
 enforce_auth();
 
@@ -21,12 +22,12 @@ try {
     // Query to get tickets
     $query = "SELECT ap.id, ap.applicant_name, ap.passport_number, ap.visa_type, ap.country, ap.applied_date, ap.issued_date, ap.sold
               FROM visa_applications ap
-              WHERE ap.tenant_id = ?
+              WHERE ap.tenant_id = ? AND ap.branch_id = ?
               ORDER BY ap.id DESC
               LIMIT 100";
     
     $stmt = $conn->prepare($query);
-    $stmt->bind_param('i', $tenant_id);
+    $stmt->bind_param('ii', $tenant_id, $branch_id);
     $stmt->execute();
     $result = $stmt->get_result();
     

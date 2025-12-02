@@ -2,6 +2,7 @@
 // Include security module
 require_once 'security.php';
 $tenant_id = $_SESSION['tenant_id'];
+$branch_id = $_SESSION['branch_id'];
 // Enforce authentication
 enforce_auth();
 
@@ -18,12 +19,12 @@ if (isset($_GET['ticket_id'])) {
             FROM main_account_transactions t
             LEFT JOIN main_account m ON t.main_account_id = m.id
             LEFT JOIN ticket_reservations tb ON t.reference_id = tb.id
-            WHERE t.reference_id = ? AND t.tenant_id = ?
+            WHERE t.reference_id = ? AND t.tenant_id = ? AND t.branch_id = ?
             AND LOWER(t.type) = 'credit'
             AND t.transaction_of = 'ticket_reserve'
             ORDER BY t.created_at DESC
         ");
-        $stmt->bind_param("ii", $ticket_id, $tenant_id);
+        $stmt->bind_param("iii", $ticket_id, $tenant_id, $branch_id);
         $stmt->execute();
 
         // Fetch all the results

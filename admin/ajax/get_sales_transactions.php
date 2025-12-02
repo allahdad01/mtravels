@@ -11,6 +11,7 @@ enforce_auth();
 require_once '../../includes/conn.php';
 
 $tenant_id = $_SESSION['tenant_id'];
+$branch_id = $_SESSION['branch_id'];
 
 // Check if period is set
 if (!isset($_POST['period']) || empty($_POST['period'])) {
@@ -50,57 +51,57 @@ try {
     // Get transactions from different tables based on period
     
     // 1. Get ticket transactions
-    $ticketQuery = "SELECT 
+    $ticketQuery = "SELECT
                         'Ticket' as type,
                         CONCAT(t.airline, ' ', t.flight_no, ' (PNR: ', t.pnr, ')') as name,
                         t.profit_usd as usd_profit,
                         t.profit_afs as afs_profit
                     FROM tickets t
-                    WHERE t.created_at BETWEEN :startDate AND :endDate AND t.tenant_id = ?
+                    WHERE t.created_at BETWEEN :startDate AND :endDate AND t.tenant_id = ? AND t.branch_id = ?
                     ORDER BY t.profit_usd DESC";
-    
+
     $ticketStmt = $pdo->prepare($ticketQuery);
     $ticketStmt->bindParam(':startDate', $startDate);
     $ticketStmt->bindParam(':endDate', $endDate);
-    $ticketStmt->execute([$tenant_id]);
+    $ticketStmt->execute([$tenant_id, $branch_id]);
     
     while ($row = $ticketStmt->fetch(PDO::FETCH_ASSOC)) {
         $transactions[] = $row;
     }
     
     // 2. Get visa transactions
-    $visaQuery = "SELECT 
+    $visaQuery = "SELECT
                     'Visa' as type,
                     CONCAT(v.visa_type, ' for ', v.customer_name, ' (Passport: ', v.passport_number, ')') as name,
                     v.profit_usd as usd_profit,
                     v.profit_afs as afs_profit
                 FROM visas v
-                WHERE v.created_at BETWEEN :startDate AND :endDate AND v.tenant_id = ?
+                WHERE v.created_at BETWEEN :startDate AND :endDate AND v.tenant_id = ? AND v.branch_id = ?
                 ORDER BY v.profit_usd DESC";
-    
+
     $visaStmt = $pdo->prepare($visaQuery);
     $visaStmt->bindParam(':startDate', $startDate);
     $visaStmt->bindParam(':endDate', $endDate);
-    $visaStmt->execute([$tenant_id]);
+    $visaStmt->execute([$tenant_id, $branch_id]);
     
     while ($row = $visaStmt->fetch(PDO::FETCH_ASSOC)) {
         $transactions[] = $row;
     }
     
     // 3. Get hotel transactions
-    $hotelQuery = "SELECT 
+    $hotelQuery = "SELECT
                     'Hotel' as type,
                     CONCAT(h.hotel_name, ' - ', h.room_type, ' (Booking ID: ', h.booking_id, ')') as name,
                     h.profit_usd as usd_profit,
                     h.profit_afs as afs_profit
                 FROM hotel_bookings h
-                WHERE h.created_at BETWEEN :startDate AND :endDate AND h.tenant_id = ?
+                WHERE h.created_at BETWEEN :startDate AND :endDate AND h.tenant_id = ? AND h.branch_id = ?
                 ORDER BY h.profit_usd DESC";
-    
+
     $hotelStmt = $pdo->prepare($hotelQuery);
     $hotelStmt->bindParam(':startDate', $startDate);
     $hotelStmt->bindParam(':endDate', $endDate);
-    $hotelStmt->execute([$tenant_id]);
+    $hotelStmt->execute([$tenant_id, $branch_id]);
     
     while ($row = $hotelStmt->fetch(PDO::FETCH_ASSOC)) {
         $transactions[] = $row;

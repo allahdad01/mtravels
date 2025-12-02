@@ -8,6 +8,7 @@ if (!isset($_SESSION["loggedin"]) || $_SESSION["loggedin"] !== true || $_SESSION
     exit;
 }
 $tenant_id = $_SESSION['tenant_id'];
+$branch_id = $_SESSION['branch_id'];
 // Include config file
 require_once "../includes/db.php";
 
@@ -20,13 +21,13 @@ if (isset($_GET["adjustment_user_id"]) && !empty(trim($_GET["adjustment_user_id"
     $adjustment_user_id = trim($_GET["adjustment_user_id"]);
     
     // Get user information
-    $sql = "SELECT u.name, sm.base_salary, sm.currency 
-            FROM users u 
-            JOIN salary_management sm ON u.id = sm.user_id 
-            WHERE u.id = ? AND u.tenant_id = ?";
-    
+    $sql = "SELECT u.name, sm.base_salary, sm.currency
+            FROM users u
+            JOIN salary_management sm ON u.id = sm.user_id
+            WHERE u.id = ? AND u.tenant_id = ? AND u.branch_id = ?";
+
     if ($stmt = mysqli_prepare($conection_db, $sql)) {
-        mysqli_stmt_bind_param($stmt, "ii", $adjustment_user_id, $tenant_id);
+        mysqli_stmt_bind_param($stmt, "iii", $adjustment_user_id, $tenant_id, $branch_id);
         
         if (mysqli_stmt_execute($stmt)) {
             $result = mysqli_stmt_get_result($stmt);
@@ -115,26 +116,26 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
         
         try {
             // First, insert into salary_adjustments table
-            $sql = "INSERT INTO salary_adjustments (user_id, adjustment_type, amount, percentage, effective_date, 
-                   previous_salary, new_salary, reason, approved_by, tenant_id) 
-                   VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)";
-            
+            $sql = "INSERT INTO salary_adjustments (user_id, adjustment_type, amount, percentage, effective_date,
+                   previous_salary, new_salary, reason, approved_by, tenant_id, branch_id)
+                   VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)";
+
             if ($stmt = mysqli_prepare($conection_db, $sql)) {
                 // Get approved_by (current user ID)
                 $approved_by = $_SESSION["user_id"];
-                
+
                 // Bind variables to the statement
-                mysqli_stmt_bind_param($stmt, "issdsddssi", $adjustment_user_id, $adjustment_type, $amount, $percentage, 
-                                     $effective_date, $current_salary, $new_salary, $reason, $approved_by, $tenant_id);
+                mysqli_stmt_bind_param($stmt, "issdsddssii", $adjustment_user_id, $adjustment_type, $amount, $percentage,
+                                     $effective_date, $current_salary, $new_salary, $reason, $approved_by, $tenant_id, $branch_id);
                 
                 // Execute the statement
                 mysqli_stmt_execute($stmt);
                 
                 // Update the base salary in salary_management table
-                $update_sql = "UPDATE salary_management SET base_salary = ? WHERE user_id = ? AND tenant_id = ?";
-                
+                $update_sql = "UPDATE salary_management SET base_salary = ? WHERE user_id = ? AND tenant_id = ? AND branch_id = ?";
+
                 if ($update_stmt = mysqli_prepare($conection_db, $update_sql)) {
-                    mysqli_stmt_bind_param($update_stmt, "dii", $new_salary, $adjustment_user_id, $tenant_id);
+                    mysqli_stmt_bind_param($update_stmt, "diii", $new_salary, $adjustment_user_id, $tenant_id, $branch_id);
                     mysqli_stmt_execute($update_stmt);
                     mysqli_stmt_close($update_stmt);
                 }
@@ -321,14 +322,14 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
                                     <tbody>
                                         <?php
                                         // Get adjustment history for this user
-                                        $sql = "SELECT sa.*, u.name as approved_by_name 
-                                                FROM salary_adjustments sa 
-                                                JOIN users u ON sa.approved_by = u.id 
-                                                WHERE sa.user_id = ? AND sa.tenant_id = ?
+                                        $sql = "SELECT sa.*, u.name as approved_by_name
+                                                FROM salary_adjustments sa
+                                                JOIN users u ON sa.approved_by = u.id
+                                                WHERE sa.user_id = ? AND sa.tenant_id = ? AND sa.branch_id = ?
                                                 ORDER BY sa.created_at DESC";
-                                        
+
                                         if ($stmt = mysqli_prepare($conection_db, $sql)) {
-                                            mysqli_stmt_bind_param($stmt, "ii", $adjustment_user_id, $tenant_id);
+                                            mysqli_stmt_bind_param($stmt, "iii", $adjustment_user_id, $tenant_id, $branch_id);
                                             
                                             if (mysqli_stmt_execute($stmt)) {
                                                 $result = mysqli_stmt_get_result($stmt);

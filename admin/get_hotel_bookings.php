@@ -2,6 +2,7 @@
 // Include security module
 require_once 'security.php';
 $tenant_id = $_SESSION['tenant_id'];
+$branch_id = $_SESSION['branch_id'];
 // Enforce authentication
 enforce_auth();
 
@@ -17,7 +18,7 @@ $booking_id = intval($_GET['id']);
 try {
     // Prepare and execute the query with all necessary joins
     $stmt = $pdo->prepare("
-        SELECT 
+        SELECT
             hb.*,
             s.name as supplier_name,
             c.name as client_name,
@@ -26,10 +27,10 @@ try {
         LEFT JOIN suppliers s ON hb.supplier_id = s.id
         LEFT JOIN clients c ON hb.sold_to = c.id
         LEFT JOIN main_account ma ON hb.paid_to = ma.id
-        WHERE hb.id = ? AND hb.tenant_id = ?
+        WHERE hb.id = ? AND hb.tenant_id = ? AND hb.branch_id = ?
     ");
-    
-    $stmt->execute([$booking_id, $tenant_id]);
+
+    $stmt->execute([$booking_id, $tenant_id, $branch_id]);
     $bookings = $stmt->fetchAll(PDO::FETCH_ASSOC);
     
     if (empty($bookings)) {

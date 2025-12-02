@@ -6,6 +6,7 @@ if (session_status() === PHP_SESSION_NONE) {
 // Include security module
 require_once 'security.php';
 $tenant_id = $_SESSION['tenant_id'];
+$branch_id = $_SESSION['branch_id'];
 // Enforce authentication
 enforce_auth();
 
@@ -33,7 +34,7 @@ if (!$paymentId) {
     $error = "No payment ID provided";
 } else {
     // Get additional payment details with related info
-    $paymentQuery = "SELECT 
+    $paymentQuery = "SELECT
             ap.*,
             c.name AS client_name,
             c.email AS client_email,
@@ -46,17 +47,17 @@ if (!$paymentId) {
         LEFT JOIN clients c ON ap.client_id = c.id
         LEFT JOIN suppliers s ON ap.supplier_id = s.id
         LEFT JOIN users u ON ap.created_by = u.id
-        WHERE ap.id = ? AND ap.tenant_id = ?";
-        
+        WHERE ap.id = ? AND ap.tenant_id = ? AND ap.branch_id = ?";
+
     $stmt = $pdo->prepare($paymentQuery);
-    $stmt->execute([$paymentId, $tenant_id]);
+    $stmt->execute([$paymentId, $tenant_id, $branch_id]);
     $paymentData = $stmt->fetch(PDO::FETCH_ASSOC);
     
     if (!$paymentData) {
         $error = "Payment not found";
     } else {
         // Get client transactions related to this payment
-        $clientTransQuery = "SELECT 
+        $clientTransQuery = "SELECT
                 'Client' AS transaction_type,
                 ct.id,
                 ct.type,
@@ -66,15 +67,15 @@ if (!$paymentId) {
                 ct.transaction_of,
                 ct.created_at AS transaction_date
             FROM client_transactions ct
-            WHERE ct.reference_id = ? AND ct.transaction_of = 'additional_payment' AND ct.tenant_id = ?
+            WHERE ct.reference_id = ? AND ct.transaction_of = 'additional_payment' AND ct.tenant_id = ? AND ct.branch_id = ?
             ORDER BY ct.created_at DESC";
-            
+
         $stmt = $pdo->prepare($clientTransQuery);
-        $stmt->execute([$paymentId, $tenant_id]);
+        $stmt->execute([$paymentId, $tenant_id, $branch_id]);
         $clientTransactions = $stmt->fetchAll(PDO::FETCH_ASSOC);
         
         // Get supplier transactions related to this payment
-        $supplierTransQuery = "SELECT 
+        $supplierTransQuery = "SELECT
                 'Supplier' AS transaction_type,
                 st.id,
                 st.type,
@@ -84,15 +85,15 @@ if (!$paymentId) {
                 st.transaction_of,
                 st.created_at AS transaction_date
             FROM supplier_transactions st
-            WHERE st.reference_id = ? AND st.transaction_of = 'additional_payment' AND st.tenant_id = ?
+            WHERE st.reference_id = ? AND st.transaction_of = 'additional_payment' AND st.tenant_id = ? AND st.branch_id = ?
             ORDER BY st.created_at DESC";
-            
+
         $stmt = $pdo->prepare($supplierTransQuery);
-        $stmt->execute([$paymentId, $tenant_id]);
+        $stmt->execute([$paymentId, $tenant_id, $branch_id]);
         $supplierTransactions = $stmt->fetchAll(PDO::FETCH_ASSOC);
         
         // Get main account transactions related to this payment
-        $mainAccountTransQuery = "SELECT 
+        $mainAccountTransQuery = "SELECT
                 'Main Account' AS transaction_type,
                 mat.id,
                 mat.type,
@@ -102,11 +103,11 @@ if (!$paymentId) {
                 mat.transaction_of,
                 mat.created_at AS transaction_date
             FROM main_account_transactions mat
-            WHERE mat.reference_id = ? AND mat.transaction_of = 'additional_payment' AND mat.tenant_id = ?
+            WHERE mat.reference_id = ? AND mat.transaction_of = 'additional_payment' AND mat.tenant_id = ? AND mat.branch_id = ?
             ORDER BY mat.created_at DESC";
-            
+
         $stmt = $pdo->prepare($mainAccountTransQuery);
-        $stmt->execute([$paymentId, $tenant_id]);
+        $stmt->execute([$paymentId, $tenant_id, $branch_id]);
         $mainAccountTransactions = $stmt->fetchAll(PDO::FETCH_ASSOC);
     }
 }

@@ -4,6 +4,7 @@ require_once 'security.php';
 require_once '../includes/language_helpers.php';
 require_once '../includes/db.php';
 $tenant_id = $_SESSION['tenant_id'];
+$branch_id = $_SESSION['branch_id'];
 // Start session if not already started
 if (session_status() === PHP_SESSION_NONE) {
     session_start();
@@ -30,8 +31,8 @@ try {
     }
 
     // Check if email already exists
-    $stmt = $pdo->prepare("SELECT COUNT(*) FROM users WHERE email = ? AND tenant_id = ?");
-    $stmt->execute([$_POST['email'], $tenant_id]);
+    $stmt = $pdo->prepare("SELECT COUNT(*) FROM users WHERE email = ? AND tenant_id = ? AND branch_id = ?");
+    $stmt->execute([$_POST['email'], $tenant_id, $branch_id]);
     if ($stmt->fetchColumn() > 0) {
         throw new Exception(__('email_already_exists'));
     }
@@ -60,14 +61,14 @@ try {
     // Insert new user
     $stmt = $pdo->prepare("
         INSERT INTO users (
-            name, email, password, role, phone, address, 
-            hire_date, profile_pic, created_at, tenant_id
+            name, email, password, role, phone, address,
+            hire_date, profile_pic, created_at, tenant_id, branch_id
         ) VALUES (
-            :name, :email, :password, :role, :phone, :address, 
-            :hire_date, :profile_pic, NOW(), :tenant_id
+            :name, :email, :password, :role, :phone, :address,
+            :hire_date, :profile_pic, NOW(), :tenant_id, :branch_id
         )
     ");
-    
+
     $stmt->execute([
         'name' => $_POST['name'],
         'email' => $_POST['email'],
@@ -77,7 +78,8 @@ try {
         'address' => $_POST['address'] ?? null,
         'hire_date' => $_POST['hire_date'] ?? null,
         'profile_pic' => $profile_pic,
-        'tenant_id' => $tenant_id
+        'tenant_id' => $tenant_id,
+        'branch_id' => $branch_id
     ]);
     
     // Get the new user ID
@@ -111,18 +113,19 @@ try {
                     // Save document info in the database
                     $docStmt = $pdo->prepare("
                         INSERT INTO user_documents (
-                            user_id, filename, original_name, file_type, uploaded_at, tenant_id
+                            user_id, filename, original_name, file_type, uploaded_at, tenant_id, branch_id
                         ) VALUES (
-                            :user_id, :filename, :original_name, :file_type, NOW(), :tenant_id
+                            :user_id, :filename, :original_name, :file_type, NOW(), :tenant_id, :branch_id
                         )
                     ");
-                    
+
                     $docStmt->execute([
                         'user_id' => $userId,
                         'filename' => $newFilename,
                         'original_name' => $filename,
                         'file_type' => $ext,
-                        'tenant_id' => $tenant_id
+                        'tenant_id' => $tenant_id,
+                        'branch_id' => $branch_id
                     ]);
                     
                     $uploadedDocs[] = $newFilename;

@@ -16,6 +16,7 @@ if (session_status() === PHP_SESSION_NONE) {
     session_start();
 }
 $tenant_id = $_SESSION['tenant_id'];
+$branch_id = $_SESSION['branch_id'];
 // Check if user is logged in
 if (!isset($_SESSION['user_id'])  || $_SESSION['role'] !== 'admin') {
     header('Location: ../login.php');
@@ -77,8 +78,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['add_asset'])) {
     }
     
     try {
-        $stmt = $conn->prepare("INSERT INTO assets (name, category, purchase_date, purchase_value, current_value, currency, description, location, serial_number, warranty_expiry, status, assigned_to, condition_state, document, tenant_id) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)");
-        $stmt->bind_param("sssddsssssssssi", $name, $category, $purchase_date, $purchase_value, $current_value, $currency, $description, $location, $serial_number, $warranty_expiry, $status, $assigned_to, $condition_state, $document, $tenant_id);
+        $stmt = $conn->prepare("INSERT INTO assets (name, category, purchase_date, purchase_value, current_value, currency, description, location, serial_number, warranty_expiry, status, assigned_to, condition_state, document, tenant_id, branch_id) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)");
+        $stmt->bind_param("sssddsssssssssii", $name, $category, $purchase_date, $purchase_value, $current_value, $currency, $description, $location, $serial_number, $warranty_expiry, $status, $assigned_to, $condition_state, $document, $tenant_id, $branch_id);
         $stmt->execute();
         $_SESSION['success_message'] = "Asset added successfully!";
         header('Location: ' . $redirect_url);

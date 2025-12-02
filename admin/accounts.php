@@ -10,6 +10,7 @@ if (session_status() === PHP_SESSION_NONE) {
     session_start();
 }
 $tenant_id = $_SESSION['tenant_id'];
+$branch_id = $_SESSION['branch_id'];
 // Check if user is logged in
 if (!isset($_SESSION['user_id'])  || $_SESSION['role'] !== 'admin') {
     header('Location: ../login.php');
@@ -23,9 +24,9 @@ require_once('../includes/conn.php');
 // Note: Client accounts are fetched later with a more detailed query
 
 // Fetch main account balances
-$mainAccountQuery = "SELECT * FROM main_account WHERE tenant_id = ?";
+$mainAccountQuery = "SELECT * FROM main_account WHERE tenant_id = ? And branch_id = ?";
 $stmt = $conn->prepare($mainAccountQuery);
-$stmt->bind_param("i", $tenant_id);
+$stmt->bind_param("ii", $tenant_id, $branch_id);
 $stmt->execute();
 $result = $stmt->get_result(); // Use get_result() instead of another query
 
@@ -36,9 +37,9 @@ if ($result && $result->num_rows > 0) {
 }
 
 // Fetch client accounts balances
-$clientAccountQuery = "SELECT * FROM clients where status = 'active' AND tenant_id = ?";
+$clientAccountQuery = "SELECT * FROM clients where status = 'active' AND tenant_id = ? And branch_id = ?";
 $stmt = $conn->prepare($clientAccountQuery);
-$stmt->bind_param("i", $tenant_id);
+$stmt->bind_param("ii", $tenant_id, $branch_id);
 $stmt->execute();
 $result = $stmt->get_result();
 
@@ -51,18 +52,18 @@ if ($result && $result->num_rows > 0) {
 // Fetch supplier accounts with their balances
     $supplierQuery = "
     SELECT sa.id, sa.name AS supplier_name, sa.currency, sa.balance, sa.updated_at, sa.status
-    FROM suppliers sa where status = 'active' AND tenant_id = ?";
+    FROM suppliers sa where status = 'active' AND tenant_id = ? And branch_id = ?";
 $supplier = $conn->prepare($supplierQuery);
-$supplier->bind_param("i", $tenant_id);
+$supplier->bind_param("ii", $tenant_id, $branch_id);
 $supplier->execute();
 $supplier = $supplier->get_result()->fetch_all(MYSQLI_ASSOC);
 
 // Fetch client accounts with their balances
 $clientQuery = "
 SELECT cl.id, cl.name, cl.usd_balance, cl.afs_balance, cl.updated_at, cl.status
-FROM clients cl where status = 'active' AND tenant_id = ?";
+FROM clients cl where status = 'active' AND tenant_id = ? And branch_id = ?";
 $clientAccounts = $conn->prepare($clientQuery);
-$clientAccounts->bind_param("i", $tenant_id);
+$clientAccounts->bind_param("ii", $tenant_id, $branch_id);
 $clientAccounts->execute();
 $clientAccounts = $clientAccounts->get_result()->fetch_all(MYSQLI_ASSOC);
 
@@ -2149,14 +2150,14 @@ $clientAccounts = $clientAccounts->get_result()->fetch_all(MYSQLI_ASSOC);
     <div class="toast-container"></div>
 
     <!-- Account filters scripts -->
-    <script src="js/filters.js"></script>
-    <script src="js/toast-notifications.js"></script>
-    <script src="js/printing.js"></script>
-    <script src="js/account-management.js"></script>
-    <script src="js/account-funding.js"></script>
-    <script src="js/account-withdrawal.js"></script>
-    <script src="js/transaction-management.js"></script>
-    <script src="js/status-management.js?v=1.1"></script>
+    <script src="../js/accounts/filters.js"></script>
+    <script src="../js/accounts/toast-notifications.js"></script>
+    <script src="../js/accounts/printing.js"></script>
+    <script src="../js/accounts/account-management.js"></script>
+    <script src="../js/accounts/account-funding.js"></script>
+    <script src="../js/accounts/account-withdrawal.js"></script>
+    <script src="../js/accounts/transaction-management.js"></script>
+    <script src="../js/accounts/status-management.js?v=1.1"></script>
 
     <!-- Include Admin Footer -->
     <?php include '../includes/admin_footer.php'; ?>

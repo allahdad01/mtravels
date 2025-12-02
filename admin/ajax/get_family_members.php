@@ -25,18 +25,20 @@ if (!isset($_GET['family_id'])) {
 }
 
 $familyId = intval($_GET['family_id']);
+$tenant_id = $_SESSION['tenant_id'];
+$branch_id = $_SESSION['branch_id'];
 
 try {
     // Get family members
     $query = "
         SELECT ub.booking_id, ub.name, ub.passport_number
         FROM umrah_bookings ub
-        WHERE ub.family_id = ?
+        WHERE ub.family_id = ? AND ub.tenant_id = ? AND ub.branch_id = ?
         ORDER BY ub.name
     ";
-    
+
     $stmt = $pdo->prepare($query);
-    $stmt->execute([$familyId]);
+    $stmt->execute([$familyId, $tenant_id, $branch_id]);
     $members = $stmt->fetchAll(PDO::FETCH_ASSOC);
     
     // Return JSON response

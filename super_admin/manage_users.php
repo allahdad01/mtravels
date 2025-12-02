@@ -219,8 +219,7 @@ $stmt->close();
                                                 <label for="role"><?= __('role') ?></label>
                                                 <select class="form-control" id="role" name="role" required>
                                                     <option value="super_admin">Super Admin</option>
-                                                    <option value="tenant_admin">Tenant Admin</option>
-                                                    <option value="user">User</option>
+                                                    <option value="tenant_super_admin">Tenant Super Admin</option>
                                                 </select>
                                             </div>
                                             

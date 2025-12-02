@@ -8,6 +8,7 @@ require_once '../includes/language_helpers.php';
 // Enforce authentication
 enforce_auth();
 $tenant_id = $_SESSION['tenant_id'];
+$branch_id = $_SESSION['branch_id'];
 
 
 // Check if user is logged in
@@ -33,7 +34,7 @@ if (!$umrahId) {
     $error = "No Umrah booking ID provided";
 } else {
     // Get Umrah booking details with related info
-    $umrahQuery = "SELECT 
+    $umrahQuery = "SELECT
             ub.*,
             c.name AS client_name,
             c.email AS client_email,
@@ -46,17 +47,17 @@ if (!$umrahId) {
         LEFT JOIN clients c ON ub.sold_to = c.id
         LEFT JOIN suppliers s ON ub.supplier = s.id
         LEFT JOIN families f ON ub.family_id = f.family_id
-        WHERE ub.booking_id = ? AND ub.tenant_id = ?";
-        
+        WHERE ub.booking_id = ? AND ub.tenant_id = ? AND ub.branch_id = ?";
+
     $stmt = $pdo->prepare($umrahQuery);
-    $stmt->execute([$umrahId, $tenant_id]);
+    $stmt->execute([$umrahId, $tenant_id, $branch_id]);
     $umrahData = $stmt->fetch(PDO::FETCH_ASSOC);
     
     if (!$umrahData) {
         $error = "Umrah booking not found";
     } else {
         // Get client transactions related to this booking
-        $clientTransQuery = "SELECT 
+        $clientTransQuery = "SELECT
                 'Client' AS transaction_type,
                 ct.id,
                 ct.type,
@@ -66,15 +67,15 @@ if (!$umrahId) {
                 ct.transaction_of,
                 ct.created_at AS transaction_date
             FROM client_transactions ct
-            WHERE ct.reference_id = ? AND ct.transaction_of = 'umrah' AND ct.tenant_id = ?
+            WHERE ct.reference_id = ? AND ct.transaction_of = 'umrah' AND ct.tenant_id = ? AND ct.branch_id = ?
             ORDER BY ct.created_at DESC";
-            
+
         $stmt = $pdo->prepare($clientTransQuery);
-        $stmt->execute([$umrahId, $tenant_id]);
+        $stmt->execute([$umrahId, $tenant_id, $branch_id]);
         $clientTransactions = $stmt->fetchAll(PDO::FETCH_ASSOC);
         
         // Get supplier transactions related to this booking
-        $supplierTransQuery = "SELECT 
+        $supplierTransQuery = "SELECT
                 'Supplier' AS transaction_type,
                 st.id,
                 st.transaction_type as type,
@@ -84,15 +85,15 @@ if (!$umrahId) {
                 st.transaction_of,
                 st.transaction_date
             FROM supplier_transactions st
-            WHERE st.reference_id = ? AND st.transaction_of = 'umrah' AND st.tenant_id = ?
+            WHERE st.reference_id = ? AND st.transaction_of = 'umrah' AND st.tenant_id = ? AND st.branch_id = ?
             ORDER BY st.transaction_date DESC";
-            
+
         $stmt = $pdo->prepare($supplierTransQuery);
-        $stmt->execute([$umrahId, $tenant_id]);
+        $stmt->execute([$umrahId, $tenant_id, $branch_id]);
         $supplierTransactions = $stmt->fetchAll(PDO::FETCH_ASSOC);
         
         // Get main account transactions related to this booking
-        $mainAccountTransQuery = "SELECT 
+        $mainAccountTransQuery = "SELECT
                 'Main Account' AS transaction_type,
                 mat.id,
                 mat.type,
@@ -102,11 +103,11 @@ if (!$umrahId) {
                 mat.transaction_of,
                 mat.created_at AS transaction_date
             FROM main_account_transactions mat
-            WHERE mat.reference_id = ? AND mat.transaction_of = 'umrah' AND mat.tenant_id = ?
+            WHERE mat.reference_id = ? AND mat.transaction_of = 'umrah' AND mat.tenant_id = ? AND mat.branch_id = ?
             ORDER BY mat.created_at DESC";
-            
+
         $stmt = $pdo->prepare($mainAccountTransQuery);
-        $stmt->execute([$umrahId, $tenant_id]);
+        $stmt->execute([$umrahId, $tenant_id, $branch_id]);
         $mainAccountTransactions = $stmt->fetchAll(PDO::FETCH_ASSOC);
     }
 }

@@ -7,6 +7,7 @@ require_once '../../includes/conn.php';
 // Enforce authentication
 enforce_auth();
 $tenant_id = $_SESSION['tenant_id'];
+$branch_id = $_SESSION['branch_id'];
 
 header('Content-Type: application/json');
 
@@ -17,12 +18,12 @@ $status = isset($_GET['status']) ? $_GET['status'] : 'all';
 $query = "
     SELECT dc.*, f.head_of_family as family_name
     FROM date_change_umrah dc
-    LEFT JOIN families f ON dc.family_id = f.family_id
-    WHERE dc.tenant_id = ?
+    LEFT JOIN families f ON dc.family_id = f.family_id AND f.tenant_id = ? AND f.branch_id = ?
+    WHERE dc.tenant_id = ? AND dc.branch_id = ?
 ";
 
-$params = [$tenant_id];
-$types = "i";
+$params = [$tenant_id, $branch_id, $tenant_id, $branch_id];
+$types = "iiii";
 
 if ($status !== 'all') {
     $query .= " AND dc.status = ?";
@@ -52,11 +53,11 @@ try {
             SUM(CASE WHEN status = 'Rejected' THEN 1 ELSE 0 END) as rejected,
             SUM(CASE WHEN status = 'Completed' THEN 1 ELSE 0 END) as completed
         FROM date_change_umrah
-        WHERE tenant_id = ?
+        WHERE tenant_id = ? AND branch_id = ?
     ";
 
     $countStmt = $conn->prepare($countQuery);
-    $countStmt->bind_param("i", $tenant_id);
+    $countStmt->bind_param("ii", $tenant_id, $branch_id);
     $countStmt->execute();
     $countResult = $countStmt->get_result();
     $counts = $countResult->fetch_assoc();

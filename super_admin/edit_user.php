@@ -195,8 +195,9 @@ if (!empty($errors)) {
                                                 <label for="role"><?= __('role') ?></label>
                                                 <select class="form-control" id="role" name="role" required>
                                                     <option value="super_admin" <?= $user['role'] == 'super_admin' ? 'selected' : '' ?>>Super Admin</option>
-                                                    <option value="tenant_admin" <?= $user['role'] == 'tenant_admin' ? 'selected' : '' ?>>Tenant Admin</option>
-                                                    <option value="user" <?= $user['role'] == 'user' ? 'selected' : '' ?>>User</option>
+                                                    <option value="tenant_super_admin" <?= $user['role'] == 'tenant_admin' ? 'selected' : '' ?>>Tenant Super Admin</option>
+                                                    <option value="admin" <?= $user['role'] == 'admin' ? 'selected' : '' ?>>Tenant Admin</option>
+                                                    
                                                 </select>
                                             </div>
                                             <div class="form-group">

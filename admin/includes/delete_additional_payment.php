@@ -6,7 +6,7 @@ if (session_status() === PHP_SESSION_NONE) {
 // Include database security module for input validation
 require_once '../includes/db_security.php';
 $tenant_id = $_SESSION['tenant_id'];
-
+$branch_id = $_SESSION['branch_id'];
 // Database connection
 require_once('../../includes/db.php');
 require_once('../../includes/conn.php');
@@ -29,8 +29,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action']) && $_POST['
     
     try {
         // First, get the payment details
-        $stmt = $conn->prepare("SELECT * FROM additional_payments WHERE id = ? AND tenant_id = ?");
-        $stmt->bind_param("ii", $id, $tenant_id);
+        $stmt = $conn->prepare("SELECT * FROM additional_payments WHERE id = ? AND tenant_id = ? And branch_id = ?");
+        $stmt->bind_param("iii", $id, $tenant_id, $branch_id);
         $stmt->execute();
         $result = $stmt->get_result();
         $payment = $result->fetch_assoc();
@@ -42,8 +42,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action']) && $_POST['
         // Handle supplier balance update if payment was from supplier
         if ($payment['is_from_supplier'] && $payment['supplier_id']) {
             // Get supplier's current balance
-            $stmt = $conn->prepare("SELECT balance FROM suppliers WHERE id = ? AND tenant_id = ?");
-            $stmt->bind_param("ii", $payment['supplier_id'], $tenant_id);
+            $stmt = $conn->prepare("SELECT balance FROM suppliers WHERE id = ? AND tenant_id = ? And branch_id = ?");
+            $stmt->bind_param("iii", $payment['supplier_id'], $tenant_id, $branch_id);
             $stmt->execute();
             $result = $stmt->get_result();
             $supplier = $result->fetch_assoc();
@@ -53,8 +53,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action']) && $_POST['
             $newSupplierBalance = $supplier['balance'] + $balanceAdjustment;
 
             // Update supplier balance
-            $updateSupplierStmt = $conn->prepare("UPDATE suppliers SET balance = ? WHERE id = ? AND tenant_id = ?");
-            $updateSupplierStmt->bind_param("dii", $newSupplierBalance, $payment['supplier_id'], $tenant_id);
+            $updateSupplierStmt = $conn->prepare("UPDATE suppliers SET balance = ? WHERE id = ? AND tenant_id = ? And branch_id = ?");
+            $updateSupplierStmt->bind_param("diii", $newSupplierBalance, $payment['supplier_id'], $tenant_id, $branch_id);
             $updateSupplierStmt->execute();
 
             // Update subsequent supplier transactions
@@ -63,15 +63,16 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action']) && $_POST['
                 SET balance = balance + ? 
                 WHERE supplier_id = ? 
                 AND transaction_date > ? 
-                AND tenant_id = ?
+                AND tenant_id = ? And branch_id = ?
                 ORDER BY transaction_date ASC
             ");
             $updateSubsequentStmt->bind_param(
-                "disi", 
+                "disii", 
                 $balanceAdjustment,
                 $payment['supplier_id'],
                 $payment['created_at'],
-                $tenant_id
+                $tenant_id,
+                $branch_id
             );
             $updateSubsequentStmt->execute();
         }
@@ -79,8 +80,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action']) && $_POST['
         // Handle client balance update if payment was for client
         if ($payment['is_for_client'] && $payment['client_id']) {
             // Get client's current balances and type
-            $stmt = $conn->prepare("SELECT usd_balance, afs_balance, client_type FROM clients WHERE id = ? AND tenant_id = ?");
-            $stmt->bind_param("ii", $payment['client_id'], $tenant_id);
+            $stmt = $conn->prepare("SELECT usd_balance, afs_balance, client_type FROM clients WHERE id = ? AND tenant_id = ? And branch_id = ?");
+            $stmt->bind_param("iii", $payment['client_id'], $tenant_id, $branch_id);
             $stmt->execute();
             $result = $stmt->get_result();
             $client = $result->fetch_assoc();
@@ -93,8 +94,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action']) && $_POST['
                 $newClientBalance = $currentBalance + $balanceAdjustment;
 
                 // Update client balance
-                $updateClientStmt = $conn->prepare("UPDATE clients SET $balanceColumn = ? WHERE id = ? AND tenant_id = ?");
-                $updateClientStmt->bind_param("dii", $newClientBalance, $payment['client_id'], $tenant_id);
+                $updateClientStmt = $conn->prepare("UPDATE clients SET $balanceColumn = ? WHERE id = ? AND tenant_id = ? And branch_id = ?");
+                $updateClientStmt->bind_param("diii", $newClientBalance, $payment['client_id'], $tenant_id, $branch_id);
                 $updateClientStmt->execute();
 
                 // Update subsequent client transactions
@@ -104,16 +105,17 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action']) && $_POST['
                     WHERE client_id = ? 
                     AND created_at > ? 
                     AND currency = ?
-                    AND tenant_id = ?
+                    AND tenant_id = ? And branch_id = ?
                     ORDER BY created_at ASC
                 ");
                 $updateSubsequentStmt->bind_param(
-                    "dissi",
+                    "dissii",
                     $balanceAdjustment,
                     $payment['client_id'],
                     $payment['created_at'],
                     $payment['currency'],
-                    $tenant_id
+                    $tenant_id,
+                    $branch_id
                 );
                 $updateSubsequentStmt->execute();
             }
@@ -126,9 +128,9 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action']) && $_POST['
                 SELECT * FROM main_account_transactions 
                 WHERE reference_id = ? 
                 AND transaction_of = 'additional_payment'
-                AND tenant_id = ?
+                AND tenant_id = ? And branch_id = ?
             ");
-            $stmt->bind_param("ii", $id, $tenant_id);
+            $stmt->bind_param("iii", $id, $tenant_id, $branch_id);
             $stmt->execute();
             $result = $stmt->get_result();
             
@@ -139,9 +141,9 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action']) && $_POST['
                     UPDATE main_account 
                     SET $balanceField = $balanceField - ? 
                     WHERE id = ?
-                    AND tenant_id = ?
+                    AND tenant_id = ? And branch_id = ?
                 ");
-                $updateMainAccStmt->bind_param("di", $transaction['amount'], $transaction['main_account_id'], $tenant_id);
+                $updateMainAccStmt->bind_param("dii", $transaction['amount'], $transaction['main_account_id'], $tenant_id, $branch_id);
                 $updateMainAccStmt->execute();
                 
                 // Update subsequent main account transactions
@@ -152,37 +154,38 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action']) && $_POST['
                     AND currency = ? 
                     AND created_at > ? 
                     AND id != ?
-                    AND tenant_id = ?
+                    AND tenant_id = ? And branch_id = ?
                 ");
                 $updateSubsequentMainStmt->bind_param(
-                    "dissi", 
+                    "dissii", 
                     $transaction['amount'],
                     $transaction['main_account_id'], 
                     $transaction['currency'],
                     $transaction['created_at'],
                     $transaction['id'],
-                    $tenant_id
+                    $tenant_id,
+                    $branch_id
                 );
                 $updateSubsequentMainStmt->execute();
             }
         }
 
         // Delete associated transactions
-        $stmt = $conn->prepare("DELETE FROM main_account_transactions WHERE reference_id = ? AND transaction_of = 'additional_payment' AND tenant_id = ?");
-        $stmt->bind_param("ii", $id, $tenant_id);
+        $stmt = $conn->prepare("DELETE FROM main_account_transactions WHERE reference_id = ? AND transaction_of = 'additional_payment' AND tenant_id = ? And branch_id = ?");
+        $stmt->bind_param("iii", $id, $tenant_id, $branch_id);
         $stmt->execute();
 
-        $stmt = $conn->prepare("DELETE FROM supplier_transactions WHERE reference_id = ? AND transaction_of = 'additional_payment' AND tenant_id = ?");
-        $stmt->bind_param("ii", $id, $tenant_id);
+        $stmt = $conn->prepare("DELETE FROM supplier_transactions WHERE reference_id = ? AND transaction_of = 'additional_payment' AND tenant_id = ? And branch_id = ?");
+        $stmt->bind_param("iii", $id, $tenant_id, $branch_id);
         $stmt->execute();
 
-        $stmt = $conn->prepare("DELETE FROM client_transactions WHERE reference_id = ? AND transaction_of = 'additional_payment' AND tenant_id = ?");
-        $stmt->bind_param("ii", $id, $tenant_id);
+        $stmt = $conn->prepare("DELETE FROM client_transactions WHERE reference_id = ? AND transaction_of = 'additional_payment' AND tenant_id = ? And branch_id = ?");
+        $stmt->bind_param("iii", $id, $tenant_id, $branch_id);
         $stmt->execute();
 
         // Finally, delete the payment
-        $stmt = $conn->prepare("DELETE FROM additional_payments WHERE id = ? AND tenant_id = ?");
-        $stmt->bind_param("ii", $id, $tenant_id);
+        $stmt = $conn->prepare("DELETE FROM additional_payments WHERE id = ? AND tenant_id = ? And branch_id = ?");
+        $stmt->bind_param("iii", $id, $tenant_id, $branch_id);
         $stmt->execute();
         
         // Log activity
@@ -208,9 +211,9 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action']) && $_POST['
         ]);
         
         // Insert activity log record
-        $logStmt = $conn->prepare("INSERT INTO activity_log (user_id, ip_address, user_agent, action, table_name, record_id, old_values, new_values, created_at, tenant_id) 
-                                  VALUES (?, ?, ?, 'delete', 'additional_payments', ?, ?, NULL, NOW(), ?)");
-        $logStmt->bind_param("issisi", $userId, $ipAddress, $userAgent, $id, $oldValues, $tenant_id);
+        $logStmt = $conn->prepare("INSERT INTO activity_log (user_id, ip_address, user_agent, action, table_name, record_id, old_values, new_values, created_at, tenant_id, branch_id) 
+                                  VALUES (?, ?, ?, 'delete', 'additional_payments', ?, ?, NULL, NOW(), ?, ?)");
+        $logStmt->bind_param("issisii", $userId, $ipAddress, $userAgent, $id, $oldValues, $tenant_id, $branch_id);
         
         if (!$logStmt->execute()) {
             // Just log the error, don't affect the transaction success

@@ -10,7 +10,7 @@ require_once 'security.php';
 // Enforce authentication
 enforce_auth();
 $tenant_id = $_SESSION['tenant_id'];
-
+$branch_id = $_SESSION['branch_id'];
 // Include database connection
 include '../includes/db.php';
 include '../includes/conn.php';
@@ -26,7 +26,7 @@ if ($maktob_id <= 0) {
 $query = "SELECT m.*, u.name as sender_name 
           FROM maktobs m 
           JOIN users u ON m.sender_id = u.id 
-          WHERE m.id = $maktob_id AND m.tenant_id = $tenant_id";
+          WHERE m.id = $maktob_id AND m.tenant_id = $tenant_id And m.branch_id = $branch_id";
 $result = mysqli_query($conn, $query);
 
 if (!$result || mysqli_num_rows($result) == 0) {
@@ -36,7 +36,7 @@ if (!$result || mysqli_num_rows($result) == 0) {
 $maktob = mysqli_fetch_assoc($result);
 
 // Get company information from settings table
-$settings_query = "SELECT * FROM settings WHERE id = 1 AND tenant_id = $tenant_id";
+$settings_query = "SELECT * FROM settings WHERE tenant_id = $tenant_id";
 $settings_result = mysqli_query($conn, $settings_query);
 $settings = [];
 
@@ -297,8 +297,6 @@ $mpdf->Output($file_path, 'F');
 
 // Update database with PDF file path if it doesn't already have one
 $file_path_db = "uploads/letters/{$filename}";
-$update_query = "UPDATE maktobs SET pdf_path = '{$file_path_db}' WHERE id = {$maktob_id} AND (pdf_path IS NULL OR pdf_path = '')";
-mysqli_query($conn, $update_query);
 
 // Output the PDF for download
 $mpdf->Output('Maktob_' . $maktob['maktob_number'] . '.pdf', 'I');

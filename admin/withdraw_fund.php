@@ -6,6 +6,7 @@ require_once 'security.php';
 // Enforce authentication
 enforce_auth();
 $tenant_id = $_SESSION['tenant_id'];
+$branch_id = $_SESSION['branch_id'];
 require_once('../includes/conn.php');
 // Check if the user is logged in
 $username = isset($_SESSION['name']) ? $_SESSION['name'] : null;
@@ -34,12 +35,12 @@ if ($conn->connect_error) {
 
 // Fetch supplier's currency and balance
 $supplierQuery = "
-    SELECT name, currency, balance 
+    SELECT name, currency, balance
     FROM suppliers
-    WHERE id = ? and tenant_id = ?
+    WHERE id = ? and tenant_id = ? AND branch_id = ?
 ";
 $supplierStmt = $conn->prepare($supplierQuery);
-$supplierStmt->bind_param('ii', $supplierId, $tenant_id);
+$supplierStmt->bind_param('iii', $supplierId, $tenant_id, $branch_id);
 $supplierStmt->execute();
 $supplierResult = $supplierStmt->get_result();
 
@@ -53,12 +54,12 @@ $supplierName = $supplier['name'];
 
 // Fetch main account balances and name
 $mainAccountQuery = "
-    SELECT usd_balance, afs_balance, name 
-    FROM main_account 
-    WHERE id = ? and tenant_id = ?
+    SELECT usd_balance, afs_balance, name
+    FROM main_account
+    WHERE id = ? and tenant_id = ? AND branch_id = ?
 ";
 $mainAccountStmt = $conn->prepare($mainAccountQuery);
-$mainAccountStmt->bind_param('ii', $mainAccountId, $tenant_id);
+$mainAccountStmt->bind_param('iii', $mainAccountId, $tenant_id, $branch_id);
 $mainAccountStmt->execute();
 $mainAccountResult = $mainAccountStmt->get_result();
 
@@ -99,12 +100,12 @@ $conn->begin_transaction();
 try {
     // Deduct from the main account balance (USD or AFS)
     $mainUpdateQuery = "
-        UPDATE main_account 
-        SET {$balanceField} = {$balanceField} + ? 
-        WHERE id = ? and tenant_id = ?
+        UPDATE main_account
+        SET {$balanceField} = {$balanceField} + ?
+        WHERE id = ? and tenant_id = ? AND branch_id = ?
     ";
     $mainUpdateStmt = $conn->prepare($mainUpdateQuery);
-    $mainUpdateStmt->bind_param('dii', $amount, $mainAccountId, $tenant_id);
+    $mainUpdateStmt->bind_param('diii', $amount, $mainAccountId, $tenant_id, $branch_id);
     if (!$mainUpdateStmt->execute()) {
         throw new Exception("Failed to update main account balance.");
     }
@@ -130,12 +131,12 @@ if ($paymentCurrency !== $supplierCurrency) {
 
 // Add to the supplier's account balance in supplier currency
 $supplierUpdateQuery = "
-        UPDATE suppliers 
-        SET balance = balance - ? 
-        WHERE id = ? and tenant_id = ?
+        UPDATE suppliers
+        SET balance = balance - ?
+        WHERE id = ? and tenant_id = ? AND branch_id = ?
     ";
 $supplierUpdateStmt = $conn->prepare($supplierUpdateQuery);
-$supplierUpdateStmt->bind_param('dii', $creditedAmount, $supplierId, $tenant_id);
+$supplierUpdateStmt->bind_param('diii', $creditedAmount, $supplierId, $tenant_id, $branch_id);
     if (!$supplierUpdateStmt->execute()) {
         throw new Exception("Failed to update supplier account balance.");
     }
@@ -156,36 +157,39 @@ $supplierUpdateStmt->bind_param('dii', $creditedAmount, $supplierId, $tenant_id)
     // Insert into supplier_transactions
     $transactionQuery = "
         INSERT INTO supplier_transactions (
-            supplier_id, 
-            transaction_type, 
-            amount, 
-            transaction_of, 
-            reference_id, 
-            remarks, 
+            supplier_id,
+            transaction_type,
+            amount,
+            transaction_of,
+            reference_id,
+            remarks,
             balance,
             receipt,
-            tenant_id
+            tenant_id,
+            branch_id
         ) VALUES (
-            ?, 
-            'debit', 
-            ?, 
-            'fund_withdrawal', 
-            ?, 
-            ?, 
+            ?,
+            'debit',
+            ?,
+            'fund_withdrawal',
+            ?,
+            ?,
+            ?,
             ?,
             ?,
             ?
         )
     ";
     $transactionStmt = $conn->prepare($transactionQuery);
-    $transactionStmt->bind_param('idssssi', 
-        $supplierId, 
-        $creditedAmount, 
-        $user_id, 
+    $transactionStmt->bind_param('idssssii',
+        $supplierId,
+        $creditedAmount,
+        $user_id,
         $completeRemarks,
         $newBalance,
         $receiptNumber,
-        $tenant_id
+        $tenant_id,
+        $branch_id
     );
     if (!$transactionStmt->execute()) {
         throw new Exception("Failed to log the supplier transaction.");
@@ -205,7 +209,8 @@ $supplierUpdateStmt->bind_param('dii', $creditedAmount, $supplierId, $tenant_id)
             balance,
             currency,
             receipt,
-            tenant_id
+            tenant_id,
+            branch_id
         ) VALUES (
             ?,
             'credit',
@@ -216,11 +221,12 @@ $supplierUpdateStmt->bind_param('dii', $creditedAmount, $supplierId, $tenant_id)
             ?,
             ?,
             ?,
+            ?,
             ?
         )
     ";
     $mainTransactionStmt = $conn->prepare($mainTransactionQuery);
-    $mainTransactionStmt->bind_param('idisdssi',
+    $mainTransactionStmt->bind_param('idisdssii',
         $mainAccountId,
         $amount,
         $lastInsertId,
@@ -228,7 +234,8 @@ $supplierUpdateStmt->bind_param('dii', $creditedAmount, $supplierId, $tenant_id)
         $newMainBalance,
         $paymentCurrency,
         $receiptNumber,
-        $tenant_id
+        $tenant_id,
+        $branch_id
     );
     if (!$mainTransactionStmt->execute()) {
         throw new Exception("Failed to log the main account transaction.");
@@ -242,13 +249,15 @@ $supplierUpdateStmt->bind_param('dii', $creditedAmount, $supplierId, $tenant_id)
             message,
             status,
             created_at,
-            tenant_id
+            tenant_id,
+            branch_id
         ) VALUES (
             ?,
             ?,
             ?,
             ?,
             NOW(),
+            ?,
             ?
         )
     ";
@@ -256,7 +265,7 @@ $supplierUpdateStmt->bind_param('dii', $creditedAmount, $supplierId, $tenant_id)
     $transaction_type = 'supplier_fund_withdrawal';
     $status = 'Unread';
     $notificationStmt = $conn->prepare($notificationQuery);
-    $notificationStmt->bind_param('isssi', $lastInsertId, $transaction_type, $notificationMessage, $status, $tenant_id);
+    $notificationStmt->bind_param('isssii', $lastInsertId, $transaction_type, $notificationMessage, $status, $tenant_id, $branch_id);
     if (!$notificationStmt->execute()) {
         throw new Exception("Failed to send notification to admin.");
     }
@@ -287,11 +296,11 @@ $supplierUpdateStmt->bind_param('dii', $creditedAmount, $supplierId, $tenant_id)
     $user_agent = $_SERVER['HTTP_USER_AGENT'] ?? '';
     
     $activityStmt = $conn->prepare("
-        INSERT INTO activity_log 
-        (user_id, action, table_name, record_id, old_values, new_values, ip_address, user_agent, created_at, tenant_id) 
-        VALUES (?, 'fund', 'suppliers', ?, ?, ?, ?, ?, NOW(), ?)
+        INSERT INTO activity_log
+        (user_id, action, table_name, record_id, old_values, new_values, ip_address, user_agent, created_at, tenant_id, branch_id)
+        VALUES (?, 'fund', 'suppliers', ?, ?, ?, ?, ?, NOW(), ?, ?)
     ");
-    $activityStmt->bind_param("iissssi", $user_id, $supplierId, $old_values, $new_values, $ip_address, $user_agent, $tenant_id);
+    $activityStmt->bind_param("iissssii", $user_id, $supplierId, $old_values, $new_values, $ip_address, $user_agent, $tenant_id, $branch_id);
     $activityStmt->execute();
     
     echo json_encode(['success' => true, 'message' => 'Supplier account withdrawn successfully.']);

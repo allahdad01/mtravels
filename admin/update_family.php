@@ -8,6 +8,7 @@ require_once 'security.php';
 // Enforce authentication
 enforce_auth();
 $tenant_id = $_SESSION['tenant_id'];
+$branch_id = $_SESSION['branch_id'];
 require_once '../includes/conn.php';
 
 // Validate visa_status
@@ -52,10 +53,10 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     $district = isset($_POST['district']) ? trim($_POST['district']) : null;
 
 
-    $sql = "UPDATE families SET head_of_family = ?, contact = ?, address = ?, package_type = ?, location = ?, tazmin = ?, visa_status = ?, province = ?, district = ? WHERE family_id = ? AND tenant_id = ?";
+    $sql = "UPDATE families SET head_of_family = ?, contact = ?, address = ?, package_type = ?, location = ?, tazmin = ?, visa_status = ?, province = ?, district = ? WHERE family_id = ? AND tenant_id = ? AND branch_id = ?";
 
     if ($stmt = $conn->prepare($sql)) {
-        $stmt->bind_param("sssssssssii", $head_of_family, $contact, $address, $package_type, $location, $tazmin, $visa, $province, $district, $family_id, $tenant_id);
+        $stmt->bind_param("sssssssssiis", $head_of_family, $contact, $address, $package_type, $location, $tazmin, $visa, $province, $district, $family_id, $tenant_id, $branch_id);
 
         if ($stmt->execute()) {
            // Add activity logging
@@ -82,19 +83,20 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
            $old_values = json_encode($old_values);
            $new_values = json_encode($new_values);
            // Insert activity log
-           $activity_log_stmt = $conn->prepare("INSERT INTO activity_log 
-               (user_id, action, table_name, record_id, old_values, new_values, ip_address, user_agent, tenant_id) 
-               VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)");
-           $activity_log_stmt->bind_param("isisssssi", 
-               $user_id, 
-               $action, 
-               $table_name, 
-               $family_id, 
-               $old_values, 
-               $new_values, 
-               $ip_address, 
+           $activity_log_stmt = $conn->prepare("INSERT INTO activity_log
+               (user_id, action, table_name, record_id, old_values, new_values, ip_address, user_agent, tenant_id, branch_id)
+               VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)");
+           $activity_log_stmt->bind_param("isisssssis",
+               $user_id,
+               $action,
+               $table_name,
+               $family_id,
+               $old_values,
+               $new_values,
+               $ip_address,
                $user_agent,
-               $tenant_id
+               $tenant_id,
+               $branch_id
            );
            $activity_log_stmt->execute();
            

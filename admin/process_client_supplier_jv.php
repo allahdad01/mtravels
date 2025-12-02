@@ -6,6 +6,7 @@ if (session_status() === PHP_SESSION_NONE) {
 // Include database security module for input validation
 require_once 'includes/db_security.php';
 $tenant_id = $_SESSION['tenant_id'];
+$branch_id = $_SESSION['branch_id'];
 // Include security module
 require_once 'security.php';
 
@@ -94,9 +95,9 @@ $pdo->beginTransaction();
 
 try {
     // Get client details
-    $clientQuery = "SELECT c.name, c.usd_balance, c.afs_balance FROM clients c WHERE c.id = ? AND c.tenant_id = ?";
+    $clientQuery = "SELECT c.name, c.usd_balance, c.afs_balance FROM clients c WHERE c.id = ? AND c.tenant_id = ? AND c.branch_id = ?";
     $clientStmt = $pdo->prepare($clientQuery);
-    $clientStmt->execute([$clientId, $tenant_id]);
+    $clientStmt->execute([$clientId, $tenant_id, $branch_id]);
     $client = $clientStmt->fetch(PDO::FETCH_ASSOC);
     
     if (!$client) {
@@ -106,9 +107,9 @@ try {
     $clientName = $client['name'];
     
     // Get supplier details
-    $supplierQuery = "SELECT s.name, s.balance, s.currency as supplier_currency FROM suppliers s WHERE s.id = ? AND s.tenant_id = ?";
+    $supplierQuery = "SELECT s.name, s.balance, s.currency as supplier_currency FROM suppliers s WHERE s.id = ? AND s.tenant_id = ? AND s.branch_id = ?";
     $supplierStmt = $pdo->prepare($supplierQuery);
-    $supplierStmt->execute([$supplierId, $tenant_id]);
+    $supplierStmt->execute([$supplierId, $tenant_id, $branch_id]);
     $supplier = $supplierStmt->fetch(PDO::FETCH_ASSOC);
     
     if (!$supplier) {
@@ -133,9 +134,9 @@ try {
     $clientNewBalance = $clientCurrentBalance + $amount;
     
     // Update client balance
-    $updateClientQuery = "UPDATE clients SET {$clientBalanceField} = ? WHERE id = ? AND tenant_id = ?";
+    $updateClientQuery = "UPDATE clients SET {$clientBalanceField} = ? WHERE id = ? AND tenant_id = ? AND branch_id = ?";
     $updateClientStmt = $pdo->prepare($updateClientQuery);
-    $updateClientStmt->execute([$clientNewBalance, $clientId, $tenant_id]);
+    $updateClientStmt->execute([$clientNewBalance, $clientId, $tenant_id, $branch_id]);
     
     // Calculate amount to add to supplier based on currencies
     $supplierAddAmount = $amount;
@@ -155,16 +156,16 @@ try {
     $supplierNewBalance = $supplierCurrentBalance + $supplierAddAmount;
     
     // Update supplier balance
-    $updateSupplierQuery = "UPDATE suppliers SET balance = ? WHERE id = ? AND tenant_id = ?";
+    $updateSupplierQuery = "UPDATE suppliers SET balance = ? WHERE id = ? AND tenant_id = ? AND branch_id = ?";
     $updateSupplierStmt = $pdo->prepare($updateSupplierQuery);
-    $updateSupplierStmt->execute([$supplierNewBalance, $supplierId, $tenant_id]);
+    $updateSupplierStmt->execute([$supplierNewBalance, $supplierId, $tenant_id, $branch_id]);
     
     // Insert into jv_payments table
     $insertJvQuery = "INSERT INTO jv_payments (
         jv_name, exchange_rate,
         total_amount, currency, receipt, remarks, created_by,
-        client_id, supplier_id, tenant_id
-    ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)";
+        client_id, supplier_id, tenant_id, branch_id
+    ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)";
 
     // Set appropriate USD/AFS amounts
     $usdAmount = ($currency === 'USD') ? $amount : 0;
@@ -177,7 +178,7 @@ try {
     $insertJvStmt = $pdo->prepare($insertJvQuery);
     $insertJvStmt->execute([
         $jvName, $exchangeRate, $amount, $currency, $receipt, $remarks, $user_id,
-        $clientId, $supplierId, $tenant_id
+        $clientId, $supplierId, $tenant_id, $branch_id
     ]);
     
     $jvPaymentId = $pdo->lastInsertId();
@@ -189,13 +190,13 @@ try {
     // Record JV transaction
     $jvTransactionQuery = "INSERT INTO jv_transactions (
         jv_payment_id, transaction_type, amount, balance, currency,
-        description, receipt, reference_id, tenant_id
-    ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)";
+        description, receipt, reference_id, tenant_id, branch_id
+    ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)";
 
     $jvTransactionStmt = $pdo->prepare($jvTransactionQuery);
     $jvTransactionStmt->execute([
         $jvPaymentId, 'Transfer', $amount, $amount, $currency,
-        $remarks, $receipt, $clientId, $tenant_id
+        $remarks, $receipt, $clientId, $tenant_id, $branch_id
     ]);
     
     $jvTransactionId = $pdo->lastInsertId();
@@ -203,25 +204,25 @@ try {
     // Record client transaction (debit)
     $clientTransactionQuery = "INSERT INTO client_transactions (
         client_id, type, amount, balance, currency,
-        `description`, transaction_of, reference_id, receipt, tenant_id
-    ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)";
+        `description`, transaction_of, reference_id, receipt, tenant_id, branch_id
+    ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)";
 
     $clientTransactionStmt = $pdo->prepare($clientTransactionQuery);
     $clientTransactionStmt->execute([
         $clientId, 'credit', $amount, $clientNewBalance, $currency,
-        $clientRemark, 'jv_payment', $jvTransactionId, $receipt, $tenant_id
+        $clientRemark, 'jv_payment', $jvTransactionId, $receipt, $tenant_id, $branch_id
     ]);
     
     // Record supplier transaction (credit)
     $supplierTransactionQuery = "INSERT INTO supplier_transactions (
         supplier_id, transaction_type, amount, balance,
-        remarks, transaction_of, reference_id, receipt, tenant_id
-    ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)";
+        remarks, transaction_of, reference_id, receipt, tenant_id, branch_id
+    ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)";
 
     $supplierTransactionStmt = $pdo->prepare($supplierTransactionQuery);
     $supplierTransactionStmt->execute([
         $supplierId, 'Credit', $supplierAddAmount, $supplierNewBalance,
-        $supplierRemark, 'jv_payment', $jvTransactionId, $receipt, $tenant_id
+        $supplierRemark, 'jv_payment', $jvTransactionId, $receipt, $tenant_id, $branch_id
     ]);
     
     // Add activity logging
@@ -247,11 +248,11 @@ try {
     
     // Insert activity log
     $activity_log_stmt = $pdo->prepare("INSERT INTO activity_log
-        (user_id, action, table_name, record_id, old_values, new_values, ip_address, user_agent, created_at, tenant_id)
-        VALUES (?, ?, ?, ?, ?, ?, ?, ?, NOW(), ?)");
+        (user_id, action, table_name, record_id, old_values, new_values, ip_address, user_agent, created_at, tenant_id, branch_id)
+        VALUES (?, ?, ?, ?, ?, ?, ?, ?, NOW(), ?, ?)");
 
     $new_values_json = json_encode($new_values);
-    $activity_log_stmt->execute([$user_id, 'add', 'jv_payments', $jvPaymentId, '{}', $new_values_json, $ip_address, $user_agent, $tenant_id]);
+    $activity_log_stmt->execute([$user_id, 'add', 'jv_payments', $jvPaymentId, '{}', $new_values_json, $ip_address, $user_agent, $tenant_id, $branch_id]);
     
     // Commit transaction
     $pdo->commit();

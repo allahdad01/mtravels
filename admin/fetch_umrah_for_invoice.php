@@ -6,6 +6,7 @@ if (session_status() === PHP_SESSION_NONE) {
 // Include security module
 require_once 'security.php';
 $tenant_id = $_SESSION['tenant_id'];
+$branch_id = $_SESSION['branch_id'];
 // Enforce authentication
 enforce_auth();
 
@@ -24,12 +25,12 @@ try {
               um.duration
               FROM umrah_bookings um
               left join families f on um.family_id = f.family_id
-              WHERE um.tenant_id = ?
+              WHERE um.tenant_id = ? AND um.branch_id = ?
               ORDER BY um.booking_id DESC
               LIMIT 100";
     
     $stmt = $conn->prepare($query);
-    $stmt->bind_param('i', $tenant_id);
+    $stmt->bind_param('ii', $tenant_id, $branch_id);
     $stmt->execute();
     $result = $stmt->get_result();
     

@@ -7,6 +7,7 @@ if (session_status() === PHP_SESSION_NONE) {
 // Include database security module for input validation
 require_once 'includes/db_security.php';
 $tenant_id = $_SESSION['tenant_id'];
+$branch_id = $_SESSION['branch_id'];
 // Include security module
 require_once 'security.php';
 
@@ -38,19 +39,19 @@ if (isset($_GET['id'])) {
         // Get expense details
         $query = "SELECT e.*, ec.name as category_name, ma.name as account_name, mat.receipt as receipt_number
                   FROM expenses e
-                  LEFT JOIN expense_categories ec ON e.category_id = ec.id
-                  LEFT JOIN main_account ma ON e.main_account_id = ma.id
-                  LEFT JOIN main_account_transactions mat ON e.id = mat.reference_id AND mat.transaction_of = 'expense'
-                  WHERE e.id = ? AND e.tenant_id = ?";
+                  LEFT JOIN expense_categories ec ON e.category_id = ec.id AND e.tenant_id = ec.tenant_id AND e.branch_id = ec.branch_id
+                  LEFT JOIN main_account ma ON e.main_account_id = ma.id AND e.tenant_id = ma.tenant_id AND e.branch_id = ma.branch_id
+                  LEFT JOIN main_account_transactions mat ON e.id = mat.reference_id AND mat.transaction_of = 'expense' AND mat.tenant_id = e.tenant_id AND mat.branch_id = e.branch_id
+                  WHERE e.id = ? AND e.tenant_id = ? AND e.branch_id = ?";
         $stmt = $pdo->prepare($query);
-        $stmt->execute([$expenseId, $tenant_id]);
+        $stmt->execute([$expenseId, $tenant_id, $branch_id]);
         $expense = $stmt->fetch(PDO::FETCH_ASSOC);
         
         if (!$expense) {
             $errorMessage = "Expense not found.";
         } else {
             // Get transactions related to this expense
-            $transactionQuery = "SELECT 
+            $transactionQuery = "SELECT
                 'Main Account' AS transaction_type,
                 mat.id,
                 mat.type,
@@ -62,9 +63,9 @@ if (isset($_GET['id'])) {
                 mat.receipt,
                 mat.created_at AS transaction_date
                 FROM main_account_transactions mat
-                WHERE mat.reference_id = ? AND mat.transaction_of = 'expense' AND mat.tenant_id = ?";
+                WHERE mat.reference_id = ? AND mat.transaction_of = 'expense' AND mat.tenant_id = ? AND mat.branch_id = ?";
             $stmt = $pdo->prepare($transactionQuery);
-            $stmt->execute([$expenseId, $tenant_id]);
+            $stmt->execute([$expenseId, $tenant_id, $branch_id]);
             $transactions = $stmt->fetchAll(PDO::FETCH_ASSOC);
         }
     }

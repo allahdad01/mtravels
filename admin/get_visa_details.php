@@ -6,6 +6,7 @@ if (session_status() === PHP_SESSION_NONE) {
 // Include security module
 require_once 'security.php';
 $tenant_id = $_SESSION['tenant_id'];
+$branch_id = $_SESSION['branch_id'];
 // Enforce authentication
 enforce_auth();
 
@@ -26,14 +27,14 @@ $visaId = intval($_GET['id']);
 
 try {
     // Prepare the query to fetch visa details
-    $query = "SELECT v.* 
-                    
-              FROM visa_applications v
-              
-              WHERE v.id = ? AND v.tenant_id = ?";
-              
+    $query = "SELECT v.*
+
+               FROM visa_applications v
+
+               WHERE v.id = ? AND v.tenant_id = ? AND v.branch_id = ?";
+
     $stmt = $conn->prepare($query);
-    $stmt->bind_param('ii', $visaId, $tenant_id);
+    $stmt->bind_param('iii', $visaId, $tenant_id, $branch_id);
     $stmt->execute();
     $result = $stmt->get_result();
     

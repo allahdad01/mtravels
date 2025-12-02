@@ -8,7 +8,7 @@ if (session_status() === PHP_SESSION_NONE) {
 // Include database security module for input validation
 require_once '../includes/db_security.php';
 $tenant_id = $_SESSION['tenant_id'];
-
+$branch_id = $_SESSION['branch_id'];
 // Validate CSRF token
 if (!isset($_POST['csrf_token']) || $_POST['csrf_token'] !== $_SESSION['csrf_token']) {
     header('Content-Type: application/json');
@@ -38,8 +38,8 @@ try {
     $conn->begin_transaction();
 
     // Insert the payment
-    $stmt = $conn->prepare("INSERT INTO additional_payments (payment_type, description, base_amount, profit, sold_amount, currency, main_account_id, supplier_id, is_from_supplier, client_id, is_for_client, created_by, created_at, tenant_id) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, NOW(), ?)");
-    $stmt->bind_param("ssdddsiiiiisi", $payment_type, $description, $base_amount, $profit, $sold_amount, $currency, $main_account_id, $supplier_id, $is_from_supplier, $client_id, $is_for_client, $_SESSION['user_id'], $tenant_id);
+    $stmt = $conn->prepare("INSERT INTO additional_payments (payment_type, description, base_amount, profit, sold_amount, currency, main_account_id, supplier_id, is_from_supplier, client_id, is_for_client, created_by, created_at, tenant_id, branch_id) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, NOW(), ?, ?)");
+    $stmt->bind_param("ssdddsiiiiisii", $payment_type, $description, $base_amount, $profit, $sold_amount, $currency, $main_account_id, $supplier_id, $is_from_supplier, $client_id, $is_for_client, $_SESSION['user_id'], $tenant_id, $branch_id);
     
     if (!$stmt->execute()) {
         throw new Exception("Error inserting payment: " . $stmt->error);
@@ -50,8 +50,8 @@ try {
     // If payment is from supplier, deduct from supplier's balance
     if ($is_from_supplier && $supplier_id) {
         // Get supplier's current balance
-        $supplierStmt = $conn->prepare("SELECT balance, currency FROM suppliers WHERE id = ? AND tenant_id = ?");
-        $supplierStmt->bind_param("ii", $supplier_id, $tenant_id);
+        $supplierStmt = $conn->prepare("SELECT balance, currency FROM suppliers WHERE id = ? AND tenant_id = ? And branch_id = ?");
+        $supplierStmt->bind_param("iii", $supplier_id, $tenant_id, $branch_id);
         $supplierStmt->execute();
         $supplierResult = $supplierStmt->get_result();
         $supplier = $supplierResult->fetch_assoc();
@@ -69,16 +69,16 @@ try {
         $newSupplierBalance = $supplier['balance'] - $base_amount;
         
         // Update supplier balance
-        $updateSupplierStmt = $conn->prepare("UPDATE suppliers SET balance = ? WHERE id = ? AND tenant_id = ?");
-        $updateSupplierStmt->bind_param("dii", $newSupplierBalance, $supplier_id, $tenant_id);
+        $updateSupplierStmt = $conn->prepare("UPDATE suppliers SET balance = ? WHERE id = ? AND tenant_id = ? And branch_id = ?");
+        $updateSupplierStmt->bind_param("diii", $newSupplierBalance, $supplier_id, $tenant_id, $branch_id);
         
         if (!$updateSupplierStmt->execute()) {
             throw new Exception("Error updating supplier balance: " . $updateSupplierStmt->error);
         }
         
         // Add transaction record for supplier deduction with new balance
-        $transactionStmt = $conn->prepare("INSERT INTO supplier_transactions (supplier_id, amount, transaction_type, remarks, reference_id, transaction_of, transaction_date, balance, tenant_id) VALUES (?, ?, 'debit', ?, ?, 'additional_payment', NOW(), ?, ?)");
-        $transactionStmt->bind_param("idsssi", $supplier_id, $base_amount, $description, $payment_id, $newSupplierBalance, $tenant_id);
+        $transactionStmt = $conn->prepare("INSERT INTO supplier_transactions (supplier_id, amount, transaction_type, remarks, reference_id, transaction_of, transaction_date, balance, tenant_id, branch_id) VALUES (?, ?, 'debit', ?, ?, 'additional_payment', NOW(), ?, ?, ?)");
+        $transactionStmt->bind_param("idsssii", $supplier_id, $base_amount, $description, $payment_id, $newSupplierBalance, $tenant_id, $branch_id);
         
         if (!$transactionStmt->execute()) {
             throw new Exception("Error recording supplier transaction: " . $transactionStmt->error);
@@ -88,8 +88,8 @@ try {
     // If payment is for client, add to client's balance
     if ($is_for_client && $client_id) {
         // Get client's current balance and type
-        $clientStmt = $conn->prepare("SELECT usd_balance, afs_balance, client_type, name FROM clients WHERE id = ? AND tenant_id = ?");
-        $clientStmt->bind_param("ii", $client_id, $tenant_id);
+        $clientStmt = $conn->prepare("SELECT usd_balance, afs_balance, client_type, name FROM clients WHERE id = ? AND tenant_id = ? And branch_id = ?");
+        $clientStmt->bind_param("iii", $client_id, $tenant_id, $branch_id);
         $clientStmt->execute();
         $clientResult = $clientStmt->get_result();
         $client = $clientResult->fetch_assoc();
@@ -106,8 +106,8 @@ try {
         if ($client['client_type'] === 'regular') {
             // Update the appropriate balance column based on currency
             $balance_column = ($currency === 'USD') ? 'usd_balance' : 'afs_balance';
-            $updateClientStmt = $conn->prepare("UPDATE clients SET $balance_column = ? WHERE id = ? AND tenant_id = ?");
-            $updateClientStmt->bind_param("dii", $new_balance, $client_id, $tenant_id);
+            $updateClientStmt = $conn->prepare("UPDATE clients SET $balance_column = ? WHERE id = ? AND tenant_id = ? And branch_id = ?");
+            $updateClientStmt->bind_param("diii", $new_balance, $client_id, $tenant_id, $branch_id);
             
             if (!$updateClientStmt->execute()) {
                 throw new Exception("Error updating client balance: " . $updateClientStmt->error);
@@ -116,11 +116,11 @@ try {
         
         // Add transaction record
         $transactionStmt = $conn->prepare("INSERT INTO client_transactions (
-            client_id, type, transaction_of, reference_id, amount, balance, currency, description, tenant_id
-        ) VALUES (?, 'debit', 'additional_payment', ?, ?, ?, ?, ?, ?)");
+            client_id, type, transaction_of, reference_id, amount, balance, currency, description, tenant_id, branch_id
+        ) VALUES (?, 'debit', 'additional_payment', ?, ?, ?, ?, ?, ?, ?)");
         
         $transaction_description = "Additional payment: $payment_type - $description";
-        $transactionStmt->bind_param("iiddssi", $client_id, $payment_id, $sold_amount, $new_balance, $currency, $transaction_description, $tenant_id);
+        $transactionStmt->bind_param("iiddssii", $client_id, $payment_id, $sold_amount, $new_balance, $currency, $transaction_description, $tenant_id, $branch_id);
         
         if (!$transactionStmt->execute()) {
             throw new Exception("Error recording client transaction: " . $transactionStmt->error);
@@ -152,9 +152,9 @@ try {
     ]);
     
     // Insert activity log record
-    $logStmt = $conn->prepare("INSERT INTO activity_log (user_id, ip_address, user_agent, action, table_name, record_id, old_values, new_values, created_at, tenant_id) 
-                              VALUES (?, ?, ?, 'add', 'additional_payments', ?, NULL, ?, NOW(), ?)");
-    $logStmt->bind_param("issisi", $userId, $ipAddress, $userAgent, $payment_id, $newValues, $tenant_id);
+    $logStmt = $conn->prepare("INSERT INTO activity_log (user_id, ip_address, user_agent, action, table_name, record_id, old_values, new_values, created_at, tenant_id, branch_id) 
+                              VALUES (?, ?, ?, 'add', 'additional_payments', ?, NULL, ?, NOW(), ?, ?)");
+    $logStmt->bind_param("issisii", $userId, $ipAddress, $userAgent, $payment_id, $newValues, $tenant_id, $branch_id);
     
     if (!$logStmt->execute()) {
         // Just log the error, don't affect the transaction success

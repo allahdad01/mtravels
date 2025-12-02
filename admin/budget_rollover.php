@@ -16,6 +16,7 @@ if (!isset($_SESSION['user_id']) || $_SESSION['role'] !== 'admin') {
 }
 
 $tenant_id = $_SESSION['tenant_id'];
+$branch_id = $_SESSION['branch_id'];
 // Database connection
 require_once('../includes/db.php');
 
@@ -59,12 +60,12 @@ if (isset($_POST['process_rollover'])) {
     try {
         // Get all allocations from previous month with remaining funds
         $stmt = $pdo->prepare("
-            SELECT * FROM budget_allocations 
-            WHERE allocation_date BETWEEN ? AND ? 
+            SELECT * FROM budget_allocations
+            WHERE allocation_date BETWEEN ? AND ?
             AND remaining_amount > 0
-            AND tenant_id = ?
+            AND tenant_id = ? AND branch_id = ?
         ");
-        $stmt->execute([$previousMonthStart, $previousMonthEnd, $tenant_id]);
+        $stmt->execute([$previousMonthStart, $previousMonthEnd, $tenant_id, $branch_id]);
         $allocations = $stmt->fetchAll(PDO::FETCH_ASSOC);
         
         if (empty($allocations)) {
@@ -74,14 +75,14 @@ if (isset($_POST['process_rollover'])) {
             foreach ($allocations as $allocation) {
                 // Create a new allocation for the current month
                 $stmt = $pdo->prepare("
-                    INSERT INTO budget_allocations 
-                    (main_account_id, category_id, allocated_amount, remaining_amount, currency, allocation_date, description) 
-                    VALUES (?, ?, ?, ?, ?, ?, ?)
+                    INSERT INTO budget_allocations
+                    (main_account_id, category_id, allocated_amount, remaining_amount, currency, allocation_date, description, tenant_id, branch_id)
+                    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
                 ");
-                
-                $description = "Rollover from " . date('F Y', strtotime($previousMonthStart)) . 
+
+                $description = "Rollover from " . date('F Y', strtotime($previousMonthStart)) .
                                " - " . $allocation['description'];
-                
+
                 $stmt->execute([
                     $allocation['main_account_id'],
                     $allocation['category_id'],
@@ -89,7 +90,9 @@ if (isset($_POST['process_rollover'])) {
                     $allocation['remaining_amount'],
                     $allocation['currency'],
                     $currentMonthDate,
-                    $description
+                    $description,
+                    $tenant_id,
+                    $branch_id
                 ]);
                 
                 $newAllocationId = $pdo->lastInsertId();
@@ -159,12 +162,12 @@ $pendingCount = 0;
 // Only check for pending rollovers if we're at the start of a new month and not doing a manual rollover
 if (!$manualRollover && intval($currentMonth) !== intval($previousMonth)) {
     $stmt = $pdo->prepare("
-        SELECT COUNT(*) FROM budget_allocations 
-        WHERE allocation_date BETWEEN ? AND ? 
+        SELECT COUNT(*) FROM budget_allocations
+        WHERE allocation_date BETWEEN ? AND ?
         AND remaining_amount > 0
-        AND tenant_id = ?
+        AND tenant_id = ? AND branch_id = ?
     ");
-    $stmt->execute([$previousMonthStart, $previousMonthEnd, $tenant_id]);
+    $stmt->execute([$previousMonthStart, $previousMonthEnd, $tenant_id, $branch_id]);
     $pendingCount = $stmt->fetchColumn();
     
     if ($pendingCount > 0) {
@@ -174,9 +177,9 @@ if (!$manualRollover && intval($currentMonth) !== intval($previousMonth)) {
 
 // Database connection is closed automatically when script ends
 
-$categoriesQuery = "SELECT * FROM expense_categories WHERE tenant_id = ? ORDER BY name";
+$categoriesQuery = "SELECT * FROM expense_categories WHERE tenant_id = ? AND branch_id = ? ORDER BY name";
 $stmt = $pdo->prepare($categoriesQuery);
-$stmt->execute([$tenant_id]); // bind the tenant_id
+$stmt->execute([$tenant_id, $branch_id]); // bind the tenant_id and branch_id
 $categories = $stmt->fetchAll(PDO::FETCH_ASSOC);
 
 $categoriesById = [];
@@ -188,12 +191,12 @@ foreach ($categories as $category) {
 $autoRolloverDone = false;
 $currentMonthStart = date('Y-m-01');
 $stmt = $pdo->prepare("
-    SELECT COUNT(*) FROM activity_log 
-    WHERE action = 'budget_rollover' 
+    SELECT COUNT(*) FROM activity_log
+    WHERE action = 'budget_rollover'
     AND created_at >= ?
-    AND tenant_id = ?
+    AND tenant_id = ? AND branch_id = ?
 ");
-$stmt->execute([$currentMonthStart, $tenant_id]);
+$stmt->execute([$currentMonthStart, $tenant_id, $branch_id]);
 $rolloverCount = $stmt->fetchColumn();
 
 if ($rolloverCount > 0) {

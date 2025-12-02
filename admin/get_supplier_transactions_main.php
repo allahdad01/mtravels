@@ -9,6 +9,7 @@ require_once 'security.php';
 // Enforce authentication
 enforce_auth();
 
+$branch_id = $_SESSION['branch_id'];
 
 // Check if user is logged in
 if (!isset($_SESSION['user_id'])) {
@@ -68,11 +69,11 @@ $query = "SELECT st.*,
           LEFT JOIN users usr ON usr.id = st.reference_id AND st.transaction_of = 'fund'
           LEFT JOIN jv_payments jv ON jv.id = st.reference_id AND st.transaction_of = 'jv_payment'
           LEFT JOIN additional_payments ap ON ap.id = st.reference_id AND st.transaction_of = 'additional_payment'
-          WHERE st.supplier_id = ?
+          WHERE st.supplier_id = ? AND st.tenant_id = ? AND st.branch_id = ?
           ORDER BY st.id DESC";
 
 $stmt = $conn->prepare($query);
-$stmt->bind_param("i", $supplierId);
+$stmt->bind_param("iii", $supplierId, $tenant_id, $branch_id);
 $stmt->execute();
 $result = $stmt->get_result();
 

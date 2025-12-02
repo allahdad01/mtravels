@@ -17,6 +17,7 @@ if ($_SERVER['REQUEST_METHOD'] !== 'POST') {
 }
 
 $tenant_id = $_SESSION['tenant_id'];
+$branch_id = $_SESSION['branch_id'];
 // Debug logging
 error_log("Received POST data: " . print_r($_POST, true));
 
@@ -50,8 +51,8 @@ try {
     $pdo->beginTransaction();
 
     // Check if customer exists and is active
-    $stmt = $pdo->prepare("SELECT id FROM customers WHERE id = ? AND tenant_id = ?");
-    $stmt->execute([$customer_id, $tenant_id]);
+    $stmt = $pdo->prepare("SELECT id FROM customers WHERE id = ? AND tenant_id = ? AND branch_id = ?");
+    $stmt->execute([$customer_id, $tenant_id, $branch_id]);
     $customer = $stmt->fetch();
     
     if (!$customer) {
@@ -60,25 +61,27 @@ try {
 
     // Update customer information
     $updateQuery = "
-        UPDATE customers 
-        SET name = :name, 
-            phone = :phone, 
-            email = :email, 
+        UPDATE customers
+        SET name = :name,
+            phone = :phone,
+            email = :email,
             address = :address,
             updated_at = CURRENT_TIMESTAMP
         WHERE id = :customer_id
         AND tenant_id = :tenant_id
+        AND branch_id = :branch_id
     ";
-    
+
     $stmt = $pdo->prepare($updateQuery);
-    
+
     $params = [
         ':name' => $name,
         ':phone' => $phone,
         ':email' => $email,
         ':address' => $address,
         ':customer_id' => $customer_id,
-        ':tenant_id' => $tenant_id
+        ':tenant_id' => $tenant_id,
+        ':branch_id' => $branch_id
     ];
     
     // Debug the query and parameters

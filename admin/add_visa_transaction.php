@@ -6,6 +6,7 @@ require_once 'includes/db_security.php';
 // Include security module
 require_once 'security.php';
 $tenant_id = $_SESSION['tenant_id'];
+$branch_id = $_SESSION['branch_id'];
 // Enforce authentication
 enforce_auth();
 
@@ -57,20 +58,20 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     
         // Get visa and supplier details
         $visaStmt = $pdo->prepare("
-            SELECT 
-                va.id AS visa_id, 
+            SELECT
+                va.id AS visa_id,
                 va.applicant_name,
                 va.base,
                 va.sold,
                 va.paid_to,
                 s.name AS supplier_name,
-                s.id AS supplier_id 
+                s.id AS supplier_id
             FROM visa_applications va
             LEFT JOIN suppliers s ON va.supplier = s.id
-            WHERE va.id = ?
+            WHERE va.id = ? AND va.tenant_id = ? AND va.branch_id = ?
         ");
-        
-        if (!$visaStmt->execute([$visa_id])) {
+
+        if (!$visaStmt->execute([$visa_id, $tenant_id, $branch_id])) {
             throw new Exception("Failed to fetch visa details");
         }
 
@@ -90,8 +91,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         $balanceField = $currency === 'USD' ? 'usd_balance' : ($currency === 'AFS' ? 'afs_balance' : 
                         ($currency === 'EUR' ? 'euro_balance' : 'darham_balance'));
                         
-        $stmt = $pdo->prepare("SELECT $balanceField as current_balance FROM main_account WHERE id = ?");
-        $stmt->execute([$visa['paid_to']]);
+        $stmt = $pdo->prepare("SELECT $balanceField as current_balance FROM main_account WHERE id = ? AND tenant_id = ? AND branch_id = ?");
+        $stmt->execute([$visa['paid_to'], $tenant_id, $branch_id]);
         $balanceResult = $stmt->fetch(PDO::FETCH_ASSOC);
         
         if (!$balanceResult) {
@@ -104,16 +105,16 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         $pdo->beginTransaction();
 
         // Update main account balance
-        $stmt = $pdo->prepare("UPDATE main_account SET $balanceField = ? WHERE id = ?");
-        $stmt->execute([$newBalance, $visa['paid_to']]);
+        $stmt = $pdo->prepare("UPDATE main_account SET $balanceField = ? WHERE id = ? AND tenant_id = ? AND branch_id = ?");
+        $stmt->execute([$newBalance, $visa['paid_to'], $tenant_id, $branch_id]);
 
         // Determine transaction type based on amount sign
         $transaction_type = $payment_amount < 0 ? 'debit' : 'credit';
 
         // Insert transaction record in main_account_transactions
-        $stmt = $pdo->prepare("INSERT INTO main_account_transactions 
-            (main_account_id, type, amount, currency, description, transaction_of, reference_id, balance, exchange_rate, created_at, tenant_id)
-            VALUES (?, ?, ?, ?, ?, 'visa_sale', ?, ?, ?, ?, ?)");
+        $stmt = $pdo->prepare("INSERT INTO main_account_transactions
+            (main_account_id, type, amount, currency, description, transaction_of, reference_id, balance, exchange_rate, created_at, tenant_id, branch_id)
+            VALUES (?, ?, ?, ?, ?, 'visa_sale', ?, ?, ?, ?, ?, ?)");
         $stmt->execute([
             $visa['paid_to'],
             $transaction_type,
@@ -124,7 +125,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             $newBalance,
             $exchange_rate,
             $payment_datetime,
-            $tenant_id
+            $tenant_id,
+            $branch_id
         ]);
 
         // Get the last inserted ID for main account transaction
@@ -140,12 +142,12 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         );
 
         $notifStmt = $pdo->prepare("
-            INSERT INTO notifications 
-            (transaction_id, transaction_type, message, recipient_role, status, created_at, tenant_id) 
-            VALUES (?, 'visa', ?, 'admin', 'unread', NOW(), ?)
+            INSERT INTO notifications
+            (transaction_id, transaction_type, message, recipient_role, status, created_at, tenant_id, branch_id)
+            VALUES (?, 'visa', ?, 'admin', 'unread', NOW(), ?, ?)
         ");
-        
-        if (!$notifStmt->execute([$main_transaction_id, $notification_message, $tenant_id])) {
+
+        if (!$notifStmt->execute([$main_transaction_id, $notification_message, $tenant_id, $branch_id])) {
             throw new Exception("Failed to create notification");
         }
 

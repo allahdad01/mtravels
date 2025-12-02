@@ -2,6 +2,7 @@
 // Include security module
 require_once 'security.php';
 $tenant_id = $_SESSION['tenant_id'];
+$branch_id = $_SESSION['branch_id'];
 // Enforce authentication
 enforce_auth();
 
@@ -37,10 +38,10 @@ try {
         FROM
             main_account_transactions mat
         WHERE
-        mat.id = ? AND mat.transaction_of = 'ticket_refund' AND mat.tenant_id = ?
+        mat.id = ? AND mat.transaction_of = 'ticket_refund' AND mat.tenant_id = ? AND mat.branch_id = ?
     ");
-    
-    $stmt->execute([$transaction_id, $tenant_id]);
+
+    $stmt->execute([$transaction_id, $tenant_id, $branch_id]);
     $transaction = $stmt->fetch(PDO::FETCH_ASSOC);
     
     if (!$transaction) {

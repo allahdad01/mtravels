@@ -8,6 +8,7 @@ require_once '../../includes/conn.php';
 require_once '../includes/db_security.php';
 
 $tenant_id = $_SESSION['tenant_id'];
+$branch_id = $_SESSION['branch_id'];
 
 // Check if it's a POST request
 if ($_SERVER['REQUEST_METHOD'] !== 'POST') {
@@ -29,16 +30,16 @@ try {
 
     // Step 1: Fetch weight-related details and transactions
     $stmt_fetch = $conn->prepare("
-        SELECT st.id AS transaction_id, st.amount, st.transaction_type, st.transaction_date, 
+        SELECT st.id AS transaction_id, st.amount, st.transaction_type, st.transaction_date,
                s.currency, s.id AS supplier_id, s.supplier_type,
                t.sold_to, t.currency AS ticket_currency, t.paid_to
         FROM supplier_transactions st
-        JOIN suppliers s ON st.supplier_id = s.id
-        JOIN ticket_weights w ON st.reference_id = w.id
-        JOIN ticket_bookings t ON w.ticket_id = t.id
-        WHERE w.id = ? AND st.transaction_of = 'weight_sale' AND st.tenant_id = ?
+        JOIN suppliers s ON st.supplier_id = s.id AND s.tenant_id = ? AND s.branch_id = ?
+        JOIN ticket_weights w ON st.reference_id = w.id AND w.tenant_id = ? AND w.branch_id = ?
+        JOIN ticket_bookings t ON w.ticket_id = t.id AND t.tenant_id = ? AND t.branch_id = ?
+        WHERE w.id = ? AND st.transaction_of = 'weight_sale' AND st.tenant_id = ? AND st.branch_id = ?
     ");
-    $stmt_fetch->bind_param("ii", $weightId, $tenant_id);
+    $stmt_fetch->bind_param("iiiiiiii", $tenant_id, $branch_id, $tenant_id, $branch_id, $tenant_id, $branch_id, $weightId, $tenant_id, $branch_id);
     $stmt_fetch->execute();
     $result = $stmt_fetch->get_result();
 
@@ -64,26 +65,26 @@ try {
         // Only reverse supplier's balance if supplier_type is External
         if ($supplier_type === 'External') {
             if ($type === 'Credit') {
-                $stmt_update_supplier = $conn->prepare("UPDATE suppliers SET balance = balance - ? WHERE id = ? AND tenant_id = ?");
+                $stmt_update_supplier = $conn->prepare("UPDATE suppliers SET balance = balance - ? WHERE id = ? AND tenant_id = ? AND branch_id = ?");
             } elseif ($type === 'Debit') {
-                $stmt_update_supplier = $conn->prepare("UPDATE suppliers SET balance = balance + ? WHERE id = ? AND tenant_id = ?");
+                $stmt_update_supplier = $conn->prepare("UPDATE suppliers SET balance = balance + ? WHERE id = ? AND tenant_id = ? AND branch_id = ?");
             } else {
                 throw new Exception("Invalid transaction type for transaction ID $transaction_id.");
             }
-            
-            $stmt_update_supplier->bind_param("dii", $amount, $supplier_id, $tenant_id);
+
+            $stmt_update_supplier->bind_param("diii", $amount, $supplier_id, $tenant_id, $branch_id);
             if (!$stmt_update_supplier->execute()) {
                 throw new Exception("Failed to reverse supplier balance for transaction ID $transaction_id.");
             }
             $stmt_update_supplier->close();
             
             // Update all subsequent transactions' running balances
-            $updateSubsequentSupplierBalances = "UPDATE supplier_transactions 
-                                               SET balance = balance " . ($type == 'Credit' ? '-' : '+') . " ? 
-                                               WHERE supplier_id = ? AND transaction_date > ?
+            $updateSubsequentSupplierBalances = "UPDATE supplier_transactions
+                                               SET balance = balance " . ($type == 'Credit' ? '-' : '+') . " ?
+                                               WHERE supplier_id = ? AND transaction_date > ? AND tenant_id = ? AND branch_id = ?
                                                ORDER BY transaction_date ASC";
             $stmtUpdate = $conn->prepare($updateSubsequentSupplierBalances);
-            $stmtUpdate->bind_param("dis", $amount, $supplier_id, $transaction_date);
+            $stmtUpdate->bind_param("disii", $amount, $supplier_id, $transaction_date, $tenant_id, $branch_id);
             $stmtUpdate->execute();
             $stmtUpdate->close();
         }
@@ -93,10 +94,10 @@ try {
             // Fetch main account transactions for this weight
             $stmt_fetch_main_transactions = $conn->prepare("
                 SELECT id, amount, type, currency, created_at
-                FROM main_account_transactions 
-                WHERE reference_id = ? AND transaction_of = 'weight' AND tenant_id = ?
+                FROM main_account_transactions
+                WHERE reference_id = ? AND transaction_of = 'weight' AND tenant_id = ? AND branch_id = ?
             ");
-            $stmt_fetch_main_transactions->bind_param("ii", $weightId, $tenant_id);
+            $stmt_fetch_main_transactions->bind_param("iii", $weightId, $tenant_id, $branch_id);
             $stmt_fetch_main_transactions->execute();
             $result_main_transactions = $stmt_fetch_main_transactions->get_result();
             
@@ -109,60 +110,60 @@ try {
                 // Update main account balance based on transaction type
                 if ($main_type === 'credit') {
                     if ($main_currency === 'USD') {
-                        $stmt_update_main = $conn->prepare("UPDATE main_account SET usd_balance = usd_balance - ? WHERE id = ? AND tenant_id = ?");
+                        $stmt_update_main = $conn->prepare("UPDATE main_account SET usd_balance = usd_balance - ? WHERE id = ? AND tenant_id = ? AND branch_id = ?");
                     } elseif ($main_currency === 'AFS') {
-                        $stmt_update_main = $conn->prepare("UPDATE main_account SET afs_balance = afs_balance - ? WHERE id = ? AND tenant_id = ?");
+                        $stmt_update_main = $conn->prepare("UPDATE main_account SET afs_balance = afs_balance - ? WHERE id = ? AND tenant_id = ? AND branch_id = ?");
                     }  elseif ($main_currency === 'EUR') {
-                        $stmt_update_main = $conn->prepare("UPDATE main_account SET euro_balance = euro_balance + ? WHERE id = ? AND tenant_id = ?");
+                        $stmt_update_main = $conn->prepare("UPDATE main_account SET euro_balance = euro_balance + ? WHERE id = ? AND tenant_id = ? AND branch_id = ?");
                     } elseif ($main_currency === 'DARHAM') {
-                        $stmt_update_main = $conn->prepare("UPDATE main_account SET darham_balance = darham_balance + ? WHERE id = ? AND tenant_id = ?");
+                        $stmt_update_main = $conn->prepare("UPDATE main_account SET darham_balance = darham_balance + ? WHERE id = ? AND tenant_id = ? AND branch_id = ?");
                     } else {
                         throw new Exception("Unsupported currency type for main account balance update.");
                     }
-                    
+
                     // Update running balances for all subsequent main account transactions
                     $update_subsequent_main = $conn->prepare("
-                        UPDATE main_account_transactions 
-                        SET balance = balance - ? 
-                        WHERE main_account_id = ? AND created_at > ? 
+                        UPDATE main_account_transactions
+                        SET balance = balance - ?
+                        WHERE main_account_id = ? AND created_at > ?
                         AND currency = ?
-                        AND tenant_id = ?
+                        AND tenant_id = ? AND branch_id = ?
                         ORDER BY created_at ASC
                     ");
                 } elseif ($main_type === 'debit') {
                     if ($main_currency === 'USD') {
-                        $stmt_update_main = $conn->prepare("UPDATE main_account SET usd_balance = usd_balance + ? WHERE id = ? AND tenant_id = ?");
+                        $stmt_update_main = $conn->prepare("UPDATE main_account SET usd_balance = usd_balance + ? WHERE id = ? AND tenant_id = ? AND branch_id = ?");
                     } elseif ($main_currency === 'AFS') {
-                        $stmt_update_main = $conn->prepare("UPDATE main_account SET afs_balance = afs_balance + ? WHERE id = ? AND tenant_id = ?");
+                        $stmt_update_main = $conn->prepare("UPDATE main_account SET afs_balance = afs_balance + ? WHERE id = ? AND tenant_id = ? AND branch_id = ?");
                     }  elseif ($main_currency === 'EUR') {
-                        $stmt_update_main = $conn->prepare("UPDATE main_account SET euro_balance = euro_balance + ? WHERE id = ? AND tenant_id = ?");
+                        $stmt_update_main = $conn->prepare("UPDATE main_account SET euro_balance = euro_balance + ? WHERE id = ? AND tenant_id = ? AND branch_id = ?");
                     } elseif ($main_currency === 'DARHAM') {
-                        $stmt_update_main = $conn->prepare("UPDATE main_account SET darham_balance = darham_balance + ? WHERE id = ? AND tenant_id = ?");
+                        $stmt_update_main = $conn->prepare("UPDATE main_account SET darham_balance = darham_balance + ? WHERE id = ? AND tenant_id = ? AND branch_id = ?");
                     } else {
                         throw new Exception("Unsupported currency type for main account balance update.");
                     }
-                    
+
                     // Update running balances for all subsequent main account transactions
                     $update_subsequent_main = $conn->prepare("
-                        UPDATE main_account_transactions 
-                        SET balance = balance + ? 
-                        WHERE main_account_id = ? AND created_at > ? 
+                        UPDATE main_account_transactions
+                        SET balance = balance + ?
+                        WHERE main_account_id = ? AND created_at > ?
                         AND currency = ?
-                        AND tenant_id = ?
+                        AND tenant_id = ? AND branch_id = ?
                         ORDER BY created_at ASC
                     ");
                 } else {
                     throw new Exception("Invalid transaction type for main account transaction.");
                 }
                 
-                $stmt_update_main->bind_param("dii", $main_amount, $paid_to_id, $tenant_id);
+                $stmt_update_main->bind_param("diii", $main_amount, $paid_to_id, $tenant_id, $branch_id);
                 if (!$stmt_update_main->execute()) {
                     throw new Exception("Failed to update main account balance for transaction.");
                 }
                 $stmt_update_main->close();
-                
+
                 // Execute the update for subsequent transactions
-                $update_subsequent_main->bind_param("dissi", $main_amount, $paid_to_id, $transaction_date, $main_currency, $tenant_id);
+                $update_subsequent_main->bind_param("dissii", $main_amount, $paid_to_id, $transaction_date, $main_currency, $tenant_id, $branch_id);
                 if (!$update_subsequent_main->execute()) {
                     throw new Exception("Failed to update subsequent main account transaction balances.");
                 }
@@ -185,10 +186,10 @@ try {
             if ($client_type === 'regular') {
                 $stmt_fetch_client_transaction = $conn->prepare("
                     SELECT id, amount, type, created_at
-                    FROM client_transactions 
-                    WHERE reference_id = ? AND client_id = ? AND transaction_of = 'weight_sale' AND tenant_id = ?
+                    FROM client_transactions
+                    WHERE reference_id = ? AND client_id = ? AND transaction_of = 'weight_sale' AND tenant_id = ? AND branch_id = ?
                 ");
-                $stmt_fetch_client_transaction->bind_param("iii", $weightId, $client_id, $tenant_id);
+                $stmt_fetch_client_transaction->bind_param("iiii", $weightId, $client_id, $tenant_id, $branch_id);
                 $stmt_fetch_client_transaction->execute();
                 $result_client_transaction = $stmt_fetch_client_transaction->get_result();
 
@@ -217,13 +218,13 @@ try {
                     $stmt_update_client->close();
                     
                     // Update all subsequent transactions' running balances
-                    $updateSubsequentBalances = "UPDATE client_transactions 
-                                               SET balance = balance " . ($client_transaction_type == 'credit' ? '-' : '+') . " ? 
-                                               WHERE client_id = ? AND created_at > ? 
-                                               AND currency = ?
+                    $updateSubsequentBalances = "UPDATE client_transactions
+                                               SET balance = balance " . ($client_transaction_type == 'credit' ? '-' : '+') . " ?
+                                               WHERE client_id = ? AND created_at > ?
+                                               AND currency = ? AND tenant_id = ? AND branch_id = ?
                                                ORDER BY created_at ASC";
                     $stmtUpdate = $conn->prepare($updateSubsequentBalances);
-                    $stmtUpdate->bind_param("diss", $client_transaction_amount, $client_id, $transaction_date, $ticket_currency);
+                    $stmtUpdate->bind_param("dissii", $client_transaction_amount, $client_id, $transaction_date, $ticket_currency, $tenant_id, $branch_id);
                     $stmtUpdate->execute();
                     $stmtUpdate->close();
                 }
@@ -233,30 +234,30 @@ try {
     }
 
     // Step 4: Delete all transactions
-    $stmt_delete_supplier = $conn->prepare("DELETE FROM supplier_transactions WHERE reference_id = ? AND transaction_of = 'weight_sale' AND tenant_id = ?");
-    $stmt_delete_supplier->bind_param("ii", $weightId, $tenant_id);
+    $stmt_delete_supplier = $conn->prepare("DELETE FROM supplier_transactions WHERE reference_id = ? AND transaction_of = 'weight_sale' AND tenant_id = ? AND branch_id = ?");
+    $stmt_delete_supplier->bind_param("iii", $weightId, $tenant_id, $branch_id);
     if (!$stmt_delete_supplier->execute()) {
         throw new Exception("Failed to delete supplier transactions.");
     }
     $stmt_delete_supplier->close();
 
-    $stmt_delete_client = $conn->prepare("DELETE FROM client_transactions WHERE reference_id = ? AND transaction_of = 'weight_sale' AND tenant_id = ?");
-    $stmt_delete_client->bind_param("ii", $weightId, $tenant_id);
+    $stmt_delete_client = $conn->prepare("DELETE FROM client_transactions WHERE reference_id = ? AND transaction_of = 'weight_sale' AND tenant_id = ? AND branch_id = ?");
+    $stmt_delete_client->bind_param("iii", $weightId, $tenant_id, $branch_id);
     if (!$stmt_delete_client->execute()) {
         throw new Exception("Failed to delete client transactions.");
     }
     $stmt_delete_client->close();
 
-    $stmt_delete_main = $conn->prepare("DELETE FROM main_account_transactions WHERE reference_id = ? AND transaction_of = 'weight' AND tenant_id = ?");
-    $stmt_delete_main->bind_param("ii", $weightId, $tenant_id);
+    $stmt_delete_main = $conn->prepare("DELETE FROM main_account_transactions WHERE reference_id = ? AND transaction_of = 'weight' AND tenant_id = ? AND branch_id = ?");
+    $stmt_delete_main->bind_param("iii", $weightId, $tenant_id, $branch_id);
     if (!$stmt_delete_main->execute()) {
         throw new Exception("Failed to delete main account transactions.");
     }
     $stmt_delete_main->close();
 
     // Step 5: Delete the weight record
-    $stmt = $conn->prepare("DELETE FROM ticket_weights WHERE id = ? AND tenant_id = ?");
-    $stmt->bind_param('ii', $weightId, $tenant_id);
+    $stmt = $conn->prepare("DELETE FROM ticket_weights WHERE id = ? AND tenant_id = ? AND branch_id = ?");
+    $stmt->bind_param('iii', $weightId, $tenant_id, $branch_id);
     if (!$stmt->execute()) {
         throw new Exception('Failed to delete weight record');
     }
@@ -272,12 +273,12 @@ try {
     ]);
     
     $stmt = $conn->prepare("
-        INSERT INTO activity_log 
-        (user_id, tenant_id, action, table_name, record_id, old_values, new_values, ip_address, user_agent, created_at) 
-        VALUES (?, ?, 'delete', 'ticket_weights', ?, ?, NULL, ?, ?, NOW())
+        INSERT INTO activity_log
+        (user_id, tenant_id, branch_id, action, table_name, record_id, old_values, new_values, ip_address, user_agent, created_at)
+        VALUES (?, ?, ?, 'delete', 'ticket_weights', ?, ?, NULL, ?, ?, NOW())
     ");
-    
-    $stmt->bind_param("iisssi", $user_id, $tenant_id, $weightId, $old_values, $ip_address, $user_agent);
+
+    $stmt->bind_param("iiisssi", $user_id, $tenant_id, $branch_id, $weightId, $old_values, $ip_address, $user_agent);
     if (!$stmt->execute()) {
         throw new Exception('Failed to log activity');
     }

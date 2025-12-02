@@ -6,6 +6,7 @@ if (session_status() === PHP_SESSION_NONE) {
 // Include security module
 require_once 'security.php';
 $tenant_id = $_SESSION['tenant_id'];
+$branch_id = $_SESSION['branch_id'];
 // Enforce authentication
 enforce_auth();
 
@@ -26,7 +27,7 @@ if (!$hotelId) {
     $error = "No hotel booking ID provided";
 } else {
     // Get hotel booking details with related info
-    $hotelQuery = "SELECT 
+    $hotelQuery = "SELECT
             hb.*,
             c.name AS client_name,
             c.email AS client_email,
@@ -37,10 +38,10 @@ if (!$hotelId) {
         FROM hotel_bookings hb
         LEFT JOIN clients c ON hb.sold_to = c.id
         LEFT JOIN suppliers s ON hb.supplier_id = s.id
-        WHERE hb.id = ? AND hb.tenant_id = ?";
-        
+        WHERE hb.id = ? AND hb.tenant_id = ? AND hb.branch_id = ?";
+
     $stmt = $pdo->prepare($hotelQuery);
-    $stmt->execute([$hotelId, $tenant_id]);
+    $stmt->execute([$hotelId, $tenant_id, $branch_id]);
     $hotelData = $stmt->fetch(PDO::FETCH_ASSOC);
     
     if (!$hotelData) {
@@ -50,7 +51,7 @@ if (!$hotelId) {
         error_log("Hotel data: " . print_r($hotelData, true));
         
         // Get main account transactions related to this booking
-        $mainAccountTransQuery = "SELECT 
+        $mainAccountTransQuery = "SELECT
                 'Main Account' AS transaction_type,
                 mat.id,
                 mat.type,
@@ -60,15 +61,15 @@ if (!$hotelId) {
                 mat.transaction_of,
                 mat.created_at AS transaction_date
             FROM main_account_transactions mat
-            WHERE mat.reference_id = ? AND mat.transaction_of = 'hotel' AND mat.tenant_id = ?
+            WHERE mat.reference_id = ? AND mat.transaction_of = 'hotel' AND mat.tenant_id = ? AND mat.branch_id = ?
             ORDER BY mat.created_at DESC";
-            
+
         $stmt = $pdo->prepare($mainAccountTransQuery);
-        $stmt->execute([$hotelId, $tenant_id]);
+        $stmt->execute([$hotelId, $tenant_id, $branch_id]);
         $mainAccountTransactions = $stmt->fetchAll(PDO::FETCH_ASSOC);
-        
+
         // Get client transactions related to this booking
-        $clientTransQuery = "SELECT 
+        $clientTransQuery = "SELECT
                 'Client' AS transaction_type,
                 ct.id,
                 ct.type,
@@ -78,15 +79,15 @@ if (!$hotelId) {
                 ct.transaction_of,
                 ct.created_at AS transaction_date
             FROM client_transactions ct
-            WHERE ct.reference_id = ? AND ct.transaction_of = 'hotel' AND ct.tenant_id = ?
+            WHERE ct.reference_id = ? AND ct.transaction_of = 'hotel' AND ct.tenant_id = ? AND ct.branch_id = ?
             ORDER BY ct.created_at DESC";
-            
+
         $stmt = $pdo->prepare($clientTransQuery);
-        $stmt->execute([$hotelId, $tenant_id]);
+        $stmt->execute([$hotelId, $tenant_id, $branch_id]);
         $clientTransactions = $stmt->fetchAll(PDO::FETCH_ASSOC);
-        
+
         // Get supplier transactions related to this booking
-        $supplierTransQuery = "SELECT 
+        $supplierTransQuery = "SELECT
                 'Supplier' AS transaction_type,
                 st.id,
                 st.transaction_type as type,
@@ -96,11 +97,11 @@ if (!$hotelId) {
                 st.transaction_of,
                 st.transaction_date AS transaction_date
             FROM supplier_transactions st
-            WHERE st.reference_id = ? AND st.transaction_of = 'hotel' AND st.tenant_id = ?
+            WHERE st.reference_id = ? AND st.transaction_of = 'hotel' AND st.tenant_id = ? AND st.branch_id = ?
             ORDER BY st.transaction_date DESC";
-            
+
         $stmt = $pdo->prepare($supplierTransQuery);
-        $stmt->execute([$hotelId, $tenant_id]);
+        $stmt->execute([$hotelId, $tenant_id, $branch_id]);
         $supplierTransactions = $stmt->fetchAll(PDO::FETCH_ASSOC);
     }
 }

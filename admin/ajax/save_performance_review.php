@@ -9,7 +9,7 @@ if (session_status() === PHP_SESSION_NONE) {
 }
 
 $tenant_id = $_SESSION['tenant_id'];
-
+$branch_id = $_SESSION['branch_id'];
 // Check if user is logged in and is admin
 if (!isset($_SESSION['user_id']) || $_SESSION['role'] !== 'admin') {
     http_response_code(403);
@@ -66,12 +66,12 @@ try {
                 recommendations = ?,
                 status = ?,
                 updated_at = CURRENT_TIMESTAMP
-            WHERE id = ? AND tenant_id = ?
+            WHERE id = ? AND tenant_id = ? And branch_id = ?
         ");
         $stmt->execute([
             $review_date, $period_start, $period_end, $overall_rating,
             $comments, $achievements, $areas_for_improvement, $goals, $recommendations,
-            $status, $review_id, $tenant_id
+            $status, $review_id, $tenant_id, $branch_id
         ]);
 
         if ($stmt->rowCount() > 0) {
@@ -83,13 +83,13 @@ try {
         // Check if review already exists for this user in the same period
         $stmt = $pdo->prepare("
             SELECT id FROM performance_reviews
-            WHERE user_id = ? AND tenant_id = ? AND (
+            WHERE user_id = ? AND tenant_id = ? And branch_id = ? AND (
                 (period_start BETWEEN ? AND ?) OR
                 (period_end BETWEEN ? AND ?) OR
                 (period_start <= ? AND period_end >= ?)
             )
         ");
-        $stmt->execute([$user_id, $tenant_id, $period_start, $period_end, $period_start, $period_end, $period_start, $period_end]);
+        $stmt->execute([$user_id, $tenant_id, $branch_id, $period_start, $period_end, $period_start, $period_end, $period_start, $period_end]);
         $existing = $stmt->fetch(PDO::FETCH_ASSOC);
 
         if ($existing) {
@@ -102,13 +102,13 @@ try {
             INSERT INTO performance_reviews (
                 user_id, tenant_id, reviewer_id, review_date, period_start, period_end,
                 overall_rating, comments, achievements, areas_for_improvement,
-                goals, recommendations, status, created_at, updated_at
-            ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP)
+                goals, recommendations, status, created_at, updated_at, branch_id
+            ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP, ?)
         ");
         $stmt->execute([
             $user_id, $tenant_id, $_SESSION['user_id'], $review_date, $period_start, $period_end,
             $overall_rating, $comments, $achievements, $areas_for_improvement,
-            $goals, $recommendations, $status
+            $goals, $recommendations, $status, $branch_id
         ]);
 
         if ($stmt->rowCount() > 0) {

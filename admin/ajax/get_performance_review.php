@@ -9,6 +9,7 @@ if (session_status() === PHP_SESSION_NONE) {
 }
 
 $tenant_id = $_SESSION['tenant_id'];
+$branch_id = $_SESSION['branch_id'];
 
 // Check if user is logged in and is admin
 if (!isset($_SESSION['user_id']) || $_SESSION['role'] !== 'admin') {
@@ -29,11 +30,11 @@ try {
         SELECT pr.*, u.name as employee_name, u.email as employee_email,
                reviewer.name as reviewer_name
         FROM performance_reviews pr
-        JOIN users u ON pr.user_id = u.id
-        LEFT JOIN users reviewer ON pr.reviewer_id = reviewer.id
-        WHERE pr.id = ? AND pr.tenant_id = ?
+        JOIN users u ON pr.user_id = u.id AND u.tenant_id = ? AND u.branch_id = ?
+        LEFT JOIN users reviewer ON pr.reviewer_id = reviewer.id AND reviewer.tenant_id = ? AND reviewer.branch_id = ?
+        WHERE pr.id = ? AND pr.tenant_id = ? AND pr.branch_id = ?
     ");
-    $stmt->execute([$review_id, $tenant_id]);
+    $stmt->execute([$tenant_id, $branch_id, $tenant_id, $branch_id, $review_id, $tenant_id, $branch_id]);
     $review = $stmt->fetch(PDO::FETCH_ASSOC);
 
     if (!$review) {

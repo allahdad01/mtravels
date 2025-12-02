@@ -14,6 +14,7 @@ require_once '../includes/conn.php';
 $username = isset($_SESSION['name']) ? $_SESSION['name'] : null;
 $user_id = isset($_SESSION['user_id']) ? $_SESSION['user_id'] : null;
 $tenant_id = $_SESSION['tenant_id'];
+$branch_id = $_SESSION['branch_id'];
 if (!$username) {
     echo json_encode(['success' => false, 'message' => 'User is not logged in.']);
     exit;
@@ -67,9 +68,9 @@ if ($currency === 'USD') {
     $stmt->execute();
     
     // Log the transaction (funding)
-    $transactionStmt = $conn->prepare("INSERT INTO main_account_transactions (main_account_id, type, amount, currency, description, transaction_of, reference_id, balance, receipt, tenant_id)
-                                       VALUES (?, 'credit', ?, ?, ?, 'fund', ?, ?, ?, ?)");
-    $transactionStmt->bind_param('ssssssss', $accountId, $amount, $currency, $fullRemark, $user_id, $newUsdBalance, $receipt, $tenant_id);
+    $transactionStmt = $conn->prepare("INSERT INTO main_account_transactions (main_account_id, type, amount, currency, description, transaction_of, reference_id, balance, receipt, tenant_id, branch_id)
+                                       VALUES (?, 'credit', ?, ?, ?, 'fund', ?, ?, ?, ?, ?)");
+    $transactionStmt->bind_param('ssssssssi', $accountId, $amount, $currency, $fullRemark, $user_id, $newUsdBalance, $receipt, $tenant_id, $branch_id);
     $transactionStmt->execute();
     
     // Get the transaction ID
@@ -93,11 +94,11 @@ if ($currency === 'USD') {
     $user_agent = $_SERVER['HTTP_USER_AGENT'] ?? '';
     
     $activityStmt = $conn->prepare("
-        INSERT INTO activity_log 
-        (user_id, action, table_name, record_id, old_values, new_values, ip_address, user_agent, created_at, tenant_id) 
-        VALUES (?, 'fund', 'main_account', ?, ?, ?, ?, ?, NOW(), ?)
+        INSERT INTO activity_log
+        (user_id, action, table_name, record_id, old_values, new_values, ip_address, user_agent, created_at, tenant_id, branch_id)
+        VALUES (?, 'fund', 'main_account', ?, ?, ?, ?, ?, NOW(), ?, ?)
     ");
-    $activityStmt->bind_param("iissssi", $user_id, $accountId, $old_values, $new_values, $ip_address, $user_agent, $tenant_id);
+    $activityStmt->bind_param("iissssii", $user_id, $accountId, $old_values, $new_values, $ip_address, $user_agent, $tenant_id, $branch_id);
     $activityStmt->execute();
 
     echo json_encode(['success' => true, 'message' => 'Main account funded with USD.']);
@@ -109,9 +110,9 @@ if ($currency === 'USD') {
     $stmt->execute();
     
     // Log the transaction (funding)
-    $transactionStmt = $conn->prepare("INSERT INTO main_account_transactions (main_account_id, type, amount, currency, description, transaction_of, reference_id, balance, receipt, tenant_id)
-                                       VALUES (?, 'credit', ?, ?, ?, 'fund', ?, ?, ?, ?)");
-    $transactionStmt->bind_param('isssissi', $accountId, $amount, $currency, $fullRemark, $user_id, $newAfsBalance, $receipt, $tenant_id);
+    $transactionStmt = $conn->prepare("INSERT INTO main_account_transactions (main_account_id, type, amount, currency, description, transaction_of, reference_id, balance, receipt, tenant_id, branch_id)
+                                       VALUES (?, 'credit', ?, ?, ?, 'fund', ?, ?, ?, ?, ?)");
+    $transactionStmt->bind_param('isssissii', $accountId, $amount, $currency, $fullRemark, $user_id, $newAfsBalance, $receipt, $tenant_id, $branch_id);
     $transactionStmt->execute();
     
     // Get the transaction ID
@@ -135,11 +136,11 @@ if ($currency === 'USD') {
     $user_agent = $_SERVER['HTTP_USER_AGENT'] ?? '';
     
     $activityStmt = $conn->prepare("
-        INSERT INTO activity_log 
-        (user_id, action, table_name, record_id, old_values, new_values, ip_address, user_agent, created_at, tenant_id) 
-        VALUES (?, 'fund', 'main_account', ?, ?, ?, ?, ?, NOW(), ?)
+        INSERT INTO activity_log
+        (user_id, action, table_name, record_id, old_values, new_values, ip_address, user_agent, created_at, tenant_id, branch_id)
+        VALUES (?, 'fund', 'main_account', ?, ?, ?, ?, ?, NOW(), ?, ?)
     ");
-    $activityStmt->bind_param("iissssi", $user_id, $accountId, $old_values, $new_values, $ip_address, $user_agent, $tenant_id);
+    $activityStmt->bind_param("iissssii", $user_id, $accountId, $old_values, $new_values, $ip_address, $user_agent, $tenant_id, $branch_id);
     $activityStmt->execute();
 
     echo json_encode(['success' => true, 'message' => 'Main account funded with AFS.']);
@@ -151,9 +152,9 @@ if ($currency === 'USD') {
     $stmt->execute();
 
     // Log the transaction (funding)
-    $transactionStmt = $conn->prepare("INSERT INTO main_account_transactions (main_account_id, type, amount, currency, description, transaction_of, reference_id, balance, receipt, tenant_id)
-                                       VALUES (?, 'credit', ?, ?, ?, 'fund', ?, ?, ?, ?)");
-    $transactionStmt->bind_param('isssissi', $accountId, $amount, $currency, $fullRemark, $user_id, $newDarhamBalance, $receipt, $tenant_id);
+    $transactionStmt = $conn->prepare("INSERT INTO main_account_transactions (main_account_id, type, amount, currency, description, transaction_of, reference_id, balance, receipt, tenant_id, branch_id)
+                                       VALUES (?, 'credit', ?, ?, ?, 'fund', ?, ?, ?, ?, ?)");
+    $transactionStmt->bind_param('isssissii', $accountId, $amount, $currency, $fullRemark, $user_id, $newDarhamBalance, $receipt, $tenant_id, $branch_id);
     $transactionStmt->execute();
     
     // Get the transaction ID
@@ -177,11 +178,11 @@ if ($currency === 'USD') {
     $user_agent = $_SERVER['HTTP_USER_AGENT'] ?? '';
     
     $activityStmt = $conn->prepare("
-        INSERT INTO activity_log 
-        (user_id, action, table_name, record_id, old_values, new_values, ip_address, user_agent, created_at, tenant_id) 
-        VALUES (?, 'fund', 'main_account', ?, ?, ?, ?, ?, NOW(), ?)
+        INSERT INTO activity_log
+        (user_id, action, table_name, record_id, old_values, new_values, ip_address, user_agent, created_at, tenant_id, branch_id)
+        VALUES (?, 'fund', 'main_account', ?, ?, ?, ?, ?, NOW(), ?, ?)
     ");
-    $activityStmt->bind_param("iisssss", $user_id, $accountId, $old_values, $new_values, $ip_address, $user_agent, $tenant_id);
+    $activityStmt->bind_param("iissssii", $user_id, $accountId, $old_values, $new_values, $ip_address, $user_agent, $tenant_id, $branch_id);
     $activityStmt->execute();
 
     echo json_encode(['success' => true, 'message' => 'Main account funded with DARHAM.']);
@@ -193,9 +194,9 @@ if ($currency === 'USD') {
     $stmt->execute();
 
     // Log the transaction (funding)
-    $transactionStmt = $conn->prepare("INSERT INTO main_account_transactions (main_account_id, type, amount, currency, description, transaction_of, reference_id, balance, receipt, tenant_id)
-                                       VALUES (?, 'credit', ?, ?, ?, 'fund', ?, ?, ?, ?)");
-    $transactionStmt->bind_param('isssissi', $accountId, $amount, $currency, $fullRemark, $user_id, $newEuroBalance, $receipt, $tenant_id);
+    $transactionStmt = $conn->prepare("INSERT INTO main_account_transactions (main_account_id, type, amount, currency, description, transaction_of, reference_id, balance, receipt, tenant_id, branch_id)
+                                       VALUES (?, 'credit', ?, ?, ?, 'fund', ?, ?, ?, ?, ?)");
+    $transactionStmt->bind_param('isssissii', $accountId, $amount, $currency, $fullRemark, $user_id, $newEuroBalance, $receipt, $tenant_id, $branch_id);
     $transactionStmt->execute();
     
     // Get the transaction ID
@@ -219,11 +220,11 @@ if ($currency === 'USD') {
     $user_agent = $_SERVER['HTTP_USER_AGENT'] ?? '';
     
     $activityStmt = $conn->prepare("
-        INSERT INTO activity_log 
-        (user_id, action, table_name, record_id, old_values, new_values, ip_address, user_agent, created_at, tenant_id) 
-        VALUES (?, 'fund', 'main_account', ?, ?, ?, ?, ?, NOW(), ?)
+        INSERT INTO activity_log
+        (user_id, action, table_name, record_id, old_values, new_values, ip_address, user_agent, created_at, tenant_id, branch_id)
+        VALUES (?, 'fund', 'main_account', ?, ?, ?, ?, ?, NOW(), ?, ?)
     ");
-    $activityStmt->bind_param("iissssi", $user_id, $accountId, $old_values, $new_values, $ip_address, $user_agent, $tenant_id);
+    $activityStmt->bind_param("iissssii", $user_id, $accountId, $old_values, $new_values, $ip_address, $user_agent, $tenant_id, $branch_id);
     $activityStmt->execute();
 
     echo json_encode(['success' => true, 'message' => 'Main account funded with EUR.']);

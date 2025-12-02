@@ -134,14 +134,14 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
         // Authenticate user if no errors
         if (empty($email_err) && empty($password_err)) {
             // First check users table
-            $sql = "SELECT id, tenant_id, name, email, password, role, totp_enabled FROM users WHERE email = ?";
+            $sql = "SELECT id, tenant_id, branch_id, name, email, password, role, totp_enabled FROM users WHERE email = ?";
             
             if ($stmt = $conection_db->prepare($sql)) {
                 $stmt->bind_param("s", $email);
                 if ($stmt->execute()) {
                     $stmt->store_result();
                     if ($stmt->num_rows == 1) {
-                        $stmt->bind_result($id, $tenant_id, $name, $email, $hashed_password, $role, $totp_enabled);
+                        $stmt->bind_result($id, $tenant_id, $branch_id, $name, $email, $hashed_password, $role, $totp_enabled);
                         if ($stmt->fetch() && password_verify($password, $hashed_password)) {
                             // Clear any stored login attempts
                             if ($clear_stmt = $conection_db->prepare("DELETE FROM login_attempts WHERE email = ?")) {
@@ -169,6 +169,7 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
                             $_SESSION["loggedin"] = true;
                             $_SESSION["user_id"] = $id;
                             $_SESSION["tenant_id"] = $tenant_id;
+                            $_SESSION["branch_id"] = $branch_id;
                             $_SESSION["name"] = $name;
                             $_SESSION["role"] = $role;
                             $_SESSION["user_type"] = "staff";
@@ -178,28 +179,31 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
                             session_regenerate_id(true);
 
                             // Redirect based on role
-                            switch(strtolower($role)) {
-                                case 'super_admin':
-                                    header("location: super_admin/dashboard.php");
-                                    break;
-                                case 'admin':
-                                    header("location: admin/dashboard.php");
-                                    break;
-                                case 'sales':
-                                    header("location: sales/dashboard.php");
-                                    break;
-                                case 'finance':
-                                    header("location: finance/dashboard.php");
-                                    break;
-                                case 'umrah':
-                                    header("location: umrah/dashboard.php");
-                                    break;
-                                case 'visa':
-                                    header("location: visa/dashboard.php");
-                                    break;
-                                default:
-                                    header("location: user/dashboard.php");
-                            }
+                             switch(strtolower($role)) {
+                                 case 'super_admin':
+                                     header("location: super_admin/dashboard.php");
+                                     break;
+                                 case 'tenant_super_admin':
+                                     header("location: tenant_super_admin/dashboard.php");
+                                     break;
+                                 case 'admin':
+                                     header("location: admin/dashboard.php");
+                                     break;
+                                 case 'sales':
+                                     header("location: sales/dashboard.php");
+                                     break;
+                                 case 'finance':
+                                     header("location: finance/dashboard.php");
+                                     break;
+                                 case 'umrah':
+                                     header("location: umrah/dashboard.php");
+                                     break;
+                                 case 'visa':
+                                     header("location: visa/dashboard.php");
+                                     break;
+                                 default:
+                                     header("location: user/dashboard.php");
+                             }
                             exit;
                         } else {
                             recordFailedAttempt($email, $conection_db);
@@ -210,13 +214,13 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
 
                     // If user not found in users table, check clients table
                     if (!isset($_SESSION["loggedin"]) && !isset($_SESSION["totp_verification"])) {
-                        $sql = "SELECT id, tenant_id, name, email, password_hash, client_type, totp_enabled FROM clients WHERE email = ?";
+                        $sql = "SELECT id, tenant_id, branch_id, name, email, password_hash, client_type, totp_enabled FROM clients WHERE email = ?";
                         if ($stmt = $conection_db->prepare($sql)) {
                             $stmt->bind_param("s", $email);
                             if ($stmt->execute()) {
                                 $stmt->store_result();
                                 if ($stmt->num_rows == 1) {
-                                    $stmt->bind_result($id, $tenant_id, $name, $email, $hashed_password, $client_type, $totp_enabled);
+                                    $stmt->bind_result($id, $tenant_id, $branch_id, $name, $email, $hashed_password, $client_type, $totp_enabled);
                                     if ($stmt->fetch() && password_verify($password, $hashed_password)) {
                                         // Clear any stored login attempts
                                         if ($clear_stmt = $conection_db->prepare("DELETE FROM login_attempts WHERE email = ?")) {
@@ -245,6 +249,7 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
                                         $_SESSION["loggedin"] = true;
                                         $_SESSION["user_id"] = $id;
                                         $_SESSION["tenant_id"] = $tenant_id;
+                                        $_SESSION["branch_id"] = $branch_id;
                                         $_SESSION["name"] = $name;
                                         $_SESSION["role"] = "client";
                                         $_SESSION["client_type"] = $client_type;
@@ -287,6 +292,7 @@ function completeLogin() {
     $_SESSION["loggedin"] = true;
     $_SESSION["user_id"] = $_SESSION["pending_user_id"];
     $_SESSION["tenant_id"] = $_SESSION["pending_user_tenant_id"];
+    $_SESSION["branch_id"] = $_SESSION["pending_user_branch_id"];
     $_SESSION["name"] = $_SESSION["pending_user_name"];
     $_SESSION["role"] = $_SESSION["pending_user_role"];
     $_SESSION["user_type"] = $_SESSION["pending_user_type"];
@@ -301,6 +307,7 @@ function completeLogin() {
     unset($_SESSION["totp_verification"]);
     unset($_SESSION["pending_user_id"]);
     unset($_SESSION["pending_user_tenant_id"]);
+    unset($_SESSION["pending_user_branch_id"]);
     unset($_SESSION["pending_user_name"]);
     unset($_SESSION["pending_user_email"]);
     unset($_SESSION["pending_user_role"]);
@@ -313,32 +320,35 @@ function completeLogin() {
     session_regenerate_id(true);
     
     // Redirect based on role
-    if ($_SESSION["role"] === "client") {
-        header("location: client/dashboard.php");
-    } else {
-        switch(strtolower($_SESSION["role"])) {
-            case 'super_admin':
-                header("location: super_admin/dashboard.php");
-                break;
-            case 'admin':
-                header("location: admin/dashboard.php");
-                break;
-            case 'sales':
-                header("location: sales/dashboard.php");
-                break;
-            case 'finance':
-                header("location: finance/dashboard.php");
-                break;
-            case 'umrah':
-                header("location: umrah/dashboard.php");
-                break;
-            case 'visa':
-                header("location: visa/dashboard.php");
-                break;
-            default:
-                header("location: user/dashboard.php");
-        }
-    }
+     if ($_SESSION["role"] === "client") {
+         header("location: client/dashboard.php");
+     } else {
+         switch(strtolower($_SESSION["role"])) {
+             case 'super_admin':
+                 header("location: super_admin/dashboard.php");
+                 break;
+             case 'tenant_super_admin':
+                 header("location: tenant_super_admin/dashboard.php");
+                 break;
+             case 'admin':
+                 header("location: admin/dashboard.php");
+                 break;
+             case 'sales':
+                 header("location: sales/dashboard.php");
+                 break;
+             case 'finance':
+                 header("location: finance/dashboard.php");
+                 break;
+             case 'umrah':
+                 header("location: umrah/dashboard.php");
+                 break;
+             case 'visa':
+                 header("location: visa/dashboard.php");
+                 break;
+             default:
+                 header("location: user/dashboard.php");
+         }
+     }
     exit;
 }
 ?>

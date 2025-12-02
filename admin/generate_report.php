@@ -1,7 +1,7 @@
 <?php
-// Include security module
 require_once 'security.php';
 $tenant_id = $_SESSION['tenant_id'];
+$branch_id = $_SESSION['branch_id'];
 // Enforce authentication
 enforce_auth();
 
@@ -28,15 +28,15 @@ if (empty($supplierId) || empty($format)) {
 
 // Base query to fetch data from `supplier_transactions` table
 $query = "
-    SELECT t.passenger_name, t.pnr, st.transaction_date, st.transaction_type, s.currency, st.amount, st.remarks, s.name 
-    FROM supplier_transactions st 
+    SELECT t.passenger_name, t.pnr, st.transaction_date, st.transaction_type, s.currency, st.amount, st.remarks, s.name
+    FROM supplier_transactions st
     LEFT JOIN suppliers s ON st.supplier_id = s.id
-    LEFT JOIN ticket_bookings t ON st.ticket_id = t.id 
-    WHERE st.supplier_id = ? AND st.tenant_id = ?
+    LEFT JOIN ticket_bookings t ON st.ticket_id = t.id
+    WHERE st.supplier_id = ? AND st.tenant_id = ? AND st.branch_id = ?
 ";
 
-$params = [$supplierId, $tenant_id];
-$types = 'i';
+$params = [$supplierId, $tenant_id, $branch_id];
+$types = 'ii';
 
 // Add date filters
 if (!empty($startDate) && !empty($endDate)) {
@@ -58,16 +58,17 @@ if (!empty($startDate) && !empty($endDate)) {
 $query .= "
     UNION ALL
 
-    SELECT NULL AS passenger_name, NULL AS pnr, ft.transaction_date, ft.transaction_type, ft.currency, ft.amount, ft.remarks, NULL AS name 
-    FROM funding_transactions ft 
+    SELECT NULL AS passenger_name, NULL AS pnr, ft.transaction_date, ft.transaction_type, ft.currency, ft.amount, ft.remarks, NULL AS name
+    FROM funding_transactions ft
     LEFT JOIN suppliers s ON ft.supplier_id = s.id
-     
-    WHERE ft.supplier_id = ? AND ft.tenant_id = ?
+
+    WHERE ft.supplier_id = ? AND ft.tenant_id = ? AND ft.branch_id = ?
 ";
 
 $params[] = $supplierId;
 $params[] = $tenant_id;
-$types .= 'i';
+$params[] = $branch_id;
+$types .= 'ii';
 
 // Add date filters for funding transactions
 if (!empty($startDate) && !empty($endDate)) {

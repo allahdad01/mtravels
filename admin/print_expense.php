@@ -10,6 +10,7 @@ require_once 'includes/db_security.php';
 // Include security module
 require_once 'security.php';
 $tenant_id = $_SESSION['tenant_id'];
+$branch_id = $_SESSION['branch_id'];
 // Enforce authentication
 enforce_auth();
 
@@ -35,9 +36,9 @@ if (isset($_GET['id'])) {
                   LEFT JOIN expense_categories ec ON e.category_id = ec.id
                   LEFT JOIN main_account ma ON e.main_account_id = ma.id
                   LEFT JOIN main_account_transactions mat ON e.id = mat.reference_id AND mat.transaction_of = 'expense'
-                  WHERE e.id = ? AND e.tenant_id = ?";
-        $stmt = $pdo->prepare($query);
-        $stmt->execute([$expenseId, $tenant_id]);
+                  WHERE e.id = ? AND e.tenant_id = ? AND e.branch_id = ?";
+       $stmt = $pdo->prepare($query);
+       $stmt->execute([$expenseId, $tenant_id, $branch_id]);
         $expense = $stmt->fetch(PDO::FETCH_ASSOC);
         
         if (!$expense) {
@@ -54,9 +55,9 @@ if (isset($_GET['id'])) {
                 mat.transaction_of,
                 mat.created_at AS transaction_date
                 FROM main_account_transactions mat
-                WHERE mat.reference_id = ? AND mat.transaction_of = 'expense' AND mat.tenant_id = ?";
-            $stmt = $pdo->prepare($transactionQuery);
-            $stmt->execute([$expenseId, $tenant_id]);
+                WHERE mat.reference_id = ? AND mat.transaction_of = 'expense' AND mat.tenant_id = ? AND mat.branch_id = ?";
+           $stmt = $pdo->prepare($transactionQuery);
+           $stmt->execute([$expenseId, $tenant_id, $branch_id]);
             $transactions = $stmt->fetchAll(PDO::FETCH_ASSOC);
         }
     }
@@ -64,14 +65,14 @@ if (isset($_GET['id'])) {
     $errorMessage = "Expense ID is required.";
 }
 
-// Get agency details for the header
+// Fetch settings data
 try {
-    $settingStmt = $pdo->prepare("SELECT * FROM settings WHERE tenant_id = ?");
+    $settingStmt = $pdo->query("SELECT * FROM settings WHERE tenant_id = ?");
     $settingStmt->execute([$tenant_id]);
-    $agency = $settingStmt->fetch(PDO::FETCH_ASSOC) ?: ['agency_name' => 'Default Name'];
+    $settings = $settingStmt->fetch(PDO::FETCH_ASSOC);
 } catch (PDOException $e) {
     error_log("Settings Error: " . $e->getMessage());
-    $agency = ['agency_name' => 'Default Name'];
+    $settings = ['agency_name' => 'Default Name'];
 }
 ?>
 <!DOCTYPE html>

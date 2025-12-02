@@ -13,6 +13,7 @@ require_once('security.php');
 // Enforce authentication
 enforce_auth();
 $tenant_id = $_SESSION['tenant_id'];
+$branch_id = $_SESSION['branch_id'];
 $user_id = $_SESSION['user_id'];
 // Language handling
 $lang = isset($_GET['lang']) && in_array($_GET['lang'], ['en', 'ps', 'fa']) ? $_GET['lang'] : 'en';
@@ -49,11 +50,11 @@ try {
         SELECT f.*, u.name as processed_by_name
         FROM families f
         LEFT JOIN users u ON u.id = ?
-        WHERE f.family_id = ? AND f.tenant_id = ?
+        WHERE f.family_id = ? AND f.tenant_id = ? AND f.branch_id = ?
     ";
-    
+
     $stmt = $pdo->prepare($query);
-    $stmt->execute([$user_id, $familyId, $tenant_id]);
+    $stmt->execute([$user_id, $familyId, $tenant_id, $branch_id]);
     $family = $stmt->fetch(PDO::FETCH_ASSOC);
     
     if (!$family) {
@@ -67,11 +68,11 @@ try {
         LEFT JOIN clients c ON ub.sold_to = c.id
         LEFT JOIN umrah_booking_services ubs ON ub.booking_id = ubs.booking_id
         LEFT JOIN suppliers s ON ubs.supplier_id = s.id
-        WHERE ub.family_id = ? AND ub.tenant_id = ?
+        WHERE ub.family_id = ? AND ub.tenant_id = ? AND ub.branch_id = ?
         GROUP BY ub.booking_id
     ";
     $membersStmt = $pdo->prepare($membersQuery);
-    $membersStmt->execute([$familyId, $tenant_id]);
+    $membersStmt->execute([$familyId, $tenant_id, $branch_id]);
     $members = $membersStmt->fetchAll(PDO::FETCH_ASSOC);
 
     // Get settings for company info

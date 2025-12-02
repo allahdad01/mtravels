@@ -7,6 +7,7 @@ require_once '../../includes/conn.php';
 // Enforce authentication
 enforce_auth();
 $tenant_id = $_SESSION['tenant_id'];
+$branch_id = $_SESSION['branch_id'];
 
 header('Content-Type: application/json');
 
@@ -32,13 +33,13 @@ try {
                s.name as supplier_name, s.balance as supplier_balance, s.supplier_type,
                c.name as client_name, c.usd_balance, c.afs_balance, c.client_type
         FROM date_change_umrah dc
-        LEFT JOIN umrah_bookings ub ON dc.umrah_booking_id = ub.booking_id
-        LEFT JOIN umrah_booking_services ubs ON ub.booking_id = ubs.booking_id AND ubs.service_type IN ('all', 'ticket')
-        LEFT JOIN suppliers s ON ubs.supplier_id = s.id
-        LEFT JOIN clients c ON ub.sold_to = c.id
-        WHERE dc.id = ? AND dc.tenant_id = ? AND dc.status = 'Approved'
+        LEFT JOIN umrah_bookings ub ON dc.umrah_booking_id = ub.booking_id AND ub.tenant_id = ? AND ub.branch_id = ?
+        LEFT JOIN umrah_booking_services ubs ON ub.booking_id = ubs.booking_id AND ubs.service_type IN ('all', 'ticket') AND ubs.tenant_id = ? AND ubs.branch_id = ?
+        LEFT JOIN suppliers s ON ubs.supplier_id = s.id AND s.tenant_id = ? AND s.branch_id = ?
+        LEFT JOIN clients c ON ub.sold_to = c.id AND c.tenant_id = ? AND c.branch_id = ?
+        WHERE dc.id = ? AND dc.tenant_id = ? AND dc.branch_id = ? AND dc.status = 'Approved'
     ");
-    $stmt->bind_param("ii", $id, $tenant_id);
+    $stmt->bind_param("iiiiiiiiii", $tenant_id, $branch_id, $tenant_id, $branch_id, $tenant_id, $branch_id, $tenant_id, $branch_id, $id, $tenant_id, $branch_id);
     $stmt->execute();
     $result = $stmt->get_result();
 
@@ -77,9 +78,9 @@ try {
         ];
         $types = "sssdddd";
 
-        $updateBookingSql .= " WHERE booking_id = ? AND tenant_id = ?";
-        $params = array_merge($params, [$request['umrah_booking_id'], $tenant_id]);
-        $types .= "ii";
+        $updateBookingSql .= " WHERE booking_id = ? AND tenant_id = ? AND branch_id = ?";
+        $params = array_merge($params, [$request['umrah_booking_id'], $tenant_id, $branch_id]);
+        $types .= "iii";
 
         $stmt = $conn->prepare($updateBookingSql);
         $stmt->bind_param($types, ...$params);
@@ -96,17 +97,18 @@ try {
             $supplier_remarks = "Supplier penalty of {$request['supplier_penalty']} {$request['currency']} deducted for date change on booking #{$request['umrah_booking_id']}";
             $stmt_supplier_transaction = $conn->prepare("
                 INSERT INTO supplier_transactions (
-                    supplier_id, reference_id, transaction_type, amount, balance, remarks, transaction_date, transaction_of, tenant_id
-                ) VALUES (?, ?, 'Debit', ?, ?, ?, NOW(), 'umrah_date_change', ?)
+                    supplier_id, reference_id, transaction_type, amount, balance, remarks, transaction_date, transaction_of, tenant_id, branch_id
+                ) VALUES (?, ?, 'Debit', ?, ?, ?, NOW(), 'umrah_date_change', ?, ?)
             ");
             $stmt_supplier_transaction->bind_param(
-                "iiddsi",
+                "iiddsii",
                 $request['supplier'],
                 $request['umrah_booking_id'],
                 $request['supplier_penalty'],
                 $new_supplier_balance,
                 $supplier_remarks,
-                $tenant_id
+                $tenant_id,
+                $branch_id
             );
 
             if (!$stmt_supplier_transaction->execute()) {
@@ -116,9 +118,9 @@ try {
             // Update supplier balance if external supplier
             if ($request['supplier_type'] === 'External') {
                 $stmt_update_supplier_balance = $conn->prepare("
-                    UPDATE suppliers SET balance = balance - ? WHERE id = ? AND tenant_id = ?
+                    UPDATE suppliers SET balance = balance - ? WHERE id = ? AND tenant_id = ? AND branch_id = ?
                 ");
-                $stmt_update_supplier_balance->bind_param("dii", $request['supplier_penalty'], $request['supplier'], $tenant_id);
+                $stmt_update_supplier_balance->bind_param("diii", $request['supplier_penalty'], $request['supplier'], $tenant_id, $branch_id);
 
                 if (!$stmt_update_supplier_balance->execute()) {
                     throw new Exception('Failed to update supplier balance');
@@ -137,18 +139,19 @@ try {
             // Insert client transaction
             $stmt_client_transaction = $conn->prepare("
                 INSERT INTO client_transactions (
-                    client_id, type, transaction_of, reference_id, amount, balance, currency, description, created_at, tenant_id
-                ) VALUES (?, 'Debit', 'umrah_date_change', ?, ?, ?, ?, ?, NOW(), ?)
+                    client_id, type, transaction_of, reference_id, amount, balance, currency, description, created_at, tenant_id, branch_id
+                ) VALUES (?, 'Debit', 'umrah_date_change', ?, ?, ?, ?, ?, NOW(), ?, ?)
             ");
             $stmt_client_transaction->bind_param(
-                "iiddsss",
+                "iiddsssi",
                 $request['sold_to'],
                 $request['umrah_booking_id'],
                 $request['total_penalty'],
                 $new_client_balance,
                 $request['currency'],
                 $client_description,
-                $tenant_id
+                $tenant_id,
+                $branch_id
             );
 
             if (!$stmt_client_transaction->execute()) {
@@ -159,15 +162,15 @@ try {
             if ($request['client_type'] === 'regular') {
                 if ($request['currency'] === 'USD') {
                     $stmt_update_client_balance = $conn->prepare("
-                        UPDATE clients SET usd_balance = usd_balance - ? WHERE id = ? AND tenant_id = ?
+                        UPDATE clients SET usd_balance = usd_balance - ? WHERE id = ? AND tenant_id = ? AND branch_id = ?
                     ");
                 } else {
                     $stmt_update_client_balance = $conn->prepare("
-                        UPDATE clients SET afs_balance = afs_balance - ? WHERE id = ? AND tenant_id = ?
+                        UPDATE clients SET afs_balance = afs_balance - ? WHERE id = ? AND tenant_id = ? AND branch_id = ?
                     ");
                 }
 
-                $stmt_update_client_balance->bind_param("dii", $request['total_penalty'], $request['sold_to'], $tenant_id);
+                $stmt_update_client_balance->bind_param("diii", $request['total_penalty'], $request['sold_to'], $tenant_id, $branch_id);
 
                 if (!$stmt_update_client_balance->execute()) {
                     throw new Exception('Failed to update client balance');
@@ -181,9 +184,9 @@ try {
             SET status = 'Completed',
                 processed_by = ?,
                 processed_at = NOW()
-            WHERE id = ? AND tenant_id = ?
+            WHERE id = ? AND tenant_id = ? AND branch_id = ?
         ");
-        $stmt->bind_param("iii", $_SESSION['user_id'], $id, $tenant_id);
+        $stmt->bind_param("iiii", $_SESSION['user_id'], $id, $tenant_id, $branch_id);
 
         if (!$stmt->execute()) {
             throw new Exception('Failed to update request status');
@@ -196,14 +199,14 @@ try {
         $updateFamilyStmt = $conn->prepare("
             UPDATE families f
             SET
-                f.total_members = (SELECT COUNT(*) FROM umrah_bookings WHERE family_id = f.family_id),
-                f.total_price = (SELECT SUM(sold_price) FROM umrah_bookings WHERE family_id = f.family_id),
-                f.total_paid = (SELECT SUM(paid) FROM umrah_bookings WHERE family_id = f.family_id),
-                f.total_paid_to_bank = (SELECT SUM(received_bank_payment) FROM umrah_bookings WHERE family_id = f.family_id),
-                f.total_due = (SELECT SUM(due) FROM umrah_bookings WHERE family_id = f.family_id)
-            WHERE f.family_id = ? AND f.tenant_id = ?
+                f.total_members = (SELECT COUNT(*) FROM umrah_bookings WHERE family_id = f.family_id AND tenant_id = ? AND branch_id = ?),
+                f.total_price = (SELECT SUM(sold_price) FROM umrah_bookings WHERE family_id = f.family_id AND tenant_id = ? AND branch_id = ?),
+                f.total_paid = (SELECT SUM(paid) FROM umrah_bookings WHERE family_id = f.family_id AND tenant_id = ? AND branch_id = ?),
+                f.total_paid_to_bank = (SELECT SUM(received_bank_payment) FROM umrah_bookings WHERE family_id = f.family_id AND tenant_id = ? AND branch_id = ?),
+                f.total_due = (SELECT SUM(due) FROM umrah_bookings WHERE family_id = f.family_id AND tenant_id = ? AND branch_id = ?)
+            WHERE f.family_id = ? AND f.tenant_id = ? AND f.branch_id = ?
         ");
-        $updateFamilyStmt->bind_param("ii", $request['family_id'], $tenant_id);
+        $updateFamilyStmt->bind_param("iiiiiiiiiiii", $tenant_id, $branch_id, $tenant_id, $branch_id, $tenant_id, $branch_id, $tenant_id, $branch_id, $tenant_id, $branch_id, $request['family_id'], $tenant_id, $branch_id);
         $updateFamilyStmt->execute();
 
         // Log the processing

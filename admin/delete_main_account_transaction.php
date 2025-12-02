@@ -7,6 +7,7 @@ if (session_status() === PHP_SESSION_NONE) {
 // Include security module
 require_once 'security.php';
 $tenant_id = $_SESSION['tenant_id'];
+$branch_id = $_SESSION['branch_id'];
 // Enforce authentication
 enforce_auth();
 
@@ -30,9 +31,9 @@ $conn->begin_transaction();
 
 try {
     // Get transaction details first (to get account_id, amount, currency, type and created_at)
-    $getQuery = "SELECT main_account_id, amount, currency, type, created_at FROM main_account_transactions WHERE id = ? AND tenant_id = ?";
+    $getQuery = "SELECT main_account_id, amount, currency, type, created_at FROM main_account_transactions WHERE id = ? AND tenant_id = ? AND branch_id = ?";
     $getStmt = $conn->prepare($getQuery);
-    $getStmt->bind_param("ii", $transactionId, $tenant_id);
+    $getStmt->bind_param("iii", $transactionId, $tenant_id, $branch_id);
     $getStmt->execute();
     $result = $getStmt->get_result();
     
@@ -65,35 +66,35 @@ try {
     $updateField = $currencyFieldMap[$currency];
     
     // Update balances of all subsequent transactions
-    $updateSubsequentQuery = "UPDATE main_account_transactions 
-                             SET balance = balance - ? 
-                             WHERE main_account_id = ? 
-                             AND currency = ? 
-                             AND id > ? 
-                             AND id != ? AND tenant_id = ?";
+    $updateSubsequentQuery = "UPDATE main_account_transactions
+                             SET balance = balance - ?
+                             WHERE main_account_id = ?
+                             AND currency = ?
+                             AND id > ?
+                             AND id != ? AND tenant_id = ? AND branch_id = ?";
     $updateSubsequentStmt = $conn->prepare($updateSubsequentQuery);
-    $updateSubsequentStmt->bind_param("dissis", $amount, $accountId, $currency, $transactionId, $transactionId, $tenant_id);
+    $updateSubsequentStmt->bind_param("dissisi", $amount, $accountId, $currency, $transactionId, $transactionId, $tenant_id, $branch_id);
     $updateSubsequentStmt->execute();
     $updateSubsequentStmt->close();
     
     // Reverse the transaction based on its type
     if ($type === 'credit') {
         // For CREDIT transactions, we need to subtract the amount (reverse the addition)
-        $updateQuery = "UPDATE main_account SET {$updateField} = {$updateField} - ? WHERE id = ? AND tenant_id = ?";
+        $updateQuery = "UPDATE main_account SET {$updateField} = {$updateField} - ? WHERE id = ? AND tenant_id = ? AND branch_id = ?";
     } else {
         // For DEBIT transactions, we need to add the amount back (reverse the subtraction)
-        $updateQuery = "UPDATE main_account SET {$updateField} = {$updateField} + ? WHERE id = ? AND tenant_id = ?";
+        $updateQuery = "UPDATE main_account SET {$updateField} = {$updateField} + ? WHERE id = ? AND tenant_id = ? AND branch_id = ?";
     }
-    
+
     $updateStmt = $conn->prepare($updateQuery);
-    $updateStmt->bind_param("dis", $amount, $accountId, $tenant_id);
+    $updateStmt->bind_param("diii", $amount, $accountId, $tenant_id, $branch_id);
     $updateStmt->execute();
     $updateStmt->close();
     
     // Delete the transaction
-    $deleteQuery = "DELETE FROM main_account_transactions WHERE id = ? AND tenant_id = ?";
+    $deleteQuery = "DELETE FROM main_account_transactions WHERE id = ? AND tenant_id = ? AND branch_id = ?";
     $deleteStmt = $conn->prepare($deleteQuery);
-    $deleteStmt->bind_param("ii", $transactionId, $tenant_id);
+    $deleteStmt->bind_param("iii", $transactionId, $tenant_id, $branch_id);
     $deleteStmt->execute();
     $deleteStmt->close();
     

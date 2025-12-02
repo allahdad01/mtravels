@@ -13,6 +13,7 @@ require_once('security.php');
 // Enforce authentication
 enforce_auth();
 $tenant_id = $_SESSION['tenant_id'];
+$branch_id = $_SESSION['branch_id'];
 
 // Language handling
 $lang = isset($_GET['lang']) && in_array($_GET['lang'], ['en', 'ps', 'fa']) ? $_GET['lang'] : 'en';
@@ -82,9 +83,9 @@ if (isset($_GET['family_id'])) {
 
 try {
     // Get family information
-    $familyQuery = "SELECT * FROM families WHERE family_id = ?";
+    $familyQuery = "SELECT * FROM families WHERE family_id = ? AND tenant_id = ? AND branch_id = ?";
     $familyStmt = $pdo->prepare($familyQuery);
-    $familyStmt->execute([$familyId]);
+    $familyStmt->execute([$familyId, $tenant_id, $branch_id]);
     $family = $familyStmt->fetch(PDO::FETCH_ASSOC);
 
     if (!$family) {
@@ -103,13 +104,13 @@ try {
         LEFT JOIN umrah_booking_services ubs ON um.booking_id = ubs.booking_id
         LEFT JOIN suppliers s ON ubs.supplier_id = s.id
         LEFT JOIN clients c ON um.sold_to = c.id
-        WHERE um.family_id = ? AND um.tenant_id = ?
+        WHERE um.family_id = ? AND um.tenant_id = ? AND um.branch_id = ?
         GROUP BY um.booking_id
         ORDER BY um.booking_id ASC
     ";
 
     $stmt = $pdo->prepare($query);
-    $stmt->execute([$_SESSION['user_id'], $familyId, $tenant_id]);
+    $stmt->execute([$_SESSION['user_id'], $familyId, $tenant_id, $branch_id]);
     $bookings = $stmt->fetchAll(PDO::FETCH_ASSOC);
 
     if (!$bookings) {

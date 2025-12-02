@@ -13,8 +13,8 @@ require_once "../includes/db.php";
 $tenant_id = $_SESSION['tenant_id'];
 // Fetch user data with proper error handling
 try {
-    $stmt = $pdo->prepare("SELECT * FROM users WHERE id = ? AND tenant_id = ?");
-    $stmt->execute([$_SESSION['user_id'], $tenant_id]);
+    $stmt = $pdo->prepare("SELECT * FROM users WHERE id = ? AND tenant_id = ? AND branch_id = ?");
+    $stmt->execute([$_SESSION['user_id'], $tenant_id, $_SESSION['branch_id']]);
     $user = $stmt->fetch(PDO::FETCH_ASSOC);
 
     if (!$user) {
@@ -37,8 +37,8 @@ try {
 
 // Fetch settings data
 try {
-    $settingStmt = $pdo->query("SELECT * FROM settings WHERE tenant_id = ?");
-    $settingStmt->execute([$tenant_id]);
+    $settingStmt = $pdo->query("SELECT * FROM settings WHERE tenant_id = ? AND branch_id = ?");
+    $settingStmt->execute([$tenant_id, $_SESSION['branch_id']]);
     $settings = $settingStmt->fetch(PDO::FETCH_ASSOC);
 } catch (PDOException $e) {
     error_log("Settings Error: " . $e->getMessage());
@@ -99,9 +99,9 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
         
         try {
             // Get current main account balance
-            $sql = "SELECT usd_balance, afs_balance FROM main_account WHERE id = ? AND tenant_id = ?";
+            $sql = "SELECT usd_balance, afs_balance FROM main_account WHERE id = ? AND tenant_id = ? AND branch_id = ?";
             $stmt = mysqli_prepare($conection_db, $sql);
-            mysqli_stmt_bind_param($stmt, "ii", $main_account_id, $tenant_id);
+            mysqli_stmt_bind_param($stmt, "iii", $main_account_id, $tenant_id, $_SESSION['branch_id']);
             mysqli_stmt_execute($stmt);
             mysqli_stmt_store_result($stmt);
             
@@ -114,44 +114,44 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
                 $new_balance = $balance - $amount;
                 
                 // Update main account balance
-                $update_sql = ($currency == "USD") 
-                    ? "UPDATE main_account SET usd_balance = usd_balance - ? WHERE id = ? AND tenant_id = ?"
-                    : "UPDATE main_account SET afs_balance = afs_balance - ? WHERE id = ? AND tenant_id = ?";
-                    
+                $update_sql = ($currency == "USD")
+                    ? "UPDATE main_account SET usd_balance = usd_balance - ? WHERE id = ? AND tenant_id = ? AND branch_id = ?"
+                    : "UPDATE main_account SET afs_balance = afs_balance - ? WHERE id = ? AND tenant_id = ? AND branch_id = ?";
+
                 $update_stmt = mysqli_prepare($conection_db, $update_sql);
-                mysqli_stmt_bind_param($update_stmt, "di", $amount, $main_account_id, $tenant_id);
+                mysqli_stmt_bind_param($update_stmt, "diii", $amount, $main_account_id, $tenant_id, $_SESSION['branch_id']);
                 mysqli_stmt_execute($update_stmt);
                 
                 // Insert into salary_payments
-                $insert_sql = "INSERT INTO salary_payments (user_id, main_account_id, amount, currency, payment_date, 
-                               payment_for_month, payment_type, description, receipt) 
-                               VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)";
-                               
+                $insert_sql = "INSERT INTO salary_payments (user_id, main_account_id, amount, currency, payment_date,
+                               payment_for_month, payment_type, description, receipt, tenant_id, branch_id)
+                               VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)";
+
                 $insert_stmt = mysqli_prepare($conection_db, $insert_sql);
-                mysqli_stmt_bind_param($insert_stmt, "iidssssssi", $user_id, $main_account_id, $amount, $currency, 
-                                      $payment_date, $payment_for_month, $payment_type, $description, $receipt, $tenant_id);
+                mysqli_stmt_bind_param($insert_stmt, "iidssssssii", $user_id, $main_account_id, $amount, $currency,
+                                      $payment_date, $payment_for_month, $payment_type, $description, $receipt, $tenant_id, $_SESSION['branch_id']);
                 mysqli_stmt_execute($insert_stmt);
                 
                 // Get the inserted payment ID
                 $payment_id = mysqli_insert_id($conection_db);
                 
                 // Insert into main_account_transactions
-                $transaction_sql = "INSERT INTO main_account_transactions (main_account_id, type, amount, balance, currency, 
-                                   description, transaction_of, reference_id, receipt, tenant_id) 
-                                   VALUES (?, 'debit', ?, ?, ?, ?, 'salary_payment', ?, ?, ?)";
-                                   
+                $transaction_sql = "INSERT INTO main_account_transactions (main_account_id, type, amount, balance, currency,
+                                   description, transaction_of, reference_id, receipt, tenant_id, branch_id)
+                                   VALUES (?, 'debit', ?, ?, ?, ?, 'salary_payment', ?, ?, ?, ?)";
+
                 $transaction_stmt = mysqli_prepare($conection_db, $transaction_sql);
-                mysqli_stmt_bind_param($transaction_stmt, "iddsssssi", $main_account_id, $amount, $new_balance, $currency, 
-                                     $description, $payment_id, $receipt, $tenant_id);
+                mysqli_stmt_bind_param($transaction_stmt, "iddsssssii", $main_account_id, $amount, $new_balance, $currency,
+                                     $description, $payment_id, $receipt, $tenant_id, $_SESSION['branch_id']);
                 mysqli_stmt_execute($transaction_stmt);
                 
                 // If this is regular payment, check for any advance payment to be deducted
                 if ($payment_type == 'regular') {
                     // Check for any pending advances
-                    $advance_sql = "SELECT id, amount, amount_paid FROM salary_advances 
-                                   WHERE user_id = ? AND currency = ? AND repayment_status != 'paid' AND tenant_id = ?";
+                    $advance_sql = "SELECT id, amount, amount_paid FROM salary_advances
+                                   WHERE user_id = ? AND currency = ? AND repayment_status != 'paid' AND tenant_id = ? AND branch_id = ?";
                     $advance_stmt = mysqli_prepare($conection_db, $advance_sql);
-                    mysqli_stmt_bind_param($advance_stmt, "isi", $user_id, $currency, $tenant_id);
+                    mysqli_stmt_bind_param($advance_stmt, "isii", $user_id, $currency, $tenant_id, $_SESSION['branch_id']);
                     mysqli_stmt_execute($advance_stmt);
                     $advance_result = mysqli_stmt_get_result($advance_stmt);
                     
@@ -169,9 +169,9 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
                             $new_paid = $amount_paid + $deduction;
                             $status = ($new_paid >= $advance_amount) ? 'paid' : 'partially_paid';
                             
-                            $update_advance_sql = "UPDATE salary_advances SET amount_paid = ?, repayment_status = ? WHERE id = ? AND tenant_id = ?";
+                            $update_advance_sql = "UPDATE salary_advances SET amount_paid = ?, repayment_status = ? WHERE id = ? AND tenant_id = ? AND branch_id = ?";
                             $update_advance_stmt = mysqli_prepare($conection_db, $update_advance_sql);
-                            mysqli_stmt_bind_param($update_advance_stmt, "dsii", $new_paid, $status, $advance_id, $tenant_id);
+                            mysqli_stmt_bind_param($update_advance_stmt, "dsiii", $new_paid, $status, $advance_id, $tenant_id, $_SESSION['branch_id']);
                             mysqli_stmt_execute($update_advance_stmt);
                         }
                     }
@@ -292,10 +292,10 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
                                                 <option value="">Select Employee</option>
                                                 <?php
                                                 // Get all employees with salary records
-                                                $sql = "SELECT u.id, u.name, sm.base_salary, sm.currency 
-                                                        FROM users u 
-                                                        JOIN salary_management sm ON u.id = sm.user_id 
-                                                        WHERE sm.status = 'active' AND u.tenant_id = $tenant_id
+                                                $sql = "SELECT u.id, u.name, sm.base_salary, sm.currency
+                                                        FROM users u
+                                                        JOIN salary_management sm ON u.id = sm.user_id
+                                                        WHERE sm.status = 'active' AND u.tenant_id = $tenant_id AND u.branch_id = " . $_SESSION['branch_id'] . "
                                                         ORDER BY u.name";
                                                 $result = mysqli_query($conection_db, $sql);
                                                 while ($row = mysqli_fetch_array($result)) {
@@ -313,8 +313,11 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
                                                 <option value="">Select Account</option>
                                                 <?php
                                                 // Get all main accounts
-                                                $sql = "SELECT id, name, usd_balance, afs_balance FROM main_account WHERE tenant_id = ?";
-                                                $result = mysqli_query($conection_db, $sql);
+                                                $sql = "SELECT id, name, usd_balance, afs_balance FROM main_account WHERE tenant_id = ? AND branch_id = ?";
+                                                $stmt = mysqli_prepare($conection_db, $sql);
+                                                mysqli_stmt_bind_param($stmt, "ii", $tenant_id, $_SESSION['branch_id']);
+                                                mysqli_stmt_execute($stmt);
+                                                $result = mysqli_stmt_get_result($stmt);
                                                 while ($row = mysqli_fetch_array($result)) {
                                                     echo "<option value='" . $row['id'] . "' data-usd='" . $row['usd_balance'] . "' data-afs='" . $row['afs_balance'] . "'>" . $row['name'] . " (USD: " . number_format($row['usd_balance'], 2) . ", AFS: " . number_format($row['afs_balance'], 2) . ")</option>";
                                                 }
@@ -401,11 +404,11 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
                                     <tbody>
                                         <?php
                                         // Get all salary payments
-                                        $sql = "SELECT sp.*, u.name as employee_name, ma.name as account_name 
-                                                FROM salary_payments sp 
-                                                JOIN users u ON sp.user_id = u.id 
+                                        $sql = "SELECT sp.*, u.name as employee_name, ma.name as account_name
+                                                FROM salary_payments sp
+                                                JOIN users u ON sp.user_id = u.id
                                                 JOIN main_account ma ON sp.main_account_id = ma.id
-                                                WHERE sp.tenant_id = $tenant_id
+                                                WHERE sp.tenant_id = $tenant_id AND sp.branch_id = " . $_SESSION['branch_id'] . "
                                                 ORDER BY sp.created_at DESC";
 
                                         $result = mysqli_query($conection_db, $sql);

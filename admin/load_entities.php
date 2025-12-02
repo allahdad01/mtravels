@@ -5,6 +5,7 @@ require_once 'includes/db_security.php';
 // Include security module
 require_once 'security.php';
 $tenant_id = $_SESSION['tenant_id'];
+$branch_id = $_SESSION['branch_id'];
 // Enforce authentication
 enforce_auth();
 
@@ -20,13 +21,13 @@ $options = [];
 
 switch ($type) {
     case 'supplier':
-        $query = "SELECT id, name FROM suppliers where tenant_id = ?";
+        $query = "SELECT id, name FROM suppliers where tenant_id = ? AND branch_id = ?";
         break;
     case 'main_account':
-        $query = "SELECT id, name FROM main_account where tenant_id = ?";
+        $query = "SELECT id, name FROM main_account where tenant_id = ? AND branch_id = ?";
         break;
     case 'client':
-        $query = "SELECT id, name FROM clients where tenant_id = ?";
+        $query = "SELECT id, name FROM clients where tenant_id = ? AND branch_id = ?";
         break;
     default:
         echo json_encode(["success" => false, "message" => "Invalid type"]);
@@ -34,7 +35,7 @@ switch ($type) {
 }
 
 $stmt = $conn->prepare($query);
-$stmt->bind_param("i", $tenant_id);
+$stmt->bind_param("ii", $tenant_id, $branch_id);
 $stmt->execute();
 $result = $stmt->get_result();
 while ($row = $result->fetch_assoc()) {

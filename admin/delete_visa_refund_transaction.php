@@ -12,6 +12,7 @@ enforce_auth();
 
 require_once('../includes/db.php');
 $tenant_id = $_SESSION['tenant_id'];
+$branch_id = $_SESSION['branch_id'];
 
 // Check if required parameters are present
 if (!isset($_POST['transaction_id']) || !isset($_POST['refund_id'])) {
@@ -28,12 +29,12 @@ try {
 
     // First get the transaction details to know the currency and main account
     $getTransactionStmt = $pdo->prepare("
-        SELECT t.*, t.currency as transaction_currency, t.created_at as transaction_date 
+        SELECT t.*, t.currency as transaction_currency, t.created_at as transaction_date
         FROM main_account_transactions t
         JOIN main_account m ON t.main_account_id = m.id
-        WHERE t.id = ? AND t.reference_id = ? AND t.transaction_of = ? AND t.tenant_id = ?
+        WHERE t.id = ? AND t.reference_id = ? AND t.transaction_of = ? AND t.tenant_id = ? AND t.branch_id = ? AND m.tenant_id = ? AND m.branch_id = ?
     ");
-    $getTransactionStmt->execute([$transaction_id, $refund_id, 'visa_refund', $tenant_id]);
+    $getTransactionStmt->execute([$transaction_id, $refund_id, 'visa_refund', $tenant_id, $branch_id, $tenant_id, $branch_id]);
     $transaction = $getTransactionStmt->fetch(PDO::FETCH_ASSOC);
 
     if (!$transaction) {
@@ -66,21 +67,22 @@ try {
     // Update balances of all subsequent transactions
     // Since we're adding the money back, we add the amount
     $updateSubsequentStmt = $pdo->prepare("
-        UPDATE main_account_transactions 
+        UPDATE main_account_transactions
         SET balance = balance + ?
-        WHERE main_account_id = ? 
-        AND currency = ? 
-        AND id > ? 
+        WHERE main_account_id = ?
+        AND currency = ?
+        AND id > ?
         AND id != ?
-        AND tenant_id = ?
+        AND tenant_id = ? AND branch_id = ?
     ");
     $updateSubsequentResult = $updateSubsequentStmt->execute([
-        $amount, 
-        $transaction['main_account_id'], 
-        $transaction['currency'], 
+        $amount,
+        $transaction['main_account_id'],
+        $transaction['currency'],
         $transaction_id,
         $transaction_id,
-        $tenant_id
+        $tenant_id,
+        $branch_id
     ]);
 
     if (!$updateSubsequentResult) {
@@ -89,40 +91,40 @@ try {
 
     // Delete the transaction
     $deleteStmt = $pdo->prepare("
-        DELETE FROM main_account_transactions 
-        WHERE id = ? AND reference_id = ? AND transaction_of = ? AND tenant_id = ?
+        DELETE FROM main_account_transactions
+        WHERE id = ? AND reference_id = ? AND transaction_of = ? AND tenant_id = ? AND branch_id = ?
     ");
-    $deleteResult = $deleteStmt->execute([$transaction_id, $refund_id, 'visa_refund', $tenant_id]);
+    $deleteResult = $deleteStmt->execute([$transaction_id, $refund_id, 'visa_refund', $tenant_id, $branch_id]);
 
     if ($deleteResult && $deleteStmt->rowCount() > 0) {
         // Update the appropriate balance in the main_account table
         // Add the amount back to the account since we're deleting a refund
         $updateStmt = $pdo->prepare("
-            UPDATE main_account 
+            UPDATE main_account
             SET $balanceColumn = $balanceColumn + ?
-            WHERE id = ? AND tenant_id = ?
+            WHERE id = ? AND tenant_id = ? AND branch_id = ?
         ");
-        $updateResult = $updateStmt->execute([$amount, $transaction['main_account_id'], $tenant_id]);
+        $updateResult = $updateStmt->execute([$amount, $transaction['main_account_id'], $tenant_id, $branch_id]);
 
         if ($updateResult) {
             // Check if this was the last transaction and update the visa_refunds processed status if needed
             $checkTransactionsStmt = $pdo->prepare("
-                SELECT COUNT(*) as count 
-                FROM main_account_transactions 
+                SELECT COUNT(*) as count
+                FROM main_account_transactions
                 WHERE reference_id = ? AND transaction_of = 'visa_refund'
-                AND tenant_id = ?
+                AND tenant_id = ? AND branch_id = ?
             ");
-            $checkTransactionsStmt->execute([$refund_id, $tenant_id]);
+            $checkTransactionsStmt->execute([$refund_id, $tenant_id, $branch_id]);
             $transactionCount = $checkTransactionsStmt->fetch(PDO::FETCH_ASSOC)['count'];
 
             if ($transactionCount === 0) {
                 // No more transactions, update visa_refunds status
                 $updateRefundStmt = $pdo->prepare("
-                    UPDATE visa_refunds 
-                    SET processed = 0, processed_by = NULL 
-                    WHERE id = ? AND tenant_id = ?
+                    UPDATE visa_refunds
+                    SET processed = 0, processed_by = NULL
+                    WHERE id = ? AND tenant_id = ? AND branch_id = ?
                 ");
-                $updateRefundStmt->execute([$refund_id, $tenant_id]);
+                $updateRefundStmt->execute([$refund_id, $tenant_id, $branch_id]);
             }
 
             $pdo->commit();
@@ -144,10 +146,10 @@ try {
             
             $activityStmt = $pdo->prepare("
                 INSERT INTO activity_log 
-                (user_id, action, table_name, record_id, old_values, new_values, ip_address, user_agent, created_at, tenant_id) 
-                VALUES (?, 'delete', 'main_account_transactions', ?, ?, ?, ?, ?, NOW(), ?)
+                (user_id, action, table_name, record_id, old_values, new_values, ip_address, user_agent, created_at, tenant_id, branch_id) 
+                VALUES (?, 'delete', 'main_account_transactions', ?, ?, ?, ?, ?, NOW(), ?, ?)
             ");
-            $activityStmt->execute([$user_id, $transaction_id, $old_values, $new_values, $ip_address, $user_agent, $tenant_id]);
+            $activityStmt->execute([$user_id, $transaction_id, $old_values, $new_values, $ip_address, $user_agent, $tenant_id, $branch_id]);
             
             echo json_encode(['success' => true, 'message' => 'Transaction deleted successfully and funds returned to account']);
         } else {

@@ -7,6 +7,7 @@ if (session_status() === PHP_SESSION_NONE) {
     session_start();
 }
 $tenant_id = $_SESSION['tenant_id'];
+$branch_id = $_SESSION['branch_id']; 
 
 
 // Validate input
@@ -32,8 +33,8 @@ try {
     $address = $_POST['address'] ?? null;
     
     // Insert customer data
-    $stmt = $conn->prepare("INSERT INTO customers (name, email, phone, address, tenant_id) VALUES (?, ?, ?, ?, ?)");
-    $stmt->bind_param("ssssi", $name, $email, $phone, $address, $tenant_id);
+    $stmt = $conn->prepare("INSERT INTO customers (name, email, phone, address, tenant_id, branch_id) VALUES (?, ?, ?, ?, ?, ?)");
+    $stmt->bind_param("ssssii", $name, $email, $phone, $address, $tenant_id, $branch_id);
     $stmt->execute();
     $customer_id = $conn->insert_id;
     
@@ -43,19 +44,19 @@ try {
         $currency = $_POST['initial_currency'];
         
         // Create wallet with initial balance
-        $stmt = $conn->prepare("INSERT INTO customer_wallets (customer_id, currency, balance, tenant_id) VALUES (?, ?, ?, ?)");
-        $stmt->bind_param("isdi", $customer_id, $currency, $initial_balance, $tenant_id);
+        $stmt = $conn->prepare("INSERT INTO customer_wallets (customer_id, currency, balance, tenant_id, branch_id) VALUES (?, ?, ?, ?, ?)");
+        $stmt->bind_param("isdii", $customer_id, $currency, $initial_balance, $tenant_id, $branch_id);
         $stmt->execute();
         
         // Record initial balance transaction
-        $stmt = $conn->prepare("INSERT INTO sarafi_transactions (customer_id, amount, currency, type, notes, tenant_id) VALUES (?, ?, ?, 'deposit', 'Initial balance', ?)");
-        $stmt->bind_param("idsi", $customer_id, $initial_balance, $currency, $tenant_id);
+        $stmt = $conn->prepare("INSERT INTO sarafi_transactions (customer_id, amount, currency, type, notes, tenant_id, branch_id) VALUES (?, ?, ?, 'deposit', 'Initial balance', ?, ?)");
+        $stmt->bind_param("idsiii", $customer_id, $initial_balance, $currency, $tenant_id, $branch_id);
         $stmt->execute();
         $transaction_id = $conn->insert_id;
         
         // Record in general ledger
-        $stmt = $conn->prepare("INSERT INTO general_ledger (transaction_id, account_type, entry_type, amount, currency, balance, tenant_id) VALUES (?, 'asset', 'credit', ?, ?, ?, ?)");
-        $stmt->bind_param("idsdi", $transaction_id, $initial_balance, $currency, $initial_balance, $tenant_id);
+        $stmt = $conn->prepare("INSERT INTO general_ledger (transaction_id, account_type, entry_type, amount, currency, balance, tenant_id, branch_id) VALUES (?, 'asset', 'credit', ?, ?, ?, ?, ?)");
+        $stmt->bind_param("idsdiii", $transaction_id, $initial_balance, $currency, $initial_balance, $tenant_id, $branch_id);
         $stmt->execute();
     }
     

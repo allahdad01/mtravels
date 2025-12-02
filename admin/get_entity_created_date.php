@@ -7,6 +7,9 @@ if (!isset($_SESSION['user_id']) || $_SESSION['role'] !== 'admin') {
     exit();
 }
 
+$tenant_id = $_SESSION['tenant_id'];
+$branch_id = $_SESSION['branch_id'];
+
 $entityId = $_POST['entityId'] ?? '';
 $reportType = $_POST['reportType'] ?? '';
 
@@ -34,8 +37,8 @@ switch ($reportType) {
 }
 
 try {
-    $stmt = $pdo->prepare("SELECT $field FROM $table WHERE id = ?");
-    $stmt->execute([$entityId]);
+    $stmt = $pdo->prepare("SELECT $field FROM $table WHERE id = ? AND tenant_id = ? AND branch_id = ?");
+    $stmt->execute([$entityId, $tenant_id, $branch_id]);
     $result = $stmt->fetch(PDO::FETCH_ASSOC);
 
     if ($result) {

@@ -2,6 +2,7 @@
 // Include security module
 require_once 'security.php';
 $tenant_id = $_SESSION['tenant_id'];
+$branch_id = $_SESSION['branch_id'];
 // Enforce authentication
 enforce_auth();
 
@@ -18,12 +19,12 @@ if (isset($_GET['ticket_id'])) {
             FROM main_account_transactions t
             LEFT JOIN main_account m ON t.main_account_id = m.id
             LEFT JOIN refunded_tickets tb ON t.reference_id = tb.id
-            WHERE t.reference_id = ? AND t.tenant_id = ?
+            WHERE t.reference_id = ? AND t.tenant_id = ? AND t.branch_id = ?
             AND LOWER(t.type) = 'debit'
             AND t.transaction_of = 'ticket_refund'
             ORDER BY t.created_at DESC
         ");
-            $stmt->execute([$ticket_id, $tenant_id]);
+            $stmt->execute([$ticket_id, $tenant_id, $branch_id]);
 
         // Fetch all the results
         $transactions = $stmt->fetchAll(PDO::FETCH_ASSOC);

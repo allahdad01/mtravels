@@ -2,6 +2,7 @@
 // Initialize the session
 session_start();
 $tenant_id = $_SESSION['tenant_id'] ?? 0;
+$branch_id = $_SESSION['branch_id'] ?? 0;
 
 if (!$tenant_id) {
     die("Tenant ID not found in session");
@@ -53,7 +54,7 @@ if (!$refund_id) {
 // Fetch refund details
 try {
     $refundQuery = "
-        SELECT 
+        SELECT
             r.*,
             h.title,
             h.first_name,
@@ -73,11 +74,11 @@ try {
         LEFT JOIN suppliers s ON h.supplier_id = s.id
         LEFT JOIN clients c ON h.sold_to = c.id
         LEFT JOIN users u ON r.processed_by = u.id
-        WHERE r.id = ? AND r.tenant_id = ?
+        WHERE r.id = ? AND r.tenant_id = ? AND r.branch_id = ?
     ";
-    
+
     $stmt = $pdo->prepare($refundQuery);
-    $stmt->execute([$refund_id, $tenant_id]);
+    $stmt->execute([$refund_id, $tenant_id, $branch_id]);
     $refund = $stmt->fetch(PDO::FETCH_ASSOC);
 
     if (!$refund) {

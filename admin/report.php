@@ -10,6 +10,7 @@ if (!isset($_SESSION['user_id'])  || $_SESSION['role'] !== 'admin') {
     exit();
 }
 $tenant_id = $_SESSION['tenant_id'];
+$branch_id = $_SESSION['branch_id'];
 // Database connection
 require_once('../includes/db.php');
 
@@ -1005,7 +1006,7 @@ function loadOptions() {
         $.ajax({
             url: "load_entities.php",
             type: "POST",
-            data: { type: reportType },
+            data: { type: reportType, tenant_id: <?php echo $tenant_id; ?>, branch_id: <?php echo $branch_id; ?> },
             dataType: "json",
             success: function(response) {
                 if (response.success) {
@@ -1282,7 +1283,7 @@ function updateStartDateForStatement() {
         $.ajax({
             url: "get_entity_created_date.php",
             type: "POST",
-            data: { entityId: entityId, reportType: reportType },
+            data: { entityId: entityId, reportType: reportType, tenant_id: <?php echo $tenant_id; ?>, branch_id: <?php echo $branch_id; ?> },
             dataType: "json",
             success: function(response) {
                 if (response.success && response.created_date) {
@@ -1348,7 +1349,9 @@ function filterResults() {
                 entityId: entity,
                 startDate: startDate,
                 endDate: endDate,
-                currency: currency
+                currency: currency,
+                tenant_id: <?php echo $tenant_id; ?>,
+                branch_id: <?php echo $branch_id; ?>
             },
             dataType: "json",
             success: function(response) {
@@ -1386,7 +1389,9 @@ function filterResults() {
                 endDate: endDate,
                 expenseCategory: expenseCategory,
                 umrahFamilyType: umrahFamilyType,
-                specificFamily: specificFamily
+                specificFamily: specificFamily,
+                tenant_id: <?php echo $tenant_id; ?>,
+                branch_id: <?php echo $branch_id; ?>
             },
             dataType: "json",
             success: function(response) {
@@ -1459,7 +1464,9 @@ function exportReport(format) {
             startDate: startDate,
             endDate: endDate,
             currency: currency,
-            format: format // Add format parameter
+            format: format, // Add format parameter
+            tenant_id: <?php echo $tenant_id; ?>,
+            branch_id: <?php echo $branch_id; ?>
         };
 
         for (var key in params) {
@@ -1503,6 +1510,8 @@ function exportReport(format) {
                               "&reportCategory=" + reportCategory +
                               "&startDate=" + startDate +
                               "&endDate=" + endDate +
+                              "&tenant_id=" + <?php echo $tenant_id; ?> +
+                              "&branch_id=" + <?php echo $branch_id; ?> +
                               (expenseCategory ? "&expenseCategory=" + expenseCategory : "") +
                               (umrahFamilyType ? "&umrahFamilyType=" + umrahFamilyType : "") +
                               (specificFamily ? "&specificFamily=" + specificFamily : "");

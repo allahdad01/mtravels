@@ -14,6 +14,7 @@ header('Content-Type: application/json');
 require_once '../../includes/conn.php';
 require_once '../includes/db_security.php';
 $tenant_id = $_SESSION['tenant_id'] ?? 0;
+$branch_id = $_SESSION['branch_id'] ?? 0;
 
 // Validate required POST parameters
 if (!isset($_POST['transaction_id'], $_POST['weight_id'], $_POST['amount'])) {
@@ -38,11 +39,11 @@ try {
         SELECT t.*, t.currency as transaction_currency, t.created_at as transaction_date,
                tw.ticket_id, tb.paid_to as main_account_id
         FROM main_account_transactions t
-        JOIN ticket_weights tw ON t.reference_id = tw.id
-        JOIN ticket_bookings tb ON tw.ticket_id = tb.id
-        WHERE t.id = ? AND t.reference_id = ? AND t.transaction_of = 'weight' AND t.tenant_id = ?
+        JOIN ticket_weights tw ON t.reference_id = tw.id AND tw.tenant_id = ? AND tw.branch_id = ?
+        JOIN ticket_bookings tb ON tw.ticket_id = tb.id AND tb.tenant_id = ? AND tb.branch_id = ?
+        WHERE t.id = ? AND t.reference_id = ? AND t.transaction_of = 'weight' AND t.tenant_id = ? AND t.branch_id = ?
     ");
-    $getTransaction->bind_param('iii', $transactionId, $weightId, $tenant_id);
+    $getTransaction->bind_param('iiiiiiii', $tenant_id, $branch_id, $tenant_id, $branch_id, $transactionId, $weightId, $tenant_id, $branch_id);
     $getTransaction->execute();
     $transactionResult = $getTransaction->get_result();
     $transaction = $transactionResult->fetch_assoc();
@@ -63,15 +64,16 @@ try {
 
     // Update subsequent transactions
     $updateSubsequent = $conn->prepare("
-        UPDATE main_account_transactions 
+        UPDATE main_account_transactions
         SET balance = balance - ?
-        WHERE main_account_id = ? AND tenant_id = ? AND currency = ? AND created_at > ? AND id != ?
+        WHERE main_account_id = ? AND tenant_id = ? AND branch_id = ? AND currency = ? AND created_at > ? AND id != ?
     ");
     $updateSubsequent->bind_param(
-        'diissi', 
+        'diissii',
         $amount,
         $transaction['main_account_id'],
         $tenant_id,
+        $branch_id,
         $transaction['currency'],
         $transaction['transaction_date'],
         $transactionId
@@ -82,21 +84,21 @@ try {
 
     // Delete main transaction
     $deleteMainTransaction = $conn->prepare("
-        DELETE FROM main_account_transactions 
-        WHERE id = ? AND reference_id = ? AND transaction_of = 'weight' AND tenant_id = ?
+        DELETE FROM main_account_transactions
+        WHERE id = ? AND reference_id = ? AND transaction_of = 'weight' AND tenant_id = ? AND branch_id = ?
     ");
-    $deleteMainTransaction->bind_param('iii', $transactionId, $weightId, $tenant_id);
+    $deleteMainTransaction->bind_param('iiii', $transactionId, $weightId, $tenant_id, $branch_id);
     if (!$deleteMainTransaction->execute() || $deleteMainTransaction->affected_rows === 0) {
         throw new Exception('Failed to delete transaction');
     }
 
     // Update main account balance
     $updateBalance = $conn->prepare("
-        UPDATE main_account 
+        UPDATE main_account
         SET $balanceColumn = $balanceColumn - ?
-        WHERE id = ? AND tenant_id = ?
+        WHERE id = ? AND tenant_id = ? AND branch_id = ?
     ");
-    $updateBalance->bind_param('dii', $amount, $transaction['main_account_id'], $tenant_id);
+    $updateBalance->bind_param('diii', $amount, $transaction['main_account_id'], $tenant_id, $branch_id);
     if (!$updateBalance->execute()) {
         throw new Exception('Failed to update main account balance');
     }
@@ -116,11 +118,11 @@ try {
     ]);
 
     $activityLog = $conn->prepare("
-        INSERT INTO activity_log 
-        (user_id, tenant_id, action, table_name, record_id, old_values, new_values, ip_address, user_agent, created_at) 
-        VALUES (?, ?, 'delete', 'main_account_transactions', ?, ?, NULL, ?, ?, NOW())
+        INSERT INTO activity_log
+        (user_id, tenant_id, branch_id, action, table_name, record_id, old_values, new_values, ip_address, user_agent, created_at)
+        VALUES (?, ?, ?, 'delete', 'main_account_transactions', ?, ?, NULL, ?, ?, NOW())
     ");
-    $activityLog->bind_param("iiisss", $user_id, $tenant_id, $transactionId, $old_values, $ip_address, $user_agent);
+    $activityLog->bind_param("iiiisss", $user_id, $tenant_id, $branch_id, $transactionId, $old_values, $ip_address, $user_agent);
     if (!$activityLog->execute()) {
         throw new Exception('Failed to log activity');
     }

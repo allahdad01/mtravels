@@ -17,6 +17,7 @@ if (!isset($_GET['id'])) {
     exit;
 }
 $tenant_id = $_SESSION['tenant_id'];
+$branch_id = $_SESSION['branch_id'];
 $ticketId = intval($_GET['id']);
 
 try {
@@ -26,10 +27,10 @@ try {
         FROM refunded_tickets rt
         LEFT JOIN suppliers s ON rt.supplier = s.id
         LEFT JOIN clients c ON rt.sold_to = c.id
-        WHERE rt.id = ? AND rt.tenant_id = ?";
-    
+        WHERE rt.id = ? AND rt.tenant_id = ? AND rt.branch_id = ?";
+
     $stmt = $conn->prepare($query);
-    $stmt->bind_param('ii', $ticketId, $tenant_id);
+    $stmt->bind_param('iii', $ticketId, $tenant_id, $branch_id);
     $stmt->execute();
     $result = $stmt->get_result();
     

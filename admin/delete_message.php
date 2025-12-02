@@ -7,6 +7,7 @@ if (session_status() === PHP_SESSION_NONE) {
 // Include security module
 require_once 'security.php';
 $tenant_id = $_SESSION['tenant_id'];
+$branch_id = $_SESSION['branch_id'];
 // Enforce authentication
 enforce_auth();
 
@@ -33,7 +34,7 @@ if ($message_id <= 0) {
 }
 
 // Delete the message
-$query = "DELETE FROM messages WHERE id = $message_id AND tenant_id = $tenant_id";
+$query = "DELETE FROM messages WHERE id = $message_id AND tenant_id = $tenant_id AND branch_id = $branch_id";
 
 // Execute query
 if (mysqli_query($conn, $query)) {
@@ -48,11 +49,11 @@ if (mysqli_query($conn, $query)) {
     $user_agent = $_SERVER['HTTP_USER_AGENT'] ?? '';
     
     $log_query = "INSERT INTO activity_log 
-                  (user_id, action, table_name, record_id, old_values, new_values, ip_address, user_agent, created_at, tenant_id) 
-                  VALUES (?, 'delete', 'messages', ?, ?, ?, ?, ?, NOW(), ?)";
+                  (user_id, action, table_name, record_id, old_values, new_values, ip_address, user_agent, created_at, tenant_id, branch_id) 
+                  VALUES (?, 'delete', 'messages', ?, ?, ?, ?, ?, NOW(), ?, ?)";
     
     $stmt_log = $conn->prepare($log_query);
-    $stmt_log->bind_param("iissss", $user_id, $message_id, $old_values, $new_values, $ip_address, $user_agent, $tenant_id);
+    $stmt_log->bind_param("iissssi", $user_id, $message_id, $old_values, $new_values, $ip_address, $user_agent, $tenant_id, $branch_id);
     $stmt_log->execute();
     $stmt_log->close();
     

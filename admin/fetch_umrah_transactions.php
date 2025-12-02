@@ -2,6 +2,7 @@
 // Include security module
 require_once 'security.php';
 $tenant_id = $_SESSION['tenant_id'];
+$branch_id = $_SESSION['branch_id'];
 // Enforce authentication
 enforce_auth();
 
@@ -27,8 +28,8 @@ if (isset($_GET['transaction_id'])) {
                               receipt, currency as payment_currency, created_at, exchange_rate,
                               DATE(payment_date) as payment_date_only, 
                               TIME(created_at) as payment_time 
-                              FROM umrah_transactions WHERE id = ? AND tenant_id = ?");
-        $stmt->execute([$transaction_id, $tenant_id]);
+                              FROM umrah_transactions WHERE id = ? AND tenant_id = ? AND branch_id = ?");
+       $stmt->execute([$transaction_id, $tenant_id, $branch_id]);
         
         // Fetch the transaction
         $transaction = $stmt->fetch(PDO::FETCH_ASSOC);
@@ -58,9 +59,9 @@ elseif (isset($_GET['umrah_id'])) {
                                 payment_description, 
                                 transaction_to, exchange_rate 
                               FROM umrah_transactions 
-                              WHERE umrah_booking_id = ? AND tenant_id = ?
+                              WHERE umrah_booking_id = ? AND tenant_id = ? AND branch_id = ?
                               ORDER BY payment_date DESC, payment_time DESC");
-        $stmt->execute([$umrah_id, $tenant_id]);
+       $stmt->execute([$umrah_id, $tenant_id, $branch_id]);
 
         // Fetch all the results
         $transactions = $stmt->fetchAll(PDO::FETCH_ASSOC);

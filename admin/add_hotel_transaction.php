@@ -8,6 +8,7 @@ require_once 'security.php';
 // Enforce authentication
 enforce_auth();
 $tenant_id = $_SESSION['tenant_id'];
+$branch_id = $_SESSION['branch_id'];
 require_once('../includes/db.php');
 
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
@@ -24,10 +25,10 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         $stmt = $pdo->prepare("
             SELECT hb.paid_to, hb.title, hb.first_name, hb.last_name, hb.order_id 
             FROM hotel_bookings hb 
-            WHERE hb.id = ?
+            WHERE hb.id = ? And tenant_id = ? And branch_id = ?
         ");
         
-        $stmt->execute([$booking_id]);
+        $stmt->execute([$booking_id, $tenant_id, $branch_id]);
         $booking = $stmt->fetch(PDO::FETCH_ASSOC);
 
         if (!$booking) {
@@ -42,10 +43,10 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         $stmt = $pdo->prepare("
             SELECT $balanceField as current_balance 
             FROM main_account 
-            WHERE id = ? AND tenant_id = ?
+            WHERE id = ? AND tenant_id = ? And branch_id = ?
         ");
         
-        $stmt->execute([$booking['paid_to'], $tenant_id]);
+        $stmt->execute([$booking['paid_to'], $tenant_id, $branch_id]);
         $balanceResult = $stmt->fetch(PDO::FETCH_ASSOC);
 
         if (!$balanceResult) {
@@ -58,17 +59,10 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         $stmt = $pdo->prepare("
             UPDATE main_account 
             SET $balanceField = ? 
-            WHERE id = ? AND tenant_id = ?
+            WHERE id = ? AND tenant_id = ? And branch_id = ?
         ");
-        $stmt->execute([$newBalance, $booking['paid_to'], $tenant_id]);
+        $stmt->execute([$newBalance, $booking['paid_to'], $tenant_id, $branch_id]);
 
-            // For regular transactions, don't include original_transaction_id
-
-// Validate original_transaction_id
-$original_transaction_id = isset($_POST['original_transaction_id']) ? DbSecurity::validateInput($_POST['original_transaction_id'], 'int', ['min' => 0]) : null;
-
-// Validate is_refund
-$is_refund = isset($_POST['is_refund']) ? DbSecurity::validateInput($_POST['is_refund'], 'string', ['maxlength' => 255]) : null;
 
 // Validate payment_currency
 $payment_currency = isset($_POST['payment_currency']) ? DbSecurity::validateInput($_POST['payment_currency'], 'currency') : null;
@@ -86,8 +80,8 @@ $payment_date = isset($_POST['payment_date']) ? DbSecurity::validateInput($_POST
 $booking_id = isset($_POST['booking_id']) ? DbSecurity::validateInput($_POST['booking_id'], 'int', ['min' => 0]) : null;
             $stmt = $pdo->prepare("
                 INSERT INTO main_account_transactions 
-                (main_account_id, type, amount, currency, description, transaction_of, reference_id, balance, created_at, tenant_id, exchange_rate)
-                VALUES (?, ?, ?, ?, ?, 'hotel', ?, ?, ?, ?, ?)
+                (main_account_id, type, amount, currency, description, transaction_of, reference_id, balance, created_at, tenant_id, exchange_rate, branch_id)
+                VALUES (?, ?, ?, ?, ?, 'hotel', ?, ?, ?, ?, ?, ?)
             ");
             
             $stmt->execute([
@@ -100,7 +94,8 @@ $booking_id = isset($_POST['booking_id']) ? DbSecurity::validateInput($_POST['bo
                 $newBalance,
                 $payment_date,
                 $tenant_id,
-                $exchange_rate
+                $exchange_rate,
+                $branch_id
             ]);
         
 
@@ -121,11 +116,11 @@ $booking_id = isset($_POST['booking_id']) ? DbSecurity::validateInput($_POST['bo
 
         $notifStmt = $pdo->prepare("
             INSERT INTO notifications 
-            (transaction_id, transaction_type, message, status, created_at, tenant_id) 
-            VALUES (?, 'hotel', ?, 'Unread', NOW(), ?)
+            (transaction_id, transaction_type, message, status, created_at, tenant_id, branch_id) 
+            VALUES (?, 'hotel', ?, 'Unread', NOW(), ?, ?)
         ");
         
-        if (!$notifStmt->execute([$main_transaction_id, $notificationMessage, $tenant_id])) {
+        if (!$notifStmt->execute([$main_transaction_id, $notificationMessage, $tenant_id, $branch_id])) {
             throw new Exception("Failed to create notification");
         }
 
@@ -150,10 +145,10 @@ $booking_id = isset($_POST['booking_id']) ? DbSecurity::validateInput($_POST['bo
         
         $activityStmt = $pdo->prepare("
             INSERT INTO activity_log 
-            (user_id, action, table_name, record_id, old_values, new_values, ip_address, user_agent, created_at, tenant_id) 
-            VALUES (?, 'add', 'main_account_transactions', ?, ?, ?, ?, ?, NOW(), ?)
+            (user_id, action, table_name, record_id, old_values, new_values, ip_address, user_agent, created_at, tenant_id, branch_id) 
+            VALUES (?, 'add', 'main_account_transactions', ?, ?, ?, ?, ?, NOW(), ?, ?)
         ");
-        $activityStmt->execute([$user_id, $main_transaction_id, $old_values, $new_values, $ip_address, $user_agent, $tenant_id]);
+        $activityStmt->execute([$user_id, $main_transaction_id, $old_values, $new_values, $ip_address, $user_agent, $tenant_id, $branch_id]);
         
         echo json_encode([
             'success' => true,

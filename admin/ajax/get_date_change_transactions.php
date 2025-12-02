@@ -20,15 +20,17 @@ if (!isset($_GET['ticket_id'])) {
 }
 
 $ticketId = intval($_GET['ticket_id']);
+$tenant_id = $_SESSION['tenant_id'];
+$branch_id = $_SESSION['branch_id'];
 
 try {
     // Get ticket details
-    $ticketQuery = "SELECT t.*, c.name as client_name 
+    $ticketQuery = "SELECT t.*, c.name as client_name
                    FROM date_change_tickets t
-                   LEFT JOIN clients c ON t.sold_to = c.id
-                   WHERE t.id = ?";
+                   LEFT JOIN clients c ON t.sold_to = c.id AND c.tenant_id = ? AND c.branch_id = ?
+                   WHERE t.id = ? AND t.tenant_id = ? AND t.branch_id = ?";
     $stmt = $conn->prepare($ticketQuery);
-    $stmt->bind_param('i', $ticketId);
+    $stmt->bind_param('iiiii', $tenant_id, $branch_id, $ticketId, $tenant_id, $branch_id);
     $stmt->execute();
     $ticketResult = $stmt->get_result();
     $ticket = $ticketResult->fetch_assoc();
@@ -39,14 +41,14 @@ try {
     }
 
     // Get transactions
-    $transQuery = "SELECT t.*, m.name as account_name 
+    $transQuery = "SELECT t.*, m.name as account_name
                   FROM main_account_transactions t
-                  LEFT JOIN main_account m ON t.main_account_id = m.id
-                  WHERE t.transaction_of = 'date_change' 
-                  AND t.reference_id = ?
+                  LEFT JOIN main_account m ON t.main_account_id = m.id AND m.tenant_id = ? AND m.branch_id = ?
+                  WHERE t.transaction_of = 'date_change'
+                  AND t.reference_id = ? AND t.tenant_id = ? AND t.branch_id = ?
                   ORDER BY t.transaction_date DESC";
     $stmt = $conn->prepare($transQuery);
-    $stmt->bind_param('i', $ticketId);
+    $stmt->bind_param('iiiii', $tenant_id, $branch_id, $ticketId, $tenant_id, $branch_id);
     $stmt->execute();
     $transResult = $stmt->get_result();
     

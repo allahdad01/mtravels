@@ -25,6 +25,7 @@ require_once '../includes/conn.php';
 // Get the user ID from the session
 $user_id = $_SESSION["user_id"];
 $tenant_id = $_SESSION['tenant_id'];
+$branch_id = $_SESSION['branch_id'];
 // Query to fetch ticket weights with related information
 $weightsQuery = "
     SELECT 
@@ -48,7 +49,7 @@ $weightsQuery = "
     LEFT JOIN 
         clients c ON t.sold_to = c.id
     WHERE
-        tw.tenant_id = $tenant_id
+        tw.tenant_id = $tenant_id AND tw.branch_id = $branch_id
     ORDER BY 
         tw.created_at DESC
 ";
@@ -200,7 +201,7 @@ if ($weightsResult && $weightsResult->num_rows > 0) {
                                                                 $isAgencyClient = false;
 
                                                                 // Check client type
-                                                                $clientQuery = $conn->query("SELECT client_type FROM clients WHERE tenant_id = $tenant_id AND name = '$soldTo'");
+                                                                $clientQuery = $conn->query("SELECT client_type FROM clients WHERE tenant_id = $tenant_id AND branch_id = $branch_id AND name = '$soldTo'");
                                                                 if ($clientQuery && $clientQuery->num_rows > 0) {
                                                                     $clientRow = $clientQuery->fetch_assoc();
                                                                     $isAgencyClient = ($clientRow['client_type'] === 'agency');
@@ -214,10 +215,10 @@ if ($weightsResult && $weightsResult->num_rows > 0) {
                                                                     $weightId = $weight['id'];
 
                                                                     // Fetch transactions
-                                                                    $transactionQuery = $conn->query("SELECT * FROM main_account_transactions 
-                                                                        WHERE transaction_of = 'weight' 
-                                                                        AND reference_id = '$weightId' 
-                                                                        AND tenant_id = $tenant_id");
+                                                                    $transactionQuery = $conn->query("SELECT * FROM main_account_transactions
+                                                                        WHERE transaction_of = 'weight'
+                                                                        AND reference_id = '$weightId'
+                                                                        AND tenant_id = $tenant_id AND branch_id = $branch_id");
 
                                                                     if ($transactionQuery && $transactionQuery->num_rows > 0) {
                                                                         while ($transaction = $transactionQuery->fetch_assoc()) {
@@ -1401,7 +1402,7 @@ if ($weightsResult && $weightsResult->num_rows > 0) {
                                 // Fetch clients from database
                                 $clientQuery = "SELECT DISTINCT c.name FROM clients c
                                                INNER JOIN ticket_bookings t ON c.id = t.sold_to
-                                               WHERE t.tenant_id = $tenant_id
+                                               WHERE t.tenant_id = $tenant_id AND t.branch_id = $branch_id
                                                ORDER BY c.name ASC";
                                 $clientResult = $conn->query($clientQuery);
 

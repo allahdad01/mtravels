@@ -2,11 +2,13 @@
 // Include security module
 require_once 'security.php';
 $tenant_id = $_SESSION['tenant_id'];
+$branch_id = $_SESSION['branch_id'];
 // Enforce authentication
 enforce_auth();
 
 require_once('../includes/db.php');
 require_once('../vendor/autoload.php'); // Make sure you have PhpSpreadsheet installed
+$branch_id = $_SESSION['branch_id'];
 
 use PhpOffice\PhpSpreadsheet\Spreadsheet;
 use PhpOffice\PhpSpreadsheet\Writer\Xlsx;
@@ -40,13 +42,14 @@ try {
             // Tickets
             $sheet->setCellValue('A' . $row, 'Tickets');
             $stmt = $pdo->prepare("
-                SELECT SUM(profit) as total, currency 
-                FROM ticket_bookings 
+                SELECT SUM(profit) as total, currency
+                FROM ticket_bookings
                 WHERE created_at BETWEEN ? AND ?
                 AND tenant_id = ?
+                AND branch_id = ?
                 GROUP BY currency
             ");
-            $stmt->execute([$startDate, $endDate, $tenant_id]);
+            $stmt->execute([$startDate, $endDate, $tenant_id, $branch_id]);
             while($data = $stmt->fetch(PDO::FETCH_ASSOC)) {
                 $currency = $data['currency'] ?? 'USD';
                 $column = ($currency == 'USD') ? 'B' : 'C';
@@ -57,13 +60,14 @@ try {
             // Refunds
             $sheet->setCellValue('A' . $row, 'Refunds');
             $stmt = $pdo->prepare("
-                SELECT SUM(service_penalty) as total, currency 
-                FROM refunded_tickets 
+                SELECT SUM(service_penalty) as total, currency
+                FROM refunded_tickets
                 WHERE created_at BETWEEN ? AND ?
                 AND tenant_id = ?
+                AND branch_id = ?
                 GROUP BY currency
             ");
-            $stmt->execute([$startDate, $endDate, $tenant_id]);
+            $stmt->execute([$startDate, $endDate, $tenant_id, $branch_id]);
             while($data = $stmt->fetch(PDO::FETCH_ASSOC)) {
                 $currency = $data['currency'] ?? 'USD';
                 $column = ($currency == 'USD') ? 'B' : 'C';
@@ -74,13 +78,14 @@ try {
             // Date Changes
             $sheet->setCellValue('A' . $row, 'Date Changes');
             $stmt = $pdo->prepare("
-                SELECT SUM(service_penalty) as total, currency 
-                FROM date_change_tickets 
+                SELECT SUM(service_penalty) as total, currency
+                FROM date_change_tickets
                 WHERE created_at BETWEEN ? AND ?
                 AND tenant_id = ?
+                AND branch_id = ?
                 GROUP BY currency
             ");
-            $stmt->execute([$startDate, $endDate, $tenant_id]);
+            $stmt->execute([$startDate, $endDate, $tenant_id, $branch_id]);
             while($data = $stmt->fetch(PDO::FETCH_ASSOC)) {
                 $currency = $data['currency'] ?? 'USD';
                 $column = ($currency == 'USD') ? 'B' : 'C';
@@ -91,13 +96,14 @@ try {
             // Visa
             $sheet->setCellValue('A' . $row, 'Visa');
             $stmt = $pdo->prepare("
-                SELECT SUM(profit) as total, currency 
-                FROM visa_applications 
+                SELECT SUM(profit) as total, currency
+                FROM visa_applications
                 WHERE created_at BETWEEN ? AND ?
                 AND tenant_id = ?
+                AND branch_id = ?
                 GROUP BY currency
             ");
-            $stmt->execute([$startDate, $endDate, $tenant_id]);
+            $stmt->execute([$startDate, $endDate, $tenant_id, $branch_id]);
             while($data = $stmt->fetch(PDO::FETCH_ASSOC)) {
                 $currency = $data['currency'] ?? 'USD';
                 $column = ($currency == 'USD') ? 'B' : 'C';
@@ -108,13 +114,14 @@ try {
             // Umrah
             $sheet->setCellValue('A' . $row, 'Umrah');
             $stmt = $pdo->prepare("
-                SELECT SUM(profit) as total, currency 
-                FROM umrah_bookings 
+                SELECT SUM(profit) as total, currency
+                FROM umrah_bookings
                 WHERE created_at BETWEEN ? AND ?
                 AND tenant_id = ?
+                AND branch_id = ?
                 GROUP BY currency
             ");
-            $stmt->execute([$startDate, $endDate, $tenant_id]);
+            $stmt->execute([$startDate, $endDate, $tenant_id, $branch_id]);
             while($data = $stmt->fetch(PDO::FETCH_ASSOC)) {
                 $currency = $data['currency'] ?? 'USD';
                 $column = ($currency == 'USD') ? 'B' : 'C';
@@ -153,17 +160,18 @@ try {
 
             // Fetch expense data
             $stmt = $pdo->prepare("
-                SELECT 
+                SELECT
                     ec.name as Category,
                     SUM(CASE WHEN e.currency = 'USD' OR e.currency IS NULL THEN e.amount ELSE 0 END) as USD_Amount,
                     SUM(CASE WHEN e.currency = 'AFS' THEN e.amount ELSE 0 END) as AFS_Amount
                 FROM expense_categories ec
-                LEFT JOIN expenses e ON e.category_id = ec.id 
+                LEFT JOIN expenses e ON e.category_id = ec.id
                 WHERE (e.date BETWEEN ? AND ? OR e.date IS NULL)
                 AND e.tenant_id = ?
+                AND e.branch_id = ?
                 GROUP BY ec.id, ec.name
             ");
-            $stmt->execute([$startDate, $endDate, $tenant_id]);
+            $stmt->execute([$startDate, $endDate, $tenant_id, $branch_id]);
             
             $row = 2;
             while($data = $stmt->fetch(PDO::FETCH_ASSOC)) {

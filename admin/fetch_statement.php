@@ -5,6 +5,7 @@ require_once 'includes/db_security.php';
 // Include security module
 require_once 'security.php';
 $tenant_id = $_SESSION['tenant_id'];
+$branch_id = $_SESSION['branch_id'];
 // Enforce authentication
 enforce_auth();
 
@@ -135,11 +136,11 @@ $entityType = isset($_POST['entityType']) ? DbSecurity::validateInput($_POST['en
                 WHERE ct.client_id = ?
                 AND ct.currency = ?
                 AND DATE(ct.created_at) BETWEEN ? AND ?
-                AND ct.tenant_id = ?
+                AND ct.tenant_id = ? AND ct.branch_id = ?
                 ORDER BY ct.created_at ASC, ct.id ASC";
 
             $stmt = $pdo->prepare($transactionsQuery);
-            $stmt->execute([$entity, $currency, $startDate, $endDate, $tenant_id]);
+            $stmt->execute([$entity, $currency, $startDate, $endDate, $tenant_id, $branch_id]);
             $transactions = $stmt->fetchAll(PDO::FETCH_ASSOC);
             break;
 
@@ -215,11 +216,11 @@ $entityType = isset($_POST['entityType']) ? DbSecurity::validateInput($_POST['en
                 LEFT JOIN users usr ON usr.id = st.reference_id AND st.transaction_of = 'fund'
                 WHERE st.supplier_id = ?
                 AND DATE(st.transaction_date) BETWEEN ? AND ?
-                AND st.tenant_id = ?
+                AND st.tenant_id = ? AND st.branch_id = ?
                 ORDER BY st.transaction_date ASC, st.id ASC";
 
             $stmt = $pdo->prepare($transactionsQuery);
-            $stmt->execute([$entity, $startDate, $endDate, $tenant_id]);
+            $stmt->execute([$entity, $startDate, $endDate, $tenant_id, $branch_id]);
             $transactions = $stmt->fetchAll(PDO::FETCH_ASSOC);
             break;
 
@@ -296,11 +297,11 @@ $entityType = isset($_POST['entityType']) ? DbSecurity::validateInput($_POST['en
                 WHERE mt.main_account_id = ?
                 AND mt.currency = ?
                 AND DATE(mt.created_at) BETWEEN ? AND ?
-                AND mt.tenant_id = ?
+                AND mt.tenant_id = ? AND mt.branch_id = ?
                 ORDER BY mt.created_at ASC, mt.id ASC";
 
             $stmt = $pdo->prepare($transactionsQuery);
-            $stmt->execute([$entity, $currency, $startDate, $endDate, $tenant_id]);
+            $stmt->execute([$entity, $currency, $startDate, $endDate, $tenant_id, $branch_id]);
             $transactions = $stmt->fetchAll(PDO::FETCH_ASSOC);
             break;
 

@@ -5,6 +5,7 @@ require_once 'includes/db_security.php';
 // Include security module
 require_once 'security.php';
 $tenant_id = $_SESSION['tenant_id'];
+$branch_id = $_SESSION['branch_id'];
 // Enforce authentication
 enforce_auth();
 
@@ -56,13 +57,13 @@ if ($_SERVER["REQUEST_METHOD"] === "POST") {
 
     // Prepare SQL query
     $stmt = $conn->prepare("
-        INSERT INTO clients (name, email, client_type,password_hash, phone, usd_balance, afs_balance, address, tenant_id)
-        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
+        INSERT INTO clients (name, email, client_type,password_hash, phone, usd_balance, afs_balance, address, tenant_id, branch_id)
+        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
     ");
 
     // Bind parameters
     $stmt->bind_param(
-        'sssssddsi',  // 's' for strings, 'd' for doubles (for numeric values like balance)
+        'sssssddsii',  // 's' for strings, 'd' for doubles (for numeric values like balance)
         $name, 
         $email,
         $clientType, 
@@ -71,7 +72,8 @@ if ($_SERVER["REQUEST_METHOD"] === "POST") {
         $usd_balance, 
         $afs_balance, 
         $address,
-        $tenant_id
+        $tenant_id,
+        $branch_id
     );
 
     // Execute the query and handle success or failure
@@ -99,10 +101,10 @@ if ($_SERVER["REQUEST_METHOD"] === "POST") {
         
         $stmt_log = $conn->prepare("
             INSERT INTO activity_log 
-            (user_id, action, table_name, record_id, old_values, new_values, ip_address, user_agent, created_at, tenant_id) 
-            VALUES (?, 'add', 'clients', ?, ?, ?, ?, ?, NOW(), ?)
+            (user_id, action, table_name, record_id, old_values, new_values, ip_address, user_agent, created_at, tenant_id, branch_id) 
+            VALUES (?, 'add', 'clients', ?, ?, ?, ?, ?, NOW(), ?, ?)
         ");
-        $stmt_log->bind_param("iissssi", $user_id, $client_id, $old_values, $new_values, $ip_address, $user_agent, $tenant_id);
+        $stmt_log->bind_param("iissssii", $user_id, $client_id, $old_values, $new_values, $ip_address, $user_agent, $tenant_id, $branch_id);
         $stmt_log->execute();
         $stmt_log->close();
 

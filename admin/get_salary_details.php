@@ -2,6 +2,7 @@
 // Initialize the session
 session_start();
 $tenant_id = $_SESSION['tenant_id'];
+$branch_id = $_SESSION['branch_id'];
 // Prevent any unwanted output
 error_reporting(0);
 ini_set('display_errors', 0);
@@ -26,10 +27,10 @@ if (!$user_id || !$currency) {
 
 try {
     // First check if salary has already been paid for this month
-    $payment_check_sql = "SELECT id, amount, payment_date 
-                         FROM salary_payments 
-                         WHERE user_id = ? AND tenant_id = ?
-                         AND currency = ? 
+    $payment_check_sql = "SELECT id, amount, payment_date
+                         FROM salary_payments
+                         WHERE user_id = ? AND tenant_id = ? AND branch_id = ?
+                         AND currency = ?
                          AND payment_type = 'regular'
                          AND DATE_FORMAT(payment_for_month, '%Y-%m') = ?";
                     
@@ -37,7 +38,7 @@ try {
         throw new Exception("Prepare failed for payment check: " . mysqli_error($conection_db));
     }
     
-    if (!mysqli_stmt_bind_param($payment_check_stmt, "iiss", $user_id, $tenant_id, $currency, $payment_for_month)) {
+    if (!mysqli_stmt_bind_param($payment_check_stmt, "iiiss", $user_id, $tenant_id, $branch_id, $currency, $payment_for_month)) {
         throw new Exception("Bind param failed for payment check: " . mysqli_stmt_error($payment_check_stmt));
     }
     
@@ -53,17 +54,17 @@ try {
     $existing_payment = mysqli_fetch_assoc($payment_check_result);
 
     // Get total advances for this month
-    $advance_sql = "SELECT COALESCE(SUM(amount), 0) as total_advances 
-                    FROM salary_advances 
-                    WHERE user_id = ? AND tenant_id = ?
-                    AND currency = ? 
-                    AND DATE_FORMAT(created_at, '%Y-%m') = ?";
+    $advance_sql = "SELECT COALESCE(SUM(amount), 0) as total_advances
+                   FROM salary_advances
+                   WHERE user_id = ? AND tenant_id = ? AND branch_id = ?
+                   AND currency = ?
+                   AND DATE_FORMAT(created_at, '%Y-%m') = ?";
                     
     if (!($advance_stmt = mysqli_prepare($conection_db, $advance_sql))) {
         throw new Exception("Prepare failed for advances: " . mysqli_error($conection_db));
     }
     
-    if (!mysqli_stmt_bind_param($advance_stmt, "iiss", $user_id, $tenant_id, $currency, $payment_for_month)) {
+    if (!mysqli_stmt_bind_param($advance_stmt, "iiiss", $user_id, $tenant_id, $branch_id, $currency, $payment_for_month)) {
         throw new Exception("Bind param failed for advances: " . mysqli_stmt_error($advance_stmt));
     }
     
@@ -80,16 +81,16 @@ try {
     $totalAdvances = floatval($advance_row['total_advances']);
 
     // Get total deductions for this month
-    $deduction_sql = "SELECT COALESCE(SUM(amount), 0) as total_deductions 
-                      FROM salary_deductions 
-                      WHERE user_id = ? AND tenant_id = ?
-                      AND DATE_FORMAT(deduction_date, '%Y-%m') = ?";
+    $deduction_sql = "SELECT COALESCE(SUM(amount), 0) as total_deductions
+                     FROM salary_deductions
+                     WHERE user_id = ? AND tenant_id = ? AND branch_id = ?
+                     AND DATE_FORMAT(deduction_date, '%Y-%m') = ?";
                       
     if (!($deduction_stmt = mysqli_prepare($conection_db, $deduction_sql))) {
         throw new Exception("Prepare failed for deductions: " . mysqli_error($conection_db));
     }
     
-    if (!mysqli_stmt_bind_param($deduction_stmt, "iis", $user_id, $tenant_id, $payment_for_month)) {
+    if (!mysqli_stmt_bind_param($deduction_stmt, "iiis", $user_id, $tenant_id, $branch_id, $payment_for_month)) {
         throw new Exception("Bind param failed for deductions: " . mysqli_stmt_error($deduction_stmt));
     }
     
@@ -106,16 +107,16 @@ try {
     $totalDeductions = floatval($deduction_row['total_deductions']);
 
     // Get total bonuses for this month
-    $bonus_sql = "SELECT COALESCE(SUM(amount), 0) as total_bonuses 
-                  FROM salary_bonuses 
-                  WHERE user_id = ? AND tenant_id = ?
-                  AND DATE_FORMAT(bonus_date, '%Y-%m') = ?";
+    $bonus_sql = "SELECT COALESCE(SUM(amount), 0) as total_bonuses
+                 FROM salary_bonuses
+                 WHERE user_id = ? AND tenant_id = ? AND branch_id = ?
+                 AND DATE_FORMAT(bonus_date, '%Y-%m') = ?";
                   
     if (!($bonus_stmt = mysqli_prepare($conection_db, $bonus_sql))) {
         throw new Exception("Prepare failed for bonuses: " . mysqli_error($conection_db));
     }
     
-    if (!mysqli_stmt_bind_param($bonus_stmt, "iis", $user_id, $tenant_id, $payment_for_month)) {
+    if (!mysqli_stmt_bind_param($bonus_stmt, "iiis", $user_id, $tenant_id, $branch_id, $payment_for_month)) {
         throw new Exception("Bind param failed for bonuses: " . mysqli_stmt_error($bonus_stmt));
     }
     

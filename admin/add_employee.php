@@ -9,7 +9,7 @@ if (session_status() === PHP_SESSION_NONE) {
 }
 
 $tenant_id = $_SESSION['tenant_id'];
-
+$branch_id = $_SESSION['branch_id'];
 // Check if user is logged in and is admin
 if (!isset($_SESSION['user_id']) || $_SESSION['role'] !== 'admin') {
     header('Location: ../login.php');
@@ -43,7 +43,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             $errors[] = __('invalid_email_format');
         } else {
             // Check if email already exists
-            $stmt = $pdo->prepare("SELECT id FROM users WHERE email = ? AND tenant_id = ?");
+            $stmt = $pdo->prepare("SELECT id FROM users WHERE email = ? AND tenant_id = ? And branch_id = ?");
             $stmt->execute([$email, $tenant_id]);
             if ($stmt->fetch()) {
                 $errors[] = __('email_already_exists');
@@ -76,10 +76,10 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 $stmt = $pdo->prepare("
                     INSERT INTO users (
                         name, email, phone, password, role, hire_date, address,
-                        tenant_id, created_at, updated_at
-                    ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, NOW(), NOW())
+                        tenant_id, created_at, updated_at, branch_id
+                    ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, NOW(), NOW(), ?)
                 ");
-                $stmt->execute([$name, $email, $phone, $hashed_password, $role, $hire_date, $address, $tenant_id]);
+                $stmt->execute([$name, $email, $phone, $hashed_password, $role, $hire_date, $address, $tenant_id, $branch_id]);
 
                 $user_id = $pdo->lastInsertId();
 
@@ -87,8 +87,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 $logStmt = $pdo->prepare("
                     INSERT INTO activity_log (
                         user_id, action, table_name, record_id,
-                        old_values, new_values, ip_address, user_agent, created_at, tenant_id
-                    ) VALUES (?, 'add_employee', 'users', ?, ?, ?, ?, ?, NOW(), ?)
+                        old_values, new_values, ip_address, user_agent, created_at, tenant_id, branch_id
+                    ) VALUES (?, 'add_employee', 'users', ?, ?, ?, ?, ?, NOW(), ?, ?)
                 ");
 
                 $new_values = json_encode([
@@ -107,7 +107,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                     $new_values,
                     $_SERVER['REMOTE_ADDR'],
                     $_SERVER['HTTP_USER_AGENT'],
-                    $tenant_id
+                    $tenant_id,
+                    $branch_id
                 ]);
 
                 $pdo->commit();

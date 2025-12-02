@@ -6,6 +6,7 @@ if (session_status() === PHP_SESSION_NONE) {
 // Include security module
 require_once 'security.php';
 $tenant_id = $_SESSION['tenant_id'];
+$branch_id = $_SESSION['branch_id'];
 
 // Include language helper
 require_once '../includes/language_helpers.php';
@@ -116,7 +117,7 @@ $version = '?v=' . time();
                                                         $soldTo = $ticket['sold_to_name'];
                                                         $isAgencyClient = false;
 
-                                                        $clientQuery = $conn->query("SELECT client_type FROM clients WHERE name = '$soldTo'");
+                                                        $clientQuery = $conn->query("SELECT client_type FROM clients WHERE name = '$soldTo' AND tenant_id = $tenant_id AND branch_id = $branch_id");
                                                         if ($clientQuery && $clientQuery->num_rows > 0) {
                                                             $clientRow = $clientQuery->fetch_assoc();
                                                             $isAgencyClient = ($clientRow['client_type'] === 'agency');
@@ -192,7 +193,7 @@ $version = '?v=' . time();
 $soldTo = $ticket['sold_to_name'];
 $isAgencyClient = false;
 
-$clientQuery = $conn->query("SELECT client_type FROM clients WHERE name = '$soldTo'");
+$clientQuery = $conn->query("SELECT client_type FROM clients WHERE name = '$soldTo' AND tenant_id = $tenant_id AND branch_id = $branch_id");
 if ($clientQuery && $clientQuery->num_rows > 0) {
     $clientRow = $clientQuery->fetch_assoc();
     $isAgencyClient = ($clientRow['client_type'] === 'agency');
@@ -209,7 +210,7 @@ if ($isAgencyClient) {
     // Query transactions from main_account_transactions table
     $transactionQuery = $conn->query("SELECT * FROM main_account_transactions WHERE
         transaction_of = 'ticket_refund'
-        AND reference_id = '$ticketId'");
+        AND reference_id = '$ticketId' AND tenant_id = $tenant_id AND branch_id = $branch_id");
 
     if ($transactionQuery && $transactionQuery->num_rows > 0) {
         while ($transaction = $transactionQuery->fetch_assoc()) {
@@ -795,7 +796,7 @@ if ($isAgencyClient) {
                             <option value=""><?= __('all_clients') ?></option>
                             <?php
                             // Fetch clients for the filter dropdown
-                            $clientsQuery = "SELECT id, name FROM clients ORDER BY name";
+                            $clientsQuery = "SELECT id, name FROM clients WHERE tenant_id = $tenant_id AND branch_id = $branch_id ORDER BY name";
                             $clientsResult = $conn->query($clientsQuery);
                             while ($client = $clientsResult->fetch_assoc()) {
                                 echo "<option value='" . htmlspecialchars($client['id']) . "'>" . 

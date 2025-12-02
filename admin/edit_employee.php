@@ -9,7 +9,7 @@ if (session_status() === PHP_SESSION_NONE) {
 }
 
 $tenant_id = $_SESSION['tenant_id'];
-
+$branch_id = $_SESSION['branch_id'];
 // Check if user is logged in and is admin
 if (!isset($_SESSION['user_id']) || $_SESSION['role'] !== 'admin') {
     header('Location: ../login.php');
@@ -29,9 +29,9 @@ $stmt = $pdo->prepare("
     SELECT u.*, sm.base_salary, sm.currency as salary_currency, sm.status as salary_status
     FROM users u
     LEFT JOIN salary_management sm ON u.id = sm.user_id AND sm.tenant_id = u.tenant_id
-    WHERE u.id = ? AND u.tenant_id = ? AND u.role != 'super_admin'
+    WHERE u.id = ? AND u.tenant_id = ? AND branch_id = ? AND u.role != 'super_admin'
 ");
-$stmt->execute([$employee_id, $tenant_id]);
+$stmt->execute([$employee_id, $tenant_id, $branch_id]);
 $employee = $stmt->fetch(PDO::FETCH_ASSOC);
 
 if (!$employee) {
@@ -66,8 +66,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             $errors[] = __('invalid_email_format');
         } else {
             // Check if email already exists (excluding current user)
-            $stmt = $pdo->prepare("SELECT id FROM users WHERE email = ? AND tenant_id = ? AND id != ?");
-            $stmt->execute([$email, $tenant_id, $employee_id]);
+            $stmt = $pdo->prepare("SELECT id FROM users WHERE email = ? AND tenant_id = ? AND branch_id = ? AND id != ?");
+            $stmt->execute([$email, $tenant_id, $branch_id, $employee_id]);
             if ($stmt->fetch()) {
                 $errors[] = __('email_already_exists');
             }
@@ -138,15 +138,16 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                         if (move_uploaded_file($_FILES['user_documents']['tmp_name'][$key], $upload_path)) {
                             // Save document info to database
                             $doc_stmt = $pdo->prepare("
-                                INSERT INTO user_documents (user_id, filename, original_name, file_type, uploaded_at, tenant_id)
-                                VALUES (?, ?, ?, ?, NOW(), ?)
+                                INSERT INTO user_documents (user_id, filename, original_name, file_type, uploaded_at, tenant_id, branch_id)
+                                VALUES (?, ?, ?, ?, NOW(), ?, ?)
                             ");
                             $doc_stmt->execute([
                                 $employee_id,
                                 $new_filename,
                                 $filename,
                                 $file_extension,
-                                $tenant_id
+                                $tenant_id,
+                                $branch_id
                             ]);
                         }
                     }
@@ -173,7 +174,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                     UPDATE users
                     SET name = ?, email = ?, phone = ?, role = ?, hire_date = ?, address = ?, profile_pic = ?
                     {$password_sql}
-                    WHERE id = ? AND tenant_id = ?
+                    WHERE id = ? AND tenant_id = ? AND branch_id = ?
                 ");
 
                 $params = [$name, $email, $phone, $role, $hire_date, $address, $profile_pic_path];
@@ -182,6 +183,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 }
                 $params[] = $employee_id;
                 $params[] = $tenant_id;
+                $params[] = $branch_id;
 
                 $stmt->execute($params);
 
@@ -189,8 +191,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 $logStmt = $pdo->prepare("
                     INSERT INTO activity_log (
                         user_id, action, table_name, record_id,
-                        old_values, new_values, ip_address, user_agent, created_at, tenant_id
-                    ) VALUES (?, 'update_employee', 'users', ?, ?, ?, ?, ?, NOW(), ?)
+                        old_values, new_values, ip_address, user_agent, created_at, tenant_id, branch_id
+                    ) VALUES (?, 'update_employee', 'users', ?, ?, ?, ?, ?, NOW(), ?, ?)
                 ");
 
                 $old_values = json_encode([
@@ -220,7 +222,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                     $new_values,
                     $_SERVER['REMOTE_ADDR'],
                     $_SERVER['HTTP_USER_AGENT'],
-                    $tenant_id
+                    $tenant_id,
+                    $branch_id
                 ]);
 
                 $pdo->commit();
@@ -251,10 +254,10 @@ $documents = [];
 try {
     $doc_stmt = $pdo->prepare("
         SELECT * FROM user_documents
-        WHERE user_id = ? AND tenant_id = ?
+        WHERE user_id = ? AND tenant_id = ? AND branch_id = ?
         ORDER BY uploaded_at DESC
     ");
-    $doc_stmt->execute([$employee_id, $tenant_id]);
+    $doc_stmt->execute([$employee_id, $tenant_id, $branch_id]);
     $documents = $doc_stmt->fetchAll(PDO::FETCH_ASSOC);
 } catch (Exception $e) {
     // Handle error silently

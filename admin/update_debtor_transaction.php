@@ -8,6 +8,7 @@ require_once 'security.php';
 // Enforce authentication
 enforce_auth();
 $tenant_id = $_SESSION['tenant_id'];
+$branch_id = $_SESSION['branch_id'];
 // Check if user is logged in
 if (!isset($_SESSION['user_id'])) {
     header('HTTP/1.1 403 Forbidden');
@@ -58,11 +59,11 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     
     try {
         // Get transaction details before update
-        $stmt = $conn->prepare("SELECT dt.*, mat.id as main_transaction_id, mat.main_account_id 
-                               FROM debtor_transactions dt 
-                               LEFT JOIN main_account_transactions mat ON mat.reference_id = dt.id AND mat.transaction_of = 'debtor' 
-                               WHERE dt.id = ? AND dt.tenant_id = ?");
-        $stmt->bind_param("ii", $transactionId, $tenant_id);
+        $stmt = $conn->prepare("SELECT dt.*, mat.id as main_transaction_id, mat.main_account_id
+                               FROM debtor_transactions dt
+                               LEFT JOIN main_account_transactions mat ON mat.reference_id = dt.id AND mat.transaction_of = 'debtor' AND mat.tenant_id = dt.tenant_id AND mat.branch_id = dt.branch_id
+                               WHERE dt.id = ? AND dt.tenant_id = ? AND dt.branch_id = ?");
+        $stmt->bind_param("iii", $transactionId, $tenant_id, $branch_id);
         $stmt->execute();
         $result = $stmt->get_result();
         
@@ -81,8 +82,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         $amountDifference = $newAmount - $originalAmount;
         
         // Get the debtor's current balance
-        $stmt = $conn->prepare("SELECT balance, currency FROM debtors WHERE id = ? AND tenant_id = ?");
-        $stmt->bind_param("ii", $debtorId, $tenant_id);
+        $stmt = $conn->prepare("SELECT balance, currency FROM debtors WHERE id = ? AND tenant_id = ? AND branch_id = ?");
+        $stmt->bind_param("iii", $debtorId, $tenant_id, $branch_id);
         $stmt->execute();
         $result = $stmt->get_result();
         $debtor = $result->fetch_assoc();
@@ -106,8 +107,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         $stmt->execute();
         
         // Update the debtor transaction
-        $stmt = $conn->prepare("UPDATE debtor_transactions SET amount = ?, description = ?, created_at = ? WHERE id = ? AND tenant_id = ?");
-        $stmt->bind_param("dssii", $newAmount, $newDescription, $newDateTime, $transactionId, $tenant_id);
+        $stmt = $conn->prepare("UPDATE debtor_transactions SET amount = ?, description = ?, created_at = ? WHERE id = ? AND tenant_id = ? AND branch_id = ?");
+        $stmt->bind_param("dssiis", $newAmount, $newDescription, $newDateTime, $transactionId, $tenant_id, $branch_id);
         if (!$stmt->execute()) {
             throw new Exception("Failed to update debtor transaction: " . $stmt->error);
         }
@@ -131,8 +132,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             $balanceField = $currencyFieldMap[$currency];
             
             // Update main account transaction
-            $stmt = $conn->prepare("SELECT amount, balance, created_at FROM main_account_transactions WHERE id = ? AND tenant_id = ?");
-            $stmt->bind_param("ii", $mainTransactionId, $tenant_id);
+            $stmt = $conn->prepare("SELECT amount, balance, created_at FROM main_account_transactions WHERE id = ? AND tenant_id = ? AND branch_id = ?");
+            $stmt->bind_param("iii", $mainTransactionId, $tenant_id, $branch_id);
             $stmt->execute();
             $result = $stmt->get_result();
             $mainTransaction = $result->fetch_assoc();
@@ -146,8 +147,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             $mainBalanceAdjustment = ($transactionType == 'credit') ? $amountDifference : -$amountDifference;
             
             // Update main account balance
-            $stmt = $conn->prepare("UPDATE main_account SET $balanceField = $balanceField + ? WHERE id = ? AND tenant_id = ?");
-            $stmt->bind_param("dii", $mainBalanceAdjustment, $mainAccountId, $tenant_id);
+            $stmt = $conn->prepare("UPDATE main_account SET $balanceField = $balanceField + ? WHERE id = ? AND tenant_id = ? AND branch_id = ?");
+            $stmt->bind_param("diii", $mainBalanceAdjustment, $mainAccountId, $tenant_id, $branch_id);
             if (!$stmt->execute()) {
                 throw new Exception("Failed to update main account balance: " . $stmt->error);
             }
@@ -160,18 +161,18 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 // We need to reorder transactions and recalculate all balances
                 
                 // First update the transaction date
-                $stmt = $conn->prepare("UPDATE main_account_transactions SET amount = ?, description = ?, created_at = ? WHERE id = ? AND tenant_id = ?");
-                $stmt->bind_param("dssii", $newAmount, $newDescription, $newDateTime, $mainTransactionId, $tenant_id);
+                $stmt = $conn->prepare("UPDATE main_account_transactions SET amount = ?, description = ?, created_at = ? WHERE id = ? AND tenant_id = ? AND branch_id = ?");
+                $stmt->bind_param("dssiis", $newAmount, $newDescription, $newDateTime, $mainTransactionId, $tenant_id, $branch_id);
                 if (!$stmt->execute()) {
                     throw new Exception("Failed to update main account transaction: " . $stmt->error);
                 }
                 
                 // Now get all transactions for this account and currency, ordered by date
-                $stmt = $conn->prepare("SELECT id, amount, type, created_at 
-                                       FROM main_account_transactions 
-                                       WHERE main_account_id = ? AND currency = ? AND tenant_id = ?
+                $stmt = $conn->prepare("SELECT id, amount, type, created_at
+                                       FROM main_account_transactions
+                                       WHERE main_account_id = ? AND currency = ? AND tenant_id = ? AND branch_id = ?
                                        ORDER BY created_at ASC, id ASC");
-                $stmt->bind_param("isi", $mainAccountId, $currency, $tenant_id);
+                $stmt->bind_param("isii", $mainAccountId, $currency, $tenant_id, $branch_id);
                 
                 if (!$stmt->execute()) {
                     throw new Exception("Failed to retrieve transactions for reordering: " . $stmt->error);
@@ -191,8 +192,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                     }
                     
                     // Update the balance for this transaction
-                    $updateStmt = $conn->prepare("UPDATE main_account_transactions SET balance = ? WHERE id = ? AND tenant_id = ?");
-                    $updateStmt->bind_param("dii", $runningBalance, $tx['id'], $tenant_id);
+                    $updateStmt = $conn->prepare("UPDATE main_account_transactions SET balance = ? WHERE id = ? AND tenant_id = ? AND branch_id = ?");
+                    $updateStmt->bind_param("diii", $runningBalance, $tx['id'], $tenant_id, $branch_id);
                     
                     if (!$updateStmt->execute()) {
                         throw new Exception("Failed to update transaction balance during reordering: " . $updateStmt->error);
@@ -202,23 +203,24 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 // If date hasn't changed, just update amount and description, and handle balance adjustments
                 
                 // Update subsequent main account transaction balances
-                $updateSubsequentQuery = "UPDATE main_account_transactions 
-                                         SET balance = balance + ? 
-                                         WHERE main_account_id = ? 
-                                         AND currency = ? 
+                $updateSubsequentQuery = "UPDATE main_account_transactions
+                                         SET balance = balance + ?
+                                         WHERE main_account_id = ?
+                                         AND currency = ?
                                          AND id > ?
                                          AND id != ?
-                                         AND tenant_id = ?";
+                                         AND tenant_id = ?
+                                         AND branch_id = ?";
                 $updateSubsequentStmt = $conn->prepare($updateSubsequentQuery);
-                $updateSubsequentStmt->bind_param("disiii", $mainBalanceAdjustment, $mainAccountId, $currency, $mainTransactionId, $mainTransactionId, $tenant_id);
+                $updateSubsequentStmt->bind_param("disiiii", $mainBalanceAdjustment, $mainAccountId, $currency, $mainTransactionId, $mainTransactionId, $tenant_id, $branch_id);
                 if (!$updateSubsequentStmt->execute()) {
                     throw new Exception("Failed to update subsequent transactions: " . $updateSubsequentStmt->error);
                 }
                 
                 // Update the main transaction
                 $newMainBalance = $mainTransaction['balance'] + $mainBalanceAdjustment;
-                $stmt = $conn->prepare("UPDATE main_account_transactions SET amount = ?, balance = ?, description = ?, created_at = ? WHERE id = ? AND tenant_id = ?");
-                $stmt->bind_param("ddssii", $newAmount, $newMainBalance, $newDescription, $newDateTime, $mainTransactionId, $tenant_id);
+                $stmt = $conn->prepare("UPDATE main_account_transactions SET amount = ?, balance = ?, description = ?, created_at = ? WHERE id = ? AND tenant_id = ? AND branch_id = ?");
+                $stmt->bind_param("ddssiis", $newAmount, $newMainBalance, $newDescription, $newDateTime, $mainTransactionId, $tenant_id, $branch_id);
                 if (!$stmt->execute()) {
                     throw new Exception("Failed to update main account transaction: " . $stmt->error);
                 }
@@ -254,19 +256,20 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         $new_values_json = json_encode($new_values);
         
         // Insert activity log
-        $activity_log_stmt = $conn->prepare("INSERT INTO activity_log 
-            (user_id, action, table_name, record_id, old_values, new_values, ip_address, user_agent, tenant_id) 
-            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)");
-        $activity_log_stmt->bind_param("isisssssi", 
-            $user_id, 
-            $action, 
-            $table_name, 
-            $transactionId, 
-            $old_values_json, 
-            $new_values_json, 
-            $ip_address, 
+        $activity_log_stmt = $conn->prepare("INSERT INTO activity_log
+            (user_id, action, table_name, record_id, old_values, new_values, ip_address, user_agent, tenant_id, branch_id)
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)");
+        $activity_log_stmt->bind_param("isisssssis",
+            $user_id,
+            $action,
+            $table_name,
+            $transactionId,
+            $old_values_json,
+            $new_values_json,
+            $ip_address,
             $user_agent,
-            $tenant_id
+            $tenant_id,
+            $branch_id
         );
         $activity_log_stmt->execute();
         

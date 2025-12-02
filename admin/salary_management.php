@@ -7,14 +7,15 @@ if (!isset($_SESSION['user_id']) || $_SESSION['role'] !== 'admin') {
     exit();
 }
 $tenant_id = $_SESSION['tenant_id'];
+$branch_id = $_SESSION['branch_id'];
 
 // Include config file
 require_once "../includes/db.php"; // assumes both $pdo and $conection_db are set here
 
 // Fetch logged-in user (only from same tenant)
 try {
-    $stmt = $pdo->prepare("SELECT * FROM users WHERE id = ? AND tenant_id = ?");
-    $stmt->execute([$_SESSION['user_id'], $tenant_id]);
+    $stmt = $pdo->prepare("SELECT * FROM users WHERE id = ? AND tenant_id = ? AND branch_id = ?");
+    $stmt->execute([$_SESSION['user_id'], $tenant_id, $branch_id]);
     $user = $stmt->fetch(PDO::FETCH_ASSOC);
 } catch (PDOException $e) {
     error_log("Database Error in dashboard.php: " . $e->getMessage());
@@ -42,19 +43,19 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
         $fired = isset($_POST["fired"]) ? intval($_POST["fired"]) : 0;
 
         if (empty($base_salary_err)) {
-            $sql_salary = "UPDATE salary_management 
-                           SET base_salary = ?, currency = ?, payment_day = ?, status = ?, updated_at = CURRENT_TIMESTAMP 
-                           WHERE user_id = ? AND tenant_id = ?";
+            $sql_salary = "UPDATE salary_management
+                           SET base_salary = ?, currency = ?, payment_day = ?, status = ?, updated_at = CURRENT_TIMESTAMP
+                           WHERE user_id = ? AND tenant_id = ? AND branch_id = ?";
 
-            $sql_user = "UPDATE users 
-                         SET fired = ?, fired_at = CURRENT_TIMESTAMP 
-                         WHERE id = ? AND tenant_id = ?";
+            $sql_user = "UPDATE users
+                          SET fired = ?, fired_at = CURRENT_TIMESTAMP
+                          WHERE id = ? AND tenant_id = ? AND branch_id = ?";
 
             try {
                 mysqli_begin_transaction($conection_db);
 
                 if ($stmt_salary = mysqli_prepare($conection_db, $sql_salary)) {
-                    mysqli_stmt_bind_param($stmt_salary, "dsssii", $base_salary, $currency, $payment_day, $status, $user_id, $tenant_id);
+                    mysqli_stmt_bind_param($stmt_salary, "dsssiii", $base_salary, $currency, $payment_day, $status, $user_id, $tenant_id, $branch_id);
                     if (!mysqli_stmt_execute($stmt_salary)) {
                         throw new Exception("Error updating salary management");
                     }
@@ -62,7 +63,7 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
                 }
 
                 if ($stmt_user = mysqli_prepare($conection_db, $sql_user)) {
-                    mysqli_stmt_bind_param($stmt_user, "iii", $fired, $user_id, $tenant_id);
+                    mysqli_stmt_bind_param($stmt_user, "iiii", $fired, $user_id, $tenant_id, $branch_id);
                     if (!mysqli_stmt_execute($stmt_user)) {
                         throw new Exception("Error updating user fired status");
                     }
@@ -85,9 +86,9 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
         } else {
             $user_id = $_POST["user_id"];
 
-            $sql = "SELECT id FROM salary_management WHERE user_id = ? AND tenant_id = ?";
+            $sql = "SELECT id FROM salary_management WHERE user_id = ? AND tenant_id = ? AND branch_id = ?";
             if ($stmt = mysqli_prepare($conection_db, $sql)) {
-                mysqli_stmt_bind_param($stmt, "ii", $user_id, $tenant_id);
+                mysqli_stmt_bind_param($stmt, "iii", $user_id, $tenant_id, $branch_id);
                 if (mysqli_stmt_execute($stmt)) {
                     mysqli_stmt_store_result($stmt);
                     if (mysqli_stmt_num_rows($stmt) == 1) {
@@ -114,11 +115,11 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
         $payment_day = $_POST["payment_day"];
 
         if (empty($user_id_err) && empty($base_salary_err) && empty($joining_date_err)) {
-            $sql = "INSERT INTO salary_management (user_id, base_salary, currency, joining_date, payment_day, tenant_id) 
-                    VALUES (?, ?, ?, ?, ?, ?)";
+            $sql = "INSERT INTO salary_management (user_id, base_salary, currency, joining_date, payment_day, tenant_id, branch_id)
+                    VALUES (?, ?, ?, ?, ?, ?, ?)";
 
             if ($stmt = mysqli_prepare($conection_db, $sql)) {
-                mysqli_stmt_bind_param($stmt, "idssii", $user_id, $base_salary, $currency, $joining_date, $payment_day, $tenant_id);
+                mysqli_stmt_bind_param($stmt, "idssiid", $user_id, $base_salary, $currency, $joining_date, $payment_day, $tenant_id, $branch_id);
                 if (mysqli_stmt_execute($stmt)) {
                     header("location: salary_management.php");
                     exit();
@@ -137,13 +138,13 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
 // Fetch current tenant's salary records
 try {
     $stmt = $pdo->prepare("
-        SELECT sm.*, u.username, u.email 
+        SELECT sm.*, u.username, u.email
         FROM salary_management sm
         JOIN users u ON sm.user_id = u.id
-        WHERE sm.tenant_id = ?
+        WHERE sm.tenant_id = ? AND sm.branch_id = ?
         ORDER BY u.username ASC
     ");
-    $stmt->execute([$tenant_id]);
+    $stmt->execute([$tenant_id, $branch_id]);
     $salaries = $stmt->fetchAll(PDO::FETCH_ASSOC);
 } catch (PDOException $e) {
     error_log("Error fetching salaries: " . $e->getMessage());
@@ -152,8 +153,8 @@ try {
 
 // Fetch only tenant's users for dropdown
 try {
-    $stmt = $pdo->prepare("SELECT id, username FROM users WHERE tenant_id = ? AND fired = 0 ORDER BY username ASC");
-    $stmt->execute([$tenant_id]);
+    $stmt = $pdo->prepare("SELECT id, username FROM users WHERE tenant_id = ? AND branch_id = ? AND fired = 0 ORDER BY username ASC");
+    $stmt->execute([$tenant_id, $branch_id]);
     $users_dropdown = $stmt->fetchAll(PDO::FETCH_ASSOC);
 } catch (PDOException $e) {
     error_log("Error fetching users: " . $e->getMessage());
@@ -235,12 +236,12 @@ try {
                                                 <option value=""><?= __('select_employee') ?></option>
                                                 <?php
                                                 // Get all users without salary records
-                                                $sql = "SELECT u.id, u.name 
-                                                        FROM users u 
-                                                        LEFT JOIN salary_management sm ON u.id = sm.user_id 
-                                                        WHERE sm.id IS NULL AND u.tenant_id = ?";
+                                                $sql = "SELECT u.id, u.name
+                                                        FROM users u
+                                                        LEFT JOIN salary_management sm ON u.id = sm.user_id
+                                                        WHERE sm.id IS NULL AND u.tenant_id = ? AND u.branch_id = ?";
                                                 $stmt = mysqli_prepare($conection_db, $sql);
-                                                mysqli_stmt_bind_param($stmt, "i", $tenant_id);
+                                                mysqli_stmt_bind_param($stmt, "ii", $tenant_id, $branch_id);
                                                 mysqli_stmt_execute($stmt);
                                                 $result = mysqli_stmt_get_result($stmt);
                                                 while ($row = mysqli_fetch_assoc($result)) {
@@ -365,13 +366,13 @@ try {
                                     <tbody>
                                         <?php
                                         // Get all salary records
-                                        $sql = "SELECT sm.*, u.name as employee_name, u.fired as is_fired 
-                                                FROM salary_management sm 
-                                                JOIN users u ON sm.user_id = u.id 
-                                                WHERE u.tenant_id = ?
+                                        $sql = "SELECT sm.*, u.name as employee_name, u.fired as is_fired
+                                                FROM salary_management sm
+                                                JOIN users u ON sm.user_id = u.id
+                                                WHERE u.tenant_id = ? AND u.branch_id = ?
                                                 ORDER BY sm.id DESC";
                                         $stmt = mysqli_prepare($conection_db, $sql);
-                                        mysqli_stmt_bind_param($stmt, "i", $tenant_id);
+                                        mysqli_stmt_bind_param($stmt, "ii", $tenant_id, $branch_id);
                                         mysqli_stmt_execute($stmt);
                                         $result = mysqli_stmt_get_result($stmt);
                                         while ($row = mysqli_fetch_assoc($result)) {

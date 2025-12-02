@@ -7,6 +7,7 @@ if (session_status() === PHP_SESSION_NONE) {
     session_start();
 }
 $tenant_id = $_SESSION['tenant_id'];
+$branch_id = $_SESSION['branch_id'];
 $family_id = $_GET['family_id'];
 $language = $_GET['language'] ?? 'fa';
 $familyHeadFatherName = $_GET['family_head_father_name'];
@@ -52,8 +53,8 @@ try {
         $logoPath = '../uploads/logo/' . $settings['logo'];
     }
 
-    $stmt = $pdo->prepare("SELECT umrah_bookings.*, families.head_of_family, families.contact, families.province, families.district FROM umrah_bookings left join families on umrah_bookings.family_id = families.family_id WHERE umrah_bookings.family_id = ? AND umrah_bookings.tenant_id = ?");
-    $stmt->execute([$family_id, $tenant_id]);
+    $stmt = $pdo->prepare("SELECT umrah_bookings.*, families.head_of_family, families.contact, families.province, families.district FROM umrah_bookings left join families on umrah_bookings.family_id = families.family_id AND families.tenant_id = ? AND families.branch_id = ? WHERE umrah_bookings.family_id = ? AND umrah_bookings.tenant_id = ? AND umrah_bookings.branch_id = ?");
+    $stmt->execute([$tenant_id, $branch_id, $family_id, $tenant_id, $branch_id]);
     $members = $stmt->fetchAll(PDO::FETCH_ASSOC);
 
     if (!$members) {

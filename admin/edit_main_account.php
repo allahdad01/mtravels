@@ -4,6 +4,7 @@ if (session_status() === PHP_SESSION_NONE) {
     session_start();
 }
 $tenant_id = $_SESSION['tenant_id'];
+$branch_id = $_SESSION['branch_id'];
 // Include database security module for input validation
 require_once 'includes/db_security.php';
 
@@ -69,8 +70,8 @@ $account_id = isset($_POST['account_id']) ? DbSecurity::validateInput($_POST['ac
 
 try {
     // Check if the account exists
-    $stmt = $pdo->prepare("SELECT * FROM main_account WHERE id = ? AND tenant_id = ?");
-    $stmt->execute([$accountId, $tenant_id]);
+    $stmt = $pdo->prepare("SELECT * FROM main_account WHERE id = ? AND tenant_id = ? AND branch_id = ?");
+    $stmt->execute([$accountId, $tenant_id, $branch_id]);
     $account = $stmt->fetch(PDO::FETCH_ASSOC);
 
     if (!$account) {
@@ -80,8 +81,8 @@ try {
     }
 
     // Update the account in the database
-    $stmt = $pdo->prepare("UPDATE main_account SET name = ?, account_type = ?, bank_account_number = ?, bank_account_afs_number = ?, status = ?, last_updated = NOW() WHERE id = ? AND tenant_id = ?");
-    $result = $stmt->execute([$accountName, $accountType, $bankAccountNumber, $bankAccountAfsNumber, $status, $accountId, $tenant_id]);
+    $stmt = $pdo->prepare("UPDATE main_account SET name = ?, account_type = ?, bank_account_number = ?, bank_account_afs_number = ?, status = ?, last_updated = NOW() WHERE id = ? AND tenant_id = ? AND branch_id = ?");
+    $result = $stmt->execute([$accountName, $accountType, $bankAccountNumber, $bankAccountAfsNumber, $status, $accountId, $tenant_id, $branch_id]);
 
     if ($result) {
         // Log the activity
@@ -104,10 +105,10 @@ try {
         
         $activityStmt = $pdo->prepare("
             INSERT INTO activity_log 
-            (user_id, action, table_name, record_id, old_values, new_values, ip_address, user_agent, created_at, tenant_id) 
-            VALUES (?, 'update', 'main_account', ?, ?, ?, ?, ?, NOW(), ?)
+            (user_id, action, table_name, record_id, old_values, new_values, ip_address, user_agent, created_at, tenant_id, branch_id) 
+            VALUES (?, 'update', 'main_account', ?, ?, ?, ?, ?, NOW(), ?, ?)
         ");
-        $activityStmt->execute([$user_id, $accountId, $old_values, $new_values, $ip_address, $user_agent, $tenant_id]);
+        $activityStmt->execute([$user_id, $accountId, $old_values, $new_values, $ip_address, $user_agent, $tenant_id, $branch_id]);
 
         header('Content-Type: application/json');
         echo json_encode(['success' => true, 'message' => 'Main account updated successfully']);

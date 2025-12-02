@@ -1,4 +1,4 @@
-<?php
+       <?php
 // Start session if not already started
 if (session_status() === PHP_SESSION_NONE) {
     session_start();
@@ -6,6 +6,7 @@ if (session_status() === PHP_SESSION_NONE) {
 // Include database security module for input validation
 require_once 'includes/db_security.php';
 $tenant_id = $_SESSION['tenant_id'];
+$branch_id = $_SESSION['branch_id'];
 // Include security module
 require_once 'security.php';
 
@@ -47,8 +48,8 @@ $redirect_url = 'jv-payments.php';
 $paymentId = $_POST['id'];
                 
                 // Get the original payment details first
-                $origStmt = $pdo->prepare("SELECT * FROM jv_payments WHERE id = ? AND tenant_id = ?");
-                $origStmt->execute([$paymentId, $tenant_id]);
+                $origStmt = $pdo->prepare("SELECT * FROM jv_payments WHERE id = ? AND tenant_id = ? AND branch_id = ?");
+                $origStmt->execute([$paymentId, $tenant_id, $branch_id]);
                 $originalPayment = $origStmt->fetch(PDO::FETCH_ASSOC);
                 
                 if (!$originalPayment) {
@@ -77,9 +78,9 @@ $paymentId = $_POST['id'];
                         $remarks = $_POST['remarks'];
                         
                         // Get client information
-                        $clientQuery = "SELECT name, usd_balance, afs_balance FROM clients WHERE id = ? AND tenant_id = ?";
+                        $clientQuery = "SELECT name, usd_balance, afs_balance FROM clients WHERE id = ? AND tenant_id = ? AND branch_id = ?";
                         $clientStmt = $pdo->prepare($clientQuery);
-                        $clientStmt->execute([$clientId, $tenant_id]);
+                        $clientStmt->execute([$clientId, $tenant_id, $branch_id]);
                         $client = $clientStmt->fetch(PDO::FETCH_ASSOC);
                         
                         if (!$client) {
@@ -87,9 +88,9 @@ $paymentId = $_POST['id'];
                         }
                         
                         // Get supplier information
-                        $supplierQuery = "SELECT name, balance, currency as supplier_currency FROM suppliers WHERE id = ? AND tenant_id = ?";
+                        $supplierQuery = "SELECT name, balance, currency as supplier_currency FROM suppliers WHERE id = ? AND tenant_id = ? AND branch_id = ?";
                         $supplierStmt = $pdo->prepare($supplierQuery);
-                        $supplierStmt->execute([$supplierId, $tenant_id]);
+                        $supplierStmt->execute([$supplierId, $tenant_id, $branch_id]);
                         $supplier = $supplierStmt->fetch(PDO::FETCH_ASSOC);
                         
                         if (!$supplier) {
@@ -109,9 +110,9 @@ $paymentId = $_POST['id'];
                         $amountDifference = $totalAmount - $originalClientAmount;
                         
                         // Update client balance based on the difference
-                        $updateClientQuery = "UPDATE clients SET {$clientBalanceField} = {$clientBalanceField} + ? WHERE id = ?";
+                        $updateClientQuery = "UPDATE clients SET {$clientBalanceField} = {$clientBalanceField} + ? WHERE id = ? AND tenant_id = ? AND branch_id = ?";
                         $updateClientStmt = $pdo->prepare($updateClientQuery);
-                        $updateClientStmt->execute([$amountDifference, $clientId]);
+                        $updateClientStmt->execute([$amountDifference, $clientId, $tenant_id, $branch_id]);
                         
                         // Process supplier balance change
                         // First, determine the original supplier amount with currency conversion if needed
@@ -138,9 +139,9 @@ $paymentId = $_POST['id'];
                         $supplierAmountDiff = $newSupplierAmount - $originalSupplierAmount;
                         
                         // Update supplier balance directly
-                        $updateSupplierQuery = "UPDATE suppliers SET balance = balance + ? WHERE id = ?";
+                        $updateSupplierQuery = "UPDATE suppliers SET balance = balance + ? WHERE id = ? AND tenant_id = ? AND branch_id = ?";
                         $updateSupplierStmt = $pdo->prepare($updateSupplierQuery);
-                        $updateSupplierStmt->execute([$supplierAmountDiff, $supplierId]);
+                        $updateSupplierStmt->execute([$supplierAmountDiff, $supplierId, $tenant_id, $branch_id]);
                         
                         // Calculate the difference for client transactions
                         // If amounts have the same currency, straightforward difference
@@ -160,13 +161,14 @@ $paymentId = $_POST['id'];
                         
                         // 1. UPDATE CLIENT TRANSACTIONS
                         // Find the specific client transaction record for this JV payment
-                        $clientTransQuery = "SELECT id, created_at, balance, currency FROM client_transactions 
-                            WHERE client_id = ? AND transaction_of = 'jv_payment' AND tenant_id = ?
+                        $clientTransQuery = "SELECT id, created_at, balance, currency FROM client_transactions
+                            WHERE client_id = ? AND transaction_of = 'jv_payment' AND tenant_id = ? AND branch_id = ?
                             ORDER BY id DESC LIMIT 1";
                         $clientTransStmt = $pdo->prepare($clientTransQuery);
                         $clientTransStmt->execute([
                             $clientId,
-                            $tenant_id
+                            $tenant_id,
+                            $branch_id
                         ]);
                         $clientTrans = $clientTransStmt->fetch(PDO::FETCH_ASSOC);
                         
@@ -175,9 +177,9 @@ $paymentId = $_POST['id'];
                             $clientTransDate = $clientTrans['created_at'];
                             
                             // First, update the transaction amount
-                            $updateClientTransQuery = "UPDATE client_transactions SET amount = ? WHERE id = ? AND tenant_id = ?";
+                            $updateClientTransQuery = "UPDATE client_transactions SET amount = ? WHERE id = ? AND tenant_id = ? AND branch_id = ?";
                             $updateClientTransStmt = $pdo->prepare($updateClientTransQuery);
-                            $updateClientTransStmt->execute([$totalAmount, $clientTransId, $tenant_id]);
+                            $updateClientTransStmt->execute([$totalAmount, $clientTransId, $tenant_id, $branch_id]);
                             
                             // Now update the balance separately - exactly like in update_transaction.php
                             $currentClientTransBalance = $clientTrans['balance']; // Use the original balance from fetch
@@ -185,33 +187,34 @@ $paymentId = $_POST['id'];
                             if ($originalPayment['currency'] === $currency) {
                                 // Update the transaction balance
                                 $newBalance = $currentClientTransBalance + $amountDifference;
-                                $updateClientTransBalanceQuery = "UPDATE client_transactions SET balance = ? WHERE id = ? AND tenant_id = ?";
+                                $updateClientTransBalanceQuery = "UPDATE client_transactions SET balance = ? WHERE id = ? AND tenant_id = ? AND branch_id = ?";
                                 $updateClientTransBalanceStmt = $pdo->prepare($updateClientTransBalanceQuery);
-                                $updateClientTransBalanceStmt->execute([$newBalance, $clientTransId, $tenant_id]);
+                                $updateClientTransBalanceStmt->execute([$newBalance, $clientTransId, $tenant_id, $branch_id]);
                                 
                                 // Store the calculated balance to reuse it later if needed
                                 $clientFinalBalance = $newBalance;
                                 
                                 // Get all subsequent transactions (same currency) to update their balances
-                                $laterClientTransQuery = "SELECT id, balance FROM client_transactions 
+                                $laterClientTransQuery = "SELECT id, balance FROM client_transactions
                                     WHERE client_id = ? AND currency = ?
                                           AND id > ?
-                                          AND tenant_id = ?
+                                          AND tenant_id = ? AND branch_id = ?
                                     ORDER BY id ASC";
                                 $laterClientTransStmt = $pdo->prepare($laterClientTransQuery);
                                 $laterClientTransStmt->execute([
-                                    $clientId, 
-                                    $currency, 
+                                    $clientId,
+                                    $currency,
                                     $clientTransId,
-                                    $tenant_id
+                                    $tenant_id,
+                                    $branch_id
                                 ]);
-                                
+
                                 // Update all subsequent transactions
                                 while ($laterTrans = $laterClientTransStmt->fetch(PDO::FETCH_ASSOC)) {
                                     $newBalance = $laterTrans['balance'] + $amountDifference;
-                                    $updateLaterTransQuery = "UPDATE client_transactions SET balance = ? WHERE id = ? AND tenant_id = ?";
+                                    $updateLaterTransQuery = "UPDATE client_transactions SET balance = ? WHERE id = ? AND tenant_id = ? AND branch_id = ?";
                                     $updateLaterTransStmt = $pdo->prepare($updateLaterTransQuery);
-                                    $updateLaterTransStmt->execute([$newBalance, $laterTrans['id'], $tenant_id]);
+                                    $updateLaterTransStmt->execute([$newBalance, $laterTrans['id'], $tenant_id, $branch_id]);
                                 }
                             } else {
                                 // For currency changes, we need to update both USD and AFS transactions
@@ -221,15 +224,15 @@ $paymentId = $_POST['id'];
                                     // Update this transaction if it's in USD
                                     if ($clientTrans['currency'] === 'USD') {
                                         // First update amount
-                                        $updateUsdAmountQuery = "UPDATE client_transactions SET amount = ? WHERE id = ? AND tenant_id = ?";
+                                        $updateUsdAmountQuery = "UPDATE client_transactions SET amount = ? WHERE id = ? AND tenant_id = ? AND branch_id = ?";
                                         $updateUsdAmountStmt = $pdo->prepare($updateUsdAmountQuery);
-                                        $updateUsdAmountStmt->execute([$totalAmount, $clientTransId, $tenant_id]);
-                                        
+                                        $updateUsdAmountStmt->execute([$totalAmount, $clientTransId, $tenant_id, $branch_id]);
+
                                         // Then update balance - using balance from the fetched transaction
                                         $newUsdBalance = $clientTrans['balance'] + $clientUsdDiff;
-                                        $updateUsdTransQuery = "UPDATE client_transactions SET balance = ? WHERE id = ? AND tenant_id = ?";
+                                        $updateUsdTransQuery = "UPDATE client_transactions SET balance = ? WHERE id = ? AND tenant_id = ? AND branch_id = ?";
                                         $updateUsdTransStmt = $pdo->prepare($updateUsdTransQuery);
-                                        $updateUsdTransStmt->execute([$newUsdBalance, $clientTransId, $tenant_id]);
+                                        $updateUsdTransStmt->execute([$newUsdBalance, $clientTransId, $tenant_id, $branch_id]);
                                         
                                         // Store for later use
                                         if ($currency === 'USD') {
@@ -238,50 +241,51 @@ $paymentId = $_POST['id'];
                                     }
                                     
                                     // Update all subsequent USD transactions
-                                    $laterUsdTransQuery = "SELECT id, balance FROM client_transactions 
+                                    $laterUsdTransQuery = "SELECT id, balance FROM client_transactions
                                         WHERE client_id = ? AND currency = 'USD'
                                               AND id > ?
-                                          AND tenant_id = ?
+                                          AND tenant_id = ? AND branch_id = ?
                                         ORDER BY id ASC";
                                     $laterUsdTransStmt = $pdo->prepare($laterUsdTransQuery);
                                     $laterUsdTransStmt->execute([
-                                        $clientId, 
+                                        $clientId,
                                         $clientTransId,
-                                        $tenant_id
+                                        $tenant_id,
+                                        $branch_id
                                     ]);
-                                    
+
                                     while ($laterUsdTrans = $laterUsdTransStmt->fetch(PDO::FETCH_ASSOC)) {
                                         $newUsdBalance = $laterUsdTrans['balance'] + $clientUsdDiff;
-                                        $updateLaterUsdQuery = "UPDATE client_transactions SET balance = ? WHERE id = ? AND tenant_id = ?";
+                                        $updateLaterUsdQuery = "UPDATE client_transactions SET balance = ? WHERE id = ? AND tenant_id = ? AND branch_id = ?";
                                         $updateLaterUsdStmt = $pdo->prepare($updateLaterUsdQuery);
-                                        $updateLaterUsdStmt->execute([$newUsdBalance, $laterUsdTrans['id'], $tenant_id]);
+                                        $updateLaterUsdStmt->execute([$newUsdBalance, $laterUsdTrans['id'], $tenant_id, $branch_id]);
                                     }
                                     
                                     // 2. Now impact the new currency (AFS) transactions
                                     // Find the earliest AFS transaction after this one to start updating
-                                    $earliestAfsTransQuery = "SELECT id, balance FROM client_transactions 
-                                        WHERE client_id = ? AND currency = 'AFS' AND tenant_id = ? AND 
+                                    $earliestAfsTransQuery = "SELECT id, balance FROM client_transactions
+                                        WHERE client_id = ? AND currency = 'AFS' AND tenant_id = ? AND branch_id = ? AND
                                               id > ?
                                         ORDER BY id ASC LIMIT 1";
                                     $earliestAfsTransStmt = $pdo->prepare($earliestAfsTransQuery);
-                                    $earliestAfsTransStmt->execute([$clientId, $tenant_id, $clientTransId]);
+                                    $earliestAfsTransStmt->execute([$clientId, $tenant_id, $branch_id, $clientTransId]);
                                     $earliestAfsTrans = $earliestAfsTransStmt->fetch(PDO::FETCH_ASSOC);
                                     
                                     if ($earliestAfsTrans) {
                                         // Update all AFS transactions from this point forward
-                                        $laterAfsTransQuery = "SELECT id, balance FROM client_transactions 
-                                            WHERE client_id = ? AND currency = 'AFS' AND tenant_id = ? AND 
+                                        $laterAfsTransQuery = "SELECT id, balance FROM client_transactions
+                                            WHERE client_id = ? AND currency = 'AFS' AND tenant_id = ? AND branch_id = ? AND
                                                   id > ?
                                             ORDER BY id ASC";
 
                                         $laterAfsTransStmt = $pdo->prepare($laterAfsTransQuery);
-                                        $laterAfsTransStmt->execute([$clientId, $tenant_id, $clientTransId]);
-                                        
+                                        $laterAfsTransStmt->execute([$clientId, $tenant_id, $branch_id, $clientTransId]);
+
                                         while ($laterAfsTrans = $laterAfsTransStmt->fetch(PDO::FETCH_ASSOC)) {
                                             $newAfsBalance = $laterAfsTrans['balance'] + $clientAfsDiff;
-                                            $updateLaterAfsQuery = "UPDATE client_transactions SET balance = ? WHERE id = ? AND tenant_id = ?";
+                                            $updateLaterAfsQuery = "UPDATE client_transactions SET balance = ? WHERE id = ? AND tenant_id = ? AND branch_id = ?";
                                             $updateLaterAfsStmt = $pdo->prepare($updateLaterAfsQuery);
-                                            $updateLaterAfsStmt->execute([$newAfsBalance, $laterAfsTrans['id'], $tenant_id]);
+                                            $updateLaterAfsStmt->execute([$newAfsBalance, $laterAfsTrans['id'], $tenant_id, $branch_id]);
                                         }
                                     }
                                 } else {
@@ -291,15 +295,15 @@ $paymentId = $_POST['id'];
                                     // Update this transaction if it's in AFS
                                     if ($clientTrans['currency'] === 'AFS') {
                                         // First update amount
-                                        $updateAfsAmountQuery = "UPDATE client_transactions SET amount = ? WHERE id = ? AND tenant_id = ?";
+                                        $updateAfsAmountQuery = "UPDATE client_transactions SET amount = ? WHERE id = ? AND tenant_id = ? AND branch_id = ?";
                                         $updateAfsAmountStmt = $pdo->prepare($updateAfsAmountQuery);
-                                        $updateAfsAmountStmt->execute([$totalAmount, $clientTransId, $tenant_id]);
-                                        
+                                        $updateAfsAmountStmt->execute([$totalAmount, $clientTransId, $tenant_id, $branch_id]);
+
                                         // Then update balance - using balance from the fetched transaction
                                         $newAfsBalance = $clientTrans['balance'] + $clientAfsDiff;
-                                        $updateAfsTransQuery = "UPDATE client_transactions SET balance = ? WHERE id = ? AND tenant_id = ?";
+                                        $updateAfsTransQuery = "UPDATE client_transactions SET balance = ? WHERE id = ? AND tenant_id = ? AND branch_id = ?";
                                         $updateAfsTransStmt = $pdo->prepare($updateAfsTransQuery);
-                                        $updateAfsTransStmt->execute([$newAfsBalance, $clientTransId, $tenant_id]);
+                                        $updateAfsTransStmt->execute([$newAfsBalance, $clientTransId, $tenant_id, $branch_id]);
                                         
                                         // Store for later use
                                         if ($currency === 'AFS') {
@@ -308,48 +312,49 @@ $paymentId = $_POST['id'];
                                     }
                                     
                                     // Update all subsequent AFS transactions
-                                    $laterAfsTransQuery = "SELECT id, balance FROM client_transactions 
-                                        WHERE client_id = ? AND currency = 'AFS' 
+                                    $laterAfsTransQuery = "SELECT id, balance FROM client_transactions
+                                        WHERE client_id = ? AND currency = 'AFS'
                                               AND id > ?
-                                              AND tenant_id = ?
+                                              AND tenant_id = ? AND branch_id = ?
                                         ORDER BY id ASC";
                                     $laterAfsTransStmt = $pdo->prepare($laterAfsTransQuery);
                                     $laterAfsTransStmt->execute([
-                                        $clientId, 
+                                        $clientId,
                                         $clientTransId,
-                                        $tenant_id
+                                        $tenant_id,
+                                        $branch_id
                                     ]);
-                                    
+
                                     while ($laterAfsTrans = $laterAfsTransStmt->fetch(PDO::FETCH_ASSOC)) {
                                         $newAfsBalance = $laterAfsTrans['balance'] + $clientAfsDiff;
-                                        $updateLaterAfsQuery = "UPDATE client_transactions SET balance = ? WHERE id = ? AND tenant_id = ?";
+                                        $updateLaterAfsQuery = "UPDATE client_transactions SET balance = ? WHERE id = ? AND tenant_id = ? AND branch_id = ?";
                                         $updateLaterAfsStmt = $pdo->prepare($updateLaterAfsQuery);
-                                        $updateLaterAfsStmt->execute([$newAfsBalance, $laterAfsTrans['id'], $tenant_id]);
+                                        $updateLaterAfsStmt->execute([$newAfsBalance, $laterAfsTrans['id'], $tenant_id, $branch_id]);
                                     }
                                     
                                     // Update USD transactions
-                                    $earliestUsdTransQuery = "SELECT id, balance FROM client_transactions 
-                                        WHERE client_id = ? AND currency = 'USD' AND tenant_id = ? AND
+                                    $earliestUsdTransQuery = "SELECT id, balance FROM client_transactions
+                                        WHERE client_id = ? AND currency = 'USD' AND tenant_id = ? AND branch_id = ? AND
                                               id > ?
                                         ORDER BY id ASC LIMIT 1";
                                     $earliestUsdTransStmt = $pdo->prepare($earliestUsdTransQuery);
-                                    $earliestUsdTransStmt->execute([$clientId, $tenant_id, $clientTransId]);
+                                    $earliestUsdTransStmt->execute([$clientId, $tenant_id, $branch_id, $clientTransId]);
                                     $earliestUsdTrans = $earliestUsdTransStmt->fetch(PDO::FETCH_ASSOC);
                                     
                                     if ($earliestUsdTrans) {
                                         // Update all USD transactions from this point forward
-                                        $laterUsdTransQuery = "SELECT id, balance FROM client_transactions 
-                                            WHERE client_id = ? AND currency = 'USD' AND tenant_id = ? AND
+                                        $laterUsdTransQuery = "SELECT id, balance FROM client_transactions
+                                            WHERE client_id = ? AND currency = 'USD' AND tenant_id = ? AND branch_id = ? AND
                                                   id > ?
                                             ORDER BY id ASC";
                                         $laterUsdTransStmt = $pdo->prepare($laterUsdTransQuery);
-                                        $laterUsdTransStmt->execute([$clientId, $tenant_id, $clientTransId]);
-                                        
+                                        $laterUsdTransStmt->execute([$clientId, $tenant_id, $branch_id, $clientTransId]);
+
                                         while ($laterUsdTrans = $laterUsdTransStmt->fetch(PDO::FETCH_ASSOC)) {
                                             $newUsdBalance = $laterUsdTrans['balance'] + $clientUsdDiff;
-                                            $updateLaterUsdQuery = "UPDATE client_transactions SET balance = ? WHERE id = ? AND tenant_id = ?";
+                                            $updateLaterUsdQuery = "UPDATE client_transactions SET balance = ? WHERE id = ? AND tenant_id = ? AND branch_id = ?";
                                             $updateLaterUsdStmt = $pdo->prepare($updateLaterUsdQuery);
-                                            $updateLaterUsdStmt->execute([$newUsdBalance, $laterUsdTrans['id'], $tenant_id]);
+                                            $updateLaterUsdStmt->execute([$newUsdBalance, $laterUsdTrans['id'], $tenant_id, $branch_id]);
                                         }
                                     }
                                 }
@@ -358,13 +363,14 @@ $paymentId = $_POST['id'];
                         
                         // 2. UPDATE SUPPLIER TRANSACTIONS
                         // Find the specific supplier transaction record for this JV payment
-                        $supplierTransQuery = "SELECT id, transaction_date, balance FROM supplier_transactions 
-                            WHERE supplier_id = ? AND transaction_of = 'jv_payment' AND tenant_id = ?       
+                        $supplierTransQuery = "SELECT id, transaction_date, balance FROM supplier_transactions
+                            WHERE supplier_id = ? AND transaction_of = 'jv_payment' AND tenant_id = ? AND branch_id = ?
                             ORDER BY id DESC LIMIT 1";
                         $supplierTransStmt = $pdo->prepare($supplierTransQuery);
                         $supplierTransStmt->execute([
                             $supplierId,
-                            $tenant_id
+                            $tenant_id,
+                            $branch_id
                         ]);
                         $supplierTrans = $supplierTransStmt->fetch(PDO::FETCH_ASSOC);
                         
@@ -373,41 +379,42 @@ $paymentId = $_POST['id'];
                             $supplierTransDate = $supplierTrans['transaction_date'];
                             
                             // First, update the transaction amount
-                            $updateSupplierAmountQuery = "UPDATE supplier_transactions SET amount = ? WHERE id = ? AND tenant_id = ?";
+                            $updateSupplierAmountQuery = "UPDATE supplier_transactions SET amount = ? WHERE id = ? AND tenant_id = ? AND branch_id = ?";
                             $updateSupplierAmountStmt = $pdo->prepare($updateSupplierAmountQuery);
-                            $updateSupplierAmountStmt->execute([$newSupplierAmount, $supplierTransId, $tenant_id]);
-                            
+                            $updateSupplierAmountStmt->execute([$newSupplierAmount, $supplierTransId, $tenant_id, $branch_id]);
+
                             // Now update the balance separately - exactly like in update_transaction.php
                             // Use original balance from the fetched transaction
                             $currentSupplierBalance = $supplierTrans['balance'];
                             $newSupplierBalance = $currentSupplierBalance + $supplierAmountDiff;
-                            
+
                             // Update the transaction balance
-                            $updateSupplierBalanceQuery = "UPDATE supplier_transactions SET balance = ? WHERE id = ? AND tenant_id = ?";
+                            $updateSupplierBalanceQuery = "UPDATE supplier_transactions SET balance = ? WHERE id = ? AND tenant_id = ? AND branch_id = ?";
                             $updateSupplierBalanceStmt = $pdo->prepare($updateSupplierBalanceQuery);
-                            $updateSupplierBalanceStmt->execute([$newSupplierBalance, $supplierTransId, $tenant_id]);
+                            $updateSupplierBalanceStmt->execute([$newSupplierBalance, $supplierTransId, $tenant_id, $branch_id]);
                             
                             // Store the calculated balance to reuse it later if needed
                             $supplierFinalBalance = $newSupplierBalance;
                             
                             // Get all subsequent transactions to update their balances
-                            $laterSupplierTransQuery = "SELECT id, balance FROM supplier_transactions 
-                                WHERE supplier_id = ? AND 
-                                      id > ? AND tenant_id = ?
+                            $laterSupplierTransQuery = "SELECT id, balance FROM supplier_transactions
+                                WHERE supplier_id = ? AND
+                                      id > ? AND tenant_id = ? AND branch_id = ?
                                 ORDER BY id ASC";
                             $laterSupplierTransStmt = $pdo->prepare($laterSupplierTransQuery);
                             $laterSupplierTransStmt->execute([
-                                $supplierId, 
+                                $supplierId,
                                 $supplierTransId,
-                                $tenant_id
+                                $tenant_id,
+                                $branch_id
                             ]);
-                            
+
                             // Update all subsequent transactions
                             while ($laterTrans = $laterSupplierTransStmt->fetch(PDO::FETCH_ASSOC)) {
                                 $newBalance = $laterTrans['balance'] + $supplierAmountDiff;
-                                $updateLaterTransQuery = "UPDATE supplier_transactions SET balance = ? WHERE id = ? AND tenant_id = ?";
+                                $updateLaterTransQuery = "UPDATE supplier_transactions SET balance = ? WHERE id = ? AND tenant_id = ? AND branch_id = ?";
                                 $updateLaterTransStmt = $pdo->prepare($updateLaterTransQuery);
-                                $updateLaterTransStmt->execute([$newBalance, $laterTrans['id'], $tenant_id]);
+                                $updateLaterTransStmt->execute([$newBalance, $laterTrans['id'], $tenant_id, $branch_id]);
                             }
                         }
                         
@@ -416,15 +423,15 @@ $paymentId = $_POST['id'];
                         $usdAmount = ($currency === 'USD') ? $totalAmount : 0;
                         $afsAmount = ($currency === 'AFS') ? $totalAmount : 0;
                         
-                        $updateJvQuery = "UPDATE jv_payments SET 
-                            jv_name = ?, exchange_rate = ?, 
-                            total_amount = ?, currency = ?, 
-                            receipt = ?, remarks = ? WHERE id = ? AND tenant_id = ?";
-                            
+                        $updateJvQuery = "UPDATE jv_payments SET
+                            jv_name = ?, exchange_rate = ?,
+                            total_amount = ?, currency = ?,
+                            receipt = ?, remarks = ? WHERE id = ? AND tenant_id = ? AND branch_id = ?";
+
                         $updateJvStmt = $pdo->prepare($updateJvQuery);
                         $updateJvStmt->execute([
-                            $jvName, $exchangeRate, $totalAmount, $currency, 
-                            $receipt, $remarks, $paymentId, $tenant_id
+                            $jvName, $exchangeRate, $totalAmount, $currency,
+                            $receipt, $remarks, $paymentId, $tenant_id, $branch_id
                         ]);
                         
                         // Get the username
@@ -435,120 +442,120 @@ $paymentId = $_POST['id'];
                         $supplierRemark = "Updated JV Payment: Received {$newSupplierAmount} {$supplier['supplier_currency']} from client {$client['name']}. Updated by: {$username}. {$remarks}";
                         
                         // Check for existing JV transaction
-                        $jvTransQuery = "SELECT id FROM jv_transactions WHERE jv_payment_id = ? AND tenant_id = ?";
+                        $jvTransQuery = "SELECT id FROM jv_transactions WHERE jv_payment_id = ? AND tenant_id = ? AND branch_id = ?";
                         $jvTransStmt = $pdo->prepare($jvTransQuery);
-                        $jvTransStmt->execute([$paymentId, $tenant_id]);
+                        $jvTransStmt->execute([$paymentId, $tenant_id, $branch_id]);
                         $jvTrans = $jvTransStmt->fetch(PDO::FETCH_ASSOC);
                         
                         if ($jvTrans) {
                             // Update existing JV transaction
-                            $updateJvTransQuery = "UPDATE jv_transactions SET 
-                                transaction_type = 'Transfer', amount = ?, balance = ?, 
-                                currency = ?, description = ?, receipt = ? 
-                                WHERE id = ? AND tenant_id = ?";
-                                
+                            $updateJvTransQuery = "UPDATE jv_transactions SET
+                                transaction_type = 'Transfer', amount = ?, balance = ?,
+                                currency = ?, description = ?, receipt = ?
+                                WHERE id = ? AND tenant_id = ? AND branch_id = ?";
+
                             $updateJvTransStmt = $pdo->prepare($updateJvTransQuery);
                             $updateJvTransStmt->execute([
-                                $totalAmount, $totalAmount, $currency, 
-                                $description, $receipt, $jvTrans['id'], $tenant_id
+                                $totalAmount, $totalAmount, $currency,
+                                $description, $receipt, $jvTrans['id'], $tenant_id, $branch_id
                             ]);
                             
                             $jvTransactionId = $jvTrans['id'];
                         } else {
                             // Create new JV transaction
                             $insertJvTransQuery = "INSERT INTO jv_transactions (
-                                jv_payment_id, transaction_type, amount, balance, 
-                                currency, description, receipt, reference_id
-                            ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)";
-                            
+                                jv_payment_id, transaction_type, amount, balance,
+                                currency, description, receipt, reference_id, tenant_id, branch_id
+                            ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)";
+
                             $insertJvTransStmt = $pdo->prepare($insertJvTransQuery);
                             $insertJvTransStmt->execute([
-                                $paymentId, 'Transfer', $totalAmount, $totalAmount, 
-                                $currency, $description, $receipt, $clientId, $tenant_id
+                                $paymentId, 'Transfer', $totalAmount, $totalAmount,
+                                $currency, $description, $receipt, $clientId, $tenant_id, $branch_id
                             ]);
                             
                             $jvTransactionId = $pdo->lastInsertId();
                         }
                         
                         // Check for existing client transaction
-                        $clientTransQuery = "SELECT id, balance FROM client_transactions 
-                            WHERE transaction_of = 'jv_payment' AND reference_id = ? AND tenant_id = ?
+                        $clientTransQuery = "SELECT id, balance FROM client_transactions
+                            WHERE transaction_of = 'jv_payment' AND reference_id = ? AND tenant_id = ? AND branch_id = ?
                             ORDER BY id DESC LIMIT 1";
-                            
+
                         $clientTransStmt = $pdo->prepare($clientTransQuery);
-                        $clientTransStmt->execute([$jvTransactionId, $tenant_id]);
+                        $clientTransStmt->execute([$jvTransactionId, $tenant_id, $branch_id]);
                         $clientTrans = $clientTransStmt->fetch(PDO::FETCH_ASSOC);
                         
                         if ($clientTrans) {
                             // Update existing client transaction
-                            $updateClientTransQuery = "UPDATE client_transactions SET 
-                                type = 'credit', amount = ?, currency = ?, 
-                                description = ?, receipt = ? 
-                                WHERE id = ? AND tenant_id = ?";
-                                
+                            $updateClientTransQuery = "UPDATE client_transactions SET
+                                type = 'credit', amount = ?, currency = ?,
+                                description = ?, receipt = ?
+                                WHERE id = ? AND tenant_id = ? AND branch_id = ?";
+
                             $updateClientTransStmt = $pdo->prepare($updateClientTransQuery);
                             $updateClientTransStmt->execute([
-                                $totalAmount, $currency, 
-                                $clientRemark, $receipt, $clientTrans['id'], $tenant_id
+                                $totalAmount, $currency,
+                                $clientRemark, $receipt, $clientTrans['id'], $tenant_id, $branch_id
                             ]);
                             
                             // Now update the balance separately
                             // We use the previously calculated balance that was correctly updated in the first section
-                            $updateClientBalanceQuery = "UPDATE client_transactions SET balance = ? WHERE id = ? AND tenant_id = ?";
+                            $updateClientBalanceQuery = "UPDATE client_transactions SET balance = ? WHERE id = ? AND tenant_id = ? AND branch_id = ?";
                             $updateClientBalanceStmt = $pdo->prepare($updateClientBalanceQuery);
-                            $updateClientBalanceStmt->execute([$clientFinalBalance, $clientTrans['id'], $tenant_id]);
+                            $updateClientBalanceStmt->execute([$clientFinalBalance, $clientTrans['id'], $tenant_id, $branch_id]);
                         } else {
                             // Create new client transaction
                             $insertClientTransQuery = "INSERT INTO client_transactions (
-                                client_id, type, amount, balance, currency, 
-                                description, transaction_of, reference_id, receipt
-                            ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)";
-                            
+                                client_id, type, amount, balance, currency,
+                                description, transaction_of, reference_id, receipt, tenant_id, branch_id
+                            ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)";
+
                             $insertClientTransStmt = $pdo->prepare($insertClientTransQuery);
                             $insertClientTransStmt->execute([
-                                $clientId, 'credit', $totalAmount, $clientFinalBalance, 
-                                $currency, $clientRemark, 'jv_payment', $jvTransactionId, $receipt, $tenant_id
+                                $clientId, 'credit', $totalAmount, $clientFinalBalance,
+                                $currency, $clientRemark, 'jv_payment', $jvTransactionId, $receipt, $tenant_id, $branch_id
                             ]);
                         }
                         
                         // Check for existing supplier transaction
-                        $supplierTransQuery = "SELECT id, balance FROM supplier_transactions 
-                            WHERE transaction_of = 'jv_payment' AND reference_id = ? AND tenant_id = ?
+                        $supplierTransQuery = "SELECT id, balance FROM supplier_transactions
+                            WHERE transaction_of = 'jv_payment' AND reference_id = ? AND tenant_id = ? AND branch_id = ?
                             ORDER BY id DESC LIMIT 1";
-                            
+
                         $supplierTransStmt = $pdo->prepare($supplierTransQuery);
-                        $supplierTransStmt->execute([$jvTransactionId, $tenant_id]);
+                        $supplierTransStmt->execute([$jvTransactionId, $tenant_id, $branch_id]);
                         $supplierTrans = $supplierTransStmt->fetch(PDO::FETCH_ASSOC);
                         
                         if ($supplierTrans) {
                             // Update existing supplier transaction
-                            $updateSupplierTransQuery = "UPDATE supplier_transactions SET 
-                                transaction_type = 'Credit', amount = ?, 
-                                remarks = ?, receipt = ? 
-                                WHERE id = ? AND tenant_id = ?";
-                                
+                            $updateSupplierTransQuery = "UPDATE supplier_transactions SET
+                                transaction_type = 'Credit', amount = ?,
+                                remarks = ?, receipt = ?
+                                WHERE id = ? AND tenant_id = ? AND branch_id = ?";
+
                             $updateSupplierTransStmt = $pdo->prepare($updateSupplierTransQuery);
                             $updateSupplierTransStmt->execute([
-                                $newSupplierAmount, 
-                                $supplierRemark, $receipt, $supplierTrans['id'], $tenant_id
+                                $newSupplierAmount,
+                                $supplierRemark, $receipt, $supplierTrans['id'], $tenant_id, $branch_id
                             ]);
                             
                             // Now update the balance separately
                             // We use the previously calculated balance that was correctly updated in the first section
-                            $updateSupplierBalanceQuery = "UPDATE supplier_transactions SET balance = ? WHERE id = ? AND tenant_id = ?";
+                            $updateSupplierBalanceQuery = "UPDATE supplier_transactions SET balance = ? WHERE id = ? AND tenant_id = ? AND branch_id = ?";
                             $updateSupplierBalanceStmt = $pdo->prepare($updateSupplierBalanceQuery);
-                            $updateSupplierBalanceStmt->execute([$supplierFinalBalance, $supplierTrans['id'], $tenant_id]);
+                            $updateSupplierBalanceStmt->execute([$supplierFinalBalance, $supplierTrans['id'], $tenant_id, $branch_id]);
                         } else {
                             // Create new supplier transaction
                             $insertSupplierTransQuery = "INSERT INTO supplier_transactions (
-                                supplier_id, transaction_type, amount, balance, 
-                                remarks, transaction_of, reference_id, receipt
-                            ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)";
-                            
+                                supplier_id, transaction_type, amount, balance,
+                                remarks, transaction_of, reference_id, receipt, tenant_id, branch_id
+                            ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)";
+
                             $insertSupplierTransStmt = $pdo->prepare($insertSupplierTransQuery);
                             $insertSupplierTransStmt->execute([
-                                $supplierId, 'Credit', $newSupplierAmount, $supplierFinalBalance, 
-                                $supplierRemark, 'jv_payment', $jvTransactionId, $receipt, $tenant_id
+                                $supplierId, 'Credit', $newSupplierAmount, $supplierFinalBalance,
+                                $supplierRemark, 'jv_payment', $jvTransactionId, $receipt, $tenant_id, $branch_id
                             ]);
                         }
                         
@@ -576,12 +583,12 @@ $paymentId = $_POST['id'];
                         
                         // Insert activity log
                         $activity_log_stmt = $pdo->prepare("INSERT INTO activity_log 
-                            (user_id, action, table_name, record_id, old_values, new_values, ip_address, user_agent, created_at, tenant_id) 
-                            VALUES (?, 'update', 'jv_payments', ?, ?, ?, ?, ?, NOW(), ?)");
+                            (user_id, action, table_name, record_id, old_values, new_values, ip_address, user_agent, created_at, tenant_id, branch_id) 
+                            VALUES (?, 'update', 'jv_payments', ?, ?, ?, ?, ?, NOW(), ?, ?)");
                         
                         $old_values_json = json_encode($old_values);
                         $new_values_json = json_encode($new_values);
-                        $activity_log_stmt->execute([$user_id, $paymentId, $old_values_json, $new_values_json, $ip_address, $user_agent, $tenant_id]);
+                        $activity_log_stmt->execute([$user_id, $paymentId, $old_values_json, $new_values_json, $ip_address, $user_agent, $tenant_id, $branch_id]);
                         
                         // Commit transaction
                         $pdo->commit();

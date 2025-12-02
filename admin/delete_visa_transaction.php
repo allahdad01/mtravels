@@ -14,6 +14,7 @@ enforce_auth();
 
 require_once('../includes/db.php');
 $tenant_id = $_SESSION['tenant_id'];
+$branch_id = $_SESSION['branch_id'];
 
 // Check if required parameters are present
 if (!isset($_POST['transaction_id']) || !isset($_POST['visa_id']) || !isset($_POST['amount'])) {
@@ -44,9 +45,9 @@ try {
                t.type as transaction_type, t.description
         FROM main_account_transactions t
         JOIN main_account m ON t.main_account_id = m.id
-        WHERE t.id = ? AND t.reference_id = ? AND t.transaction_of = ? AND t.tenant_id = ?
+        WHERE t.id = ? AND t.reference_id = ? AND t.transaction_of = ? AND t.tenant_id = ? AND t.branch_id = ?
     ");
-    $getTransactionStmt->execute([$transaction_id, $visa_id, 'visa_sale', $tenant_id]);
+    $getTransactionStmt->execute([$transaction_id, $visa_id, 'visa_sale', $tenant_id, $branch_id]);
     $transaction = $getTransactionStmt->fetch(PDO::FETCH_ASSOC);
 
     if (!$transaction) {
@@ -91,6 +92,7 @@ try {
         AND id > ?
         AND id != ?
         AND tenant_id = ?
+        AND branch_id = ?
     ");
     $updateSubsequentResult = $updateSubsequentStmt->execute([
         $adjustmentAmount,
@@ -98,7 +100,8 @@ try {
         $transaction['currency'],
         $transaction_id,
         $transaction_id,
-        $tenant_id
+        $tenant_id,
+        $branch_id
     ]);
 
     if (!$updateSubsequentResult) {
@@ -107,19 +110,19 @@ try {
 
     // Delete the transaction
     $deleteStmt = $pdo->prepare("
-        DELETE FROM main_account_transactions 
-        WHERE id = ? AND reference_id = ? AND transaction_of = ? AND tenant_id = ?
+        DELETE FROM main_account_transactions
+        WHERE id = ? AND reference_id = ? AND transaction_of = ? AND tenant_id = ? AND branch_id = ?
     ");
-    $deleteResult = $deleteStmt->execute([$transaction_id, $visa_id, 'visa_sale', $tenant_id]);
+    $deleteResult = $deleteStmt->execute([$transaction_id, $visa_id, 'visa_sale', $tenant_id, $branch_id]);
 
     if ($deleteResult && $deleteStmt->rowCount() > 0) {
         // Update the appropriate balance in the main_account table
         $updateStmt = $pdo->prepare("
-            UPDATE main_account 
+            UPDATE main_account
             SET $balanceColumn = $balanceColumn + ?
-            WHERE id = ? AND tenant_id = ?
+            WHERE id = ? AND tenant_id = ? AND branch_id = ?
         ");
-        $updateResult = $updateStmt->execute([$adjustmentAmount, $transaction['main_account_id'], $tenant_id]);
+        $updateResult = $updateStmt->execute([$adjustmentAmount, $transaction['main_account_id'], $tenant_id, $branch_id]);
 
         if ($updateResult) {
             $pdo->commit();

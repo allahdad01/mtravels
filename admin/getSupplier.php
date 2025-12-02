@@ -2,6 +2,7 @@
 // Include security module
 require_once 'security.php';
 $tenant_id = $_SESSION['tenant_id'];
+$branch_id = $_SESSION['branch_id'];
 // Enforce authentication
 enforce_auth();
 
@@ -11,8 +12,8 @@ header('Content-Type: application/json');
 
 try {
     // Prepare and execute the query
-    $stmt = $pdo->prepare("SELECT *, COALESCE(status, 'active') as status FROM suppliers WHERE tenant_id = ? ORDER BY name");
-    $stmt->execute([$tenant_id]);
+    $stmt = $pdo->prepare("SELECT *, COALESCE(status, 'active') as status FROM suppliers WHERE tenant_id = ? AND branch_id = ? ORDER BY name");
+    $stmt->execute([$tenant_id, $branch_id]);
     $suppliers = $stmt->fetchAll(PDO::FETCH_ASSOC);
 
     // Format the response

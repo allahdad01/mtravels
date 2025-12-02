@@ -8,6 +8,7 @@ require_once '../includes/language_helpers.php';
 // Enforce authentication
 enforce_auth();
 $tenant_id = $_SESSION['tenant_id'];
+$branch_id = $_SESSION['branch_id'];
 
 // Check if user is logged in
 if (!isset($_SESSION['user_id'])  || $_SESSION['role'] !== 'admin') {
@@ -199,7 +200,7 @@ include '../includes/header.php';
                                                         foreach ($tickets as $ticket): 
                                                             $isAgencyClient = false;
                                                             $soldTo = $ticket['ticket']['sold_to'];
-                                                            $clientQuery = $conn->query("SELECT client_type FROM clients WHERE name = '$soldTo' AND tenant_id = $tenant_id");
+                                                            $clientQuery = $conn->query("SELECT client_type FROM clients WHERE name = '$soldTo' AND tenant_id = $tenant_id AND branch_id = $branch_id");
                                                             if ($clientQuery && $clientQuery->num_rows > 0) {
                                                                 $clientRow = $clientQuery->fetch_assoc();
                                                                 $isAgencyClient = ($clientRow['client_type'] === 'agency');
@@ -238,7 +239,7 @@ include '../includes/header.php';
                                                             $isAgencyClient = false;
 
                                                             // Check if client is an agency
-                                                            $clientQuery = $conn->query("SELECT client_type FROM clients WHERE name = '$soldTo'");
+                                                            $clientQuery = $conn->query("SELECT client_type FROM clients WHERE name = '$soldTo' AND tenant_id = $tenant_id AND branch_id = $branch_id");
                                                             if ($clientQuery && $clientQuery->num_rows > 0) {
                                                                 $clientRow = $clientQuery->fetch_assoc();
                                                                 $isAgencyClient = ($clientRow['client_type'] === 'agency');
@@ -256,7 +257,7 @@ include '../includes/header.php';
                                                                 // Query transactions from main_account_transactions table
                                                                 $transactionQuery = $conn->query("SELECT * FROM main_account_transactions WHERE
                                                                     transaction_of = 'ticket_sale'
-                                                                    AND reference_id = '$ticketId'");
+                                                                    AND reference_id = '$ticketId' AND tenant_id = $tenant_id AND branch_id = $branch_id");
 
                                                                 if ($transactionQuery && $transactionQuery->num_rows > 0) {
                                                                     while ($transaction = $transactionQuery->fetch_assoc()) {
@@ -688,9 +689,9 @@ include '../includes/header.php';
                             <option value=""><?= __('all_clients') ?></option>
                             <?php
                             // Fetch clients from database
-                            $clientQuery = "SELECT DISTINCT c.name FROM clients c 
-                                          INNER JOIN ticket_bookings t ON c.id = t.sold_to 
-                                          WHERE t.tenant_id = $tenant_id
+                            $clientQuery = "SELECT DISTINCT c.name FROM clients c
+                                          INNER JOIN ticket_bookings t ON c.id = t.sold_to
+                                          WHERE t.tenant_id = $tenant_id AND t.branch_id = $branch_id
                                           ORDER BY c.name ASC";
                             $clientResult = $conn->query($clientQuery);
                             
@@ -1101,7 +1102,7 @@ include '../includes/header.php';
                                             if ($conn->connect_error) {
                                                 echo "<option value=''>Database connection failed</option>";
                                             } else {
-                                                $result = $conn->query("SELECT id, name, usd_balance, afs_balance FROM clients where status = 'active' AND tenant_id = $tenant_id");
+                                                $result = $conn->query("SELECT id, name, usd_balance, afs_balance FROM clients where status = 'active' AND tenant_id = $tenant_id AND branch_id = $branch_id");
                                                 while ($row = $result->fetch_assoc()) {
                                                     echo "<option value='{$row['id']}' data-tokens='{$row['name']}'>{$row['name']}</option>";
                                                 }
@@ -1268,7 +1269,7 @@ include '../includes/header.php';
                                             if ($conn->connect_error) {
                                                 echo "<option value=''>Database connection failed</option>";
                                             } else {
-                                                $result = $conn->query("SELECT id, name, usd_balance, afs_balance FROM main_account where status = 'active' AND tenant_id = $tenant_id");
+                                                $result = $conn->query("SELECT id, name, usd_balance, afs_balance FROM main_account where status = 'active' AND tenant_id = $tenant_id AND branch_id = $branch_id");
                                                 while ($row = $result->fetch_assoc()) {
                                                     echo "<option value='{$row['id']}'>{$row['name']}</option>";
                                                 }
@@ -1509,7 +1510,7 @@ include '../includes/header.php';
                                             if ($conn->connect_error) {
                                                 echo "<option value=''>Database connection failed</option>";
                                             } else {
-                                                $result = $conn->query("SELECT id, name, usd_balance, afs_balance FROM clients where status = 'active' AND tenant_id = $tenant_id");
+                                                $result = $conn->query("SELECT id, name, usd_balance, afs_balance FROM clients where status = 'active' AND tenant_id = $tenant_id AND branch_id = $branch_id");
                                                 while ($row = $result->fetch_assoc()) {
                                                     echo "<option value='{$row['id']}' data-tokens='{$row['name']}'>{$row['name']}</option>";
                                                 }
@@ -1664,7 +1665,7 @@ include '../includes/header.php';
                                             if ($conn->connect_error) {
                                                 echo "<option value=''>Database connection failed</option>";
                                             } else {
-                                                $result = $conn->query("SELECT id, name, usd_balance, afs_balance FROM main_account where status = 'active' AND tenant_id = $tenant_id");
+                                                $result = $conn->query("SELECT id, name, usd_balance, afs_balance FROM main_account where status = 'active' AND tenant_id = $tenant_id AND branch_id = $branch_id");
                                                 while ($row = $result->fetch_assoc()) {
                                                     echo "<option value='{$row['id']}'>{$row['name']}</option>";
                                                 }

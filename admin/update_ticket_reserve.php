@@ -8,6 +8,7 @@ require_once 'security.php';
 // Enforce authentication
 enforce_auth();
 $tenant_id = $_SESSION['tenant_id'];
+$branch_id = $_SESSION['branch_id'];
 
 // Database connection
 require_once '../includes/conn.php';
@@ -111,9 +112,9 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
    
 
     // Get original values to calculate differences
-    $originalQuery = "SELECT price, sold, supplier, sold_to, currency FROM ticket_reservations WHERE id = ? AND tenant_id = ?";
+    $originalQuery = "SELECT price, sold, supplier, sold_to, currency FROM ticket_reservations WHERE id = ? AND tenant_id = ? AND branch_id = ?";
     $stmtOriginal = $conn->prepare($originalQuery);
-    $stmtOriginal->bind_param('ii', $id, $tenant_id);
+    $stmtOriginal->bind_param('iii', $id, $tenant_id, $branch_id);
     $stmtOriginal->execute();
     $resultOriginal = $stmtOriginal->get_result();
     $originalData = $resultOriginal->fetch_assoc();
@@ -142,9 +143,9 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         if ($supplier != $originalSupplier || $priceDifference != 0) {
             // Check if original supplier exists and is external
             if ($originalSupplier > 0) {
-                $oldSupplierQuery = "SELECT * FROM suppliers WHERE id = ? AND tenant_id = ?";
+                $oldSupplierQuery = "SELECT * FROM suppliers WHERE id = ? AND tenant_id = ? AND branch_id = ?";
                 $stmtOldSupplier = $conn->prepare($oldSupplierQuery);
-                $stmtOldSupplier->bind_param('ii', $originalSupplier, $tenant_id);
+                $stmtOldSupplier->bind_param('iii', $originalSupplier, $tenant_id, $branch_id);
                 $stmtOldSupplier->execute();
                 $oldSupplierResult = $stmtOldSupplier->get_result();
                 $oldSupplierData = $oldSupplierResult->fetch_assoc();
@@ -160,16 +161,16 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 if ($supplier != $originalSupplier && $oldSupplierIsExternal) {
                     // Update old supplier balance - ADDING the original base amount
                     // This INCREASES the balance (supplier gets money back)
-                    $updateOldSupplierQuery = "UPDATE suppliers SET balance = balance + ? WHERE id = ? AND tenant_id = ?";
+                    $updateOldSupplierQuery = "UPDATE suppliers SET balance = balance + ? WHERE id = ? AND tenant_id = ? AND branch_id = ?";
                     $stmtUpdateOldSupplier = $conn->prepare($updateOldSupplierQuery);
-                    $stmtUpdateOldSupplier->bind_param('dii', $originalData['price'], $originalSupplier, $tenant_id);
+                    $stmtUpdateOldSupplier->bind_param('diii', $originalData['price'], $originalSupplier, $tenant_id, $branch_id);
                     $stmtUpdateOldSupplier->execute();
                     $stmtUpdateOldSupplier->close();
                     
                     // Check if transaction record exists for old supplier
-                    $checkOldSupplierTransactionQuery = "SELECT id FROM supplier_transactions WHERE supplier_id = ? AND reference_id = ? AND transaction_of = 'ticket_reserve' AND tenant_id = ? LIMIT 1";
+                    $checkOldSupplierTransactionQuery = "SELECT id FROM supplier_transactions WHERE supplier_id = ? AND reference_id = ? AND transaction_of = 'ticket_reserve' AND tenant_id = ? AND branch_id = ? LIMIT 1";
                     $stmtCheckOldSupplierTransaction = $conn->prepare($checkOldSupplierTransactionQuery);
-                    $stmtCheckOldSupplierTransaction->bind_param('iii', $originalSupplier, $id, $tenant_id);
+                    $stmtCheckOldSupplierTransaction->bind_param('iiii', $originalSupplier, $id, $tenant_id, $branch_id);
                     $stmtCheckOldSupplierTransaction->execute();
                     $oldSupplierTransactionResult = $stmtCheckOldSupplierTransaction->get_result();
                     $oldSupplierTransactionExists = $oldSupplierTransactionResult->num_rows > 0;
@@ -689,7 +690,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                                                            SET amount = ?,
                                                                balance = balance + ?,
                                                                description = CONCAT('Updated: ', description) 
-                                                           WHERE id = ? AND tenant_id = ?";
+                                                           WHERE id = ? AND tenant_id = ? AND branch_id = ?";
                             $stmtUpdateClientTransaction = $conn->prepare($updateClientTransactionQuery);
                             $stmtUpdateClientTransaction->bind_param('ddii', $sold, $balanceAdjustment, $transactionId, $tenant_id);
                             $stmtUpdateClientTransaction->execute();
@@ -751,31 +752,32 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         
         $stmtTicket = $conn->prepare($updateTicketQuery);
         $stmtTicket->bind_param(
-            'iissssssssssssssdddssisi', 
-            $supplier, 
-            $sold_to, 
-            $trip_type, 
-            $title, 
-            $gender, 
-            $passenger_name, 
-            $pnr, 
-            $phone, 
-            $origin, 
-            $destination, 
-            $return_origin, 
-            $return_destination, 
-            $airline, 
-            $issue_date, 
-            $departure_date, 
-            $return_date, 
+            'iissssssssssssssdddssisii',
+            $supplier,
+            $sold_to,
+            $trip_type,
+            $title,
+            $gender,
+            $passenger_name,
+            $pnr,
+            $phone,
+            $origin,
+            $destination,
+            $return_origin,
+            $return_destination,
+            $airline,
+            $issue_date,
+            $departure_date,
+            $return_date,
             $base,  // This maps to the 'price' field in the database
-            $sold, 
-            $profit, 
-            $currency, 
-            $description, 
-            $paid_to, 
+            $sold,
+            $profit,
+            $currency,
+            $description,
+            $paid_to,
             $id,
-            $tenant_id
+            $tenant_id,
+            $branch_id
         );
         
         $stmtTicket->execute();
@@ -826,19 +828,20 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         $action = 'update';
         $table_name = 'ticket_reservations';
         // Insert activity log
-        $activity_log_stmt = $conn->prepare("INSERT INTO activity_log 
-            (user_id, action, table_name, record_id, old_values, new_values, ip_address, user_agent, tenant_id) 
-            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)");
-        $activity_log_stmt->bind_param("isisssssi", 
-            $user_id, 
-            $action, 
-            $table_name, 
-            $id, 
-            $old_values, 
-            $new_values, 
-            $ip_address, 
+        $activity_log_stmt = $conn->prepare("INSERT INTO activity_log
+            (user_id, action, table_name, record_id, old_values, new_values, ip_address, user_agent, tenant_id, branch_id)
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)");
+        $activity_log_stmt->bind_param("isisssssii",
+            $user_id,
+            $action,
+            $table_name,
+            $id,
+            $old_values,
+            $new_values,
+            $ip_address,
             $user_agent,
-            $tenant_id
+            $tenant_id,
+            $branch_id
         );
         $activity_log_stmt->execute();
         

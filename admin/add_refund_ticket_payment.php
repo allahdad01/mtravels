@@ -8,6 +8,7 @@ require_once 'security.php';
 // Enforce authentication
 enforce_auth();
 $tenant_id = $_SESSION['tenant_id'];
+$branch_id = $_SESSION['branch_id'];
 require_once('../includes/db.php');
 
 // Set proper headers for JSON response
@@ -45,13 +46,13 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 
         // Get booking details including client type
         $stmt = $pdo->prepare("
-            SELECT rt.paid_to, rt.sold_to, rt.title, rt.passenger_name, rt.pnr, 
-                   LOWER(c.client_type) as client_type 
+            SELECT rt.paid_to, rt.sold_to, rt.title, rt.passenger_name, rt.pnr,
+                   LOWER(c.client_type) as client_type
             FROM refunded_tickets rt
-            LEFT JOIN clients c ON rt.sold_to = c.id 
-            WHERE rt.id = ?
+            LEFT JOIN clients c ON rt.sold_to = c.id
+            WHERE rt.id = ? AND rt.tenant_id = ? AND rt.branch_id = ?
         ");
-        $stmt->execute([$booking_id]);
+        $stmt->execute([$booking_id, $tenant_id, $branch_id]);
         $booking = $stmt->fetch(PDO::FETCH_ASSOC);
 
         if (!$booking) {
@@ -68,22 +69,22 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         if ($booking['client_type'] === 'agency') {
             // Get current balance
             $balanceField = $currency === 'USD' ? 'usd_balance' : 'afs_balance';
-            $stmt = $pdo->prepare("SELECT $balanceField as current_balance FROM main_account WHERE id = ? AND tenant_id = ?");
-            $stmt->execute([$booking['paid_to'], $tenant_id]);
+            $stmt = $pdo->prepare("SELECT $balanceField as current_balance FROM main_account WHERE id = ? AND tenant_id = ? AND branch_id = ?");
+            $stmt->execute([$booking['paid_to'], $tenant_id, $branch_id]);
             $balanceResult = $stmt->fetch(PDO::FETCH_ASSOC);
             
             // Calculate new balance (deducting for agency)
             $newBalance = $balanceResult['current_balance'] - $amount;
 
             // Update main account balance
-            $stmt = $pdo->prepare("UPDATE main_account SET $balanceField = ? WHERE id = ? AND tenant_id = ?");
-            $stmt->execute([$newBalance, $booking['paid_to'], $tenant_id]);
+            $stmt = $pdo->prepare("UPDATE main_account SET $balanceField = ? WHERE id = ? AND tenant_id = ? AND branch_id = ?");
+            $stmt->execute([$newBalance, $booking['paid_to'], $tenant_id, $branch_id]);
         }
 
         // Insert transaction record (for both types, but only agency affects balance)
-        $stmt = $pdo->prepare("INSERT INTO main_account_transactions 
-            (main_account_id, type, amount, currency, description, transaction_of, reference_id, balance, created_at, tenant_id, exchange_rate)
-            VALUES (?, 'debit', ?, ?, ?, 'ticket_refund', ?, ?, ?, ?, ?)");
+        $stmt = $pdo->prepare("INSERT INTO main_account_transactions
+            (main_account_id, type, amount, currency, description, transaction_of, reference_id, balance, created_at, tenant_id, branch_id, exchange_rate)
+            VALUES (?, 'debit', ?, ?, ?, 'ticket_refund', ?, ?, ?, ?, ?, ?)");
         $stmt->execute([
             $booking['paid_to'],
             $amount,
@@ -93,6 +94,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             $newBalance, // Will be 0 for regular clients
             $payment_date,
             $tenant_id,
+            $branch_id,
             $exchange_rate
         ]);
 
@@ -111,12 +113,12 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         );
 
         $notifStmt = $pdo->prepare("
-            INSERT INTO notifications 
-            (transaction_id, transaction_type, message, status, created_at, tenant_id) 
-            VALUES (?, 'ticket_refund', ?, 'Unread', NOW(), ?)
+            INSERT INTO notifications
+            (transaction_id, transaction_type, message, status, created_at, tenant_id, branch_id)
+            VALUES (?, 'ticket_refund', ?, 'Unread', NOW(), ?, ?)
         ");
-        
-        if (!$notifStmt->execute([$transaction_id, $notificationMessage, $tenant_id])) {
+
+        if (!$notifStmt->execute([$transaction_id, $notificationMessage, $tenant_id, $branch_id])) {
             throw new Exception("Failed to create notification");
         }
 
@@ -141,11 +143,11 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         $user_agent = $_SERVER['HTTP_USER_AGENT'] ?? '';
         
         $activityStmt = $pdo->prepare("
-            INSERT INTO activity_log 
-            (user_id, action, table_name, record_id, old_values, new_values, ip_address, user_agent, created_at, tenant_id) 
-            VALUES (?, 'add', 'main_account_transactions', ?, ?, ?, ?, ?, NOW(), ?)
+            INSERT INTO activity_log
+            (user_id, action, table_name, record_id, old_values, new_values, ip_address, user_agent, created_at, tenant_id, branch_id)
+            VALUES (?, 'add', 'main_account_transactions', ?, ?, ?, ?, ?, NOW(), ?, ?)
         ");
-        $activityStmt->execute([$user_id, $transaction_id, $old_values, $new_values, $ip_address, $user_agent, $tenant_id]);
+        $activityStmt->execute([$user_id, $transaction_id, $old_values, $new_values, $ip_address, $user_agent, $tenant_id, $branch_id]);
         
         // Clean output buffer before sending JSON
         if (ob_get_level()) {

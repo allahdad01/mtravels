@@ -2,11 +2,13 @@
 // Include security module
 require_once 'security.php';
 $tenant_id = $_SESSION['tenant_id'];
+$branch_id = $_SESSION['branch_id'];
 // Enforce authentication
 enforce_auth();
 
 require_once('../includes/db.php');
 header('Content-Type: application/json');
+$branch_id = $_SESSION['branch_id'];
 
 try {
     // Get date range from request
@@ -26,9 +28,10 @@ try {
 
         WHERE e.date BETWEEN ? AND ?
         AND e.tenant_id = ?
+        AND e.branch_id = ?
         ORDER BY e.date ASC
     ");
-    $stmt->execute([$startDate, $endDate, $tenant_id]);
+    $stmt->execute([$startDate, $endDate, $tenant_id, $branch_id]);
     $expenses = $stmt->fetchAll(PDO::FETCH_ASSOC);
 
      // Create Excel file

@@ -8,6 +8,7 @@ require_once 'security.php';
 // Enforce authentication
 enforce_auth();
 $tenant_id = $_SESSION['tenant_id'];
+$branch_id = $_SESSION['branch_id'];
 require_once '../includes/conn.php';
 
 // Validate status
@@ -42,13 +43,13 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     $afsBalance = $_POST['afs_balance'];
     $status = isset($_POST['status']) ? $_POST['status'] : 'active';
 
-    // Updated query to include tenant_id
-    $query = "INSERT INTO main_account (name, account_type, bank_account_number, bank_account_afs_number, bank_name, usd_balance, afs_balance, last_updated, status, tenant_id) 
-              VALUES (?, ?, ?, ?, ?, ?, ?, NOW(), ?, ?)";
+    // Updated query to include tenant_id and branch_id
+    $query = "INSERT INTO main_account (name, account_type, bank_account_number, bank_account_afs_number, bank_name, usd_balance, afs_balance, last_updated, status, tenant_id, branch_id)
+              VALUES (?, ?, ?, ?, ?, ?, ?, NOW(), ?, ?, ?)";
 
     $stmt = $conn->prepare($query);
-    // Updated bind_param to include tenant_id (added 'i' for integer and $tenant_id parameter)
-    $stmt->bind_param("sssssssss", $accountName, $accountType, $bankAccountNumber, $bankAccountAfsNumber, $bankName, $usdBalance, $afsBalance, $status, $tenant_id);
+    // Updated bind_param to include tenant_id and branch_id (added 'i' for integers and parameters)
+    $stmt->bind_param("sssssssssi", $accountName, $accountType, $bankAccountNumber, $bankAccountAfsNumber, $bankName, $usdBalance, $afsBalance, $status, $tenant_id, $branch_id);
 
     if ($stmt->execute()) {
         // Get the insert ID
@@ -64,7 +65,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             'usd_balance' => $usdBalance,
             'afs_balance' => $afsBalance,
             'status' => $status,
-            'tenant_id' => $tenant_id
+            'tenant_id' => $tenant_id,
+            'branch_id' => $branch_id
         ]);
         
         $user_id = $_SESSION['user_id'] ?? 0;
@@ -72,11 +74,11 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         $user_agent = $_SERVER['HTTP_USER_AGENT'] ?? '';
         
         $stmt_log = $conn->prepare("
-            INSERT INTO activity_log 
-            (user_id, action, table_name, record_id, old_values, new_values, ip_address, user_agent, created_at, tenant_id) 
-            VALUES (?, 'add', 'main_account', ?, ?, ?, ?, ?, NOW(), ?)
+            INSERT INTO activity_log
+            (user_id, action, table_name, record_id, old_values, new_values, ip_address, user_agent, created_at, tenant_id, branch_id)
+            VALUES (?, 'add', 'main_account', ?, ?, ?, ?, ?, NOW(), ?, ?)
         ");
-        $stmt_log->bind_param("iissssi", $user_id, $account_id, $old_values, $new_values, $ip_address, $user_agent, $tenant_id);
+        $stmt_log->bind_param("iissssii", $user_id, $account_id, $old_values, $new_values, $ip_address, $user_agent, $tenant_id, $branch_id);
         $stmt_log->execute();
         $stmt_log->close();
         

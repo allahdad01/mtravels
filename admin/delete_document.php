@@ -9,6 +9,7 @@ if (session_status() === PHP_SESSION_NONE) {
     session_start();
 }
 $tenant_id = $_SESSION['tenant_id'];
+$branch_id = $_SESSION['branch_id'];
 // Set JSON content type
 header('Content-Type: application/json');
 
@@ -32,8 +33,8 @@ if (!isset($input['id']) || empty($input['id'])) {
 
 try {
     // Get document info
-    $stmt = $pdo->prepare("SELECT * FROM user_documents WHERE id = ? AND tenant_id = ?");
-    $stmt->execute([$input['id'], $tenant_id]);
+    $stmt = $pdo->prepare("SELECT * FROM user_documents WHERE id = ? AND tenant_id = ? AND branch_id = ?");
+    $stmt->execute([$input['id'], $tenant_id, $branch_id]);
     $document = $stmt->fetch(PDO::FETCH_ASSOC);
     
     if (!$document) {
@@ -49,8 +50,8 @@ try {
     }
     
     // Delete from database
-    $stmt = $pdo->prepare("DELETE FROM user_documents WHERE id = ? AND tenant_id = ?");
-    $stmt->execute([$input['id'], $tenant_id]);
+    $stmt = $pdo->prepare("DELETE FROM user_documents WHERE id = ? AND tenant_id = ? AND branch_id = ?");
+    $stmt->execute([$input['id'], $tenant_id, $branch_id]);
     
     echo json_encode([
         'success' => true,

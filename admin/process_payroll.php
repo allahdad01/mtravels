@@ -2,14 +2,15 @@
 // Initialize the session
 session_start();
 $tenant_id = $_SESSION['tenant_id'];
+$branch_id = $_SESSION['branch_id'];
 
 // Include config file
 require_once "../../includes/db.php";
 
 // Fetch user data with proper error handling
 try {
-    $stmt = $pdo->prepare("SELECT * FROM users WHERE id = ? AND tenant_id = ?");
-    $stmt->execute([$_SESSION['user_id'], $tenant_id]);
+    $stmt = $pdo->prepare("SELECT * FROM users WHERE id = ? AND tenant_id = ? AND branch_id = ?");
+    $stmt->execute([$_SESSION['user_id'], $tenant_id, $branch_id]);
     $user = $stmt->fetch(PDO::FETCH_ASSOC);
 
     if (!$user) {
@@ -32,8 +33,8 @@ try {
 
 // Fetch settings data
 try {
-    $settingStmt = $pdo->query("SELECT * FROM settings WHERE tenant_id = ?");
-    $settingStmt->execute([$tenant_id]);
+    $settingStmt = $pdo->query("SELECT * FROM settings WHERE tenant_id = ? AND branch_id = ?");
+    $settingStmt->execute([$tenant_id, $branch_id]);
     $settings = $settingStmt->fetch(PDO::FETCH_ASSOC);
 } catch (PDOException $e) {
     error_log("Settings Error: " . $e->getMessage());
@@ -50,10 +51,10 @@ if (!isset($_GET["id"]) || empty(trim($_GET["id"]))) {
 
 // Get payroll record
 $payroll_id = trim($_GET["id"]);
-$sql = "SELECT * FROM payroll_records WHERE id = ? AND tenant_id = ?";
+$sql = "SELECT * FROM payroll_records WHERE id = ? AND tenant_id = ? AND branch_id = ?";
 
 if ($stmt = mysqli_prepare($conection_db, $sql)) {
-    mysqli_stmt_bind_param($stmt, "ii", $payroll_id, $tenant_id);
+    mysqli_stmt_bind_param($stmt, "iii", $payroll_id, $tenant_id, $branch_id);
     
     if (mysqli_stmt_execute($stmt)) {
         $result = mysqli_stmt_get_result($stmt);
@@ -68,10 +69,10 @@ if ($stmt = mysqli_prepare($conection_db, $sql)) {
             }
             
             // Update payroll status to processed
-            $update_sql = "UPDATE payroll_records SET status = 'processed' WHERE id = ? AND tenant_id = ?";
-            
+            $update_sql = "UPDATE payroll_records SET status = 'processed' WHERE id = ? AND tenant_id = ? AND branch_id = ?";
+
             if ($update_stmt = mysqli_prepare($conection_db, $update_sql)) {
-                mysqli_stmt_bind_param($update_stmt, "ii", $payroll_id, $tenant_id);
+                mysqli_stmt_bind_param($update_stmt, "iii", $payroll_id, $tenant_id, $branch_id);
                 
                 if (mysqli_stmt_execute($update_stmt)) {
                     // Redirect to view payroll page

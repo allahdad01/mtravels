@@ -6,6 +6,7 @@ if (session_status() === PHP_SESSION_NONE) {
 // Include security module
 require_once 'security.php';
 $tenant_id = $_SESSION['tenant_id'];
+$branch_id = $_SESSION['branch_id'];
 // Enforce authentication
 enforce_auth();
 
@@ -53,10 +54,10 @@ $query = "SELECT mt.*,
           LEFT JOIN hotel_bookings hb ON mt.reference_id = hb.id AND mt.transaction_of = 'hotel'
           LEFT JOIN hotel_refunds hr ON mt.reference_id = hr.id AND mt.transaction_of = 'hotel_refund'
           LEFT JOIN users usr ON usr.id = mt.reference_id AND mt.transaction_of = 'fund'
-          WHERE mt.main_account_id = ? AND mt.tenant_id = ?
+          WHERE mt.main_account_id = ? AND mt.tenant_id = ? AND mt.branch_id = ?
           ORDER BY mt.id DESC";
 $stmt = $conn->prepare($query);
-$stmt->bind_param("ii", $accountId, $tenant_id);
+$stmt->bind_param("iii", $accountId, $tenant_id, $branch_id);
 $stmt->execute();
 $result = $stmt->get_result();
 

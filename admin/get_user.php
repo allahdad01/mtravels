@@ -12,6 +12,7 @@ if (session_status() === PHP_SESSION_NONE) {
 // Set JSON content type
 header('Content-Type: application/json');
 $tenant_id = $_SESSION['tenant_id'];
+$branch_id = $_SESSION['branch_id'];
 
 // Check if ID is provided
 if (!isset($_GET['id']) || empty($_GET['id'])) {
@@ -20,8 +21,8 @@ if (!isset($_GET['id']) || empty($_GET['id'])) {
 
 try {
     // Get user data
-    $stmt = $pdo->prepare("SELECT * FROM users WHERE id = ? AND tenant_id = ?");
-    $stmt->execute([$_GET['id'], $tenant_id]);
+    $stmt = $pdo->prepare("SELECT * FROM users WHERE id = ? AND tenant_id = ? AND branch_id = ?");
+    $stmt->execute([$_GET['id'], $tenant_id, $branch_id]);
     $user = $stmt->fetch(PDO::FETCH_ASSOC);
     
     if (!$user) {
@@ -29,8 +30,8 @@ try {
     }
     
     // Get user documents
-    $docStmt = $pdo->prepare("SELECT * FROM user_documents WHERE user_id = ? AND tenant_id = ? ORDER BY uploaded_at DESC");
-    $docStmt->execute([$_GET['id'], $tenant_id]);
+    $docStmt = $pdo->prepare("SELECT * FROM user_documents WHERE user_id = ? AND tenant_id = ? AND branch_id = ? ORDER BY uploaded_at DESC");
+    $docStmt->execute([$_GET['id'], $tenant_id, $branch_id]);
     $documents = $docStmt->fetchAll(PDO::FETCH_ASSOC);
     
     // Add documents to user data

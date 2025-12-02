@@ -6,6 +6,7 @@ if (session_status() === PHP_SESSION_NONE) {
 // Include database security module for input validation
 require_once 'includes/db_security.php';
 $tenant_id = $_SESSION['tenant_id'];
+$branch_id = $_SESSION['branch_id'];
 // Include security module
 require_once 'security.php';
 
@@ -59,8 +60,8 @@ $pdo->beginTransaction();
 
 try {
     // Get payment details first
-    $paymentStmt = $pdo->prepare("SELECT * FROM jv_payments WHERE id = ? AND tenant_id = ?");
-    $paymentStmt->execute([$paymentId, $tenant_id]);
+    $paymentStmt = $pdo->prepare("SELECT * FROM jv_payments WHERE id = ? AND tenant_id = ? AND branch_id = ?");
+    $paymentStmt->execute([$paymentId, $tenant_id, $branch_id]);
     $payment = $paymentStmt->fetch(PDO::FETCH_ASSOC);
     
     if (!$payment) {
@@ -68,8 +69,8 @@ try {
     }
     
     // First, get the related JV transaction - it's the key to finding client and supplier transactions
-    $jvTransStmt = $pdo->prepare("SELECT id FROM jv_transactions WHERE jv_payment_id = ? AND tenant_id = ? LIMIT 1");
-    $jvTransStmt->execute([$paymentId, $tenant_id]);
+    $jvTransStmt = $pdo->prepare("SELECT id FROM jv_transactions WHERE jv_payment_id = ? AND tenant_id = ? AND branch_id = ? LIMIT 1");
+    $jvTransStmt->execute([$paymentId, $tenant_id, $branch_id]);
     $jvTrans = $jvTransStmt->fetch(PDO::FETCH_ASSOC);
     
     if (!$jvTrans) {
@@ -87,8 +88,8 @@ try {
         $supplierId = $payment['supplier_id'];
         
         // Get client current balances and name
-        $clientStmt = $pdo->prepare("SELECT name, usd_balance, afs_balance FROM clients WHERE id = ? AND tenant_id = ?");
-        $clientStmt->execute([$clientId, $tenant_id]);
+        $clientStmt = $pdo->prepare("SELECT name, usd_balance, afs_balance FROM clients WHERE id = ? AND tenant_id = ? AND branch_id = ?");
+        $clientStmt->execute([$clientId, $tenant_id, $branch_id]);
         $client = $clientStmt->fetch(PDO::FETCH_ASSOC);
         
         if (!$client) {
@@ -96,8 +97,8 @@ try {
         }
         
         // Get supplier current balance, currency and name
-        $supplierStmt = $pdo->prepare("SELECT name, balance, currency FROM suppliers WHERE id = ? AND tenant_id = ?");
-        $supplierStmt->execute([$supplierId, $tenant_id]);
+        $supplierStmt = $pdo->prepare("SELECT name, balance, currency FROM suppliers WHERE id = ? AND tenant_id = ? AND branch_id = ?");
+        $supplierStmt->execute([$supplierId, $tenant_id, $branch_id]);
         $supplier = $supplierStmt->fetch(PDO::FETCH_ASSOC);
         
         if (!$supplier) {
@@ -123,14 +124,15 @@ try {
         // 1. UPDATE CLIENT TRANSACTIONS
         // Find the client transaction using the JV transaction ID as reference_id
         if (isset($jvTransactionId)) {
-            $clientTransQuery = "SELECT id, created_at, balance FROM client_transactions 
-                WHERE client_id = ? AND transaction_of = 'jv_payment' AND tenant_id = ?
-                AND reference_id = ? 
+            $clientTransQuery = "SELECT id, created_at, balance FROM client_transactions
+                WHERE client_id = ? AND transaction_of = 'jv_payment' AND tenant_id = ? AND branch_id = ?
+                AND reference_id = ?
                 ORDER BY id DESC LIMIT 1";
             $clientTransStmt = $pdo->prepare($clientTransQuery);
             $clientTransStmt->execute([
-                $clientId, 
+                $clientId,
                 $tenant_id,
+                $branch_id,
                 $jvTransactionId
             ]);
             $clientTrans = $clientTransStmt->fetch(PDO::FETCH_ASSOC);
@@ -140,14 +142,16 @@ try {
                 $clientTransDate = $clientTrans['created_at'];
                 
                 // Get all subsequent client transactions in the same currency
-                $laterClientTransQuery = "SELECT id, balance FROM client_transactions 
-                    WHERE client_id = ? AND currency = ? AND 
-                         id > ? 
+                $laterClientTransQuery = "SELECT id, balance FROM client_transactions
+                    WHERE client_id = ? AND currency = ? AND tenant_id = ? AND branch_id = ? AND
+                        id > ?
                     ORDER BY id ASC";
                 $laterClientTransStmt = $pdo->prepare($laterClientTransQuery);
                 $laterClientTransStmt->execute([
-                    $clientId, 
-                    $clientCurrency,  
+                    $clientId,
+                    $clientCurrency,
+                    $tenant_id,
+                    $branch_id,
                     $clientTransId
                 ]);
                 
@@ -168,11 +172,11 @@ try {
                 if ($log_errors) $error_log[] = "Client transaction ID {$clientTransId} deleted successfully";
             } else {
                 // Try a broader search if the specific search failed
-                $altClientTransQuery = "SELECT id, description FROM client_transactions 
-                    WHERE client_id = ? AND transaction_of = 'jv_payment' AND tenant_id = ?
+                $altClientTransQuery = "SELECT id, description FROM client_transactions
+                    WHERE client_id = ? AND transaction_of = 'jv_payment' AND tenant_id = ? AND branch_id = ?
                     ORDER BY id DESC LIMIT 5";
                 $altClientTransStmt = $pdo->prepare($altClientTransQuery);
-                $altClientTransStmt->execute([$clientId, $tenant_id]);
+                $altClientTransStmt->execute([$clientId, $tenant_id, $branch_id]);
                 $altClientResults = $altClientTransStmt->fetchAll(PDO::FETCH_ASSOC);
                 
                 if ($log_errors) {
@@ -186,14 +190,15 @@ try {
             }
         } else {
             // Fallback to searching by description (legacy method)
-            $clientTransQuery = "SELECT id, created_at, balance FROM client_transactions 
-                WHERE client_id = ? AND transaction_of = 'jv_payment' AND tenant_id = ?
-                
+            $clientTransQuery = "SELECT id, created_at, balance FROM client_transactions
+                WHERE client_id = ? AND transaction_of = 'jv_payment' AND tenant_id = ? AND branch_id = ?
+
                 ORDER BY id DESC LIMIT 1";
             $clientTransStmt = $pdo->prepare($clientTransQuery);
             $clientTransStmt->execute([
                 $clientId,
-                $tenant_id
+                $tenant_id,
+                $branch_id
             ]);
             $clientTrans = $clientTransStmt->fetch(PDO::FETCH_ASSOC);
             
@@ -203,14 +208,16 @@ try {
                 $clientTransDate = $clientTrans['created_at'];
                 
                 // Get all subsequent client transactions in the same currency
-                $laterClientTransQuery = "SELECT id, balance FROM client_transactions 
-                    WHERE client_id = ? AND currency = ? AND 
-                        id > ? 
+                $laterClientTransQuery = "SELECT id, balance FROM client_transactions
+                    WHERE client_id = ? AND currency = ? AND tenant_id = ? AND branch_id = ? AND
+                          id > ?
                     ORDER BY id ASC";
                 $laterClientTransStmt = $pdo->prepare($laterClientTransQuery);
                 $laterClientTransStmt->execute([
-                    $clientId, 
-                    $clientCurrency, 
+                    $clientId,
+                    $clientCurrency,
+                    $tenant_id,
+                    $branch_id,
                     $clientTransId
                 ]);
                 
@@ -218,15 +225,15 @@ try {
                 // (since this was a credit transaction, we need to reduce next balances)
                 while ($laterTrans = $laterClientTransStmt->fetch(PDO::FETCH_ASSOC)) {
                     $newBalance = $laterTrans['balance'] - $clientAmount;
-                    $updateLaterQuery = "UPDATE client_transactions SET balance = ? WHERE id = ?";
+                    $updateLaterQuery = "UPDATE client_transactions SET balance = ? WHERE id = ? And tenant_id = ? And branch_id = ?";
                     $updateLaterStmt = $pdo->prepare($updateLaterQuery);
-                    $updateLaterStmt->execute([$newBalance, $laterTrans['id']]);
+                    $updateLaterStmt->execute([$newBalance, $laterTrans['id'], $tenant_id, $branch_id]);
                 }
                 
                 // Delete the specific client transaction for this JV payment
-                $deleteClientTransQuery = "DELETE FROM client_transactions WHERE id = ?";
+                $deleteClientTransQuery = "DELETE FROM client_transactions WHERE id = ? And tenant_id = ? And branch_id = ?";
                 $deleteClientTransStmt = $pdo->prepare($deleteClientTransQuery);
-                $deleteClientTransStmt->execute([$clientTransId]);
+                $deleteClientTransStmt->execute([$clientTransId, $tenant_id, $branch_id]);
                 
                 if ($log_errors) $error_log[] = "Client transaction ID {$clientTransId} deleted successfully using legacy method";
             } else {
@@ -237,14 +244,15 @@ try {
         // 2. UPDATE SUPPLIER TRANSACTIONS
         // Find the supplier transaction using the JV transaction ID as reference_id
         if (isset($jvTransactionId)) {
-            $supplierTransQuery = "SELECT id, transaction_date, balance FROM supplier_transactions 
-                WHERE supplier_id = ? AND transaction_of = 'jv_payment' AND tenant_id = ?
-                AND reference_id = ? 
+            $supplierTransQuery = "SELECT id, transaction_date, balance FROM supplier_transactions
+                WHERE supplier_id = ? AND transaction_of = 'jv_payment' AND tenant_id = ? AND branch_id = ?
+                AND reference_id = ?
                 ORDER BY id DESC LIMIT 1";
             $supplierTransStmt = $pdo->prepare($supplierTransQuery);
             $supplierTransStmt->execute([
-                $supplierId, 
+                $supplierId,
                 $tenant_id,
+                $branch_id,
                 $jvTransactionId
             ]);
             $supplierTrans = $supplierTransStmt->fetch(PDO::FETCH_ASSOC);
@@ -254,39 +262,40 @@ try {
                 $supplierTransDate = $supplierTrans['transaction_date'];
                 
                 // Get all subsequent supplier transactions
-                $laterSupplierTransQuery = "SELECT id, balance FROM supplier_transactions 
-                    WHERE supplier_id = ? AND 
-                        id > ? AND tenant_id = ?
+                $laterSupplierTransQuery = "SELECT id, balance FROM supplier_transactions
+                    WHERE supplier_id = ? AND tenant_id = ? AND branch_id = ? AND
+                        id > ?
                     ORDER BY id ASC";
                 $laterSupplierTransStmt = $pdo->prepare($laterSupplierTransQuery);
                 $laterSupplierTransStmt->execute([
-                    $supplierId,  
-                    $supplierTransId,
-                    $tenant_id
+                    $supplierId,
+                    $tenant_id,
+                    $branch_id,
+                    $supplierTransId
                 ]);
                 
                 // Update subsequent transactions by SUBTRACTING the amount
                 // (since this was a credit to supplier, we're undoing it by reducing subsequent balances)
                 while ($laterTrans = $laterSupplierTransStmt->fetch(PDO::FETCH_ASSOC)) {
                     $newBalance = $laterTrans['balance'] - $supplierAmount;
-                    $updateLaterQuery = "UPDATE supplier_transactions SET balance = ? WHERE id = ?";
+                    $updateLaterQuery = "UPDATE supplier_transactions SET balance = ? WHERE id = ? And tenant_id = ? And branch_id = ?";
                     $updateLaterStmt = $pdo->prepare($updateLaterQuery);
-                    $updateLaterStmt->execute([$newBalance, $laterTrans['id']]);
+                    $updateLaterStmt->execute([$newBalance, $laterTrans['id'], $tenant_id, $branch_id]);
                 }
                 
                 // Delete the specific supplier transaction for this JV payment
-                $deleteSupplierTransQuery = "DELETE FROM supplier_transactions WHERE id = ?";
+                $deleteSupplierTransQuery = "DELETE FROM supplier_transactions WHERE id = ? And tenant_id = ? And branch_id = ?";
                 $deleteSupplierTransStmt = $pdo->prepare($deleteSupplierTransQuery);
-                $deleteSupplierTransStmt->execute([$supplierTransId]);
+                $deleteSupplierTransStmt->execute([$supplierTransId], $tenant_id, $branch_id);
                 
                 if ($log_errors) $error_log[] = "Supplier transaction ID {$supplierTransId} deleted successfully";
             } else {
                 // Try a broader search if the specific search failed
-                $altSupplierTransQuery = "SELECT id, remarks FROM supplier_transactions 
-                    WHERE supplier_id = ? AND transaction_of = 'jv_payment' AND tenant_id = ?
+                $altSupplierTransQuery = "SELECT id, remarks FROM supplier_transactions
+                    WHERE supplier_id = ? AND transaction_of = 'jv_payment' AND tenant_id = ? AND branch_id = ?
                     ORDER BY id DESC LIMIT 5";
                 $altSupplierTransStmt = $pdo->prepare($altSupplierTransQuery);
-                $altSupplierTransStmt->execute([$supplierId, $tenant_id]);
+                $altSupplierTransStmt->execute([$supplierId, $tenant_id, $branch_id]);
                 $altSupplierResults = $altSupplierTransStmt->fetchAll(PDO::FETCH_ASSOC);
                 
                 if ($log_errors) {
@@ -300,14 +309,15 @@ try {
             }
         } else {
             // Fallback to searching by remarks (legacy method)
-            $supplierTransQuery = "SELECT id, transaction_date, balance FROM supplier_transactions 
-                WHERE supplier_id = ? AND transaction_of = 'jv_payment' AND tenant_id = ?
-                
+            $supplierTransQuery = "SELECT id, transaction_date, balance FROM supplier_transactions
+                WHERE supplier_id = ? AND transaction_of = 'jv_payment' AND tenant_id = ? AND branch_id = ?
+
                 ORDER BY id DESC LIMIT 1";
             $supplierTransStmt = $pdo->prepare($supplierTransQuery);
             $supplierTransStmt->execute([
                 $supplierId,
-                $tenant_id
+                $tenant_id,
+                $branch_id
             ]);
             $supplierTrans = $supplierTransStmt->fetch(PDO::FETCH_ASSOC);
             
@@ -317,30 +327,31 @@ try {
                 $supplierTransDate = $supplierTrans['transaction_date'];
                 
                 // Get all subsequent supplier transactions
-                $laterSupplierTransQuery = "SELECT id, balance FROM supplier_transactions 
-                    WHERE supplier_id = ? AND 
-                        id > ? AND tenant_id = ?
+                $laterSupplierTransQuery = "SELECT id, balance FROM supplier_transactions
+                    WHERE supplier_id = ? AND tenant_id = ? AND branch_id = ? AND
+                        id > ?
                     ORDER BY id ASC";
                 $laterSupplierTransStmt = $pdo->prepare($laterSupplierTransQuery);
                 $laterSupplierTransStmt->execute([
-                    $supplierId,  
-                    $supplierTransId,
-                    $tenant_id
+                    $supplierId,
+                    $tenant_id,
+                    $branch_id,
+                    $supplierTransId
                 ]);
                 
                 // Update subsequent transactions by SUBTRACTING the amount
                 // (since this was a credit to supplier, we're undoing it by reducing subsequent balances)
                 while ($laterTrans = $laterSupplierTransStmt->fetch(PDO::FETCH_ASSOC)) {
                     $newBalance = $laterTrans['balance'] - $supplierAmount;
-                    $updateLaterQuery = "UPDATE supplier_transactions SET balance = ? WHERE id = ?";
+                    $updateLaterQuery = "UPDATE supplier_transactions SET balance = ? WHERE id = ? And tenant_id = ? And branch_id = ?";
                     $updateLaterStmt = $pdo->prepare($updateLaterQuery);
-                    $updateLaterStmt->execute([$newBalance, $laterTrans['id']]);
+                    $updateLaterStmt->execute([$newBalance, $laterTrans['id'], $tenant_id, $branch_id]);
                 }
                 
                 // Delete the specific supplier transaction for this JV payment
-                $deleteSupplierTransQuery = "DELETE FROM supplier_transactions WHERE id = ?";
+                $deleteSupplierTransQuery = "DELETE FROM supplier_transactions WHERE id = ? And tenant_id = ? And branch_id = ?";
                 $deleteSupplierTransStmt = $pdo->prepare($deleteSupplierTransQuery);
-                $deleteSupplierTransStmt->execute([$supplierTransId]);
+                $deleteSupplierTransStmt->execute([$supplierTransId, $tenant_id, $branch_id]);
                 
                 if ($log_errors) $error_log[] = "Supplier transaction ID {$supplierTransId} deleted successfully using legacy method";
             } else {
@@ -355,16 +366,16 @@ try {
                 $newUsdBalance = $client['usd_balance'] - $payment['total_amount'];
                 
                 // Update client balance
-                $updateClientStmt = $pdo->prepare("UPDATE clients SET usd_balance = ? WHERE id = ? AND tenant_id = ?");
-                $updateClientStmt->execute([$newUsdBalance, $clientId, $tenant_id]);
+                $updateClientStmt = $pdo->prepare("UPDATE clients SET usd_balance = ? WHERE id = ? AND tenant_id = ? AND branch_id = ?");
+                $updateClientStmt->execute([$newUsdBalance, $clientId, $tenant_id, $branch_id]);
                 
                 if ($log_errors) $error_log[] = "Updated client USD balance to {$newUsdBalance}";
             } else {
                 $newAfsBalance = $client['afs_balance'] - $payment['total_amount'];
                 
                 // Update client balance
-                $updateClientStmt = $pdo->prepare("UPDATE clients SET afs_balance = ? WHERE id = ? AND tenant_id = ?");
-                $updateClientStmt->execute([$newAfsBalance, $clientId, $tenant_id]);
+                $updateClientStmt = $pdo->prepare("UPDATE clients SET afs_balance = ? WHERE id = ? AND tenant_id = ? AND branch_id = ?");
+                $updateClientStmt->execute([$newAfsBalance, $clientId, $tenant_id, $branch_id]);
                 
                 if ($log_errors) $error_log[] = "Updated client AFS balance to {$newAfsBalance}";
             }
@@ -375,8 +386,8 @@ try {
             $newSupplierBalance = $supplier['balance'] - $supplierAmount;
             
             // Update supplier balance
-            $updateSupplierStmt = $pdo->prepare("UPDATE suppliers SET balance = ? WHERE id = ? AND tenant_id = ?");
-            $updateSupplierStmt->execute([$newSupplierBalance, $supplierId, $tenant_id]);
+            $updateSupplierStmt = $pdo->prepare("UPDATE suppliers SET balance = ? WHERE id = ? AND tenant_id = ? AND branch_id = ?");
+            $updateSupplierStmt->execute([$newSupplierBalance, $supplierId, $tenant_id, $branch_id]);
             
             if ($log_errors) $error_log[] = "Updated supplier balance to {$newSupplierBalance}";
         }
@@ -403,25 +414,25 @@ try {
         ];
         
         // Insert activity log
-        $activity_log_stmt = $pdo->prepare("INSERT INTO activity_log 
-            (user_id, action, table_name, record_id, old_values, new_values, ip_address, user_agent, created_at, tenant_id) 
-            VALUES (?, 'delete', 'jv_payments', ?, ?, '{}', ?, ?, NOW(), ?)");
-        
+        $activity_log_stmt = $pdo->prepare("INSERT INTO activity_log
+            (user_id, action, table_name, record_id, old_values, new_values, ip_address, user_agent, created_at, tenant_id, branch_id)
+            VALUES (?, 'delete', 'jv_payments', ?, ?, '{}', ?, ?, NOW(), ?, ?)");
+
         $old_values_json = json_encode($old_values);
-        $activity_log_stmt->execute([$user_id, $paymentId, $old_values_json, $ip_address, $user_agent, $tenant_id]);
+        $activity_log_stmt->execute([$user_id, $paymentId, $old_values_json, $ip_address, $user_agent, $tenant_id, $branch_id]);
         
         // 5. DELETE ANY ASSOCIATED JV TRANSACTION
-        $deleteJvTransQuery = "DELETE FROM jv_transactions WHERE jv_payment_id = ? AND tenant_id = ?";
+        $deleteJvTransQuery = "DELETE FROM jv_transactions WHERE jv_payment_id = ? AND tenant_id = ? AND branch_id = ?";
         $deleteJvTransStmt = $pdo->prepare($deleteJvTransQuery);
-        $deleteJvTransStmt->execute([$paymentId, $tenant_id]);
+        $deleteJvTransStmt->execute([$paymentId, $tenant_id, $branch_id]);
         
         $jvTransCount = $deleteJvTransStmt->rowCount();
         if ($log_errors) $error_log[] = "Deleted {$jvTransCount} JV transactions associated with payment ID {$paymentId}";
     }
     
     // Delete the JV payment
-    $deleteStmt = $pdo->prepare("DELETE FROM jv_payments WHERE id = ? AND tenant_id = ?");
-    $deleteStmt->execute([$paymentId, $tenant_id]);
+    $deleteStmt = $pdo->prepare("DELETE FROM jv_payments WHERE id = ? AND tenant_id = ? AND branch_id = ?");
+    $deleteStmt->execute([$paymentId, $tenant_id, $branch_id]);
     
     // Commit any transaction if active
     if ($pdo->inTransaction()) {

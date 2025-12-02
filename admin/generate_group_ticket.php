@@ -5,6 +5,7 @@ require_once('security.php');
 require_once('../includes/language_helpers.php');
 
 $tenant_id = $_SESSION['tenant_id'];
+$branch_id = $_SESSION['branch_id'];
 enforce_auth();
 
 // Validate POST data
@@ -130,13 +131,13 @@ $pilgrimIds = array_map(fn($p) => $p['id'], $selectedPilgrims);
 $placeholders = str_repeat('?,', count($pilgrimIds) - 1) . '?';
 
 $sql = "
-    SELECT b.*, f.head_of_family, f.package_type 
+    SELECT b.*, f.head_of_family, f.package_type
     FROM umrah_bookings b
-    LEFT JOIN families f ON b.family_id = f.family_id AND f.tenant_id = ?
-    WHERE b.booking_id IN ($placeholders) AND b.tenant_id = ?
+    LEFT JOIN families f ON b.family_id = f.family_id AND f.tenant_id = ? AND f.branch_id = ?
+    WHERE b.booking_id IN ($placeholders) AND b.tenant_id = ? AND b.branch_id = ?
 ";
 $stmt = $pdo->prepare($sql);
-$params = array_merge([$tenant_id], $pilgrimIds, [$tenant_id]);
+$params = array_merge([$tenant_id, $branch_id], $pilgrimIds, [$tenant_id, $branch_id]);
 $stmt->execute($params);
 $pilgrims = $stmt->fetchAll(PDO::FETCH_ASSOC);
 

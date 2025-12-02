@@ -174,30 +174,34 @@ try {
     // Begin transaction
     $pdo->beginTransaction();
     
-    // Get tenant_id - you might need to adjust this logic based on your system
+    // Get tenant_id and branch_id - you might need to adjust this logic based on your system
     $tenant_id = 1; // Default value
-    
+    $branch_id = 1; // Default value
+
     if (isset($_SESSION['tenant_id'])) {
         $tenant_id = $_SESSION['tenant_id'];
+    }
+    if (isset($_SESSION['branch_id'])) {
+        $branch_id = $_SESSION['branch_id'];
     }
     
     // First, get the current booking data to calculate balance adjustments
     $stmtCurrentData = $pdo->prepare("
         SELECT sold_to, family_id, paid_to, entry_date, name, dob, passport_number, id_type, flight_date, return_date, duration, room_type, price, sold_price, profit, received_bank_payment, bank_receipt_number, paid, due, discount
         FROM umrah_bookings
-        WHERE booking_id = ?
+        WHERE booking_id = ? AND tenant_id = ? AND branch_id = ?
     ");
-    $stmtCurrentData->execute([$booking_id]);
+    $stmtCurrentData->execute([$booking_id, $tenant_id, $branch_id]);
     $currentData = $stmtCurrentData->fetch(PDO::FETCH_ASSOC);
 
     // Get current services data for multi-supplier support
     $stmtCurrentServices = $pdo->prepare("
         SELECT id, service_type, supplier_id, base_price, sold_price, profit, currency
         FROM umrah_booking_services
-        WHERE booking_id = ?
+        WHERE booking_id = ? AND tenant_id = ? AND branch_id = ?
         ORDER BY id
     ");
-    $stmtCurrentServices->execute([$booking_id]);
+    $stmtCurrentServices->execute([$booking_id, $tenant_id, $branch_id]);
     $currentServices = $stmtCurrentServices->fetchAll(PDO::FETCH_ASSOC);
     
     if (!$currentData) {
@@ -205,16 +209,16 @@ try {
     }
     
     // Get client type
-    $stmtClientType = $pdo->prepare("SELECT client_type FROM clients WHERE id = ?");
-    $stmtClientType->execute([$soldTo]);
+    $stmtClientType = $pdo->prepare("SELECT client_type FROM clients WHERE id = ? AND tenant_id = ? AND branch_id = ?");
+    $stmtClientType->execute([$soldTo, $tenant_id, $branch_id]);
     $clientData = $stmtClientType->fetch(PDO::FETCH_ASSOC);
     $isRegularClient = ($clientData && $clientData['client_type'] === 'regular');
     
     // Get old client type if client has changed
     $oldClientIsRegular = false;
     if ($soldTo != $currentData['sold_to']) {
-        $stmtOldClientType = $pdo->prepare("SELECT client_type FROM clients WHERE id = ?");
-        $stmtOldClientType->execute([$currentData['sold_to']]);
+        $stmtOldClientType = $pdo->prepare("SELECT client_type FROM clients WHERE id = ? AND tenant_id = ? AND branch_id = ?");
+        $stmtOldClientType->execute([$currentData['sold_to'], $tenant_id, $branch_id]);
         $oldClientData = $stmtOldClientType->fetch(PDO::FETCH_ASSOC);
         $oldClientIsRegular = ($oldClientData && $oldClientData['client_type'] === 'regular');
     }
@@ -259,7 +263,7 @@ try {
             fname = ?,
             discount = ?,
             updated_at = NOW()
-        WHERE booking_id = ?
+        WHERE booking_id = ? AND tenant_id = ? AND branch_id = ?
     ");
 
     $stmt->execute([
@@ -285,7 +289,9 @@ try {
         $g_name,
         $father_name,
         $discount,
-        $booking_id
+        $booking_id,
+        $tenant_id,
+        $branch_id
     ]);
 
     // Handle supplier balance updates - IMPROVED LOGIC
@@ -305,14 +311,14 @@ try {
     foreach ($currentSupplierMap as $key => $currentService) {
         if (!isset($newSupplierMap[$key])) {
             // Service removed - reverse the transaction
-            $stmtSupplierType = $pdo->prepare("SELECT supplier_type FROM suppliers WHERE id = ?");
-            $stmtSupplierType->execute([$currentService['supplier_id']]);
+            $stmtSupplierType = $pdo->prepare("SELECT supplier_type FROM suppliers WHERE id = ? AND tenant_id = ? AND branch_id = ?");
+            $stmtSupplierType->execute([$currentService['supplier_id'], $tenant_id, $branch_id]);
             $supplierTypeData = $stmtSupplierType->fetch(PDO::FETCH_ASSOC);
 
             if ($supplierTypeData && $supplierTypeData['supplier_type'] === 'External') {
                 // Reverse the balance
-                $updateSupplierStmt = $pdo->prepare("UPDATE suppliers SET balance = balance + ? WHERE id = ?");
-                $updateSupplierStmt->execute([$currentService['base_price'], $currentService['supplier_id']]);
+                $updateSupplierStmt = $pdo->prepare("UPDATE suppliers SET balance = balance + ? WHERE id = ? AND tenant_id = ? AND branch_id = ?");
+                $updateSupplierStmt->execute([$currentService['base_price'], $currentService['supplier_id'], $tenant_id, $branch_id]);
 
                 // Get transaction details before deleting
                 $getTransactionStmt = $pdo->prepare("
@@ -698,10 +704,10 @@ try {
     ]);
     
     $logStmt = $pdo->prepare("
-        INSERT INTO activity_log (user_id, ip_address, user_agent, action, table_name, record_id, old_values, new_values, created_at, tenant_id)
-        VALUES (?, ?, ?, 'update_umrah_member', 'umrah_bookings', ?, ?, ?, NOW(), ?)
+        INSERT INTO activity_log (user_id, ip_address, user_agent, action, table_name, record_id, old_values, new_values, created_at, tenant_id, branch_id)
+        VALUES (?, ?, ?, 'update_umrah_member', 'umrah_bookings', ?, ?, ?, NOW(), ?, ?)
     ");
-    $logStmt->execute([$userId, $userIp, $userAgent, $booking_id, $oldValues, $newValues, $tenant_id]);
+    $logStmt->execute([$userId, $userIp, $userAgent, $booking_id, $oldValues, $newValues, $tenant_id, $branch_id]);
     
     // Commit transaction
     $pdo->commit();

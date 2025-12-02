@@ -12,6 +12,7 @@ require_once '../includes/language_helpers.php';
 enforce_auth();
 
 $tenant_id = $_SESSION['tenant_id'];
+$branch_id = $_SESSION['branch_id'];
 // Check if user is logged in
 if (!isset($_SESSION['user_id'])  || $_SESSION['role'] !== 'admin') {
     header('Location: ../login.php');
@@ -58,8 +59,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['add_creditor'])) {
         $conn->begin_transaction();
         
         // Insert the creditor
-        $stmt = $conn->prepare("INSERT INTO creditors (name, email, phone, address, balance, currency, tenant_id) VALUES (?, ?, ?, ?, ?, ?, ?)");
-        $stmt->bind_param("ssssssi", $name, $email, $phone, $address, $balance, $currency, $tenant_id);
+        $stmt = $conn->prepare("INSERT INTO creditors (name, email, phone, address, balance, currency, tenant_id, branch_id) VALUES (?, ?, ?, ?, ?, ?, ?, ?)");
+        $stmt->bind_param("ssssssii", $name, $email, $phone, $address, $balance, $currency, $tenant_id, $branch_id);
         $stmt->execute();
         $creditor_id = $conn->insert_id;
 

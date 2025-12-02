@@ -8,6 +8,7 @@ require_once 'security.php';
 // Enforce authentication
 enforce_auth();
 $tenant_id = $_SESSION['tenant_id'];
+$branch_id = $_SESSION['branch_id'];
 require_once('../includes/db.php');
 
 // Validate payment_currency
@@ -44,9 +45,9 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             FROM umrah_refunds r
             JOIN umrah_bookings um ON r.booking_id = um.booking_id
             LEFT JOIN clients c ON um.sold_to = c.id
-            WHERE r.id = ? AND r.tenant_id = ?
+            WHERE r.id = ? AND r.tenant_id = ? AND r.branch_id = ?
         ");
-        $stmt->execute([$refund_id, $tenant_id]);
+        $stmt->execute([$refund_id, $tenant_id, $branch_id]);
         $refund = $stmt->fetch(PDO::FETCH_ASSOC);
 
         if (!$refund) {
@@ -78,8 +79,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 default:
                     throw new Exception("Unsupported currency: $currency");
             }
-            $stmt = $pdo->prepare("SELECT $balanceField as current_balance FROM main_account WHERE id = ? AND tenant_id = ?");
-            $stmt->execute([$main_account_id, $tenant_id]);
+            $stmt = $pdo->prepare("SELECT $balanceField as current_balance FROM main_account WHERE id = ? AND tenant_id = ? AND branch_id = ?");
+            $stmt->execute([$main_account_id, $tenant_id, $branch_id]);
             $balanceResult = $stmt->fetch(PDO::FETCH_ASSOC);
             
             if (!$balanceResult) {
@@ -90,17 +91,17 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             $newBalance = $balanceResult['current_balance'] - $amount;
 
             // Update main account balance
-            $stmt = $pdo->prepare("UPDATE main_account SET $balanceField = ? WHERE id = ? AND tenant_id = ?");
-            $stmt->execute([$newBalance, $main_account_id, $tenant_id]);
+            $stmt = $pdo->prepare("UPDATE main_account SET $balanceField = ? WHERE id = ? AND tenant_id = ? AND branch_id = ?");
+            $stmt->execute([$newBalance, $main_account_id, $tenant_id, $branch_id]);
         }
 
         // For refunds, amount should be negative in transaction record
         $transactionAmount = abs($amount);
 
         // Insert transaction record
-        $stmt = $pdo->prepare("INSERT INTO main_account_transactions 
-            (main_account_id, type, amount, currency, description, transaction_of, reference_id, balance, created_at, tenant_id, exchange_rate)
-            VALUES (?, 'debit', ?, ?, ?, 'umrah_refund', ?, ?, ?, ?, ?)");
+        $stmt = $pdo->prepare("INSERT INTO main_account_transactions
+            (main_account_id, type, amount, currency, description, transaction_of, reference_id, balance, created_at, tenant_id, branch_id, exchange_rate)
+            VALUES (?, 'debit', ?, ?, ?, 'umrah_refund', ?, ?, ?, ?, ?, ?)");
         $stmt->execute([
             $main_account_id,
             $transactionAmount,
@@ -110,6 +111,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             $newBalance,
             $payment_date,
             $tenant_id,
+            $branch_id,
             $exchange_rate
         ]);
 
@@ -127,12 +129,12 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         );
 
         $notifStmt = $pdo->prepare("
-            INSERT INTO notifications 
-            (transaction_id, transaction_type, message, status, created_at, tenant_id) 
-            VALUES (?, 'umrah_refund', ?, 'Unread', NOW(), ?)
+            INSERT INTO notifications
+            (transaction_id, transaction_type, message, status, created_at, tenant_id, branch_id)
+            VALUES (?, 'umrah_refund', ?, 'Unread', NOW(), ?, ?)
         ");
-        
-        if (!$notifStmt->execute([$transaction_id, $notificationMessage, $tenant_id])) {
+
+        if (!$notifStmt->execute([$transaction_id, $notificationMessage, $tenant_id, $branch_id])) {
             throw new Exception("Failed to create notification");
         }
 
@@ -158,11 +160,11 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         $user_agent = $_SERVER['HTTP_USER_AGENT'] ?? '';
         
         $activityStmt = $pdo->prepare("
-            INSERT INTO activity_log 
-            (user_id, action, table_name, record_id, old_values, new_values, ip_address, user_agent, created_at, tenant_id) 
-            VALUES (?, 'add', 'main_account_transactions', ?, ?, ?, ?, ?, NOW(), ?)
+            INSERT INTO activity_log
+            (user_id, action, table_name, record_id, old_values, new_values, ip_address, user_agent, created_at, tenant_id, branch_id)
+            VALUES (?, 'add', 'main_account_transactions', ?, ?, ?, ?, ?, NOW(), ?, ?)
         ");
-        $activityStmt->execute([$user_id, $transaction_id, $old_values, $new_values, $ip_address, $user_agent, $tenant_id]);
+        $activityStmt->execute([$user_id, $transaction_id, $old_values, $new_values, $ip_address, $user_agent, $tenant_id, $branch_id]);
         
         echo json_encode([
             'success' => true,

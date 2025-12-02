@@ -8,6 +8,7 @@ require_once('../includes/conn.php');
 require_once('security.php');
 require_once('../vendor/autoload.php');
 $tenant_id = $_SESSION['tenant_id'];
+$branch_id = $_SESSION['branch_id'];
 // Enforce authentication
 enforce_auth();
 
@@ -33,10 +34,10 @@ try {
         LEFT JOIN clients c ON dc.sold_to = c.id
         LEFT JOIN main_account m ON dc.paid_to = m.id
         LEFT JOIN ticket_bookings tb ON dc.ticket_id = tb.id
-        WHERE dc.id = ? AND dc.tenant_id = ?";
-    
+        WHERE dc.id = ? AND dc.tenant_id = ? AND dc.branch_id = ?";
+
     $stmt = $pdo->prepare($query);
-    $stmt->execute([$dateChangeId, $tenant_id]);
+    $stmt->execute([$dateChangeId, $tenant_id, $branch_id]);
     $ticket = $stmt->fetch(PDO::FETCH_ASSOC);
 
     if (!$ticket) {

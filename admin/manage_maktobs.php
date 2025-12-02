@@ -7,6 +7,7 @@ if (session_status() === PHP_SESSION_NONE) {
 // Include security module
 require_once 'security.php';
 $tenant_id = $_SESSION['tenant_id'];
+$branch_id = $_SESSION['branch_id'];
 // Enforce authentication
 enforce_auth();
 
@@ -46,8 +47,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 
     // Validate company name
     if (!empty($company_name)) {
-        $query = "INSERT INTO maktobs (tenant_id, subject, content, company_name, maktob_number, maktob_date, sender_id, status, language) 
-                  VALUES ('$tenant_id', '$subject', '$content', '$company_name', '$maktob_number', '$maktob_date', $sender_id, 'draft', '$language')";
+        $query = "INSERT INTO maktobs (tenant_id, branch_id, subject, content, company_name, maktob_number, maktob_date, sender_id, status, language)
+                  VALUES ('$tenant_id', '$branch_id', '$subject', '$content', '$company_name', '$maktob_number', '$maktob_date', $sender_id, 'draft', '$language')";
         
         if (mysqli_query($conn, $query)) {
             $_SESSION['success_message'] = __('letter_created');
@@ -64,17 +65,17 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 }
 
 // Fetch recent maktobs
-$recent_maktobs_query = "SELECT m.*, 
+$recent_maktobs_query = "SELECT m.*,
     u.name as sender_name,
     m.status,
     COALESCE(m.language, 'english') as language
-    FROM maktobs m 
-    JOIN users u ON m.sender_id = u.id 
-    WHERE m.tenant_id = ?
-    ORDER BY maktob_date DESC 
+    FROM maktobs m
+    JOIN users u ON m.sender_id = u.id
+    WHERE m.tenant_id = ? AND m.branch_id = ?
+    ORDER BY maktob_date DESC
     LIMIT 10";
 $stmt = $conn->prepare($recent_maktobs_query);
-$stmt->bind_param("i", $tenant_id);
+$stmt->bind_param("ii", $tenant_id, $branch_id);
 $stmt->execute();
 $recent_maktobs_result = $stmt->get_result();
 

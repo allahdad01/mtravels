@@ -2,6 +2,7 @@
 // Include security module
 require_once 'security.php';
 $tenant_id = $_SESSION['tenant_id'];
+$branch_id = $_SESSION['branch_id'];
 // Enforce authentication
 enforce_auth();
 
@@ -24,11 +25,11 @@ if ($id > 0) {
         FROM visa_applications v
         LEFT JOIN suppliers s1 ON v.supplier = s1.id
         LEFT JOIN suppliers s2 ON v.sold_to = s2.id
-        WHERE v.id = ? AND v.tenant_id = ?
+        WHERE v.id = ? AND v.tenant_id = ? AND v.branch_id = ?
     ";
 
     $stmt = $conn->prepare($query);
-    $stmt->bind_param('ii', $id, $tenant_id);
+    $stmt->bind_param('iii', $id, $tenant_id, $branch_id);
     $stmt->execute();
     $result = $stmt->get_result();
 

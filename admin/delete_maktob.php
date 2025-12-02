@@ -7,6 +7,7 @@ if (session_status() === PHP_SESSION_NONE) {
 // Include security module
 require_once 'security.php';
 $tenant_id = $_SESSION['tenant_id'];
+$branch_id = $_SESSION['branch_id'];
 // Enforce authentication
 enforce_auth();
 
@@ -21,7 +22,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     // Validate maktob_id
     if ($maktob_id > 0) {
         // Check if maktob exists and get file paths
-        $check_query = "SELECT file_path, pdf_path FROM maktobs WHERE id = $maktob_id AND tenant_id = $tenant_id";
+        $check_query = "SELECT file_path, pdf_path FROM maktobs WHERE id = $maktob_id AND tenant_id = $tenant_id And branch_id = $branch_id";
         $check_result = mysqli_query($conn, $check_query);
 
         if (mysqli_num_rows($check_result) > 0) {
@@ -31,7 +32,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             $pdf_path = $file_data['pdf_path'] ?? null;
             
             // Delete maktob
-            $query = "DELETE FROM maktobs WHERE id = $maktob_id AND tenant_id = $tenant_id";
+            $query = "DELETE FROM maktobs WHERE id = $maktob_id AND tenant_id = $tenant_id And branch_id = $branch_id";
 
             if (mysqli_query($conn, $query)) {
                 // Delete the associated files if they exist
@@ -54,11 +55,11 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 $user_agent = $_SERVER['HTTP_USER_AGENT'] ?? '';
                 
                 $log_query = "INSERT INTO activity_log 
-                              (user_id, action, table_name, record_id, old_values, new_values, ip_address, user_agent, created_at, tenant_id) 
-                              VALUES (?, 'delete', 'maktobs', ?, ?, ?, ?, ?, NOW(), ?)";
+                              (user_id, action, table_name, record_id, old_values, new_values, ip_address, user_agent, created_at, tenant_id, branch_id) 
+                              VALUES (?, 'delete', 'maktobs', ?, ?, ?, ?, ?, NOW(), ?, ?)";
                 
                 $stmt_log = $conn->prepare($log_query);
-                $stmt_log->bind_param("iisssss", $user_id, $maktob_id, $old_values, $new_values, $ip_address, $user_agent, $tenant_id);
+                $stmt_log->bind_param("iisssssi", $user_id, $maktob_id, $old_values, $new_values, $ip_address, $user_agent, $tenant_id, $branch_id);
                 $stmt_log->execute();
                 $stmt_log->close();
                 

@@ -5,6 +5,7 @@ require_once 'includes/db_security.php';
 // Include security module
 require_once 'security.php';
 $tenant_id = $_SESSION['tenant_id'];
+$branch_id = $_SESSION['branch_id'];
 // Enforce authentication
 enforce_auth();
 
@@ -23,10 +24,10 @@ if (!isset($_GET['id']) || !is_numeric($_GET['id'])) {
 $debtor_id = intval($_GET['id']);
 
 // Fetch debtor information
-$stmt = $conn->prepare("SELECT d.*, m.name as main_account_name FROM debtors d 
-                       LEFT JOIN main_account m ON d.main_account_id = m.id 
-                       WHERE d.id = ? AND d.tenant_id = ?");
-$stmt->bind_param("ii", $debtor_id, $tenant_id);
+$stmt = $conn->prepare("SELECT d.*, m.name as main_account_name FROM debtors d
+                        LEFT JOIN main_account m ON d.main_account_id = m.id
+                        WHERE d.id = ? AND d.tenant_id = ? AND d.branch_id = ?");
+$stmt->bind_param("iii", $debtor_id, $tenant_id, $branch_id);
 $stmt->execute();
 $result = $stmt->get_result();
 $debtor = $result->fetch_assoc();
@@ -52,8 +53,8 @@ if (empty($debtor['agreement_terms'])) {
 }
 
 // Fetch the current admin user name
-$stmt = $pdo->prepare("SELECT name FROM users WHERE id = ? AND tenant_id = ?");
-$stmt->execute([$_SESSION['user_id'], $tenant_id]);
+$stmt = $pdo->prepare("SELECT name FROM users WHERE id = ? AND tenant_id = ? AND branch_id = ?");
+$stmt->execute([$_SESSION['user_id'], $tenant_id, $branch_id]);
 $user = $stmt->fetch(PDO::FETCH_ASSOC);
 ?>
 <!DOCTYPE html>

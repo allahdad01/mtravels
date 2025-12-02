@@ -12,6 +12,7 @@ require_once('security.php');
 // Enforce authentication
 enforce_auth();
 $tenant_id = $_SESSION['tenant_id'];
+$branch_id = $_SESSION['branch_id'];
 $user_id = $_SESSION['user_id'];
 
 // Language handling
@@ -134,10 +135,10 @@ try {
     </html>';
     
         // Save agreement record in database (even for HTML output)
-        $saveQuery = "INSERT INTO umrah_agreements (booking_id, filename, created_by, created_at, tenant_id)
-                      VALUES (?, ?, ?, NOW(), ?)";
+        $saveQuery = "INSERT INTO umrah_agreements (booking_id, filename, created_by, created_at, tenant_id, branch_id)
+                      VALUES (?, ?, ?, NOW(), ?, ?)";
         $saveStmt = $pdo->prepare($saveQuery);
-        $saveStmt->execute([$bookingId, 'html_output_' . date('Y-m-d_His') . '.html', $user_id, $tenant_id]);
+        $saveStmt->execute([$bookingId, 'html_output_' . date('Y-m-d_His') . '.html', $user_id, $tenant_id, $branch_id]);
     
         if ($isAjaxRequest) {
             echo json_encode([

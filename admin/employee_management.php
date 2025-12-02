@@ -9,6 +9,7 @@ if (session_status() === PHP_SESSION_NONE) {
 }
 
 $tenant_id = $_SESSION['tenant_id'];
+$branch_id = $_SESSION['branch_id'];
 
 // Check if user is logged in and is admin
 if (!isset($_SESSION['user_id']) || $_SESSION['role'] !== 'admin') {
@@ -26,12 +27,12 @@ $user_id = isset($_GET['user_id']) ? (int)$_GET['user_id'] : null;
 $query = "
     SELECT u.*, sm.base_salary, sm.currency as salary_currency, sm.status as salary_status
     FROM users u
-    LEFT JOIN salary_management sm ON u.id = sm.user_id AND sm.tenant_id = u.tenant_id
-    WHERE u.tenant_id = ? AND u.role != 'super_admin'
+    LEFT JOIN salary_management sm ON u.id = sm.user_id AND sm.tenant_id = u.tenant_id AND sm.branch_id = u.branch_id
+    WHERE u.tenant_id = ? AND u.branch_id = ? AND u.role != 'super_admin'
 ";
 
-$params = [$tenant_id];
-$types = "i";
+$params = [$tenant_id, $branch_id];
+$types = "ii";
 
 if (!empty($search)) {
     $query .= " AND (u.name LIKE ? OR u.email LIKE ? OR u.phone LIKE ?)";
@@ -78,9 +79,9 @@ $fired_employees = array_filter($employees, function($emp) {
 });
 
 // Get roles for filter dropdown
-$roles_query = "SELECT DISTINCT role FROM users WHERE tenant_id = ? AND role IS NOT NULL AND role != 'super_admin' ORDER BY role";
+$roles_query = "SELECT DISTINCT role FROM users WHERE tenant_id = ? AND branch_id = ? AND role IS NOT NULL AND role != 'super_admin' ORDER BY role";
 $stmt = $pdo->prepare($roles_query);
-$stmt->execute([$tenant_id]);
+$stmt->execute([$tenant_id, $branch_id]);
 $roles = $stmt->fetchAll(PDO::FETCH_COLUMN);
 
 $page_title = $user_id ? __('manage_employee') : __('employee_management');

@@ -7,6 +7,8 @@ require_once '../includes/language_helpers.php';
 
 // Enforce authentication
 enforce_auth();
+$tenant_id = $_SESSION['tenant_id'];
+$branch_id = $_SESSION['branch_id'];
 
 // Database connection
 require_once('../includes/db.php');
@@ -42,11 +44,11 @@ $query = "
     LEFT JOIN refunded_tickets rt ON mat.reference_id = rt.id AND mat.transaction_of = 'ticket_refund'
     LEFT JOIN clients c ON rt.sold_to = c.id
     LEFT JOIN suppliers s ON rt.supplier = s.id
-    WHERE mat.id = ?
+    WHERE mat.id = ? AND mat.tenant_id = ? AND mat.branch_id = ?
 ";
 
 $stmt = $conn->prepare($query);
-$stmt->bind_param("i", $transaction_id);
+$stmt->bind_param("iii", $transaction_id, $tenant_id, $branch_id);
 $stmt->execute();
 $result = $stmt->get_result();
 
@@ -55,9 +57,10 @@ if ($result->num_rows === 0) {
 }
 
 $transaction = $result->fetch_assoc();
-// Fetch company settings
+// Fetch settings data
 try {
-    $settingStmt = $pdo->query("SELECT * FROM settings WHERE id = 1");
+    $settingStmt = $pdo->query("SELECT * FROM settings WHERE tenant_id = ?");
+    $settingStmt->execute([$tenant_id]);
     $settings = $settingStmt->fetch(PDO::FETCH_ASSOC);
 } catch (PDOException $e) {
     error_log("Settings Error: " . $e->getMessage());

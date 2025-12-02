@@ -7,35 +7,36 @@ require_once '../includes/conn.php';
 // Get the user ID from the session
 $user_id = $_SESSION["user_id"];
 $tenant_id = $_SESSION['tenant_id'];
+$branch_id = $_SESSION['branch_id'];
 $ticketsQuery = "
-    SELECT 
+    SELECT
        rt.*,
        rt.supplier_penalty AS refund_supplier_penalty,
        rt.service_penalty AS refund_service_penalty,
        rt.refund_to_passenger,
        rt.status AS refund_status,
        rt.remarks AS refund_remarks,
-       
+
        s.name AS supplier_name,
        c.name AS sold_to_name,
        ma.name AS paid_to_name,
        u.name AS created_by
-    FROM 
+    FROM
        refunded_tickets rt
-    LEFT JOIN 
-       suppliers s ON rt.supplier = s.id
-    LEFT JOIN 
-       clients c ON rt.sold_to = c.id
-    LEFT JOIN 
-       main_account ma ON rt.paid_to = ma.id
     LEFT JOIN
-       users u ON rt.created_by = u.id
-    WHERE rt.tenant_id = ?
-    ORDER BY 
+       suppliers s ON rt.supplier = s.id AND s.tenant_id = rt.tenant_id AND s.branch_id = rt.branch_id
+    LEFT JOIN
+       clients c ON rt.sold_to = c.id AND c.tenant_id = rt.tenant_id AND c.branch_id = rt.branch_id
+    LEFT JOIN
+       main_account ma ON rt.paid_to = ma.id AND ma.tenant_id = rt.tenant_id AND ma.branch_id = rt.branch_id
+    LEFT JOIN
+       users u ON rt.created_by = u.id AND u.tenant_id = rt.tenant_id AND u.branch_id = rt.branch_id
+    WHERE rt.tenant_id = ? AND rt.branch_id = ?
+    ORDER BY
        rt.id DESC
 ";
 $stmt = $conn->prepare($ticketsQuery);
-$stmt->execute([$tenant_id]);
+$stmt->execute([$tenant_id, $branch_id]);
 $ticketsResult = $stmt->get_result();
 
 // Initialize the array to hold ticket details
@@ -48,9 +49,9 @@ if ($ticketsResult && $ticketsResult->num_rows > 0) {
     }
 }
 // Fetch Suppliers
-$suppliersQuery = "SELECT id, name FROM suppliers WHERE tenant_id = ?";
+$suppliersQuery = "SELECT id, name FROM suppliers WHERE tenant_id = ? AND branch_id = ?";
 $stmt = $conn->prepare($suppliersQuery);
-$stmt->execute([$tenant_id]);
+$stmt->execute([$tenant_id, $branch_id]);
 $suppliersResult = $stmt->get_result();
 $suppliers = $suppliersResult->fetch_all(MYSQLI_ASSOC);
 

@@ -10,6 +10,7 @@ $tenant_id = $_SESSION['tenant_id'];
 enforce_auth();
 
 require_once('../includes/db.php');
+$branch_id = $_SESSION['branch_id'];
 
 
 // Check if user is logged in
@@ -39,11 +40,11 @@ try {
                t.created_at as transaction_date, t.balance, t.main_account_id,
                t.currency, t.exchange_rate
         FROM main_account_transactions t
-        LEFT JOIN main_account m ON t.main_account_id = m.id
-        LEFT JOIN date_change_tickets dct ON t.reference_id = dct.id
-        WHERE t.id = ? AND t.transaction_of = 'date_change' AND t.tenant_id = ?
+        LEFT JOIN main_account m ON t.main_account_id = m.id AND m.tenant_id = ? AND m.branch_id = ?
+        LEFT JOIN date_change_tickets dct ON t.reference_id = dct.id AND dct.tenant_id = ? AND dct.branch_id = ?
+        WHERE t.id = ? AND t.transaction_of = 'date_change' AND t.tenant_id = ? AND t.branch_id = ?
     ");
-    $stmt->execute([$transaction_id, $tenant_id]);
+    $stmt->execute([$tenant_id, $branch_id, $tenant_id, $branch_id, $transaction_id, $tenant_id, $branch_id]);
     $transaction = $stmt->fetch(PDO::FETCH_ASSOC);
     
     if (!$transaction) {

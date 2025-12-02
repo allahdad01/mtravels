@@ -2,6 +2,7 @@
 // Initialize the session
 session_start();
 $tenant_id = $_SESSION['tenant_id'];
+$branch_id = $_SESSION['branch_id'];
 // Include config file
 require_once "../includes/db.php";
 
@@ -51,63 +52,63 @@ function calculateTotalEarnings($base_salary, $bonuses, $deductions, $advances) 
 // Prepare SQL query based on whether user_id is provided
 if ($user_id) {
     // Query for individual employee
-    $employeeQuery = "SELECT sm.*, u.name as employee_name, u.hire_date, u.email, u.phone 
-                     FROM salary_management sm 
-                     JOIN users u ON sm.user_id = u.id 
-                     WHERE sm.user_id = ? AND sm.tenant_id = ?";
+    $employeeQuery = "SELECT sm.*, u.name as employee_name, u.hire_date, u.email, u.phone
+                      FROM salary_management sm
+                      JOIN users u ON sm.user_id = u.id
+                      WHERE sm.user_id = ? AND sm.tenant_id = ? AND sm.branch_id = ?";
     $stmt = $pdo->prepare($employeeQuery);
-    $stmt->execute([$user_id, $tenant_id]);
+    $stmt->execute([$user_id, $tenant_id, $branch_id]);
     $employees = $stmt->fetchAll(PDO::FETCH_ASSOC);
 } else {
     // Query for all active employees
-    $employeeQuery = "SELECT sm.*, u.name as employee_name, u.hire_date, u.email, u.phone 
-                     FROM salary_management sm 
-                     JOIN users u ON sm.user_id = u.id 
-                     WHERE sm.status = 'active' AND sm.tenant_id = ?
-                     ORDER BY u.name ASC";
+    $employeeQuery = "SELECT sm.*, u.name as employee_name, u.hire_date, u.email, u.phone
+                      FROM salary_management sm
+                      JOIN users u ON sm.user_id = u.id
+                      WHERE sm.status = 'active' AND sm.tenant_id = ? AND sm.branch_id = ?
+                      ORDER BY u.name ASC";
     $stmt = $pdo->prepare($employeeQuery);
-    $stmt->execute([$tenant_id]);
+    $stmt->execute([$tenant_id, $branch_id]);
     $employees = $stmt->fetchAll(PDO::FETCH_ASSOC);
 }
 
 // Fetch salary bonuses for the month
 $bonusesQuery = "SELECT * FROM salary_bonuses
-                WHERE user_id = ? AND MONTH(bonus_date) = ? AND YEAR(bonus_date) = ? AND tenant_id = ?";
+                WHERE user_id = ? AND MONTH(bonus_date) = ? AND YEAR(bonus_date) = ? AND tenant_id = ? AND branch_id = ?";
 $bonusStmt = $pdo->prepare($bonusesQuery);
 
 // Fetch salary deductions for the month
 $deductionsQuery = "SELECT * FROM salary_deductions
-                   WHERE user_id = ? AND MONTH(deduction_date) = ? AND YEAR(deduction_date) = ? AND tenant_id = ?";
+                   WHERE user_id = ? AND MONTH(deduction_date) = ? AND YEAR(deduction_date) = ? AND tenant_id = ? AND branch_id = ?";
 $deductionStmt = $pdo->prepare($deductionsQuery);
 
 // Fetch salary adjustments for the month (legacy)
-$adjustmentsQuery = "SELECT sa.* 
-                    FROM salary_adjustments sa 
-                    WHERE sa.user_id = ? AND MONTH(sa.effective_date) = ? AND YEAR(sa.effective_date) = ? AND tenant_id = ?";
+$adjustmentsQuery = "SELECT sa.*
+                    FROM salary_adjustments sa
+                    WHERE sa.user_id = ? AND MONTH(sa.effective_date) = ? AND YEAR(sa.effective_date) = ? AND tenant_id = ? AND branch_id = ?";
 $adjustmentStmt = $pdo->prepare($adjustmentsQuery);
 
 // Fetch salary advances for the month
-$advancesQuery = "SELECT sad.* 
-                 FROM salary_advances sad 
-                 WHERE sad.user_id = ? AND MONTH(sad.advance_date) = ? AND YEAR(sad.advance_date) = ? AND tenant_id = ?";
+$advancesQuery = "SELECT sad.*
+                 FROM salary_advances sad
+                 WHERE sad.user_id = ? AND MONTH(sad.advance_date) = ? AND YEAR(sad.advance_date) = ? AND tenant_id = ? AND branch_id = ?";
 $advanceStmt = $pdo->prepare($advancesQuery);
 
 // Get employee adjustments and advances
 foreach ($employees as &$employee) {
     // Get bonuses
-    $bonusStmt->execute([$employee['user_id'], $month, $year, $tenant_id]);
+    $bonusStmt->execute([$employee['user_id'], $month, $year, $tenant_id, $branch_id]);
     $employee['bonuses'] = $bonusStmt->fetchAll(PDO::FETCH_ASSOC);
     
     // Get deductions
-    $deductionStmt->execute([$employee['user_id'], $month, $year, $tenant_id]);
+    $deductionStmt->execute([$employee['user_id'], $month, $year, $tenant_id, $branch_id]);
     $employee['deductions'] = $deductionStmt->fetchAll(PDO::FETCH_ASSOC);
     
     // Get legacy adjustments
-    $adjustmentStmt->execute([$employee['user_id'], $month, $year, $tenant_id]);
+    $adjustmentStmt->execute([$employee['user_id'], $month, $year, $tenant_id, $branch_id]);
     $adjustments = $adjustmentStmt->fetchAll(PDO::FETCH_ASSOC);
     
     // Get advances
-    $advanceStmt->execute([$employee['user_id'], $month, $year, $tenant_id]);
+    $advanceStmt->execute([$employee['user_id'], $month, $year, $tenant_id, $branch_id]);
     $employee['advances'] = $advanceStmt->fetchAll(PDO::FETCH_ASSOC);
     
     // Calculate total earnings (for display in summary only)
@@ -134,14 +135,14 @@ foreach ($employees as &$employee) {
     }
 
     // Check payment status from existing salary_payments table
-    $paymentQuery = "SELECT SUM(amount) as total_paid 
-                    FROM salary_payments 
-                    WHERE user_id = ? 
-                    AND DATE_FORMAT(payment_for_month, '%Y-%m') = ? AND tenant_id = ?";
+    $paymentQuery = "SELECT SUM(amount) as total_paid
+                    FROM salary_payments
+                    WHERE user_id = ?
+                    AND DATE_FORMAT(payment_for_month, '%Y-%m') = ? AND tenant_id = ? AND branch_id = ?";
     $paymentStmt = $pdo->prepare($paymentQuery);
     // Format month and year to match payment_for_month format (YYYY-MM)
     $paymentForMonth = sprintf('%04d-%02d', $year, $month);
-    $paymentStmt->execute([$employee['user_id'], $paymentForMonth, $tenant_id]);
+    $paymentStmt->execute([$employee['user_id'], $paymentForMonth, $tenant_id, $branch_id]);
     $paymentStatus = $paymentStmt->fetch(PDO::FETCH_ASSOC);
     
     // Compare total paid amount with (base salary + bonuses - deductions)
@@ -154,14 +155,14 @@ foreach ($employees as &$employee) {
     $employee['total_bonuses'] = $totalBonuses;
 
     // Get payment details for display
-    $paymentDetailsQuery = "SELECT payment_date, payment_type, description, amount, receipt, main_account_id 
-                          FROM salary_payments 
-                          WHERE user_id = ? 
+    $paymentDetailsQuery = "SELECT payment_date, payment_type, description, amount, receipt, main_account_id
+                          FROM salary_payments
+                          WHERE user_id = ?
                           AND DATE_FORMAT(payment_for_month, '%Y-%m') = ?
-                          AND tenant_id = ?
+                          AND tenant_id = ? AND branch_id = ?
                           ORDER BY payment_date DESC";
     $paymentDetailsStmt = $pdo->prepare($paymentDetailsQuery);
-    $paymentDetailsStmt->execute([$employee['user_id'], $paymentForMonth, $tenant_id]);
+    $paymentDetailsStmt->execute([$employee['user_id'], $paymentForMonth, $tenant_id, $branch_id]);
     $employee['payment_details'] = $paymentDetailsStmt->fetchAll(PDO::FETCH_ASSOC);
 }
 ?>

@@ -10,6 +10,7 @@ require_once 'security.php';
 // Enforce authentication
 enforce_auth();
 $tenant_id = $_SESSION['tenant_id'];
+$branch_id = $_SESSION['branch_id'];
 
 // Include database connection
 include '../includes/db.php';
@@ -27,19 +28,19 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     // Validate maktob_id
     if ($maktob_id > 0) {
         // Check if maktob exists
-        $check_query = "SELECT 1 FROM maktobs WHERE id = $maktob_id AND tenant_id = $tenant_id";
+        $check_query = "SELECT 1 FROM maktobs WHERE id = $maktob_id AND tenant_id = $tenant_id AND branch_id = $branch_id";
         $check_result = mysqli_query($conn, $check_query);
 
         if (mysqli_num_rows($check_result) > 0) {
             // Update maktob
-            $query = "UPDATE maktobs SET 
+            $query = "UPDATE maktobs SET
                      subject = '$subject',
                      content = '$content',
                      company_name = '$company_name',
                      maktob_number = '$maktob_number',
                      maktob_date = '$maktob_date',
                      language = '$language'
-                     WHERE id = $maktob_id AND tenant_id = $tenant_id";
+                     WHERE id = $maktob_id AND tenant_id = $tenant_id AND branch_id = $branch_id";
 
             if (mysqli_query($conn, $query)) {
                 // Add activity logging
@@ -48,7 +49,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 $user_agent = $_SERVER['HTTP_USER_AGENT'] ?? '';
                 
                 // Get original maktob data
-                $get_original = "SELECT * FROM maktobs WHERE id = $maktob_id AND tenant_id = $tenant_id";
+                $get_original = "SELECT * FROM maktobs WHERE id = $maktob_id AND tenant_id = $tenant_id AND branch_id = $branch_id";
                 $original_result = mysqli_query($conn, $get_original);
                 $old_values = [];
                 
@@ -75,9 +76,9 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 ];
                 
                 // Insert activity log using PDO connection
-                $activity_log_stmt = $pdo->prepare("INSERT INTO activity_log 
-                    (user_id, action, table_name, record_id, old_values, new_values, ip_address, user_agent, tenant_id) 
-                    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)");
+                $activity_log_stmt = $pdo->prepare("INSERT INTO activity_log
+                    (user_id, action, table_name, record_id, old_values, new_values, ip_address, user_agent, tenant_id, branch_id)
+                    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)");
                 $activity_log_stmt->execute([
                     $user_id,
                     'update',
@@ -87,7 +88,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                     json_encode($new_values),
                     $ip_address,
                     $user_agent,
-                    $tenant_id
+                    $tenant_id,
+                    $branch_id
                 ]);
                 
                 $_SESSION['success_message'] = "Maktob updated successfully!";

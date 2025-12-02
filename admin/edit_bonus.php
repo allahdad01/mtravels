@@ -2,7 +2,7 @@
 // Initialize the session
 session_start();
 $tenant_id = $_SESSION['tenant_id'];
-
+$branch_id = $_SESSION['branch_id'];
 // Include config file
 require_once "../includes/db.php";
 // Check if the user is logged in, if not then redirect to login page
@@ -57,11 +57,11 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
     // Check input errors before updating in database
     if (empty($user_id_err) && empty($amount_err) && empty($description_err) && empty($bonus_date_err)) {
         // Prepare an update statement
-        $sql = "UPDATE salary_bonuses SET user_id=?, amount=?, description=?, bonus_date=?, type=? WHERE id=? AND tenant_id = ?";
+        $sql = "UPDATE salary_bonuses SET user_id=?, amount=?, description=?, bonus_date=?, type=? WHERE id=? AND tenant_id = ? AND branch_id = ?";
         
         if ($stmt = mysqli_prepare($conection_db, $sql)) {
             // Bind variables to the prepared statement as parameters
-            mysqli_stmt_bind_param($stmt, "idsssii", $user_id, $amount, $description, $bonus_date, $type, $id, $tenant_id);
+            mysqli_stmt_bind_param($stmt, "idsssiii", $user_id, $amount, $description, $bonus_date, $type, $id, $tenant_id, $branch_id);
             
             // Attempt to execute the prepared statement
             if (mysqli_stmt_execute($stmt)) {
@@ -83,10 +83,10 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
         $id = trim($_GET["id"]);
         
         // Prepare a select statement
-        $sql = "SELECT * FROM salary_bonuses WHERE id = ? AND tenant_id = ?";
+        $sql = "SELECT * FROM salary_bonuses WHERE id = ? AND tenant_id = ? AND branch_id = ?";
         if ($stmt = mysqli_prepare($conection_db, $sql)) {
             // Bind variables to the prepared statement as parameters
-            mysqli_stmt_bind_param($stmt, "ii", $param_id, $tenant_id);
+            mysqli_stmt_bind_param($stmt, "iii", $param_id, $tenant_id, $branch_id);
             
             // Set parameters
             $param_id = $id;

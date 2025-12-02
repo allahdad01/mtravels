@@ -10,6 +10,7 @@ enforce_auth();
 require_once '../includes/conn.php';
 
 $tenant_id = $_SESSION['tenant_id'];
+$branch_id = $_SESSION['branch_id'];
 // Validate balance
 $balance = isset($_POST['balance']) ? DbSecurity::validateInput($_POST['balance'], 'float', ['min' => 0]) : null;
 
@@ -43,9 +44,9 @@ $address = $_POST['address'] ?? null;
 $currency = $_POST['currency'] ?? null;
 $balance = $_POST['balance'] ?? 0;
 $supplier_type = $_POST['supplier_type'] ?? null;
-$query = "UPDATE suppliers SET name = ?, contact_person = ?, phone = ?, email = ?, address = ?, currency = ?, balance = ?, supplier_type = ? WHERE id = ? AND tenant_id = ?";
+$query = "UPDATE suppliers SET name = ?, contact_person = ?, phone = ?, email = ?, address = ?, currency = ?, balance = ?, supplier_type = ? WHERE id = ? AND tenant_id = ? AND branch_id = ?";
 $stmt = $conn->prepare($query);
-$stmt->bind_param('ssssssdsii', $name, $contact_person, $phone, $email, $address, $currency, $balance, $supplier_type, $id, $tenant_id);
+$stmt->bind_param('ssssssdsiii', $name, $contact_person, $phone, $email, $address, $currency, $balance, $supplier_type, $id, $tenant_id, $branch_id);
 
 if ($stmt->execute()) {
     // Add activity logging
@@ -55,8 +56,8 @@ if ($stmt->execute()) {
     
     // Get original supplier data
     $old_values = [];
-    $get_original_stmt = $conn->prepare("SELECT * FROM suppliers WHERE id = ? AND tenant_id = ?");
-    $get_original_stmt->bind_param('ii', $id, $tenant_id);
+    $get_original_stmt = $conn->prepare("SELECT * FROM suppliers WHERE id = ? AND tenant_id = ? AND branch_id = ?");
+    $get_original_stmt->bind_param('iii', $id, $tenant_id, $branch_id);
     $get_original_stmt->execute();
     $original_result = $get_original_stmt->get_result();
     
@@ -88,19 +89,20 @@ if ($stmt->execute()) {
     $old_values = json_encode($old_values);
     $new_values = json_encode($new_values);
     // Insert activity log
-    $activity_log_stmt = $conn->prepare("INSERT INTO activity_log 
-        (user_id, action, table_name, record_id, old_values, new_values, ip_address, user_agent, tenant_id) 
-        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)");
-    $activity_log_stmt->bind_param("isisssssi", 
-        $user_id, 
-        $action, 
-        $table_name, 
-        $id, 
-        $old_values, 
-        $new_values, 
-        $ip_address, 
+    $activity_log_stmt = $conn->prepare("INSERT INTO activity_log
+        (user_id, action, table_name, record_id, old_values, new_values, ip_address, user_agent, tenant_id, branch_id)
+        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)");
+    $activity_log_stmt->bind_param("isisssssii",
+        $user_id,
+        $action,
+        $table_name,
+        $id,
+        $old_values,
+        $new_values,
+        $ip_address,
         $user_agent,
-        $tenant_id
+        $tenant_id,
+        $branch_id
     );
     $activity_log_stmt->execute();
     

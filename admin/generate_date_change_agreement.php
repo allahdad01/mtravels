@@ -4,6 +4,7 @@ if (session_status() === PHP_SESSION_NONE) {
     session_start();
 }
 $tenant_id = $_SESSION['tenant_id'];
+$branch_id = $_SESSION['branch_id'];
 
 // Include necessary files
 require_once '../includes/db.php';
@@ -31,13 +32,13 @@ $query = "
         suppliers s ON dc.supplier = s.id
     LEFT JOIN
         ticket_bookings tb ON dc.ticket_id = tb.id
-    WHERE 
-        dc.id = ? AND dc.tenant_id = ?
+    WHERE
+        dc.id = ? AND dc.tenant_id = ? AND dc.branch_id = ?
 ";
 
 try {
     $stmt = $pdo->prepare($query);
-    $stmt->execute([$ticketId, $tenant_id]);
+    $stmt->execute([$ticketId, $tenant_id, $branch_id]);
     $ticket = $stmt->fetch(PDO::FETCH_ASSOC);
 
     if (!$ticket) {

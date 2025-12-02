@@ -9,11 +9,12 @@ if (session_status() === PHP_SESSION_NONE) {
     session_start();
 }
 $tenant_id = $_SESSION['tenant_id'];
+$branch_id = $_SESSION['branch_id'];
 // Set JSON content type
 header('Content-Type: application/json');
 
 // Check if user is logged in and is admin
-if (!isset($_SESSION['user_id']) || $_SESSION['role'] !== 'admin') {
+if (!isset($_SESSION['user_id'])) {
     die(json_encode(['success' => false, 'message' => __('unauthorized_access')]));
 }
 
@@ -33,29 +34,29 @@ try {
         UPDATE users 
         SET fired = NOT fired, 
             fired_at = CASE WHEN fired = FALSE THEN NOW() ELSE NULL END 
-        WHERE id = ? AND tenant_id = ?
+        WHERE id = ? AND tenant_id = ? And branch_id = ?
     ");
    
     // Execute the update
-    $stmt->execute([$_POST['id'], $tenant_id]);
+    $stmt->execute([$_POST['id'], $tenant_id, $branch_id]);
     // Fetch the updated user's details for logging
-    $userStmt = $pdo->prepare("SELECT name, email, fired FROM users WHERE id = ? AND tenant_id = ?");
-    $userStmt->execute([$_POST['id'], $tenant_id]);
+    $userStmt = $pdo->prepare("SELECT name, email, fired FROM users WHERE id = ? AND tenant_id = ? And branch_id = ?");
+    $userStmt->execute([$_POST['id'], $tenant_id, $branch_id]);
     $user = $userStmt->fetch(PDO::FETCH_ASSOC);
     
     // Update salary_management status based on fired flag
     $status = $user['fired'] ? 'inactive' : 'active';
-    $salaryStmt = $pdo->prepare("UPDATE salary_management SET status = ? WHERE user_id = ? AND tenant_id = ?");
-    $salaryStmt->execute([$status, $_POST['id'], $tenant_id]);
+    $salaryStmt = $pdo->prepare("UPDATE salary_management SET status = ? WHERE user_id = ? AND tenant_id = ? And branch_id = ?");
+    $salaryStmt->execute([$status, $_POST['id'], $tenant_id, $branch_id]);
 
     // Log the activity
     $logStmt = $pdo->prepare("
         INSERT INTO activity_log (
             user_id, action, table_name, record_id, 
-            old_values, new_values, ip_address, user_agent, created_at, tenant_id
+            old_values, new_values, ip_address, user_agent, created_at, tenant_id, branch_id
         ) VALUES (
             ?, ?, 'users', ?, 
-            ?, ?, ?, ?, NOW(), ?
+            ?, ?, ?, ?, NOW(), ?, ?
         )
     ");
 
@@ -67,7 +68,8 @@ try {
         json_encode(['fired' => $user['fired']]),
         $_SERVER['REMOTE_ADDR'],
         $_SERVER['HTTP_USER_AGENT'],
-        $tenant_id
+        $tenant_id,
+        $branch_id
     ]);
 
     // Return success response

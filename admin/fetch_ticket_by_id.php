@@ -4,6 +4,7 @@
 require_once '../includes/conn.php';
 session_start();
 $tenant_id = $_SESSION['tenant_id'];
+$branch_id = $_SESSION['branch_id'];
 
 // Get ticket ID
 $ticketId = isset($_GET['id']) ? intval($_GET['id']) : 0;
@@ -21,10 +22,10 @@ $query = "SELECT t.*,
           LEFT JOIN suppliers s ON t.supplier = s.id
           LEFT JOIN clients c ON t.sold_to = c.id
           LEFT JOIN main_account m ON t.paid_to = m.id
-          WHERE t.id = ? AND t.tenant_id = ?";
+          WHERE t.id = ? AND t.tenant_id = ? AND t.branch_id = ?";
 
 $stmt = $conn->prepare($query);
-$stmt->bind_param('ii', $ticketId, $tenant_id);
+$stmt->bind_param('iii', $ticketId, $tenant_id, $branch_id);
 $stmt->execute();
 $result = $stmt->get_result();
 

@@ -6,6 +6,7 @@ $tenant_id = $_SESSION['tenant_id'];
 enforce_auth();
 
 require_once('../includes/db.php');
+$branch_id = $_SESSION['branch_id'];
 
 if (isset($_GET['ticket_id'])) {
     $ticket_id = intval($_GET['ticket_id']);
@@ -13,15 +14,15 @@ if (isset($_GET['ticket_id'])) {
     try {
         // First, get the ticket details
         $ticketStmt = $pdo->prepare("
-            SELECT dct.id, dct.ticket_id, dct.departure_date, dct.supplier_penalty, 
+            SELECT dct.id, dct.ticket_id, dct.departure_date, dct.supplier_penalty,
                    dct.service_penalty, dct.status, t.exchange_rate,
                    tb.passenger_name, tb.pnr, t.currency
             FROM date_change_tickets dct
-            LEFT JOIN ticket_bookings tb ON dct.ticket_id = tb.id
-            left join main_account_transactions t  on dct.id = t.reference_id 
-            WHERE dct.id = ? AND dct.tenant_id = ?
+            LEFT JOIN ticket_bookings tb ON dct.ticket_id = tb.id AND tb.tenant_id = ? AND tb.branch_id = ?
+            left join main_account_transactions t  on dct.id = t.reference_id AND t.tenant_id = ? AND t.branch_id = ?
+            WHERE dct.id = ? AND dct.tenant_id = ? AND dct.branch_id = ?
         ");
-        $ticketStmt->execute([$ticket_id, $tenant_id]);
+        $ticketStmt->execute([$tenant_id, $branch_id, $tenant_id, $branch_id, $ticket_id, $tenant_id, $branch_id]);
         $ticket = $ticketStmt->fetch(PDO::FETCH_ASSOC);
 
         // Check if ticket exists
@@ -39,12 +40,12 @@ if (isset($_GET['ticket_id'])) {
             SELECT t.id, t.amount, t.type, t.description, t.created_at as transaction_date,
                    t.balance, t.main_account_id, t.reference_id, t.currency, t.exchange_rate
             FROM main_account_transactions t
-            LEFT JOIN main_account m ON t.main_account_id = m.id
-            WHERE t.reference_id = ? AND t.tenant_id = ?
+            LEFT JOIN main_account m ON t.main_account_id = m.id AND m.tenant_id = ? AND m.branch_id = ?
+            WHERE t.reference_id = ? AND t.tenant_id = ? AND t.branch_id = ?
             AND t.transaction_of = 'date_change'
             ORDER BY t.created_at ASC, t.id ASC
         ");
-        $stmt->execute([$ticket_id, $tenant_id]);
+        $stmt->execute([$tenant_id, $branch_id, $ticket_id, $tenant_id, $branch_id]);
 
         // Fetch all the results
         $transactions = $stmt->fetchAll(PDO::FETCH_ASSOC);

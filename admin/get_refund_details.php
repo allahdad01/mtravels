@@ -4,6 +4,7 @@ require_once('../includes/db.php');
 require_once('../includes/conn.php');
 require_once('security.php');
 $tenant_id = $_SESSION['tenant_id'];
+$branch_id = $_SESSION['branch_id'];
 // Enforce authentication
 enforce_auth();
 
@@ -30,11 +31,11 @@ try {
         LEFT JOIN main_account_transactions t ON r.transaction_id = t.id
         LEFT JOIN main_account m ON t.main_account_id = m.id
         LEFT JOIN users u ON r.processed_by = u.id
-        WHERE r.id = ? AND r.tenant_id = ?
+        WHERE r.id = ? AND r.tenant_id = ? AND r.branch_id = ?
     ";
-    
+
     $stmt = $conn->prepare($query);
-    $stmt->bind_param('ii', $refundId, $tenant_id);
+    $stmt->bind_param('iii', $refundId, $tenant_id, $branch_id);
     $stmt->execute();
     
     // Get the result

@@ -12,6 +12,7 @@ if (session_status() === PHP_SESSION_NONE) {
     session_start();
 }
 $tenant_id = $_SESSION['tenant_id'];
+$branch_id = $_SESSION['branch_id'];
 // Check if user is logged in
 if (!isset($_SESSION['user_id']) || $_SESSION['role'] !== 'admin') {
     header('Location: ../login.php');
@@ -44,8 +45,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['add_deposit'])) {
         $conn->begin_transaction();
         
         // Insert the deposit transaction
-        $stmt = $conn->prepare("INSERT INTO sarafi_transactions (customer_id, amount, currency, type, notes, reference_number, status, tenant_id) VALUES (?, ?, ?, 'deposit', ?, ?, 'completed', ?)");
-        $stmt->bind_param("idsssii", $customer_id, $amount, $currency, $notes, $reference, $tenant_id);
+        $stmt = $conn->prepare("INSERT INTO sarafi_transactions (customer_id, amount, currency, type, notes, reference_number, status, tenant_id, branch_id) VALUES (?, ?, ?, 'deposit', ?, ?, 'completed', ?, ?)");
+        $stmt->bind_param("idsssiii", $customer_id, $amount, $currency, $notes, $reference, $tenant_id, $branch_id);
         
         if (!$stmt->execute()) {
             throw new Exception(__("error_inserting_transaction") . ": " . $stmt->error);
@@ -66,8 +67,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['add_deposit'])) {
             $stmt->bind_param("disi", $amount, $customer_id, $currency, $tenant_id);
         } else {
             // Create new wallet
-            $stmt = $conn->prepare("INSERT INTO customer_wallets (customer_id, currency, balance, tenant_id) VALUES (?, ?, ?, ?)");
-            $stmt->bind_param("isdi", $customer_id, $currency, $amount, $tenant_id);
+            $stmt = $conn->prepare("INSERT INTO customer_wallets (customer_id, currency, balance, tenant_id, branch_id) VALUES (?, ?, ?, ?, ?)");
+            $stmt->bind_param("isdii", $customer_id, $currency, $amount, $tenant_id, $branch_id);
         }
         
         if (!$stmt->execute()) {
@@ -135,8 +136,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['add_withdrawal'])) {
         }
         
         // Insert the withdrawal transaction
-        $stmt = $conn->prepare("INSERT INTO sarafi_transactions (customer_id, amount, currency, type, notes, reference_number, tenant_id) VALUES (?, ?, ?, 'withdrawal', ?, ?, ?)");
-        $stmt->bind_param("idsssi", $customer_id, $amount, $currency, $notes, $reference, $tenant_id);
+        $stmt = $conn->prepare("INSERT INTO sarafi_transactions (customer_id, amount, currency, type, notes, reference_number, tenant_id, branch_id) VALUES (?, ?, ?, 'withdrawal', ?, ?, ?, ?)");
+        $stmt->bind_param("idsssii", $customer_id, $amount, $currency, $notes, $reference, $tenant_id, $branch_id);
         $stmt->execute();
         $transaction_id = $conn->insert_id;
         

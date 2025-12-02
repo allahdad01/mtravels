@@ -9,6 +9,7 @@ if (session_status() === PHP_SESSION_NONE) {
 }
 
 $tenant_id = $_SESSION['tenant_id'];
+$branch_id = $_SESSION['branch_id'];
 
 // Check if user is logged in and is admin
 if (!isset($_SESSION['user_id']) || $_SESSION['role'] !== 'admin') {
@@ -26,24 +27,24 @@ $stats_query = "
         COUNT(DISTINCT CASE WHEN YEAR(hire_date) = YEAR(CURDATE()) THEN id END) as new_hires_this_year,
         AVG(DATEDIFF(CURDATE(), hire_date)) as avg_tenure_days
     FROM users
-    WHERE tenant_id = ? AND role != 'super_admin'
+    WHERE tenant_id = ? AND branch_id = ? AND role != 'super_admin' AND role != 'tenant_super_admin'
 ";
 
 $stmt = $pdo->prepare($stats_query);
-$stmt->execute([$tenant_id]);
+$stmt->execute([$tenant_id, $branch_id]);
 $stats = $stmt->fetch(PDO::FETCH_ASSOC);
 
 // Get employee distribution by role
 $role_distribution_query = "
     SELECT role, COUNT(*) as count
     FROM users
-    WHERE tenant_id = ? AND role != 'super_admin' AND fired = 0
+    WHERE tenant_id = ? AND branch_id = ? AND role != 'super_admin' AND role != 'tenant_super_admin' AND fired = 0
     GROUP BY role
     ORDER BY count DESC
 ";
 
 $stmt = $pdo->prepare($role_distribution_query);
-$stmt->execute([$tenant_id]);
+$stmt->execute([$tenant_id, $branch_id]);
 $role_distribution = $stmt->fetchAll(PDO::FETCH_ASSOC);
 
 // Get termination reasons (if employee_terminations table exists)
@@ -52,13 +53,13 @@ try {
     $termination_query = "
         SELECT termination_reason, COUNT(*) as count
         FROM employee_terminations
-        WHERE tenant_id = ?
+        WHERE tenant_id = ? AND branch_id = ?
         GROUP BY termination_reason
         ORDER BY count DESC
         LIMIT 10
     ";
     $stmt = $pdo->prepare($termination_query);
-    $stmt->execute([$tenant_id]);
+    $stmt->execute([$tenant_id, $branch_id]);
     $termination_reasons = $stmt->fetchAll(PDO::FETCH_ASSOC);
 } catch (Exception $e) {
     // Table might not exist yet

@@ -7,7 +7,7 @@ require_once '../../includes/conn.php';
 // Enforce authentication
 enforce_auth();
 $tenant_id = $_SESSION['tenant_id'];
-
+$branch_id = $_SESSION['branch_id'];
 header('Content-Type: application/json');
 
 // Check if request is POST
@@ -63,13 +63,13 @@ try {
                s.name as supplier_name, c.name as client_name, ma.name as main_account_name
         FROM umrah_bookings ub
         LEFT JOIN families f ON ub.family_id = f.family_id
-        LEFT JOIN umrah_booking_services ubs ON ub.booking_id = ubs.booking_id AND ubs.service_type IN ('all', 'ticket')
-        LEFT JOIN suppliers s ON ubs.supplier_id = s.id
-        LEFT JOIN clients c ON ub.sold_to = c.id
-        LEFT JOIN main_account ma ON ub.paid_to = ma.id
-        WHERE ub.booking_id = ? AND ub.tenant_id = ?
+        LEFT JOIN umrah_booking_services ubs ON ub.booking_id = ubs.booking_id AND ubs.service_type IN ('all', 'ticket') And tenant_id = ? And branch_id = ?
+        LEFT JOIN suppliers s ON ubs.supplier_id = s.id And tenant_id = ? And branch_id = ?
+        LEFT JOIN clients c ON ub.sold_to = c.id And tenant_id = ? And branch_id = ?
+        LEFT JOIN main_account ma ON ub.paid_to = ma.id And tenant_id = ? And branch_id = ?
+        WHERE ub.booking_id = ? AND ub.tenant_id = ? And branch_id = ?
     ");
-    $stmt->bind_param("ii", $booking_id, $tenant_id);
+    $stmt->bind_param("iii", $booking_id, $tenant_id, $branch_id);
     $stmt->execute();
     $result = $stmt->get_result();
 
@@ -83,9 +83,9 @@ try {
     // Check if there's already a pending date change request for this booking
     $stmt = $conn->prepare("
         SELECT id FROM date_change_umrah
-        WHERE umrah_booking_id = ? AND status = 'Pending' AND tenant_id = ?
+        WHERE umrah_booking_id = ? AND status = 'Pending' AND tenant_id = ? And branch_id = ?
     ");
-    $stmt->bind_param("ii", $booking_id, $tenant_id);
+    $stmt->bind_param("iii", $booking_id, $tenant_id, $branch_id);
     $stmt->execute();
     $pending_result = $stmt->get_result();
 
@@ -107,9 +107,9 @@ try {
             passenger_name, old_flight_date, new_flight_date,
             old_return_date, new_return_date, old_duration, new_duration,
             old_price, new_price, price_difference, currency,
-            remarks, created_by, tenant_id
+            remarks, created_by, tenant_id, branch_id
         ) VALUES (
-            ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?
+            ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?
         )
     ");
 
@@ -122,7 +122,7 @@ try {
     $currency = $booking['currency'] ?: 'USD';
 
     $stmt->bind_param(
-        "iiiiissssssssddssii",
+        "iiiiissssssssddssiii",
         $booking_id,
         $booking['family_id'],
         $booking['supplier'],
@@ -141,7 +141,8 @@ try {
         $currency,
         $remarks,
         $created_by,
-        $tenant_id
+        $tenant_id,
+        $branch_id
     );
 
     if ($stmt->execute()) {

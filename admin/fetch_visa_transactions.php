@@ -27,6 +27,7 @@ if (!isset($_GET['visa_id']) || !is_numeric($_GET['visa_id'])) {
 
 $visaId = intval($_GET['visa_id']);
 $tenant_id = $_SESSION['tenant_id'];
+$branch_id = $_SESSION['branch_id'];
 try {
     // Prepare a query to fetch all transactions for the given visa ID
     $query = "SELECT t.*, 
@@ -34,12 +35,12 @@ try {
                     TIME_FORMAT(t.created_at, '%H:%i:%s') AS payment_time,
                     DATE_FORMAT(t.created_at, '%b %d, %Y %h:%i %p') AS formatted_date
                FROM main_account_transactions t
-               WHERE t.reference_id = ? AND t.tenant_id = ?
+               WHERE t.reference_id = ? AND t.tenant_id = ? AND t.branch_id = ?
                AND t.transaction_of = 'visa_sale'
                ORDER BY t.created_at DESC";
-    
-    $stmt = $conn->prepare($query);
-    $stmt->bind_param('ii', $visaId, $tenant_id);
+
+   $stmt = $conn->prepare($query);
+   $stmt->bind_param('iii', $visaId, $tenant_id, $branch_id);
     $stmt->execute();
     $result = $stmt->get_result();
     

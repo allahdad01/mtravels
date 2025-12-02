@@ -10,6 +10,7 @@ enforce_auth();
 
 require_once('../includes/conn.php');
 $tenant_id = $_SESSION['tenant_id'];
+$branch_id = $_SESSION['branch_id'];
 // Validate booking_id
 $booking_id = isset($_POST['booking_id']) ? DbSecurity::validateInput($_POST['booking_id'], 'int', ['min' => 0]) : null;
 // Accept both JSON and form data
@@ -28,10 +29,10 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
 
 if ($booking_id !== null) {
     // Step 1: Fetch Booking Details (Including Client Type)
-    $query = "SELECT ub.*, c.client_type FROM umrah_bookings ub 
-              JOIN clients c ON ub.sold_to = c.id WHERE ub.booking_id = ? AND ub.tenant_id = ?";
+    $query = "SELECT ub.*, c.client_type FROM umrah_bookings ub
+              JOIN clients c ON ub.sold_to = c.id WHERE ub.booking_id = ? AND ub.tenant_id = ? AND ub.branch_id = ?";
     $stmt = $conn->prepare($query);
-    $stmt->bind_param("ii", $booking_id, $tenant_id);
+    $stmt->bind_param("iii", $booking_id, $tenant_id, $branch_id);
     $stmt->execute();
     $result = $stmt->get_result();
     
@@ -50,9 +51,9 @@ if ($booking_id !== null) {
     $servicesQuery = "SELECT ubs.id as service_id, ubs.supplier_id, ubs.service_type, ubs.base_price, ubs.sold_price, ubs.profit, ubs.currency, s.supplier_type
                       FROM umrah_booking_services ubs
                       JOIN suppliers s ON ubs.supplier_id = s.id
-                      WHERE ubs.booking_id = ? AND ubs.tenant_id = ? AND s.tenant_id = ?";
+                      WHERE ubs.booking_id = ? AND ubs.tenant_id = ? AND ubs.branch_id = ? AND s.tenant_id = ? AND s.branch_id = ?";
     $stmtServices = $conn->prepare($servicesQuery);
-    $stmtServices->bind_param("iii", $booking_id, $tenant_id, $tenant_id);
+    $stmtServices->bind_param("iiiii", $booking_id, $tenant_id, $branch_id, $tenant_id, $branch_id);
     $stmtServices->execute();
     $servicesResult = $stmtServices->get_result();
     $services = [];
@@ -67,11 +68,11 @@ if ($booking_id !== null) {
     try {
         // Step 2: Reverse Client Transactions (Only If Client is Regular)
         if ($client_type === 'regular') {
-            $clientTransactions = "SELECT id, amount, type, created_at FROM client_transactions 
-                                   WHERE client_id = ? AND transaction_of = 'umrah' 
-                                   AND reference_id = ? AND tenant_id = ?";
+            $clientTransactions = "SELECT id, amount, type, created_at FROM client_transactions
+                                   WHERE client_id = ? AND transaction_of = 'umrah'
+                                   AND reference_id = ? AND tenant_id = ? AND branch_id = ?";
             $stmt = $conn->prepare($clientTransactions);
-            $stmt->bind_param("iii", $client_id, $booking_id, $tenant_id);
+            $stmt->bind_param("iiii", $client_id, $booking_id, $tenant_id, $branch_id);
             $stmt->execute();
             $clientResults = $stmt->get_result();
 
@@ -85,9 +86,9 @@ if ($booking_id !== null) {
                 $clientBalanceField = ($currency == 'USD') ? 'usd_balance' : 'afs_balance';
                 
                 // Get current client balance before update
-                $getCurrentBalanceQuery = "SELECT $clientBalanceField FROM clients WHERE id = ?";
+                $getCurrentBalanceQuery = "SELECT $clientBalanceField FROM clients WHERE id = ? AND tenant_id = ? AND branch_id = ?";
                 $stmtGetCurrentBalance = $conn->prepare($getCurrentBalanceQuery);
-                $stmtGetCurrentBalance->bind_param('i', $client_id);
+                $stmtGetCurrentBalance->bind_param('iii', $client_id, $tenant_id, $branch_id);
                 $stmtGetCurrentBalance->execute();
                 $stmtGetCurrentBalance->bind_result($currentBalance);
                 $stmtGetCurrentBalance->fetch();
@@ -98,18 +99,18 @@ if ($booking_id !== null) {
                 // If transaction was 'credit' (client owes less), we need to subtract that amount (client owes more)
                 if ($transaction_type == 'debit') {
                     // For debit transactions, add the amount back to client balance
-                    $adjustClientBalance = "UPDATE clients 
-                                           SET $clientBalanceField = $clientBalanceField + ? 
-                                           WHERE id = ? AND tenant_id = ?";
+                    $adjustClientBalance = "UPDATE clients
+                                           SET $clientBalanceField = $clientBalanceField + ?
+                                           WHERE id = ? AND tenant_id = ? AND branch_id = ?";
                 } else { // credit
                     // For credit transactions, subtract the amount from client balance
                     $adjustClientBalance = "UPDATE clients 
                                            SET $clientBalanceField = $clientBalanceField - ? 
-                                           WHERE id = ? AND tenant_id = ?";
+                                           WHERE id = ? AND tenant_id = ? AND branch_id = ?";
                 }
                 
                 $stmt = $conn->prepare($adjustClientBalance);
-                $stmt->bind_param("dii", $amount, $client_id, $tenant_id);
+                $stmt->bind_param("diii", $amount, $client_id, $tenant_id, $branch_id);
                 $stmt->execute();
 
                 // Update all subsequent transactions' running balances
@@ -121,33 +122,35 @@ if ($booking_id !== null) {
                                                 WHERE client_id = ? 
                                                 AND id > ? 
                                                 AND currency = ?
-                                                AND tenant_id = ?";
+                                                AND tenant_id = ?
+                                                AND branch_id = ?";
                 } else { // credit
                     $updateSubsequentBalances = "UPDATE client_transactions 
                                                 SET balance = balance - ? 
                                                 WHERE client_id = ? 
                                                 AND id > ? 
                                                 AND currency = ?
-                                                AND tenant_id = ?";
+                                                AND tenant_id = ?
+                                                AND branch_id = ?";
                 }
                 
                 $stmtUpdate = $conn->prepare($updateSubsequentBalances);
-                $stmtUpdate->bind_param("dissi", $amount, $client_id, $transaction_id, $currency, $tenant_id);
+                $stmtUpdate->bind_param("dissii", $amount, $client_id, $transaction_id, $currency, $tenant_id, $branch_id);
                 $stmtUpdate->execute();
 
                 // Delete Client Transaction
-                $deleteClientTransaction = "DELETE FROM client_transactions WHERE id = ? AND tenant_id = ?";
+                $deleteClientTransaction = "DELETE FROM client_transactions WHERE id = ? AND tenant_id = ? AND branch_id = ?";
                 $stmt = $conn->prepare($deleteClientTransaction);
-                $stmt->bind_param("ii", $transaction_id, $tenant_id);
+                $stmt->bind_param("iii", $transaction_id, $tenant_id, $branch_id);
                 $stmt->execute();
             }
         } else if ($client_type === 'agency') {
             // For agency clients, just delete the transactions without balance adjustments
             $deleteClientTransactions = "DELETE FROM client_transactions 
                                        WHERE client_id = ? AND transaction_of = 'umrah' 
-                                       AND reference_id = ? AND tenant_id = ?";
+                                       AND reference_id = ? AND tenant_id = ? AND branch_id = ?";
             $stmt = $conn->prepare($deleteClientTransactions);
-            $stmt->bind_param("iii", $client_id, $booking_id, $tenant_id);
+            $stmt->bind_param("iiii", $client_id, $booking_id, $tenant_id, $branch_id);
             $stmt->execute();
         }
 
@@ -164,9 +167,9 @@ if ($booking_id !== null) {
             if ($supplier_type === 'External') {
                 $supplierTransactions = "SELECT id, amount, transaction_type, transaction_date FROM supplier_transactions
                                            WHERE supplier_id = ? AND transaction_of = 'umrah'
-                                           AND reference_id = ? AND tenant_id = ?";
+                                           AND reference_id = ? AND tenant_id = ? AND branch_id = ?";
                 $stmt = $conn->prepare($supplierTransactions);
-                $stmt->bind_param("iii", $supplier_id, $booking_id, $tenant_id);
+                $stmt->bind_param("iiii", $supplier_id, $booking_id, $tenant_id, $branch_id);
                 $stmt->execute();
                 $supplierResults = $stmt->get_result();
 
@@ -178,9 +181,9 @@ if ($booking_id !== null) {
                     // Adjust Supplier Balance
                     $adjustSupplierBalance = "UPDATE suppliers
                                                 SET balance = balance " . ($row['transaction_type'] == 'Credit' ? '-' : '+') . " ?
-                                                WHERE id = ? AND tenant_id = ?";
+                                                WHERE id = ? AND tenant_id = ? AND branch_id = ?";
                     $stmt = $conn->prepare($adjustSupplierBalance);
-                    $stmt->bind_param("dii", $amount, $supplier_id, $tenant_id);
+                    $stmt->bind_param("diii", $amount, $supplier_id, $tenant_id, $branch_id);
                     $stmt->execute();
 
                     // Update all subsequent transactions' running balances
@@ -190,24 +193,24 @@ if ($booking_id !== null) {
                                                           SET balance = balance " . ($row['transaction_type'] == 'Credit' ? '-' : '+') . " ?
                                                           WHERE supplier_id = ? 
                                                           AND id > ?
-                                                          AND tenant_id = ?";
+                                                          AND tenant_id = ? AND branch_id = ?";
                     $stmtUpdate = $conn->prepare($updateSubsequentSupplierBalances);
-                    $stmtUpdate->bind_param("disi", $amount, $supplier_id, $transaction_id, $tenant_id);
+                    $stmtUpdate->bind_param("disii", $amount, $supplier_id, $transaction_id, $tenant_id, $branch_id);
                     $stmtUpdate->execute();
 
                     // Delete Supplier Transaction
-                    $deleteSupplierTransaction = "DELETE FROM supplier_transactions WHERE id = ? AND tenant_id = ?";
+                    $deleteSupplierTransaction = "DELETE FROM supplier_transactions WHERE id = ? AND tenant_id = ? AND branch_id = ?";
                     $stmt = $conn->prepare($deleteSupplierTransaction);
-                    $stmt->bind_param("ii", $transaction_id, $tenant_id);
+                    $stmt->bind_param("iii", $transaction_id, $tenant_id, $branch_id);
                     $stmt->execute();
                 }
             } else if ($supplier_type === 'Internal') {
                 // For internal suppliers, just delete the transactions without balance adjustments
                 $deleteSupplierTransactions = "DELETE FROM supplier_transactions
                                                WHERE supplier_id = ? AND transaction_of = 'umrah'
-                                               AND reference_id = ? AND tenant_id = ?";
+                                               AND reference_id = ? AND tenant_id = ? AND branch_id = ?";
                 $stmt = $conn->prepare($deleteSupplierTransactions);
-                $stmt->bind_param("iii", $supplier_id, $booking_id, $tenant_id);
+                $stmt->bind_param("iiii", $supplier_id, $booking_id, $tenant_id, $branch_id);
                 $stmt->execute();
             }
         }
@@ -220,9 +223,9 @@ if ($booking_id !== null) {
                 FROM main_account_transactions mat
                 JOIN umrah_transactions ut ON mat.reference_id = ut.id
                 WHERE ut.umrah_booking_id = ? AND mat.transaction_of = 'umrah'
-                AND mat.tenant_id = ?
+                AND mat.tenant_id = ? AND branch_id = ?
             ");
-            $stmt_fetch_main_transactions->bind_param("ii", $booking_id, $tenant_id);
+            $stmt_fetch_main_transactions->bind_param("iii", $booking_id, $tenant_id, $branch_id);
             $stmt_fetch_main_transactions->execute();
             $result_main_transactions = $stmt_fetch_main_transactions->get_result();
             
@@ -236,13 +239,13 @@ if ($booking_id !== null) {
                 // Update main account balance based on transaction type
                 if ($main_type === 'credit') {
                     if ($main_currency === 'USD') {
-                        $stmt_update_main = $conn->prepare("UPDATE main_account SET usd_balance = usd_balance - ? WHERE id = ? AND tenant_id = ?");
+                        $stmt_update_main = $conn->prepare("UPDATE main_account SET usd_balance = usd_balance - ? WHERE id = ? AND tenant_id = ? AND branch_id = ?");
                     } elseif ($main_currency === 'AFS') {
-                        $stmt_update_main = $conn->prepare("UPDATE main_account SET afs_balance = afs_balance - ? WHERE id = ? AND tenant_id = ?");
+                        $stmt_update_main = $conn->prepare("UPDATE main_account SET afs_balance = afs_balance - ? WHERE id = ? AND tenant_id = ? AND branch_id = ?");
                     }  elseif ($main_currency === 'EUR') {
-                        $stmt_update_main = $conn->prepare("UPDATE main_account SET euro_balance = euro_balance - ? WHERE id = ? AND tenant_id = ?");
+                        $stmt_update_main = $conn->prepare("UPDATE main_account SET euro_balance = euro_balance - ? WHERE id = ? AND tenant_id = ? AND branch_id = ?");
                     } elseif ($main_currency === 'DARHAM') {
-                        $stmt_update_main = $conn->prepare("UPDATE main_account SET darham_balance = darham_balance - ? WHERE id = ? AND tenant_id = ?");
+                        $stmt_update_main = $conn->prepare("UPDATE main_account SET darham_balance = darham_balance - ? WHERE id = ? AND tenant_id = ? AND branch_id = ?");
                     } else {
                         throw new Exception("Unsupported currency type for main account balance update.");
                     }
@@ -255,16 +258,17 @@ if ($booking_id !== null) {
                         AND id > ? 
                         AND currency = ?
                         AND tenant_id = ?
+                        AND branch_id = ?
                     ");
                 } elseif ($main_type === 'debit') {
                     if ($main_currency === 'USD') {
-                        $stmt_update_main = $conn->prepare("UPDATE main_account SET usd_balance = usd_balance + ? WHERE id = ? AND tenant_id = ?");
+                        $stmt_update_main = $conn->prepare("UPDATE main_account SET usd_balance = usd_balance + ? WHERE id = ? AND tenant_id = ? AND branch_id = ?");
                     } elseif ($main_currency === 'AFS') {
-                        $stmt_update_main = $conn->prepare("UPDATE main_account SET afs_balance = afs_balance + ? WHERE id = ? AND tenant_id = ?");
+                        $stmt_update_main = $conn->prepare("UPDATE main_account SET afs_balance = afs_balance + ? WHERE id = ? AND tenant_id = ? AND branch_id = ?");
                     }  elseif ($main_currency === 'EUR') {
-                        $stmt_update_main = $conn->prepare("UPDATE main_account SET euro_balance = euro_balance + ? WHERE id = ? AND tenant_id = ?");
+                        $stmt_update_main = $conn->prepare("UPDATE main_account SET euro_balance = euro_balance + ? WHERE id = ? AND tenant_id = ? AND branch_id = ?");
                     } elseif ($main_currency === 'DARHAM') {
-                        $stmt_update_main = $conn->prepare("UPDATE main_account SET darham_balance = darham_balance + ? WHERE id = ? AND tenant_id = ?");
+                        $stmt_update_main = $conn->prepare("UPDATE main_account SET darham_balance = darham_balance + ? WHERE id = ? AND tenant_id = ? AND branch_id = ?");
                     } else {
                         throw new Exception("Unsupported currency type for main account balance update.");
                     }
@@ -277,19 +281,20 @@ if ($booking_id !== null) {
                         AND id > ? 
                         AND currency = ?
                         AND tenant_id = ?
+                        AND branch_id = ?
                     ");
                 } else {
                     throw new Exception("Invalid transaction type for main account transaction.");
                 }
                 
-                $stmt_update_main->bind_param("dii", $main_amount, $mainAccountId, $tenant_id);
+                $stmt_update_main->bind_param("diii", $main_amount, $mainAccountId, $tenant_id, $branch_id);
                 if (!$stmt_update_main->execute()) {
                     throw new Exception("Failed to update main account balance for transaction.");
                 }
                 $stmt_update_main->close();
                 
                 // Execute the update for subsequent transactions
-                $update_subsequent_main->bind_param("dissi", $main_amount, $mainAccountId, $transaction_id, $main_currency, $tenant_id);
+                $update_subsequent_main->bind_param("dissii", $main_amount, $mainAccountId, $transaction_id, $main_currency, $tenant_id, $branch_id);
                 if (!$update_subsequent_main->execute()) {
                     throw new Exception("Failed to update subsequent main account transaction balances.");
                 }
@@ -303,34 +308,34 @@ if ($booking_id !== null) {
             DELETE mat FROM main_account_transactions mat
             JOIN umrah_transactions ut ON mat.reference_id = ut.id
             WHERE ut.umrah_booking_id = ? AND mat.transaction_of = 'umrah'
-            AND mat.tenant_id = ?
+            AND mat.tenant_id = ? AND branch_id = ?
         ");
-        $stmt_delete_main_transactions->bind_param("ii", $booking_id, $tenant_id);
+        $stmt_delete_main_transactions->bind_param("iii", $booking_id, $tenant_id, $branch_id);
         if (!$stmt_delete_main_transactions->execute()) {
             throw new Exception("Failed to delete main account transactions associated with booking ID $booking_id.");
         }
         $stmt_delete_main_transactions->close();
 
         // Delete Umrah transactions associated with this booking
-        $stmt_delete_umrah_transactions = $conn->prepare("DELETE FROM umrah_transactions WHERE umrah_booking_id = ? AND tenant_id = ?");
-        $stmt_delete_umrah_transactions->bind_param("ii", $booking_id, $tenant_id);
+        $stmt_delete_umrah_transactions = $conn->prepare("DELETE FROM umrah_transactions WHERE umrah_booking_id = ? AND tenant_id = ? AND branch_id = ?");
+        $stmt_delete_umrah_transactions->bind_param("iii", $booking_id, $tenant_id, $branch_id);
         if (!$stmt_delete_umrah_transactions->execute()) {
             throw new Exception("Failed to delete Umrah transactions associated with booking ID $booking_id.");
         }
         $stmt_delete_umrah_transactions->close();
 
         // Delete booking services associated with this booking
-        $stmt_delete_services = $conn->prepare("DELETE FROM umrah_booking_services WHERE booking_id = ? AND tenant_id = ?");
-        $stmt_delete_services->bind_param("ii", $booking_id, $tenant_id);
+        $stmt_delete_services = $conn->prepare("DELETE FROM umrah_booking_services WHERE booking_id = ? AND tenant_id = ? AND branch_id = ?");
+        $stmt_delete_services->bind_param("iii", $booking_id, $tenant_id, $branch_id);
         if (!$stmt_delete_services->execute()) {
             throw new Exception("Failed to delete booking services associated with booking ID $booking_id.");
         }
         $stmt_delete_services->close();
 
         // Step 5: Delete the Booking Record
-        $deleteBooking = "DELETE FROM umrah_bookings WHERE booking_id = ? AND tenant_id = ?";
+        $deleteBooking = "DELETE FROM umrah_bookings WHERE booking_id = ? AND tenant_id = ? AND branch_id = ?";
         $stmt = $conn->prepare($deleteBooking);
-        $stmt->bind_param("ii", $booking_id, $tenant_id);
+        $stmt->bind_param("iii", $booking_id, $tenant_id, $branch_id);
         $stmt->execute();
 
         // Commit Transaction
@@ -355,11 +360,11 @@ if ($booking_id !== null) {
         $user_agent = $_SERVER['HTTP_USER_AGENT'] ?? '';
         
         $stmt_log = $conn->prepare("
-            INSERT INTO activity_log 
-            (user_id, action, table_name, record_id, old_values, new_values, ip_address, user_agent, created_at, tenant_id) 
-            VALUES (?, 'delete', 'umrah_bookings', ?, ?, ?, ?, ?, NOW(), ?)
+            INSERT INTO activity_log
+            (user_id, action, table_name, record_id, old_values, new_values, ip_address, user_agent, created_at, tenant_id, branch_id)
+            VALUES (?, 'delete', 'umrah_bookings', ?, ?, ?, ?, ?, NOW(), ?, ?)
         ");
-        $stmt_log->bind_param("iissssi", $user_id, $booking_id, $old_values, $new_values, $ip_address, $user_agent, $tenant_id);
+        $stmt_log->bind_param("iissssii", $user_id, $booking_id, $old_values, $new_values, $ip_address, $user_agent, $tenant_id, $branch_id);
         $stmt_log->execute();
         $stmt_log->close();
         

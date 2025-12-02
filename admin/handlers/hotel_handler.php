@@ -8,6 +8,7 @@ require_once('../includes/db.php');
 include '../includes/conn.php';
 
 $tenant_id   = $_SESSION['tenant_id'];
+$branch_id   = $_SESSION['branch_id'];
 $user_id     = $_SESSION['user_id'] ?? null;
 
 $itemsPerPage = 10;
@@ -33,19 +34,19 @@ if ($search !== '') {
 }
 
 // Count total records
-$totalQuery = "SELECT COUNT(*) as total FROM hotel_bookings hb WHERE hb.tenant_id = ? {$searchCondition}";
+$totalQuery = "SELECT COUNT(*) as total FROM hotel_bookings hb WHERE hb.tenant_id = ? AND hb.branch_id = ? {$searchCondition}";
 $stmtTotal  = $conn->prepare($totalQuery);
 
 if ($searchCondition !== '') {
-    $types = 's' . $searchTypes;
-    $params = array_merge([$tenant_id], $searchParams);
+    $types = 's' . 'i' . $searchTypes;
+    $params = array_merge([$tenant_id, $branch_id], $searchParams);
     $bindTotal = [$types];
     foreach ($params as $key => $value) {
         $bindTotal[] = &$params[$key];
     }
     call_user_func_array([$stmtTotal, 'bind_param'], $bindTotal);
 } else {
-    $stmtTotal->bind_param('s', $tenant_id);
+    $stmtTotal->bind_param('si', $tenant_id, $branch_id);
 }
 
 $stmtTotal->execute();
@@ -88,27 +89,27 @@ $bookingsQuery = "
         ma.name AS paid_to_name,
         u.name  AS created_by
     FROM hotel_bookings hb
-    LEFT JOIN suppliers s    ON hb.supplier_id = s.id
-    LEFT JOIN clients c      ON hb.sold_to     = c.id
-    LEFT JOIN main_account ma ON hb.paid_to    = ma.id
-    LEFT JOIN users u        ON hb.created_by  = u.id
-    WHERE hb.tenant_id = ? {$searchCondition}
+    LEFT JOIN suppliers s    ON hb.supplier_id = s.id AND s.tenant_id = ? AND s.branch_id = ?
+    LEFT JOIN clients c      ON hb.sold_to     = c.id AND c.tenant_id = ? AND c.branch_id = ?
+    LEFT JOIN main_account ma ON hb.paid_to    = ma.id AND ma.tenant_id = ? AND ma.branch_id = ?
+    LEFT JOIN users u        ON hb.created_by  = u.id AND u.tenant_id = ? AND u.branch_id = ?
+    WHERE hb.tenant_id = ? AND hb.branch_id = ? {$searchCondition}
     ORDER BY hb.id DESC
     LIMIT ?, ?
-";
+ ";
 
 $stmt = $conn->prepare($bookingsQuery);
 
 if ($searchCondition !== '') {
-    $params = array_merge([$tenant_id], $searchParams, [$offset, $itemsPerPage]);
-    $types  = 's' . $searchTypes . 'ii';
+    $params = array_merge([$tenant_id, $branch_id, $tenant_id, $branch_id, $tenant_id, $branch_id, $tenant_id, $branch_id, $tenant_id, $branch_id], $searchParams, [$offset, $itemsPerPage]);
+    $types  = 's' . 'i' . 'iiiiiiii' . $searchTypes . 'ii';
     $bindMain[] = $types;
     foreach ($params as $key => $value) {
         $bindMain[] = &$params[$key];
     }
     call_user_func_array([$stmt, 'bind_param'], $bindMain);
 } else {
-    $stmt->bind_param('sii', $tenant_id, $offset, $itemsPerPage);
+    $stmt->bind_param('siiiiiiiiiii', $tenant_id, $branch_id, $tenant_id, $branch_id, $tenant_id, $branch_id, $tenant_id, $branch_id, $tenant_id, $branch_id, $offset, $itemsPerPage);
 }
 
 $stmt->execute();

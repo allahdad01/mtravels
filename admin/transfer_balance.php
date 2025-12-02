@@ -8,6 +8,7 @@ enforce_auth();
 require_once('../includes/db.php');
 require_once('../includes/conn.php');
 $tenant_id = $_SESSION['tenant_id'];
+$branch_id = $_SESSION['branch_id'];
 // Check if user is logged in
 if (!isset($_SESSION['user_id'])) {
     echo json_encode(['success' => false, 'message' => 'Unauthorized access']);
@@ -40,8 +41,8 @@ try {
     $conn->begin_transaction();
 
     // Get from account balance
-    $fromAccountStmt = $conn->prepare("SELECT * FROM main_account WHERE id = ? AND tenant_id = ?");
-    $fromAccountStmt->bind_param("ii", $fromAccountId, $tenant_id);
+    $fromAccountStmt = $conn->prepare("SELECT * FROM main_account WHERE id = ? AND tenant_id = ? AND branch_id = ?");
+    $fromAccountStmt->bind_param("iii", $fromAccountId, $tenant_id, $branch_id);
     $fromAccountStmt->execute();
     $fromAccount = $fromAccountStmt->get_result()->fetch_assoc();
     $fromAccountStmt->close();
@@ -51,8 +52,8 @@ try {
     }
 
     // Get to account balance
-    $toAccountStmt = $conn->prepare("SELECT * FROM main_account WHERE id = ? AND tenant_id = ?");
-    $toAccountStmt->bind_param("ii", $toAccountId, $tenant_id);
+    $toAccountStmt = $conn->prepare("SELECT * FROM main_account WHERE id = ? AND tenant_id = ? AND branch_id = ?");
+    $toAccountStmt->bind_param("iii", $toAccountId, $tenant_id, $branch_id);
     $toAccountStmt->execute();
     $toAccount = $toAccountStmt->get_result()->fetch_assoc();
     $toAccountStmt->close();
@@ -102,15 +103,15 @@ try {
     }
 
     // Update source account balance
-    $updateFromStmt = $conn->prepare("UPDATE main_account SET {$fromBalanceField} = {$fromBalanceField} - ? WHERE id = ? AND tenant_id = ?");
-    $updateFromStmt->bind_param("dii", $amount, $fromAccountId, $tenant_id);
+    $updateFromStmt = $conn->prepare("UPDATE main_account SET {$fromBalanceField} = {$fromBalanceField} - ? WHERE id = ? AND tenant_id = ? AND branch_id = ?");
+    $updateFromStmt->bind_param("diii", $amount, $fromAccountId, $tenant_id, $branch_id);
     $updateFromStmt->execute();
     $updateFromStmt->close();
 
     // Update destination account balance
     $toBalanceField = strtolower($toCurrency) . '_balance';
-    $updateToStmt = $conn->prepare("UPDATE main_account SET {$toBalanceField} = {$toBalanceField} + ? WHERE id = ? AND tenant_id = ?");
-    $updateToStmt->bind_param("dii", $convertedAmount, $toAccountId, $tenant_id);
+    $updateToStmt = $conn->prepare("UPDATE main_account SET {$toBalanceField} = {$toBalanceField} + ? WHERE id = ? AND tenant_id = ? AND branch_id = ?");
+    $updateToStmt->bind_param("diii", $convertedAmount, $toAccountId, $tenant_id, $branch_id);
     $updateToStmt->execute();
     $updateToStmt->close();
 
@@ -121,21 +122,22 @@ try {
     // Record transaction for source account (debit)
     $fromTransactionStmt = $conn->prepare("
         INSERT INTO main_account_transactions (
-            main_account_id, type, amount, currency, description, 
-            transaction_of, reference_id, balance, tenant_id
+            main_account_id, type, amount, currency, description,
+            transaction_of, reference_id, balance, tenant_id, branch_id
 
-        ) VALUES (?, 'debit', ?, ?, ?, 'transfer', ?, ?, ?)
+        ) VALUES (?, 'debit', ?, ?, ?, 'transfer', ?, ?, ?, ?)
     ");
     $fromBalance = $fromAccount[$fromBalanceField] - $amount;
     $fromTransactionStmt->bind_param(
-        "idssiis", 
-        $fromAccountId, 
-        $amount, 
-        $fromCurrency, 
+        "idssiisi",
+        $fromAccountId,
+        $amount,
+        $fromCurrency,
         $description,
         $toAccountId,
         $fromBalance,
-        $tenant_id
+        $tenant_id,
+        $branch_id
     );
     $fromTransactionStmt->execute();
     $fromTransactionStmt->close();
@@ -143,21 +145,22 @@ try {
     // Record transaction for destination account (credit)
     $toTransactionStmt = $conn->prepare("
         INSERT INTO main_account_transactions (
-            main_account_id, type, amount, currency, description, 
-            transaction_of, reference_id, balance, tenant_id
+            main_account_id, type, amount, currency, description,
+            transaction_of, reference_id, balance, tenant_id, branch_id
 
-        ) VALUES (?, 'credit', ?, ?, ?, 'transfer', ?, ?, ?)
+        ) VALUES (?, 'credit', ?, ?, ?, 'transfer', ?, ?, ?, ?)
     ");
     $toBalance = $toAccount[$toBalanceField] + $convertedAmount;
     $toTransactionStmt->bind_param(
-        "idssiis", 
-        $toAccountId, 
-        $convertedAmount, 
-        $toCurrency, 
+        "idssiisi",
+        $toAccountId,
+        $convertedAmount,
+        $toCurrency,
         $description,
         $fromAccountId,
         $toBalance,
-        $tenant_id
+        $tenant_id,
+        $branch_id
     );
     $toTransactionStmt->execute();
     $toTransactionStmt->close();
@@ -182,13 +185,13 @@ try {
     ];
     
     // Insert activity log
-    $activity_log_stmt = $conn->prepare("INSERT INTO activity_log 
-        (user_id, action, table_name, record_id, old_values, new_values, ip_address, user_agent, created_at, tenant_id) 
+    $activity_log_stmt = $conn->prepare("INSERT INTO activity_log
+        (user_id, action, table_name, record_id, old_values, new_values, ip_address, user_agent, created_at, tenant_id, branch_id)
 
-        VALUES (?, 'transfer', 'main_account_transactions', ?, '{}', ?, ?, ?, NOW(), ?)");
-    
+        VALUES (?, 'transfer', 'main_account_transactions', ?, '{}', ?, ?, ?, NOW(), ?, ?)");
+
     $new_values_json = json_encode($new_values);
-    $activity_log_stmt->bind_param("iissss", $user_id, $fromTransactionId, $new_values_json, $ip_address, $user_agent, $tenant_id);
+    $activity_log_stmt->bind_param("iissssi", $user_id, $fromAccountId, $new_values_json, $ip_address, $user_agent, $tenant_id, $branch_id);
     $activity_log_stmt->execute();
     $activity_log_stmt->close();
 

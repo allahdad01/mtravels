@@ -2,6 +2,7 @@
 // Include security module
 require_once 'security.php';
 $tenant_id = $_SESSION['tenant_id'];
+$branch_id = $_SESSION['branch_id'];
 // Enforce authentication
 enforce_auth();
 
@@ -12,13 +13,19 @@ if ($conn->connect_error) {
 }
 
 // Fetch Tickets
-$ticketsQuery = "SELECT * FROM ticket_bookings where tenant_id = ?";
-$ticketsResult = $conn->query($ticketsQuery, [$tenant_id]);
+$ticketsQuery = "SELECT * FROM ticket_bookings where tenant_id = ? AND branch_id = ?";
+$ticketsStmt = $conn->prepare($ticketsQuery);
+$ticketsStmt->bind_param("ii", $tenant_id, $branch_id);
+$ticketsStmt->execute();
+$ticketsResult = $ticketsStmt->get_result();
 $tickets = $ticketsResult->fetch_all(MYSQLI_ASSOC);
 
 // Fetch Suppliers
-$suppliersQuery = "SELECT id, name FROM suppliers where tenant_id = ?";
-$suppliersResult = $conn->query($suppliersQuery, [$tenant_id]);
+$suppliersQuery = "SELECT id, name FROM suppliers where tenant_id = ? AND branch_id = ?";
+$suppliersStmt = $conn->prepare($suppliersQuery);
+$suppliersStmt->bind_param("ii", $tenant_id, $branch_id);
+$suppliersStmt->execute();
+$suppliersResult = $suppliersStmt->get_result();
 $suppliers = $suppliersResult->fetch_all(MYSQLI_ASSOC);
 
 // Create an associative array of supplier id to supplier name for easy lookup

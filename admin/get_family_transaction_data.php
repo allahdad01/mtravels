@@ -5,6 +5,7 @@ require_once 'security.php';
 // Enforce authentication
 enforce_auth();
 $tenant_id = $_SESSION['tenant_id'];
+$branch_id = $_SESSION['branch_id'];
 
 // Database connection
 require_once('../includes/db.php');
@@ -22,13 +23,13 @@ if ($_SERVER['REQUEST_METHOD'] === 'GET' && isset($_GET['family_id'])) {
                 f.total_due,
                 COUNT(ub.booking_id) as member_count
             FROM families f
-            LEFT JOIN umrah_bookings ub ON f.family_id = ub.family_id AND ub.tenant_id = ?
-            WHERE f.family_id = ? AND f.tenant_id = ?
+            LEFT JOIN umrah_bookings ub ON f.family_id = ub.family_id AND ub.tenant_id = ? AND ub.branch_id = ?
+            WHERE f.family_id = ? AND f.tenant_id = ? AND f.branch_id = ?
             GROUP BY f.family_id
         ";
 
         $stmt = $conn->prepare($familyQuery);
-        $stmt->bind_param("iii", $tenant_id, $family_id, $tenant_id);
+        $stmt->bind_param("iiiii", $tenant_id, $branch_id, $family_id, $tenant_id, $branch_id);
         $stmt->execute();
         $familyResult = $stmt->get_result();
         $familyData = $familyResult->fetch_assoc();
@@ -44,12 +45,12 @@ if ($_SERVER['REQUEST_METHOD'] === 'GET' && isset($_GET['family_id'])) {
                 ub.due,
                 ub.currency
             FROM umrah_bookings ub
-            WHERE ub.family_id = ? AND ub.tenant_id = ?
+            WHERE ub.family_id = ? AND ub.tenant_id = ? AND ub.branch_id = ?
             ORDER BY ub.name
         ";
 
         $stmt = $conn->prepare($membersQuery);
-        $stmt->bind_param("ii", $family_id, $tenant_id);
+        $stmt->bind_param("iii", $family_id, $tenant_id, $branch_id);
         $stmt->execute();
         $membersResult = $stmt->get_result();
 

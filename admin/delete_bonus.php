@@ -2,6 +2,7 @@
 // Initialize the session
 session_start();
 $tenant_id = $_SESSION['tenant_id'];
+$branch_id = $_SESSION['branch_id'];
 
 // Process delete operation after confirmation
 if (isset($_GET["id"]) && !empty($_GET["id"])) {
@@ -9,11 +10,11 @@ if (isset($_GET["id"]) && !empty($_GET["id"])) {
     require_once "../includes/db.php";
     
     // Prepare a delete statement
-    $sql = "DELETE FROM salary_bonuses WHERE id = ? AND tenant_id = ?";
-    
+    $sql = "DELETE FROM salary_bonuses WHERE id = ? AND tenant_id = ? AND branch_id = ?";
+
     if ($stmt = mysqli_prepare($conection_db, $sql)) {
         // Bind variables to the prepared statement as parameters
-        mysqli_stmt_bind_param($stmt, "ii", $param_id, $tenant_id);
+        mysqli_stmt_bind_param($stmt, "iii", $param_id, $tenant_id, $branch_id);
         
         // Set parameters
         $param_id = trim($_GET["id"]);

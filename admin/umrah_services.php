@@ -7,6 +7,7 @@ require_once '../includes/language_helpers.php';
 // Enforce authentication
 enforce_auth();
 $tenant_id = $_SESSION['tenant_id'];
+$branch_id = $_SESSION['branch_id'];
 
 
 // Check if user is logged in
@@ -70,7 +71,9 @@ require_once('../includes/conn.php');
                                                 LEFT JOIN umrah_bookings ub ON ubs.booking_id = ub.booking_id
                                                 LEFT JOIN families f ON ub.family_id = f.family_id
                                                 LEFT JOIN suppliers s ON ubs.supplier_id = s.id
-                                                WHERE f.tenant_id = $tenant_id";
+                                                WHERE f.tenant_id = $tenant_id AND f.branch_id = $branch_id
+                                                AND ub.tenant_id = $tenant_id AND ub.branch_id = $branch_id
+                                                AND ubs.tenant_id = $tenant_id AND ubs.branch_id = $branch_id";
 
                                     // Add filters for count
                                     if (!empty($serviceType)) {
@@ -97,7 +100,9 @@ require_once('../includes/conn.php');
                                                 LEFT JOIN families f ON ub.family_id = f.family_id
                                                 LEFT JOIN suppliers s ON ubs.supplier_id = s.id
                                                 LEFT JOIN clients c ON ub.sold_to = c.id
-                                                WHERE f.tenant_id = $tenant_id";
+                                                WHERE f.tenant_id = $tenant_id AND f.branch_id = $branch_id
+                                                AND ub.tenant_id = $tenant_id AND ub.branch_id = $branch_id
+                                                AND ubs.tenant_id = $tenant_id AND ubs.branch_id = $branch_id";
 
                                     // Add filters for main query
                                     if (!empty($serviceType)) {

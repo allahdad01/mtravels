@@ -8,6 +8,7 @@ require_once 'security.php';
 // Enforce authentication
 enforce_auth();
 $tenant_id = $_SESSION['tenant_id'];
+$branch_id = $_SESSION['branch_id'];
 // Database connection
 require_once '../includes/conn.php';
 
@@ -114,9 +115,9 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     $marketExchangeRate = isset($_POST['marketExchangeRate']) ? floatval($_POST['marketExchangeRate']) : 1.0;
 
     // Get original values to calculate differences
-    $originalQuery = "SELECT price, sold, supplier, sold_to, currency FROM ticket_bookings WHERE id = ?";
+    $originalQuery = "SELECT price, sold, supplier, sold_to, currency FROM ticket_bookings WHERE id = ? AND tenant_id = ? AND branch_id = ?";
     $stmtOriginal = $conn->prepare($originalQuery);
-    $stmtOriginal->bind_param('i', $id);
+    $stmtOriginal->bind_param('iii', $id, $tenant_id, $branch_id);
     $stmtOriginal->execute();
     $resultOriginal = $stmtOriginal->get_result();
     $originalData = $resultOriginal->fetch_assoc();
@@ -351,7 +352,7 @@ if ($supplier != $originalSupplier) {
                                                          SET amount = ?,
                                                              balance = ?,
                                                              remarks = CONCAT('Updated: ', remarks) 
-                                                         WHERE id = ? AND tenant_id = ?";
+                                                         WHERE id = ? AND tenant_id = ? AND branch_id = ?";
                         $stmtUpdateSupplierTransaction = $conn->prepare($updateSupplierTransactionQuery);
                         $stmtUpdateSupplierTransaction->bind_param('ddii', $base, $newTransactionBalance, $transactionId, $tenant_id);
                         $stmtUpdateSupplierTransaction->execute();
@@ -794,31 +795,32 @@ if ($supplier != $originalSupplier) {
         
         $stmtTicket = $conn->prepare($updateTicketQuery);
         $stmtTicket->bind_param(
-            'iissssssssssssssdddssisi', 
-            $supplier, 
-            $sold_to, 
-            $trip_type, 
-            $title, 
-            $gender, 
-            $passenger_name, 
-            $pnr, 
-            $phone, 
-            $origin, 
-            $destination, 
-            $return_origin, 
-            $return_destination, 
-            $airline, 
-            $issue_date, 
-            $departure_date, 
-            $return_date, 
+            'iissssssssssssssdddssisii',
+            $supplier,
+            $sold_to,
+            $trip_type,
+            $title,
+            $gender,
+            $passenger_name,
+            $pnr,
+            $phone,
+            $origin,
+            $destination,
+            $return_origin,
+            $return_destination,
+            $airline,
+            $issue_date,
+            $departure_date,
+            $return_date,
             $base,  // This maps to the 'price' field in the database
-            $sold, 
-            $profit, 
-            $currency, 
-            $description, 
-            $paid_to, 
+            $sold,
+            $profit,
+            $currency,
+            $description,
+            $paid_to,
             $id,
-            $tenant_id
+            $tenant_id,
+            $branch_id
         );
         
         $stmtTicket->execute();
@@ -867,24 +869,25 @@ if ($supplier != $originalSupplier) {
         $action = 'update';
         $table_name = 'ticket_bookings';
         // Insert activity log
-        $activity_log_stmt = $conn->prepare("INSERT INTO activity_log 
-            (user_id, action, table_name, record_id, old_values, new_values, ip_address, user_agent, tenant_id) 
-            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)");
+        $activity_log_stmt = $conn->prepare("INSERT INTO activity_log
+            (user_id, action, table_name, record_id, old_values, new_values, ip_address, user_agent, tenant_id, branch_id)
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)");
 
         // Store JSON encoded values in variables first
         $old_values_json = json_encode($old_values);
         $new_values_json = json_encode($new_values);
         
-        $activity_log_stmt->bind_param("isisssssi", 
-            $user_id, 
-            $action, 
-            $table_name, 
-            $id, 
+        $activity_log_stmt->bind_param("isisssssii",
+            $user_id,
+            $action,
+            $table_name,
+            $id,
             $old_values_json,  // Use the stored JSON string
             $new_values_json,  // Use the stored JSON string
-            $ip_address, 
+            $ip_address,
             $user_agent,
-            $tenant_id
+            $tenant_id,
+            $branch_id
         );
         $activity_log_stmt->execute();
         

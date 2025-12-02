@@ -9,6 +9,7 @@ require_once 'security.php';
 enforce_auth();
 
 $tenant_id = $_SESSION['tenant_id'];
+$branch_id = $_SESSION['branch_id'];
 // Check if user is logged in
 if (!isset($_SESSION['user_id'])) {
     header('HTTP/1.1 403 Forbidden');
@@ -70,8 +71,8 @@ $transaction_id = isset($_POST['transaction_id']) ? DbSecurity::validateInput($_
     
     try {
         // Get transaction details before update
-        $stmt = $conn->prepare("SELECT amount, type, main_account_id, created_at FROM main_account_transactions WHERE id = ? AND tenant_id = ?");
-        $stmt->bind_param("ii", $transactionId, $tenant_id);
+        $stmt = $conn->prepare("SELECT amount, type, main_account_id, created_at FROM main_account_transactions WHERE id = ? AND tenant_id = ? AND branch_id = ?");
+        $stmt->bind_param("iii", $transactionId, $tenant_id, $branch_id);
         $stmt->execute();
         $result = $stmt->get_result();
         
@@ -85,8 +86,8 @@ $transaction_id = isset($_POST['transaction_id']) ? DbSecurity::validateInput($_
         $originalDate = $transaction['created_at'];
         
         // Get hotel booking to determine currency
-        $bookingStmt = $conn->prepare("SELECT currency FROM hotel_bookings WHERE id = ? AND tenant_id = ?");
-        $bookingStmt->bind_param("ii", $bookingId, $tenant_id);
+        $bookingStmt = $conn->prepare("SELECT currency FROM hotel_bookings WHERE id = ? AND tenant_id = ? AND branch_id = ?");
+        $bookingStmt->bind_param("iii", $bookingId, $tenant_id, $branch_id);
         $bookingStmt->execute();
         $bookingResult = $bookingStmt->get_result();
         

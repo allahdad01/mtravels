@@ -13,6 +13,7 @@ enforce_auth();
 // Database connection
 require_once '../../includes/conn.php';
 $tenant_id = $_SESSION['tenant_id'];
+$branch_id = $_SESSION['branch_id'];
 // Enable error reporting for debugging
 error_reporting(E_ALL);
 ini_set('display_errors', 1);
@@ -29,7 +30,7 @@ $response = [
 if (isset($_GET['pnr']) || isset($_GET['passenger'])) {
     try {
         // Build the query based on search parameters
-        $query = "SELECT 
+        $query = "SELECT
                     t.id,
                     t.title,
                     t.phone,
@@ -44,17 +45,17 @@ if (isset($_GET['pnr']) || isset($_GET['passenger'])) {
                     t.price,
                     s.name AS supplier_name,
                     c.name AS client_name
-                FROM 
+                FROM
                     ticket_bookings t
-                LEFT JOIN 
-                    suppliers s ON t.supplier = s.id
-                LEFT JOIN 
-                    clients c ON t.sold_to = c.id
-                WHERE 1=1 AND t.tenant_id = " . $tenant_id;
+                LEFT JOIN
+                    suppliers s ON t.supplier = s.id AND s.tenant_id = ? AND s.branch_id = ?
+                LEFT JOIN
+                    clients c ON t.sold_to = c.id AND c.tenant_id = ? AND c.branch_id = ?
+                WHERE 1=1 AND t.tenant_id = ? AND t.branch_id = ?";
                 
 
-        $params = [];
-        $types = "";
+        $params = [$tenant_id, $branch_id, $tenant_id, $branch_id, $tenant_id, $branch_id];
+        $types = "iiiiii";
 
         if (isset($_GET['pnr']) && !empty($_GET['pnr'])) {
             $query .= " AND t.pnr LIKE ?";

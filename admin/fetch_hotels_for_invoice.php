@@ -8,6 +8,7 @@ enforce_auth();
 
 include '../includes/conn.php';
 $tenant_id = $_SESSION['tenant_id'] ?? 0;
+$branch_id = $_SESSION['branch_id'] ?? 0;
 
 if (!isset($_SESSION['name'])) {
     echo json_encode(['status' => 'error', 'message' => 'You must be logged in to access this resource']);
@@ -34,12 +35,12 @@ try {
                      c.name as client_name
               FROM hotel_bookings hb
               JOIN clients c ON hb.sold_to = c.id
-              WHERE hb.tenant_id = ?
+              WHERE hb.tenant_id = ? AND hb.branch_id = ?
               ORDER BY hb.id DESC
               LIMIT 100";
 
     $stmt = $conn->prepare($query);
-    $stmt->bind_param("i", $tenant_id);
+    $stmt->bind_param("ii", $tenant_id, $branch_id);
     $stmt->execute();
     $res = $stmt->get_result(); // ✅ correct way
 

@@ -5,7 +5,7 @@ if (session_status() === PHP_SESSION_NONE) {
 }
 // Include database security module for input validation
 require_once 'includes/db_security.php';
-
+$branch_id = $_SESSION['branch_id'];
 // Include security module
 require_once 'security.php';
 
@@ -38,9 +38,9 @@ try {
         FROM sarafi_transactions t
         JOIN customers c ON t.customer_id = c.id
         JOIN hawala_transfers h ON t.id = h.sender_transaction_id
-        WHERE t.id = ? AND t.type = ? AND t.tenant_id = ?
+        WHERE t.id = ? AND t.type = ? AND t.tenant_id = ? AND t.branch_id = ?
     ");
-    $getTransactionStmt->execute([$transaction_id, 'hawala_send', $tenant_id]);
+    $getTransactionStmt->execute([$transaction_id, 'hawala_send', $tenant_id, $branch_id]);
     $transaction = $getTransactionStmt->fetch(PDO::FETCH_ASSOC);
 
     if (!$transaction) {
@@ -77,9 +77,9 @@ try {
     // Get the main account transaction
     $mainTransactionStmt = $pdo->prepare("
         SELECT * FROM main_account_transactions 
-        WHERE reference_id = ? AND transaction_of = ? AND tenant_id = ?
+        WHERE reference_id = ? AND transaction_of = ? AND tenant_id = ? AND branch_id = ?
     ");
-    $mainTransactionStmt->execute([$transaction_id, 'hawala_sarafi', $tenant_id]);
+    $mainTransactionStmt->execute([$transaction_id, 'hawala_sarafi', $tenant_id, $branch_id]);
     $mainTransaction = $mainTransactionStmt->fetch(PDO::FETCH_ASSOC);
 
     if (!$mainTransaction) {
@@ -93,7 +93,7 @@ try {
         WHERE main_account_id = ? 
         AND currency = ? 
         AND id > ? 
-        AND id != ? AND tenant_id = ?
+        AND id != ? AND tenant_id = ? AND branch_id = ?
     ");
     $updateSubsequentResult = $updateSubsequentStmt->execute([
         $net_amount, 
@@ -101,7 +101,8 @@ try {
         $transaction['currency'], 
         $mainTransaction['id'],
         $mainTransaction['id'],
-        $tenant_id
+        $tenant_id,
+        $branch_id
     ]);
 
     if (!$updateSubsequentResult) {
@@ -111,9 +112,9 @@ try {
     // Delete the hawala transfer
     $deleteHawalaStmt = $pdo->prepare("
         DELETE FROM hawala_transfers 
-        WHERE sender_transaction_id = ? AND tenant_id = ?
+        WHERE sender_transaction_id = ? AND tenant_id = ? AND branch_id = ?
     ");
-    $deleteHawalaResult = $deleteHawalaStmt->execute([$transaction_id, $tenant_id]);
+    $deleteHawalaResult = $deleteHawalaStmt->execute([$transaction_id, $tenant_id, $branch_id]);
 
     if (!$deleteHawalaResult) {
         throw new Exception('Failed to delete hawala transfer');
@@ -122,9 +123,9 @@ try {
     // Delete the main account transaction
     $deleteMainStmt = $pdo->prepare("
         DELETE FROM main_account_transactions 
-        WHERE id = ? AND tenant_id = ?
+        WHERE id = ? AND tenant_id = ? AND branch_id = ?
     ");
-    $deleteMainResult = $deleteMainStmt->execute([$mainTransaction['id'], $tenant_id]);
+    $deleteMainResult = $deleteMainStmt->execute([$mainTransaction['id'], $tenant_id, $branch_id]);
 
     if (!$deleteMainResult) {
         throw new Exception('Failed to delete main account transaction');
@@ -133,31 +134,32 @@ try {
     // Delete the sarafi transaction
     $deleteStmt = $pdo->prepare("
         DELETE FROM sarafi_transactions 
-        WHERE id = ? AND tenant_id = ?
+        WHERE id = ? AND tenant_id = ? AND branch_id = ?
     ");
-    $deleteResult = $deleteStmt->execute([$transaction_id, $tenant_id]);
+    $deleteResult = $deleteStmt->execute([$transaction_id, $tenant_id, $branch_id]);
 
     if ($deleteResult && $deleteStmt->rowCount() > 0) {
          // ✅ Refund customer wallet
     $refundWalletStmt = $pdo->prepare("
         UPDATE customer_wallets 
         SET balance = balance + ? 
-        WHERE customer_id = ? AND currency = ? AND tenant_id = ?
+        WHERE customer_id = ? AND currency = ? AND tenant_id = ? AND branch_id = ?
     ");
     $refundWalletStmt->execute([
         $transaction['amount'], 
         $transaction['customer_id'], 
         $transaction['currency'], 
-        $tenant_id
+        $tenant_id,
+        $branch_id
     ]);
         // Update the appropriate balance in the main_account table
         $updateStmt = $pdo->prepare("
             UPDATE main_account 
             SET $balanceColumn = $balanceColumn + ?
-            WHERE id = ? AND tenant_id = ?
+            WHERE id = ? AND tenant_id = ? AND branch_id = ?
         ");
 
-        $updateResult = $updateStmt->execute([$net_amount, $mainTransaction['main_account_id'], $tenant_id]);
+        $updateResult = $updateStmt->execute([$net_amount, $mainTransaction['main_account_id'], $tenant_id, $branch_id]);
         
 
         if ($updateResult) {
@@ -181,10 +183,10 @@ try {
             
             $activityStmt = $pdo->prepare("
                 INSERT INTO activity_log 
-                (user_id, action, table_name, record_id, old_values, new_values, ip_address, user_agent, created_at, tenant_id) 
-                VALUES (?, 'delete', 'sarafi_transactions', ?, ?, ?, ?, ?, NOW(), ?)
+                (user_id, action, table_name, record_id, old_values, new_values, ip_address, user_agent, created_at, tenant_id, branch_id) 
+                VALUES (?, 'delete', 'sarafi_transactions', ?, ?, ?, ?, ?, NOW(), ?, ?)
             ");
-            $activityStmt->execute([$user_id, $transaction_id, $old_values, $new_values, $ip_address, $user_agent, $tenant_id]);
+            $activityStmt->execute([$user_id, $transaction_id, $old_values, $new_values, $ip_address, $user_agent, $tenant_id, $branch_id]);
 
             $pdo->commit();
             echo json_encode(['success' => true, 'message' => 'Hawala transfer deleted successfully']);

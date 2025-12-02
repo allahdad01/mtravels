@@ -9,6 +9,7 @@ require_once 'security.php';
 enforce_auth();
 
 $tenant_id = $_SESSION['tenant_id'] ?? null;
+$branch_id = $_SESSION['branch_id'] ?? null;
 
 if (!isset($_SESSION['user_id'])) {
     echo json_encode(['success' => false, 'message' => 'Not authenticated']);
@@ -40,8 +41,8 @@ try {
     // Handle password update
     if (!empty($current_password) && !empty($new_password) && !empty($confirm_password)) {
         // Verify current password
-        $stmt = $pdo->prepare("SELECT password FROM users WHERE id = ? AND tenant_id = ?");
-        $stmt->execute([$user_id, $tenant_id]);
+        $stmt = $pdo->prepare("SELECT password FROM users WHERE id = ? AND tenant_id = ? AND branch_id = ?");
+        $stmt->execute([$user_id, $tenant_id, $branch_id]);
         $user = $stmt->fetch(PDO::FETCH_ASSOC);
 
         if (!$user || !password_verify($current_password, $user['password'])) {
@@ -82,8 +83,8 @@ try {
 
         if (move_uploaded_file($_FILES['profile_image']['tmp_name'], $uploadPath)) {
             // Delete old image if exists
-            $stmt = $pdo->prepare("SELECT profile_pic FROM users WHERE id = ? AND tenant_id = ?");
-            $stmt->execute([$user_id, $tenant_id]);
+            $stmt = $pdo->prepare("SELECT profile_pic FROM users WHERE id = ? AND tenant_id = ? AND branch_id = ?");
+            $stmt->execute([$user_id, $tenant_id, $branch_id]);
             $oldImage = $stmt->fetchColumn();
             if ($oldImage && $oldImage !== 'default-avatar.jpg') {
                 $oldImagePath = $uploadDir . $oldImage;
@@ -102,14 +103,15 @@ try {
         // Add WHERE clause params
         $params[] = $user_id;
         $params[] = $tenant_id;
+        $params[] = $branch_id;
 
-        $sql = "UPDATE users SET " . implode(', ', $updates) . " WHERE id = ? AND tenant_id = ?";
+        $sql = "UPDATE users SET " . implode(', ', $updates) . " WHERE id = ? AND tenant_id = ? AND branch_id = ?";
         $stmt = $pdo->prepare($sql);
 
         if ($stmt->execute($params)) {
             // Fetch updated user
-            $stmt = $pdo->prepare("SELECT * FROM users WHERE id = ? AND tenant_id = ?");
-            $stmt->execute([$user_id, $tenant_id]);
+            $stmt = $pdo->prepare("SELECT * FROM users WHERE id = ? AND tenant_id = ? AND branch_id = ?");
+            $stmt->execute([$user_id, $tenant_id, $branch_id]);
             $updatedUser = $stmt->fetch(PDO::FETCH_ASSOC);
             unset($updatedUser['password']); // Remove password from response
 
@@ -126,8 +128,8 @@ try {
 
             $activity_log_stmt = $pdo->prepare("
                 INSERT INTO activity_log
-                (user_id, action, table_name, record_id, old_values, new_values, ip_address, user_agent, tenant_id)
-                VALUES (?, 'update', 'users', ?, ?, ?, ?, ?, ?)
+                (user_id, action, table_name, record_id, old_values, new_values, ip_address, user_agent, tenant_id, branch_id)
+                VALUES (?, 'update', 'users', ?, ?, ?, ?, ?, ?, ?)
             ");
             $activity_log_stmt->execute([
                 $user_id,
@@ -136,7 +138,8 @@ try {
                 json_encode($updated_fields),
                 $ip_address,
                 $user_agent,
-                $tenant_id
+                $tenant_id,
+                $branch_id
             ]);
 
             echo json_encode([

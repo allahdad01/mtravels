@@ -5,6 +5,7 @@ require_once 'includes/db_security.php';
 // Include security module
 require_once 'security.php';
 $tenant_id = $_SESSION['tenant_id'];
+$branch_id = $_SESSION['branch_id'];
 // Enforce authentication
 enforce_auth();
 
@@ -29,12 +30,12 @@ if (isset($_POST['ticketId'])) {
         SELECT c.client_type
         FROM ticket_bookings tb
         JOIN clients c ON tb.sold_to = c.id
-        WHERE tb.id = ? AND tb.tenant_id = ?
+        WHERE tb.id = ? AND tb.tenant_id = ? AND tb.branch_id = ? AND c.branch_id = ?
     ";
 
     // Prepare and execute the query
     $stmt = $conn->prepare($query);
-    $stmt->bind_param("ii", $ticketId, $tenant_id); // Bind the ticket ID as an integer
+    $stmt->bind_param("iiii", $ticketId, $tenant_id, $branch_id, $branch_id); // Bind the ticket ID as an integer
     $stmt->execute();
     $result = $stmt->get_result();
 

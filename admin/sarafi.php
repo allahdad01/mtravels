@@ -30,6 +30,7 @@ if (!isset($_SESSION['tenant_id'])) {
 require_once '../includes/conn.php';
 require_once '../includes/db.php';
 $tenant_id = $_SESSION['tenant_id'];
+$branch_id = $_SESSION['branch_id'];
 // Initialize messages
 $success_message = isset($_SESSION['success_message']) ? $_SESSION['success_message'] : null;
 $error_message = isset($_SESSION['error_message']) ? $_SESSION['error_message'] : null;
@@ -57,51 +58,51 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['add_deposit'])) {
         $conn->begin_transaction();
         
         // Get customer name
-        $stmt = $conn->prepare("SELECT name FROM customers WHERE id = ? AND tenant_id = ?");
-        $stmt->bind_param("ii", $customer_id, $tenant_id);
+        $stmt = $conn->prepare("SELECT name FROM customers WHERE id = ? AND tenant_id = ? AND branch_id = ?");
+        $stmt->bind_param("iii", $customer_id, $tenant_id, $branch_id);
         $stmt->execute();
         $customer = $stmt->get_result()->fetch_assoc();
-        
+
         // Insert the deposit transaction
-        $stmt = $conn->prepare("INSERT INTO sarafi_transactions (customer_id, amount, currency, type, notes, reference_number, tenant_id) VALUES (?, ?, ?, 'deposit', ?, ?, ?)");
-        $stmt->bind_param("idsssi", $customer_id, $amount, $currency, $notes, $reference, $tenant_id);
+        $stmt = $conn->prepare("INSERT INTO sarafi_transactions (customer_id, amount, currency, type, notes, reference_number, tenant_id, branch_id) VALUES (?, ?, ?, 'deposit', ?, ?, ?, ?)");
+        $stmt->bind_param("idsssii", $customer_id, $amount, $currency, $notes, $reference, $tenant_id, $branch_id);
         $stmt->execute();
         $transaction_id = $conn->insert_id;
         
         // First check if wallet exists
-        $stmt = $conn->prepare("SELECT id FROM customer_wallets WHERE customer_id = ? AND currency = ? AND tenant_id = ?");
-        $stmt->bind_param("isi", $customer_id, $currency, $tenant_id);
+        $stmt = $conn->prepare("SELECT id FROM customer_wallets WHERE customer_id = ? AND currency = ? AND tenant_id = ? AND branch_id = ?");
+        $stmt->bind_param("isii", $customer_id, $currency, $tenant_id, $branch_id);
         $stmt->execute();
         $result = $stmt->get_result();
-        
+
         if ($result->num_rows > 0) {
             // Update existing wallet
-            $stmt = $conn->prepare("UPDATE customer_wallets SET balance = balance + ? WHERE customer_id = ? AND currency = ? AND tenant_id = ?");
-            $stmt->bind_param("disi", $amount, $customer_id, $currency, $tenant_id);
+            $stmt = $conn->prepare("UPDATE customer_wallets SET balance = balance + ? WHERE customer_id = ? AND currency = ? AND tenant_id = ? AND branch_id = ?");
+            $stmt->bind_param("disii", $amount, $customer_id, $currency, $tenant_id, $branch_id);
         } else {
             // Create new wallet
-            $stmt = $conn->prepare("INSERT INTO customer_wallets (customer_id, currency, balance, tenant_id) VALUES (?, ?, ?, ?)");
-            $stmt->bind_param("isdi", $customer_id, $currency, $amount, $tenant_id);
+            $stmt = $conn->prepare("INSERT INTO customer_wallets (customer_id, currency, balance, tenant_id, branch_id) VALUES (?, ?, ?, ?, ?)");
+            $stmt->bind_param("isdii", $customer_id, $currency, $amount, $tenant_id, $branch_id);
         }
         $stmt->execute();
 
         // Get current main account balance
         $balanceField = $currency === 'USD' ? 'usd_balance' : ($currency === 'AFS' ? 'afs_balance' : ($currency === 'EUR' ? 'euro_balance' : 'darham_balance'));
-        $stmt = $conn->prepare("SELECT $balanceField as current_balance FROM main_account WHERE id = ? AND tenant_id = ?");
-        $stmt->bind_param("ii", $main_account_id, $tenant_id);
+        $stmt = $conn->prepare("SELECT $balanceField as current_balance FROM main_account WHERE id = ? AND tenant_id = ? AND branch_id = ?");
+        $stmt->bind_param("iii", $main_account_id, $tenant_id, $branch_id);
         $stmt->execute();
         $result = $stmt->get_result();
         $balanceResult = $result->fetch_assoc();
         $newBalance = $balanceResult['current_balance'] + $amount;
 
         // Update main account balance
-        $stmt = $conn->prepare("UPDATE main_account SET $balanceField = ? WHERE id = ? AND tenant_id = ?");
-        $stmt->bind_param("dii", $newBalance, $main_account_id, $tenant_id);
+        $stmt = $conn->prepare("UPDATE main_account SET $balanceField = ? WHERE id = ? AND tenant_id = ? AND branch_id = ?");
+        $stmt->bind_param("diii", $newBalance, $main_account_id, $tenant_id, $branch_id);
         $stmt->execute();
         $transaction_of = 'deposit_sarafi';
         // Record main account transaction
-        $stmt = $conn->prepare("INSERT INTO main_account_transactions (main_account_id, type, amount, currency, description, transaction_of, reference_id, balance, receipt, tenant_id) VALUES (?, 'credit', ?, ?, ?, ?, ?, ?, ?, ?)");
-        $stmt->bind_param("idsssissi", $main_account_id, $amount, $currency, $notes, $transaction_of, $transaction_id, $newBalance, $reference, $tenant_id);
+        $stmt = $conn->prepare("INSERT INTO main_account_transactions (main_account_id, type, amount, currency, description, transaction_of, reference_id, balance, receipt, tenant_id, branch_id) VALUES (?, 'credit', ?, ?, ?, ?, ?, ?, ?, ?, ?)");
+        $stmt->bind_param("idsssissii", $main_account_id, $amount, $currency, $notes, $transaction_of, $transaction_id, $newBalance, $reference, $tenant_id, $branch_id);
         $stmt->execute();
         $main_transaction_id = $conn->insert_id;
 
@@ -113,9 +114,9 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['add_deposit'])) {
             $amount,
             $reference
         );
-        
-        $stmt = $conn->prepare("INSERT INTO notifications (transaction_id, transaction_type, message, status, created_at, tenant_id) VALUES (?, ?, ?, 'Unread', NOW(), ?)");
-        $stmt->bind_param("issi", $main_transaction_id, $transaction_of, $notificationMessage, $tenant_id);
+
+        $stmt = $conn->prepare("INSERT INTO notifications (transaction_id, transaction_type, message, status, created_at, tenant_id, branch_id) VALUES (?, ?, ?, 'Unread', NOW(), ?, ?)");
+        $stmt->bind_param("issii", $main_transaction_id, $transaction_of, $notificationMessage, $tenant_id, $branch_id);
         $stmt->execute();
         
         // Handle receipt upload if provided
@@ -126,8 +127,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['add_deposit'])) {
             
             if (move_uploaded_file($_FILES['receipt']['tmp_name'], $upload_path)) {
                 // Update transaction with receipt path
-                $stmt = $conn->prepare("UPDATE sarafi_transactions SET receipt_path = ? WHERE id = ? AND tenant_id = ?");
-                $stmt->bind_param("si", $new_filename, $transaction_id, $tenant_id);
+                $stmt = $conn->prepare("UPDATE sarafi_transactions SET receipt_path = ? WHERE id = ? AND tenant_id = ? AND branch_id = ?");
+                $stmt->bind_param("sii", $new_filename, $transaction_id, $tenant_id, $branch_id);
                 $stmt->execute();
             }
         }
@@ -157,14 +158,14 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['add_withdrawal'])) {
         $conn->begin_transaction();
         
         // Get customer name
-        $stmt = $conn->prepare("SELECT name FROM customers WHERE id = ? AND tenant_id = ?");
-        $stmt->bind_param("ii", $customer_id, $tenant_id);
+        $stmt = $conn->prepare("SELECT name FROM customers WHERE id = ? AND tenant_id = ? AND branch_id = ?");
+        $stmt->bind_param("iii", $customer_id, $tenant_id, $branch_id);
         $stmt->execute();
         $customer = $stmt->get_result()->fetch_assoc();
-        
+
         // Check if customer has sufficient balance
-        $stmt = $conn->prepare("SELECT balance FROM customer_wallets WHERE customer_id = ? AND currency = ? AND tenant_id = ?");
-        $stmt->bind_param("isi", $customer_id, $currency, $tenant_id);
+        $stmt = $conn->prepare("SELECT balance FROM customer_wallets WHERE customer_id = ? AND currency = ? AND tenant_id = ? AND branch_id = ?");
+        $stmt->bind_param("isii", $customer_id, $currency, $tenant_id, $branch_id);
         $stmt->execute();
         $result = $stmt->get_result();
         $wallet = $result->fetch_assoc();
@@ -175,37 +176,37 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['add_withdrawal'])) {
 
         // Get current main account balance
         $balanceField = $currency === 'USD' ? 'usd_balance' : ($currency === 'AFS' ? 'afs_balance' : ($currency === 'EUR' ? 'euro_balance' : 'darham_balance'));
-        $stmt = $conn->prepare("SELECT $balanceField as current_balance FROM main_account WHERE id = ? AND tenant_id = ?");
-        $stmt->bind_param("ii", $main_account_id, $tenant_id);
+        $stmt = $conn->prepare("SELECT $balanceField as current_balance FROM main_account WHERE id = ? AND tenant_id = ? AND branch_id = ?");
+        $stmt->bind_param("iii", $main_account_id, $tenant_id, $branch_id);
         $stmt->execute();
         $result = $stmt->get_result();
         $balanceResult = $result->fetch_assoc();
-        
+
         if (!$balanceResult || $balanceResult['current_balance'] < $amount) {
             throw new Exception(__('insufficient_main_account_balance'));
         }
-        
+
         $newBalance = $balanceResult['current_balance'] - $amount;
-        
+
         // Insert the withdrawal transaction
-        $stmt = $conn->prepare("INSERT INTO sarafi_transactions (customer_id, amount, currency, type, notes, reference_number, tenant_id) VALUES (?, ?, ?, 'withdrawal', ?, ?, ?)");
-        $stmt->bind_param("idsssi", $customer_id, $amount, $currency, $notes, $reference, $tenant_id);
+        $stmt = $conn->prepare("INSERT INTO sarafi_transactions (customer_id, amount, currency, type, notes, reference_number, tenant_id, branch_id) VALUES (?, ?, ?, 'withdrawal', ?, ?, ?, ?)");
+        $stmt->bind_param("idsssii", $customer_id, $amount, $currency, $notes, $reference, $tenant_id, $branch_id);
         $stmt->execute();
         $transaction_id = $conn->insert_id;
-        
+
         // Update customer wallet balance
-        $stmt = $conn->prepare("UPDATE customer_wallets SET balance = balance - ? WHERE customer_id = ? AND currency = ? AND tenant_id = ?");
-        $stmt->bind_param("disi", $amount, $customer_id, $currency, $tenant_id);
+        $stmt = $conn->prepare("UPDATE customer_wallets SET balance = balance - ? WHERE customer_id = ? AND currency = ? AND tenant_id = ? AND branch_id = ?");
+        $stmt->bind_param("disii", $amount, $customer_id, $currency, $tenant_id, $branch_id);
         $stmt->execute();
 
         // Update main account balance
-        $stmt = $conn->prepare("UPDATE main_account SET $balanceField = ? WHERE id = ? AND tenant_id = ?");
-        $stmt->bind_param("dii", $newBalance, $main_account_id, $tenant_id);
+        $stmt = $conn->prepare("UPDATE main_account SET $balanceField = ? WHERE id = ? AND tenant_id = ? AND branch_id = ?");
+        $stmt->bind_param("diii", $newBalance, $main_account_id, $tenant_id, $branch_id);
         $stmt->execute();
         $transaction_of = 'withdrawal_sarafi';
         // Record main account transaction
-        $stmt = $conn->prepare("INSERT INTO main_account_transactions (main_account_id, type, amount, currency, description, transaction_of, reference_id, balance, receipt, tenant_id) VALUES (?, 'debit', ?, ?, ?, ?, ?, ?, ?, ?)");
-        $stmt->bind_param("idsssissi", $main_account_id, $amount, $currency, $notes, $transaction_of, $transaction_id, $newBalance, $reference, $tenant_id);
+        $stmt = $conn->prepare("INSERT INTO main_account_transactions (main_account_id, type, amount, currency, description, transaction_of, reference_id, balance, receipt, tenant_id, branch_id) VALUES (?, 'debit', ?, ?, ?, ?, ?, ?, ?, ?, ?)");
+        $stmt->bind_param("idsssissii", $main_account_id, $amount, $currency, $notes, $transaction_of, $transaction_id, $newBalance, $reference, $tenant_id, $branch_id);
         $stmt->execute();
         $main_transaction_id = $conn->insert_id;
 
@@ -217,9 +218,9 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['add_withdrawal'])) {
             $amount,
             $reference
         );
-        
-        $stmt = $conn->prepare("INSERT INTO notifications (transaction_id, transaction_type, message, status, created_at, tenant_id) VALUES (?, ?, ?, 'Unread', NOW(), ?)");
-        $stmt->bind_param("issi", $main_transaction_id, $transaction_of, $notificationMessage, $tenant_id);
+
+        $stmt = $conn->prepare("INSERT INTO notifications (transaction_id, transaction_type, message, status, created_at, tenant_id, branch_id) VALUES (?, ?, ?, 'Unread', NOW(), ?, ?)");
+        $stmt->bind_param("issii", $main_transaction_id, $transaction_of, $notificationMessage, $tenant_id, $branch_id);
         $stmt->execute();
         
         // Handle receipt upload if provided
@@ -230,8 +231,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['add_withdrawal'])) {
             
             if (move_uploaded_file($_FILES['receipt']['tmp_name'], $upload_path)) {
                 // Update transaction with receipt path
-                $stmt = $conn->prepare("UPDATE sarafi_transactions SET receipt_path = ? WHERE id = ? AND tenant_id = ?");
-                $stmt->bind_param("si", $new_filename, $transaction_id, $tenant_id);
+                $stmt = $conn->prepare("UPDATE sarafi_transactions SET receipt_path = ? WHERE id = ? AND tenant_id = ? AND branch_id = ?");
+                $stmt->bind_param("sii", $new_filename, $transaction_id, $tenant_id, $branch_id);
                 $stmt->execute();
             }
         }
@@ -270,8 +271,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['add_hawala'])) {
         $conn->begin_transaction();
         
         // Get sender name
-        $stmt = $conn->prepare("SELECT name FROM customers WHERE id = ? AND tenant_id = ?");
-        $stmt->bind_param("ii", $data['sender_id'], $tenant_id);
+        $stmt = $conn->prepare("SELECT name FROM customers WHERE id = ? AND tenant_id = ? AND branch_id = ?");
+        $stmt->bind_param("iii", $data['sender_id'], $tenant_id, $branch_id);
         $stmt->execute();
         $sender = $stmt->get_result()->fetch_assoc();
         
@@ -285,21 +286,21 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['add_hawala'])) {
         
         // Get current main account balance
         $balanceField = $data['send_currency'] === 'USD' ? 'usd_balance' : ($data['send_currency'] === 'AFS' ? 'afs_balance' : ($data['send_currency'] === 'EUR' ? 'euro_balance' : 'darham_balance'));
-        $stmt = $conn->prepare("SELECT $balanceField as current_balance FROM main_account WHERE id = ? AND tenant_id = ?");
-        $stmt->bind_param("ii", $data['main_account_id'], $tenant_id);
+        $stmt = $conn->prepare("SELECT $balanceField as current_balance FROM main_account WHERE id = ? AND tenant_id = ? AND branch_id = ?");
+        $stmt->bind_param("iii", $data['main_account_id'], $tenant_id, $branch_id);
         $stmt->execute();
         $result = $stmt->get_result();
         $balanceResult = $result->fetch_assoc();
-        
+
         if (!$balanceResult || $balanceResult['current_balance'] < $net_amount) {
             throw new Exception(__('insufficient_main_account_balance_hawala'));
         }
-        
+
         $newBalance = $balanceResult['current_balance'] - $net_amount;
-        
+
         // Update main account balance with net amount
-        $stmt = $conn->prepare("UPDATE main_account SET $balanceField = ? WHERE id = ? AND tenant_id = ?");
-        $stmt->bind_param("dii", $newBalance, $data['main_account_id'], $tenant_id);
+        $stmt = $conn->prepare("UPDATE main_account SET $balanceField = ? WHERE id = ? AND tenant_id = ? AND branch_id = ?");
+        $stmt->bind_param("diii", $newBalance, $data['main_account_id'], $tenant_id, $branch_id);
         $stmt->execute();
         
         // Process the hawala transfer
@@ -307,16 +308,16 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['add_hawala'])) {
         
         if ($result['success']) {
             // Record main account transaction for net hawala transfer amount
-            $description = sprintf(__('hawala_transfer_description'), 
+            $description = sprintf(__('hawala_transfer_description'),
                 $data['reference'],
                 number_format($data['send_amount'], 2), $data['send_currency'],
                 number_format($data['commission_amount'], 2), $data['commission_currency'],
                 number_format($net_amount, 2), $data['send_currency']
             );
             $transaction_of = 'hawala_sarafi';
-            $stmt = $conn->prepare("INSERT INTO main_account_transactions (main_account_id, type, amount, currency, description, transaction_of, reference_id, balance, receipt, tenant_id) 
-            VALUES (?, 'debit', ?, ?, ?, ?, ?, ?, ?, ?)");
-            $stmt->bind_param("idsssissi", $data['main_account_id'], $net_amount, $data['send_currency'], $data['notes'], $transaction_of, $result['sender_transaction_id'], $newBalance, $data['reference'], $tenant_id);
+            $stmt = $conn->prepare("INSERT INTO main_account_transactions (main_account_id, type, amount, currency, description, transaction_of, reference_id, balance, receipt, tenant_id, branch_id)
+            VALUES (?, 'debit', ?, ?, ?, ?, ?, ?, ?, ?, ?)");
+            $stmt->bind_param("idsssissii", $data['main_account_id'], $net_amount, $data['send_currency'], $data['notes'], $transaction_of, $result['sender_transaction_id'], $newBalance, $data['reference'], $tenant_id, $branch_id);
             $stmt->execute();
             $main_transaction_id = $conn->insert_id;
 
@@ -329,9 +330,9 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['add_hawala'])) {
                 $data['send_currency'], $net_amount,
                 $data['reference']
             );
-            
-            $stmt = $conn->prepare("INSERT INTO notifications (transaction_id, transaction_type, message, status, created_at, tenant_id) VALUES (?, ?, ?, 'Unread', NOW(), ?)");
-            $stmt->bind_param("issi", $main_transaction_id, $transaction_of, $notificationMessage, $tenant_id);
+
+            $stmt = $conn->prepare("INSERT INTO notifications (transaction_id, transaction_type, message, status, created_at, tenant_id, branch_id) VALUES (?, ?, ?, 'Unread', NOW(), ?, ?)");
+            $stmt->bind_param("issii", $main_transaction_id, $transaction_of, $notificationMessage, $tenant_id, $branch_id);
             $stmt->execute();
             
             $conn->commit();
@@ -371,16 +372,16 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['add_exchange'])) {
 }
 
 // Fetch customers
-$stmt = $conn->prepare("SELECT * FROM customers WHERE status = 'active' AND tenant_id = ? ORDER BY created_at DESC");
-$stmt->bind_param("i", $tenant_id);
+$stmt = $conn->prepare("SELECT * FROM customers WHERE status = 'active' AND tenant_id = ? AND branch_id = ? ORDER BY created_at DESC");
+$stmt->bind_param("ii", $tenant_id, $branch_id);
 $stmt->execute();
 $result = $stmt->get_result();
 $customers = $result->fetch_all(MYSQLI_ASSOC);
 
 // Calculate total balances by currency
 $currency_totals = [];
-$stmt = $conn->prepare("SELECT currency, SUM(balance) as total FROM customer_wallets WHERE tenant_id = ? GROUP BY currency");
-$stmt->bind_param("i", $tenant_id);
+$stmt = $conn->prepare("SELECT currency, SUM(balance) as total FROM customer_wallets WHERE tenant_id = ? AND branch_id = ? GROUP BY currency");
+$stmt->bind_param("ii", $tenant_id, $branch_id);
 $stmt->execute();
 $result = $stmt->get_result();
 while ($row = $result->fetch_assoc()) {
@@ -756,14 +757,14 @@ while ($row = $result->fetch_assoc()) {
                     <?php
                     // Fetch recent transactions
                     $stmt = $conn->prepare("
-                        SELECT t.*, c.name as customer_name 
-                        FROM sarafi_transactions t 
-                        JOIN customers c ON t.customer_id = c.id 
-                        WHERE t.tenant_id = ?
-                        ORDER BY t.created_at DESC 
+                        SELECT t.*, c.name as customer_name
+                        FROM sarafi_transactions t
+                        JOIN customers c ON t.customer_id = c.id
+                        WHERE t.tenant_id = ? AND t.branch_id = ? AND c.branch_id = ?
+                        ORDER BY t.created_at DESC
                         LIMIT 50
                     ");
-                    $stmt->bind_param("i", $tenant_id);
+                    $stmt->bind_param("iii", $tenant_id, $branch_id, $branch_id);
                     $stmt->execute();
                     $transactions = $stmt->get_result();
 

@@ -17,6 +17,7 @@ if (!isset($_SESSION['name'])) {
     exit;
 }
 $tenant_id = $_SESSION['tenant_id'];
+$branch_id = $_SESSION['branch_id'];
 try {
     // Query to get tickets
     $query = "SELECT tb.id, tb.passenger_name, tb.pnr, tb.origin, tb.destination, 
@@ -24,12 +25,12 @@ try {
               tb.return_date, c.name as client_name
               FROM ticket_reservations tb
               JOIN clients c ON tb.sold_to = c.id
-              WHERE tb.tenant_id = ?
+              WHERE tb.tenant_id = ? AND tb.branch_id = ?
               ORDER BY tb.id DESC
               LIMIT 100";
     
     $stmt = $conn->prepare($query);
-    $stmt->bind_param('i', $tenant_id);
+    $stmt->bind_param('ii', $tenant_id, $branch_id);
     $stmt->execute();
     $result = $stmt->get_result();
     

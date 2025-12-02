@@ -10,6 +10,7 @@ require_once 'security.php';
 // Enforce authentication
 enforce_auth();
 $tenant_id = $_SESSION['tenant_id'];
+$branch_id = $_SESSION['branch_id'];
 
 // Include database connection
 include '../includes/db.php';
@@ -46,8 +47,8 @@ if (empty($subject) || empty($message) || empty($recipient_type)) {
 // Prepare update data
 if ($recipient_type === 'individual' && $recipient_id) {
     // Check if recipient exists in either users or clients table
-    $user_check = mysqli_query($conn, "SELECT 1 FROM users WHERE id = $recipient_id AND tenant_id = $tenant_id");
-    $client_check = mysqli_query($conn, "SELECT 1 FROM clients WHERE id = $recipient_id AND tenant_id = $tenant_id");
+    $user_check = mysqli_query($conn, "SELECT 1 FROM users WHERE id = $recipient_id AND tenant_id = $tenant_id AND branch_id = $branch_id");
+    $client_check = mysqli_query($conn, "SELECT 1 FROM clients WHERE id = $recipient_id AND tenant_id = $tenant_id AND branch_id = $branch_id");
     
     if (mysqli_num_rows($user_check) > 0) {
         $recipient_table = 'users';
@@ -66,22 +67,22 @@ if ($recipient_type === 'individual' && $recipient_id) {
     }
 
     // Update the message with individual recipient
-    $query = "UPDATE messages SET 
-              subject = '$subject', 
-              message = '$message', 
-              recipient_type = '$recipient_type', 
-              recipient_id = $recipient_id, 
-              recipient_table = '$recipient_table' 
-              WHERE id = $message_id AND tenant_id = $tenant_id";
+    $query = "UPDATE messages SET
+              subject = '$subject',
+              message = '$message',
+              recipient_type = '$recipient_type',
+              recipient_id = $recipient_id,
+              recipient_table = '$recipient_table'
+              WHERE id = $message_id AND tenant_id = $tenant_id AND branch_id = $branch_id";
 } else {
     // Update the message with non-individual recipient
-    $query = "UPDATE messages SET 
-              subject = '$subject', 
-              message = '$message', 
-              recipient_type = '$recipient_type', 
-              recipient_id = NULL, 
-              recipient_table = NULL 
-              WHERE id = $message_id AND tenant_id = $tenant_id";
+    $query = "UPDATE messages SET
+              subject = '$subject',
+              message = '$message',
+              recipient_type = '$recipient_type',
+              recipient_id = NULL,
+              recipient_table = NULL
+              WHERE id = $message_id AND tenant_id = $tenant_id AND branch_id = $branch_id";
 }
 
 // Execute query
@@ -93,7 +94,7 @@ if (mysqli_query($conn, $query)) {
     
     // Get original message data if possible
     $old_values = [];
-    $get_original = "SELECT * FROM messages WHERE id = $message_id AND tenant_id = $tenant_id";
+    $get_original = "SELECT * FROM messages WHERE id = $message_id AND tenant_id = $tenant_id AND branch_id = $branch_id";
     $original_result = mysqli_query($conn, $get_original);
     
     if ($original_result && mysqli_num_rows($original_result) > 0) {
@@ -117,9 +118,9 @@ if (mysqli_query($conn, $query)) {
     ];
     
     // Insert activity log using PDO connection
-    $activity_log_stmt = $pdo->prepare("INSERT INTO activity_log 
-        (user_id, action, table_name, record_id, old_values, new_values, ip_address, user_agent, tenant_id) 
-        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)");
+    $activity_log_stmt = $pdo->prepare("INSERT INTO activity_log
+        (user_id, action, table_name, record_id, old_values, new_values, ip_address, user_agent, tenant_id, branch_id)
+        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)");
     $activity_log_stmt->execute([
         $user_id,
         'update',
@@ -129,7 +130,8 @@ if (mysqli_query($conn, $query)) {
         json_encode($new_values),
         $ip_address,
         $user_agent,
-        $tenant_id
+        $tenant_id,
+        $branch_id
     ]);
     
     $_SESSION['success_message'] = "Message updated successfully!";

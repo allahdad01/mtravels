@@ -2,6 +2,7 @@
 // Initialize the session
 session_start();
 $tenant_id = $_SESSION['tenant_id'];
+$branch_id = $_SESSION['branch_id'];
 
 // Include config file
 require_once "../../config.php";
@@ -14,10 +15,10 @@ if (!isset($_GET["id"]) || empty(trim($_GET["id"]))) {
 
 // Get payroll record
 $payroll_id = trim($_GET["id"]);
-$sql = "SELECT * FROM payroll_records WHERE id = ? AND tenant_id = ?";
+$sql = "SELECT * FROM payroll_records WHERE id = ? AND tenant_id = ? AND branch_id = ?";
 
 if ($stmt = mysqli_prepare($conection_db, $sql)) {
-    mysqli_stmt_bind_param($stmt, "ii", $payroll_id, $tenant_id);
+    mysqli_stmt_bind_param($stmt, "iii", $payroll_id, $tenant_id, $branch_id);
     
     if (mysqli_stmt_execute($stmt)) {
         $result = mysqli_stmt_get_result($stmt);
@@ -36,19 +37,19 @@ if ($stmt = mysqli_prepare($conection_db, $sql)) {
             
             try {
                 // First, delete payroll details
-                $delete_details_sql = "DELETE FROM payroll_details WHERE payroll_id = ? AND tenant_id = ?";
-                
+                $delete_details_sql = "DELETE FROM payroll_details WHERE payroll_id = ? AND tenant_id = ? AND branch_id = ?";
+
                 if ($delete_details_stmt = mysqli_prepare($conection_db, $delete_details_sql)) {
-                    mysqli_stmt_bind_param($delete_details_stmt, "ii", $payroll_id, $tenant_id);
+                    mysqli_stmt_bind_param($delete_details_stmt, "iii", $payroll_id, $tenant_id, $branch_id);
                     mysqli_stmt_execute($delete_details_stmt);
                     mysqli_stmt_close($delete_details_stmt);
                 }
                 
                 // Then, delete payroll record
-                $delete_payroll_sql = "DELETE FROM payroll_records WHERE id = ? AND tenant_id = ?";
-                
+                $delete_payroll_sql = "DELETE FROM payroll_records WHERE id = ? AND tenant_id = ? AND branch_id = ?";
+
                 if ($delete_payroll_stmt = mysqli_prepare($conection_db, $delete_payroll_sql)) {
-                    mysqli_stmt_bind_param($delete_payroll_stmt, "ii", $payroll_id, $tenant_id);
+                    mysqli_stmt_bind_param($delete_payroll_stmt, "iii", $payroll_id, $tenant_id, $branch_id);
                     mysqli_stmt_execute($delete_payroll_stmt);
                     mysqli_stmt_close($delete_payroll_stmt);
                 }

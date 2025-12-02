@@ -20,10 +20,11 @@ if (isset($_GET['lang'])) {
 require_once('../includes/db.php');
 include '../includes/conn.php';
 $tenant_id = $_SESSION['tenant_id'];
+$branch_id = $_SESSION['branch_id'];
 
 try {
-    $stmt = $pdo->prepare("SELECT * FROM users WHERE id = ? and tenant_id = ?");
-    $stmt->execute([$_SESSION['user_id'], $tenant_id]);
+    $stmt = $pdo->prepare("SELECT * FROM users WHERE id = ? and tenant_id = ? AND branch_id = ?");
+    $stmt->execute([$_SESSION['user_id'], $tenant_id, $branch_id]);
     $user = $stmt->fetch(PDO::FETCH_ASSOC);
 
     if (!$user) {
@@ -130,8 +131,8 @@ try {
                                                             <h3 class="h4 text-primary mb-1">
                                                                 <?php
                                                                 try {
-                                                                    $activityStmt = $pdo->prepare("SELECT COUNT(*) as activity_count FROM activity_log WHERE user_id = ? AND tenant_id = ?");
-                                                                    $activityStmt->execute([$_SESSION['user_id'], $tenant_id]);
+                                                                    $activityStmt = $pdo->prepare("SELECT COUNT(*) as activity_count FROM activity_log WHERE user_id = ? AND tenant_id = ? AND branch_id = ?");
+                                                                    $activityStmt->execute([$_SESSION['user_id'], $tenant_id, $branch_id]);
                                                                     $activity = $activityStmt->fetch(PDO::FETCH_ASSOC);
                                                                     echo $activity['activity_count'] ?? 0;
                                                                 } catch (PDOException $e) {
@@ -161,20 +162,20 @@ try {
                                                                 <?php
                                                                 $bookingCount = 0;
                                                                 try {
-                                                                    $stmt = $pdo->prepare("SELECT COUNT(*) FROM ticket_bookings WHERE created_by = ? AND tenant_id = ?");
-                                                                    $stmt->execute([$_SESSION['user_id'], $tenant_id]);
+                                                                    $stmt = $pdo->prepare("SELECT COUNT(*) FROM ticket_bookings WHERE created_by = ? AND tenant_id = ? AND branch_id = ?");
+                                                                    $stmt->execute([$_SESSION['user_id'], $tenant_id, $branch_id]);
                                                                     $bookingCount += $stmt->fetchColumn();
 
-                                                                    $stmt = $pdo->prepare("SELECT COUNT(*) FROM hotel_bookings WHERE created_by = ? AND tenant_id = ?");
-                                                                    $stmt->execute([$_SESSION['user_id'], $tenant_id]);
+                                                                    $stmt = $pdo->prepare("SELECT COUNT(*) FROM hotel_bookings WHERE created_by = ? AND tenant_id = ? AND branch_id = ?");
+                                                                    $stmt->execute([$_SESSION['user_id'], $tenant_id, $branch_id]);
                                                                     $bookingCount += $stmt->fetchColumn();
 
-                                                                    $stmt = $pdo->prepare("SELECT COUNT(*) FROM umrah_bookings WHERE created_by = ? AND tenant_id = ?");
-                                                                    $stmt->execute([$_SESSION['user_id'], $tenant_id]);
+                                                                    $stmt = $pdo->prepare("SELECT COUNT(*) FROM umrah_bookings WHERE created_by = ? AND tenant_id = ? AND branch_id = ?");
+                                                                    $stmt->execute([$_SESSION['user_id'], $tenant_id, $branch_id]);
                                                                     $bookingCount += $stmt->fetchColumn();
 
-                                                                    $stmt = $pdo->prepare("SELECT COUNT(*) FROM visa_applications WHERE created_by = ? AND tenant_id = ?");
-                                                                    $stmt->execute([$_SESSION['user_id'], $tenant_id]);
+                                                                    $stmt = $pdo->prepare("SELECT COUNT(*) FROM visa_applications WHERE created_by = ? AND tenant_id = ? AND branch_id = ?");
+                                                                    $stmt->execute([$_SESSION['user_id'], $tenant_id, $branch_id]);
                                                                     $bookingCount += $stmt->fetchColumn();
 
                                                                     echo $bookingCount;
@@ -285,11 +286,11 @@ try {
                                                                 $activityStmt = $pdo->prepare("
                                                                     SELECT action, table_name, created_at
                                                                     FROM activity_log
-                                                                    WHERE user_id = ? AND tenant_id = ?
+                                                                    WHERE user_id = ? AND tenant_id = ? AND branch_id = ?
                                                                     ORDER BY created_at DESC
                                                                     LIMIT 10
                                                                 ");
-                                                                $activityStmt->execute([$_SESSION['user_id'], $tenant_id]);
+                                                                $activityStmt->execute([$_SESSION['user_id'], $tenant_id, $branch_id]);
                                                                 $activities = $activityStmt->fetchAll(PDO::FETCH_ASSOC);
 
                                                                 if (count($activities) > 0) {

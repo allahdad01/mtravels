@@ -5,6 +5,8 @@ require_once '../security.php';
 
 // Enforce authentication
 enforce_auth();
+$tenant_id = $_SESSION['tenant_id'];
+$branch_id = $_SESSION['branch_id'];
 
 // Get family ID from request
 $family_id = isset($_GET['family_id']) ? intval($_GET['family_id']) : 0;
@@ -16,9 +18,9 @@ if (!$family_id) {
 
 try {
     // Get all bookings for this family
-    $sql = "SELECT booking_id, name, passport_number FROM umrah_bookings WHERE family_id = ?";
+    $sql = "SELECT booking_id, name, passport_number FROM umrah_bookings WHERE family_id = ? AND tenant_id = ? AND branch_id = ?";
     $stmt = $conn->prepare($sql);
-    $stmt->bind_param('i', $family_id);
+    $stmt->bind_param('iii', $family_id, $tenant_id, $branch_id);
     $stmt->execute();
     $result = $stmt->get_result();
     

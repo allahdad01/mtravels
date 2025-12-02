@@ -19,6 +19,7 @@ if (!isset($_SESSION['user_id']) || $_SESSION['role'] !== 'admin') {
 }
 
 $tenant_id = $_SESSION['tenant_id'];
+$branch_id = $_SESSION['branch_id'];
 
 try {
     // Query to get tickets
@@ -29,7 +30,7 @@ try {
               FROM ticket_bookings tb
               JOIN clients c ON tb.sold_to = c.id
               WHERE tb.status != 'Refunded' AND tb.status != 'Cancelled'
-          AND tb.tenant_id = ?
+          AND tb.tenant_id = ? AND tb.branch_id = ?
         ORDER BY tb.id DESC
     ";
     
@@ -40,9 +41,9 @@ try {
 
     // Detect type of tenant_id
     if (is_int($tenant_id)) {
-        $stmt->bind_param("i", $tenant_id);
+        $stmt->bind_param("ii", $tenant_id, $branch_id);
     } else {
-        $stmt->bind_param("s", $tenant_id);
+        $stmt->bind_param("si", $tenant_id, $branch_id);
     }
 
     if (!$stmt->execute()) {

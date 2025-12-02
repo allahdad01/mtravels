@@ -9,6 +9,7 @@ if (session_status() === PHP_SESSION_NONE) {
 }
 
 $tenant_id = $_SESSION['tenant_id'];
+$branch_id = $_SESSION['branch_id'];
 
 // Check if user is logged in and is admin
 if (!isset($_SESSION['user_id']) || $_SESSION['role'] !== 'admin') {
@@ -24,11 +25,11 @@ $stats_query = "
         SUM(CASE WHEN fired = 1 THEN 1 ELSE 0 END) as fired_employees,
         COUNT(DISTINCT CASE WHEN DATE(hire_date) = CURDATE() THEN id END) as new_hires_today
     FROM users
-    WHERE tenant_id = ? AND role != 'super_admin'
+    WHERE tenant_id = ? AND branch_id = ? AND role != 'super_admin' AND role != 'tenant_super_admin'
 ";
 
 $stmt = $pdo->prepare($stats_query);
-$stmt->execute([$tenant_id]);
+$stmt->execute([$tenant_id, $branch_id]);
 $stats = $stmt->fetch(PDO::FETCH_ASSOC);
 
 // Get recent employee activities
@@ -48,29 +49,29 @@ $recent_activities_query = "
             ELSE u.hire_date
         END as activity_date
     FROM users u
-    WHERE u.tenant_id = ? AND u.role != 'super_admin'
+    WHERE u.tenant_id = ? AND u.branch_id = ? AND u.role != 'super_admin' AND role != 'tenant_super_admin'
     ORDER BY activity_date DESC
     LIMIT 10
 ";
 
 $stmt = $pdo->prepare($recent_activities_query);
-$stmt->execute([$tenant_id]);
+$stmt->execute([$tenant_id, $branch_id]);
 $recent_activities = $stmt->fetchAll(PDO::FETCH_ASSOC);
 
 // Get pending salary payments
 $pending_salaries_query = "
     SELECT COUNT(*) as pending_salaries
     FROM salary_management sm
-    WHERE sm.tenant_id = ? AND sm.status = 'active'
+    WHERE sm.tenant_id = ? AND sm.branch_id = ? AND sm.status = 'active'
     AND NOT EXISTS (
         SELECT 1 FROM salary_payments sp
-        WHERE sp.user_id = sm.user_id
+        WHERE sp.user_id = sm.user_id AND sp.tenant_id = ? AND sp.branch_id = ?
         AND sp.payment_for_month = DATE_FORMAT(CURDATE(), '%Y-%m-01')
     )
 ";
 
 $stmt = $pdo->prepare($pending_salaries_query);
-$stmt->execute([$tenant_id]);
+$stmt->execute([$tenant_id, $branch_id, $tenant_id, $branch_id]);
 $pending_data = $stmt->fetch(PDO::FETCH_ASSOC);
 
 $page_title = __('hr_management');

@@ -10,6 +10,7 @@ enforce_auth();
 // Set header for JSON response
 header('Content-Type: application/json');
 $tenant_id = $_SESSION['tenant_id'];
+$branch_id = $_SESSION['branch_id'];
 
 // Check if refund ID is provided
 if (!isset($_GET['refund_id'])) {
@@ -26,12 +27,12 @@ try {
         FROM main_account_transactions t
         LEFT JOIN main_account m ON t.main_account_id = m.id
         WHERE t.transaction_of = 'umrah_refund'
-        AND t.reference_id = ? AND t.tenant_id = ?
+        AND t.reference_id = ? AND t.tenant_id = ? AND t.branch_id = ?
         ORDER BY t.created_at DESC
     ";
-    
+
     $stmt = $pdo->prepare($query);
-    $stmt->execute([$refundId, $tenant_id]);
+    $stmt->execute([$refundId, $tenant_id, $branch_id]);
     $transactions = $stmt->fetchAll(PDO::FETCH_ASSOC);
     
     echo json_encode([

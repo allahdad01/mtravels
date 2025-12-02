@@ -7,6 +7,7 @@ enforce_auth();
 
 // Get tenant ID from session
 $tenant_id = $_SESSION['tenant_id'];
+$branch_id = $_SESSION['branch_id'];
 
 // Database connection
 require_once('../includes/db.php');
@@ -33,7 +34,7 @@ use PhpOffice\PhpSpreadsheet\Style\Border;
 use PhpOffice\PhpSpreadsheet\Style\Fill;
 
 // Function to calculate the average exchange rate from main account transactions
-function getAverageExchangeRate($pdo, $startDate, $endDate, $tenant_id) {
+function getAverageExchangeRate($pdo, $startDate, $endDate, $tenant_id, $branch_id) {
     $query = "
         SELECT AVG(exchange_rate) as avg_rate
         FROM main_account_transactions
@@ -42,10 +43,11 @@ function getAverageExchangeRate($pdo, $startDate, $endDate, $tenant_id) {
         AND currency = 'AFS'
         AND created_at BETWEEN ? AND ?
         AND tenant_id = ?
+        AND branch_id = ?
     ";
 
     $stmt = $pdo->prepare($query);
-    $stmt->execute([$startDate, $endDate, $tenant_id]);
+    $stmt->execute([$startDate, $endDate, $tenant_id, $branch_id]);
     $result = $stmt->fetch(PDO::FETCH_ASSOC);
 
     // Default to 1 if no rates available
@@ -53,7 +55,7 @@ function getAverageExchangeRate($pdo, $startDate, $endDate, $tenant_id) {
 }
 
 // Function to get the daily average exchange rate or fallback to period average
-function getDailyExchangeRate($pdo, $date, $periodStart, $periodEnd, $tenant_id) {
+function getDailyExchangeRate($pdo, $date, $periodStart, $periodEnd, $tenant_id, $branch_id) {
     // Try to get average rate for this specific day
     $dayQuery = "
         SELECT AVG(exchange_rate) as avg_rate
@@ -63,10 +65,11 @@ function getDailyExchangeRate($pdo, $date, $periodStart, $periodEnd, $tenant_id)
         AND currency = 'AFS'
         AND DATE(created_at) = DATE(?)
         AND tenant_id = ?
+        AND branch_id = ?
     ";
 
     $stmt = $pdo->prepare($dayQuery);
-    $stmt->execute([$date, $tenant_id]);
+    $stmt->execute([$date, $tenant_id, $branch_id]);
     $result = $stmt->fetch(PDO::FETCH_ASSOC);
 
     // If found a daily rate, use it
@@ -75,11 +78,11 @@ function getDailyExchangeRate($pdo, $date, $periodStart, $periodEnd, $tenant_id)
     }
 
     // Otherwise use period average
-    return getAverageExchangeRate($pdo, $periodStart, $periodEnd, $tenant_id);
+    return getAverageExchangeRate($pdo, $periodStart, $periodEnd, $tenant_id, $branch_id);
 }
 
 // Function to get the average exchange rate from main account transactions for a specific day
-function getDailyAverageExchangeRate($pdo, $date, $tenant_id) {
+function getDailyAverageExchangeRate($pdo, $date, $tenant_id, $branch_id) {
     $query = "
         SELECT AVG(exchange_rate) as avg_rate
         FROM main_account_transactions
@@ -88,10 +91,11 @@ function getDailyAverageExchangeRate($pdo, $date, $tenant_id) {
         AND currency = 'AFS'
         AND DATE(created_at) = DATE(?)
         AND tenant_id = ?
+        AND branch_id = ?
     ";
 
     $stmt = $pdo->prepare($query);
-    $stmt->execute([$date, $tenant_id]);
+    $stmt->execute([$date, $tenant_id, $branch_id]);
     $result = $stmt->fetch(PDO::FETCH_ASSOC);
 
     // Default to null if no rates available
@@ -99,7 +103,7 @@ function getDailyAverageExchangeRate($pdo, $date, $tenant_id) {
 }
 
 // Function to get the period average exchange rate as fallback
-function getPeriodAverageExchangeRate($pdo, $startDate, $endDate, $tenant_id) {
+function getPeriodAverageExchangeRate($pdo, $startDate, $endDate, $tenant_id, $branch_id) {
     $query = "
         SELECT AVG(exchange_rate) as avg_rate
         FROM main_account_transactions
@@ -108,10 +112,11 @@ function getPeriodAverageExchangeRate($pdo, $startDate, $endDate, $tenant_id) {
         AND currency = 'AFS'
         AND created_at BETWEEN ? AND ?
         AND tenant_id = ?
+        AND branch_id = ?
     ";
 
     $stmt = $pdo->prepare($query);
-    $stmt->execute([$startDate, $endDate, $tenant_id]);
+    $stmt->execute([$startDate, $endDate, $tenant_id, $branch_id]);
     $result = $stmt->fetch(PDO::FETCH_ASSOC);
 
     // Default to 1 if no rates available
@@ -159,10 +164,10 @@ function getSourceQuery($source) {
                         ELSE 0
                     END) as afs_converted
                 FROM ticket_bookings tb
-                LEFT JOIN main_account_transactions mat ON mat.reference_id = tb.id AND mat.transaction_of = 'ticket_sale' AND mat.currency = 'AFS' AND mat.tenant_id = tb.tenant_id
+                LEFT JOIN main_account_transactions mat ON mat.reference_id = tb.id AND mat.transaction_of = 'ticket_sale' AND mat.currency = 'AFS' AND mat.tenant_id = tb.tenant_id AND mat.branch_id = tb.branch_id
                 WHERE tb.created_at BETWEEN ? AND ?
-               
                 AND tb.tenant_id = ?
+                AND tb.branch_id = ?
             ";
         case 'Ticket Reservations':
             return "
@@ -176,9 +181,10 @@ function getSourceQuery($source) {
                         ELSE 0
                     END) as afs_converted
                 FROM ticket_reservations tr
-                LEFT JOIN main_account_transactions mat ON mat.reference_id = tr.id AND mat.transaction_of = 'ticket_reserve' AND mat.currency = 'AFS' AND mat.tenant_id = tr.tenant_id
+                LEFT JOIN main_account_transactions mat ON mat.reference_id = tr.id AND mat.transaction_of = 'ticket_reserve' AND mat.currency = 'AFS' AND mat.tenant_id = tr.tenant_id AND mat.branch_id = tr.branch_id
                 WHERE tr.created_at BETWEEN ? AND ?
                 AND tr.tenant_id = ?
+                AND tr.branch_id = ?
             ";
         case 'Ticket Refunds':
             return "
@@ -234,9 +240,10 @@ function getSourceQuery($source) {
                     END) as afs_converted
                 FROM refunded_tickets rt
                 JOIN ticket_bookings tb ON rt.ticket_id = tb.id
-                LEFT JOIN main_account_transactions mat ON mat.reference_id = rt.id AND mat.transaction_of = 'ticket_refund' AND mat.currency = 'AFS' AND mat.tenant_id = rt.tenant_id
+                LEFT JOIN main_account_transactions mat ON mat.reference_id = rt.id AND mat.transaction_of = 'ticket_refund' AND mat.currency = 'AFS' AND mat.tenant_id = rt.tenant_id AND mat.branch_id = rt.branch_id
                 WHERE rt.created_at BETWEEN ? AND ?
                 AND rt.tenant_id = ?
+                AND rt.branch_id = ?
             ";
         case 'Date Changes':
             return "
@@ -255,9 +262,10 @@ function getSourceQuery($source) {
                     END) as afs_converted
                 FROM date_change_tickets dt
                 JOIN ticket_bookings tb ON dt.ticket_id = tb.id
-                LEFT JOIN main_account_transactions mat ON mat.reference_id = dt.id AND mat.transaction_of = 'date_change' AND mat.currency = 'AFS' AND mat.tenant_id = dt.tenant_id
+                LEFT JOIN main_account_transactions mat ON mat.reference_id = dt.id AND mat.transaction_of = 'date_change' AND mat.currency = 'AFS' AND mat.tenant_id = dt.tenant_id AND mat.branch_id = dt.branch_id
                 WHERE dt.created_at BETWEEN ? AND ?
                 AND dt.tenant_id = ?
+                AND dt.branch_id = ?
             ";
         case 'Visa Services':
             return "
@@ -271,9 +279,10 @@ function getSourceQuery($source) {
                         ELSE 0
                     END) as afs_converted
                 FROM visa_applications va
-                LEFT JOIN main_account_transactions mat ON mat.reference_id = va.id AND mat.transaction_of = 'visa' AND mat.currency = 'AFS' AND mat.tenant_id = va.tenant_id
+                LEFT JOIN main_account_transactions mat ON mat.reference_id = va.id AND mat.transaction_of = 'visa' AND mat.currency = 'AFS' AND mat.tenant_id = va.tenant_id AND mat.branch_id = va.branch_id
                 WHERE va.created_at BETWEEN ? AND ?
                 AND va.tenant_id = ?
+                AND va.branch_id = ?
             ";
         case 'Umrah Bookings':
             return "
@@ -287,9 +296,10 @@ function getSourceQuery($source) {
                         ELSE 0
                     END) as afs_converted
                 FROM umrah_bookings ub
-                LEFT JOIN main_account_transactions mat ON mat.reference_id = ub.booking_id AND mat.transaction_of = 'umrah' AND mat.currency = 'AFS' AND mat.tenant_id = ub.tenant_id
+                LEFT JOIN main_account_transactions mat ON mat.reference_id = ub.booking_id AND mat.transaction_of = 'umrah' AND mat.currency = 'AFS' AND mat.tenant_id = ub.tenant_id AND mat.branch_id = ub.branch_id
                 WHERE ub.created_at BETWEEN ? AND ?
                 AND ub.tenant_id = ?
+                AND ub.branch_id = ?
             ";
         case 'Hotel Bookings':
             return "
@@ -303,9 +313,10 @@ function getSourceQuery($source) {
                         ELSE 0
                     END) as afs_converted
                 FROM hotel_bookings hb
-                LEFT JOIN main_account_transactions mat ON mat.reference_id = hb.id AND mat.transaction_of = 'hotel' AND mat.currency = 'AFS' AND mat.tenant_id = hb.tenant_id
+                LEFT JOIN main_account_transactions mat ON mat.reference_id = hb.id AND mat.transaction_of = 'hotel' AND mat.currency = 'AFS' AND mat.tenant_id = hb.tenant_id AND mat.branch_id = hb.branch_id
                 WHERE hb.created_at BETWEEN ? AND ?
                 AND hb.tenant_id = ?
+                AND hb.branch_id = ?
             ";
         case 'Ticket Weights':
             return "
@@ -320,9 +331,10 @@ function getSourceQuery($source) {
                     END) as afs_converted
                 FROM ticket_weights tw
                 JOIN ticket_bookings tb ON tw.ticket_id = tb.id
-                LEFT JOIN main_account_transactions mat ON mat.reference_id = tw.id AND mat.transaction_of = 'weight' AND mat.currency = 'AFS' AND mat.tenant_id = tw.tenant_id
+                LEFT JOIN main_account_transactions mat ON mat.reference_id = tw.id AND mat.transaction_of = 'weight' AND mat.currency = 'AFS' AND mat.tenant_id = tw.tenant_id AND mat.branch_id = tw.branch_id
                 WHERE tw.created_at BETWEEN ? AND ?
                 AND tw.tenant_id = ?
+                AND tw.branch_id = ?
             ";
         case 'Additional Payments':
             return "
@@ -335,6 +347,7 @@ function getSourceQuery($source) {
                 FROM additional_payments ap
                 WHERE ap.created_at BETWEEN ? AND ?
                 AND ap.tenant_id = ?
+                AND ap.branch_id = ?
             ";
         default:
             return ""; // Empty string for unrecognized sources
@@ -436,21 +449,23 @@ try {
             FROM refunded_tickets rt
             LEFT JOIN ticket_bookings tb ON rt.ticket_id = tb.id
             WHERE rt.tenant_id = ?
+            And rt.branch_id = ?
             UNION ALL
             SELECT dt.service_penalty, dt.currency, dt.created_at, dt.tenant_id FROM date_change_tickets dt
             JOIN ticket_bookings tb ON dt.ticket_id = tb.id
             WHERE dt.tenant_id = ?
+            And dt.branch_id = ?
             UNION ALL
-            SELECT profit, currency, created_at, tenant_id FROM visa_applications WHERE tenant_id = ?
+            SELECT profit, currency, created_at, tenant_id FROM visa_applications WHERE tenant_id = ? AND branch_id = ?
             UNION ALL
-            SELECT profit, currency, created_at, tenant_id FROM umrah_bookings WHERE tenant_id = ?
+            SELECT profit, currency, created_at, tenant_id FROM umrah_bookings WHERE tenant_id = ? AND branch_id = ?
             UNION ALL
-            SELECT profit, currency, created_at, tenant_id FROM hotel_bookings WHERE tenant_id = ?
+            SELECT profit, currency, created_at, tenant_id FROM hotel_bookings WHERE tenant_id = ? AND branch_id = ?
             UNION ALL
             SELECT tw.profit, tb.currency, tw.created_at, tw.tenant_id FROM ticket_weights tw
-                JOIN ticket_bookings tb ON tw.ticket_id = tb.id WHERE tw.tenant_id = ?
+                JOIN ticket_bookings tb ON tw.ticket_id = tb.id WHERE tw.tenant_id = ? AND tw.branch_id = ?
             UNION ALL
-            SELECT profit, currency, created_at, tenant_id FROM additional_payments WHERE tenant_id = ?
+            SELECT profit, currency, created_at, tenant_id FROM additional_payments WHERE tenant_id = ? AND branch_id = ?
         ) as combined_income
         WHERE created_at BETWEEN ? AND ?
         GROUP BY currency
@@ -458,15 +473,15 @@ try {
     
     $totalIncomeStmt = $pdo->prepare($totalIncomeQuery);
     $totalIncomeStmt->execute([
-        $tenant_id,  // ticket_bookings
-        $tenant_id,  // ticket_reservations
-        $tenant_id,  // refunded_tickets
-        $tenant_id,  // date_change_tickets
-        $tenant_id,  // visa_applications
-        $tenant_id,  // umrah_bookings
-        $tenant_id,  // hotel_bookings
-        $tenant_id,  // ticket_weights
-        $tenant_id,  // additional_payments
+        $tenant_id, $branch_id,  // ticket_bookings
+        $tenant_id, $branch_id,  // ticket_reservations
+        $tenant_id, $branch_id,  // refunded_tickets
+        $tenant_id, $branch_id,  // date_change_tickets
+        $tenant_id, $branch_id,  // visa_applications
+        $tenant_id, $branch_id,  // umrah_bookings
+        $tenant_id, $branch_id,  // hotel_bookings
+        $tenant_id, $branch_id,  // ticket_weights
+        $tenant_id, $branch_id,  // additional_payments
         $startDate, $endDate
     ]);
     
@@ -494,7 +509,7 @@ try {
     ];
     
     // Fetch ticket bookings income
-    $avgExchangeRate = getAverageExchangeRate($pdo, $startDate, $endDate, $tenant_id);
+    $avgExchangeRate = getAverageExchangeRate($pdo, $startDate, $endDate, $tenant_id, $branch_id);
 
     $pureAfsTotal = 0;
 
@@ -534,10 +549,10 @@ try {
                     FROM ticket_bookings
                     WHERE currency = 'USD'
                     AND created_at BETWEEN ? AND ?
-                    AND tenant_id = ?
+                    AND tenant_id = ? And branch_id = ?
                 ";
                 $ticketStmt = $pdo->prepare($ticketQuery);
-                $ticketStmt->execute([$startDate, $endDate, $tenant_id]);
+                $ticketStmt->execute([$startDate, $endDate, $tenant_id, $branch_id]);
 
                 $ticketConverted = 0;
 
@@ -563,19 +578,19 @@ try {
                     JOIN ticket_bookings tb ON dt.ticket_id = tb.id
                     WHERE dt.currency = 'USD'
                     AND dt.created_at BETWEEN ? AND ?
-                    AND dt.tenant_id = ?
+                    AND dt.tenant_id = ? And dt.branch_id = ?
                 ";
                 $dateStmt = $pdo->prepare($dateQuery);
-                $dateStmt->execute([$startDate, $endDate, $tenant_id]);
+                $dateStmt->execute([$startDate, $endDate, $tenant_id, $branch_id]);
 
                 $dateConverted = 0;
 
                 while ($change = $dateStmt->fetch(PDO::FETCH_ASSOC)) {
                     $changeDate = date('Y-m-d', strtotime($change['created_at']));
-                    $dailyRate = getDailyAverageExchangeRate($pdo, $changeDate, $tenant_id);
+                    $dailyRate = getDailyAverageExchangeRate($pdo, $changeDate, $tenant_id, $branch_id);
 
                     if ($dailyRate === null) {
-                        $dailyRate = getPeriodAverageExchangeRate($pdo, $startDate, $endDate, $tenant_id);
+                        $dailyRate = getPeriodAverageExchangeRate($pdo, $startDate, $endDate, $tenant_id, $branch_id);
                     }
 
                     $dateConverted += $change['profit'] * $dailyRate;
@@ -591,19 +606,19 @@ try {
                     FROM visa_applications
                     WHERE currency = 'USD'
                     AND created_at BETWEEN ? AND ?
-                    AND tenant_id = ?
+                    AND tenant_id = ? And branch_id = ?
                 ";
                 $visaStmt = $pdo->prepare($visaQuery);
-                $visaStmt->execute([$startDate, $endDate, $tenant_id]);
+                $visaStmt->execute([$startDate, $endDate, $tenant_id, $branch_id]);
 
                 $visaConverted = 0;
 
                 while ($application = $visaStmt->fetch(PDO::FETCH_ASSOC)) {
                     $applicationDate = date('Y-m-d', strtotime($application['created_at']));
-                    $dailyRate = getDailyAverageExchangeRate($pdo, $applicationDate, $tenant_id);
+                    $dailyRate = getDailyAverageExchangeRate($pdo, $applicationDate, $tenant_id, $branch_id);
 
                     if ($dailyRate === null) {
-                        $dailyRate = getPeriodAverageExchangeRate($pdo, $startDate, $endDate, $tenant_id);
+                        $dailyRate = getPeriodAverageExchangeRate($pdo, $startDate, $endDate, $tenant_id, $branch_id);
                     }
 
                     $visaConverted += $application['profit'] * $dailyRate;
@@ -619,19 +634,19 @@ try {
                     FROM umrah_bookings
                     WHERE currency = 'USD'
                     AND created_at BETWEEN ? AND ?
-                    AND tenant_id = ?
+                    AND tenant_id = ? And branch_id = ?
                 ";
                 $umrahStmt = $pdo->prepare($umrahQuery);
-                $umrahStmt->execute([$startDate, $endDate, $tenant_id]);
+                $umrahStmt->execute([$startDate, $endDate, $tenant_id, $branch_id]);
 
                 $umrahConverted = 0;
 
                 while ($booking = $umrahStmt->fetch(PDO::FETCH_ASSOC)) {
                     $bookingDate = date('Y-m-d', strtotime($booking['created_at']));
-                    $dailyRate = getDailyAverageExchangeRate($pdo, $bookingDate, $tenant_id);
+                    $dailyRate = getDailyAverageExchangeRate($pdo, $bookingDate, $tenant_id, $branch_id);
 
                     if ($dailyRate === null) {
-                        $dailyRate = getPeriodAverageExchangeRate($pdo, $startDate, $endDate, $tenant_id);
+                        $dailyRate = getPeriodAverageExchangeRate($pdo, $startDate, $endDate, $tenant_id, $branch_id);
                     }
 
                     $umrahConverted += $booking['profit'] * $dailyRate;
@@ -648,19 +663,19 @@ try {
                     JOIN ticket_bookings tb ON tw.ticket_id = tb.id
                     WHERE tb.currency = 'USD'
                     AND tw.created_at BETWEEN ? AND ?
-                    AND tw.tenant_id = ?
+                    AND tw.tenant_id = ? And tw.branch_id = ?
                 ";
                 $weightsStmt = $pdo->prepare($weightsQuery);
-                $weightsStmt->execute([$startDate, $endDate, $tenant_id]);
+                $weightsStmt->execute([$startDate, $endDate, $tenant_id, $branch_id]);
 
                 $weightsConverted = 0;
 
                 while ($weight = $weightsStmt->fetch(PDO::FETCH_ASSOC)) {
                     $weightDate = date('Y-m-d', strtotime($weight['created_at']));
-                    $dailyRate = getDailyAverageExchangeRate($pdo, $bookingDate, $tenant_id);
+                    $dailyRate = getDailyAverageExchangeRate($pdo, $bookingDate, $tenant_id, $branch_id);
 
                     if ($dailyRate === null) {
-                        $dailyRate = getPeriodAverageExchangeRate($pdo, $startDate, $endDate, $tenant_id);
+                        $dailyRate = getPeriodAverageExchangeRate($pdo, $startDate, $endDate, $tenant_id, $branch_id);
                     }
 
                     $weightsConverted += $weight['profit'] * $dailyRate;
@@ -678,21 +693,21 @@ try {
                     FROM additional_payments
                     WHERE currency = 'USD'
                     AND created_at BETWEEN ? AND ?
-                    AND tenant_id = ?
+                    AND tenant_id = ? And branch_id = ?
                 ";
                 $additionalStmt = $pdo->prepare($additionalQuery);
-                $additionalStmt->execute([$startDate, $endDate, $tenant_id]);
+                $additionalStmt->execute([$startDate, $endDate, $tenant_id, $branch_id]);
                 
                 $additionalConverted = 0;
                 
                 // Process each payment using the daily rate for its date
                 while ($payment = $additionalStmt->fetch(PDO::FETCH_ASSOC)) {
                     $paymentDate = date('Y-m-d', strtotime($payment['created_at']));
-                    $dailyRate = getDailyAverageExchangeRate($pdo, $paymentDate, $tenant_id);
+                    $dailyRate = getDailyAverageExchangeRate($pdo, $paymentDate, $tenant_id, $branch_id);
 
                     // If no daily rate, use period average
                     if ($dailyRate === null) {
-                        $dailyRate = getPeriodAverageExchangeRate($pdo, $startDate, $endDate, $tenant_id);
+                        $dailyRate = getPeriodAverageExchangeRate($pdo, $startDate, $endDate, $tenant_id, $branch_id);
                     }
                     
                     $additionalConverted += $payment['profit'] * $dailyRate;
@@ -749,7 +764,7 @@ try {
             FROM expenses e
             LEFT JOIN expense_categories ec ON e.category_id = ec.id
             WHERE e.date BETWEEN ? AND ?
-            AND e.tenant_id = ?
+            AND e.tenant_id = ? And e.branch_id = ?
 
             UNION ALL
 
@@ -759,12 +774,12 @@ try {
             FROM salary_payments sp
             LEFT JOIN users u ON sp.user_id = u.id
             WHERE sp.payment_date BETWEEN ? AND ?
-            AND sp.tenant_id = ?
+            AND sp.tenant_id = ? And sp.branch_id = ?
         ) combined_expenses
         GROUP BY currency
     ";
     $expenseStmt = $pdo->prepare($expenseQuery);
-    $expenseStmt->execute([$startDate, $endDate, $tenant_id, $startDate, $endDate, $tenant_id]);
+    $expenseStmt->execute([$startDate, $endDate, $tenant_id, $branch_id, $startDate, $endDate, $tenant_id, $branch_id]);
     
     $expenseData = [
         'USD' => 0,
@@ -792,7 +807,7 @@ try {
             LEFT JOIN expense_categories ec ON e.category_id = ec.id
             WHERE e.currency = 'USD'
             AND e.date BETWEEN ? AND ?
-            AND e.tenant_id = ?
+            AND e.tenant_id = ? and e.branch_id = ?
 
             UNION ALL
 
@@ -803,20 +818,20 @@ try {
             LEFT JOIN users u ON sp.user_id = u.id
             WHERE sp.currency = 'USD'
             AND sp.payment_date BETWEEN ? AND ?
-            AND sp.tenant_id = ?
+            AND sp.tenant_id = ? and sp.branch_id = ?
         ) combined_expenses
     ";
     $expenseByDateStmt = $pdo->prepare($expenseByDateQuery);
-    $expenseByDateStmt->execute([$startDate, $endDate, $tenant_id, $startDate, $endDate, $tenant_id]);
+    $expenseByDateStmt->execute([$startDate, $endDate, $tenant_id, $branch_id, $startDate, $endDate, $tenant_id, $branch_id]);
 
     // Process each USD expense using the daily rate for its date
     while ($expense = $expenseByDateStmt->fetch(PDO::FETCH_ASSOC)) {
         $expenseDate = date('Y-m-d', strtotime($expense['date']));
-        $dailyRate = getDailyAverageExchangeRate($pdo, $expenseDate, $tenant_id);
+        $dailyRate = getDailyAverageExchangeRate($pdo, $expenseDate, $tenant_id, $branch_id);
 
         // If no daily rate, use period average
         if ($dailyRate === null) {
-            $dailyRate = getPeriodAverageExchangeRate($pdo, $startDate, $endDate, $tenant_id);
+            $dailyRate = getPeriodAverageExchangeRate($pdo, $startDate, $endDate, $tenant_id, $branch_id);
         }
 
         $expenseUsdToAfs += $expense['amount'] * $dailyRate;
@@ -844,7 +859,7 @@ try {
             FROM ticket_bookings tb
             LEFT JOIN main_account_transactions mat ON mat.reference_id = tb.id AND mat.transaction_of = 'ticket_sale' AND mat.currency = 'AFS' AND mat.tenant_id = tb.tenant_id
             WHERE tb.currency = 'USD' AND tb.created_at BETWEEN ? AND ?
-            AND tb.tenant_id = ?
+            AND tb.tenant_id = ? and tb.branch_id = ?
 
             UNION ALL
 
@@ -856,7 +871,7 @@ try {
             FROM ticket_reservations tr
             LEFT JOIN main_account_transactions mat ON mat.reference_id = tr.id AND mat.transaction_of = 'ticket_reserve' AND mat.currency = 'AFS' AND mat.tenant_id = tr.tenant_id
             WHERE tr.currency = 'USD' AND tr.created_at BETWEEN ? AND ?
-            AND tr.tenant_id = ?
+            AND tr.tenant_id = ? and tr.branch_id = ?
 
             UNION ALL
 
@@ -879,7 +894,7 @@ try {
             JOIN ticket_bookings tb ON rt.ticket_id = tb.id
             LEFT JOIN main_account_transactions mat ON mat.reference_id = rt.id AND mat.transaction_of = 'ticket_refund' AND mat.currency = 'AFS' AND mat.tenant_id = rt.tenant_id
             WHERE rt.currency = 'USD' AND rt.created_at BETWEEN ? AND ?
-            AND rt.tenant_id = ?
+            AND rt.tenant_id = ? and rt.branch_id = ?
 
             UNION ALL
 
@@ -892,7 +907,7 @@ try {
             JOIN ticket_bookings tb ON dt.ticket_id = tb.id
             LEFT JOIN main_account_transactions mat ON mat.reference_id = dt.id AND mat.transaction_of = 'date_change' AND mat.currency = 'AFS' AND mat.tenant_id = dt.tenant_id
             WHERE dt.currency = 'USD' AND dt.created_at BETWEEN ? AND ?
-            AND dt.tenant_id = ?
+            AND dt.tenant_id = ? and dt.branch_id = ?
 
             UNION ALL
 
@@ -904,7 +919,7 @@ try {
             FROM visa_applications va
             LEFT JOIN main_account_transactions mat ON mat.reference_id = va.id AND mat.transaction_of = 'visa' AND mat.currency = 'AFS' AND mat.tenant_id = va.tenant_id
             WHERE va.currency = 'USD' AND va.created_at BETWEEN ? AND ?
-            AND va.tenant_id = ?
+            AND va.tenant_id = ? and va.branch_id = ?
 
             UNION ALL
 
@@ -916,7 +931,7 @@ try {
             FROM umrah_bookings ub
             LEFT JOIN main_account_transactions mat ON mat.reference_id = ub.booking_id AND mat.transaction_of = 'umrah' AND mat.currency = 'AFS' AND mat.tenant_id = ub.tenant_id
             WHERE ub.currency = 'USD' AND ub.created_at BETWEEN ? AND ?
-            AND ub.tenant_id = ?
+            AND ub.tenant_id = ? and ub.branch_id = ?
 
             UNION ALL
 
@@ -928,7 +943,7 @@ try {
             FROM hotel_bookings hb
             LEFT JOIN main_account_transactions mat ON mat.reference_id = hb.id AND mat.transaction_of = 'hotel' AND mat.currency = 'AFS' AND mat.tenant_id = hb.tenant_id
             WHERE hb.currency = 'USD' AND hb.created_at BETWEEN ? AND ?
-            AND hb.tenant_id = ?
+            AND hb.tenant_id = ? and hb.branch_id = ?
 
             UNION ALL
 
@@ -941,28 +956,28 @@ try {
             JOIN ticket_bookings tb ON tw.ticket_id = tb.id
             LEFT JOIN main_account_transactions mat ON mat.reference_id = tw.id AND mat.transaction_of = 'weight' AND mat.currency = 'AFS' AND mat.tenant_id = tw.tenant_id
             WHERE tb.currency = 'USD' AND tw.created_at BETWEEN ? AND ?
-            AND tw.tenant_id = ?
+            AND tw.tenant_id = ? and tw.branch_id = ?
 
             UNION ALL
 
             SELECT ap.profit * ? as afs_equivalent
             FROM additional_payments ap
             WHERE ap.currency = 'USD' AND ap.created_at BETWEEN ? AND ?
-            AND ap.tenant_id = ?
+            AND ap.tenant_id = ? and ap.branch_id = ?
         ) usd_conversions
     ";
 
     $usdToAfsTotalStmt = $pdo->prepare($usdToAfsTotalQuery);
     $usdToAfsTotalStmt->execute([
-        $avgExchangeRate, $startDate, $endDate, $tenant_id,  // Ticket bookings
-        $avgExchangeRate, $startDate, $endDate, $tenant_id,  // Ticket reservations
-        $avgExchangeRate, $startDate, $endDate, $tenant_id,  // Refunded tickets
-        $avgExchangeRate, $startDate, $endDate, $tenant_id,  // Date change tickets
-        $avgExchangeRate, $startDate, $endDate, $tenant_id,  // Visa applications
-        $avgExchangeRate, $startDate, $endDate, $tenant_id,  // Umrah bookings
-        $avgExchangeRate, $startDate, $endDate, $tenant_id,  // Hotel bookings
-        $avgExchangeRate, $startDate, $endDate, $tenant_id,  // Ticket weights
-        $avgExchangeRate, $startDate, $endDate, $tenant_id   // Additional payments
+        $avgExchangeRate, $startDate, $endDate, $tenant_id, $branch_id,  // Ticket bookings
+        $avgExchangeRate, $startDate, $endDate, $tenant_id, $branch_id,  // Ticket reservations
+        $avgExchangeRate, $startDate, $endDate, $tenant_id, $branch_id,  // Refunded tickets
+        $avgExchangeRate, $startDate, $endDate, $tenant_id, $branch_id,  // Date change tickets
+        $avgExchangeRate, $startDate, $endDate, $tenant_id, $branch_id,  // Visa applications
+        $avgExchangeRate, $startDate, $endDate, $tenant_id, $branch_id,  // Umrah bookings
+        $avgExchangeRate, $startDate, $endDate, $tenant_id, $branch_id,  // Hotel bookings
+        $avgExchangeRate, $startDate, $endDate, $tenant_id, $branch_id,  // Ticket weights
+        $avgExchangeRate, $startDate, $endDate, $tenant_id, $branch_id   // Additional payments
     ]);
 
     $totalResult = $usdToAfsTotalStmt->fetch(PDO::FETCH_ASSOC);
@@ -1055,21 +1070,21 @@ try {
                 FROM additional_payments
                 WHERE currency = 'USD'
                 AND created_at BETWEEN ? AND ?
-                AND tenant_id = ?
+                AND tenant_id = ? And branch_id = ?
             ";
             $additionalStmt = $pdo->prepare($additionalQuery);
-            $additionalStmt->execute([$startDate, $endDate, $tenant_id]);
+            $additionalStmt->execute([$startDate, $endDate, $tenant_id, $branch_id]);
             
             $additionalConverted = 0;
             
             // Process each payment using the daily rate for its date
             while ($payment = $additionalStmt->fetch(PDO::FETCH_ASSOC)) {
                 $paymentDate = date('Y-m-d', strtotime($payment['created_at']));
-                $dailyRate = getDailyAverageExchangeRate($pdo, $paymentDate, $tenant_id);
+                $dailyRate = getDailyAverageExchangeRate($pdo, $paymentDate, $tenant_id, $branch_id);
 
                 // If no daily rate, use period average
                 if ($dailyRate === null) {
-                    $dailyRate = getPeriodAverageExchangeRate($pdo, $startDate, $endDate, $tenant_id);
+                    $dailyRate = getPeriodAverageExchangeRate($pdo, $startDate, $endDate, $tenant_id, $branch_id);
                 }
                 
                 $additionalConverted += $payment['profit'] * $dailyRate;
@@ -1092,19 +1107,19 @@ try {
                         FROM ticket_bookings
                         WHERE currency = 'USD'
                         AND created_at BETWEEN ? AND ?
-                        AND tenant_id = ?
+                        AND tenant_id = ? And branch_id = ?
                     ";
                     $ticketStmt = $pdo->prepare($ticketQuery);
-                    $ticketStmt->execute([$startDate, $endDate, $tenant_id]);
+                    $ticketStmt->execute([$startDate, $endDate, $tenant_id, $branch_id]);
 
                     $ticketConverted = 0;
 
                     while ($booking = $ticketStmt->fetch(PDO::FETCH_ASSOC)) {
                         $bookingDate = date('Y-m-d', strtotime($booking['created_at']));
-                        $dailyRate = getDailyAverageExchangeRate($pdo, $bookingDate, $tenant_id);
+                        $dailyRate = getDailyAverageExchangeRate($pdo, $bookingDate, $tenant_id, $branch_id);
 
                         if ($dailyRate === null) {
-                            $dailyRate = getPeriodAverageExchangeRate($pdo, $startDate, $endDate, $tenant_id);
+                            $dailyRate = getPeriodAverageExchangeRate($pdo, $startDate, $endDate, $tenant_id, $branch_id);
                         }
 
                         $ticketConverted += $booking['profit'] * $dailyRate;
@@ -1121,19 +1136,19 @@ try {
                         JOIN ticket_bookings tb ON dt.ticket_id = tb.id
                         WHERE dt.currency = 'USD'
                         AND dt.created_at BETWEEN ? AND ?
-                        AND dt.tenant_id = ?
+                        AND dt.tenant_id = ? And dt.branch_id = ?
                     ";
                     $dateStmt = $pdo->prepare($dateQuery);
-                    $dateStmt->execute([$startDate, $endDate, $tenant_id]);
+                    $dateStmt->execute([$startDate, $endDate, $tenant_id, $branch_id]);
 
                     $dateConverted = 0;
 
                     while ($change = $dateStmt->fetch(PDO::FETCH_ASSOC)) {
                         $changeDate = date('Y-m-d', strtotime($change['created_at']));
-                        $dailyRate = getDailyAverageExchangeRate($pdo, $changeDate, $tenant_id);
-
+                        $dailyRate = getDailyAverageExchangeRate($pdo, $changeDate, $tenant_id, $branch_id);
+    
                         if ($dailyRate === null) {
-                            $dailyRate = getPeriodAverageExchangeRate($pdo, $startDate, $endDate, $tenant_id);
+                            $dailyRate = getPeriodAverageExchangeRate($pdo, $startDate, $endDate, $tenant_id, $branch_id);
                         }
 
                         $dateConverted += $change['profit'] * $dailyRate;
@@ -1149,19 +1164,19 @@ try {
                         FROM visa_applications
                         WHERE currency = 'USD'
                         AND created_at BETWEEN ? AND ?
-                        AND tenant_id = ?
+                        AND tenant_id = ? And branch_id = ?
                     ";
                     $visaStmt = $pdo->prepare($visaQuery);
-                    $visaStmt->execute([$startDate, $endDate, $tenant_id]);
+                    $visaStmt->execute([$startDate, $endDate, $tenant_id, $branch_id]);
 
                     $visaConverted = 0;
 
                     while ($application = $visaStmt->fetch(PDO::FETCH_ASSOC)) {
                         $applicationDate = date('Y-m-d', strtotime($application['created_at']));
-                        $dailyRate = getDailyAverageExchangeRate($pdo, $applicationDate, $tenant_id);
-
+                        $dailyRate = getDailyAverageExchangeRate($pdo, $applicationDate, $tenant_id, $branch_id);
+    
                         if ($dailyRate === null) {
-                            $dailyRate = getPeriodAverageExchangeRate($pdo, $startDate, $endDate, $tenant_id);
+                            $dailyRate = getPeriodAverageExchangeRate($pdo, $startDate, $endDate, $tenant_id, $branch_id);
                         }
 
                         $visaConverted += $application['profit'] * $dailyRate;
@@ -1177,19 +1192,19 @@ try {
                         FROM umrah_bookings
                         WHERE currency = 'USD'
                         AND created_at BETWEEN ? AND ?
-                        AND tenant_id = ?
+                        AND tenant_id = ? And branch_id = ?
                     ";
                     $umrahStmt = $pdo->prepare($umrahQuery);
-                    $umrahStmt->execute([$startDate, $endDate, $tenant_id]);
+                    $umrahStmt->execute([$startDate, $endDate, $tenant_id, $branch_id]);
 
                     $umrahConverted = 0;
 
                     while ($booking = $umrahStmt->fetch(PDO::FETCH_ASSOC)) {
                         $bookingDate = date('Y-m-d', strtotime($booking['created_at']));
-                        $dailyRate = getDailyAverageExchangeRate($pdo, $bookingDate, $tenant_id);
-
+                        $dailyRate = getDailyAverageExchangeRate($pdo, $bookingDate, $tenant_id, $branch_id);
+    
                         if ($dailyRate === null) {
-                            $dailyRate = getPeriodAverageExchangeRate($pdo, $startDate, $endDate, $tenant_id);
+                            $dailyRate = getPeriodAverageExchangeRate($pdo, $startDate, $endDate, $tenant_id, $branch_id);
                         }
 
                         $umrahConverted += $booking['profit'] * $dailyRate;
@@ -1206,19 +1221,19 @@ try {
                         JOIN ticket_bookings tb ON tw.ticket_id = tb.id
                         WHERE tb.currency = 'USD'
                         AND tw.created_at BETWEEN ? AND ?
-                        AND tw.tenant_id = ?
+                        AND tw.tenant_id = ? And tw.branch_id = ?
                     ";
                     $weightsStmt = $pdo->prepare($weightsQuery);
-                    $weightsStmt->execute([$startDate, $endDate, $tenant_id]);
+                    $weightsStmt->execute([$startDate, $endDate, $tenant_id, $branch_id]);
 
                     $weightsConverted = 0;
 
                     while ($weight = $weightsStmt->fetch(PDO::FETCH_ASSOC)) {
                         $weightDate = date('Y-m-d', strtotime($weight['created_at']));
-                        $dailyRate = getDailyAverageExchangeRate($pdo, $weightDate, $tenant_id);
+                        $dailyRate = getDailyAverageExchangeRate($pdo, $weightDate, $tenant_id, $branch_id);
 
                         if ($dailyRate === null) {
-                            $dailyRate = getPeriodAverageExchangeRate($pdo, $startDate, $endDate, $tenant_id);
+                            $dailyRate = getPeriodAverageExchangeRate($pdo, $startDate, $endDate, $tenant_id, $branch_id);
                         }
 
                         $weightsConverted += $weight['profit'] * $dailyRate;
@@ -1234,19 +1249,19 @@ try {
                         FROM ticket_reservations
                         WHERE currency = 'USD'
                         AND created_at BETWEEN ? AND ?
-                        AND tenant_id = ?
+                        AND tenant_id = ? And branch_id = ?
                     ";
                     $reservationStmt = $pdo->prepare($reservationQuery);
-                    $reservationStmt->execute([$startDate, $endDate, $tenant_id]);
+                    $reservationStmt->execute([$startDate, $endDate, $tenant_id, $branch_id]);
 
                     $reservationConverted = 0;
 
                     while ($reservation = $reservationStmt->fetch(PDO::FETCH_ASSOC)) {
                         $reservationDate = date('Y-m-d', strtotime($reservation['created_at']));
-                        $dailyRate = getDailyAverageExchangeRate($pdo, $reservationDate, $tenant_id);
+                        $dailyRate = getDailyAverageExchangeRate($pdo, $reservationDate, $tenant_id, $branch_id);
 
                         if ($dailyRate === null) {
-                            $dailyRate = getPeriodAverageExchangeRate($pdo, $startDate, $endDate, $tenant_id);
+                            $dailyRate = getPeriodAverageExchangeRate($pdo, $startDate, $endDate, $tenant_id, $branch_id);
                         }
 
                         $reservationConverted += $reservation['profit'] * $dailyRate;
@@ -1268,19 +1283,19 @@ try {
                         LEFT JOIN ticket_bookings tb ON rt.ticket_id = tb.id
                         WHERE rt.currency = 'USD'
                         AND rt.created_at BETWEEN ? AND ?
-                        AND rt.tenant_id = ?
+                        AND rt.tenant_id = ? And rt.branch_id = ?
                     ";
                     $refundStmt = $pdo->prepare($refundQuery);
-                    $refundStmt->execute([$startDate, $endDate, $tenant_id]);
+                    $refundStmt->execute([$startDate, $endDate, $tenant_id, $branch_id]);
 
                     $refundConverted = 0;
 
                     while ($refund = $refundStmt->fetch(PDO::FETCH_ASSOC)) {
                         $refundDate = date('Y-m-d', strtotime($refund['created_at']));
-                        $dailyRate = getDailyAverageExchangeRate($pdo, $refundDate, $tenant_id);
+                        $dailyRate = getDailyAverageExchangeRate($pdo, $refundDate, $tenant_id, $branch_id);
 
                         if ($dailyRate === null) {
-                            $dailyRate = getPeriodAverageExchangeRate($pdo, $startDate, $endDate, $tenant_id);
+                            $dailyRate = getPeriodAverageExchangeRate($pdo, $startDate, $endDate, $tenant_id, $branch_id);
                         }
 
                         $refundConverted += $refund['profit'] * $dailyRate;
@@ -1296,19 +1311,19 @@ try {
                         FROM hotel_bookings
                         WHERE currency = 'USD'
                         AND created_at BETWEEN ? AND ?
-                        AND tenant_id = ?
+                        AND tenant_id = ? And branch_id = ?
                     ";
                     $hotelStmt = $pdo->prepare($hotelQuery);
-                    $hotelStmt->execute([$startDate, $endDate, $tenant_id]);
+                    $hotelStmt->execute([$startDate, $endDate, $tenant_id, $branch_id]);
 
                     $hotelConverted = 0;
 
                     while ($booking = $hotelStmt->fetch(PDO::FETCH_ASSOC)) {
                         $bookingDate = date('Y-m-d', strtotime($booking['created_at']));
-                        $dailyRate = getDailyAverageExchangeRate($pdo, $bookingDate, $tenant_id);
-
+                        $dailyRate = getDailyAverageExchangeRate($pdo, $bookingDate, $tenant_id, $branch_id);
+    
                         if ($dailyRate === null) {
-                            $dailyRate = getPeriodAverageExchangeRate($pdo, $startDate, $endDate, $tenant_id);
+                            $dailyRate = getPeriodAverageExchangeRate($pdo, $startDate, $endDate, $tenant_id, $branch_id);
                         }
 
                         $hotelConverted += $booking['profit'] * $dailyRate;
@@ -1382,7 +1397,7 @@ try {
             FROM expenses e
             JOIN expense_categories ec ON e.category_id = ec.id
             WHERE e.date BETWEEN ? AND ?
-            AND e.tenant_id = ?
+            AND e.tenant_id = ? And e.branch_id = ?
 
             UNION ALL
 
@@ -1392,13 +1407,13 @@ try {
                 sp.amount
             FROM salary_payments sp
             WHERE sp.payment_date BETWEEN ? AND ?
-            AND sp.tenant_id = ?
+            AND sp.tenant_id = ? And sp.branch_id = ?
         ) combined_expenses
         GROUP BY category, currency
         ORDER BY category
     ";
     $expenseCategoryStmt = $pdo->prepare($expenseCategoryQuery);
-    $expenseCategoryStmt->execute([$startDate, $endDate, $tenant_id, $startDate, $endDate, $tenant_id]);
+    $expenseCategoryStmt->execute([$startDate, $endDate, $tenant_id, $branch_id, $startDate, $endDate, $tenant_id, $branch_id]);
     
     $categories = [];
     $row = $expenseCategoryRow + 1;
@@ -1439,7 +1454,7 @@ try {
             JOIN expense_categories ec ON e.category_id = ec.id
             WHERE e.currency = 'USD'
             AND e.date BETWEEN ? AND ?
-            AND e.tenant_id = ?
+            AND e.tenant_id = ? And e.branch_id = ?
 
             UNION ALL
 
@@ -1450,20 +1465,20 @@ try {
             FROM salary_payments sp
             WHERE sp.currency = 'USD'
             AND sp.payment_date BETWEEN ? AND ?
-            AND sp.tenant_id = ?
+            AND sp.tenant_id = ? And sp.branch_id = ?
         ) combined_expenses
         ORDER BY category_name
     ";
     $expenseCategoryConversionStmt = $pdo->prepare($expenseCategoryConversionQuery);
-    $expenseCategoryConversionStmt->execute([$startDate, $endDate, $tenant_id, $startDate, $endDate, $tenant_id]);
+    $expenseCategoryConversionStmt->execute([$startDate, $endDate, $tenant_id, $branch_id, $startDate, $endDate, $tenant_id, $branch_id]);
 
     while ($data = $expenseCategoryConversionStmt->fetch(PDO::FETCH_ASSOC)) {
         $expenseDate = date('Y-m-d', strtotime($data['date']));
-        $dailyRate = getDailyAverageExchangeRate($pdo, $expenseDate, $tenant_id);
+        $dailyRate = getDailyAverageExchangeRate($pdo, $expenseDate, $tenant_id, $branch_id);
 
         // If no daily rate, use period average
         if ($dailyRate === null) {
-            $dailyRate = getPeriodAverageExchangeRate($pdo, $startDate, $endDate, $tenant_id);
+            $dailyRate = getPeriodAverageExchangeRate($pdo, $startDate, $endDate, $tenant_id, $branch_id);
         }
 
         $convertedAmount = $data['amount'] * $dailyRate;
@@ -1525,7 +1540,7 @@ try {
     $incomeSheet->getStyle('A1:I1')->applyFromArray($headerStyle);
     
     // Get average exchange rate for USD to AFS
-    $avgExchangeRate = getAverageExchangeRate($pdo, $startDate, $endDate, $tenant_id);
+    $avgExchangeRate = getAverageExchangeRate($pdo, $startDate, $endDate, $tenant_id, $branch_id);
     
     // Fetch income details
     $incomeDetailsQuery = "
@@ -1540,7 +1555,7 @@ try {
         FROM ticket_bookings tb
         LEFT JOIN main_account_transactions mat ON mat.reference_id = tb.id AND mat.transaction_of = 'ticket_sale' AND mat.currency = 'AFS' AND mat.tenant_id = tb.tenant_id
         WHERE tb.created_at BETWEEN ? AND ?
-        AND tb.tenant_id = ?
+        AND tb.tenant_id = ? AND tb.branch_id = ?
 
         UNION ALL
 
@@ -1555,7 +1570,7 @@ try {
         FROM ticket_reservations tr
         LEFT JOIN main_account_transactions mat ON mat.reference_id = tr.id AND mat.transaction_of = 'ticket_reserve' AND mat.currency = 'AFS' AND mat.tenant_id = tr.tenant_id
         WHERE tr.created_at BETWEEN ? AND ?
-        AND tr.tenant_id = ?
+        AND tr.tenant_id = ? AND tr.branch_id = ?
 
         UNION ALL
 
@@ -1575,7 +1590,7 @@ try {
         LEFT JOIN ticket_bookings tb ON rt.ticket_id = tb.id
         LEFT JOIN main_account_transactions mat ON mat.reference_id = rt.id AND mat.transaction_of = 'ticket_refund' AND mat.currency = 'AFS' AND mat.tenant_id = rt.tenant_id
         WHERE rt.created_at BETWEEN ? AND ?
-        AND rt.tenant_id = ?
+        AND rt.tenant_id = ? AND rt.branch_id = ?
 
         UNION ALL
 
@@ -1591,7 +1606,7 @@ try {
         JOIN ticket_bookings tb ON dt.ticket_id = tb.id
         LEFT JOIN main_account_transactions mat ON mat.reference_id = dt.id AND mat.transaction_of = 'date_change' AND mat.currency = 'AFS' AND mat.tenant_id = dt.tenant_id
         WHERE dt.created_at BETWEEN ? AND ?
-        AND dt.tenant_id = ?
+        AND dt.tenant_id = ? AND dt.branch_id = ?
 
         UNION ALL
 
@@ -1606,7 +1621,7 @@ try {
         FROM visa_applications va
         LEFT JOIN main_account_transactions mat ON mat.reference_id = va.id AND mat.transaction_of = 'visa' AND mat.currency = 'AFS' AND mat.tenant_id = va.tenant_id
         WHERE va.created_at BETWEEN ? AND ?
-        AND va.tenant_id = ?
+        AND va.tenant_id = ? AND va.branch_id = ?
 
         UNION ALL
 
@@ -1621,7 +1636,7 @@ try {
         FROM umrah_bookings ub
         LEFT JOIN main_account_transactions mat ON mat.reference_id = ub.booking_id AND mat.transaction_of = 'umrah' AND mat.currency = 'AFS' AND mat.tenant_id = ub.tenant_id
         WHERE ub.created_at BETWEEN ? AND ?
-        AND ub.tenant_id = ?
+        AND ub.tenant_id = ? AND ub.branch_id = ?
 
         UNION ALL
 
@@ -1636,7 +1651,7 @@ try {
         FROM hotel_bookings hb
         LEFT JOIN main_account_transactions mat ON mat.reference_id = hb.id AND mat.transaction_of = 'hotel' AND mat.currency = 'AFS' AND mat.tenant_id = hb.tenant_id
         WHERE hb.created_at BETWEEN ? AND ?
-        AND hb.tenant_id = ?
+        AND hb.tenant_id = ? AND hb.branch_id = ?
 
         UNION ALL
 
@@ -1652,7 +1667,7 @@ try {
         JOIN ticket_bookings tb ON tw.ticket_id = tb.id
         LEFT JOIN main_account_transactions mat ON mat.reference_id = tw.id AND mat.transaction_of = 'weight' AND mat.currency = 'AFS' AND mat.tenant_id = tw.tenant_id
         WHERE tw.created_at BETWEEN ? AND ?
-        AND tw.tenant_id = ?
+        AND tw.tenant_id = ? AND tw.branch_id = ?
 
         UNION ALL
 
@@ -1666,22 +1681,22 @@ try {
             ap.id as reference_id
         FROM additional_payments ap
         WHERE ap.created_at BETWEEN ? AND ?
-        AND ap.tenant_id = ?
+        AND ap.tenant_id = ? AND ap.branch_id = ?
 
         ORDER BY date DESC
     ";
     
     $incomeDetailsStmt = $pdo->prepare($incomeDetailsQuery);
     $incomeDetailsStmt->execute([
-        $startDate, $endDate, $tenant_id,  // Ticket bookings
-        $startDate, $endDate, $tenant_id,  // Ticket reservations
-        $startDate, $endDate, $tenant_id,  // Refunded tickets
-        $startDate, $endDate, $tenant_id,  // Date change tickets
-        $startDate, $endDate, $tenant_id,  // Visa applications
-        $startDate, $endDate, $tenant_id,  // Umrah bookings
-        $startDate, $endDate, $tenant_id,  // Hotel bookings
-        $startDate, $endDate, $tenant_id,  // Ticket weights
-        $startDate, $endDate, $tenant_id   // Additional payments
+        $startDate, $endDate, $tenant_id, $branch_id,  // Ticket bookings
+        $startDate, $endDate, $tenant_id, $branch_id,  // Ticket reservations
+        $startDate, $endDate, $tenant_id, $branch_id,  // Refunded tickets
+        $startDate, $endDate, $tenant_id, $branch_id,  // Date change tickets
+        $startDate, $endDate, $tenant_id, $branch_id,  // Visa applications
+        $startDate, $endDate, $tenant_id, $branch_id,  // Umrah bookings
+        $startDate, $endDate, $tenant_id, $branch_id,  // Hotel bookings
+        $startDate, $endDate, $tenant_id, $branch_id,  // Ticket weights
+        $startDate, $endDate, $tenant_id, $branch_id   // Additional payments
     ]);
     
     $row = 2;
@@ -1704,11 +1719,11 @@ try {
             } else {
                 // For tables without exchange_rate or null values, use daily rate
                 $transactionDate = date('Y-m-d', strtotime($data['date']));
-                $dailyRate = getDailyAverageExchangeRate($pdo, $transactionDate, $tenant_id);
+                $dailyRate = getDailyAverageExchangeRate($pdo, $transactionDate, $tenant_id, $branch_id);
 
                 // If no daily rate, use period average
                 if ($dailyRate === null) {
-                    $dailyRate = getPeriodAverageExchangeRate($pdo, $startDate, $endDate, $tenant_id);
+                    $dailyRate = getPeriodAverageExchangeRate($pdo, $startDate, $endDate, $tenant_id, $branch_id);
                 }
                 
                 $exchangeRate = $dailyRate;
@@ -1747,15 +1762,15 @@ try {
     
     // Reset statement to get totals
     $incomeDetailsStmt->execute([
-        $startDate, $endDate, $tenant_id,  // Ticket bookings
-        $startDate, $endDate, $tenant_id,  // Ticket reservations
-        $startDate, $endDate, $tenant_id,  // Refunded tickets
-        $startDate, $endDate, $tenant_id,  // Date change tickets
-        $startDate, $endDate, $tenant_id,  // Visa applications
-        $startDate, $endDate, $tenant_id,  // Umrah bookings
-        $startDate, $endDate, $tenant_id,  // Hotel bookings
-        $startDate, $endDate, $tenant_id,  // Ticket weights
-        $startDate, $endDate, $tenant_id   // Additional payments
+        $startDate, $endDate, $tenant_id, $branch_id,  // Ticket bookings
+        $startDate, $endDate, $tenant_id, $branch_id,  // Ticket reservations
+        $startDate, $endDate, $tenant_id, $branch_id,  // Refunded tickets
+        $startDate, $endDate, $tenant_id, $branch_id,  // Date change tickets
+        $startDate, $endDate, $tenant_id, $branch_id,  // Visa applications
+        $startDate, $endDate, $tenant_id, $branch_id,  // Umrah bookings
+        $startDate, $endDate, $tenant_id, $branch_id,  // Hotel bookings
+        $startDate, $endDate, $tenant_id, $branch_id,  // Ticket weights
+        $startDate, $endDate, $tenant_id, $branch_id  // Additional payments
     ]);
     
     // Calculate totals
@@ -1778,11 +1793,11 @@ try {
             } else {
                 // For tables without exchange_rate or null values, use daily rate
                 $transactionDate = date('Y-m-d', strtotime($data['date']));
-                $dailyRate = getDailyAverageExchangeRate($pdo, $transactionDate, $tenant_id);
+                $dailyRate = getDailyAverageExchangeRate($pdo, $transactionDate, $tenant_id, $branch_id);
 
                 // If no daily rate, use period average
                 if ($dailyRate === null) {
-                    $dailyRate = getPeriodAverageExchangeRate($pdo, $startDate, $endDate, $tenant_id);
+                    $dailyRate = getPeriodAverageExchangeRate($pdo, $startDate, $endDate, $tenant_id, $branch_id);
                 }
 
                 $exchangeRate = $dailyRate;
@@ -1976,7 +1991,7 @@ try {
             LEFT JOIN budget_allocations ba ON e.allocation_id = ba.id
             LEFT JOIN main_account ma ON e.main_account_id = ma.id
             WHERE e.date BETWEEN ? AND ?
-            AND e.tenant_id = ?
+            AND e.tenant_id = ? And e.branch_id = ?
 
             UNION ALL
 
@@ -1990,12 +2005,12 @@ try {
             FROM salary_payments sp
             JOIN users e ON sp.user_id = e.id
             WHERE sp.payment_date BETWEEN ? AND ?
-            AND sp.tenant_id = ?
+            AND sp.tenant_id = ? And sp.branch_id = ?
         ) combined_expenses
         ORDER BY expense_date DESC
     ";
     $expenseDetailsStmt = $pdo->prepare($expenseDetailsQuery);
-    $expenseDetailsStmt->execute([$startDate, $endDate, $tenant_id, $startDate, $endDate, $tenant_id]);
+    $expenseDetailsStmt->execute([$startDate, $endDate, $tenant_id, $branch_id, $startDate, $endDate, $tenant_id, $branch_id]);
     
     $row = 2;
     while ($data = $expenseDetailsStmt->fetch(PDO::FETCH_ASSOC)) {
@@ -2080,7 +2095,7 @@ try {
         FROM ticket_bookings tb
         LEFT JOIN main_account_transactions mat ON mat.reference_id = tb.id AND mat.transaction_of = 'ticket_sale' AND mat.currency = 'AFS' AND mat.tenant_id = tb.tenant_id
         WHERE tb.currency = 'USD' AND tb.created_at BETWEEN ? AND ?
-        AND tb.tenant_id = ?
+        AND tb.tenant_id = ? AND tb.branch_id = ?
 
         UNION ALL
 
@@ -2096,7 +2111,7 @@ try {
         FROM ticket_reservations tr
         LEFT JOIN main_account_transactions mat ON mat.reference_id = tr.id AND mat.transaction_of = 'ticket_reserve' AND mat.currency = 'AFS' AND mat.tenant_id = tr.tenant_id
         WHERE tr.currency = 'USD' AND tr.created_at BETWEEN ? AND ?
-        AND tr.tenant_id = ?
+        AND tr.tenant_id = ? AND tr.branch_id = ?
 
         UNION ALL
 
@@ -2117,7 +2132,7 @@ try {
         JOIN ticket_bookings tb ON rt.ticket_id = tb.id
         LEFT JOIN main_account_transactions mat ON mat.reference_id = rt.id AND mat.transaction_of = 'ticket_refund' AND mat.currency = 'AFS' AND mat.tenant_id = rt.tenant_id
         WHERE rt.currency = 'USD' AND rt.created_at BETWEEN ? AND ?
-        AND rt.tenant_id = ?
+        AND rt.tenant_id = ? AND rt.branch_id = ?
 
         UNION ALL
 
@@ -2134,7 +2149,7 @@ try {
         JOIN ticket_bookings tb ON dt.ticket_id = tb.id
         LEFT JOIN main_account_transactions mat ON mat.reference_id = dt.id AND mat.transaction_of = 'date_change' AND mat.currency = 'AFS' AND mat.tenant_id = dt.tenant_id
         WHERE dt.currency = 'USD' AND dt.created_at BETWEEN ? AND ?
-        AND dt.tenant_id = ?
+        AND dt.tenant_id = ? AND dt.branch_id = ?
 
         UNION ALL
 
@@ -2150,7 +2165,7 @@ try {
         FROM visa_applications v
         LEFT JOIN main_account_transactions mat ON mat.reference_id = v.id AND mat.transaction_of = 'visa' AND mat.currency = 'AFS' AND mat.tenant_id = v.tenant_id
         WHERE v.currency = 'USD' AND v.created_at BETWEEN ? AND ?
-        AND v.tenant_id = ?
+        AND v.tenant_id = ? AND v.branch_id = ?
 
         UNION ALL
 
@@ -2166,7 +2181,7 @@ try {
         FROM umrah_bookings u
         LEFT JOIN main_account_transactions mat ON mat.reference_id = u.booking_id AND mat.transaction_of = 'umrah' AND mat.currency = 'AFS' AND mat.tenant_id = u.tenant_id
         WHERE u.currency = 'USD' AND u.created_at BETWEEN ? AND ?
-        AND u.tenant_id = ?
+        AND u.tenant_id = ? AND u.branch_id = ?
 
         UNION ALL
 
@@ -2182,7 +2197,7 @@ try {
         FROM hotel_bookings h
         LEFT JOIN main_account_transactions mat ON mat.reference_id = h.id AND mat.transaction_of = 'hotel' AND mat.currency = 'AFS' AND mat.tenant_id = h.tenant_id
         WHERE h.currency = 'USD' AND h.created_at BETWEEN ? AND ?
-        AND h.tenant_id = ?
+        AND h.tenant_id = ? AND h.branch_id = ?
 
         UNION ALL
 
@@ -2199,7 +2214,7 @@ try {
         JOIN ticket_bookings tb ON tw.ticket_id = tb.id
         LEFT JOIN main_account_transactions mat ON mat.reference_id = tw.id AND mat.transaction_of = 'weight' AND mat.currency = 'AFS' AND mat.tenant_id = tw.tenant_id
         WHERE tb.currency = 'USD' AND tw.created_at BETWEEN ? AND ?
-        AND tw.tenant_id = ?
+        AND tw.tenant_id = ? AND tw.branch_id = ?
 
         UNION ALL
 
@@ -2211,22 +2226,22 @@ try {
             ? as exchange_rate
         FROM additional_payments ap
         WHERE ap.currency = 'USD' AND ap.created_at BETWEEN ? AND ?
-        AND ap.tenant_id = ?
+        AND ap.tenant_id = ? And ap.branch_id = ?
 
         ORDER BY date DESC
     ";
     
     $conversionStmt = $pdo->prepare($conversionQuery);
     $conversionStmt->execute([
-        $avgExchangeRate, $startDate, $endDate, $tenant_id,  // Ticket bookings
-        $avgExchangeRate, $startDate, $endDate, $tenant_id,  // Ticket reservations
-        $avgExchangeRate, $startDate, $endDate, $tenant_id,  // Refunded tickets
-        $avgExchangeRate, $startDate, $endDate, $tenant_id,  // Date change tickets
-        $avgExchangeRate, $startDate, $endDate, $tenant_id,  // Visa applications
-        $avgExchangeRate, $startDate, $endDate, $tenant_id,  // Umrah bookings
-        $avgExchangeRate, $startDate, $endDate, $tenant_id,  // Hotel bookings
-        $avgExchangeRate, $startDate, $endDate, $tenant_id,  // Ticket weights
-        $avgExchangeRate, $startDate, $endDate, $tenant_id   // Additional payments
+        $avgExchangeRate, $startDate, $endDate, $tenant_id, $branch_id,  // Ticket bookings
+        $avgExchangeRate, $startDate, $endDate, $tenant_id, $branch_id,  // Ticket reservations
+        $avgExchangeRate, $startDate, $endDate, $tenant_id, $branch_id,  // Refunded tickets
+        $avgExchangeRate, $startDate, $endDate, $tenant_id, $branch_id,  // Date change tickets
+        $avgExchangeRate, $startDate, $endDate, $tenant_id, $branch_id,  // Visa applications
+        $avgExchangeRate, $startDate, $endDate, $tenant_id, $branch_id,  // Umrah bookings
+        $avgExchangeRate, $startDate, $endDate, $tenant_id, $branch_id,  // Hotel bookings
+        $avgExchangeRate, $startDate, $endDate, $tenant_id, $branch_id,  // Ticket weights
+        $avgExchangeRate, $startDate, $endDate, $tenant_id, $branch_id   // Additional payments
     ]);
     
     $row = 7;
@@ -2245,11 +2260,11 @@ try {
         } else {
             // Get daily rate for this transaction's date
             $transactionDate = date('Y-m-d', strtotime($data['date']));
-            $dailyRate = getDailyAverageExchangeRate($pdo, $transactionDate, $tenant_id);
+            $dailyRate = getDailyAverageExchangeRate($pdo, $transactionDate, $tenant_id, $branch_id);
 
             // If no daily rate, use period average
             if ($dailyRate === null) {
-                $dailyRate = getPeriodAverageExchangeRate($pdo, $startDate, $endDate, $tenant_id);
+                $dailyRate = getPeriodAverageExchangeRate($pdo, $startDate, $endDate, $tenant_id, $branch_id);
             }
             
             $exchangeRate = $dailyRate;
@@ -2370,7 +2385,7 @@ try {
             FROM ticket_bookings tb
             LEFT JOIN main_account_transactions mat ON mat.reference_id = tb.id AND mat.transaction_of = 'ticket_sale' AND mat.currency = 'AFS' AND mat.tenant_id = tb.tenant_id
             WHERE tb.currency = 'USD' AND tb.created_at BETWEEN ? AND ?
-            AND tb.tenant_id = ?
+            AND tb.tenant_id = ? AND tb.branch_id = ?
 
             UNION ALL
 
@@ -2382,7 +2397,7 @@ try {
             FROM ticket_reservations tr
             LEFT JOIN main_account_transactions mat ON mat.reference_id = tr.id AND mat.transaction_of = 'ticket_reserve' AND mat.currency = 'AFS' AND mat.tenant_id = tr.tenant_id
             WHERE tr.currency = 'USD' AND tr.created_at BETWEEN ? AND ?
-            AND tr.tenant_id = ?
+            AND tr.tenant_id = ? AND tr.branch_id = ?
 
             UNION ALL
 
@@ -2399,7 +2414,7 @@ try {
             JOIN ticket_bookings tb ON rt.ticket_id = tb.id
             LEFT JOIN main_account_transactions mat ON mat.reference_id = rt.id AND mat.transaction_of = 'ticket_refund' AND mat.currency = 'AFS' AND mat.tenant_id = rt.tenant_id
             WHERE rt.currency = 'USD' AND rt.created_at BETWEEN ? AND ?
-            AND rt.tenant_id = ?
+            AND rt.tenant_id = ? AND rt.branch_id = ?
 
             UNION ALL
 
@@ -2412,7 +2427,7 @@ try {
             JOIN ticket_bookings tb ON dt.ticket_id = tb.id
             LEFT JOIN main_account_transactions mat ON mat.reference_id = dt.id AND mat.transaction_of = 'date_change' AND mat.currency = 'AFS' AND mat.tenant_id = dt.tenant_id
             WHERE dt.currency = 'USD' AND dt.created_at BETWEEN ? AND ?
-            AND dt.tenant_id = ?
+            AND dt.tenant_id = ? AND dt.branch_id = ?
 
             UNION ALL
 
@@ -2424,7 +2439,7 @@ try {
             FROM visa_applications v
             LEFT JOIN main_account_transactions mat ON mat.reference_id = v.id AND mat.transaction_of = 'visa' AND mat.currency = 'AFS' AND mat.tenant_id = v.tenant_id
             WHERE v.currency = 'USD' AND v.created_at BETWEEN ? AND ?
-            AND v.tenant_id = ?
+            AND v.tenant_id = ? AND v.branch_id = ?
 
             UNION ALL
 
@@ -2436,7 +2451,7 @@ try {
             FROM umrah_bookings u
             LEFT JOIN main_account_transactions mat ON mat.reference_id = u.booking_id AND mat.transaction_of = 'umrah' AND mat.currency = 'AFS' AND mat.tenant_id = u.tenant_id
             WHERE u.currency = 'USD' AND u.created_at BETWEEN ? AND ?
-            AND u.tenant_id = ?
+            AND u.tenant_id = ? AND u.branch_id = ?
 
             UNION ALL
 
@@ -2448,7 +2463,7 @@ try {
             FROM hotel_bookings h
             LEFT JOIN main_account_transactions mat ON mat.reference_id = h.id AND mat.transaction_of = 'hotel' AND mat.currency = 'AFS' AND mat.tenant_id = h.tenant_id
             WHERE h.currency = 'USD' AND h.created_at BETWEEN ? AND ?
-            AND h.tenant_id = ?
+            AND h.tenant_id = ? AND h.branch_id = ?
 
             UNION ALL
 
@@ -2461,7 +2476,7 @@ try {
             JOIN ticket_bookings tb ON tw.ticket_id = tb.id
             LEFT JOIN main_account_transactions mat ON mat.reference_id = tw.id AND mat.transaction_of = 'weight' AND mat.currency = 'AFS' AND mat.tenant_id = tw.tenant_id
             WHERE tb.currency = 'USD' AND tw.created_at BETWEEN ? AND ?
-            AND tw.tenant_id = ?
+            AND tw.tenant_id = ? AND tw.branch_id = ?
 
             UNION ALL
 
@@ -2472,7 +2487,7 @@ try {
                 NULL as exchange_rate
             FROM additional_payments ap
             WHERE ap.currency = 'USD' AND ap.created_at BETWEEN ? AND ?
-            AND ap.tenant_id = ?
+            AND ap.tenant_id = ? AND ap.branch_id = ?
         ) usd_transactions
     ) calculated_amounts
     GROUP BY source
@@ -2483,15 +2498,15 @@ try {
     $usdToAfsStmt = $pdo->prepare($usdToAfsQuery);
     $usdToAfsStmt->execute([
         $avgExchangeRate,  // Average exchange rate for calculations
-        $startDate, $endDate, $tenant_id,  // Ticket bookings
-        $startDate, $endDate, $tenant_id,  // Ticket reservations
-        $startDate, $endDate, $tenant_id,  // Refunded tickets
-        $startDate, $endDate, $tenant_id,  // Date change tickets
-        $startDate, $endDate, $tenant_id,  // Visa applications
-        $startDate, $endDate, $tenant_id,  // Umrah bookings
-        $startDate, $endDate, $tenant_id,  // Hotel bookings
-        $startDate, $endDate, $tenant_id,  // Ticket weights
-        $startDate, $endDate, $tenant_id   // Additional payments
+        $startDate, $endDate, $tenant_id, $branch_id,  // Ticket bookings
+        $startDate, $endDate, $tenant_id, $branch_id,  // Ticket reservations
+        $startDate, $endDate, $tenant_id, $branch_id,  // Refunded tickets
+        $startDate, $endDate, $tenant_id, $branch_id,  // Date change tickets
+        $startDate, $endDate, $tenant_id, $branch_id,  // Visa applications
+        $startDate, $endDate, $tenant_id, $branch_id,  // Umrah bookings
+        $startDate, $endDate, $tenant_id, $branch_id,  // Hotel bookings
+        $startDate, $endDate, $tenant_id, $branch_id,  // Ticket weights
+        $startDate, $endDate, $tenant_id, $branch_id   // Additional payments
     ]);
 
     // Add data for each source

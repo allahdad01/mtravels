@@ -12,6 +12,7 @@ if (!isset($_SESSION['user_id'])) {
     exit();
 }
 $tenant_id = $_SESSION['tenant_id'];
+$branch_id = $_SESSION['branch_id'];
 // Include database connection
 include '../includes/db.php';
 include '../includes/conn.php';
@@ -31,7 +32,7 @@ if (!$ticketId) {
     $error = "No ticket ID provided";
 } else {
     // Get ticket details with related info
-    $ticketQuery = "SELECT 
+    $ticketQuery = "SELECT
             tb.*,
             c.name AS client_name,
             c.email AS client_email,
@@ -44,10 +45,10 @@ if (!$ticketId) {
         LEFT JOIN clients c ON tb.sold_to = c.id
         LEFT JOIN suppliers s ON tb.supplier = s.id
         LEFT JOIN main_account ma ON tb.paid_to = ma.id
-        WHERE tb.id = ? AND tb.tenant_id = ?";
+        WHERE tb.id = ? AND tb.tenant_id = ? AND tb.branch_id = ?";
         
     $stmt = $pdo->prepare($ticketQuery);
-    $stmt->execute([$ticketId, $tenant_id]);
+    $stmt->execute([$ticketId, $tenant_id, $branch_id]);
     $ticketData = $stmt->fetch(PDO::FETCH_ASSOC);
     
     if (!$ticketData) {
@@ -56,7 +57,7 @@ if (!$ticketId) {
         
         
         // Get main account transactions related to this ticket
-        $mainAccountTransQuery = "SELECT 
+        $mainAccountTransQuery = "SELECT
                 'Main Account' AS transaction_type,
                 mat.id,
                 mat.type,
@@ -66,15 +67,15 @@ if (!$ticketId) {
                 mat.transaction_of,
                 mat.created_at AS transaction_date
             FROM main_account_transactions mat
-            WHERE mat.reference_id = ? AND mat.tenant_id = ? AND mat.transaction_of = 'ticket_reserve'
+            WHERE mat.reference_id = ? AND mat.tenant_id = ? AND mat.branch_id = ? AND mat.transaction_of = 'ticket_reserve'
             ORDER BY mat.created_at DESC";
-            
+
         $stmt = $pdo->prepare($mainAccountTransQuery);
-        $stmt->execute([$ticketId, $tenant_id]);
+        $stmt->execute([$ticketId, $tenant_id, $branch_id]);
         $mainAccountTransactions = $stmt->fetchAll(PDO::FETCH_ASSOC);
         
         // Get client transactions related to this ticket
-        $clientTransQuery = "SELECT 
+        $clientTransQuery = "SELECT
                 'Client' AS transaction_type,
                 ct.id,
                 ct.type,
@@ -84,15 +85,15 @@ if (!$ticketId) {
                 ct.transaction_of,
                 ct.created_at AS transaction_date
             FROM client_transactions ct
-            WHERE ct.reference_id = ? AND ct.tenant_id = ? AND ct.transaction_of = 'ticket_reserve'
+            WHERE ct.reference_id = ? AND ct.tenant_id = ? AND ct.branch_id = ? AND ct.transaction_of = 'ticket_reserve'
             ORDER BY ct.created_at DESC";
-            
+
         $stmt = $pdo->prepare($clientTransQuery);
-        $stmt->execute([$ticketId, $tenant_id]);
+        $stmt->execute([$ticketId, $tenant_id, $branch_id]);
         $clientTransactions = $stmt->fetchAll(PDO::FETCH_ASSOC);
         
         // Get supplier transactions related to this ticket
-        $supplierTransQuery = "SELECT 
+        $supplierTransQuery = "SELECT
                 'Supplier' AS transaction_type,
                 st.id,
                 st.transaction_type AS type,
@@ -101,11 +102,11 @@ if (!$ticketId) {
                 st.transaction_of,
                 st.transaction_date
             FROM supplier_transactions st
-            WHERE st.reference_id = ? AND st.tenant_id = ? AND st.transaction_of = 'ticket_reserve'
+            WHERE st.reference_id = ? AND st.tenant_id = ? AND st.branch_id = ? AND st.transaction_of = 'ticket_reserve'
             ORDER BY st.transaction_date DESC";
-            
+
         $stmt = $pdo->prepare($supplierTransQuery);
-        $stmt->execute([$ticketId, $tenant_id]);
+        $stmt->execute([$ticketId, $tenant_id, $branch_id]);
         $supplierTransactions = $stmt->fetchAll(PDO::FETCH_ASSOC);
     }
 }

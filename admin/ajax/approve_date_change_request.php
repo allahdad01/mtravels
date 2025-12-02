@@ -7,6 +7,7 @@ require_once '../../includes/conn.php';
 // Enforce authentication
 enforce_auth();
 $tenant_id = $_SESSION['tenant_id'];
+$branch_id = $_SESSION['branch_id'];
 
 header('Content-Type: application/json');
 
@@ -33,10 +34,10 @@ try {
     $stmt = $conn->prepare("
         SELECT dc.*, ub.price as current_price
         FROM date_change_umrah dc
-        LEFT JOIN umrah_bookings ub ON dc.umrah_booking_id = ub.booking_id
-        WHERE dc.id = ? AND dc.tenant_id = ? AND dc.status = 'Pending'
+        LEFT JOIN umrah_bookings ub ON dc.umrah_booking_id = ub.booking_id AND ub.tenant_id = ? AND ub.branch_id = ?
+        WHERE dc.id = ? AND dc.tenant_id = ? AND dc.branch_id = ? AND dc.status = 'Pending'
     ");
-    $stmt->bind_param("ii", $id, $tenant_id);
+    $stmt->bind_param("iiiii", $tenant_id, $branch_id, $id, $tenant_id, $branch_id);
     $stmt->execute();
     $result = $stmt->get_result();
 
@@ -70,9 +71,9 @@ try {
             service_penalty = ?,
             total_penalty = ?,
             remarks = ?
-        WHERE id = ? AND tenant_id = ?
+        WHERE id = ? AND tenant_id = ? AND branch_id = ?
     ");
-    $stmt->bind_param("ddddsii", $_SESSION['user_id'], $supplier_penalty, $service_penalty, $total_penalty, $updated_remarks, $id, $tenant_id);
+    $stmt->bind_param("ddddsiii", $_SESSION['user_id'], $supplier_penalty, $service_penalty, $total_penalty, $updated_remarks, $id, $tenant_id, $branch_id);
 
     if ($stmt->execute()) {
         // Log the approval

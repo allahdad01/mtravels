@@ -8,7 +8,7 @@ if (session_status() === PHP_SESSION_NONE) {
 require_once '../../includes/conn.php';
 
 $tenant_id = $_SESSION['tenant_id'];
-
+$branch_id = $_SESSION['branch_id'];
 // Get weight ID from request
 $weightId = isset($_GET['id']) ? intval($_GET['id']) : 0;
 
@@ -21,7 +21,7 @@ if ($weightId <= 0) {
 
 // Query to get weight details with related information
 $query = "
-    SELECT 
+    SELECT
         tw.*,
         t.passenger_name,
         t.pnr,
@@ -32,20 +32,20 @@ $query = "
         t.currency,
         s.name AS supplier_name,
         c.name AS sold_to_name
-    FROM 
+    FROM
         ticket_weights tw
-    LEFT JOIN 
-        ticket_bookings t ON tw.ticket_id = t.id
-    LEFT JOIN 
-        suppliers s ON t.supplier = s.id
-    LEFT JOIN 
-        clients c ON t.sold_to = c.id
-    WHERE 
-        tw.id = ? AND tw.tenant_id = ?
+    LEFT JOIN
+        ticket_bookings t ON tw.ticket_id = t.id AND t.tenant_id = ? AND t.branch_id = ?
+    LEFT JOIN
+        suppliers s ON t.supplier = s.id AND s.tenant_id = ? AND s.branch_id = ?
+    LEFT JOIN
+        clients c ON t.sold_to = c.id AND c.tenant_id = ? AND c.branch_id = ?
+    WHERE
+        tw.id = ? AND tw.tenant_id = ? AND tw.branch_id = ?
 ";
 
 $stmt = $conn->prepare($query);
-$stmt->bind_param('ii', $weightId, $tenant_id);
+$stmt->bind_param('iiiiiiii', $tenant_id, $branch_id, $tenant_id, $branch_id, $tenant_id, $branch_id, $weightId, $tenant_id, $branch_id);
 $stmt->execute();
 $result = $stmt->get_result();
 

@@ -5,6 +5,7 @@ require_once 'includes/db_security.php';
 // Include security module
 require_once 'security.php';
 $tenant_id = $_SESSION['tenant_id'];
+$branch_id = $_SESSION['branch_id'];
 // Enforce authentication
 enforce_auth();
 
@@ -64,19 +65,19 @@ if (!empty($ticketIds)) {
     $placeholders = implode(',', array_fill(0, count($ticketIds), '?'));
 
     $ticketsQuery = "
-        SELECT tb.id, tb.passenger_name, tb.pnr, tb.origin, tb.destination, 
-               tb.airline, tb.departure_date, tb.sold, tb.trip_type, tb.return_destination, 
+        SELECT tb.id, tb.passenger_name, tb.pnr, tb.origin, tb.destination,
+               tb.airline, tb.departure_date, tb.sold, tb.trip_type, tb.return_destination,
                tb.return_date, tb.currency, c.name as client_name
         FROM ticket_bookings tb
         JOIN clients c ON c.id = tb.sold_to
-        WHERE tb.id IN ($placeholders) AND tb.tenant_id = ?
+        WHERE tb.id IN ($placeholders) AND tb.tenant_id = ? AND tb.branch_id = ?
         ORDER BY tb.id
     ";
 
     $stmt = $pdo->prepare($ticketsQuery);
 
-    // Bind ticket IDs first, then tenant_id
-    $stmt->execute([...$ticketIds, $tenant_id]);
+    // Bind ticket IDs first, then tenant_id, branch_id
+    $stmt->execute([...$ticketIds, $tenant_id, $branch_id]);
 
     $tickets = $stmt->fetchAll(PDO::FETCH_ASSOC);
 
@@ -86,9 +87,9 @@ if (!empty($ticketIds)) {
 }
 
 // --- 4. Fetch paid amounts for tickets ---
-$paidQuery = "SELECT reference_id, currency, SUM(amount) as paid FROM main_account_transactions WHERE transaction_of = 'ticket_sale' AND reference_id IN ($placeholders) AND type = 'credit' AND tenant_id = ? GROUP BY reference_id, currency";
+$paidQuery = "SELECT reference_id, currency, SUM(amount) as paid FROM main_account_transactions WHERE transaction_of = 'ticket_sale' AND reference_id IN ($placeholders) AND type = 'credit' AND tenant_id = ? AND branch_id = ? GROUP BY reference_id, currency";
 $stmt = $pdo->prepare($paidQuery);
-$stmt->execute([...$ticketIds, $tenant_id]);
+$stmt->execute([...$ticketIds, $tenant_id, $branch_id]);
 $paidAmounts = [];
 while ($row = $stmt->fetch(PDO::FETCH_ASSOC)) {
     $paidAmounts[$row['reference_id']][$row['currency']] = $row['paid'];
@@ -113,9 +114,9 @@ $invoiceDate = date('Y-m-d');
 
 // --- 3. Fetch bank accounts from main_account table ---
 try {
-    $bankAccountsQuery = "SELECT name, bank_name, bank_account_number, bank_account_afs_number FROM main_account WHERE tenant_id = ? AND status = 'active' AND account_type = 'bank' AND bank_account_number IS NOT NULL AND bank_account_number <> '' ORDER BY name";
+    $bankAccountsQuery = "SELECT name, bank_name, bank_account_number, bank_account_afs_number FROM main_account WHERE tenant_id = ? AND branch_id = ? AND status = 'active' AND account_type = 'bank' AND bank_account_number IS NOT NULL AND bank_account_number <> '' ORDER BY name";
     $stmt = $pdo->prepare($bankAccountsQuery);
-    $stmt->execute([$tenant_id]);
+    $stmt->execute([$tenant_id, $branch_id]);
     $bankAccounts = $stmt->fetchAll(PDO::FETCH_ASSOC);
 } catch (Exception $e) {
     $bankAccounts = [];

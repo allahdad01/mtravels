@@ -2,6 +2,7 @@
 // Include security module
 require_once 'security.php';
 $tenant_id = $_SESSION['tenant_id'];
+$branch_id = $_SESSION['branch_id'];
 // Enforce authentication
 enforce_auth();
 
@@ -18,7 +19,7 @@ $startDate = isset($_GET['startDate']) ? $_GET['startDate'] : null;
 $endDate = isset($_GET['endDate']) ? $_GET['endDate'] : null;
 
 // Build query with date range filter
-$query = "SELECT transaction_date, transaction_type, supplier_name, currency, amount, remarks FROM funding_transactions WHERE supplier_id = ? AND tenant_id = ?";
+$query = "SELECT transaction_date, transaction_type, supplier_name, currency, amount, remarks FROM funding_transactions WHERE supplier_id = ? AND tenant_id = ? AND branch_id = ?";
 
 // Add date range condition if dates are provided
 if ($startDate && $endDate) {
@@ -32,13 +33,13 @@ if ($startDate && $endDate) {
 // Prepare and execute query
 if ($stmt = $conn->prepare($query)) {
     if ($startDate && $endDate) {
-        $stmt->bind_param("iiss", $supplierId, $tenant_id, $startDate, $endDate);
+        $stmt->bind_param("iiiss", $supplierId, $tenant_id, $branch_id, $startDate, $endDate);
     } elseif ($startDate) {
-        $stmt->bind_param("iis", $supplierId, $tenant_id, $startDate);
+        $stmt->bind_param("iiis", $supplierId, $tenant_id, $branch_id, $startDate);
     } elseif ($endDate) {
-        $stmt->bind_param("iis", $supplierId, $tenant_id, $endDate);
+        $stmt->bind_param("iiis", $supplierId, $tenant_id, $branch_id, $endDate);
     } else {
-        $stmt->bind_param("ii", $supplierId, $tenant_id);
+        $stmt->bind_param("iii", $supplierId, $tenant_id, $branch_id);
     }
 
     $stmt->execute();

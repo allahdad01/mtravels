@@ -2,6 +2,7 @@
 // Include security module
 require_once 'security.php';
 $tenant_id = $_SESSION['tenant_id'];
+$branch_id = $_SESSION['branch_id'];
 // Enforce authentication
 enforce_auth();
 
@@ -25,18 +26,18 @@ try {
     $umrahId = intval($_GET['id']);
     
     // Query to get umrah details
-    $query = "SELECT 
-                u.*, 
+    $query = "SELECT
+                u.*,
                 f.head_of_family AS family_name
-              FROM 
+              FROM
                 umrah_bookings u
-              LEFT JOIN 
+              LEFT JOIN
                 families f ON u.family_id = f.family_id
-              WHERE 
-                u.booking_id = ? AND u.tenant_id = ?";
-    
+              WHERE
+                u.booking_id = ? AND u.tenant_id = ? AND u.branch_id = ?";
+
     $stmt = $pdo->prepare($query);
-    $stmt->execute([$umrahId, $tenant_id]);
+    $stmt->execute([$umrahId, $tenant_id, $branch_id]);
     
     if ($stmt->rowCount() > 0) {
         $umrah = $stmt->fetch(PDO::FETCH_ASSOC);

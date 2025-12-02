@@ -9,6 +9,7 @@ if (session_status() === PHP_SESSION_NONE) {
     session_start();
 }
 $tenant_id = $_SESSION['tenant_id'];
+$branch_id = $_SESSION['branch_id'];
 // Set JSON content type
 header('Content-Type: application/json');
 
@@ -35,8 +36,8 @@ try {
     }
 
     // Check if email exists for other users
-    $stmt = $pdo->prepare("SELECT COUNT(*) FROM users WHERE email = ? AND id != ? AND tenant_id = ?");
-    $stmt->execute([$_POST['email'], $_POST['user_id'], $tenant_id]);
+    $stmt = $pdo->prepare("SELECT COUNT(*) FROM users WHERE email = ? AND id != ? AND tenant_id = ? AND branch_id = ?");
+    $stmt->execute([$_POST['email'], $_POST['user_id'], $tenant_id, $branch_id]);
     if ($stmt->fetchColumn() > 0) {
         throw new Exception(__('email_already_exists'));
     }
@@ -61,8 +62,8 @@ try {
         }
         
         // Delete old profile picture
-        $stmt = $pdo->prepare("SELECT profile_pic FROM users WHERE id = ? AND tenant_id = ?");
-        $stmt->execute([$_POST['user_id'], $tenant_id]);
+        $stmt = $pdo->prepare("SELECT profile_pic FROM users WHERE id = ? AND tenant_id = ? AND branch_id = ?");
+        $stmt->execute([$_POST['user_id'], $tenant_id, $branch_id]);
         $old_pic = $stmt->fetchColumn();
         if ($old_pic && $old_pic !== 'default-avatar.jpg') {
             $old_pic_path = "../assets/images/user/" . $old_pic;
@@ -83,7 +84,8 @@ try {
         'address' => $_POST['address'] ?? null,
         'hire_date' => $_POST['hire_date'] ?? null,
         'user_id' => $_POST['user_id'],
-        'tenant_id' => $tenant_id
+        'tenant_id' => $tenant_id,
+        'branch_id' => $branch_id
     ];
 
     // Build update SQL
@@ -107,7 +109,7 @@ try {
         $sql .= ", profile_pic = :profile_pic";
     }
 
-    $sql .= " WHERE id = :user_id AND tenant_id = :tenant_id";
+    $sql .= " WHERE id = :user_id AND tenant_id = :tenant_id AND branch_id = :branch_id";
 
     // Execute update
     $stmt = $pdo->prepare($sql);
@@ -116,7 +118,7 @@ try {
     // Handle document uploads
     if (isset($_FILES['user_documents']) && !empty($_FILES['user_documents']['name'][0])) {
         // Create user directory if it doesn't exist
-        $userDocDir = "../uploads/user_documents/{$_POST['user_id']}/{$tenant_id}";
+        $userDocDir = "../uploads/user_documents/{$_POST['user_id']}/{$tenant_id}/{$branch_id}";
         if (!file_exists($userDocDir)) {
             mkdir($userDocDir, 0755, true);
         }
@@ -141,18 +143,19 @@ try {
                     // Save document info in the database
                     $docStmt = $pdo->prepare("
                         INSERT INTO user_documents (
-                            user_id, filename, original_name, file_type, uploaded_at, tenant_id
+                            user_id, filename, original_name, file_type, uploaded_at, tenant_id, branch_id
                         ) VALUES (
-                            :user_id, :filename, :original_name, :file_type, NOW(), :tenant_id
+                            :user_id, :filename, :original_name, :file_type, NOW(), :tenant_id, :branch_id
                         )
                     ");
-                    
+
                     $docStmt->execute([
                         'user_id' => $_POST['user_id'],
                         'filename' => $newFilename,
                         'original_name' => $filename,
                         'file_type' => $ext,
-                        'tenant_id' => $tenant_id
+                        'tenant_id' => $tenant_id,
+                        'branch_id' => $branch_id
                     ]);
                     
                     $uploadedDocs[] = $newFilename;
@@ -179,7 +182,7 @@ try {
     // If there was an error and we uploaded documents, delete them
     if (isset($uploadedDocs)) {
         foreach ($uploadedDocs as $doc) {
-            $docPath = "../uploads/user_documents/{$_POST['user_id']}/{$tenant_id}/{$doc}";
+            $docPath = "../uploads/user_documents/{$_POST['user_id']}/{$tenant_id}/{$branch_id}/{$doc}";
             if (file_exists($docPath)) {
                 unlink($docPath);
             }

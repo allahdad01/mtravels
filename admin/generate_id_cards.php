@@ -6,6 +6,7 @@ require_once('security.php');
 require_once('../vendor/autoload.php');
 require_once('../includes/language_helpers.php');
 $tenant_id = $_SESSION['tenant_id'];
+$branch_id = $_SESSION['branch_id'];
 // Define a fallback translation function in case the language helper doesn't provide it
 if (!function_exists('__')) {
     function __($text) {
@@ -75,23 +76,23 @@ if (empty($pilgrimIds)) {
 $placeholders = str_repeat('?,', count($pilgrimIds) - 1) . '?';
 
 $sql = "
-    SELECT 
-        b.*, 
+    SELECT
+        b.*,
         f.head_of_family,
         f.contact as family_contact,
         f.package_type
-    FROM 
+    FROM
         umrah_bookings b
-    LEFT JOIN 
-        families f ON b.family_id = f.family_id AND f.tenant_id = ?
-    WHERE 
-        b.booking_id IN ({$placeholders}) AND b.tenant_id = ?
+    LEFT JOIN
+        families f ON b.family_id = f.family_id AND f.tenant_id = ? AND f.branch_id = ?
+    WHERE
+        b.booking_id IN ({$placeholders}) AND b.tenant_id = ? AND b.branch_id = ?
 ";
 
 $stmt = $pdo->prepare($sql);
 
-// Parameters must match placeholder order: [tenant_id, pilgrimIds..., tenant_id]
-$params = array_merge([$tenant_id], $pilgrimIds, [$tenant_id]);
+// Parameters must match placeholder order: [tenant_id, branch_id, pilgrimIds..., tenant_id, branch_id]
+$params = array_merge([$tenant_id, $branch_id], $pilgrimIds, [$tenant_id, $branch_id]);
 
 $stmt->execute($params);
 

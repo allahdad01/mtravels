@@ -20,6 +20,7 @@ if (!isset($_SESSION['user_id'])  || $_SESSION['role'] !== 'admin') {
     exit();
 }
 $tenant_id = $_SESSION['tenant_id'];
+$branch_id = $_SESSION['branch_id'];
 // Include database connection
 include '../includes/db.php';
 include '../includes/conn.php';
@@ -62,16 +63,16 @@ if (isset($_POST['search'])) {
                 tb.sold AS amount,
                 NULL AS passport_number
             FROM ticket_bookings tb
-            LEFT JOIN clients c ON tb.sold_to = c.id
-            LEFT JOIN suppliers s ON tb.supplier = s.id
-            WHERE tb.tenant_id = ? AND
+            LEFT JOIN clients c ON tb.sold_to = c.id AND c.branch_id = ?
+            LEFT JOIN suppliers s ON tb.supplier = s.id AND s.branch_id = ?
+            WHERE tb.tenant_id = ? AND tb.branch_id = ? AND
                 tb.passenger_name LIKE ? OR
                 tb.pnr LIKE ? OR
                 tb.phone LIKE ?";
                 
         $stmt = $pdo->prepare($ticketQuery);
         $likeParam = "%$searchTerm%";
-        $stmt->execute([$tenant_id, $likeParam, $likeParam, $likeParam]);
+        $stmt->execute([$branch_id, $branch_id, $tenant_id, $branch_id, $likeParam, $likeParam, $likeParam]);
         $ticketResults = $stmt->fetchAll(PDO::FETCH_ASSOC);
         $searchResults = array_merge($searchResults, $ticketResults);
 
@@ -96,16 +97,16 @@ if (isset($_POST['search'])) {
                 tb.sold AS amount,
                 NULL AS passport_number
             FROM ticket_reservations tb
-            LEFT JOIN clients c ON tb.sold_to = c.id
-            LEFT JOIN suppliers s ON tb.supplier = s.id
-            WHERE tb.tenant_id = ? AND
+            LEFT JOIN clients c ON tb.sold_to = c.id AND c.branch_id = ?
+            LEFT JOIN suppliers s ON tb.supplier = s.id AND s.branch_id = ?
+            WHERE tb.tenant_id = ? AND tb.branch_id = ? AND
                 tb.passenger_name LIKE ? OR
                 tb.pnr LIKE ? OR
                 tb.phone LIKE ?";
                 
         $stmt = $pdo->prepare($ticketReservationQuery);
         $likeParam = "%$searchTerm%";
-        $stmt->execute([$tenant_id, $likeParam, $likeParam, $likeParam]);
+        $stmt->execute([$branch_id, $branch_id, $tenant_id, $branch_id, $likeParam, $likeParam, $likeParam]);
         $ticketReservationResults = $stmt->fetchAll(PDO::FETCH_ASSOC);
         $searchResults = array_merge($searchResults, $ticketReservationResults);
         
@@ -130,15 +131,15 @@ if (isset($_POST['search'])) {
                 va.sold AS amount,
                 va.passport_number
             FROM visa_applications va
-            LEFT JOIN clients c ON va.sold_to = c.id
-            LEFT JOIN suppliers s ON va.supplier = s.id
-            WHERE va.tenant_id = ? AND
+            LEFT JOIN clients c ON va.sold_to = c.id AND c.branch_id = ?
+            LEFT JOIN suppliers s ON va.supplier = s.id AND s.branch_id = ?
+            WHERE va.tenant_id = ? AND va.branch_id = ? AND
                 va.applicant_name LIKE ? OR
                 va.passport_number LIKE ? OR
                 va.phone LIKE ?";
                 
         $stmt = $pdo->prepare($visaQuery);
-        $stmt->execute([$tenant_id, $likeParam, $likeParam, $likeParam]);
+        $stmt->execute([$branch_id, $branch_id, $tenant_id, $branch_id, $likeParam, $likeParam, $likeParam]);
         $visaResults = $stmt->fetchAll(PDO::FETCH_ASSOC);
         $searchResults = array_merge($searchResults, $visaResults);
         
@@ -163,14 +164,14 @@ if (isset($_POST['search'])) {
                 hb.sold_amount AS amount,
                 NULL AS passport_number
             FROM hotel_bookings hb
-            LEFT JOIN suppliers s ON hb.supplier_id = s.id
-            WHERE hb.tenant_id = ? AND
+            LEFT JOIN suppliers s ON hb.supplier_id = s.id AND s.branch_id = ?
+            WHERE hb.tenant_id = ? AND hb.branch_id = ? AND
                 CONCAT(hb.first_name, ' ', hb.last_name) LIKE ? OR
                 hb.order_id LIKE ? OR
                 hb.contact_no LIKE ?";
                 
         $stmt = $pdo->prepare($hotelQuery);
-        $stmt->execute([$tenant_id, $likeParam, $likeParam, $likeParam]);
+        $stmt->execute([$branch_id, $tenant_id, $branch_id, $likeParam, $likeParam, $likeParam]);
         $hotelResults = $stmt->fetchAll(PDO::FETCH_ASSOC);
         $searchResults = array_merge($searchResults, $hotelResults);
         
@@ -195,14 +196,14 @@ if (isset($_POST['search'])) {
             ub.sold_price AS amount,
             ub.passport_number
             FROM umrah_bookings ub
-            LEFT JOIN clients c ON ub.sold_to = c.id
-            WHERE ub.tenant_id = ? AND
+            LEFT JOIN clients c ON ub.sold_to = c.id AND c.branch_id = ?
+            WHERE ub.tenant_id = ? AND ub.branch_id = ? AND
             (ub.name LIKE ? OR
             ub.passport_number LIKE ? OR
             ub.id_type LIKE ?)";
                 
         $stmt = $pdo->prepare($umrahQuery);
-        $stmt->execute([$tenant_id, $likeParam, $likeParam, $likeParam]);
+        $stmt->execute([$branch_id, $tenant_id, $branch_id, $likeParam, $likeParam, $likeParam]);
         $umrahResults = $stmt->fetchAll(PDO::FETCH_ASSOC);
         $searchResults = array_merge($searchResults, $umrahResults);
         
@@ -228,12 +229,12 @@ if (isset($_POST['search'])) {
        ap.sold_amount AS amount,
        NULL AS passport_number
    FROM additional_payments ap
-            WHERE ap.tenant_id = ? AND
+            WHERE ap.tenant_id = ? AND ap.branch_id = ? AND
             ap.description LIKE ? OR
             ap.payment_type LIKE ?";
                 
         $stmt = $pdo->prepare($additionalPaymentsQuery);
-        $stmt->execute([$tenant_id, $likeParam, $likeParam]);
+        $stmt->execute([$tenant_id, $branch_id, $likeParam, $likeParam]);
         $additionalPaymentsResults = $stmt->fetchAll(PDO::FETCH_ASSOC);
         $searchResults = array_merge($searchResults, $additionalPaymentsResults);
         
@@ -258,13 +259,13 @@ if (isset($_POST['search'])) {
             e.amount,
             NULL AS passport_number
         FROM expenses e
-        LEFT JOIN expense_categories ec ON e.category_id = ec.id
-        WHERE e.tenant_id = ? AND
+        LEFT JOIN expense_categories ec ON e.category_id = ec.id AND ec.branch_id = ?
+        WHERE e.tenant_id = ? AND e.branch_id = ? AND
             e.description LIKE ? OR
             ec.name LIKE ?";
                 
         $stmt = $pdo->prepare($expensesQuery);
-        $stmt->execute([$tenant_id, $likeParam, $likeParam]);
+        $stmt->execute([$branch_id, $tenant_id, $branch_id, $likeParam, $likeParam]);
         $expensesResults = $stmt->fetchAll(PDO::FETCH_ASSOC);
         $searchResults = array_merge($searchResults, $expensesResults);
         
@@ -289,13 +290,13 @@ if (isset($_POST['search'])) {
             cr.balance AS amount,
             NULL AS passport_number
             FROM creditors cr
-            WHERE cr.tenant_id = ? AND
+            WHERE cr.tenant_id = ? AND cr.branch_id = ? AND
             cr.name LIKE ? OR
             cr.email LIKE ? OR
             cr.phone LIKE ?";
                 
         $stmt = $pdo->prepare($creditorsQuery);
-        $stmt->execute([$tenant_id, $likeParam, $likeParam, $likeParam]);
+        $stmt->execute([$tenant_id, $branch_id, $likeParam, $likeParam, $likeParam]);
         $creditorsResults = $stmt->fetchAll(PDO::FETCH_ASSOC);
         $searchResults = array_merge($searchResults, $creditorsResults);
         
@@ -320,13 +321,13 @@ if (isset($_POST['search'])) {
             db.balance AS amount,
             NULL AS passport_number
             FROM debtors db
-            WHERE db.tenant_id = ? AND
+            WHERE db.tenant_id = ? AND db.branch_id = ? AND
             db.name LIKE ? OR
             db.email LIKE ? OR
             db.phone LIKE ?";
                 
         $stmt = $pdo->prepare($debtorsQuery);
-        $stmt->execute([$tenant_id, $likeParam, $likeParam, $likeParam]);
+        $stmt->execute([$tenant_id, $branch_id, $likeParam, $likeParam, $likeParam]);
         $debtorsResults = $stmt->fetchAll(PDO::FETCH_ASSOC);
         $searchResults = array_merge($searchResults, $debtorsResults);
         
@@ -345,11 +346,11 @@ if (isset($_POST['search'])) {
                         mat.transaction_of,
                         mat.created_at AS transaction_date
                     FROM main_account_transactions mat
-                    WHERE mat.reference_id = ? AND mat.tenant_id = ? AND (mat.transaction_of = 'ticket_sale' 
+                    WHERE mat.reference_id = ? AND mat.tenant_id = ? AND mat.branch_id = ? AND (mat.transaction_of = 'ticket_sale'
                     OR mat.transaction_of = 'ticket_refund' 
                     OR mat.transaction_of = 'date_change')";
                 $stmt = $pdo->prepare($mainAccountTransQuery);
-                $stmt->execute([$result['id'], $tenant_id]);
+                $stmt->execute([$result['id'], $tenant_id, $branch_id]);
                 $mainAccountTrans = $stmt->fetchAll(PDO::FETCH_ASSOC);
                 $transactions = array_merge($transactions, $mainAccountTrans);
                 
@@ -364,9 +365,9 @@ if (isset($_POST['search'])) {
                         mat.transaction_of,
                         mat.created_at AS transaction_date
                     FROM main_account_transactions mat
-                    WHERE mat.reference_id = ? AND mat.tenant_id = ? AND mat.transaction_of = 'ticket_reservation'";
+                    WHERE mat.reference_id = ? AND mat.tenant_id = ? AND mat.branch_id = ? AND mat.transaction_of = 'ticket_reservation'";
                 $stmt = $pdo->prepare($ticketReservationMainAccountQuery);
-                $stmt->execute([$result['id'], $tenant_id]);
+                $stmt->execute([$result['id'], $tenant_id, $branch_id]);
                 $ticketReservationMainAccountTrans = $stmt->fetchAll(PDO::FETCH_ASSOC);
                 $transactions = array_merge($transactions, $ticketReservationMainAccountTrans);
 
@@ -381,14 +382,14 @@ if (isset($_POST['search'])) {
                         mat.transaction_of,
                         mat.created_at AS transaction_date
                     FROM main_account_transactions mat
-                    WHERE mat.reference_id = ? AND mat.tenant_id = ? AND mat.transaction_of = 'visa_sale'";
+                    WHERE mat.reference_id = ? AND mat.tenant_id = ? AND mat.branch_id = ? AND mat.transaction_of = 'visa_sale'";
                 $stmt = $pdo->prepare($visaMainAccountQuery);
-                $stmt->execute([$result['id'], $tenant_id]);
+                $stmt->execute([$result['id'], $tenant_id, $branch_id]);
                 $visaMainAccountTrans = $stmt->fetchAll(PDO::FETCH_ASSOC);
                 $transactions = array_merge($transactions, $visaMainAccountTrans);
             } elseif ($result['record_type'] == 'Hotel') {
                 // Get main account transactions related to hotel booking
-                $hotelMainAccountQuery = "SELECT 
+                $hotelMainAccountQuery = "SELECT
                         'Main Account' AS transaction_type,
                         mat.type,
                         mat.amount,
@@ -397,14 +398,14 @@ if (isset($_POST['search'])) {
                         mat.transaction_of,
                         mat.created_at AS transaction_date
                     FROM main_account_transactions mat
-                    WHERE mat.reference_id = ? AND mat.tenant_id = ? AND mat.transaction_of = 'hotel_booking'";
+                    WHERE mat.reference_id = ? AND mat.tenant_id = ? AND mat.branch_id = ? AND mat.transaction_of = 'hotel_booking'";
                 $stmt = $pdo->prepare($hotelMainAccountQuery);
-                $stmt->execute([$result['id'], $tenant_id]);
+                $stmt->execute([$result['id'], $tenant_id, $branch_id]);
                 $hotelMainAccountTrans = $stmt->fetchAll(PDO::FETCH_ASSOC);
                 $transactions = array_merge($transactions, $hotelMainAccountTrans);
             } elseif ($result['record_type'] == 'Umrah') {
                 // Get main account transactions related to umrah booking
-                $umrahMainAccountQuery = "SELECT 
+                $umrahMainAccountQuery = "SELECT
                         'Main Account' AS transaction_type,
                         mat.type,
                         mat.amount,
@@ -413,14 +414,14 @@ if (isset($_POST['search'])) {
                         mat.transaction_of,
                         mat.created_at AS transaction_date
                     FROM main_account_transactions mat
-                    WHERE mat.reference_id = ? AND mat.tenant_id = ? AND mat.transaction_of = 'umrah_booking'";
+                    WHERE mat.reference_id = ? AND mat.tenant_id = ? AND mat.branch_id = ? AND mat.transaction_of = 'umrah_booking'";
                 $stmt = $pdo->prepare($umrahMainAccountQuery);
-                $stmt->execute([$result['id'], $tenant_id]);
+                $stmt->execute([$result['id'], $tenant_id, $branch_id]);
                 $umrahMainAccountTrans = $stmt->fetchAll(PDO::FETCH_ASSOC);
                 $transactions = array_merge($transactions, $umrahMainAccountTrans);
             } elseif ($result['record_type'] == 'Additional Payment') {
                 // Get main account transactions related to additional payment
-                $apMainAccountQuery = "SELECT 
+                $apMainAccountQuery = "SELECT
                         'Main Account' AS transaction_type,
                         mat.type,
                         mat.amount,
@@ -429,14 +430,14 @@ if (isset($_POST['search'])) {
                         mat.transaction_of,
                         mat.created_at AS transaction_date
                     FROM main_account_transactions mat
-                    WHERE mat.reference_id = ? AND mat.tenant_id = ? AND mat.transaction_of = 'additional_payment'";
+                    WHERE mat.reference_id = ? AND mat.tenant_id = ? AND mat.branch_id = ? AND mat.transaction_of = 'additional_payment'";
                 $stmt = $pdo->prepare($apMainAccountQuery);
-                $stmt->execute([$result['id'], $tenant_id]);
+                $stmt->execute([$result['id'], $tenant_id, $branch_id]);
                 $apMainAccountTrans = $stmt->fetchAll(PDO::FETCH_ASSOC);
                 $transactions = array_merge($transactions, $apMainAccountTrans);
             } elseif ($result['record_type'] == 'Expense') {
                 // Get main account transactions related to expense
-                $expenseMainAccountQuery = "SELECT 
+                $expenseMainAccountQuery = "SELECT
                         'Main Account' AS transaction_type,
                         mat.type,
                         mat.amount,
@@ -445,14 +446,14 @@ if (isset($_POST['search'])) {
                         mat.transaction_of,
                         mat.created_at AS transaction_date
                     FROM main_account_transactions mat
-                    WHERE mat.reference_id = ? AND mat.tenant_id = ? AND mat.transaction_of = 'expense'";
+                    WHERE mat.reference_id = ? AND mat.tenant_id = ? AND mat.branch_id = ? AND mat.transaction_of = 'expense'";
                 $stmt = $pdo->prepare($expenseMainAccountQuery);
-                $stmt->execute([$result['id'], $tenant_id]);
+                $stmt->execute([$result['id'], $tenant_id, $branch_id]);
                 $expenseMainAccountTrans = $stmt->fetchAll(PDO::FETCH_ASSOC);
                 $transactions = array_merge($transactions, $expenseMainAccountTrans);
             } elseif ($result['record_type'] == 'Creditor') {
                 // Get main account transactions related to creditor
-                $creditorMainAccountQuery = "SELECT 
+                $creditorMainAccountQuery = "SELECT
                         'Main Account' AS transaction_type,
                         mat.type,
                         mat.amount,
@@ -461,14 +462,14 @@ if (isset($_POST['search'])) {
                         mat.transaction_of,
                         mat.created_at AS transaction_date
                     FROM main_account_transactions mat
-                    WHERE mat.reference_id = ? AND mat.tenant_id = ? AND mat.transaction_of = 'creditor'";
+                    WHERE mat.reference_id = ? AND mat.tenant_id = ? AND mat.branch_id = ? AND mat.transaction_of = 'creditor'";
                 $stmt = $pdo->prepare($creditorMainAccountQuery);
-                $stmt->execute([$result['id'], $tenant_id]);
+                $stmt->execute([$result['id'], $tenant_id, $branch_id]);
                 $creditorMainAccountTrans = $stmt->fetchAll(PDO::FETCH_ASSOC);
                 $transactions = array_merge($transactions, $creditorMainAccountTrans);
             } elseif ($result['record_type'] == 'Debtor') {
                 // Get main account transactions related to debtor
-                $debtorMainAccountQuery = "SELECT 
+                $debtorMainAccountQuery = "SELECT
                         'Main Account' AS transaction_type,
                         mat.type,
                         mat.amount,
@@ -477,9 +478,9 @@ if (isset($_POST['search'])) {
                         mat.transaction_of,
                         mat.created_at AS transaction_date
                     FROM main_account_transactions mat
-                    WHERE mat.reference_id = ? AND mat.tenant_id = ? AND mat.transaction_of = 'debtor'";
+                    WHERE mat.reference_id = ? AND mat.tenant_id = ? AND mat.branch_id = ? AND mat.transaction_of = 'debtor'";
                 $stmt = $pdo->prepare($debtorMainAccountQuery);
-                $stmt->execute([$result['id'], $tenant_id]);
+                $stmt->execute([$result['id'], $tenant_id, $branch_id]);
                 $debtorMainAccountTrans = $stmt->fetchAll(PDO::FETCH_ASSOC);
                 $transactions = array_merge($transactions, $debtorMainAccountTrans);
             }

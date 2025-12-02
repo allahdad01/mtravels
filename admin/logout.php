@@ -6,6 +6,7 @@ if (session_status() === PHP_SESSION_NONE) {
 // Include security module
 require_once 'security.php';
 $tenant_id = $_SESSION['tenant_id'];
+$branch_id = $_SESSION['branch_id'];
 // Enforce authentication
 enforce_auth();
 
@@ -17,8 +18,8 @@ require_once('../includes/db.php');
 try {
     // Log the logout time if you want to track user sessions
     if (isset($_SESSION['user_id'])) {
-        $stmt = $pdo->prepare("INSERT INTO login_history (tenant_id, user_id, action, action_time) VALUES (?, ?, 'logout', NOW())");
-        $stmt->execute([$tenant_id, $_SESSION['user_id']]);
+        $stmt = $pdo->prepare("INSERT INTO login_history (tenant_id, user_id, action, action_time, branch_id) VALUES (?, ?, 'logout', NOW(), ?)");
+        $stmt->execute([$tenant_id, $_SESSION['user_id'], $branch_id]);
     }
 } catch (PDOException $e) {
     error_log("Logout Error: " . $e->getMessage());

@@ -23,11 +23,13 @@ try {
     }
     
     $familyId = intval($_GET['family_id']);
+    $tenant_id = $_SESSION['tenant_id'];
+    $branch_id = $_SESSION['branch_id'];
     
     // Get family information
-    $familyQuery = "SELECT * FROM families WHERE family_id = ?";
+    $familyQuery = "SELECT * FROM families WHERE family_id = ? AND tenant_id = ? AND branch_id = ?";
     $familyStmt = $pdo->prepare($familyQuery);
-    $familyStmt->execute([$familyId]);
+    $familyStmt->execute([$familyId, $tenant_id, $branch_id]);
     $family = $familyStmt->fetch(PDO::FETCH_ASSOC);
     
     if (!$family) {
@@ -36,7 +38,7 @@ try {
     
     // Get all family members' booking details
     $membersQuery = "
-        SELECT 
+        SELECT
             um.booking_id,
             um.name,
             um.passport_number,
@@ -48,18 +50,18 @@ try {
             f.package_type,
             f.head_of_family
         FROM umrah_bookings um
-        LEFT JOIN families f ON um.family_id = f.family_id
-        WHERE um.family_id = ?
-        ORDER BY 
-            CASE 
-                WHEN um.name = f.head_of_family THEN 1 
-                ELSE 2 
+        LEFT JOIN families f ON um.family_id = f.family_id AND f.tenant_id = ? AND f.branch_id = ?
+        WHERE um.family_id = ? AND um.tenant_id = ? AND um.branch_id = ?
+        ORDER BY
+            CASE
+                WHEN um.name = f.head_of_family THEN 1
+                ELSE 2
             END,
             um.booking_id ASC
     ";
-    
+
     $membersStmt = $pdo->prepare($membersQuery);
-    $membersStmt->execute([$familyId]);
+    $membersStmt->execute([$tenant_id, $branch_id, $familyId, $tenant_id, $branch_id]);
     $members = $membersStmt->fetchAll(PDO::FETCH_ASSOC);
     
     if (empty($members)) {

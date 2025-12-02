@@ -4,6 +4,7 @@ if (session_status() === PHP_SESSION_NONE) {
     session_start();
 }
 $tenant_id = $_SESSION['tenant_id'];
+$branch_id = $_SESSION['branch_id'];
 // Include security module
 require_once 'security.php';
 
@@ -33,17 +34,17 @@ if (!$clientId) {
     $error = "No client ID provided";
 } else {
     // Get client details
-    $clientQuery = "SELECT id, image, name, email, phone, usd_balance, afs_balance, address, created_at, updated_at, client_type FROM clients WHERE id = ? AND tenant_id = ?";
-        
+    $clientQuery = "SELECT id, image, name, email, phone, usd_balance, afs_balance, address, created_at, updated_at, client_type FROM clients WHERE id = ? AND tenant_id = ? AND branch_id = ?";
+
     $stmt = $pdo->prepare($clientQuery);
-    $stmt->execute([$clientId, $tenant_id]);
+    $stmt->execute([$clientId, $tenant_id, $branch_id]);
     $clientData = $stmt->fetch(PDO::FETCH_ASSOC);
     
     if (!$clientData) {
         $error = "Client not found";
     } else {
         // Get transactions related to this client
-        $transactionsQuery = "SELECT 
+        $transactionsQuery = "SELECT
                 ct.id,
                 ct.client_id,
                 ct.amount,
@@ -54,12 +55,12 @@ if (!$clientId) {
                 ct.transaction_of,
                 ct.created_at AS transaction_date
             FROM client_transactions ct
-            WHERE ct.client_id = ? 
-            AND ct.tenant_id = ?
+            WHERE ct.client_id = ?
+            AND ct.tenant_id = ? AND ct.branch_id = ?
             ORDER BY ct.created_at DESC";
-            
+
         $stmt = $pdo->prepare($transactionsQuery);
-        $stmt->execute([$clientId, $tenant_id]);
+        $stmt->execute([$clientId, $tenant_id, $branch_id]);
         $transactions = $stmt->fetchAll(PDO::FETCH_ASSOC);
     }
 }
@@ -222,9 +223,9 @@ include '../includes/header.php';
                                                 <h2 class="mb-0">
                                                     <?php
                                                     // Get ticket count
-                                                    $countQuery = "SELECT COUNT(*) FROM ticket_bookings WHERE sold_to = ?";
+                                                    $countQuery = "SELECT COUNT(*) FROM ticket_bookings WHERE sold_to = ? AND tenant_id = ? AND branch_id = ?";
                                                     $stmt = $pdo->prepare($countQuery);
-                                                    $stmt->execute([$clientId]);
+                                                    $stmt->execute([$clientId, $tenant_id, $branch_id]);
                                                     echo h($stmt->fetchColumn());
                                                     ?>
                                                 </h2>
@@ -241,9 +242,9 @@ include '../includes/header.php';
                                                 <h2 class="mb-0">
                                                     <?php
                                                     // Get visa count
-                                                    $countQuery = "SELECT COUNT(*) FROM visa_applications WHERE sold_to = ?";
+                                                    $countQuery = "SELECT COUNT(*) FROM visa_applications WHERE sold_to = ? AND tenant_id = ? AND branch_id = ?";
                                                     $stmt = $pdo->prepare($countQuery);
-                                                    $stmt->execute([$clientId]);
+                                                    $stmt->execute([$clientId, $tenant_id, $branch_id]);
                                                     echo h($stmt->fetchColumn());
                                                     ?>
                                                 </h2>
@@ -260,9 +261,9 @@ include '../includes/header.php';
                                                 <h2 class="mb-0">
                                                     <?php
                                                     // Get hotel count
-                                                    $countQuery = "SELECT COUNT(*) FROM hotel_bookings WHERE sold_to = ?";
+                                                    $countQuery = "SELECT COUNT(*) FROM hotel_bookings WHERE sold_to = ? AND tenant_id = ? AND branch_id = ?";
                                                     $stmt = $pdo->prepare($countQuery);
-                                                    $stmt->execute([$clientId]);
+                                                    $stmt->execute([$clientId, $tenant_id, $branch_id]);
                                                     echo h($stmt->fetchColumn());
                                                     ?>
                                                 </h2>
@@ -279,9 +280,9 @@ include '../includes/header.php';
                                                 <h2 class="mb-0">
                                                     <?php
                                                     // Get umrah count
-                                                    $countQuery = "SELECT COUNT(*) FROM client_transactions WHERE client_id = ? AND transaction_of = 'umrah'";
+                                                    $countQuery = "SELECT COUNT(*) FROM client_transactions WHERE client_id = ? AND transaction_of = 'umrah' AND tenant_id = ? AND branch_id = ?";
                                                     $stmt = $pdo->prepare($countQuery);
-                                                    $stmt->execute([$clientId]);
+                                                    $stmt->execute([$clientId, $tenant_id, $branch_id]);
                                                     echo h($stmt->fetchColumn());
                                                     ?>
                                                 </h2>
@@ -302,9 +303,9 @@ include '../includes/header.php';
                                                 <i class="feather icon-tag mr-2" style="font-size: 1.5rem;"></i>
                                                 <h2 class="mb-0">
                                                     <?php
-                                                    $countQuery = "SELECT COUNT(*) FROM client_transactions WHERE client_id = ? AND transaction_of = 'ticket_refund'";
+                                                    $countQuery = "SELECT COUNT(*) FROM client_transactions WHERE client_id = ? AND transaction_of = 'ticket_refund' AND tenant_id = ? AND branch_id = ?";
                                                     $stmt = $pdo->prepare($countQuery);
-                                                    $stmt->execute([$clientId]);
+                                                    $stmt->execute([$clientId, $tenant_id, $branch_id]);
                                                     echo h($stmt->fetchColumn());
                                                     ?>
                                                 </h2>
@@ -320,9 +321,9 @@ include '../includes/header.php';
                                                 <i class="feather icon-file-text mr-2" style="font-size: 1.5rem;"></i>
                                                 <h2 class="mb-0">
                                                     <?php
-                                                    $countQuery = "SELECT COUNT(*) FROM client_transactions WHERE client_id = ? AND transaction_of = 'visa_refund'";
+                                                    $countQuery = "SELECT COUNT(*) FROM client_transactions WHERE client_id = ? AND transaction_of = 'visa_refund' AND tenant_id = ? AND branch_id = ?";
                                                     $stmt = $pdo->prepare($countQuery);
-                                                    $stmt->execute([$clientId]);
+                                                    $stmt->execute([$clientId, $tenant_id, $branch_id]);
                                                     echo h($stmt->fetchColumn());
                                                     ?>
                                                 </h2>
@@ -338,9 +339,9 @@ include '../includes/header.php';
                                                 <i class="feather icon-home mr-2" style="font-size: 1.5rem;"></i>
                                                 <h2 class="mb-0">
                                                     <?php
-                                                    $countQuery = "SELECT COUNT(*) FROM client_transactions WHERE client_id = ? AND transaction_of = 'hotel_refund'";
+                                                    $countQuery = "SELECT COUNT(*) FROM client_transactions WHERE client_id = ? AND transaction_of = 'hotel_refund' AND tenant_id = ? AND branch_id = ?";
                                                     $stmt = $pdo->prepare($countQuery);
-                                                    $stmt->execute([$clientId]);
+                                                    $stmt->execute([$clientId, $tenant_id, $branch_id]);
                                                     echo h($stmt->fetchColumn());
                                                     ?>
                                                 </h2>
@@ -356,9 +357,9 @@ include '../includes/header.php';
                                                 <i class="feather icon-star mr-2" style="font-size: 1.5rem;"></i>
                                                 <h2 class="mb-0">
                                                     <?php
-                                                    $countQuery = "SELECT COUNT(*) FROM client_transactions WHERE client_id = ? AND transaction_of = 'umrah_refund'";
+                                                    $countQuery = "SELECT COUNT(*) FROM client_transactions WHERE client_id = ? AND transaction_of = 'umrah_refund' AND tenant_id = ? AND branch_id = ?";
                                                     $stmt = $pdo->prepare($countQuery);
-                                                    $stmt->execute([$clientId]);
+                                                    $stmt->execute([$clientId, $tenant_id, $branch_id]);
                                                     echo h($stmt->fetchColumn());
                                                     ?>
                                                 </h2>
@@ -379,9 +380,9 @@ include '../includes/header.php';
                                                 <i class="feather icon-calendar mr-2" style="font-size: 1.5rem;"></i>
                                                 <h2 class="mb-0">
                                                     <?php
-                                                    $countQuery = "SELECT COUNT(*) FROM client_transactions WHERE client_id = ? AND transaction_of = 'date_change'";
+                                                    $countQuery = "SELECT COUNT(*) FROM client_transactions WHERE client_id = ? AND transaction_of = 'date_change' AND tenant_id = ? AND branch_id = ?";
                                                     $stmt = $pdo->prepare($countQuery);
-                                                    $stmt->execute([$clientId]);
+                                                    $stmt->execute([$clientId, $tenant_id, $branch_id]);
                                                     echo h($stmt->fetchColumn());
                                                     ?>
                                                 </h2>
@@ -397,9 +398,9 @@ include '../includes/header.php';
                                                 <i class="feather icon-plus-circle mr-2" style="font-size: 1.5rem;"></i>
                                                 <h2 class="mb-0">
                                                     <?php
-                                                    $countQuery = "SELECT COUNT(*) FROM client_transactions WHERE client_id = ? AND transaction_of = 'additional_payment'";
+                                                    $countQuery = "SELECT COUNT(*) FROM client_transactions WHERE client_id = ? AND transaction_of = 'additional_payment' AND tenant_id = ? AND branch_id = ?";
                                                     $stmt = $pdo->prepare($countQuery);
-                                                    $stmt->execute([$clientId]);
+                                                    $stmt->execute([$clientId, $tenant_id, $branch_id]);
                                                     echo h($stmt->fetchColumn());
                                                     ?>
                                                 </h2>
@@ -415,9 +416,9 @@ include '../includes/header.php';
                                                 <i class="feather icon-clock mr-2" style="font-size: 1.5rem;"></i>
                                                 <h2 class="mb-0">
                                                     <?php
-                                                    $countQuery = "SELECT COUNT(*) FROM client_transactions WHERE client_id = ? AND transaction_of = 'ticket_reserve'";
+                                                    $countQuery = "SELECT COUNT(*) FROM client_transactions WHERE client_id = ? AND transaction_of = 'ticket_reserve' AND tenant_id = ? AND branch_id = ?";
                                                     $stmt = $pdo->prepare($countQuery);
-                                                    $stmt->execute([$clientId]);
+                                                    $stmt->execute([$clientId, $tenant_id, $branch_id]);
                                                     echo h($stmt->fetchColumn());
                                                     ?>
                                                 </h2>
@@ -433,9 +434,9 @@ include '../includes/header.php';
                                                 <i class="feather icon-repeat mr-2" style="font-size: 1.5rem;"></i>
                                                 <h2 class="mb-0">
                                                     <?php
-                                                    $countQuery = "SELECT COUNT(*) FROM client_transactions WHERE client_id = ? AND transaction_of = 'fund'";
+                                                    $countQuery = "SELECT COUNT(*) FROM client_transactions WHERE client_id = ? AND transaction_of = 'fund' AND tenant_id = ? AND branch_id = ?";
                                                     $stmt = $pdo->prepare($countQuery);
-                                                    $stmt->execute([$clientId]);
+                                                    $stmt->execute([$clientId, $tenant_id, $branch_id]);
                                                     echo h($stmt->fetchColumn());
                                                     ?>
                                                 </h2>
@@ -457,9 +458,9 @@ include '../includes/header.php';
                                                 <h2 class="mb-0">
                                                     <?php
                                                     // Get total credit
-                                                    $creditQuery = "SELECT SUM(amount) FROM client_transactions WHERE client_id = ? AND type = 'credit'";
+                                                    $creditQuery = "SELECT SUM(amount) FROM client_transactions WHERE client_id = ? AND type = 'credit' AND tenant_id = ? AND branch_id = ?";
                                                     $stmt = $pdo->prepare($creditQuery);
-                                                    $stmt->execute([$clientId]);
+                                                    $stmt->execute([$clientId, $tenant_id, $branch_id]);
                                                     $totalCredit = $stmt->fetchColumn() ?: 0;
                                                     echo number_format($totalCredit, 2);
                                                     ?>
@@ -477,9 +478,9 @@ include '../includes/header.php';
                                                 <h2 class="mb-0">
                                                     <?php
                                                     // Get total debit
-                                                    $debitQuery = "SELECT SUM(amount) FROM client_transactions WHERE client_id = ? AND type = 'debit'";
+                                                    $debitQuery = "SELECT SUM(amount) FROM client_transactions WHERE client_id = ? AND type = 'debit' AND tenant_id = ? AND branch_id = ?";
                                                     $stmt = $pdo->prepare($debitQuery);
-                                                    $stmt->execute([$clientId]);
+                                                    $stmt->execute([$clientId, $tenant_id, $branch_id]);
                                                     $totalDebit = $stmt->fetchColumn() ?: 0;
                                                     echo number_format($totalDebit, 2);
                                                     ?>
@@ -513,9 +514,9 @@ include '../includes/header.php';
                                                 <i class="feather icon-file mr-2" style="font-size: 1.5rem;"></i>
                                                 <h2 class="mb-0">
                                                     <?php
-                                                    $countQuery = "SELECT COUNT(*) FROM client_transactions WHERE client_id = ? AND transaction_of = 'jv_payment'";
+                                                    $countQuery = "SELECT COUNT(*) FROM client_transactions WHERE client_id = ? AND transaction_of = 'jv_payment' AND tenant_id = ? AND branch_id = ?";
                                                     $stmt = $pdo->prepare($countQuery);
-                                                    $stmt->execute([$clientId]);
+                                                    $stmt->execute([$clientId, $tenant_id, $branch_id]);
                                                     echo h($stmt->fetchColumn());
                                                     ?>
                                                 </h2>

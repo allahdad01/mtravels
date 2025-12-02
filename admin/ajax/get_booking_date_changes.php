@@ -7,6 +7,7 @@ require_once '../../includes/conn.php';
 // Enforce authentication
 enforce_auth();
 $tenant_id = $_SESSION['tenant_id'];
+$branch_id = $_SESSION['branch_id'];
 
 header('Content-Type: application/json');
 
@@ -22,10 +23,10 @@ try {
     // Get date change history for this booking
     $stmt = $conn->prepare("
         SELECT * FROM date_change_umrah
-        WHERE umrah_booking_id = ? AND tenant_id = ?
+        WHERE umrah_booking_id = ? AND tenant_id = ? AND branch_id = ?
         ORDER BY created_at DESC
     ");
-    $stmt->bind_param("ii", $booking_id, $tenant_id);
+    $stmt->bind_param("iii", $booking_id, $tenant_id, $branch_id);
     $stmt->execute();
     $result = $stmt->get_result();
 

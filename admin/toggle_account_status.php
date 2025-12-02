@@ -5,6 +5,7 @@ require_once 'security.php';
 // Enforce authentication
 enforce_auth();
 $tenant_id = $_SESSION['tenant_id'];
+$branch_id = $_SESSION['branch_id'];
 
 
 // Check if user is logged in
@@ -46,8 +47,8 @@ if (!in_array($newStatus, ['active', 'inactive'])) {
 
 try {
     // Update the account status
-    $stmt = $pdo->prepare("UPDATE main_account SET status = ?, last_updated = NOW() WHERE id = ? AND tenant_id = ?");
-    $result = $stmt->execute([$newStatus, $accountId, $tenant_id]);
+    $stmt = $pdo->prepare("UPDATE main_account SET status = ?, last_updated = NOW() WHERE id = ? AND tenant_id = ? AND branch_id = ?");
+    $result = $stmt->execute([$newStatus, $accountId, $tenant_id, $branch_id]);
 
     if ($result) {
         // Log status change to server logs instead

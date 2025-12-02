@@ -8,6 +8,7 @@ require_once '../includes/language_helpers.php';
 // Enforce authentication
 enforce_auth();
 $tenant_id = $_SESSION['tenant_id'];
+$branch_id = $_SESSION['branch_id'];
 // Start session if not already started
 
 // Check if user is logged in
@@ -31,17 +32,17 @@ if (!$supplierId) {
     $error = "No supplier ID provided";
 } else {
     // Get supplier details
-    $supplierQuery = "SELECT id, name, contact_person, supplier_type, phone, email, address, currency, balance, created_at, updated_at FROM suppliers WHERE id = ? AND tenant_id = ?";
-        
+    $supplierQuery = "SELECT id, name, contact_person, supplier_type, phone, email, address, currency, balance, created_at, updated_at FROM suppliers WHERE id = ? AND tenant_id = ? AND branch_id = ?";
+
     $stmt = $pdo->prepare($supplierQuery);
-    $stmt->execute([$supplierId, $tenant_id]);
+    $stmt->execute([$supplierId, $tenant_id, $branch_id]);
     $supplierData = $stmt->fetch(PDO::FETCH_ASSOC);
     
     if (!$supplierData) {
         $error = "Supplier not found";
     } else {
         // Get transactions related to this supplier
-        $transactionsQuery = "SELECT 
+        $transactionsQuery = "SELECT
                 st.id,
                 st.supplier_id,
                 st.amount,
@@ -50,13 +51,13 @@ if (!$supplierId) {
                 st.reference_id,
                 st.transaction_of,
                 st.transaction_date
-            
+
             FROM supplier_transactions st
-            WHERE st.supplier_id = ? AND st.tenant_id = ?
+            WHERE st.supplier_id = ? AND st.tenant_id = ? AND st.branch_id = ?
             ORDER BY st.transaction_date DESC";
-            
+
         $stmt = $pdo->prepare($transactionsQuery);
-        $stmt->execute([$supplierId, $tenant_id]);
+        $stmt->execute([$supplierId, $tenant_id, $branch_id]);
         $transactions = $stmt->fetchAll(PDO::FETCH_ASSOC);
     }
 }

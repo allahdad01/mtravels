@@ -16,6 +16,7 @@ if (session_status() === PHP_SESSION_NONE) {
     session_start();
 }
 $tenant_id = $_SESSION['tenant_id'];
+$branch_id = $_SESSION['branch_id'];
 // Check if user is logged in
 if (!isset($_SESSION['user_id']) || $_SESSION['role'] !== 'admin') {
     header('Content-Type: application/json');
@@ -46,8 +47,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['delete_transaction'])
         $conn->begin_transaction();
         
         // Get transaction details
-        $stmt = $conn->prepare("SELECT * FROM debtor_transactions WHERE id = ? AND tenant_id = ?");
-        $stmt->bind_param("ii", $transaction_id, $tenant_id);
+        $stmt = $conn->prepare("SELECT * FROM debtor_transactions WHERE id = ? AND tenant_id = ? AND branch_id = ?");
+        $stmt->bind_param("iii", $transaction_id, $tenant_id, $branch_id);
         $stmt->execute();
         $result = $stmt->get_result();
         $transaction = $result->fetch_assoc();
@@ -57,8 +58,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['delete_transaction'])
         }
         
         // Get the linked main account transaction
-        $stmt = $conn->prepare("SELECT * FROM main_account_transactions WHERE reference_id = ? AND transaction_of = 'debtor' AND tenant_id = ?");
-        $stmt->bind_param("ii", $transaction_id, $tenant_id);
+        $stmt = $conn->prepare("SELECT * FROM main_account_transactions WHERE reference_id = ? AND transaction_of = 'debtor' AND tenant_id = ? AND branch_id = ?");
+        $stmt->bind_param("iii", $transaction_id, $tenant_id, $branch_id);
         $stmt->execute();
         $result = $stmt->get_result();
         $main_transaction = $result->fetch_assoc();
@@ -82,13 +83,14 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['delete_transaction'])
             AND currency = ?
             AND id > ?
             AND id != ? AND tenant_id = ?
+            AND branch_id = ?
         ");
-        $updateSubsequentStmt->bind_param("dsssis", $adjustment, $main_transaction['main_account_id'], $main_currency, $main_transaction['id'], $main_transaction['id'], $tenant_id);
+        $updateSubsequentStmt->bind_param("dsssisi", $adjustment, $main_transaction['main_account_id'], $main_currency, $main_transaction['id'], $main_transaction['id'], $tenant_id, $branch_id);
         $updateSubsequentStmt->execute();
         
         // Get debtor information
-        $stmt = $conn->prepare("SELECT balance FROM debtors WHERE id = ? AND tenant_id = ?");
-        $stmt->bind_param("ii", $debtor_id, $tenant_id);
+        $stmt = $conn->prepare("SELECT balance FROM debtors WHERE id = ? AND tenant_id = ? AND branch_id = ?");
+        $stmt->bind_param("iii", $debtor_id, $tenant_id, $branch_id);
         $stmt->execute();
         $result = $stmt->get_result();
         $debtor = $result->fetch_assoc();
@@ -101,8 +103,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['delete_transaction'])
         } else {
             throw new Exception("Invalid transaction type");
         }
-        $stmt = $conn->prepare("UPDATE debtors SET balance = ? WHERE id = ? AND tenant_id = ?");
-        $stmt->bind_param("dii", $new_balance, $debtor_id, $tenant_id);
+        $stmt = $conn->prepare("UPDATE debtors SET balance = ? WHERE id = ? AND tenant_id = ? AND branch_id = ?");
+        $stmt->bind_param("diii", $new_balance, $debtor_id, $tenant_id, $branch_id);
         $stmt->execute();
         
         // Get main account info and update the correct currency balance
@@ -118,8 +120,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['delete_transaction'])
         }
         
         // Get current main account balance
-        $stmt = $conn->prepare("SELECT $balance_column FROM main_account WHERE id = ? AND tenant_id = ?");
-        $stmt->bind_param("ii", $main_transaction['main_account_id'], $tenant_id);
+        $stmt = $conn->prepare("SELECT $balance_column FROM main_account WHERE id = ? AND tenant_id = ? AND branch_id = ?");
+        $stmt->bind_param("iii", $main_transaction['main_account_id'], $tenant_id, $branch_id);
         $stmt->execute();
         $result = $stmt->get_result();
         $main_account = $result->fetch_assoc();
@@ -131,17 +133,17 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['delete_transaction'])
         // Update main account balance based on transaction type: credit deducts, debit adds
         $balance_adjustment = ($main_transaction['type'] == 'credit') ? -$main_amount : $main_amount;
         $new_main_balance = $main_account[$balance_column] + $balance_adjustment;
-        $stmt = $conn->prepare("UPDATE main_account SET $balance_column = ? WHERE id = ? AND tenant_id = ?");
-        $stmt->bind_param("dii", $new_main_balance, $main_transaction['main_account_id'], $tenant_id);
+        $stmt = $conn->prepare("UPDATE main_account SET $balance_column = ? WHERE id = ? AND tenant_id = ? AND branch_id = ?");
+        $stmt->bind_param("diii", $new_main_balance, $main_transaction['main_account_id'], $tenant_id, $branch_id);
         $stmt->execute();
         
         // Delete the transactions
-        $stmt = $conn->prepare("DELETE FROM debtor_transactions WHERE id = ? AND tenant_id = ?");
-        $stmt->bind_param("ii", $transaction_id, $tenant_id);
+        $stmt = $conn->prepare("DELETE FROM debtor_transactions WHERE id = ? AND tenant_id = ? AND branch_id = ?");
+        $stmt->bind_param("iii", $transaction_id, $tenant_id, $branch_id);
         $stmt->execute();
-        
-        $stmt = $conn->prepare("DELETE FROM main_account_transactions WHERE id = ? AND tenant_id = ?");
-        $stmt->bind_param("ii", $main_transaction['id'], $tenant_id);
+
+        $stmt = $conn->prepare("DELETE FROM main_account_transactions WHERE id = ? AND tenant_id = ? AND branch_id = ?");
+        $stmt->bind_param("iii", $main_transaction['id'], $tenant_id, $branch_id);
         $stmt->execute();
         
        

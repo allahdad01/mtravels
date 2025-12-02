@@ -6,6 +6,7 @@ require_once '../security.php';
 enforce_auth();
 
 $tenant_id = $_SESSION['tenant_id'];
+$branch_id = $_SESSION['branch_id'];
 
 // Connect to database
 require_once '../../includes/conn.php';
@@ -17,7 +18,7 @@ if ($conn->connect_error) {
 }
 
 // Get suppliers
-$result = $conn->query("SELECT id, name, currency FROM suppliers WHERE tenant_id = $tenant_id");
+$result = $conn->query("SELECT id, name, currency FROM suppliers WHERE tenant_id = $tenant_id AND branch_id = $branch_id");
 
 $suppliers = [];
 while ($row = $result->fetch_assoc()) {

@@ -22,6 +22,7 @@ if (!isset($_SESSION['user_id'])  || $_SESSION['role'] !== 'admin') {
     exit();
 }
 $tenant_id = $_SESSION['tenant_id'];
+$branch_id = $_SESSION['branch_id'];
 include 'handlers/debtors_handler.php';
 ?>
 

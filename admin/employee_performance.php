@@ -9,6 +9,7 @@ if (session_status() === PHP_SESSION_NONE) {
 }
 
 $tenant_id = $_SESSION['tenant_id'];
+$branch_id = $_SESSION['branch_id'];
 
 // Check if user is logged in and is admin
 if (!isset($_SESSION['user_id']) || $_SESSION['role'] !== 'admin') {
@@ -26,13 +27,13 @@ $query = "
            pr.id as review_id, pr.overall_rating, pr.review_date, pr.status as review_status,
            pr.period_start, pr.period_end
     FROM users u
-    LEFT JOIN salary_management sm ON u.id = sm.user_id AND sm.tenant_id = u.tenant_id
-    LEFT JOIN performance_reviews pr ON u.id = pr.user_id AND pr.tenant_id = u.tenant_id
-        AND pr.id = (SELECT MAX(id) FROM performance_reviews WHERE user_id = u.id AND tenant_id = u.tenant_id)
-    WHERE u.tenant_id = ? AND u.role != 'super_admin'
+    LEFT JOIN salary_management sm ON u.id = sm.user_id AND sm.tenant_id = u.tenant_id AND sm.branch_id = u.branch_id
+    LEFT JOIN performance_reviews pr ON u.id = pr.user_id AND pr.tenant_id = u.tenant_id AND pr.branch_id = u.branch_id
+        AND pr.id = (SELECT MAX(id) FROM performance_reviews WHERE user_id = u.id AND tenant_id = u.tenant_id AND branch_id = u.branch_id)
+    WHERE u.tenant_id = ? AND u.branch_id = ? AND u.role != 'super_admin'
 ";
 
-$params = [$tenant_id];
+$params = [$tenant_id, $branch_id];
 
 if (!empty($search)) {
     $query .= " AND (u.name LIKE ? OR u.email LIKE ?)";

@@ -11,10 +11,15 @@ try {
     // Get the input data
     $data = json_decode(file_get_contents("php://input"), true);
 
-    // Access tenant_id from session
+    // Access tenant_id and branch_id from session
     $tenant_id = $_SESSION['tenant_id'] ?? null;
+    $branch_id = $_SESSION['branch_id'] ?? null;
     if (!$tenant_id) {
         echo json_encode(['success' => false, 'message' => 'Tenant not found in session.']);
+        exit;
+    }
+    if (!$branch_id) {
+        echo json_encode(['success' => false, 'message' => 'Branch not found in session.']);
         exit;
     }
 
@@ -40,8 +45,8 @@ try {
     include '../includes/db.php';
 
     // Update client in the database
-    $stmt = $pdo->prepare("UPDATE clients SET name = ?, email = ?, phone = ?, client_type = ?, status = ? WHERE id = ? AND tenant_id = ?");
-    $stmt->execute([$name, $email, $phone, $client_type, $status, $id, $tenant_id]);
+    $stmt = $pdo->prepare("UPDATE clients SET name = ?, email = ?, phone = ?, client_type = ?, status = ? WHERE id = ? AND tenant_id = ? AND branch_id = ?");
+    $stmt->execute([$name, $email, $phone, $client_type, $status, $id, $tenant_id, $branch_id]);
 
     // Check if the update affected any rows
     if ($stmt->rowCount() > 0) {

@@ -8,6 +8,7 @@ require_once 'security.php';
 // Enforce authentication
 enforce_auth();
 $tenant_id = $_SESSION['tenant_id'];
+$branch_id = $_SESSION['branch_id'];
 
 require_once('../includes/db.php');
 
@@ -53,9 +54,9 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             FROM visa_refunds r
             JOIN visa_applications v ON r.visa_id = v.id
             LEFT JOIN clients c ON v.sold_to = c.id
-            WHERE r.id = ? AND r.tenant_id = ?
+            WHERE r.id = ? AND r.tenant_id = ? AND r.branch_id = ?
         ");
-        $stmt->execute([$refund_id, $tenant_id]);
+        $stmt->execute([$refund_id, $tenant_id, $branch_id]);
         $refund = $stmt->fetch(PDO::FETCH_ASSOC);
 
         if (!$refund) {
@@ -86,8 +87,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 $balanceField = 'afs_balance';
                 break;
         }
-        $stmt = $pdo->prepare("SELECT $balanceField as current_balance FROM main_account WHERE id = ? AND tenant_id = ?");
-        $stmt->execute([$main_account_id, $tenant_id]);
+        $stmt = $pdo->prepare("SELECT $balanceField as current_balance FROM main_account WHERE id = ? AND tenant_id = ? AND branch_id = ?");
+        $stmt->execute([$main_account_id, $tenant_id, $branch_id]);
         $balanceResult = $stmt->fetch(PDO::FETCH_ASSOC);
 
         if (!$balanceResult) {
@@ -100,8 +101,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             $newBalance = $balanceResult['current_balance'] - $amount;
 
             // Update main account balance
-            $stmt = $pdo->prepare("UPDATE main_account SET $balanceField = ? WHERE id = ? AND tenant_id = ?");
-            $stmt->execute([$newBalance, $main_account_id, $tenant_id]);
+            $stmt = $pdo->prepare("UPDATE main_account SET $balanceField = ? WHERE id = ? AND tenant_id = ? AND branch_id = ?");
+            $stmt->execute([$newBalance, $main_account_id, $tenant_id, $branch_id]);
         } else {
             // For non-agency clients, just store the current balance in transaction record
             $newBalance = $balanceResult['current_balance'];
@@ -112,8 +113,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 
         // Insert transaction record
         $stmt = $pdo->prepare("INSERT INTO main_account_transactions
-            (main_account_id, type, amount, currency, exchange_rate, description, transaction_of, reference_id, balance, created_at, tenant_id)
-            VALUES (?, 'debit', ?, ?, ?, ?, 'visa_refund', ?, ?, ?, ?)");
+            (main_account_id, type, amount, currency, exchange_rate, description, transaction_of, reference_id, balance, created_at, tenant_id, branch_id)
+            VALUES (?, 'debit', ?, ?, ?, ?, 'visa_refund', ?, ?, ?, ?, ?)");
         $stmt->execute([
             $main_account_id,
             $transactionAmount,
@@ -123,7 +124,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             $refund_id,
             $newBalance,
             $payment_date,
-            $tenant_id
+            $tenant_id,
+            $branch_id
         ]);
 
         // Get the last inserted ID
@@ -174,11 +176,11 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         $user_agent = $_SERVER['HTTP_USER_AGENT'] ?? '';
         
         $activityStmt = $pdo->prepare("
-            INSERT INTO activity_log 
-            (user_id, action, table_name, record_id, old_values, new_values, ip_address, user_agent, created_at, tenant_id) 
-            VALUES (?, 'add', 'main_account_transactions', ?, ?, ?, ?, ?, NOW(), ?)
+            INSERT INTO activity_log
+            (user_id, action, table_name, record_id, old_values, new_values, ip_address, user_agent, created_at, tenant_id, branch_id)
+            VALUES (?, 'add', 'main_account_transactions', ?, ?, ?, ?, ?, NOW(), ?, ?)
         ");
-        $activityStmt->execute([$user_id, $transaction_id, $old_values, $new_values, $ip_address, $user_agent, $tenant_id]);
+        $activityStmt->execute([$user_id, $transaction_id, $old_values, $new_values, $ip_address, $user_agent, $tenant_id, $branch_id]);
         
         echo json_encode([
             'success' => true,

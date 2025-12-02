@@ -2,6 +2,7 @@
 // Initialize the session
 session_start();
 $tenant_id = $_SESSION['tenant_id'];
+$branch_id = $_SESSION['branch_id'];
 // Check if the user is logged in, if not then redirect to login page
 if (!isset($_SESSION["loggedin"]) || $_SESSION["loggedin"] !== true || $_SESSION["role"] !== "admin") {
     header("location: ../access_denied.php");
@@ -58,11 +59,11 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
     // Check input errors before updating in database
     if (empty($user_id_err) && empty($amount_err) && empty($description_err) && empty($deduction_date_err)) {
         // Prepare an update statement
-        $sql = "UPDATE salary_deductions SET user_id=?, amount=?, description=?, deduction_date=?, type=? WHERE id=? AND tenant_id = ?";
+        $sql = "UPDATE salary_deductions SET user_id=?, amount=?, description=?, deduction_date=?, type=? WHERE id=? AND tenant_id = ? AND branch_id = ?";
         
         if ($stmt = mysqli_prepare($conection_db, $sql)) {
             // Bind variables to the prepared statement as parameters
-            mysqli_stmt_bind_param($stmt, "idsssii", $user_id, $amount, $description, $deduction_date, $type, $id, $tenant_id);
+            mysqli_stmt_bind_param($stmt, "idsssiii", $user_id, $amount, $description, $deduction_date, $type, $id, $tenant_id, $branch_id);
             
             // Attempt to execute the prepared statement
             if (mysqli_stmt_execute($stmt)) {
@@ -84,10 +85,10 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
         $id = trim($_GET["id"]);
         
         // Prepare a select statement
-        $sql = "SELECT * FROM salary_deductions WHERE id = ? AND tenant_id = ?";
+        $sql = "SELECT * FROM salary_deductions WHERE id = ? AND tenant_id = ? AND branch_id = ?";
         if ($stmt = mysqli_prepare($conection_db, $sql)) {
             // Bind variables to the prepared statement as parameters
-            mysqli_stmt_bind_param($stmt, "ii", $param_id, $tenant_id);
+            mysqli_stmt_bind_param($stmt, "iii", $param_id, $tenant_id, $branch_id);
             
             // Set parameters
             $param_id = $id;
@@ -202,7 +203,7 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
                                                 $sql = "SELECT u.id, u.name 
                                                         FROM users u 
                                                         JOIN salary_management sm ON u.id = sm.user_id 
-                                                        WHERE sm.status = 'active' AND u.tenant_id = $tenant_id
+                                                        WHERE sm.status = 'active' AND u.tenant_id = $tenant_id And u.branch_id = $branch_id
                                                         ORDER BY u.name ASC";
                                                 $result = mysqli_query($conection_db, $sql);
                                                 while ($row = mysqli_fetch_array($result)) {

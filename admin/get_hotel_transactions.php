@@ -2,6 +2,7 @@
 // Include security module
 require_once 'security.php';
 $tenant_id = $_SESSION['tenant_id'];
+$branch_id = $_SESSION['branch_id'];
 // Enforce authentication
 enforce_auth();
 
@@ -13,13 +14,13 @@ if (isset($_GET['booking_id'])) {
     try {
         // First, get the booking details
         $bookingStmt = $pdo->prepare("
-            SELECT hb.id, hb.sold_amount, 
+            SELECT hb.id, hb.sold_amount,
                    CONCAT(hb.title, ' ', hb.first_name, ' ', hb.last_name) as guest_name,
                    hb.order_id
             FROM hotel_bookings hb
-            WHERE hb.id = ? AND hb.tenant_id = ?
+            WHERE hb.id = ? AND hb.tenant_id = ? AND hb.branch_id = ?
         ");
-        $bookingStmt->execute([$booking_id, $tenant_id]);
+        $bookingStmt->execute([$booking_id, $tenant_id, $branch_id]);
         $booking = $bookingStmt->fetch(PDO::FETCH_ASSOC);
 
         // Prepare a query to fetch all transactions for the given hotel booking ID
@@ -39,11 +40,11 @@ if (isset($_GET['booking_id'])) {
             FROM main_account_transactions t
             LEFT JOIN main_account m ON t.main_account_id = m.id
             LEFT JOIN hotel_bookings hb ON t.reference_id = hb.id
-            WHERE t.reference_id = ? AND t.tenant_id = ?
+            WHERE t.reference_id = ? AND t.tenant_id = ? AND t.branch_id = ?
             AND t.transaction_of = 'hotel'
             ORDER BY t.created_at DESC
         ");
-        $stmt->execute([$booking_id, $tenant_id]);
+        $stmt->execute([$booking_id, $tenant_id, $branch_id]);
 
         // Fetch all the results
         $transactions = $stmt->fetchAll(PDO::FETCH_ASSOC);

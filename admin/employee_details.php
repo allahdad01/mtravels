@@ -9,7 +9,7 @@ if (session_status() === PHP_SESSION_NONE) {
 }
 
 $tenant_id = $_SESSION['tenant_id'];
-
+$branch_id = $_SESSION['branch_id'];
 // Check if user is logged in and is admin
 if (!isset($_SESSION['user_id']) || $_SESSION['role'] !== 'admin') {
     header('Location: ../login.php');
@@ -29,9 +29,9 @@ $stmt = $pdo->prepare("
     SELECT u.*, sm.base_salary, sm.currency as salary_currency, sm.status as salary_status
     FROM users u
     LEFT JOIN salary_management sm ON u.id = sm.user_id AND sm.tenant_id = u.tenant_id
-    WHERE u.id = ? AND u.tenant_id = ? AND u.role != 'super_admin'
+    WHERE u.id = ? AND u.tenant_id = ? AND branch_id = ? AND u.role != 'super_admin'
 ");
-$stmt->execute([$employee_id, $tenant_id]);
+$stmt->execute([$employee_id, $tenant_id, $branch_id]);
 $employee = $stmt->fetch(PDO::FETCH_ASSOC);
 
 if (!$employee) {
@@ -45,11 +45,11 @@ if ($employee['fired']) {
     try {
         $term_stmt = $pdo->prepare("
             SELECT * FROM employee_terminations
-            WHERE employee_id = ? AND tenant_id = ?
+            WHERE employee_id = ? AND tenant_id = ? AND branch_id = ?
             ORDER BY termination_date DESC
             LIMIT 1
         ");
-        $term_stmt->execute([$employee_id, $tenant_id]);
+        $term_stmt->execute([$employee_id, $tenant_id, $branch_id]);
         $termination_history = $term_stmt->fetch(PDO::FETCH_ASSOC);
     } catch (Exception $e) {
         // Table might not exist yet
@@ -62,12 +62,12 @@ $activity_query = "
     SELECT al.*, u.name as performed_by_name
     FROM activity_log al
     LEFT JOIN users u ON al.user_id = u.id
-    WHERE al.record_id = ? AND al.table_name = 'users' AND al.tenant_id = ?
+    WHERE al.record_id = ? AND al.table_name = 'users' AND al.tenant_id = ? AND al.branch_id = ?
     ORDER BY al.created_at DESC
     LIMIT 10
 ";
 $activity_stmt = $pdo->prepare($activity_query);
-$activity_stmt->execute([$employee_id, $tenant_id]);
+$activity_stmt->execute([$employee_id, $tenant_id, $branch_id]);
 $activities = $activity_stmt->fetchAll(PDO::FETCH_ASSOC);
 
 $page_title = __('employee_details');

@@ -6,6 +6,7 @@ if (session_status() === PHP_SESSION_NONE) {
 // Include security module
 require_once 'security.php';
 $tenant_id = $_SESSION['tenant_id'];
+$branch_id = $_SESSION['branch_id'];
 // Enforce authentication
 enforce_auth();
 
@@ -13,9 +14,9 @@ include '../config.php';
 
 $userId = $_SESSION['user_id'];
 
-$sql = "SELECT name, email, profile_pic, role, phone, address, hire_date FROM users WHERE id = ? AND tenant_id = ?";
+$sql = "SELECT name, email, profile_pic, role, phone, address, hire_date FROM users WHERE id = ? AND tenant_id = ? AND branch_id = ?";
 $stmt = $conection_db->prepare($sql);
-$stmt->bind_param("ii", $userId, $tenant_id);
+$stmt->bind_param("iii", $userId, $tenant_id, $branch_id);
 $stmt->execute();
 $result = $stmt->get_result();
 

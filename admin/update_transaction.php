@@ -8,6 +8,7 @@ require_once 'security.php';
 // Enforce authentication
 enforce_auth();
 $tenant_id = $_SESSION['tenant_id'];
+$branch_id = $_SESSION['branch_id'];
 
 // Check if user is logged in
 if (!isset($_SESSION['user_id'])) {
@@ -87,8 +88,8 @@ try {
     
     if ($transactionType === 'main') {
         // Get main account transaction details
-        $stmt = $pdo->prepare("SELECT * FROM main_account_transactions WHERE id = ? AND tenant_id = ?");
-        $stmt->execute([$transactionId, $tenant_id]);
+        $stmt = $pdo->prepare("SELECT * FROM main_account_transactions WHERE id = ? AND tenant_id = ? AND branch_id = ?");
+        $stmt->execute([$transactionId, $tenant_id, $branch_id]);
         $transaction = $stmt->fetch(PDO::FETCH_ASSOC);
         
         if (!$transaction) {
@@ -98,8 +99,8 @@ try {
         $accountId = $transaction['main_account_id'];
         
         // Get account name
-        $accountStmt = $pdo->prepare("SELECT name FROM main_account WHERE id = ? AND tenant_id = ?");
-        $accountStmt->execute([$accountId, $tenant_id]);
+        $accountStmt = $pdo->prepare("SELECT name FROM main_account WHERE id = ? AND tenant_id = ? AND branch_id = ?");
+        $accountStmt->execute([$accountId, $tenant_id, $branch_id]);
         $account = $accountStmt->fetch(PDO::FETCH_ASSOC);
         $accountName = $account['name'] ?? 'Unknown Account';
         
@@ -110,54 +111,55 @@ try {
         
         // Update the transaction - removed created_at from the update
         $updateStmt = $pdo->prepare("
-            UPDATE main_account_transactions 
-            SET amount = ?, type = ?, currency = ?, receipt = ?, description = ? 
-            WHERE id = ? AND tenant_id = ?
+            UPDATE main_account_transactions
+            SET amount = ?, type = ?, currency = ?, receipt = ?, description = ?
+            WHERE id = ? AND tenant_id = ? AND branch_id = ?
         ");
-        $updateStmt->execute([$newAmount, $newType, $currency, $receipt, $description, $transactionId, $tenant_id]);
+        $updateStmt->execute([$newAmount, $newType, $currency, $receipt, $description, $transactionId, $tenant_id, $branch_id]);
         
         // Get all transactions after this one to update balances
         $laterTransactionsStmt = $pdo->prepare("
             SELECT id, amount, type, balance, currency
-            FROM main_account_transactions 
-            WHERE main_account_id = ? 
-            AND tenant_id = ? 
-            AND id > ? 
+            FROM main_account_transactions
+            WHERE main_account_id = ?
+            AND tenant_id = ?
+            AND branch_id = ?
+            AND id > ?
             AND currency = ?
         ");
-        $laterTransactionsStmt->execute([$accountId, $tenant_id, $transactionId, $currency]);
+        $laterTransactionsStmt->execute([$accountId, $tenant_id, $branch_id, $transactionId, $currency]);
         $laterTransactions = $laterTransactionsStmt->fetchAll(PDO::FETCH_ASSOC);
         
         // Update the current transaction's balance
         $currentBalance = $transaction['balance'] + $amountDifference;
-        $updateBalanceStmt = $pdo->prepare("UPDATE main_account_transactions SET balance = ? WHERE id = ? AND tenant_id = ?");
-        $updateBalanceStmt->execute([$currentBalance, $transactionId, $tenant_id]);
+        $updateBalanceStmt = $pdo->prepare("UPDATE main_account_transactions SET balance = ? WHERE id = ? AND tenant_id = ? AND branch_id = ?");
+        $updateBalanceStmt->execute([$currentBalance, $transactionId, $tenant_id, $branch_id]);
         
         // Update all subsequent transactions' balances
         foreach ($laterTransactions as $laterTransaction) {
             $newBalance = $laterTransaction['balance'] + $amountDifference;
-            $updateBalanceStmt->execute([$newBalance, $laterTransaction['id'], $tenant_id]);
+            $updateBalanceStmt->execute([$newBalance, $laterTransaction['id'], $tenant_id, $branch_id]);
         }
         
         // Update the main account balance - using direct currency check
         if ($currency === 'USD') {
-            $updateMainAccountStmt = $pdo->prepare("UPDATE main_account SET usd_balance = usd_balance + ? WHERE id = ? AND tenant_id = ?");
-            $updateMainAccountStmt->execute([$amountDifference, $accountId, $tenant_id]);
+            $updateMainAccountStmt = $pdo->prepare("UPDATE main_account SET usd_balance = usd_balance + ? WHERE id = ? AND tenant_id = ? AND branch_id = ?");
+            $updateMainAccountStmt->execute([$amountDifference, $accountId, $tenant_id, $branch_id]);
         } elseif ($currency === 'AFS') {
-            $updateMainAccountStmt = $pdo->prepare("UPDATE main_account SET afs_balance = afs_balance + ? WHERE id = ? AND tenant_id = ?");
-            $updateMainAccountStmt->execute([$amountDifference, $accountId, $tenant_id]);
+            $updateMainAccountStmt = $pdo->prepare("UPDATE main_account SET afs_balance = afs_balance + ? WHERE id = ? AND tenant_id = ? AND branch_id = ?");
+            $updateMainAccountStmt->execute([$amountDifference, $accountId, $tenant_id, $branch_id]);
         } elseif ($currency === 'EURO') {
-            $updateMainAccountStmt = $pdo->prepare("UPDATE main_account SET euro_balance = euro_balance + ? WHERE id = ? AND tenant_id = ?");
-            $updateMainAccountStmt->execute([$amountDifference, $accountId, $tenant_id]);
+            $updateMainAccountStmt = $pdo->prepare("UPDATE main_account SET euro_balance = euro_balance + ? WHERE id = ? AND tenant_id = ? AND branch_id = ?");
+            $updateMainAccountStmt->execute([$amountDifference, $accountId, $tenant_id, $branch_id]);
         } elseif ($currency === 'DARHAM') {
-            $updateMainAccountStmt = $pdo->prepare("UPDATE main_account SET darham_balance = darham_balance + ? WHERE id = ? AND tenant_id = ?");
-            $updateMainAccountStmt->execute([$amountDifference, $accountId, $tenant_id]);
+            $updateMainAccountStmt = $pdo->prepare("UPDATE main_account SET darham_balance = darham_balance + ? WHERE id = ? AND tenant_id = ? AND branch_id = ?");
+            $updateMainAccountStmt->execute([$amountDifference, $accountId, $tenant_id, $branch_id]);
         }
         
     } elseif ($transactionType === 'supplier') {
         // Get supplier transaction details
-        $stmt = $conn->prepare("SELECT * FROM supplier_transactions WHERE id = ? AND tenant_id = ?");
-        $stmt->bind_param("ii", $transactionId, $tenant_id);
+        $stmt = $conn->prepare("SELECT * FROM supplier_transactions WHERE id = ? AND tenant_id = ? AND branch_id = ?");
+        $stmt->bind_param("iii", $transactionId, $tenant_id, $branch_id);
         $stmt->execute();
         $result = $stmt->get_result();
         $transaction = $result->fetch_assoc();
@@ -169,8 +171,8 @@ try {
         $supplierId = $transaction['supplier_id'];
         
         // Get supplier name and currency
-        $supplierStmt = $conn->prepare("SELECT name, currency FROM suppliers WHERE id = ? AND tenant_id = ?");
-        $supplierStmt->bind_param("ii", $supplierId, $tenant_id);
+        $supplierStmt = $conn->prepare("SELECT name, currency FROM suppliers WHERE id = ? AND tenant_id = ? AND branch_id = ?");
+        $supplierStmt->bind_param("iii", $supplierId, $tenant_id, $branch_id);
         $supplierStmt->execute();
         $supplierResult = $supplierStmt->get_result();
         $supplier = $supplierResult->fetch_assoc();
@@ -185,52 +187,53 @@ try {
         
         // Update the transaction - transaction_date already removed
         $updateStmt = $conn->prepare("
-            UPDATE supplier_transactions 
-            SET amount = ?, transaction_type = ?, receipt = ?, remarks = ? 
-            WHERE id = ? AND tenant_id = ?
+            UPDATE supplier_transactions
+            SET amount = ?, transaction_type = ?, receipt = ?, remarks = ?
+            WHERE id = ? AND tenant_id = ? AND branch_id = ?
         ");
-        $updateStmt->bind_param("dsssii", $newAmount, $newType, $receipt, $description, $transactionId, $tenant_id);
+        $updateStmt->bind_param("dsssiis", $newAmount, $newType, $receipt, $description, $transactionId, $tenant_id, $branch_id);
         $updateStmt->execute();
         
         // Get all transactions after this one to update balances
         $laterTransactionsStmt = $conn->prepare("
             SELECT id, amount, transaction_type, balance
             FROM supplier_transactions
-            WHERE supplier_id = ? 
+            WHERE supplier_id = ?
             AND tenant_id = ?
+            AND branch_id = ?
             AND id > ?
-            
+
         ");
-        $laterTransactionsStmt->bind_param("iss", $supplierId, $tenant_id, $transactionId);
+        $laterTransactionsStmt->bind_param("isss", $supplierId, $tenant_id, $branch_id, $transactionId);
         $laterTransactionsStmt->execute();
         $laterTransactionsResult = $laterTransactionsStmt->get_result();
         $laterTransactions = $laterTransactionsResult->fetch_all(MYSQLI_ASSOC);
         
         // Update the current transaction's balance
         $currentBalance = $transaction['balance'] + $amountDifference;
-        $updateBalanceStmt = $conn->prepare("UPDATE supplier_transactions SET balance = ? WHERE id = ? AND tenant_id = ?");
-        $updateBalanceStmt->bind_param("dii", $currentBalance, $transactionId, $tenant_id);
+        $updateBalanceStmt = $conn->prepare("UPDATE supplier_transactions SET balance = ? WHERE id = ? AND tenant_id = ? AND branch_id = ?");
+        $updateBalanceStmt->bind_param("diii", $currentBalance, $transactionId, $tenant_id, $branch_id);
         $updateBalanceStmt->execute();
         
         // Update all subsequent transactions' balances
         foreach ($laterTransactions as $laterTransaction) {
             $newBalance = $laterTransaction['balance'] + $amountDifference;
-            $updateBalanceStmt->bind_param("dii", $newBalance, $laterTransaction['id'], $tenant_id);
+            $updateBalanceStmt->bind_param("diii", $newBalance, $laterTransaction['id'], $tenant_id, $branch_id);
             $updateBalanceStmt->execute();
         }
         
         // Update the supplier balance
-        $updateSupplierStmt = $conn->prepare("UPDATE suppliers SET balance = balance + ? WHERE id = ? AND tenant_id = ?");
-        $updateSupplierStmt->bind_param("dii", $amountDifference, $supplierId, $tenant_id);
+        $updateSupplierStmt = $conn->prepare("UPDATE suppliers SET balance = balance + ? WHERE id = ? AND tenant_id = ? AND branch_id = ?");
+        $updateSupplierStmt->bind_param("diii", $amountDifference, $supplierId, $tenant_id, $branch_id);
         $updateSupplierStmt->execute();
         
         // Also update the corresponding main account transaction if it exists
         // Get main transaction details by transaction_of and reference_id instead of main_transaction_id
         $mainTransStmt = $pdo->prepare("
-            SELECT * FROM main_account_transactions 
-            WHERE transaction_of = 'supplier_fund' AND reference_id = ? AND tenant_id = ?
+            SELECT * FROM main_account_transactions
+            WHERE transaction_of = 'supplier_fund' AND reference_id = ? AND tenant_id = ? AND branch_id = ?
         ");
-        $mainTransStmt->execute([$transactionId, $tenant_id]);
+        $mainTransStmt->execute([$transactionId, $tenant_id, $branch_id]);
         $mainTransaction = $mainTransStmt->fetch(PDO::FETCH_ASSOC);
         
         if ($mainTransaction) {
@@ -241,58 +244,59 @@ try {
             
             // Update main transaction including balance - removed created_at from the update
             $updateMainStmt = $pdo->prepare("
-                UPDATE main_account_transactions 
-                SET amount = ?, type = ?, description = ?, receipt = ?, balance = ? 
-                WHERE id = ? AND tenant_id = ?
+                UPDATE main_account_transactions
+                SET amount = ?, type = ?, description = ?, receipt = ?, balance = ?
+                WHERE id = ? AND tenant_id = ? AND branch_id = ?
             ");
             $updateMainStmt->execute([
-                $newAmount, 
-                $mainType, 
-                "Fund transfer to supplier: $accountName", 
+                $newAmount,
+                $mainType,
+                "Fund transfer to supplier: $accountName",
                 $receipt,
                 $newMainBalance,
                 $mainTransaction['id'],
-                $tenant_id
+                $tenant_id,
+                $branch_id
             ]);
             
             // Get all transactions after this one to update balances
             $laterMainTransStmt = $pdo->prepare("
-                SELECT id, balance, currency 
-                FROM main_account_transactions 
-                WHERE main_account_id = ? AND tenant_id = ? 
-                AND id > ? 
+                SELECT id, balance, currency
+                FROM main_account_transactions
+                WHERE main_account_id = ? AND tenant_id = ? AND branch_id = ?
+                AND id > ?
                 AND currency = ?
             ");
-            $laterMainTransStmt->execute([$mainTransaction['main_account_id'], $tenant_id, $mainTransaction['id'], $currency]);
+            $laterMainTransStmt->execute([$mainTransaction['main_account_id'], $tenant_id, $branch_id, $mainTransaction['id'], $currency]);
             $laterMainTransactions = $laterMainTransStmt->fetchAll(PDO::FETCH_ASSOC);
             
             // Update all subsequent transactions' balances
             foreach ($laterMainTransactions as $laterMainTrans) {
                 $newMainBalance = $laterMainTrans['balance'] + $mainAmountDifference;
-                $updateMainBalanceStmt = $pdo->prepare("UPDATE main_account_transactions SET balance = ? WHERE id = ? AND tenant_id = ?");
-                $updateMainBalanceStmt->execute([$newMainBalance, $laterMainTrans['id'], $tenant_id]);
+                $updateMainBalanceStmt = $pdo->prepare("UPDATE main_account_transactions SET balance = ? WHERE id = ? AND tenant_id = ? AND branch_id = ?");
+                $updateMainBalanceStmt->execute([$newMainBalance, $laterMainTrans['id'], $tenant_id, $branch_id]);
             }
             
             // Update the main account balance - using direct currency check
             if ($currency === 'USD') {
-                $updateMainAccountStmt = $pdo->prepare("UPDATE main_account SET usd_balance = usd_balance - ? WHERE id = ? AND tenant_id = ?");
-                $updateMainAccountStmt->execute([$amountDifference, $mainTransaction['main_account_id'], $tenant_id]);
+                $updateMainAccountStmt = $pdo->prepare("UPDATE main_account SET usd_balance = usd_balance - ? WHERE id = ? AND tenant_id = ? AND branch_id = ?");
+                $updateMainAccountStmt->execute([$amountDifference, $mainTransaction['main_account_id'], $tenant_id, $branch_id]);
             } elseif ($currency === 'AFS') {
-                $updateMainAccountStmt = $pdo->prepare("UPDATE main_account SET afs_balance = afs_balance - ? WHERE id = ? AND tenant_id = ?");
-                $updateMainAccountStmt->execute([$amountDifference, $mainTransaction['main_account_id'], $tenant_id]);
+                $updateMainAccountStmt = $pdo->prepare("UPDATE main_account SET afs_balance = afs_balance - ? WHERE id = ? AND tenant_id = ? AND branch_id = ?");
+                $updateMainAccountStmt->execute([$amountDifference, $mainTransaction['main_account_id'], $tenant_id, $branch_id]);
             } elseif ($currency === 'EURO') {
-                $updateMainAccountStmt = $pdo->prepare("UPDATE main_account SET euro_balance = euro_balance - ? WHERE id = ? AND tenant_id = ?");
-                $updateMainAccountStmt->execute([$amountDifference, $mainTransaction['main_account_id'], $tenant_id]);
+                $updateMainAccountStmt = $pdo->prepare("UPDATE main_account SET euro_balance = euro_balance - ? WHERE id = ? AND tenant_id = ? AND branch_id = ?");
+                $updateMainAccountStmt->execute([$amountDifference, $mainTransaction['main_account_id'], $tenant_id, $branch_id]);
             } elseif ($currency === 'DARHAM') {
-                $updateMainAccountStmt = $pdo->prepare("UPDATE main_account SET darham_balance = darham_balance - ? WHERE id = ? AND tenant_id = ?");
-                $updateMainAccountStmt->execute([$amountDifference, $mainTransaction['main_account_id'], $tenant_id]);
+                $updateMainAccountStmt = $pdo->prepare("UPDATE main_account SET darham_balance = darham_balance - ? WHERE id = ? AND tenant_id = ? AND branch_id = ?");
+                $updateMainAccountStmt->execute([$amountDifference, $mainTransaction['main_account_id'], $tenant_id, $branch_id]);
             }
         }
         
     } elseif ($transactionType === 'client') {
         // Get client transaction details
-        $stmt = $conn->prepare("SELECT * FROM client_transactions WHERE id = ? AND tenant_id = ?");
-        $stmt->bind_param("ii", $transactionId, $tenant_id);
+        $stmt = $conn->prepare("SELECT * FROM client_transactions WHERE id = ? AND tenant_id = ? AND branch_id = ?");
+        $stmt->bind_param("iii", $transactionId, $tenant_id, $branch_id);
         $stmt->execute();
         $result = $stmt->get_result();
         $transaction = $result->fetch_assoc();
@@ -304,8 +308,8 @@ try {
         $clientId = $transaction['client_id'];
         
         // Get client name
-        $clientStmt = $conn->prepare("SELECT name FROM clients WHERE id = ? AND tenant_id = ?");
-        $clientStmt->bind_param("ii", $clientId, $tenant_id);
+        $clientStmt = $conn->prepare("SELECT name FROM clients WHERE id = ? AND tenant_id = ? AND branch_id = ?");
+        $clientStmt->bind_param("iii", $clientId, $tenant_id, $branch_id);
         $clientStmt->execute();
         $clientResult = $clientStmt->get_result();
         $client = $clientResult->fetch_assoc();
@@ -319,37 +323,37 @@ try {
         
         // Update the transaction - created_at already removed
         $updateStmt = $conn->prepare("
-            UPDATE client_transactions 
-            SET amount = ?, type = ?, currency = ?, receipt = ?, description = ? 
-            WHERE id = ? AND tenant_id = ?
+            UPDATE client_transactions
+            SET amount = ?, type = ?, currency = ?, receipt = ?, description = ?
+            WHERE id = ? AND tenant_id = ? AND branch_id = ?
         ");
-        $updateStmt->bind_param("dssssii", $newAmount, $newType, $currency, $receipt, $description, $transactionId, $tenant_id);
+        $updateStmt->bind_param("dssssiii", $newAmount, $newType, $currency, $receipt, $description, $transactionId, $tenant_id, $branch_id);
         $updateStmt->execute();
         
         // Get all transactions after this one to update balances
         $laterTransactionsStmt = $conn->prepare("
-            SELECT id, amount, type, balance, currency 
-            FROM client_transactions 
-            WHERE client_id = ? AND tenant_id = ?  
-            AND id > ? 
+            SELECT id, amount, type, balance, currency
+            FROM client_transactions
+            WHERE client_id = ? AND tenant_id = ? AND branch_id = ?
+            AND id > ?
             AND currency = ?
-            
+
         ");
-        $laterTransactionsStmt->bind_param("isss", $clientId, $tenant_id, $transactionId, $currency);
+        $laterTransactionsStmt->bind_param("issss", $clientId, $tenant_id, $branch_id, $transactionId, $currency);
         $laterTransactionsStmt->execute();
         $laterTransactionsResult = $laterTransactionsStmt->get_result();
         $laterTransactions = $laterTransactionsResult->fetch_all(MYSQLI_ASSOC);
         
         // Update the current transaction's balance
         $currentBalance = $transaction['balance'] + $amountDifference;
-        $updateBalanceStmt = $conn->prepare("UPDATE client_transactions SET balance = ? WHERE id = ? AND tenant_id = ?");
-        $updateBalanceStmt->bind_param("dii", $currentBalance, $transactionId, $tenant_id);
+        $updateBalanceStmt = $conn->prepare("UPDATE client_transactions SET balance = ? WHERE id = ? AND tenant_id = ? AND branch_id = ?");
+        $updateBalanceStmt->bind_param("diii", $currentBalance, $transactionId, $tenant_id, $branch_id);
         $updateBalanceStmt->execute();
         
         // Update all subsequent transactions' balances
         foreach ($laterTransactions as $laterTransaction) {
             $newBalance = $laterTransaction['balance'] + $amountDifference;
-            $updateBalanceStmt->bind_param("dii", $newBalance, $laterTransaction['id'], $tenant_id);
+            $updateBalanceStmt->bind_param("diii", $newBalance, $laterTransaction['id'], $tenant_id, $branch_id);
             $updateBalanceStmt->execute();
         }
         
@@ -357,29 +361,29 @@ try {
         // Since there's no general 'balance' column, we need to update the specific currency balance
         if ($currency === 'USD') {
             $updateClientStmt = $conn->prepare("
-                UPDATE clients 
-                SET usd_balance = usd_balance + ? 
-                WHERE id = ? AND tenant_id = ?
+                UPDATE clients
+                SET usd_balance = usd_balance + ?
+                WHERE id = ? AND tenant_id = ? AND branch_id = ?
             ");
-            $updateClientStmt->bind_param("dii", $amountDifference, $clientId, $tenant_id);
+            $updateClientStmt->bind_param("diii", $amountDifference, $clientId, $tenant_id, $branch_id);
             $updateClientStmt->execute();
         } elseif ($currency === 'AFS') {
             $updateClientStmt = $conn->prepare("
-                UPDATE clients 
-                SET afs_balance = afs_balance + ? 
-                WHERE id = ? AND tenant_id = ?
+                UPDATE clients
+                SET afs_balance = afs_balance + ?
+                WHERE id = ? AND tenant_id = ? AND branch_id = ?
             ");
-            $updateClientStmt->bind_param("dii", $amountDifference, $clientId, $tenant_id);
+            $updateClientStmt->bind_param("diii", $amountDifference, $clientId, $tenant_id, $branch_id);
             $updateClientStmt->execute();
         }
         
         // Also update the corresponding main account transaction if it exists
         // Get main transaction details by transaction_of and reference_id instead of main_transaction_id
         $mainTransStmt = $pdo->prepare("
-            SELECT * FROM main_account_transactions 
-            WHERE transaction_of = 'client_fund' AND reference_id = ? AND tenant_id = ?
+            SELECT * FROM main_account_transactions
+            WHERE transaction_of = 'client_fund' AND reference_id = ? AND tenant_id = ? AND branch_id = ?
         ");
-        $mainTransStmt->execute([$transactionId, $tenant_id]);
+        $mainTransStmt->execute([$transactionId, $tenant_id, $branch_id]);
         $mainTransaction = $mainTransStmt->fetch(PDO::FETCH_ASSOC);
         
         if ($mainTransaction) {
@@ -389,51 +393,52 @@ try {
             
             // Update main transaction including balance - removed created_at from the update
             $updateMainStmt = $pdo->prepare("
-                UPDATE main_account_transactions 
-                SET amount = ?, type = ?, description = ?, balance = ? 
-                WHERE id = ? AND tenant_id = ?
+                UPDATE main_account_transactions
+                SET amount = ?, type = ?, description = ?, balance = ?
+                WHERE id = ? AND tenant_id = ? AND branch_id = ?
             ");
             $updateMainStmt->execute([
-                $newAmount, 
-                $newType, 
-                "Fund transfer from client: $accountName", 
+                $newAmount,
+                $newType,
+                "Fund transfer from client: $accountName",
                 $newMainBalance,
                 $mainTransaction['id'],
-                $tenant_id
+                $tenant_id,
+                $branch_id
             ]);
             
             // Get all transactions after this one to update balances
             $laterMainTransStmt = $pdo->prepare("
-                SELECT id, balance, currency 
-                FROM main_account_transactions 
-                WHERE main_account_id = ? 
-                AND tenant_id = ? 
-                AND id > ? 
+                SELECT id, balance, currency
+                FROM main_account_transactions
+                WHERE main_account_id = ?
+                AND tenant_id = ? AND branch_id = ?
+                AND id > ?
                 AND currency = ?
             ");
-            $laterMainTransStmt->execute([$mainTransaction['main_account_id'], $tenant_id, $mainTransaction['id'], $currency]);
+            $laterMainTransStmt->execute([$mainTransaction['main_account_id'], $tenant_id, $branch_id, $mainTransaction['id'], $currency]);
             $laterMainTransactions = $laterMainTransStmt->fetchAll(PDO::FETCH_ASSOC);
             
             // Update all subsequent transactions' balances
             foreach ($laterMainTransactions as $laterMainTrans) {
                 $newMainBalance = $laterMainTrans['balance'] + $mainAmountDifference;
-                $updateMainBalanceStmt = $pdo->prepare("UPDATE main_account_transactions SET balance = ? WHERE id = ? AND tenant_id = ?");
-                $updateMainBalanceStmt->execute([$newMainBalance, $laterMainTrans['id'], $tenant_id]);
+                $updateMainBalanceStmt = $pdo->prepare("UPDATE main_account_transactions SET balance = ? WHERE id = ? AND tenant_id = ? AND branch_id = ?");
+                $updateMainBalanceStmt->execute([$newMainBalance, $laterMainTrans['id'], $tenant_id, $branch_id]);
             }
             
             // Update the main account balance - using direct currency check
             if ($currency === 'USD') {
-                $updateMainAccountStmt = $pdo->prepare("UPDATE main_account SET usd_balance = usd_balance + ? WHERE id = ? AND tenant_id = ?");
-                $updateMainAccountStmt->execute([$amountDifference, $mainTransaction['main_account_id'], $tenant_id]);
+                $updateMainAccountStmt = $pdo->prepare("UPDATE main_account SET usd_balance = usd_balance + ? WHERE id = ? AND tenant_id = ? AND branch_id = ?");
+                $updateMainAccountStmt->execute([$amountDifference, $mainTransaction['main_account_id'], $tenant_id, $branch_id]);
             } elseif ($currency === 'AFS') {
-                $updateMainAccountStmt = $pdo->prepare("UPDATE main_account SET afs_balance = afs_balance + ? WHERE id = ? AND tenant_id = ?");
-                $updateMainAccountStmt->execute([$amountDifference, $mainTransaction['main_account_id'], $tenant_id]);
+                $updateMainAccountStmt = $pdo->prepare("UPDATE main_account SET afs_balance = afs_balance + ? WHERE id = ? AND tenant_id = ? AND branch_id = ?");
+                $updateMainAccountStmt->execute([$amountDifference, $mainTransaction['main_account_id'], $tenant_id, $branch_id]);
             } elseif ($currency === 'EURO') {
-                $updateMainAccountStmt = $pdo->prepare("UPDATE main_account SET euro_balance = euro_balance + ? WHERE id = ? AND tenant_id = ?");
-                $updateMainAccountStmt->execute([$amountDifference, $mainTransaction['main_account_id'], $tenant_id]);
+                $updateMainAccountStmt = $pdo->prepare("UPDATE main_account SET euro_balance = euro_balance + ? WHERE id = ? AND tenant_id = ? AND branch_id = ?");
+                $updateMainAccountStmt->execute([$amountDifference, $mainTransaction['main_account_id'], $tenant_id, $branch_id]);
             } elseif ($currency === 'DARHAM') {
-                $updateMainAccountStmt = $pdo->prepare("UPDATE main_account SET darham_balance = darham_balance + ? WHERE id = ? AND tenant_id = ?");
-                $updateMainAccountStmt->execute([$amountDifference, $mainTransaction['main_account_id'], $tenant_id]);
+                $updateMainAccountStmt = $pdo->prepare("UPDATE main_account SET darham_balance = darham_balance + ? WHERE id = ? AND tenant_id = ? AND branch_id = ?");
+                $updateMainAccountStmt->execute([$amountDifference, $mainTransaction['main_account_id'], $tenant_id, $branch_id]);
             }
         }
     } else {
@@ -464,20 +469,21 @@ try {
     ];
     
     // Insert activity log
-    $activity_log_stmt = $pdo->prepare("INSERT INTO activity_log 
-        (user_id, action, table_name, record_id, old_values, new_values, ip_address, user_agent, tenant_id) 
-        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)");
+    $activity_log_stmt = $pdo->prepare("INSERT INTO activity_log
+        (user_id, action, table_name, record_id, old_values, new_values, ip_address, user_agent, tenant_id, branch_id)
+        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)");
     $activity_log_stmt->execute([
         $user_id,
         'update',
-        ($transactionType === 'main' ? 'main_account_transactions' : 
+        ($transactionType === 'main' ? 'main_account_transactions' :
          ($transactionType === 'supplier' ? 'supplier_transactions' : 'client_transactions')),
         $transactionId,
         json_encode($old_values),
         json_encode($new_values),
         $ip_address,
         $user_agent,
-        $tenant_id
+        $tenant_id,
+        $branch_id
     ]);
     
     // Commit the transaction

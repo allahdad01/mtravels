@@ -11,6 +11,7 @@ require_once '../includes/conn.php';
 if ($conn->connect_error) {
     die(json_encode(['success' => false, 'message' => 'Database connection failed']));
 }
+$branch_id = $_SESSION['branch_id'];
 
 // Get client ID and currency from request
 $clientId = isset($_GET['client_id']) ? intval($_GET['client_id']) : 0;
@@ -23,9 +24,9 @@ if (!$clientId || empty($currency)) {
 // Get the client balance based on currency
 $balanceField = strtolower($currency) === 'usd' ? 'usd_balance' : 'afs_balance';
 
-$query = "SELECT name, client_type, $balanceField AS balance FROM clients WHERE id = ? AND tenant_id = ?";
+$query = "SELECT name, client_type, $balanceField AS balance FROM clients WHERE id = ? AND tenant_id = ? AND branch_id = ?";
 $stmt = $conn->prepare($query);
-$stmt->bind_param('ii', $clientId, $tenant_id);
+$stmt->bind_param('iii', $clientId, $tenant_id, $branch_id);
 $stmt->execute();
 $result = $stmt->get_result();
 

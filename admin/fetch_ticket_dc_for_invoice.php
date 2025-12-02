@@ -6,6 +6,7 @@ if (session_status() === PHP_SESSION_NONE) {
 // Include security module
 require_once 'security.php';
 $tenant_id = $_SESSION['tenant_id'];
+$branch_id = $_SESSION['branch_id'];
 // Enforce authentication
 enforce_auth();
 
@@ -25,7 +26,7 @@ try {
               c.name as sold_to_name
               FROM date_change_tickets tb
               LEFT JOIN clients c ON tb.sold_to = c.id
-              WHERE tb.tenant_id = ?
+              WHERE tb.tenant_id = ? AND tb.branch_id = ?
               ORDER BY tb.id DESC
               LIMIT 100";
     
@@ -33,7 +34,7 @@ try {
     if (!$stmt) {
         throw new Exception("Prepare failed: " . $conn->error);
     }
-    $stmt->bind_param("i", $tenant_id);
+    $stmt->bind_param("ii", $tenant_id, $branch_id);
     if (!$stmt->execute()) {
         throw new Exception("Execute failed: " . $stmt->error);
     }

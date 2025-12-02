@@ -8,6 +8,7 @@ require_once 'security.php';
 // Enforce authentication
 enforce_auth();
 $tenant_id = $_SESSION['tenant_id'];
+$branch_id = $_SESSION['branch_id'];
 // update_refund_penalties.php
 require_once('../includes/db.php');
 require_once('../includes/conn.php'); // Adding mysqli connection for compatibility
@@ -38,12 +39,12 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     
     try {
         // Get original values to calculate differences
-        $originalQuery = "SELECT rt.*, t.supplier, t.sold_to, t.currency 
+        $originalQuery = "SELECT rt.*, t.supplier, t.sold_to, t.currency
                          FROM refunded_tickets rt
                          JOIN ticket_bookings t ON rt.ticket_id = t.id
-                         WHERE rt.id = ? AND rt.tenant_id = ?";
+                         WHERE rt.id = ? AND rt.tenant_id = ? AND rt.branch_id = ?";
         $stmtOriginal = $conn->prepare($originalQuery);
-        $stmtOriginal->bind_param('ii', $ticket_id, $tenant_id);
+        $stmtOriginal->bind_param('iii', $ticket_id, $tenant_id, $branch_id);
         $stmtOriginal->execute();
         $resultOriginal = $stmtOriginal->get_result();
         $originalData = $resultOriginal->fetch_assoc();

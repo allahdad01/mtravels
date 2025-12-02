@@ -11,6 +11,7 @@ enforce_auth();
 // Use environment variables or a secure method to store database credentials
 include '../includes/conn.php';
 $tenant_id = $_SESSION['tenant_id'];
+$branch_id = $_SESSION['branch_id'];
 // Validate supplier_type
 $supplier_type = isset($_POST['supplier_type']) ? DbSecurity::validateInput($_POST['supplier_type'], 'string', ['maxlength' => 255]) : null;
 
@@ -51,8 +52,8 @@ $balance = filter_var(trim($_POST['balance']), FILTER_VALIDATE_FLOAT);
 $supplier_type = htmlspecialchars(trim($_POST['supplier_type']));
 
 // Prepare and bind
-$stmt = $conn->prepare("INSERT INTO suppliers (name, contact_person, phone, email, address, currency, balance, supplier_type, tenant_id) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)");
-$stmt->bind_param("ssssssdsi", $name, $contact_person, $phone, $email, $address, $currency, $balance, $supplier_type, $tenant_id);
+$stmt = $conn->prepare("INSERT INTO suppliers (name, contact_person, phone, email, address, currency, balance, supplier_type, tenant_id, branch_id) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)");
+$stmt->bind_param("ssssssdsii", $name, $contact_person, $phone, $email, $address, $currency, $balance, $supplier_type, $tenant_id, $branch_id);
 
 // Execute and check for errors
 if ($stmt->execute()) {
@@ -69,7 +70,8 @@ if ($stmt->execute()) {
         'address' => $address,
         'currency' => $currency,
         'balance' => $balance,
-        'supplier_type' => $supplier_type
+        'supplier_type' => $supplier_type,
+        'branch_id' => $branch_id
     ]);
     
     $user_id = $_SESSION['user_id'] ?? 0;
@@ -77,11 +79,11 @@ if ($stmt->execute()) {
     $user_agent = $_SERVER['HTTP_USER_AGENT'] ?? '';
     
     $stmt_log = $conn->prepare("
-        INSERT INTO activity_log 
-        (user_id, action, table_name, record_id, old_values, new_values, ip_address, user_agent, created_at, tenant_id) 
-        VALUES (?, 'add', 'suppliers', ?, ?, ?, ?, ?, NOW(), ?)
+        INSERT INTO activity_log
+        (user_id, action, table_name, record_id, old_values, new_values, ip_address, user_agent, created_at, tenant_id, branch_id)
+        VALUES (?, 'add', 'suppliers', ?, ?, ?, ?, ?, NOW(), ?, ?)
     ");
-    $stmt_log->bind_param("iissssi", $user_id, $supplier_id, $old_values, $new_values, $ip_address, $user_agent, $tenant_id);
+    $stmt_log->bind_param("iissssii", $user_id, $supplier_id, $old_values, $new_values, $ip_address, $user_agent, $tenant_id, $branch_id);
     $stmt_log->execute();
     $stmt_log->close();
     

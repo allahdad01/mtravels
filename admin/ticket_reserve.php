@@ -15,6 +15,7 @@ if (!isset($_SESSION['user_id']) || $_SESSION['role'] !== 'admin') {
 }
 
 $tenant_id = $_SESSION['tenant_id'];
+$branch_id = $_SESSION['branch_id'];
 
 // Database connection
 require_once('../includes/db.php');
@@ -85,7 +86,7 @@ LEFT JOIN suppliers s ON tb.supplier = s.id
 LEFT JOIN clients c ON tb.sold_to = c.id
 LEFT JOIN main_account ma ON tb.paid_to = ma.id
 LEFT JOIN users u ON tb.created_by = u.id
-WHERE tb.tenant_id = ?
+WHERE tb.tenant_id = ? AND tb.branch_id = ?
 $searchCondition
 ORDER BY tb.id DESC
 LIMIT ? OFFSET ?
@@ -98,22 +99,22 @@ $types   .= "ii";
 
 // Prepare & execute
 $stmt = $conn->prepare($ticketsQuery);
-$stmt->bind_param($types, $tenant_id, ...$params);
+$stmt->bind_param($types, $tenant_id, $branch_id, ...$params);
 $stmt->execute();
 $ticketsResult = $stmt->get_result();
 
 // ---------------- Count Query ---------------- //
 $countQuery = "
-    SELECT COUNT(*) as total 
+    SELECT COUNT(*) as total
     FROM ticket_reservations tb
     LEFT JOIN suppliers s ON tb.supplier = s.id
     LEFT JOIN clients c ON tb.sold_to = c.id
-    WHERE tb.tenant_id = ?
+    WHERE tb.tenant_id = ? AND tb.branch_id = ?
     $searchCondition
 ";
 
 $stmtCount = $conn->prepare($countQuery);
-$stmtCount->bind_param(substr($types, 0, -2), $tenant_id, ...array_slice($params, 0, -2)); // exclude limit/offset
+$stmtCount->bind_param(substr($types, 0, -2), $tenant_id, $branch_id, ...array_slice($params, 0, -2)); // exclude limit/offset
 $stmtCount->execute();
 $totalRecords = $stmtCount->get_result()->fetch_assoc()['total'];
 $totalPages = ceil($totalRecords / $recordsPerPage);
@@ -160,9 +161,9 @@ if ($ticketsResult) {
 }
 
 // ---------------- Suppliers ---------------- //
-$suppliersQuery = "SELECT id, name FROM suppliers WHERE status = 'active' AND tenant_id = ?";
+$suppliersQuery = "SELECT id, name FROM suppliers WHERE status = 'active' AND tenant_id = ? AND branch_id = ?";
 $stmtSup = $conn->prepare($suppliersQuery);
-$stmtSup->bind_param("i", $tenant_id);
+$stmtSup->bind_param("ii", $tenant_id, $branch_id);
 $stmtSup->execute();
 $suppliersResult = $stmtSup->get_result();
 $suppliers = $suppliersResult->fetch_all(MYSQLI_ASSOC);
@@ -285,7 +286,7 @@ foreach ($suppliers as $supplier) {
                                                     foreach ($tickets as $ticket): ?>
                                                         <?php
                                                         $isAgencyClient = false;
-                                                        $clientQuery = $conn->query("SELECT client_type FROM clients WHERE name = '{$ticket['ticket']['sold_to']}' AND tenant_id = $tenant_id");
+                                                        $clientQuery = $conn->query("SELECT client_type FROM clients WHERE name = '{$ticket['ticket']['sold_to']}' AND tenant_id = $tenant_id AND branch_id = $branch_id");
                                                         if ($clientQuery && $clientQuery->num_rows > 0) {
                                                             $clientRow = $clientQuery->fetch_assoc();
                                                             $isAgencyClient = ($clientRow['client_type'] === 'agency');
@@ -325,7 +326,7 @@ foreach ($suppliers as $supplier) {
                                                                 $isAgencyClient = false; // Default to not agency client
 
                                                                 // Fix: We need to query the clients table using the client name from sold_to
-                                                                $clientQuery = $conn->query("SELECT client_type FROM clients WHERE tenant_id = $tenant_id AND name = '".$ticket['ticket']['sold_to']."'");
+                                                                $clientQuery = $conn->query("SELECT client_type FROM clients WHERE tenant_id = $tenant_id AND branch_id = $branch_id AND name = '".$ticket['ticket']['sold_to']."'");
                                                                 if ($clientQuery && $clientQuery->num_rows > 0) {
                                                                     $clientRow = $clientQuery->fetch_assoc();
                                                                     // Only show payment status for agency clients
@@ -832,9 +833,9 @@ foreach ($suppliers as $supplier) {
                             <option value=""><?= __('all_clients') ?></option>
                             <?php
                             // Fetch clients from database
-                            $clientQuery = "SELECT DISTINCT c.name FROM clients c 
-                                          INNER JOIN ticket_reservations tr ON c.id = tr.sold_to 
-                                          WHERE tr.tenant_id = $tenant_id
+                            $clientQuery = "SELECT DISTINCT c.name FROM clients c
+                                          INNER JOIN ticket_reservations tr ON c.id = tr.sold_to
+                                          WHERE tr.tenant_id = $tenant_id AND tr.branch_id = $branch_id
                                           ORDER BY c.name ASC";
                             $clientResult = $conn->query($clientQuery);
                             
@@ -1129,7 +1130,7 @@ foreach ($suppliers as $supplier) {
                                                                 if ($conn->connect_error) {
                                                                     echo "<option value=''>Database connection failed</option>";
                                                                 } else {
-                                                                    $result = $conn->query("SELECT id, name, usd_balance, afs_balance FROM clients where status = 'active' AND tenant_id = $tenant_id");
+                                                                    $result = $conn->query("SELECT id, name, usd_balance, afs_balance FROM clients where status = 'active' AND tenant_id = $tenant_id AND branch_id = $branch_id");
                                                                     while ($row = $result->fetch_assoc()) {
                                                                         echo "<option value='{$row['id']}'>
                                                                                 {$row['name']}
@@ -1252,7 +1253,7 @@ foreach ($suppliers as $supplier) {
                                                                 if ($conn->connect_error) {
                                                                     echo "<option value=''>Database connection failed</option>";
                                                                 } else {
-                                                                    $result = $conn->query("SELECT id, name, usd_balance, afs_balance FROM main_account where status = 'active' AND tenant_id = $tenant_id");
+                                                                    $result = $conn->query("SELECT id, name, usd_balance, afs_balance FROM main_account where status = 'active' AND tenant_id = $tenant_id AND branch_id = $branch_id");
                                                                     while ($row = $result->fetch_assoc()) {
                                                                         echo "<option value='{$row['id']}'>
                                                                                 {$row['name']}
@@ -1306,7 +1307,7 @@ foreach ($suppliers as $supplier) {
                                                                 if ($conn->connect_error) {
                                                                     echo "<option value=''>Database connection failed</option>";
                                                                 } else {
-                                                                    $result = $conn->query("SELECT id, name, usd_balance, afs_balance FROM clients where status = 'active' AND tenant_id = $tenant_id");
+                                                                    $result = $conn->query("SELECT id, name, usd_balance, afs_balance FROM clients where status = 'active' AND tenant_id = $tenant_id AND branch_id = $branch_id");
                                                                     while ($row = $result->fetch_assoc()) {
                                                                         echo "<option value='{$row['id']}'>
                                                                                 {$row['name']}
@@ -1420,7 +1421,7 @@ foreach ($suppliers as $supplier) {
                                                                 if ($conn->connect_error) {
                                                                     echo "<option value=''>Database connection failed</option>";
                                                                 } else {
-                                                                    $result = $conn->query("SELECT id, name, usd_balance, afs_balance FROM main_account where status = 'active' AND tenant_id = $tenant_id");
+                                                                    $result = $conn->query("SELECT id, name, usd_balance, afs_balance FROM main_account where status = 'active' AND tenant_id = $tenant_id AND branch_id = $branch_id");
                                                                     while ($row = $result->fetch_assoc()) {
                                                                         echo "<option value='{$row['id']}'>
                                                                                 {$row['name']}

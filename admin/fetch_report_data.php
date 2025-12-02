@@ -10,6 +10,7 @@ enforce_auth();
 
 require_once '../includes/db.php';
 $tenant_id = $_SESSION['tenant_id'];
+$branch_id = $_SESSION['branch_id'];
 // Validate endDate
 $endDate = isset($_POST['endDate']) ? DbSecurity::validateInput($_POST['endDate'], 'date') : null;
 
@@ -306,14 +307,14 @@ try {
                     case 'ticket':
                         $query = "SELECT tb.pnr, tb.passenger_name, tb.issue_date, tb.sold as total_amount, tb.status 
                                  FROM ticket_bookings tb 
-                                 WHERE tb.issue_date BETWEEN ? AND ? AND tb.tenant_id = ?";
-                        $params = [$startDate, $endDate, $tenant_id];
+                                 WHERE tb.issue_date BETWEEN ? AND ? AND tb.tenant_id = ? AND tb.branch_id = ?";
+                        $params = [$startDate, $endDate, $tenant_id, $branch_id];
                         break;
                     case 'ticket_reservation':
                         $query = "SELECT tb.pnr, tb.passenger_name, tb.issue_date, tb.sold as total_amount, tb.status 
                                  FROM ticket_reservations tb 
-                                 WHERE tb.issue_date BETWEEN ? AND ? AND tb.tenant_id = ?";
-                        $params = [$startDate, $endDate, $tenant_id];
+                                 WHERE tb.issue_date BETWEEN ? AND ? AND tb.tenant_id = ? AND tb.branch_id = ?";
+                        $params = [$startDate, $endDate, $tenant_id, $branch_id];
                         break;
 
                     case 'refund_ticket':

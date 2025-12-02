@@ -5,6 +5,7 @@ require_once 'includes/db_security.php';
 // Include security module
 require_once 'security.php';
 $tenant_id = $_SESSION['tenant_id'];
+$branch_id = $_SESSION['branch_id'];
 // Enforce authentication
 enforce_auth();
 
@@ -53,17 +54,17 @@ if ($agencyResult && $agencyResult->num_rows > 0) {
 
 // Get tickets information
 $placeholders = implode(',', array_fill(0, count($ticketIds), '?'));
-$ticketsQuery = "SELECT um.booking_id, um.name, um.passport_number, f.package_type, 
+$ticketsQuery = "SELECT um.booking_id, um.name, um.passport_number, f.package_type,
                 um.flight_date, um.sold_price,
                 FROM umrah_bookings um
-                left join families f on um.family_id = f.family_id
-                WHERE um.booking_id IN ($placeholders) AND um.tenant_id = ?
+                left join families f on um.family_id = f.family_id AND f.tenant_id = ? AND f.branch_id = ?
+                WHERE um.booking_id IN ($placeholders) AND um.tenant_id = ? AND um.branch_id = ?
                 ORDER BY um.booking_id";
 
     $stmt = $pdo->prepare($ticketsQuery);
 
-    // Bind ticket IDs first, then tenant_id
-    $stmt->execute([...$ticketIds, $tenant_id]);
+    // Bind tenant_id, branch_id, ticket IDs, tenant_id, branch_id
+    $stmt->execute([$tenant_id, $branch_id, ...$ticketIds, $tenant_id, $branch_id]);
 
     $tickets = $stmt->fetchAll(PDO::FETCH_ASSOC);
 
@@ -84,9 +85,9 @@ $invoiceNumber = 'INV-' . time() . '-' . rand(1000, 9999);
 $invoiceDate = date('Y-m-d');
 // --- 3. Fetch bank accounts from main_account table ---
 try {
-    $bankAccountsQuery = "SELECT name, bank_name, bank_account_number, bank_account_afs_number FROM main_account WHERE tenant_id = ? AND status = 'active' AND account_type = 'bank' AND bank_account_number IS NOT NULL AND bank_account_number <> '' ORDER BY name";
+    $bankAccountsQuery = "SELECT name, bank_name, bank_account_number, bank_account_afs_number FROM main_account WHERE tenant_id = ? AND branch_id = ? AND status = 'active' AND account_type = 'bank' AND bank_account_number IS NOT NULL AND bank_account_number <> '' ORDER BY name";
     $stmt = $pdo->prepare($bankAccountsQuery);
-    $stmt->execute([$tenant_id]);
+    $stmt->execute([$tenant_id, $branch_id]);
     $bankAccounts = $stmt->fetchAll(PDO::FETCH_ASSOC);
 } catch (Exception $e) {
     $bankAccounts = [];

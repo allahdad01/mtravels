@@ -5,6 +5,7 @@ require_once 'security.php';
 // Enforce authentication
 enforce_auth();
 $tenant_id = $_SESSION['tenant_id'];
+$branch_id = $_SESSION['branch_id'];
 
 
 // Check if user is logged in
@@ -30,7 +31,7 @@ if (!$visaId) {
     $error = "No visa application ID provided";
 } else {
     // Get visa application details with related info
-    $visaQuery = "SELECT 
+    $visaQuery = "SELECT
             va.*,
             c.name AS client_name,
             c.email AS client_email,
@@ -41,17 +42,17 @@ if (!$visaId) {
         FROM visa_applications va
         LEFT JOIN clients c ON va.sold_to = c.id
         LEFT JOIN suppliers s ON va.supplier = s.id
-        WHERE va.id = ? AND va.tenant_id = ?";
-        
+        WHERE va.id = ? AND va.tenant_id = ? AND va.branch_id = ? AND (c.id IS NULL OR c.branch_id = ?) AND (s.id IS NULL OR s.branch_id = ?)";
+
     $stmt = $pdo->prepare($visaQuery);
-    $stmt->execute([$visaId, $tenant_id]);
+    $stmt->execute([$visaId, $tenant_id, $branch_id, $branch_id, $branch_id]);
     $visaData = $stmt->fetch(PDO::FETCH_ASSOC);
     
     if (!$visaData) {
         $error = "Visa application not found";
     } else {
         // Get main account transactions related to this visa
-        $mainAccountTransQuery = "SELECT 
+        $mainAccountTransQuery = "SELECT
                 'Main Account' AS transaction_type,
                 mat.id,
                 mat.type,
@@ -61,15 +62,15 @@ if (!$visaId) {
                 mat.transaction_of,
                 mat.created_at AS transaction_date
             FROM main_account_transactions mat
-            WHERE mat.reference_id = ? AND mat.transaction_of = 'visa_sale' AND mat.tenant_id = ?
+            WHERE mat.reference_id = ? AND mat.transaction_of = 'visa_sale' AND mat.tenant_id = ? AND mat.branch_id = ?
             ORDER BY mat.created_at DESC";
-            
+
         $stmt = $pdo->prepare($mainAccountTransQuery);
-        $stmt->execute([$visaId, $tenant_id]);
+        $stmt->execute([$visaId, $tenant_id, $branch_id]);
         $mainAccountTransactions = $stmt->fetchAll(PDO::FETCH_ASSOC);
         
         // Get client transactions related to this visa
-        $clientTransQuery = "SELECT 
+        $clientTransQuery = "SELECT
                 'Client' AS transaction_type,
                 ct.id,
                 ct.type,
@@ -79,15 +80,15 @@ if (!$visaId) {
                 ct.transaction_of,
                 ct.created_at AS transaction_date
             FROM client_transactions ct
-            WHERE ct.reference_id = ? AND ct.transaction_of = 'visa_sale' AND ct.tenant_id = ?
+            WHERE ct.reference_id = ? AND ct.transaction_of = 'visa_sale' AND ct.tenant_id = ? AND ct.branch_id = ?
             ORDER BY ct.created_at DESC";
-            
+
         $stmt = $pdo->prepare($clientTransQuery);
-        $stmt->execute([$visaId, $tenant_id]);
+        $stmt->execute([$visaId, $tenant_id, $branch_id]);
         $clientTransactions = $stmt->fetchAll(PDO::FETCH_ASSOC);
         
         // Get supplier transactions related to this visa
-        $supplierTransQuery = "SELECT 
+        $supplierTransQuery = "SELECT
                 'Supplier' AS transaction_type,
                 st.id,
                 st.transaction_type AS type,
@@ -96,11 +97,11 @@ if (!$visaId) {
                 st.transaction_of,
                 st.transaction_date
             FROM supplier_transactions st
-            WHERE st.reference_id = ? AND st.transaction_of = 'visa_sale' AND st.tenant_id = ?
+            WHERE st.reference_id = ? AND st.transaction_of = 'visa_sale' AND st.tenant_id = ? AND st.branch_id = ?
             ORDER BY st.transaction_date DESC";
-            
+
         $stmt = $pdo->prepare($supplierTransQuery);
-        $stmt->execute([$visaId, $tenant_id]);
+        $stmt->execute([$visaId, $tenant_id, $branch_id]);
         $supplierTransactions = $stmt->fetchAll(PDO::FETCH_ASSOC);
     }
 }

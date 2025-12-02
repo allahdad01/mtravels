@@ -4,6 +4,7 @@ if (session_status() === PHP_SESSION_NONE) {
     session_start();
 }
 $tenant_id = $_SESSION['tenant_id'];
+$branch_id = $_SESSION['branch_id'];
 // Include security module
 require_once 'security.php';
 
@@ -34,29 +35,29 @@ $startDate = $selectedYear . '-' . $selectedMonth . '-01';
 $endDate = date('Y-m-t', strtotime($startDate));
 
 // Fetch main accounts for allocations
-$mainAccountsQuery = "SELECT * FROM main_account WHERE tenant_id = ? ORDER BY name";
+$mainAccountsQuery = "SELECT * FROM main_account WHERE tenant_id = ? AND branch_id = ? ORDER BY name";
 $stmt = $pdo->prepare($mainAccountsQuery);
-$stmt->execute([$tenant_id]); // pass tenant_id as parameter
+$stmt->execute([$tenant_id, $branch_id]); // pass tenant_id and branch_id as parameters
 $mainAccounts = $stmt->fetchAll(PDO::FETCH_ASSOC);
 
 // Fetch categories for allocations
-$categoriesQuery = "SELECT * FROM expense_categories WHERE tenant_id = ? ORDER BY name";
+$categoriesQuery = "SELECT * FROM expense_categories WHERE tenant_id = ? AND branch_id = ? ORDER BY name";
 $stmt = $pdo->prepare($categoriesQuery);
-$stmt->execute([$tenant_id]); // pass tenant_id as parameter
+$stmt->execute([$tenant_id, $branch_id]); // pass tenant_id and branch_id as parameters
 $categories = $stmt->fetchAll(PDO::FETCH_ASSOC);
 
 
 // Fetch existing allocations with date filter
 $allocationsQuery = "
-    SELECT ba.*, ma.name as account_name, ec.name as category_name 
+    SELECT ba.*, ma.name as account_name, ec.name as category_name
     FROM budget_allocations ba
     JOIN main_account ma ON ba.main_account_id = ma.id
     JOIN expense_categories ec ON ba.category_id = ec.id
-    WHERE ba.allocation_date BETWEEN ? AND ? AND ba.tenant_id = ?
+    WHERE ba.allocation_date BETWEEN ? AND ? AND ba.tenant_id = ? AND ba.branch_id = ?
     ORDER BY ba.allocation_date DESC
 ";
 $stmt = $pdo->prepare($allocationsQuery);
-$stmt->execute([$startDate, $endDate, $tenant_id]);
+$stmt->execute([$startDate, $endDate, $tenant_id, $branch_id]);
 $allocations = $stmt->fetchAll(PDO::FETCH_ASSOC);
 $stmt->closeCursor();
 
@@ -231,12 +232,12 @@ $stmt->closeCursor();
                         $previousMonthEnd = date('Y-m-t', strtotime($previousMonthStart));
                         
                         $stmt = $pdo->prepare("
-                            SELECT COUNT(*) FROM budget_allocations 
-                            WHERE allocation_date BETWEEN ? AND ? 
+                            SELECT COUNT(*) FROM budget_allocations
+                            WHERE allocation_date BETWEEN ? AND ?
                             AND remaining_amount > 0
-                            AND tenant_id = ?
+                            AND tenant_id = ? AND branch_id = ?
                         ");
-                        $stmt->execute([$previousMonthStart, $previousMonthEnd, $tenant_id]);
+                        $stmt->execute([$previousMonthStart, $previousMonthEnd, $tenant_id, $branch_id]);
                         $pendingCount = $stmt->fetchColumn();
                         
                         if ($pendingCount > 0): 

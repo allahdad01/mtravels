@@ -7,10 +7,11 @@ enforce_auth();
 
 require_once '../includes/conn.php';
 $tenant_id = $_SESSION['tenant_id'];
+$branch_id = $_SESSION['branch_id'];
 
 $data = json_decode(file_get_contents("php://input"), true);
-$stmt = $conn->prepare("DELETE FROM suppliers WHERE id = ? AND tenant_id = ?");
-$stmt->bind_param("ii", $data['id'], $tenant_id);
+$stmt = $conn->prepare("DELETE FROM suppliers WHERE id = ? AND tenant_id = ? AND branch_id = ?");
+$stmt->bind_param("iii", $data['id'], $tenant_id, $branch_id);
 
 if ($stmt->execute()) {
     // Get the supplier ID for logging
@@ -28,11 +29,11 @@ if ($stmt->execute()) {
 
     
     $stmt_log = $conn->prepare("
-        INSERT INTO activity_log 
-        (user_id, action, table_name, record_id, old_values, new_values, ip_address, user_agent, created_at, tenant_id) 
-        VALUES (?, 'delete', 'suppliers', ?, ?, ?, ?, ?, NOW(), ?)
+        INSERT INTO activity_log
+        (user_id, action, table_name, record_id, old_values, new_values, ip_address, user_agent, created_at, tenant_id, branch_id)
+        VALUES (?, 'delete', 'suppliers', ?, ?, ?, ?, ?, NOW(), ?, ?)
     ");
-    $stmt_log->bind_param("iissssi", $user_id, $supplier_id, $old_values, $new_values, $ip_address, $user_agent, $tenant_id);
+    $stmt_log->bind_param("iissssii", $user_id, $supplier_id, $old_values, $new_values, $ip_address, $user_agent, $tenant_id, $branch_id);
     $stmt_log->execute();
     $stmt_log->close();
     

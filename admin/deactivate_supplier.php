@@ -8,6 +8,7 @@ require_once 'security.php';
 enforce_auth();
 
 $tenant_id = $_SESSION['tenant_id'];
+$branch_id = $_SESSION['branch_id'];
 
 // Get the raw POST data
 $json = file_get_contents('php://input');
@@ -24,8 +25,8 @@ $supplierId = $data['id'];
 
 try {
     // Prepare SQL to update supplier status
-    $stmt = $conn->prepare("UPDATE suppliers SET status = 'inactive' WHERE id = ? AND tenant_id = ?");
-    $stmt->bind_param("ii", $supplierId, $tenant_id);
+    $stmt = $conn->prepare("UPDATE suppliers SET status = 'inactive' WHERE id = ? AND tenant_id = ? AND branch_id = ?");
+    $stmt->bind_param("iii", $supplierId, $tenant_id, $branch_id);
     
     // Execute the statement
     if ($stmt->execute()) {

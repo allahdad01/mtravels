@@ -4,6 +4,7 @@ require_once('../includes/db.php');
 require_once('../includes/conn.php');
 require_once('security.php');
 $tenant_id = $_SESSION['tenant_id'];
+$branch_id = $_SESSION['branch_id'];
 // Enforce authentication
 enforce_auth();
 
@@ -25,12 +26,12 @@ try {
         SELECT t.*, m.name as account_name
         FROM main_account_transactions t
         LEFT JOIN main_account m ON t.main_account_id = m.id
-        WHERE t.id = ? AND t.tenant_id = ?
+        WHERE t.id = ? AND t.tenant_id = ? AND t.branch_id = ?
         AND t.transaction_of = 'hotel_refund'
     ";
-    
+
     $stmt = $pdo->prepare($query);
-    $stmt->execute([$transactionId, $tenant_id]);
+    $stmt->execute([$transactionId, $tenant_id, $branch_id]);
     $transaction = $stmt->fetch(PDO::FETCH_ASSOC);
     
     if ($transaction) {

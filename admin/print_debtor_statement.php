@@ -16,17 +16,18 @@ if (session_status() === PHP_SESSION_NONE) {
     session_start();
 }
 $tenant_id = $_SESSION['tenant_id'];
+$branch_id = $_SESSION['branch_id'];
 
 require_once '../includes/conn.php';
 require_once '../includes/db.php';
 
 // Fetch settings data
 try {
-    $settingStmt = $pdo->prepare("SELECT * FROM settings WHERE tenant_id = ?");
+    $settingStmt = $pdo->query("SELECT * FROM settings WHERE tenant_id = ?");
     $settingStmt->execute([$tenant_id]);
     $settings = $settingStmt->fetch(PDO::FETCH_ASSOC);
 } catch (PDOException $e) {
-    error_log("Database Error: " . $e->getMessage());
+    error_log("Settings Error: " . $e->getMessage());
     $settings = ['agency_name' => 'Default Name'];
 }
 
@@ -38,8 +39,8 @@ if (!isset($_GET['id']) || !is_numeric($_GET['id'])) {
 $debtor_id = intval($_GET['id']);
 
 // Fetch debtor details
-$stmt = $conn->prepare("SELECT * FROM debtors WHERE id = ? AND tenant_id = ?");
-$stmt->bind_param("ii", $debtor_id, $tenant_id);
+$stmt = $conn->prepare("SELECT * FROM debtors WHERE id = ? AND tenant_id = ? AND branch_id = ?");
+$stmt->bind_param("iii", $debtor_id, $tenant_id, $branch_id);
 $stmt->execute();
 $result = $stmt->get_result();
 $debtor = $result->fetch_assoc();
@@ -49,8 +50,8 @@ if (!$debtor) {
 }
 
 // Fetch debtor transactions
-$stmt = $conn->prepare("SELECT * FROM debtor_transactions WHERE debtor_id = ? AND tenant_id = ? ORDER BY payment_date DESC");
-$stmt->bind_param("ii", $debtor_id, $tenant_id);
+$stmt = $conn->prepare("SELECT * FROM debtor_transactions WHERE debtor_id = ? AND tenant_id = ? AND branch_id = ? ORDER BY payment_date DESC");
+$stmt->bind_param("iii", $debtor_id, $tenant_id, $branch_id);
 $stmt->execute();
 $transResult = $stmt->get_result();
 $transactions = $transResult->fetch_all(MYSQLI_ASSOC);

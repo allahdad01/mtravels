@@ -2,6 +2,7 @@
 // Include security module
 require_once 'security.php';
 $tenant_id = $_SESSION['tenant_id'];
+$branch_id = $_SESSION['branch_id'];
 // Enforce authentication
 enforce_auth();
 
@@ -27,9 +28,9 @@ $refundId = intval($_GET['id']);
 
 try {
     // First check if the refund exists
-    $checkQuery = "SELECT id FROM hotel_refunds WHERE id = ? AND tenant_id = ?";
+    $checkQuery = "SELECT id FROM hotel_refunds WHERE id = ? AND tenant_id = ? AND branch_id = ?";
     $checkStmt = $pdo->prepare($checkQuery);
-    $checkStmt->execute([$refundId, $tenant_id]);
+    $checkStmt->execute([$refundId, $tenant_id, $branch_id]);
     
     if (!$checkStmt->fetch()) {
         $response['message'] = 'Refund not found';
@@ -39,7 +40,7 @@ try {
 
     // Fetch refund details with related information
     $query = "
-        SELECT 
+        SELECT
             r.*,
             h.title,
             h.first_name,
@@ -58,11 +59,11 @@ try {
         LEFT JOIN suppliers s ON h.supplier_id = s.id
         LEFT JOIN clients c ON h.sold_to = c.id
         LEFT JOIN users u ON r.processed_by = u.id
-        WHERE r.id = ? AND r.tenant_id = ?
+        WHERE r.id = ? AND r.tenant_id = ? AND r.branch_id = ?
     ";
-    
+
     $stmt = $pdo->prepare($query);
-    $stmt->execute([$refundId, $tenant_id]);
+    $stmt->execute([$refundId, $tenant_id, $branch_id]);
     $refund = $stmt->fetch(PDO::FETCH_ASSOC);
     
     if ($refund) {

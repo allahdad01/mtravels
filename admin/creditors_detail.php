@@ -4,6 +4,7 @@ if (session_status() === PHP_SESSION_NONE) {
     session_start();
 }
 $tenant_id = $_SESSION['tenant_id'];
+$branch_id = $_SESSION['branch_id'];
 // Include security module
 require_once 'security.php';
 
@@ -33,16 +34,16 @@ if (!$creditorId) {
     $error = "No creditor ID provided";
 } else {
     // Get creditor details
-    $creditorQuery = "SELECT * FROM creditors WHERE id = ? AND tenant_id = ?";
+    $creditorQuery = "SELECT * FROM creditors WHERE id = ? AND tenant_id = ? AND branch_id = ?";
     $stmt = $pdo->prepare($creditorQuery);
-    $stmt->execute([$creditorId, $tenant_id]);
+    $stmt->execute([$creditorId, $tenant_id, $branch_id]);
     $creditorData = $stmt->fetch(PDO::FETCH_ASSOC);
     
     if (!$creditorData) {
         $error = "Creditor not found";
     } else {
         // Get transactions related to this creditor
-        $transactionsQuery = "SELECT 
+        $transactionsQuery = "SELECT
                 'Creditor Payment' AS transaction_type,
                 ct.id,
                 ct.creditor_id,
@@ -55,11 +56,11 @@ if (!$creditorId) {
                 ct.created_at
             FROM creditor_transactions ct
             WHERE ct.creditor_id = ?
-            AND ct.tenant_id = ?
+            AND ct.tenant_id = ? AND ct.branch_id = ?
             ORDER BY ct.payment_date DESC";
-            
+
         $stmt = $pdo->prepare($transactionsQuery);
-        $stmt->execute([$creditorId, $tenant_id]);
+        $stmt->execute([$creditorId, $tenant_id, $branch_id]);
         $transactions = $stmt->fetchAll(PDO::FETCH_ASSOC);
     }
 }

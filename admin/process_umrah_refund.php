@@ -10,6 +10,7 @@ enforce_auth();
 // Set header for JSON response
 header('Content-Type: application/json');
 $tenant_id = $_SESSION['tenant_id'];
+$branch_id = $_SESSION['branch_id'];
 
 
 // Check if it's a POST request
@@ -42,9 +43,9 @@ try {
     $conn->begin_transaction();
 
     // Check if the booking exists and get its details
-    $bookingQuery = "SELECT * FROM umrah_bookings WHERE booking_id = ? AND tenant_id = ?";
+    $bookingQuery = "SELECT * FROM umrah_bookings WHERE booking_id = ? AND tenant_id = ? AND branch_id = ?";
     $stmt = $conn->prepare($bookingQuery);
-    $stmt->bind_param('ii', $booking_id, $tenant_id);
+    $stmt->bind_param('iii', $booking_id, $tenant_id, $branch_id);
     $stmt->execute();
     $bookingResult = $stmt->get_result();
 
@@ -55,9 +56,9 @@ try {
     $booking = $bookingResult->fetch_assoc();
 
     // Get all services for this booking (multi-supplier support)
-    $servicesQuery = "SELECT * FROM umrah_booking_services WHERE booking_id = ? AND tenant_id = ?";
+    $servicesQuery = "SELECT * FROM umrah_booking_services WHERE booking_id = ? AND tenant_id = ? AND branch_id = ?";
     $stmt = $conn->prepare($servicesQuery);
-    $stmt->bind_param('ii', $booking_id, $tenant_id);
+    $stmt->bind_param('iii', $booking_id, $tenant_id, $branch_id);
     $stmt->execute();
     $servicesResult = $stmt->get_result();
 
@@ -102,19 +103,19 @@ try {
     }
 
     // Insert refund record
-    $insertQuery = "INSERT INTO umrah_refunds (booking_id, refund_type, refund_amount, reason, currency, tenant_id) 
-                    VALUES (?, ?, ?, ?, ?, ?)";
+    $insertQuery = "INSERT INTO umrah_refunds (booking_id, refund_type, refund_amount, reason, currency, tenant_id, branch_id)
+                    VALUES (?, ?, ?, ?, ?, ?, ?)";
     $stmt = $conn->prepare($insertQuery);
-    $stmt->bind_param('isdssd', $booking_id, $refund_type, $refund_amount, $reason, $currency, $tenant_id);
+    $stmt->bind_param('isdssdi', $booking_id, $refund_type, $refund_amount, $reason, $currency, $tenant_id, $branch_id);
     $stmt->execute();
     
     // Get the ID of the newly inserted refund record
     $refund_id = $conn->insert_id;
     
     // Update booking profit and status
-    $updateQuery = "UPDATE umrah_bookings SET profit = ?, due = '0', status = 'refunded' WHERE booking_id = ? AND tenant_id = ?";
+    $updateQuery = "UPDATE umrah_bookings SET profit = ?, due = '0', status = 'refunded' WHERE booking_id = ? AND tenant_id = ? AND branch_id = ?";
     $stmt = $conn->prepare($updateQuery);
-    $stmt->bind_param('dii', $newProfit, $booking_id, $tenant_id);
+    $stmt->bind_param('diii', $newProfit, $booking_id, $tenant_id, $branch_id);
     $stmt->execute();
 
 
@@ -127,8 +128,8 @@ try {
 
 
         // Get supplier details
-        $stmt_check_balance = $conn->prepare("SELECT balance, currency, name, supplier_type FROM suppliers WHERE id = ? AND tenant_id = ?");
-        $stmt_check_balance->bind_param("ii", $supplier_id, $tenant_id);
+        $stmt_check_balance = $conn->prepare("SELECT balance, currency, name, supplier_type FROM suppliers WHERE id = ? AND tenant_id = ? AND branch_id = ?");
+        $stmt_check_balance->bind_param("iii", $supplier_id, $tenant_id, $branch_id);
         if (!$stmt_check_balance->execute()) {
             throw new Exception("Failed to fetch supplier details for supplier ID: $supplier_id");
         }
@@ -148,37 +149,39 @@ try {
 
             // Update supplier balance
             $newSupplierBalance = $current_balance + $supplierRefundAmount;
-            $updateSupplierStmt = $conn->prepare("UPDATE suppliers SET balance = ? WHERE id = ? AND tenant_id = ?");
-            $updateSupplierStmt->bind_param("dii", $newSupplierBalance, $supplier_id, $tenant_id);
+            $updateSupplierStmt = $conn->prepare("UPDATE suppliers SET balance = ? WHERE id = ? AND tenant_id = ? AND branch_id = ?");
+            $updateSupplierStmt->bind_param("diii", $newSupplierBalance, $supplier_id, $tenant_id, $branch_id);
             if (!$updateSupplierStmt->execute()) {
                 throw new Exception("Failed to update supplier balance for supplier ID: $supplier_id");
             }
 
             // Record supplier transaction with balance
             $insertSupplierTransactionStmt = $conn->prepare("INSERT INTO supplier_transactions
-                (transaction_date, supplier_id, reference_id, amount, balance, transaction_type, remarks, transaction_of, tenant_id)
-                VALUES (NOW(), ?, ?, ?, ?, 'credit', ?, 'umrah_refund', ?)");
+                (transaction_date, supplier_id, reference_id, amount, balance, transaction_type, remarks, transaction_of, tenant_id, branch_id)
+                VALUES (NOW(), ?, ?, ?, ?, 'credit', ?, 'umrah_refund', ?, ?)");
             $supplierRemarks = "Refund for umrah booking #$booking_id - " . $reason;
-            $insertSupplierTransactionStmt->bind_param("iiddsi",
+            $insertSupplierTransactionStmt->bind_param("iiddsii",
                 $supplier_id,
                 $refund_id,
                 $supplierRefundAmount,
                 $newSupplierBalance,
                 $supplierRemarks,
-                $tenant_id
+                $tenant_id,
+                $branch_id
             );
         } else {
             // Record supplier transaction without balance for non-External suppliers
             $insertSupplierTransactionStmt = $conn->prepare("INSERT INTO supplier_transactions
-                (transaction_date, supplier_id, reference_id, amount, transaction_type, remarks, transaction_of, tenant_id)
-                VALUES (NOW(), ?, ?, ?, 'credit', ?, 'umrah_refund', ?)");
+                (transaction_date, supplier_id, reference_id, amount, transaction_type, remarks, transaction_of, tenant_id, branch_id)
+                VALUES (NOW(), ?, ?, ?, 'credit', ?, 'umrah_refund', ?, ?)");
             $supplierRemarks = "Refund for umrah booking #$booking_id - " . $reason;
-            $insertSupplierTransactionStmt->bind_param("iidsi",
+            $insertSupplierTransactionStmt->bind_param("iidsii",
                 $supplier_id,
                 $refund_id,
                 $service_refund_amount,
                 $supplierRemarks,
-                $tenant_id
+                $tenant_id,
+                $branch_id
             );
         }
         if (!$insertSupplierTransactionStmt->execute()) {
@@ -187,8 +190,8 @@ try {
     }
 
     // Get client details and type
-    $clientQuery = $conn->prepare("SELECT client_type, usd_balance, afs_balance, name FROM clients WHERE id = ? AND tenant_id = ?");
-    $clientQuery->bind_param("ii", $booking['sold_to'], $tenant_id);
+    $clientQuery = $conn->prepare("SELECT client_type, usd_balance, afs_balance, name FROM clients WHERE id = ? AND tenant_id = ? AND branch_id = ?");
+    $clientQuery->bind_param("iii", $booking['sold_to'], $tenant_id, $branch_id);
     if (!$clientQuery->execute()) {
         throw new Exception("Failed to fetch client details");
     }
@@ -205,52 +208,54 @@ try {
         // Update client balance based on currency
         if ($currency === 'USD') {
             $newUsdBalance = $clientResult['usd_balance'] + $refundInClientCurrency;
-            $updateClientQuery = "UPDATE clients SET usd_balance = ? WHERE id = ? AND tenant_id = ?";
+            $updateClientQuery = "UPDATE clients SET usd_balance = ? WHERE id = ? AND tenant_id = ? AND branch_id = ?";
             $stmt = $conn->prepare($updateClientQuery);
-            $stmt->bind_param("dii", $newUsdBalance, $booking['sold_to'], $tenant_id);
+            $stmt->bind_param("diii", $newUsdBalance, $booking['sold_to'], $tenant_id, $branch_id);
         } else {
             $newAfsBalance = $clientResult['afs_balance'] + $refundInClientCurrency;
-            $updateClientQuery = "UPDATE clients SET afs_balance = ? WHERE id = ? AND tenant_id = ?";
+            $updateClientQuery = "UPDATE clients SET afs_balance = ? WHERE id = ? AND tenant_id = ? AND branch_id = ?";
             $stmt = $conn->prepare($updateClientQuery);
-            $stmt->bind_param("dii", $newAfsBalance, $booking['sold_to'], $tenant_id);
+            $stmt->bind_param("diii", $newAfsBalance, $booking['sold_to'], $tenant_id, $branch_id);
         }
         if (!$stmt->execute()) {
             throw new Exception("Failed to update client balance");
         }
 
         // Record client transaction
-        $clientTransactionQuery = "INSERT INTO client_transactions 
-            (client_id, type, amount, balance, currency, description, transaction_of, reference_id, created_at, tenant_id)
-            VALUES (?, 'Credit', ?, ?, ?, ?, 'umrah_refund', ?, NOW(), ?)";
+        $clientTransactionQuery = "INSERT INTO client_transactions
+            (client_id, type, amount, balance, currency, description, transaction_of, reference_id, created_at, tenant_id, branch_id)
+            VALUES (?, 'Credit', ?, ?, ?, ?, 'umrah_refund', ?, NOW(), ?, ?)";
         $stmt = $conn->prepare($clientTransactionQuery);
         $clientTransactionDescription = "Refund for umrah booking #$booking_id - $reason";
         $balance = ($currency === 'USD') ? $newUsdBalance : $newAfsBalance;
-        $stmt->bind_param("iddssii", 
+        $stmt->bind_param("iddssi",
             $booking['sold_to'],
             $refundInClientCurrency,
             $balance,
             $currency,
             $clientTransactionDescription,
             $refund_id,
-            $tenant_id
+            $tenant_id,
+            $branch_id
         );
         if (!$stmt->execute()) {
             throw new Exception("Failed to record client transaction");
         }
     } else {
         // Record client transaction without balance for non-regular clients
-        $clientTransactionQuery = "INSERT INTO client_transactions 
-            (client_id, type, amount, currency, description, transaction_of, reference_id, created_at, tenant_id)
-            VALUES (?, 'Credit', ?, ?, ?, 'umrah_refund', ?, NOW(), ?)";
+        $clientTransactionQuery = "INSERT INTO client_transactions
+            (client_id, type, amount, currency, description, transaction_of, reference_id, created_at, tenant_id, branch_id)
+            VALUES (?, 'Credit', ?, ?, ?, 'umrah_refund', ?, NOW(), ?, ?)";
         $stmt = $conn->prepare($clientTransactionQuery);
         $clientTransactionDescription = "Refund for umrah booking #$booking_id - $reason";
-        $stmt->bind_param("idssii", 
+        $stmt->bind_param("idssi",
             $booking['sold_to'],
             $refund_amount,
             $currency,
             $clientTransactionDescription,
             $refund_id,
-            $tenant_id
+            $tenant_id,
+            $branch_id
         );
         if (!$stmt->execute()) {
             throw new Exception("Failed to record client transaction");

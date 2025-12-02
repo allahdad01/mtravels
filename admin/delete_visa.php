@@ -10,6 +10,7 @@ enforce_auth();
 
 require_once('../includes/db.php');
 $tenant_id = $_SESSION['tenant_id'];
+$branch_id = $_SESSION['branch_id'];
 // Validate id
 $id = isset($_POST['id']) ? DbSecurity::validateInput($_POST['id'], 'int', ['min' => 0]) : null;
 
@@ -274,11 +275,11 @@ try {
     $user_agent = $_SERVER['HTTP_USER_AGENT'] ?? '';
     
     $activityStmt = $pdo->prepare("
-        INSERT INTO activity_log 
-        (user_id, action, table_name, record_id, old_values, new_values, ip_address, user_agent, created_at, tenant_id) 
-        VALUES (?, 'delete', 'visa_applications', ?, ?, ?, ?, ?, NOW(), ?)
+        INSERT INTO activity_log
+        (user_id, action, table_name, record_id, old_values, new_values, ip_address, user_agent, created_at, tenant_id, branch_id)
+        VALUES (?, 'delete', 'visa_applications', ?, ?, ?, ?, ?, NOW(), ?, ?)
     ");
-    $activityStmt->execute([$user_id, $visa_id, $old_values, $new_values, $ip_address, $user_agent, $tenant_id]);
+    $activityStmt->execute([$user_id, $visa_id, $old_values, $new_values, $ip_address, $user_agent, $tenant_id, $branch_id]);
     
     echo json_encode(['success' => true, 'message' => 'Visa application deleted successfully!']);
 } catch (Exception $e) {

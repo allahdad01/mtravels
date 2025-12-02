@@ -106,8 +106,8 @@ function createAllocation($pdo) {
         }
 
         // Check if the main account exists for the specified currency
-        $accountExistsStmt = $pdo->prepare("SELECT id FROM main_account WHERE id = ? AND tenant_id = ?");
-        $accountExistsStmt->execute([$mainAccountId, $tenant_id]);
+        $accountExistsStmt = $pdo->prepare("SELECT id FROM main_account WHERE id = ? AND tenant_id = ? AND branch_id = ?");
+        $accountExistsStmt->execute([$mainAccountId, $tenant_id, $branch_id]);
         
         if ($accountExistsStmt->rowCount() === 0) {
             sendResponse(false, 'Main account not found');
@@ -124,8 +124,8 @@ function createAllocation($pdo) {
             $balanceColumn = 'darham_balance';
         }
         
-        $accountStmt = $pdo->prepare("SELECT $balanceColumn FROM main_account WHERE id = ? AND tenant_id = ?");
-        $accountStmt->execute([$mainAccountId, $tenant_id]);
+        $accountStmt = $pdo->prepare("SELECT $balanceColumn FROM main_account WHERE id = ? AND tenant_id = ? AND branch_id = ?");
+        $accountStmt->execute([$mainAccountId, $tenant_id, $branch_id]);
         $account = $accountStmt->fetch(PDO::FETCH_ASSOC);
 
         if (!$account) {
@@ -142,14 +142,14 @@ function createAllocation($pdo) {
         $pdo->beginTransaction();
 
         // Deduct from appropriate balance column in main account
-        $updateAccountStmt = $pdo->prepare("UPDATE main_account SET $balanceColumn = $balanceColumn - ? WHERE id = ? AND tenant_id = ?");
-        $updateAccountStmt->execute([$amount, $mainAccountId, $tenant_id]);
+        $updateAccountStmt = $pdo->prepare("UPDATE main_account SET $balanceColumn = $balanceColumn - ? WHERE id = ? AND tenant_id = ? AND branch_id = ?");
+        $updateAccountStmt->execute([$amount, $mainAccountId, $tenant_id, $branch_id]);
 
         // Create allocation
         $allocationStmt = $pdo->prepare("
-            INSERT INTO budget_allocations 
-            (main_account_id, category_id, allocated_amount, remaining_amount, currency, allocation_date, description, tenant_id) 
-            VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+            INSERT INTO budget_allocations
+            (main_account_id, category_id, allocated_amount, remaining_amount, currency, allocation_date, description, tenant_id, branch_id)
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
         ");
         $allocationStmt->execute([
             $mainAccountId,
@@ -159,14 +159,15 @@ function createAllocation($pdo) {
             $currency,
             $date,
             $description,
-            $tenant_id
+            $tenant_id,
+            $branch_id
         ]);
         
         $allocationId = $pdo->lastInsertId();
 
         // Get updated balance for transaction record
-        $balanceStmt = $pdo->prepare("SELECT $balanceColumn FROM main_account WHERE id = ? AND tenant_id = ?");
-        $balanceStmt->execute([$mainAccountId, $tenant_id]);
+        $balanceStmt = $pdo->prepare("SELECT $balanceColumn FROM main_account WHERE id = ? AND tenant_id = ? AND branch_id = ?");
+        $balanceStmt->execute([$mainAccountId, $tenant_id, $branch_id]);
         $updatedBalance = $balanceStmt->fetchColumn();
 
         // Add transaction record
@@ -238,8 +239,8 @@ function updateAllocation($pdo) {
         }
 
         // Only allow updating the description
-        $updateStmt = $pdo->prepare("UPDATE budget_allocations SET description = ? WHERE id = ? AND tenant_id = ?");
-        $updateStmt->execute([$description, $allocationId, $tenant_id]);
+        $updateStmt = $pdo->prepare("UPDATE budget_allocations SET description = ? WHERE id = ? AND tenant_id = ? AND branch_id = ?");
+        $updateStmt->execute([$description, $allocationId, $tenant_id, $branch_id]);
 
         if ($updateStmt->rowCount() === 0) {
             sendResponse(false, 'Allocation not found or no changes made');
@@ -285,8 +286,8 @@ function deleteAllocation($pdo) {
         }
 
         // Check if there are any expenses associated with this allocation
-        $expenseStmt = $pdo->prepare("SELECT COUNT(*) FROM expenses WHERE allocation_id = ? AND tenant_id = ?");
-        $expenseStmt->execute([$allocationId, $tenant_id]);
+        $expenseStmt = $pdo->prepare("SELECT COUNT(*) FROM expenses WHERE allocation_id = ? AND tenant_id = ? AND branch_id = ?");
+        $expenseStmt->execute([$allocationId, $tenant_id, $branch_id]);
         $expenseCount = $expenseStmt->fetchColumn();
 
         if ($expenseCount > 0) {
@@ -295,8 +296,8 @@ function deleteAllocation($pdo) {
         }
 
         // Get allocation details before deletion
-        $allocationStmt = $pdo->prepare("SELECT * FROM budget_allocations WHERE id = ? AND tenant_id = ?");
-        $allocationStmt->execute([$allocationId, $tenant_id]);
+        $allocationStmt = $pdo->prepare("SELECT * FROM budget_allocations WHERE id = ? AND tenant_id = ? AND branch_id = ?");
+        $allocationStmt->execute([$allocationId, $tenant_id, $branch_id]);
         $allocation = $allocationStmt->fetch(PDO::FETCH_ASSOC);
 
         if (!$allocation) {
@@ -320,57 +321,59 @@ function deleteAllocation($pdo) {
             }
             
             $updateAccountStmt = $pdo->prepare("
-                UPDATE main_account 
-                SET $balanceColumn = $balanceColumn + ? 
-                WHERE id = ? AND tenant_id = ?
+                UPDATE main_account
+                SET $balanceColumn = $balanceColumn + ?
+                WHERE id = ? AND tenant_id = ? AND branch_id = ?
             ");
             $updateAccountStmt->execute([
                 $allocation['remaining_amount'],
                 $allocation['main_account_id'],
-                $tenant_id
+                $tenant_id,
+                $branch_id
             ]);
             
             
                 // Get transaction details to find created_at timestamp
-                $getTxnStmt = $pdo->prepare("SELECT created_at FROM main_account_transactions WHERE reference_id = ? AND transaction_of = 'budget_allocation' AND tenant_id = ?");
-                $getTxnStmt->execute([$allocationId, $tenant_id]);
+                $getTxnStmt = $pdo->prepare("SELECT created_at FROM main_account_transactions WHERE reference_id = ? AND transaction_of = 'budget_allocation' AND tenant_id = ? AND branch_id = ?");
+                $getTxnStmt->execute([$allocationId, $tenant_id, $branch_id]);
                 $transaction = $getTxnStmt->fetch(PDO::FETCH_ASSOC);
                 
                 if ($transaction) {
                     // Update balances of all subsequent transactions
                     $updateSubsequentStmt = $pdo->prepare("
-                        UPDATE main_account_transactions 
+                        UPDATE main_account_transactions
                         SET balance = balance + ?
-                        WHERE main_account_id = ? 
-                        AND currency = ? 
-                        AND created_at > ? 
+                        WHERE main_account_id = ?
+                        AND currency = ?
+                        AND created_at > ?
                         AND reference_id != ?
-                        AND tenant_id = ?
+                        AND tenant_id = ? AND branch_id = ?
                     ");
                     $updateSubsequentStmt->execute([
-                        $allocation['remaining_amount'], 
-                        $allocation['main_account_id'], 
-                        $allocation['currency'], 
+                        $allocation['remaining_amount'],
+                        $allocation['main_account_id'],
+                        $allocation['currency'],
                         $transaction['created_at'],
                         $allocationId,
-                        $tenant_id
+                        $tenant_id,
+                        $branch_id
                     ]);
                 }
             // Get updated balance for transaction record
-            $balanceStmt = $pdo->prepare("SELECT $balanceColumn FROM main_account WHERE id = ? AND tenant_id = ?");
-            $balanceStmt->execute([$allocation['main_account_id'], $tenant_id]);
+            $balanceStmt = $pdo->prepare("SELECT $balanceColumn FROM main_account WHERE id = ? AND tenant_id = ? AND branch_id = ?");
+            $balanceStmt->execute([$allocation['main_account_id'], $tenant_id, $branch_id]);
             $updatedBalance = $balanceStmt->fetchColumn();
 
             // Delete the associated transaction
-            $deleteStmt = $pdo->prepare("DELETE FROM main_account_transactions WHERE reference_id = ? AND transaction_of = 'budget_allocation' AND tenant_id = ?");
-            $deleteStmt->execute([$allocationId, $tenant_id]);
+            $deleteStmt = $pdo->prepare("DELETE FROM main_account_transactions WHERE reference_id = ? AND transaction_of = 'budget_allocation' AND tenant_id = ? AND branch_id = ?");
+            $deleteStmt->execute([$allocationId, $tenant_id, $branch_id]);
             
            
         }
 
         // Delete allocation
-        $deleteStmt = $pdo->prepare("DELETE FROM budget_allocations WHERE id = ? AND tenant_id = ?");
-        $deleteStmt->execute([$allocationId, $tenant_id]);
+        $deleteStmt = $pdo->prepare("DELETE FROM budget_allocations WHERE id = ? AND tenant_id = ? AND branch_id = ?");
+        $deleteStmt->execute([$allocationId, $tenant_id, $branch_id]);
 
 
         // Commit transaction
@@ -421,20 +424,20 @@ function getAllocations($pdo) {
             FROM budget_allocations ba
             JOIN main_account ma ON ba.main_account_id = ma.id
             JOIN expense_categories ec ON ba.category_id = ec.id
-            WHERE 1=1
+            WHERE ba.tenant_id = ? AND ba.branch_id = ?
         ";
-        $params = [];
-        
+        $params = [$tenant_id, $branch_id];
+
         if ($categoryId > 0) {
             $query .= " AND ba.category_id = ?";
             $params[] = $categoryId;
         }
-        
+
         if ($currency) {
             $query .= " AND ba.currency = ?";
             $params[] = $currency;
         }
-        
+
         $query .= " ORDER BY ba.allocation_date DESC";
         
         $stmt = $pdo->prepare($query);
@@ -464,9 +467,9 @@ function getAllocationDetails($pdo) {
             FROM budget_allocations ba
             JOIN main_account ma ON ba.main_account_id = ma.id
             JOIN expense_categories ec ON ba.category_id = ec.id
-            WHERE ba.id = ?
+            WHERE ba.id = ? AND ba.tenant_id = ? AND ba.branch_id = ?
         ");
-        $allocationStmt->execute([$allocationId]);
+        $allocationStmt->execute([$allocationId, $tenant_id, $branch_id]);
         $allocation = $allocationStmt->fetch(PDO::FETCH_ASSOC);
         
         if (!$allocation) {
@@ -476,11 +479,11 @@ function getAllocationDetails($pdo) {
         
         // Get expenses associated with this allocation
         $expenseStmt = $pdo->prepare("
-            SELECT * FROM expenses 
-            WHERE allocation_id = ?
+            SELECT * FROM expenses
+            WHERE allocation_id = ? AND tenant_id = ? AND branch_id = ?
             ORDER BY date DESC
         ");
-        $expenseStmt->execute([$allocationId]);
+        $expenseStmt->execute([$allocationId, $tenant_id, $branch_id]);
         $expenses = $expenseStmt->fetchAll(PDO::FETCH_ASSOC);
         
         sendResponse(true, 'Allocation details retrieved successfully', [
@@ -496,6 +499,7 @@ function getAllocationDetails($pdo) {
 // Helper function to get category name
 function getCategoryName($pdo, $categoryId) {
     $tenant_id = $_SESSION['tenant_id'];
+    $branch_id = $_SESSION['branch_id'];
     $stmt = $pdo->prepare("SELECT name FROM expense_categories WHERE id = ? AND tenant_id = ?");
     $stmt->execute([$categoryId, $tenant_id]);
     return $stmt->fetchColumn() ?: 'Unknown Category';
@@ -521,7 +525,7 @@ function addFunds($pdo) {
         // Get current allocation information
         $stmt = $pdo->prepare("
             SELECT ba.*, ma.name as account_name, ec.name as category_name,
-                   ma.id as main_account_id, 
+                   ma.id as main_account_id,
                    CASE
                        WHEN ba.currency = 'USD' THEN ma.usd_balance
                        WHEN ba.currency = 'EUR' THEN ma.euro_balance
@@ -532,9 +536,9 @@ function addFunds($pdo) {
             FROM budget_allocations ba
             JOIN main_account ma ON ba.main_account_id = ma.id
             JOIN expense_categories ec ON ba.category_id = ec.id
-            WHERE ba.id = ? AND ba.tenant_id = ?
+            WHERE ba.id = ? AND ba.tenant_id = ? AND ba.branch_id = ?
         ");
-        $stmt->execute([$allocationId, $tenant_id]);
+        $stmt->execute([$allocationId, $tenant_id, $branch_id]);
         $allocation = $stmt->fetch(PDO::FETCH_ASSOC);
 
         if (!$allocation) {
@@ -561,11 +565,11 @@ function addFunds($pdo) {
         $newRemainingAmount = $currentRemainingAmount + $amount;
 
         $updateStmt = $pdo->prepare("
-            UPDATE budget_allocations 
-            SET allocated_amount = ?, remaining_amount = ?, updated_at = NOW() 
-            WHERE id = ?
+            UPDATE budget_allocations
+            SET allocated_amount = ?, remaining_amount = ?, updated_at = NOW()
+            WHERE id = ? AND tenant_id = ? AND branch_id = ?
         ");
-        $updateStmt->execute([$newAllocatedAmount, $newRemainingAmount, $allocationId]);
+        $updateStmt->execute([$newAllocatedAmount, $newRemainingAmount, $allocationId, $tenant_id, $branch_id]);
 
         if ($updateStmt->rowCount() === 0) {
             $pdo->rollBack();
@@ -585,15 +589,15 @@ function addFunds($pdo) {
 
         // Deduct the amount from the appropriate balance column in main account
         $updateAccountStmt = $pdo->prepare("
-            UPDATE main_account 
-            SET $balanceColumn = $balanceColumn - ? 
-            WHERE id = ?
+            UPDATE main_account
+            SET $balanceColumn = $balanceColumn - ?
+            WHERE id = ? AND tenant_id = ? AND branch_id = ?
         ");
-        $updateAccountStmt->execute([$amount, $mainAccountId]);
+        $updateAccountStmt->execute([$amount, $mainAccountId, $tenant_id, $branch_id]);
 
         // Get the updated balance
-        $balanceStmt = $pdo->prepare("SELECT $balanceColumn FROM main_account WHERE id = ?");
-        $balanceStmt->execute([$mainAccountId]);
+        $balanceStmt = $pdo->prepare("SELECT $balanceColumn FROM main_account WHERE id = ? AND tenant_id = ? AND branch_id = ?");
+        $balanceStmt->execute([$mainAccountId, $tenant_id, $branch_id]);
         $updatedBalance = $balanceStmt->fetchColumn();
 
         // Log the transaction in main_account_transactions
@@ -672,9 +676,9 @@ function getFundTransactions($pdo) {
             FROM budget_allocations ba
             JOIN main_account ma ON ba.main_account_id = ma.id
             JOIN expense_categories ec ON ba.category_id = ec.id
-            WHERE ba.id = ? AND ba.tenant_id = ?
+            WHERE ba.id = ? AND ba.tenant_id = ? AND ba.branch_id = ?
         ");
-        $allocationStmt->execute([$allocationId, $tenant_id]);
+        $allocationStmt->execute([$allocationId, $tenant_id, $branch_id]);
         $allocation = $allocationStmt->fetch(PDO::FETCH_ASSOC);
         
         if (!$allocation) {
@@ -718,10 +722,10 @@ function deleteFundTransaction($pdo) {
         
         // Get transaction details
         $transactionStmt = $pdo->prepare("
-            SELECT * FROM main_account_transactions 
-            WHERE id = ? AND transaction_of = 'budget_allocation' AND reference_id = ? AND tenant_id = ?
+            SELECT * FROM main_account_transactions
+            WHERE id = ? AND transaction_of = 'budget_allocation' AND reference_id = ? AND tenant_id = ? AND branch_id = ?
         ");
-        $transactionStmt->execute([$transactionId, $allocationId, $tenant_id]);
+        $transactionStmt->execute([$transactionId, $allocationId, $tenant_id, $branch_id]);
         $transaction = $transactionStmt->fetch(PDO::FETCH_ASSOC);
         
         if (!$transaction) {
@@ -735,9 +739,9 @@ function deleteFundTransaction($pdo) {
             SELECT ba.*, ma.id as main_account_id
             FROM budget_allocations ba
             JOIN main_account ma ON ba.main_account_id = ma.id
-            WHERE ba.id = ? AND ba.tenant_id = ?
+            WHERE ba.id = ? AND ba.tenant_id = ? AND ba.branch_id = ?
         ");
-        $allocationStmt->execute([$allocationId, $tenant_id]);
+        $allocationStmt->execute([$allocationId, $tenant_id, $branch_id]);
         $allocation = $allocationStmt->fetch(PDO::FETCH_ASSOC);
         
         if (!$allocation) {
@@ -764,77 +768,79 @@ function deleteFundTransaction($pdo) {
         // Update main account balance (reverse the transaction)
         if ($type === 'debit') {
             // If the transaction was a debit (money taken from account), return the money
-            $sql = "UPDATE main_account SET `{$balanceColumn}` = `{$balanceColumn}` + ? WHERE id = ? AND tenant_id = ?";
+            $sql = "UPDATE main_account SET `{$balanceColumn}` = `{$balanceColumn}` + ? WHERE id = ? AND tenant_id = ? AND branch_id = ?";
             $updateAccountStmt = $pdo->prepare($sql);
-            $updateAccountStmt->execute([$amount, $mainAccountId, $tenant_id]);
+            $updateAccountStmt->execute([$amount, $mainAccountId, $tenant_id, $branch_id]);
         } else {
             // If the transaction was a credit (money added to account), remove the money
-            $sql = "UPDATE main_account SET `{$balanceColumn}` = `{$balanceColumn}` - ? WHERE id = ? AND tenant_id = ?";
+            $sql = "UPDATE main_account SET `{$balanceColumn}` = `{$balanceColumn}` - ? WHERE id = ? AND tenant_id = ? AND branch_id = ?";
             $updateAccountStmt = $pdo->prepare($sql);
-            $updateAccountStmt->execute([$amount, $mainAccountId, $tenant_id]);
+            $updateAccountStmt->execute([$amount, $mainAccountId, $tenant_id, $branch_id]);
         }
         
         // Update allocation amounts
         if ($type === 'debit') {
             // If the transaction was a debit, reduce the allocation amounts
             $updateAllocationStmt = $pdo->prepare("
-                UPDATE budget_allocations 
-                SET allocated_amount = allocated_amount - ?, 
+                UPDATE budget_allocations
+                SET allocated_amount = allocated_amount - ?,
                     remaining_amount = remaining_amount - ?,
-                    updated_at = NOW() 
-                WHERE id = ? AND tenant_id = ?
+                    updated_at = NOW()
+                WHERE id = ? AND tenant_id = ? AND branch_id = ?
             ");
-            $updateAllocationStmt->execute([$amount, $amount, $allocationId, $tenant_id]);
+            $updateAllocationStmt->execute([$amount, $amount, $allocationId, $tenant_id, $branch_id]);
         } else {
             // If the transaction was a credit, increase the allocation amounts
             $updateAllocationStmt = $pdo->prepare("
-                UPDATE budget_allocations 
-                SET allocated_amount = allocated_amount + ?, 
+                UPDATE budget_allocations
+                SET allocated_amount = allocated_amount + ?,
                     remaining_amount = remaining_amount + ?,
-                    updated_at = NOW() 
-                WHERE id = ? AND tenant_id = ?
+                    updated_at = NOW()
+                WHERE id = ? AND tenant_id = ? AND branch_id = ?
             ");
-            $updateAllocationStmt->execute([$amount, $amount, $allocationId, $tenant_id]);
+            $updateAllocationStmt->execute([$amount, $amount, $allocationId, $tenant_id, $branch_id]);
         }
         
         // Delete the transaction
-        $deleteStmt = $pdo->prepare("DELETE FROM main_account_transactions WHERE id = ? AND tenant_id = ?");
-        $deleteStmt->execute([$transactionId, $tenant_id]);
+        $deleteStmt = $pdo->prepare("DELETE FROM main_account_transactions WHERE id = ? AND tenant_id = ? AND branch_id = ?");
+        $deleteStmt->execute([$transactionId, $tenant_id, $branch_id]);
         
         // Update balance of all subsequent transactions
         if ($type === 'debit') {
             // For a debit transaction being deleted, increase all subsequent transaction balances
             $updateSubsequentStmt = $pdo->prepare("
-                UPDATE main_account_transactions 
+                UPDATE main_account_transactions
                 SET balance = balance + ?
-                WHERE main_account_id = ? 
-                AND currency = ? 
+                WHERE main_account_id = ?
+                AND currency = ?
                 AND created_at > ?
-                AND tenant_id = ?
+                AND tenant_id = ? AND branch_id = ?
             ");
             $updateSubsequentStmt->execute([
-                $amount, 
-                $mainAccountId, 
-                $currency, 
+                $amount,
+                $mainAccountId,
+                $currency,
                 $transaction['created_at'],
-                $tenant_id
+                $tenant_id,
+                $branch_id
             ]);
         } else {
             // For a credit transaction being deleted, decrease all subsequent transaction balances
             $updateSubsequentStmt = $pdo->prepare("
-                UPDATE main_account_transactions 
+                UPDATE main_account_transactions
                 SET balance = balance - ?
-                WHERE main_account_id = ? 
-                AND currency = ? 
+                WHERE main_account_id = ?
+                AND currency = ?
                 AND created_at > ?
-                AND tenant_id = ?
+                AND tenant_id = ? AND branch_id = ?
             ");
             $updateSubsequentStmt->execute([
-                $amount, 
-                $mainAccountId, 
-                $currency, 
+                $amount,
+                $mainAccountId,
+                $currency,
                 $transaction['created_at'],
-                $tenant_id
+                $tenant_id,
+                $branch_id
             ]);
         }
         
@@ -887,7 +893,7 @@ function filterAllocationsByMonth($pdo) {
                 JOIN main_account ma ON ba.main_account_id = ma.id
                 JOIN expense_categories ec ON ba.category_id = ec.id
                 WHERE (ba.allocation_date BETWEEN ? AND ?) OR (ba.remaining_amount > 0)
-                AND ba.tenant_id = ?
+                AND ba.tenant_id = ? AND ba.branch_id = ?
                 ORDER BY ba.allocation_date DESC
             ");
         } else {
@@ -897,12 +903,12 @@ function filterAllocationsByMonth($pdo) {
                 JOIN main_account ma ON ba.main_account_id = ma.id
                 JOIN expense_categories ec ON ba.category_id = ec.id
                 WHERE ba.allocation_date BETWEEN ? AND ?
-                AND ba.tenant_id = ?
+                AND ba.tenant_id = ? AND ba.branch_id = ?
                 ORDER BY ba.allocation_date DESC
             ");
         }
         
-        $stmt->execute([$startDate, $endDate, $tenant_id]);
+        $stmt->execute([$startDate, $endDate, $tenant_id, $branch_id]);
         $allocations = $stmt->fetchAll(PDO::FETCH_ASSOC);
         
         // Count allocations from current month vs previous months

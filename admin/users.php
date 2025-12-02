@@ -17,8 +17,8 @@ require_once('../includes/db.php');
 
 // Fetch current user data
 try {
-    $stmt = $pdo->prepare("SELECT * FROM users WHERE id = ? AND tenant_id = ?");
-    $stmt->execute([$_SESSION['user_id'], $tenant_id]);
+    $stmt = $pdo->prepare("SELECT * FROM users WHERE id = ? AND tenant_id = ? AND branch_id = ?");
+    $stmt->execute([$_SESSION['user_id'], $tenant_id, $_SESSION['branch_id']]);
     $user = $stmt->fetch(PDO::FETCH_ASSOC);
 
     if (!$user) {
@@ -34,8 +34,8 @@ try {
 
 // Fetch all users
 try {
-    $stmt = $pdo->prepare("SELECT * FROM users WHERE tenant_id = ? ORDER BY created_at DESC");
-    $stmt->execute([$tenant_id]);
+    $stmt = $pdo->prepare("SELECT * FROM users WHERE tenant_id = ? AND branch_id = ? ORDER BY created_at DESC");
+    $stmt->execute([$tenant_id, $_SESSION['branch_id']]);
     $users = $stmt->fetchAll(PDO::FETCH_ASSOC);
 } catch (PDOException $e) {
     error_log("Users Fetch Error: " . $e->getMessage());

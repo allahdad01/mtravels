@@ -19,6 +19,9 @@ if (!isset($_SESSION['user_id'])  || $_SESSION['role'] !== 'admin') {
 // Database connection
 require_once('../includes/db.php');
 
+// Get branch_id from session
+$branch_id = $_SESSION['branch_id'];
+
 // Fetch tenant's allowed features
 $allowed_features = [];
 $query = "
@@ -33,16 +36,16 @@ if ($row = $stmt->fetch(PDO::FETCH_ASSOC)) {
     $allowed_features = json_decode($row['features'], true) ?? [];
 }
 
-// Fetch main accounts with tenant filtering
-$mainAccountsQuery = "SELECT * FROM main_account WHERE status = 'active' AND tenant_id = ?";
+// Fetch main accounts with tenant and branch filtering
+$mainAccountsQuery = "SELECT * FROM main_account WHERE status = 'active' AND tenant_id = ? AND branch_id = ?";
 $mainAccountsStmt = $pdo->prepare($mainAccountsQuery);
-$mainAccountsStmt->execute([$_SESSION['tenant_id'] ?? 1]);
+$mainAccountsStmt->execute([$_SESSION['tenant_id'] ?? 1, $branch_id]);
 $internal = $mainAccountsStmt->fetchAll(PDO::FETCH_ASSOC);
 
-// Fetch categories and expenses first with tenant filtering
-$categoriesQuery = "SELECT * FROM expense_categories WHERE tenant_id = ? ORDER BY name";
+// Fetch categories and expenses first with tenant and branch filtering
+$categoriesQuery = "SELECT * FROM expense_categories WHERE tenant_id = ? AND branch_id = ? ORDER BY name";
 $categoriesStmt = $pdo->prepare($categoriesQuery);
-$categoriesStmt->execute([$_SESSION['tenant_id'] ?? 1]);
+$categoriesStmt->execute([$_SESSION['tenant_id'] ?? 1, $branch_id]);
 $categories = $categoriesStmt->fetchAll(PDO::FETCH_ASSOC);
 
 ?>
@@ -629,14 +632,14 @@ $categories = $categoriesStmt->fetchAll(PDO::FETCH_ASSOC);
                                                     // If filter is active, use the filter dates
                                                     $startDate = $_GET['startDate'];
                                                     $endDate = $_GET['endDate'];
-                                                    $expenseQuery = "SELECT * FROM expenses WHERE category_id = ? AND date >= ? AND date <= ? AND tenant_id = ? ORDER BY date DESC";
+                                                    $expenseQuery = "SELECT * FROM expenses WHERE category_id = ? AND date >= ? AND date <= ? AND tenant_id = ? AND branch_id = ? ORDER BY date DESC";
                                                     $expenseStmt = $pdo->prepare($expenseQuery);
-                                                    $expenseStmt->execute([$category['id'], $startDate, $endDate, $_SESSION['tenant_id'] ?? 1]);
+                                                    $expenseStmt->execute([$category['id'], $startDate, $endDate, $_SESSION['tenant_id'] ?? 1, $branch_id]);
                                                 } else {
                                                     // Default to current month only
-                                                    $expenseQuery = "SELECT * FROM expenses WHERE category_id = ? AND date >= ? AND date < ? AND tenant_id = ? ORDER BY date DESC";
+                                                    $expenseQuery = "SELECT * FROM expenses WHERE category_id = ? AND date >= ? AND date < ? AND tenant_id = ? AND branch_id = ? ORDER BY date DESC";
                                                     $expenseStmt = $pdo->prepare($expenseQuery);
-                                                    $expenseStmt->execute([$category['id'], $currentMonth, $nextMonth, $_SESSION['tenant_id'] ?? 1]);
+                                                    $expenseStmt->execute([$category['id'], $currentMonth, $nextMonth, $_SESSION['tenant_id'] ?? 1, $branch_id]);
                                                 }
                                                 
                                                 echo '<div class="expense-list mt-3" style="display: none;">';
@@ -970,7 +973,7 @@ $categories = $categoriesStmt->fetchAll(PDO::FETCH_ASSOC);
                                 <select class="form-control" id="expenseAllocation" name="expenseAllocation">
                                     <option value=""><?= __('select_budget_allocation') ?></option>
                                     <?php 
-                                    // Fetch available allocations with tenant filtering
+                                    // Fetch available allocations with tenant and branch filtering
                                     $allocationsQuery = "
                                         SELECT ba.id, ba.remaining_amount, ba.currency,
                                                ec.name as category_name,
@@ -978,12 +981,12 @@ $categories = $categoriesStmt->fetchAll(PDO::FETCH_ASSOC);
                                         FROM budget_allocations ba
                                         JOIN expense_categories ec ON ba.category_id = ec.id
                                         JOIN main_account ma ON ba.main_account_id = ma.id
-                                        WHERE ba.tenant_id = ? AND ec.tenant_id = ? AND ma.tenant_id = ?
+                                        WHERE ba.tenant_id = ? AND ba.branch_id = ? AND ec.tenant_id = ? AND ec.branch_id = ? AND ma.tenant_id = ? AND ma.branch_id = ?
                                         ORDER BY ec.name, ba.allocation_date DESC
                                     ";
                                     $allocationsStmt = $pdo->prepare($allocationsQuery);
                                     $tenantId = $_SESSION['tenant_id'] ?? 1;
-                                    $allocationsStmt->execute([$tenantId, $tenantId, $tenantId]);
+                                    $allocationsStmt->execute([$tenantId, $branch_id, $tenantId, $branch_id, $tenantId, $branch_id]);
                                     $allocations = $allocationsStmt->fetchAll(PDO::FETCH_ASSOC);
                                     
                                     foreach($allocations as $allocation): 

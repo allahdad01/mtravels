@@ -13,6 +13,7 @@ $response = [
     'exists' => false
 ];
 $tenant_id = $_SESSION['tenant_id'];
+$branch_id = $_SESSION['branch_id'];
 
 // Check if passenger name was provided
 if (isset($_POST['passenger_name']) && !empty($_POST['passenger_name'])) {
@@ -51,13 +52,13 @@ $passenger_name = isset($_POST['passenger_name']) ? DbSecurity::validateInput($_
         }
         
         // Table exists, check for passenger data
-        $stmt = $conn->prepare("SELECT * FROM $tableName WHERE passenger_name LIKE ? AND tenant_id = ? ORDER BY issue_date DESC LIMIT 1");
+        $stmt = $conn->prepare("SELECT * FROM $tableName WHERE passenger_name LIKE ? AND tenant_id = ? AND branch_id = ? ORDER BY issue_date DESC LIMIT 1");
         if (!$stmt) {
             continue; // Skip if prepare fails
         }
-        
+
         $searchName = "%" . $passengerName . "%";
-        $stmt->bind_param("si", $searchName, $tenant_id);
+        $stmt->bind_param("sii", $searchName, $tenant_id, $branch_id);
         $stmt->execute();
         $result = $stmt->get_result();
         

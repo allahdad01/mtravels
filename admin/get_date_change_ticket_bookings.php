@@ -10,6 +10,7 @@ $tenant_id = $_SESSION['tenant_id'];
 enforce_auth();
 
 require_once('../includes/db.php');
+$branch_id = $_SESSION['branch_id'];
 
 
 // Check if user is logged in
@@ -27,22 +28,22 @@ if (isset($_GET['id'])) {
     try {
         // Get date change ticket details with all necessary information
         $ticketStmt = $pdo->prepare("
-            SELECT 
-                dct.id, 
-                dct.ticket_id, 
-                dct.departure_date, 
-                dct.supplier_penalty, 
-                dct.service_penalty, 
+            SELECT
+                dct.id,
+                dct.ticket_id,
+                dct.departure_date,
+                dct.supplier_penalty,
+                dct.service_penalty,
                 dct.status,
                 dct.currency,
-                tb.passenger_name, 
+                tb.passenger_name,
                 tb.pnr
             FROM date_change_tickets dct
-            LEFT JOIN ticket_bookings tb ON dct.ticket_id = tb.id
-            WHERE dct.id = ? AND dct.tenant_id = ?
+            LEFT JOIN ticket_bookings tb ON dct.ticket_id = tb.id AND tb.tenant_id = ? AND tb.branch_id = ?
+            WHERE dct.id = ? AND dct.tenant_id = ? AND dct.branch_id = ?
         ");
-        
-        $ticketStmt->execute([$ticket_id, $tenant_id]);
+
+        $ticketStmt->execute([$tenant_id, $branch_id, $ticket_id, $tenant_id, $branch_id]);
         $ticket = $ticketStmt->fetch(PDO::FETCH_ASSOC);
 
         // Check if ticket exists

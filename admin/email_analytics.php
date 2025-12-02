@@ -12,6 +12,7 @@ require_once '../includes/language_helpers.php';
 enforce_auth();
 
 $tenant_id = $_SESSION['tenant_id'];
+$branch_id = $_SESSION['branch_id'];
 // Check if user is logged in
 if (!isset($_SESSION['user_id']) || $_SESSION['role'] !== 'admin') {
     header('Location: ../login.php');
@@ -34,9 +35,9 @@ if (!empty($_GET)) {
 
 // Get email analytics data
 function getEmailAnalytics($conn, $tenant_id, $startDate, $endDate, $emailType) {
-    $whereClause = "WHERE et.tenant_id = ? AND DATE(et.sent_at) BETWEEN ? AND ?";
-    $params = [$tenant_id, $startDate, $endDate];
-    $types = "iss";
+    $whereClause = "WHERE et.tenant_id = ? AND branch_id = ? AND DATE(et.sent_at) BETWEEN ? AND ?";
+    $params = [$tenant_id, $branch_id, $startDate, $endDate];
+    $types = "iiss";
 
     if ($emailType !== 'all') {
         $whereClause .= " AND et.email_type = ?";

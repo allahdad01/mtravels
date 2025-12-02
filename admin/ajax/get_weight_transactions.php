@@ -9,6 +9,7 @@ require_once '../../includes/conn.php';
 require_once '../includes/db_security.php';
 
 $tenant_id = $_SESSION['tenant_id'];
+$branch_id = $_SESSION['branch_id'];
 
 // Get weight ID from request
 $weightId = isset($_GET['weight_id']) ? DbSecurity::validateInput($_GET['weight_id'], 'int', ['min' => 0]) : 0;
@@ -23,7 +24,7 @@ if ($weightId <= 0) {
 try {
     // First get the weight details
     $weightQuery = "
-        SELECT 
+        SELECT
             tw.*,
             t.passenger_name,
             t.pnr,
@@ -36,22 +37,22 @@ try {
             s.name AS supplier_name,
             c.name AS sold_to_name,
             ma.name AS paid_to_name
-        FROM 
+        FROM
             ticket_weights tw
-        LEFT JOIN 
-            ticket_bookings t ON tw.ticket_id = t.id
-        LEFT JOIN 
-            suppliers s ON t.supplier = s.id
-        LEFT JOIN 
-            clients c ON t.sold_to = c.id
         LEFT JOIN
-            main_account ma ON t.paid_to = ma.id
-        WHERE 
-            tw.id = ? AND tw.tenant_id = ?
+            ticket_bookings t ON tw.ticket_id = t.id AND t.tenant_id = ? AND t.branch_id = ?
+        LEFT JOIN
+            suppliers s ON t.supplier = s.id AND s.tenant_id = ? AND s.branch_id = ?
+        LEFT JOIN
+            clients c ON t.sold_to = c.id AND c.tenant_id = ? AND c.branch_id = ?
+        LEFT JOIN
+            main_account ma ON t.paid_to = ma.id AND ma.tenant_id = ? AND ma.branch_id = ?
+        WHERE
+            tw.id = ? AND tw.tenant_id = ? AND tw.branch_id = ?
     ";
 
     $weightStmt = $conn->prepare($weightQuery);
-    $weightStmt->bind_param('ii', $weightId, $tenant_id);
+    $weightStmt->bind_param('iiiiiiiiii', $tenant_id, $branch_id, $tenant_id, $branch_id, $tenant_id, $branch_id, $tenant_id, $branch_id, $weightId, $tenant_id, $branch_id);
     $weightStmt->execute();
     $weightResult = $weightStmt->get_result();
     $weight = $weightResult->fetch_assoc();
@@ -62,23 +63,23 @@ try {
 
     // Get transactions from main_account_transactions
     $transactionQuery = "
-        SELECT 
+        SELECT
             mat.*,
             ma.name AS account_name
-        FROM 
+        FROM
             main_account_transactions mat
-        LEFT JOIN 
-            main_account ma ON mat.main_account_id = ma.id
-        WHERE 
-            mat.reference_id = ? AND mat.tenant_id = ?
+        LEFT JOIN
+            main_account ma ON mat.main_account_id = ma.id AND ma.tenant_id = ? AND ma.branch_id = ?
+        WHERE
+            mat.reference_id = ? AND mat.tenant_id = ? AND mat.branch_id = ?
             AND LOWER(mat.type) = 'credit'
             AND mat.transaction_of = 'weight'
-        ORDER BY 
+        ORDER BY
             mat.created_at DESC
     ";
 
     $transactionStmt = $conn->prepare($transactionQuery);
-    $transactionStmt->bind_param('ii', $weightId, $tenant_id);
+    $transactionStmt->bind_param('iiii', $tenant_id, $branch_id, $weightId, $tenant_id, $branch_id);
     $transactionStmt->execute();
     $transactionResult = $transactionStmt->get_result();
 

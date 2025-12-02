@@ -2,6 +2,7 @@
 // Include database connection
 require_once '../includes/conn.php';
 $tenant_id = $_SESSION['tenant_id'];
+$branch_id = $_SESSION['branch_id'];
 // Enforce authentication
 require_once 'security.php';
 enforce_auth();
@@ -17,8 +18,8 @@ if (!isset($_GET['name']) || empty($_GET['name'])) {
 
 try {
     // Prepare and execute query to find main account ID by name
-    $stmt = $conn->prepare("SELECT id FROM main_account WHERE name = ? AND tenant_id = ? LIMIT 1");
-    $stmt->bind_param("si", $_GET['name'], $tenant_id);
+    $stmt = $conn->prepare("SELECT id FROM main_account WHERE name = ? AND tenant_id = ? AND branch_id = ? LIMIT 1");
+    $stmt->bind_param("sii", $_GET['name'], $tenant_id, $branch_id);
     $stmt->execute();
     $result = $stmt->get_result();
 

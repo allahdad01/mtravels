@@ -8,7 +8,7 @@ if (session_status() === PHP_SESSION_NONE) {
 require_once '../../includes/conn.php';
 require_once '../includes/db_security.php';
 $tenant_id = $_SESSION['tenant_id'];
-
+$branch_id = $_SESSION['branch_id'];
 // Get and validate POST data
 $weightId = isset($_POST['weight_id']) ? DbSecurity::validateInput($_POST['weight_id'], 'int', ['min' => 0]) : 0;
 $amount = isset($_POST['amount']) ? DbSecurity::validateInput($_POST['amount'], 'float', ['min' => 0]) : 0;
@@ -51,9 +51,9 @@ try {
         SELECT tw.*, t.passenger_name, t.pnr, t.paid_to, t.title
         FROM ticket_weights tw
         JOIN ticket_bookings t ON tw.ticket_id = t.id
-        WHERE tw.id = ? AND tw.tenant_id = ?
+        WHERE tw.id = ? AND tw.tenant_id = ? And branch_id = ?
     ");
-    $weightCheck->bind_param('ii', $weightId, $tenant_id);
+    $weightCheck->bind_param('iii', $weightId, $tenant_id, $branch_id);
     $weightCheck->execute();
     $weightResult = $weightCheck->get_result();
     $weight = $weightResult->fetch_assoc();
@@ -80,16 +80,16 @@ try {
             throw new Exception("Unsupported currency: $currency");
     }
     
-    $balanceCheck = $conn->prepare("SELECT $balanceField as current_balance FROM main_account WHERE id = ? AND tenant_id = ?");
-    $balanceCheck->bind_param('ii', $weight['paid_to'], $tenant_id);
+    $balanceCheck = $conn->prepare("SELECT $balanceField as current_balance FROM main_account WHERE id = ? AND tenant_id = ? And branch_id = ?");
+    $balanceCheck->bind_param('iii', $weight['paid_to'], $tenant_id, $branch_id);
     $balanceCheck->execute();
     $balanceResult = $balanceCheck->get_result();
     $balance = $balanceResult->fetch_assoc();
     $newBalance = $balance['current_balance'] + $amount;
 
     // Update main account balance
-    $updateBalance = $conn->prepare("UPDATE main_account SET $balanceField = ? WHERE id = ? AND tenant_id = ?");
-    $updateBalance->bind_param('did', $newBalance, $weight['paid_to'], $tenant_id);
+    $updateBalance = $conn->prepare("UPDATE main_account SET $balanceField = ? WHERE id = ? AND tenant_id = ? And branch_id = ?");
+    $updateBalance->bind_param('didi', $newBalance, $weight['paid_to'], $tenant_id, $branch_id);
     if (!$updateBalance->execute()) {
         throw new Exception('Failed to update account balance');
     }
@@ -97,8 +97,8 @@ try {
     // Insert main account transaction
     $mainTransaction = $conn->prepare("
         INSERT INTO main_account_transactions
-        (main_account_id, type, amount, currency, exchange_rate, description, transaction_of, reference_id, balance, created_at, tenant_id)
-        VALUES (?, 'credit', ?, ?, ?, ?, 'weight', ?, ?, ?, ?)
+        (main_account_id, type, amount, currency, exchange_rate, description, transaction_of, reference_id, balance, created_at, tenant_id, branch_id)
+        VALUES (?, 'credit', ?, ?, ?, ?, 'weight', ?, ?, ?, ?, ?)
     ");
     $mainTransaction->bind_param(
         'idsssidsi',
@@ -110,7 +110,8 @@ try {
         $weightId,
         $newBalance,
         $transactionDate,
-        $tenant_id
+        $tenant_id,
+        $branch_id
     );
     if (!$mainTransaction->execute()) {
         throw new Exception('Failed to save transaction');
@@ -129,10 +130,10 @@ try {
 
     $notification = $conn->prepare("
         INSERT INTO notifications 
-        (transaction_id, transaction_type, message, status, created_at, tenant_id) 
-        VALUES (?, 'weight', ?, 'Unread', NOW(), ?)
+        (transaction_id, transaction_type, message, status, created_at, tenant_id, branch_id) 
+        VALUES (?, 'weight', ?, 'Unread', NOW(), ?, ?)
     ");
-    if (!$notification->execute([$transactionId, $notificationMessage, $tenant_id])) {
+    if (!$notification->execute([$transactionId, $notificationMessage, $tenant_id, $branch_id])) {
 
         throw new Exception('Failed to create notification');
     }
@@ -157,11 +158,11 @@ try {
     // Insert activity log
     $activityLog = $conn->prepare("
         INSERT INTO activity_log 
-        (user_id, tenant_id, action, table_name, record_id, old_values, new_values, ip_address, user_agent, created_at) 
-        VALUES (?, ?, 'create', 'main_account_transactions', ?, NULL, ?, ?, ?, NOW())
+        (user_id, tenant_id, action, table_name, record_id, old_values, new_values, ip_address, user_agent, created_at, branch_id) 
+        VALUES (?, ?, 'create', 'main_account_transactions', ?, NULL, ?, ?, ?, NOW(), ?)
     ");
     
-    $activityLog->bind_param("iisssi", $user_id, $tenant_id, $transactionId, $new_values, $ip_address, $user_agent);
+    $activityLog->bind_param("iisssii", $user_id, $tenant_id, $transactionId, $new_values, $ip_address, $user_agent, $branch_id);
     
     if (!$activityLog->execute()) {
         throw new Exception('Failed to log activity');

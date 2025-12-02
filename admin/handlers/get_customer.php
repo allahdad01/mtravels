@@ -3,6 +3,7 @@ require_once '../../includes/conn.php';
 require_once '../../includes/db.php';
 require_once '../security.php';
 $tenant_id = $_SESSION['tenant_id'];
+$branch_id = $_SESSION['branch_id'];
 // Enforce authentication
 enforce_auth();
 
@@ -17,8 +18,8 @@ $customer_id = intval($_GET['id']);
 
 try {
     // Prepare and execute the query
-    $stmt = $pdo->prepare("SELECT id, name, phone, email, address FROM customers WHERE id = ? AND status = 'active' AND tenant_id = ?");
-    $stmt->execute([$customer_id, $tenant_id]);
+    $stmt = $pdo->prepare("SELECT id, name, phone, email, address FROM customers WHERE id = ? AND status = 'active' AND tenant_id = ? AND branch_id = ?");
+    $stmt->execute([$customer_id, $tenant_id, $branch_id]);
     $customer = $stmt->fetch(PDO::FETCH_ASSOC);
 
     if ($customer) {

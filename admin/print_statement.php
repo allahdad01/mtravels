@@ -12,6 +12,7 @@ if (session_status() === PHP_SESSION_NONE) {
     session_start();
 }
 $tenant_id = $_SESSION['tenant_id'];
+$branch_id = $_SESSION['branch_id'];
 
 // Check if customer ID is provided
 if (!isset($_GET['id']) || empty($_GET['id'])) {
@@ -23,9 +24,9 @@ $customer_id = intval($_GET['id']);
 
 // Fetch customer details
 $stmt = $conn->prepare("
-    SELECT * FROM customers WHERE id = ? AND status = 'active' AND tenant_id = ?
+    SELECT * FROM customers WHERE id = ? AND status = 'active' AND tenant_id = ? AND branch_id = ?
 ");
-$stmt->bind_param('ii', $customer_id, $tenant_id);
+$stmt->bind_param('iii', $customer_id, $tenant_id, $branch_id);
 $stmt->execute();
 $result = $stmt->get_result();
 
@@ -38,9 +39,9 @@ $customer = $result->fetch_assoc();
 
 // Fetch customer wallet balances
 $wallet_stmt = $conn->prepare("
-    SELECT * FROM customer_wallets WHERE customer_id = ? AND tenant_id = ?
+    SELECT * FROM customer_wallets WHERE customer_id = ? AND tenant_id = ? AND branch_id = ?
 ");
-$wallet_stmt->bind_param('ii', $customer_id, $tenant_id);
+$wallet_stmt->bind_param('iii', $customer_id, $tenant_id, $branch_id);
 $wallet_stmt->execute();
 $wallet_result = $wallet_stmt->get_result();
 $wallets = [];
@@ -51,13 +52,13 @@ while ($row = $wallet_result->fetch_assoc()) {
 
 // Fetch recent transactions (last 30 days)
 $transactions_stmt = $conn->prepare("
-    SELECT 
+    SELECT
         st.*
     FROM sarafi_transactions st
-    WHERE st.customer_id = ? AND st.tenant_id = ?
+    WHERE st.customer_id = ? AND st.tenant_id = ? AND st.branch_id = ?
     ORDER BY st.created_at ASC
 ");
-$transactions_stmt->bind_param('ii', $customer_id, $tenant_id);
+$transactions_stmt->bind_param('iii', $customer_id, $tenant_id, $branch_id);
 $transactions_stmt->execute();
 $transactions_result = $transactions_stmt->get_result();
 $transactions = [];

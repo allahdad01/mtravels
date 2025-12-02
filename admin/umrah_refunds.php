@@ -8,6 +8,7 @@ require_once '../includes/language_helpers.php';
 // Enforce authentication
 enforce_auth();
 $tenant_id = $_SESSION['tenant_id'];
+$branch_id = $_SESSION['branch_id'];
 // Check if user is logged in
 if (!isset($_SESSION['user_id']) || $_SESSION['role'] !== 'admin') {
     header('Location: ../login.php');
@@ -34,10 +35,11 @@ $totalPages = 0;
 if ($tableExists) {
     // First, count total refunds
     $countQuery = "
-        SELECT COUNT(*) as total 
-        FROM umrah_refunds r 
+        SELECT COUNT(*) as total
+        FROM umrah_refunds r
         LEFT JOIN umrah_bookings um ON r.booking_id = um.booking_id
-        WHERE r.tenant_id = $tenant_id
+        WHERE r.tenant_id = $tenant_id AND r.branch_id = $branch_id
+        AND um.tenant_id = $tenant_id AND um.branch_id = $branch_id
     ";
     $countResult = $conn->query($countQuery);
     $totalRefunds = $countResult ? $countResult->fetch_assoc()['total'] : 0;
@@ -55,7 +57,8 @@ if ($tableExists) {
         LEFT JOIN users u ON r.processed_by = u.id
         LEFT JOIN main_account m ON um.paid_to = m.id
         LEFT JOIN clients c ON um.sold_to = c.id
-        WHERE r.tenant_id = $tenant_id
+        WHERE r.tenant_id = $tenant_id AND r.branch_id = $branch_id
+        AND um.tenant_id = $tenant_id AND um.branch_id = $branch_id
         ORDER BY r.created_at DESC
         LIMIT ? OFFSET ?
     ";
@@ -658,8 +661,8 @@ if ($tableExists) {
                                         </label>
                                         <select class="form-control" id="mainAccountId" name="main_account_id" required aria-describedby="accountHelp">
                                             <option value=""><?= __('select_main_account') ?></option>
-                                            <?php 
-                                            $accountsQuery = "SELECT id, name FROM main_account WHERE status = 'active' AND tenant_id = $tenant_id";
+                                            <?php
+                                            $accountsQuery = "SELECT id, name FROM main_account WHERE status = 'active' AND tenant_id = $tenant_id AND branch_id = $branch_id";
                                             $accountsResult = $conn->query($accountsQuery);
                                             if ($accountsResult) {
                                                 while ($account = $accountsResult->fetch_assoc()) {

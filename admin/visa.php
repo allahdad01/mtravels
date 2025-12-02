@@ -8,6 +8,7 @@ require_once '../includes/language_helpers.php';
 // Enforce authentication
 enforce_auth();
 $tenant_id = $_SESSION['tenant_id'];
+$branch_id = $_SESSION['branch_id'];
 
 
 // Check if user is logged in
@@ -23,9 +24,9 @@ require_once '../includes/conn.php';
 // Pagination and search setup
 $search = isset($_GET['search']) ? $conn->real_escape_string($_GET['search']) : '';
 
-$searchCondition = " WHERE tenant_id = ?";
-$params = [$tenant_id];
-$types  = "i"; // assuming tenant_id is integer
+$searchCondition = " WHERE tenant_id = ? AND branch_id = ?";
+$params = [$tenant_id, $branch_id];
+$types  = "ii"; // assuming tenant_id and branch_id are integers
 
 if (!empty($search)) {
     $searchCondition .= " AND (
@@ -49,9 +50,9 @@ $recordsPerPage = 10;
 $offset = ($page - 1) * $recordsPerPage;
 
 // Build search + tenant condition
-$searchCondition = " WHERE va.tenant_id = ?";
-$params = [$tenant_id];
-$types  = "i"; // assuming tenant_id is integer
+$searchCondition = " WHERE va.tenant_id = ? AND va.branch_id = ?";
+$params = [$tenant_id, $branch_id];
+$types  = "ii"; // assuming tenant_id and branch_id are integers
 
 if (!empty($search)) {
     $searchCondition .= " AND (
@@ -83,16 +84,18 @@ $totalPages = ceil($totalRecords / $recordsPerPage);
 $stmt->close();
 
 /* ---------- MAIN VISA QUERY ---------- */
-$visaQuery = "SELECT va.*, u.name as created_by 
-              FROM visa_applications va 
-              LEFT JOIN users u ON va.created_by = u.id 
+$visaQuery = "SELECT va.*, u.name as created_by
+              FROM visa_applications va
+              LEFT JOIN users u ON va.created_by = u.id
               $searchCondition
-              ORDER BY va.id DESC 
+              AND (u.id IS NULL OR u.branch_id = ?)
+              ORDER BY va.id DESC
               LIMIT ? OFFSET ?";
 
 // Add limit + offset params
 $paramsWithLimit = $params;
-$typesWithLimit  = $types . "ii"; 
+$typesWithLimit  = $types . "iii";
+$paramsWithLimit[] = $branch_id; // for users table branch_id
 $paramsWithLimit[] = $recordsPerPage;
 $paramsWithLimit[] = $offset;
 
@@ -103,12 +106,12 @@ $visaResult = $stmt->get_result();
 $visas = $visaResult->fetch_all(MYSQLI_ASSOC);
 
 // Fetch Suppliers
-$suppliersQuery = "SELECT id, name 
-                   FROM suppliers 
-                   WHERE status = 'active' AND tenant_id = ?";
+$suppliersQuery = "SELECT id, name
+                   FROM suppliers
+                   WHERE status = 'active' AND tenant_id = ? AND branch_id = ?";
 
 $stmt = $conn->prepare($suppliersQuery);
-$stmt->bind_param("i", $tenant_id); // assuming tenant_id is integer
+$stmt->bind_param("ii", $tenant_id, $branch_id); // assuming tenant_id and branch_id are integers
 $stmt->execute();
 $suppliersResult = $stmt->get_result();
 $suppliers = $suppliersResult->fetch_all(MYSQLI_ASSOC);
@@ -117,24 +120,24 @@ $stmt->close();
 
 
 // Fetch Clients
-$clientsQuery = "SELECT id, name 
-                 FROM clients 
-                 WHERE status = 'active' AND tenant_id = ?";
+$clientsQuery = "SELECT id, name
+                 FROM clients
+                 WHERE status = 'active' AND tenant_id = ? AND branch_id = ?";
 
 $stmt = $conn->prepare($clientsQuery);
-$stmt->bind_param("i", $tenant_id); // assuming tenant_id is integer
+$stmt->bind_param("ii", $tenant_id, $branch_id); // assuming tenant_id and branch_id are integers
 $stmt->execute();
 $clientsResult = $stmt->get_result();
 $clients = $clientsResult->fetch_all(MYSQLI_ASSOC);
 $stmt->close();
 
 // Fetch Internal Accounts
-$internalQuery = "SELECT id, name 
-                  FROM main_account 
-                  WHERE status = 'active' AND tenant_id = ?";
+$internalQuery = "SELECT id, name
+                  FROM main_account
+                  WHERE status = 'active' AND tenant_id = ? AND branch_id = ?";
 
 $stmt = $conn->prepare($internalQuery);
-$stmt->bind_param("i", $tenant_id);
+$stmt->bind_param("ii", $tenant_id, $branch_id);
 $stmt->execute();
 $internalResult = $stmt->get_result();
 $internal = $internalResult->fetch_all(MYSQLI_ASSOC);
@@ -299,7 +302,7 @@ foreach ($visas as $key => $visa) {
                                                             foreach ($visas as $visa): 
                                                                 $isAgencyClient = false;
                                                                 $soldTo = $visa['sold_to'];
-                                                                $clientQuery = $conn->query("SELECT client_type FROM clients WHERE tenant_id = $tenant_id And name = '".$visa['sold_name']."'");
+                                                                $clientQuery = $conn->query("SELECT client_type FROM clients WHERE tenant_id = $tenant_id AND branch_id = $branch_id AND name = '".$visa['sold_name']."'");
                                                                 if ($clientQuery && $clientQuery->num_rows > 0) {
                                                                     $clientRow = $clientQuery->fetch_assoc();
                                                                     $isAgencyClient = ($clientRow['client_type'] === 'agency');
@@ -352,7 +355,7 @@ foreach ($visas as $key => $visa) {
                                                     $isAgencyClient = false; // Default to not agency client
 
                                                     // Fix: We need to query the clients table using the client name from sold_to
-                                                    $clientQuery = $conn->query("SELECT client_type FROM clients WHERE tenant_id = $tenant_id AND name = '".$visa['sold_name']."'");
+                                                    $clientQuery = $conn->query("SELECT client_type FROM clients WHERE tenant_id = $tenant_id AND branch_id = $branch_id AND name = '".$visa['sold_name']."'");
                                                     if ($clientQuery && $clientQuery->num_rows > 0) {
                                                         $clientRow = $clientQuery->fetch_assoc();
                                                         // Only show payment status for agency clients
@@ -372,7 +375,9 @@ foreach ($visas as $key => $visa) {
                                                         // Query transactions from main_account_transactions table
                                                         $transactionQuery = $conn->query("SELECT * FROM main_account_transactions WHERE
                                                             transaction_of = 'visa_sale'
-                                                            AND reference_id = '$visaId'");
+                                                            AND reference_id = '$visaId'
+                                                            AND tenant_id = $tenant_id
+                                                            AND branch_id = $branch_id");
 
                                                         if ($transactionQuery && $transactionQuery->num_rows > 0) {
                                                             while ($transaction = $transactionQuery->fetch_assoc()) {

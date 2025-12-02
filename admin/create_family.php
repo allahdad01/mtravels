@@ -8,6 +8,7 @@ require_once 'security.php';
 // Enforce authentication
 enforce_auth();
 $tenant_id = $_SESSION['tenant_id'];
+$branch_id = $_SESSION['branch_id'];
 header('Content-Type: application/json'); // Ensure response is JSON
 
 require_once '../includes/conn.php';
@@ -61,11 +62,11 @@ $head_of_family = isset($_POST['head_of_family']) ? DbSecurity::validateInput($_
 }
 
 // Prepare the SQL statement
-$sql = "INSERT INTO families (head_of_family, contact, address, package_type, location, tazmin, visa_status, province, district, tenant_id) 
-        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)";
+$sql = "INSERT INTO families (head_of_family, contact, address, package_type, location, tazmin, visa_status, province, district, tenant_id, branch_id)
+        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)";
 
 if ($stmt = $conn->prepare($sql)) {
-    $stmt->bind_param("sssssssssi", $family_head, $contact, $address, $package_type, $location, $tazmin, $visa_status, $province, $district, $tenant_id);
+    $stmt->bind_param("sssssssssii", $family_head, $contact, $address, $package_type, $location, $tazmin, $visa_status, $province, $district, $tenant_id, $branch_id);
 
     if ($stmt->execute()) {
         echo json_encode(["success" => true, "message" => "Family added successfully"]);

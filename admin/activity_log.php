@@ -13,6 +13,7 @@ if (session_status() === PHP_SESSION_NONE) {
     session_start();
 }
 $tenant_id = $_SESSION['tenant_id'];
+$branch_id = $_SESSION['branch_id'];
 // Check if user is logged in
 if (!isset($_SESSION['user_id']) || $_SESSION['role'] !== 'admin') {
     header('Location: ../login.php');
@@ -48,9 +49,9 @@ $action = isset($_GET['action']) ? $_GET['action'] : '';
 $table_name = isset($_GET['table_name']) ? $_GET['table_name'] : '';
 
 // Get all users for filter dropdown
-$users_query = "SELECT id, name FROM users WHERE tenant_id = ? ORDER BY name";
+$users_query = "SELECT id, name FROM users WHERE tenant_id = ? And branch_id = ? ORDER BY name";
 $users_result = $conn->prepare($users_query);
-$users_result->bind_param("i", $tenant_id);
+$users_result->bind_param("ii", $tenant_id, $branch_id);
 $users_result->execute();
 $users_result_set = $users_result->get_result();
 $users = [];
@@ -98,9 +99,9 @@ $total_pages = ceil($total_records / $records_per_page);
 $query = "SELECT a.*, u.name as user_name
           FROM activity_log a 
           LEFT JOIN users u ON a.user_id = u.id 
-          WHERE a.created_at BETWEEN ? AND DATE_ADD(?, INTERVAL 1 DAY) AND a.tenant_id = ?";
-$params = [$date_from, $date_to, $tenant_id];
-$types = "sss";
+          WHERE a.created_at BETWEEN ? AND DATE_ADD(?, INTERVAL 1 DAY) AND a.tenant_id = ? And branch_id = ?";
+$params = [$date_from, $date_to, $tenant_id, $branch_id];
+$types = "ssss";
 
 if ($user_id > 0) {
     $query .= " AND a.user_id = ?";
@@ -138,9 +139,9 @@ while ($row = $result->fetch_assoc()) {
 }
 
 // Get actions for filter dropdown
-$actions_query = "SELECT DISTINCT action FROM activity_log WHERE tenant_id = ? ORDER BY action";
+$actions_query = "SELECT DISTINCT action FROM activity_log WHERE tenant_id = ? And branch_id = ? ORDER BY action";
 $actions_result = $conn->prepare($actions_query);
-$actions_result->bind_param("i", $tenant_id);
+$actions_result->bind_param("ii", $tenant_id, $branch_id);
 $actions_result->execute();
 $actions_result_set = $actions_result->get_result();
 $actions = [];
@@ -149,9 +150,9 @@ while ($row = $actions_result_set->fetch_assoc()) {
 }
 
 // Get table names for filter dropdown
-$tables_query = "SELECT DISTINCT table_name FROM activity_log WHERE tenant_id = ? ORDER BY table_name";
+$tables_query = "SELECT DISTINCT table_name FROM activity_log WHERE tenant_id = ? And branch_id = ? ORDER BY table_name";
 $tables_result = $conn->prepare($tables_query);
-$tables_result->bind_param("i", $tenant_id);
+$tables_result->bind_param("ii", $tenant_id, $branch_id);
 $tables_result->execute();
 $tables_result_set = $tables_result->get_result();
 $tables = [];
@@ -164,8 +165,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['delete_log'])) {
     $log_id = $_POST['log_id'];
     
     try {
-        $stmt = $conn->prepare("DELETE FROM activity_log WHERE id = ? AND tenant_id = ?");
-        $stmt->bind_param("ii", $log_id, $tenant_id);
+        $stmt = $conn->prepare("DELETE FROM activity_log WHERE id = ? AND tenant_id = ? And branch_id = ?");
+        $stmt->bind_param("iii", $log_id, $tenant_id, $branch_id);
         $stmt->execute();
         $_SESSION['success_message'] = "Log entry deleted successfully!";
         header('Location: ' . $redirect_url);
@@ -182,8 +183,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['bulk_delete'])) {
     $delete_before_date = $_POST['delete_before_date'];
     
     try {
-        $stmt = $conn->prepare("DELETE FROM activity_log WHERE created_at < ? AND tenant_id = ?");
-        $stmt->bind_param("si", $delete_before_date, $tenant_id);
+        $stmt = $conn->prepare("DELETE FROM activity_log WHERE created_at < ? AND tenant_id = ? And branch_id = ?");
+        $stmt->bind_param("sii", $delete_before_date, $tenant_id, $branch_id);
         $stmt->execute();
         $affected_rows = $stmt->affected_rows;
         $_SESSION['success_message'] = "$affected_rows log entries deleted successfully!";
@@ -198,8 +199,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['bulk_delete'])) {
 
 // Fetch user data with proper error handling
 try {
-    $stmt = $pdo->prepare("SELECT * FROM users WHERE id = ? AND tenant_id = ?");
-    $stmt->execute([$_SESSION['user_id'], $tenant_id]);
+    $stmt = $pdo->prepare("SELECT * FROM users WHERE id = ? AND tenant_id = ? And branch_id = ?");
+    $stmt->execute([$_SESSION['user_id'], $tenant_id, $branch_id]);
     $user = $stmt->fetch(PDO::FETCH_ASSOC);
 
     if (!$user) {

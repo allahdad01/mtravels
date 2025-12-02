@@ -7,7 +7,7 @@ require_once '../../includes/conn.php';
 // Enforce authentication
 enforce_auth();
 $tenant_id = $_SESSION['tenant_id'];
-
+$branch_id = $_SESSION['branch_id'];
 header('Content-Type: application/json');
 
 // Check if request is POST
@@ -35,9 +35,9 @@ try {
     // Check if request exists and is pending
     $stmt = $conn->prepare("
         SELECT id FROM date_change_umrah
-        WHERE id = ? AND tenant_id = ? AND status = 'Pending'
+        WHERE id = ? AND tenant_id = ? And branch_id = ? AND status = 'Pending'
     ");
-    $stmt->bind_param("ii", $id, $tenant_id);
+    $stmt->bind_param("iii", $id, $tenant_id, $branch_id);
     $stmt->execute();
     $result = $stmt->get_result();
 
@@ -53,9 +53,9 @@ try {
             remarks = CONCAT(remarks, '\n\nRejection Reason: ', ?),
             approved_by = ?,
             approved_at = NOW()
-        WHERE id = ? AND tenant_id = ?
+        WHERE id = ? AND tenant_id = ? And branch_id = ?
     ");
-    $stmt->bind_param("siii", $rejection_reason, $_SESSION['user_id'], $id, $tenant_id);
+    $stmt->bind_param("siiii", $rejection_reason, $_SESSION['user_id'], $id, $tenant_id, $branch_id);
 
     if ($stmt->execute()) {
         // Log the rejection

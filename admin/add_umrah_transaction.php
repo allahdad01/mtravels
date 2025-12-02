@@ -8,6 +8,7 @@ require_once 'security.php';
 // Enforce authentication
 enforce_auth();
 $tenant_id = $_SESSION['tenant_id'];
+$branch_id = $_SESSION['branch_id'];
 $username = isset($_SESSION["name"]) ? $_SESSION["name"] : "Unknown User";
 // Connect using mysqli
 include_once('../includes/conn.php');
@@ -71,8 +72,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         $stmt_fetch_supplier_id->close();
 
         // Step 2: Insert the transaction into umrah_transactions table
-        $stmt = $conn->prepare("INSERT INTO umrah_transactions (transaction_type, umrah_booking_id, payment_date, transaction_to, payment_description, payment_amount, currency, receipt, tenant_id, exchange_rate) VALUES ('Credit', ?, ?, ?, ?, ?, ?, ?, ?, ?)");
-        $stmt->bind_param("issssssis", $umrah_id, $payment_date, $transaction_to, $payment_description, $payment_amount, $currency, $receipt_number, $tenant_id, $exchange_rate);
+        $stmt = $conn->prepare("INSERT INTO umrah_transactions (transaction_type, umrah_booking_id, payment_date, transaction_to, payment_description, payment_amount, currency, receipt, tenant_id, exchange_rate, branch_id) VALUES ('Credit', ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)");
+        $stmt->bind_param("issssssisi", $umrah_id, $payment_date, $transaction_to, $payment_description, $payment_amount, $currency, $receipt_number, $tenant_id, $exchange_rate, $branch_id);
         
         if (!$stmt->execute()) {
             throw new Exception("Failed to add transaction");
@@ -117,11 +118,11 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 $stmt_update_supplier->close();
 
                 // Record transaction in supplier_transactions with balance
-                $stmt_insert_supplier_transaction = $conn->prepare("INSERT INTO supplier_transactions 
-                    (supplier_id, transaction_type, amount, remarks, transaction_of, reference_id, balance, transaction_date, receipt, tenant_id)
-                    VALUES (?, ?, ?, ?, 'umrah', ?, ?, NOW(), ?, ?)");
+                $stmt_insert_supplier_transaction = $conn->prepare("INSERT INTO supplier_transactions
+                    (supplier_id, transaction_type, amount, remarks, transaction_of, reference_id, balance, transaction_date, receipt, tenant_id, branch_id)
+                    VALUES (?, ?, ?, ?, 'umrah', ?, ?, NOW(), ?, ?, ?)");
                 $stmt_insert_supplier_transaction->bind_param(
-                    "isdsidsi",
+                    "isdsidsii",
                     $supplier_id,
                     $transaction_type,
                     $payment_amount,
@@ -129,7 +130,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                     $umrah_transaction_id,
                     $new_supplier_balance,
                     $receipt_number,
-                    $tenant_id
+                    $tenant_id,
+                    $branch_id
                 );
                 if (!$stmt_insert_supplier_transaction->execute()) {
                     throw new Exception("Failed to record supplier transaction.");
@@ -164,11 +166,11 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 $stmt_update_main_account->close();
 
                 // Record transaction in main_account_transactions with balance
-                $stmt_insert_main_account_transaction = $conn->prepare("INSERT INTO main_account_transactions 
-                    (main_account_id, type, amount, currency, description, transaction_of, reference_id, balance, created_at, receipt, tenant_id, exchange_rate)
-                    VALUES (?, ?, ?, ?, ?, 'umrah', ?, ?, NOW(), ?, ?, ?)");
+                $stmt_insert_main_account_transaction = $conn->prepare("INSERT INTO main_account_transactions
+                    (main_account_id, type, amount, currency, description, transaction_of, reference_id, balance, created_at, receipt, tenant_id, exchange_rate, branch_id)
+                    VALUES (?, ?, ?, ?, ?, 'umrah', ?, ?, NOW(), ?, ?, ?, ?)");
                 $stmt_insert_main_account_transaction->bind_param(
-                    "isdssidsi",
+                    "isdssidsii",
                     $paid_to,
                     $transaction_type,
                     $payment_amount,
@@ -178,7 +180,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                     $new_main_balance,
                     $receipt_number,
                     $tenant_id,
-                    $exchange_rate
+                    $exchange_rate,
+                    $branch_id
                 );
                 if (!$stmt_insert_main_account_transaction->execute()) {
                     throw new Exception("Failed to record main account transaction.");
@@ -232,11 +235,11 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             $stmt_update_main_account->close();
 
             // Record transaction in main_account_transactions with balance
-            $stmt_insert_main_account_transaction = $conn->prepare("INSERT INTO main_account_transactions 
-                (main_account_id, type, amount, currency, description, transaction_of, reference_id, balance, created_at, receipt, tenant_id, exchange_rate)
-                VALUES (?, ?, ?, ?, ?, 'umrah', ?, ?, NOW(), ?, ?, ?)");
+            $stmt_insert_main_account_transaction = $conn->prepare("INSERT INTO main_account_transactions
+                (main_account_id, type, amount, currency, description, transaction_of, reference_id, balance, created_at, receipt, tenant_id, exchange_rate, branch_id)
+                VALUES (?, ?, ?, ?, ?, 'umrah', ?, ?, NOW(), ?, ?, ?, ?)");
             $stmt_insert_main_account_transaction->bind_param(
-                "isdssidsis",
+                "isdssidsisi",
                 $paid_to,
                 $transaction_type,
                 $payment_amount,
@@ -246,7 +249,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 $new_main_balance,
                 $receipt_number,
                 $tenant_id,
-                $exchange_rate
+                $exchange_rate,
+                $branch_id
             );
             if (!$stmt_insert_main_account_transaction->execute()) {
                 throw new Exception("Failed to record main account transaction.");
@@ -346,8 +350,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         $status = "unread";
 
         // Insert the notification, using the umrah_transaction_id instead of umrah_id
-        $notificationStmt = $conn->prepare("INSERT INTO notifications (transaction_id, transaction_type, message, recipient_role, status, created_at, tenant_id) VALUES (?, ?, ?, ?, ?, NOW(), ?)");
-        $notificationStmt->bind_param("issssi", $umrah_transaction_id, $transaction_type, $notification_message, $recipient_role, $status, $tenant_id);
+        $notificationStmt = $conn->prepare("INSERT INTO notifications (transaction_id, transaction_type, message, recipient_role, status, created_at, tenant_id, branch_id) VALUES (?, ?, ?, ?, ?, NOW(), ?, ?)");
+        $notificationStmt->bind_param("issssii", $umrah_transaction_id, $transaction_type, $notification_message, $recipient_role, $status, $tenant_id, $branch_id);
 
         if (!$notificationStmt->execute()) {
             throw new Exception("Failed to create notification");
@@ -373,11 +377,11 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         $user_agent = $_SERVER['HTTP_USER_AGENT'] ?? '';
         
         $stmt_log = $conn->prepare("
-            INSERT INTO activity_log 
-            (user_id, action, table_name, record_id, old_values, new_values, ip_address, user_agent, created_at, tenant_id) 
-            VALUES (?, 'add', 'umrah_transactions', ?, ?, ?, ?, ?, NOW(), ?)
+            INSERT INTO activity_log
+            (user_id, action, table_name, record_id, old_values, new_values, ip_address, user_agent, created_at, tenant_id, branch_id)
+            VALUES (?, 'add', 'umrah_transactions', ?, ?, ?, ?, ?, NOW(), ?, ?)
         ");
-        $stmt_log->bind_param("iissssi", $user_id, $umrah_transaction_id, $old_values, $new_values, $ip_address, $user_agent, $tenant_id);
+        $stmt_log->bind_param("iissssii", $user_id, $umrah_transaction_id, $old_values, $new_values, $ip_address, $user_agent, $tenant_id, $branch_id);
         $stmt_log->execute();
         $stmt_log->close();
 

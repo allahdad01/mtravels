@@ -11,6 +11,7 @@ enforce_auth();
 
 require_once('../includes/db.php');
 $tenant_id = $_SESSION['tenant_id'];
+$branch_id = $_SESSION['branch_id'];
 
 try {
     // Get POST data
@@ -28,25 +29,25 @@ try {
         case 'client':
             // Get client details with opening balance
             $entityQuery = "
-                SELECT 
+                SELECT
                     c.*,
                     COALESCE(
                         (SELECT SUM(
-                            CASE 
-                                WHEN type = 'debit' THEN amount 
-                                WHEN type = 'credit' THEN -amount 
+                            CASE
+                                WHEN type = 'debit' THEN amount
+                                WHEN type = 'credit' THEN -amount
                             END
-                        ) 
-                        FROM client_transactions 
-                        WHERE client_id = c.id 
+                        )
+                        FROM client_transactions
+                        WHERE client_id = c.id
                         AND currency = ?
-                        AND DATE(created_at) < ?), 0
+                        AND DATE(created_at) < ? AND tenant_id = ? AND branch_id = ?), 0
                     ) as opening_balance
                 FROM clients c
-                WHERE c.id = ? AND c.tenant_id = ?";
+                WHERE c.id = ? AND c.tenant_id = ? AND c.branch_id = ?";
 
             $stmt = $pdo->prepare($entityQuery);
-            $stmt->execute([$currency, $startDate, $entityId, $tenant_id]);
+            $stmt->execute([$currency, $startDate, $tenant_id, $branch_id, $entityId, $tenant_id, $branch_id]);
             $entityDetails = $stmt->fetch(PDO::FETCH_ASSOC);
             
             // Use the existing client transactions query
@@ -113,44 +114,44 @@ try {
                         END), 'N/A'
                     ) AS remark
                 FROM client_transactions ct
-                LEFT JOIN ticket_bookings tb ON tb.id = ct.reference_id AND ct.transaction_of = 'ticket_sale'
-                LEFT JOIN refunded_tickets rt ON rt.id = ct.reference_id AND ct.transaction_of = 'ticket_refund'
-                LEFT JOIN date_change_tickets dc ON dc.id = ct.reference_id AND ct.transaction_of = 'date_change'
-                LEFT JOIN visa_applications vs ON vs.id = ct.reference_id AND ct.transaction_of = 'visa_sale'
-                LEFT JOIN umrah_bookings um ON um.booking_id = ct.reference_id AND ct.transaction_of = 'umrah'
-                LEFT JOIN hotel_bookings hb ON hb.id = ct.reference_id AND ct.transaction_of = 'hotel'
-                LEFT JOIN users usr ON usr.id = ct.reference_id AND ct.transaction_of = 'fund'
+                LEFT JOIN ticket_bookings tb ON tb.id = ct.reference_id AND ct.transaction_of = 'ticket_sale' AND tb.tenant_id = ? AND tb.branch_id = ?
+                LEFT JOIN refunded_tickets rt ON rt.id = ct.reference_id AND ct.transaction_of = 'ticket_refund' AND rt.tenant_id = ? AND rt.branch_id = ?
+                LEFT JOIN date_change_tickets dc ON dc.id = ct.reference_id AND ct.transaction_of = 'date_change' AND dc.tenant_id = ? AND dc.branch_id = ?
+                LEFT JOIN visa_applications vs ON vs.id = ct.reference_id AND ct.transaction_of = 'visa_sale' AND vs.tenant_id = ? AND vs.branch_id = ?
+                LEFT JOIN umrah_bookings um ON um.booking_id = ct.reference_id AND ct.transaction_of = 'umrah' AND um.tenant_id = ? AND um.branch_id = ?
+                LEFT JOIN hotel_bookings hb ON hb.id = ct.reference_id AND ct.transaction_of = 'hotel' AND hb.tenant_id = ? AND hb.branch_id = ?
+                LEFT JOIN users usr ON usr.id = ct.reference_id AND ct.transaction_of = 'fund' AND usr.tenant_id = ? AND usr.branch_id = ?
                 WHERE ct.client_id = ?
                 AND ct.currency = ?
                 AND DATE(ct.created_at) BETWEEN ? AND ?
-                AND ct.tenant_id = ?
+                AND ct.tenant_id = ? AND ct.branch_id = ?
                 ORDER BY ct.id ASC";
 
             $stmt = $pdo->prepare($transactionsQuery);
-            $stmt->execute([$entityId, $currency, $startDate, $endDate, $tenant_id]);
+            $stmt->execute([$tenant_id, $branch_id, $tenant_id, $branch_id, $tenant_id, $branch_id, $tenant_id, $branch_id, $tenant_id, $branch_id, $tenant_id, $branch_id, $tenant_id, $branch_id, $entityId, $currency, $startDate, $endDate, $tenant_id, $branch_id]);
             break;
 
         case 'supplier':
             // Get supplier details with opening balance
             $entityQuery = "
-                SELECT 
+                SELECT
                     s.*,
                     COALESCE(
                         (SELECT SUM(
-                            CASE 
-                                WHEN transaction_type = 'debit' THEN amount 
-                                WHEN transaction_type = 'credit' THEN -amount 
+                            CASE
+                                WHEN transaction_type = 'debit' THEN amount
+                                WHEN transaction_type = 'credit' THEN -amount
                             END
-                        ) 
-                        FROM supplier_transactions 
-                        WHERE supplier_id = s.id 
-                        AND DATE(transaction_date) < ?), 0
+                        )
+                        FROM supplier_transactions
+                        WHERE supplier_id = s.id
+                        AND DATE(transaction_date) < ? AND tenant_id = ? AND branch_id = ?), 0
                     ) as opening_balance
                 FROM suppliers s
-                WHERE s.id = ? AND s.tenant_id = ?";
+                WHERE s.id = ? AND s.tenant_id = ? AND s.branch_id = ?";
 
             $stmt = $pdo->prepare($entityQuery);
-            $stmt->execute([$startDate, $entityId, $tenant_id]);
+            $stmt->execute([$startDate, $tenant_id, $branch_id, $entityId, $tenant_id, $branch_id]);
             $entityDetails = $stmt->fetch(PDO::FETCH_ASSOC);
             
             // Use same structure as client transactions for suppliers
@@ -216,44 +217,43 @@ try {
                         END), 'N/A'
                     ) AS remark
                 FROM supplier_transactions st
-                LEFT JOIN ticket_bookings tb ON tb.id = st.reference_id AND st.transaction_of = 'ticket_sale'
-                LEFT JOIN refunded_tickets rt ON rt.id = st.reference_id AND st.transaction_of = 'ticket_refund'
-                LEFT JOIN date_change_tickets dc ON dc.id = st.reference_id AND st.transaction_of = 'date_change'
-                LEFT JOIN visa_applications vs ON vs.id = st.reference_id AND st.transaction_of = 'visa_sale'
-                LEFT JOIN umrah_bookings um ON um.booking_id = st.reference_id AND st.transaction_of = 'umrah'
-                LEFT JOIN hotel_bookings hb ON hb.id = st.reference_id AND st.transaction_of = 'hotel'
-                LEFT JOIN users usr ON usr.id = st.reference_id AND st.transaction_of = 'fund'
-                WHERE st.supplier_id = ? AND st.tenant_id = ?
+                LEFT JOIN ticket_bookings tb ON tb.id = st.reference_id AND st.transaction_of = 'ticket_sale' AND tb.tenant_id = ? AND tb.branch_id = ?
+                LEFT JOIN refunded_tickets rt ON rt.id = st.reference_id AND st.transaction_of = 'ticket_refund' AND rt.tenant_id = ? AND rt.branch_id = ?
+                LEFT JOIN date_change_tickets dc ON dc.id = st.reference_id AND st.transaction_of = 'date_change' AND dc.tenant_id = ? AND dc.branch_id = ?
+                LEFT JOIN visa_applications vs ON vs.id = st.reference_id AND st.transaction_of = 'visa_sale' AND vs.tenant_id = ? AND vs.branch_id = ?
+                LEFT JOIN umrah_bookings um ON um.booking_id = st.reference_id AND st.transaction_of = 'umrah' AND um.tenant_id = ? AND um.branch_id = ?
+                LEFT JOIN hotel_bookings hb ON hb.id = st.reference_id AND st.transaction_of = 'hotel' AND hb.tenant_id = ? AND hb.branch_id = ?
+                LEFT JOIN users usr ON usr.id = st.reference_id AND st.transaction_of = 'fund' AND usr.tenant_id = ? AND usr.branch_id = ?
+                WHERE st.supplier_id = ? AND st.tenant_id = ? AND st.branch_id = ?
                 AND DATE(st.transaction_date) BETWEEN ? AND ?
-                AND st.tenant_id = ?
                 ORDER BY transaction_date ASC, st.id ASC";
 
             $stmt = $pdo->prepare($transactionsQuery);
-            $stmt->execute([$entityId, $tenant_id, $startDate, $endDate, $tenant_id]);
+            $stmt->execute([$tenant_id, $branch_id, $tenant_id, $branch_id, $tenant_id, $branch_id, $tenant_id, $branch_id, $tenant_id, $branch_id, $tenant_id, $branch_id, $tenant_id, $branch_id, $entityId, $tenant_id, $branch_id, $startDate, $endDate]);
             break;
 
         case 'main_account':
             // Get main account details with opening balance
             $entityQuery = "
-                SELECT 
+                SELECT
                     m.*,
                     COALESCE(
                         (SELECT SUM(
-                            CASE 
-                                WHEN type = 'debit' THEN amount 
-                                WHEN type = 'credit' THEN -amount 
+                            CASE
+                                WHEN type = 'debit' THEN amount
+                                WHEN type = 'credit' THEN -amount
                             END
-                        ) 
-                        FROM main_account_transactions 
-                        WHERE main_account_id = m.id 
+                        )
+                        FROM main_account_transactions
+                        WHERE main_account_id = m.id
                         AND currency = ?
-                        AND DATE(created_at) < ?), 0
+                        AND DATE(created_at) < ? AND tenant_id = ? AND branch_id = ?), 0
                     ) as opening_balance
                 FROM main_account m
-                WHERE m.id = ? AND m.tenant_id = ?";
+                WHERE m.id = ? AND m.tenant_id = ? AND m.branch_id = ?";
 
             $stmt = $pdo->prepare($entityQuery);
-            $stmt->execute([$currency, $startDate, $entityId, $tenant_id]);
+            $stmt->execute([$currency, $startDate, $tenant_id, $branch_id, $entityId, $tenant_id, $branch_id]);
             $entityDetails = $stmt->fetch(PDO::FETCH_ASSOC);
             
             // Use same structure as client transactions for main account
@@ -319,21 +319,21 @@ try {
                         END), 'N/A'
                     ) AS remark
                 FROM main_account_transactions mt
-                LEFT JOIN ticket_bookings tb ON tb.id = mt.reference_id AND mt.transaction_of = 'ticket_sale'
-                LEFT JOIN refunded_tickets rt ON rt.id = mt.reference_id AND mt.transaction_of = 'ticket_refund'
-                LEFT JOIN date_change_tickets dc ON dc.id = mt.reference_id AND mt.transaction_of = 'date_change'
-                LEFT JOIN visa_applications vs ON vs.id = mt.reference_id AND mt.transaction_of = 'visa_sale'
-                LEFT JOIN umrah_bookings um ON um.booking_id = mt.reference_id AND mt.transaction_of = 'umrah'
-                LEFT JOIN hotel_bookings hb ON hb.id = mt.reference_id AND mt.transaction_of = 'hotel'
-                LEFT JOIN users usr ON usr.id = mt.reference_id AND mt.transaction_of = 'fund'
+                LEFT JOIN ticket_bookings tb ON tb.id = mt.reference_id AND mt.transaction_of = 'ticket_sale' AND tb.tenant_id = ? AND tb.branch_id = ?
+                LEFT JOIN refunded_tickets rt ON rt.id = mt.reference_id AND mt.transaction_of = 'ticket_refund' AND rt.tenant_id = ? AND rt.branch_id = ?
+                LEFT JOIN date_change_tickets dc ON dc.id = mt.reference_id AND mt.transaction_of = 'date_change' AND dc.tenant_id = ? AND dc.branch_id = ?
+                LEFT JOIN visa_applications vs ON vs.id = mt.reference_id AND mt.transaction_of = 'visa_sale' AND vs.tenant_id = ? AND vs.branch_id = ?
+                LEFT JOIN umrah_bookings um ON um.booking_id = mt.reference_id AND mt.transaction_of = 'umrah' AND um.tenant_id = ? AND um.branch_id = ?
+                LEFT JOIN hotel_bookings hb ON hb.id = mt.reference_id AND mt.transaction_of = 'hotel' AND hb.tenant_id = ? AND hb.branch_id = ?
+                LEFT JOIN users usr ON usr.id = mt.reference_id AND mt.transaction_of = 'fund' AND usr.tenant_id = ? AND usr.branch_id = ?
                 WHERE mt.main_account_id = ?
                 AND mt.currency = ?
                 AND DATE(mt.created_at) BETWEEN ? AND ?
-                AND mt.tenant_id = ?
+                AND mt.tenant_id = ? AND mt.branch_id = ?
                 ORDER BY transaction_date ASC, mt.id ASC";
 
             $stmt = $pdo->prepare($transactionsQuery);
-            $stmt->execute([$entityId, $currency, $startDate, $endDate, $tenant_id]);
+            $stmt->execute([$tenant_id, $branch_id, $tenant_id, $branch_id, $tenant_id, $branch_id, $tenant_id, $branch_id, $tenant_id, $branch_id, $tenant_id, $branch_id, $tenant_id, $branch_id, $entityId, $currency, $startDate, $endDate, $tenant_id, $branch_id]);
             break;
 
         default:

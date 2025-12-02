@@ -14,7 +14,7 @@ enforce_auth();
 
 require_once('../includes/db.php');
 $tenant_id = $_SESSION['tenant_id'];
-
+$branch_id = $_SESSION['branch_id'];
 // Check if required parameters are present
 if (!isset($_POST['transaction_id']) || !isset($_POST['amount'])) {
     echo json_encode(['success' => false, 'message' => 'Missing required parameters']);
@@ -37,9 +37,9 @@ try {
                c.name as customer_name 
         FROM sarafi_transactions t
         JOIN customers c ON t.customer_id = c.id
-        WHERE t.id = ? AND t.type = ? AND t.tenant_id = ?
+        WHERE t.id = ? AND t.type = ? AND t.tenant_id = ? AND t.branch_id = ?
     ");
-    $getTransactionStmt->execute([$transaction_id, 'withdrawal', $tenant_id]);
+    $getTransactionStmt->execute([$transaction_id, 'withdrawal', $tenant_id, $branch_id]);
     $transaction = $getTransactionStmt->fetch(PDO::FETCH_ASSOC);
 
     if (!$transaction) {
@@ -68,9 +68,9 @@ try {
     // Get the main account transaction
     $mainTransactionStmt = $pdo->prepare("
         SELECT * FROM main_account_transactions 
-        WHERE reference_id = ? AND transaction_of = ? AND tenant_id = ?
+        WHERE reference_id = ? AND transaction_of = ? AND tenant_id = ? AND branch_id = ?
     ");
-    $mainTransactionStmt->execute([$transaction_id, 'withdrawal_sarafi', $tenant_id]);
+    $mainTransactionStmt->execute([$transaction_id, 'withdrawal_sarafi', $tenant_id, $branch_id]);
     $mainTransaction = $mainTransactionStmt->fetch(PDO::FETCH_ASSOC);
 
     if (!$mainTransaction) {
@@ -84,7 +84,7 @@ try {
         WHERE main_account_id = ? 
         AND currency = ? 
         AND id > ? 
-        AND id != ? AND tenant_id = ?
+        AND id != ? AND tenant_id = ? AND branch_id = ?
     ");
     $updateSubsequentResult = $updateSubsequentStmt->execute([
         $amount, 
@@ -92,7 +92,8 @@ try {
         $transaction['currency'], 
         $mainTransaction['id'],
         $mainTransaction['id'],
-        $tenant_id
+        $tenant_id,
+        $branch_id
     ]);
 
     if (!$updateSubsequentResult) {
@@ -103,13 +104,14 @@ try {
     $updateWalletStmt = $pdo->prepare("
         UPDATE customer_wallets 
         SET balance = balance + ? 
-        WHERE customer_id = ? AND currency = ? AND tenant_id = ?
+        WHERE customer_id = ? AND currency = ? AND tenant_id = ? AND branch_id = ?
     ");
     $updateWalletResult = $updateWalletStmt->execute([
         $amount,
         $transaction['customer_id'],
         $transaction['currency'],
-        $tenant_id
+        $tenant_id,
+        $branch_id
     ]);
 
     if (!$updateWalletResult) {
@@ -119,9 +121,9 @@ try {
     // Delete the main account transaction
     $deleteMainStmt = $pdo->prepare("
         DELETE FROM main_account_transactions 
-        WHERE id = ? AND tenant_id = ?
+        WHERE id = ? AND tenant_id = ? AND branch_id = ?
     ");
-    $deleteMainResult = $deleteMainStmt->execute([$mainTransaction['id'], $tenant_id]);
+    $deleteMainResult = $deleteMainStmt->execute([$mainTransaction['id'], $tenant_id, $branch_id]);
 
     if (!$deleteMainResult) {
         throw new Exception('Failed to delete main account transaction');
@@ -130,18 +132,18 @@ try {
     // Delete the sarafi transaction
     $deleteStmt = $pdo->prepare("
         DELETE FROM sarafi_transactions 
-        WHERE id = ? AND tenant_id = ?
+        WHERE id = ? AND tenant_id = ? AND branch_id = ?
     ");
-    $deleteResult = $deleteStmt->execute([$transaction_id, $tenant_id]);
+    $deleteResult = $deleteStmt->execute([$transaction_id, $tenant_id, $branch_id]);
 
     if ($deleteResult && $deleteStmt->rowCount() > 0) {
         // Update the appropriate balance in the main_account table
         $updateStmt = $pdo->prepare("
             UPDATE main_account 
             SET $balanceColumn = $balanceColumn + ?
-            WHERE id = ? AND tenant_id = ?
+            WHERE id = ? AND tenant_id = ? AND branch_id = ?
         ");
-        $updateResult = $updateStmt->execute([$amount, $mainTransaction['main_account_id'], $tenant_id]);
+        $updateResult = $updateStmt->execute([$amount, $mainTransaction['main_account_id'], $tenant_id, $branch_id]);
 
         if ($updateResult) {
             // Log the activity
@@ -162,10 +164,10 @@ try {
             
             $activityStmt = $pdo->prepare("
                 INSERT INTO activity_log 
-                (user_id, action, table_name, record_id, old_values, new_values, ip_address, user_agent, created_at, tenant_id) 
-                VALUES (?, 'delete', 'sarafi_transactions', ?, ?, ?, ?, ?, NOW(), ?)
+                (user_id, action, table_name, record_id, old_values, new_values, ip_address, user_agent, created_at, tenant_id, branch_id) 
+                VALUES (?, 'delete', 'sarafi_transactions', ?, ?, ?, ?, ?, NOW(), ?, ?)
             ");
-            $activityStmt->execute([$user_id, $transaction_id, $old_values, $new_values, $ip_address, $user_agent, $tenant_id]);
+            $activityStmt->execute([$user_id, $transaction_id, $old_values, $new_values, $ip_address, $user_agent, $tenant_id, $branch_id]);
 
             $pdo->commit();
             echo json_encode(['success' => true, 'message' => 'Withdrawal transaction deleted successfully']);

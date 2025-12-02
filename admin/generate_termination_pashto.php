@@ -7,6 +7,7 @@ if (session_status() === PHP_SESSION_NONE) {
     session_start();
 }
 $tenant_id = $_SESSION['tenant_id'];
+$branch_id = $_SESSION['branch_id'];
 $user_id = filter_input(INPUT_POST, 'user_id', FILTER_VALIDATE_INT);
 if (!$user_id) {
     $user_id = filter_input(INPUT_GET, 'user_id', FILTER_VALIDATE_INT);
@@ -17,8 +18,8 @@ if (!$user_id) {
 }
 
 try {
-    $stmt = $pdo->prepare("SELECT * FROM users WHERE id = ? AND tenant_id = ?");
-    $stmt->execute([$user_id, $tenant_id]);
+    $stmt = $pdo->prepare("SELECT * FROM users WHERE id = ? AND tenant_id = ? AND branch_id = ?");
+    $stmt->execute([$user_id, $tenant_id, $branch_id]);
     $user = $stmt->fetch(PDO::FETCH_ASSOC);
 
     if (!$user) {

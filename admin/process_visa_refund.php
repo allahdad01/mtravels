@@ -10,6 +10,8 @@ enforce_auth();
 
 // Set header for JSON response
 header('Content-Type: application/json');
+$tenant_id = $_SESSION['tenant_id'];
+$branch_id = $_SESSION['branch_id'];
 
 
 // Check if it's a POST request
@@ -42,9 +44,9 @@ try {
     $conn->begin_transaction();
 
     // Check if the visa exists and get its details
-    $visaQuery = "SELECT * FROM visa_applications WHERE id = ? AND tenant_id = ?";
+    $visaQuery = "SELECT * FROM visa_applications WHERE id = ? AND tenant_id = ? AND branch_id = ?";
     $stmt = $conn->prepare($visaQuery);
-    $stmt->bind_param('ii', $visa_id, $tenant_id);
+    $stmt->bind_param('iii', $visa_id, $tenant_id, $branch_id);
     $stmt->execute();
     $visaResult = $stmt->get_result();
     
@@ -85,24 +87,24 @@ try {
     }
 
     // Insert refund record
-    $insertQuery = "INSERT INTO visa_refunds (visa_id, refund_type, refund_amount, reason, currency, processed_by, tenant_id) 
-                    VALUES (?, ?, ?, ?, ?, ?, ?)";
+    $insertQuery = "INSERT INTO visa_refunds (visa_id, refund_type, refund_amount, reason, currency, processed_by, tenant_id, branch_id)
+                    VALUES (?, ?, ?, ?, ?, ?, ?, ?)";
     $stmt = $conn->prepare($insertQuery);
-    $stmt->bind_param('isdssii', $visa_id, $refund_type, $refund_amount, $reason, $currency, $user_id, $tenant_id);
+    $stmt->bind_param('isdssiid', $visa_id, $refund_type, $refund_amount, $reason, $currency, $user_id, $tenant_id, $branch_id);
     $stmt->execute();
     
     // Get the ID of the newly inserted refund record
     $refund_id = $conn->insert_id;
     
     // Update visa profit
-    $updateQuery = "UPDATE visa_applications SET profit = ?, status = 'refunded' WHERE id = ? AND tenant_id = ?";
+    $updateQuery = "UPDATE visa_applications SET profit = ?, status = 'refunded' WHERE id = ? AND tenant_id = ? AND branch_id = ?";
     $stmt = $conn->prepare($updateQuery);
-    $stmt->bind_param('dii', $newProfit, $visa_id, $tenant_id);
+    $stmt->bind_param('diii', $newProfit, $visa_id, $tenant_id, $branch_id);
     $stmt->execute();
 
      // Get supplier details
-     $stmt_check_balance = $conn->prepare("SELECT balance, currency, name, supplier_type FROM suppliers WHERE id = ? AND tenant_id = ?");
-     $stmt_check_balance->bind_param("ii", $visa['supplier'], $tenant_id);
+     $stmt_check_balance = $conn->prepare("SELECT balance, currency, name, supplier_type FROM suppliers WHERE id = ? AND tenant_id = ? AND branch_id = ?");
+     $stmt_check_balance->bind_param("iii", $visa['supplier'], $tenant_id, $branch_id);
      if (!$stmt_check_balance->execute()) {
          throw new Exception("Failed to fetch supplier details");
      }
@@ -123,37 +125,39 @@ try {
  
          // Update supplier balance
          $newSupplierBalance = $current_balance + $supplierRefundAmount;
-         $updateSupplierStmt = $conn->prepare("UPDATE suppliers SET balance = ? WHERE id = ? AND tenant_id = ?");
-         $updateSupplierStmt->bind_param("dii", $newSupplierBalance, $visa['supplier'], $tenant_id);
+         $updateSupplierStmt = $conn->prepare("UPDATE suppliers SET balance = ? WHERE id = ? AND tenant_id = ? AND branch_id = ?");
+         $updateSupplierStmt->bind_param("diii", $newSupplierBalance, $visa['supplier'], $tenant_id, $branch_id);
          if (!$updateSupplierStmt->execute()) {
              throw new Exception("Failed to update supplier balance");
          }
  
          // Record supplier transaction with balance
-         $insertSupplierTransactionStmt = $conn->prepare("INSERT INTO supplier_transactions 
-             (transaction_date, supplier_id, reference_id, amount, balance, transaction_type, remarks, transaction_of, tenant_id)
-             VALUES (NOW(), ?, ?, ?, ?, 'credit', ?, 'visa_refund', ?)");
+         $insertSupplierTransactionStmt = $conn->prepare("INSERT INTO supplier_transactions
+             (transaction_date, supplier_id, reference_id, amount, balance, transaction_type, remarks, transaction_of, tenant_id, branch_id)
+             VALUES (NOW(), ?, ?, ?, ?, 'credit', ?, 'visa_refund', ?, ?)");
          $supplierRemarks = "Refund for visa application #$visa_id - " . $reason;
-         $insertSupplierTransactionStmt->bind_param("iiddsi", 
+         $insertSupplierTransactionStmt->bind_param("iiddsii",
              $visa['supplier'],
              $refund_id,
              $supplierRefundAmount,
              $newSupplierBalance,
              $supplierRemarks,
-             $tenant_id
+             $tenant_id,
+             $branch_id
          );
      } else {
          // Record supplier transaction without balance for non-External suppliers
-         $insertSupplierTransactionStmt = $conn->prepare("INSERT INTO supplier_transactions 
-             (transaction_date, supplier_id, reference_id, amount, transaction_type, remarks, transaction_of, tenant_id)
-             VALUES (NOW(), ?, ?, ?, 'credit', ?, 'visa_refund', ?)");
+         $insertSupplierTransactionStmt = $conn->prepare("INSERT INTO supplier_transactions
+             (transaction_date, supplier_id, reference_id, amount, transaction_type, remarks, transaction_of, tenant_id, branch_id)
+             VALUES (NOW(), ?, ?, ?, 'credit', ?, 'visa_refund', ?, ?)");
          $supplierRemarks = "Refund for visa application #$visa_id - " . $reason;
-         $insertSupplierTransactionStmt->bind_param("iidsi", 
+         $insertSupplierTransactionStmt->bind_param("iidsii",
              $visa['supplier'],
              $refund_id,
              $refundToSupplier,
              $supplierRemarks,
-             $tenant_id
+             $tenant_id,
+             $branch_id
          );
      }
      if (!$insertSupplierTransactionStmt->execute()) {
@@ -161,8 +165,8 @@ try {
      }
 
     // Get client details and type
-    $clientQuery = $conn->prepare("SELECT client_type, usd_balance, afs_balance, name FROM clients WHERE id = ? AND tenant_id = ?");
-    $clientQuery->bind_param("ii", $visa['sold_to'], $tenant_id);
+    $clientQuery = $conn->prepare("SELECT client_type, usd_balance, afs_balance, name FROM clients WHERE id = ? AND tenant_id = ? AND branch_id = ?");
+    $clientQuery->bind_param("iii", $visa['sold_to'], $tenant_id, $branch_id);
     if (!$clientQuery->execute()) {
         throw new Exception("Failed to fetch client details");
     }
@@ -180,54 +184,56 @@ try {
         // Update client balance based on currency
         if ($currency === 'USD') {
             $newUsdBalance = $clientResult['usd_balance'] + $refundInClientCurrency;
-            $updateClientQuery = "UPDATE clients SET usd_balance = ? WHERE id = ? AND tenant_id = ?";
+            $updateClientQuery = "UPDATE clients SET usd_balance = ? WHERE id = ? AND tenant_id = ? AND branch_id = ?";
             $stmt = $conn->prepare($updateClientQuery);
-            $stmt->bind_param("dii", $newUsdBalance, $visa['sold_to'], $tenant_id);
+            $stmt->bind_param("diii", $newUsdBalance, $visa['sold_to'], $tenant_id, $branch_id);
         } else {
             $newAfsBalance = $clientResult['afs_balance'] + $refundInClientCurrency;
-            $updateClientQuery = "UPDATE clients SET afs_balance = ? WHERE id = ? AND tenant_id = ?";
+            $updateClientQuery = "UPDATE clients SET afs_balance = ? WHERE id = ? AND tenant_id = ? AND branch_id = ?";
             $stmt = $conn->prepare($updateClientQuery);
-            $stmt->bind_param("dii", $newAfsBalance, $visa['sold_to'], $tenant_id);
+            $stmt->bind_param("diii", $newAfsBalance, $visa['sold_to'], $tenant_id, $branch_id);
         }
         if (!$stmt->execute()) {
             throw new Exception("Failed to update client balance");
         }
 
         // Record client transaction
-        $clientTransactionQuery = "INSERT INTO client_transactions 
-            (client_id, type, amount, balance, currency, description, transaction_of, reference_id, created_at, tenant_id)
-            VALUES (?, 'Credit', ?, ?, ?, ?, 'visa_refund', ?, NOW(), ?)";
+        $clientTransactionQuery = "INSERT INTO client_transactions
+            (client_id, type, amount, balance, currency, description, transaction_of, reference_id, created_at, tenant_id, branch_id)
+            VALUES (?, 'Credit', ?, ?, ?, ?, 'visa_refund', ?, NOW(), ?, ?)";
         $stmt = $conn->prepare($clientTransactionQuery);
         $clientTransactionDescription = "Refund for visa application #$visa_id - $reason";
         $balance = ($currency === 'USD') ? $newUsdBalance : $newAfsBalance;
-        $stmt->bind_param("iddssii", 
+        $stmt->bind_param("iddssi",
             $visa['sold_to'],
             $refundInClientCurrency,
             $balance,
             $currency,
             $clientTransactionDescription,
             $refund_id,
-            $tenant_id
+            $tenant_id,
+            $branch_id
         );
         if (!$stmt->execute()) {
             throw new Exception("Failed to record client transaction");
         }
     } else {
         // Record client transaction
-        $clientTransactionQuery = "INSERT INTO client_transactions 
-            (client_id, type, amount, currency, description, transaction_of, reference_id, created_at, tenant_id)
-            VALUES (?, 'Credit', ?, ?, ?, 'visa_refund', ?, NOW(), ?)";
+        $clientTransactionQuery = "INSERT INTO client_transactions
+            (client_id, type, amount, currency, description, transaction_of, reference_id, created_at, tenant_id, branch_id)
+            VALUES (?, 'Credit', ?, ?, ?, 'visa_refund', ?, NOW(), ?, ?)";
         $stmt = $conn->prepare($clientTransactionQuery);
         $clientTransactionDescription = "Refund for visa application #$visa_id - $reason";
-       
-        $stmt->bind_param("idssii", 
+
+        $stmt->bind_param("idssi",
             $visa['sold_to'],
             $refund_amount,
-        
+
             $currency,
             $clientTransactionDescription,
             $refund_id,
-            $tenant_id
+            $tenant_id,
+            $branch_id
         );
         if (!$stmt->execute()) {
             throw new Exception("Failed to record client transaction");

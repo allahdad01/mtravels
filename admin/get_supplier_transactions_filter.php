@@ -5,6 +5,7 @@ require_once 'security.php';
 // Enforce authentication
 enforce_auth();
 $tenant_id = $_SESSION['tenant_id'];
+$branch_id = $_SESSION['branch_id'];
 require_once '../includes/conn.php';
 
 // Check connection
@@ -18,21 +19,21 @@ $endDate = isset($_GET['endDate']) ? $_GET['endDate'] : null;
 
 // Base SQL query for fetching transactions
 $query = "
-    SELECT st.transaction_date, st.transaction_type, s.currency, st.amount, st.remarks 
-    FROM supplier_transactions st left join suppliers s on st.supplier_id = s.id 
-    WHERE st.supplier_id = ? AND st.tenant_id = ?
+    SELECT st.transaction_date, st.transaction_type, s.currency, st.amount, st.remarks
+    FROM supplier_transactions st left join suppliers s on st.supplier_id = s.id
+    WHERE st.supplier_id = ? AND st.tenant_id = ? AND st.branch_id = ?
 
     UNION ALL
 
-    SELECT transaction_date, transaction_type, currency, amount, remarks 
-    FROM funding_transactions 
-    WHERE supplier_id = ? AND tenant_id = ?
+    SELECT transaction_date, transaction_type, currency, amount, remarks
+    FROM funding_transactions
+    WHERE supplier_id = ? AND tenant_id = ? AND branch_id = ?
 ";
 
 // Build dynamic conditions for date range
 $conditions = [];
-$params = ["iiii"]; // Base parameter types for supplier_id
-$values = [$supplierId, $tenant_id, $supplierId, $tenant_id];
+$params = ["iiiiii"]; // Base parameter types for supplier_id
+$values = [$supplierId, $tenant_id, $branch_id, $supplierId, $tenant_id, $branch_id];
 
 if ($startDate) {
     $conditions[] = "transaction_date >= ?";

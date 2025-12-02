@@ -8,6 +8,7 @@ require_once 'security.php';
 // Enforce authentication
 enforce_auth();
 $tenant_id = $_SESSION['tenant_id'];
+$branch_id = $_SESSION['branch_id'];
 require_once('../includes/db.php');
 require_once('../includes/conn.php');
 
@@ -78,9 +79,9 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 
     try {
         // Get original values to calculate differences
-        $originalQuery = "SELECT base_amount, sold_amount, supplier_id, sold_to, currency FROM hotel_bookings WHERE id = ? AND tenant_id = ?";
+        $originalQuery = "SELECT base_amount, sold_amount, supplier_id, sold_to, currency FROM hotel_bookings WHERE id = ? AND tenant_id = ? AND branch_id = ?";
         $stmtOriginal = $pdo->prepare($originalQuery);
-        $stmtOriginal->execute([$booking_id, $tenant_id]);
+        $stmtOriginal->execute([$booking_id, $tenant_id, $branch_id]);
         $originalData = $stmtOriginal->fetch(PDO::FETCH_ASSOC);
 
         if (!$originalData) {

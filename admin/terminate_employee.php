@@ -9,6 +9,7 @@ if (session_status() === PHP_SESSION_NONE) {
 }
 
 $tenant_id = $_SESSION['tenant_id'];
+$branch_id = $_SESSION['branch_id'];
 
 // Set JSON content type
 header('Content-Type: application/json');
@@ -36,8 +37,8 @@ try {
     $pdo->beginTransaction();
 
     // Get employee details
-    $stmt = $pdo->prepare("SELECT name, email, fired FROM users WHERE id = ? AND tenant_id = ?");
-    $stmt->execute([$employee_id, $tenant_id]);
+    $stmt = $pdo->prepare("SELECT name, email, fired FROM users WHERE id = ? AND tenant_id = ? AND branch_id = ?");
+    $stmt->execute([$employee_id, $tenant_id, $branch_id]);
     $employee = $stmt->fetch(PDO::FETCH_ASSOC);
 
     if (!$employee) {
@@ -56,26 +57,26 @@ try {
         $stmt = $pdo->prepare("
             UPDATE users
             SET fired = 1, fired_at = NOW()
-            WHERE id = ? AND tenant_id = ?
+            WHERE id = ? AND tenant_id = ? AND branch_id = ?
         ");
-        $stmt->execute([$employee_id, $tenant_id]);
+        $stmt->execute([$employee_id, $tenant_id, $branch_id]);
 
         // Update salary management status
         $stmt = $pdo->prepare("
             UPDATE salary_management
             SET status = 'inactive'
-            WHERE user_id = ? AND tenant_id = ?
+            WHERE user_id = ? AND tenant_id = ? AND branch_id = ?
         ");
-        $stmt->execute([$employee_id, $tenant_id]);
+        $stmt->execute([$employee_id, $tenant_id, $branch_id]);
 
         // Log the termination
         $logStmt = $pdo->prepare("
             INSERT INTO activity_log (
                 user_id, action, table_name, record_id,
-                old_values, new_values, ip_address, user_agent, created_at, tenant_id
+                old_values, new_values, ip_address, user_agent, created_at, tenant_id, branch_id
             ) VALUES (
                 ?, 'terminate_employee', 'users', ?,
-                ?, ?, ?, ?, NOW(), ?
+                ?, ?, ?, ?, NOW(), ?, ?
             )
         ");
 
@@ -93,16 +94,17 @@ try {
             $new_values,
             $_SERVER['REMOTE_ADDR'],
             $_SERVER['HTTP_USER_AGENT'],
-            $tenant_id
+            $tenant_id,
+            $branch_id
         ]);
 
         // Create termination record
         $terminationStmt = $pdo->prepare("
             INSERT INTO employee_terminations (
-                employee_id, terminated_by, termination_reason, termination_date, tenant_id
-            ) VALUES (?, ?, ?, NOW(), ?)
+                employee_id, terminated_by, termination_reason, termination_date, tenant_id, branch_id
+            ) VALUES (?, ?, ?, NOW(), ?, ?)
         ");
-        $terminationStmt->execute([$employee_id, $_SESSION['user_id'], $reason, $tenant_id]);
+        $terminationStmt->execute([$employee_id, $_SESSION['user_id'], $reason, $tenant_id, $branch_id]);
 
         $message = __('employee_terminated_successfully', ['name' => $employee['name']]);
 
@@ -111,26 +113,26 @@ try {
         $stmt = $pdo->prepare("
             UPDATE users
             SET fired = 0, fired_at = NULL
-            WHERE id = ? AND tenant_id = ?
+            WHERE id = ? AND tenant_id = ? AND branch_id = ?
         ");
-        $stmt->execute([$employee_id, $tenant_id]);
+        $stmt->execute([$employee_id, $tenant_id, $branch_id]);
 
         // Update salary management status
         $stmt = $pdo->prepare("
             UPDATE salary_management
             SET status = 'active'
-            WHERE user_id = ? AND tenant_id = ?
+            WHERE user_id = ? AND tenant_id = ? AND branch_id = ?
         ");
-        $stmt->execute([$employee_id, $tenant_id]);
+        $stmt->execute([$employee_id, $tenant_id, $branch_id]);
 
         // Log the reinstatement
         $logStmt = $pdo->prepare("
             INSERT INTO activity_log (
                 user_id, action, table_name, record_id,
-                old_values, new_values, ip_address, user_agent, created_at, tenant_id
+                old_values, new_values, ip_address, user_agent, created_at, tenant_id, branch_id
             ) VALUES (
                 ?, 'reinstate_employee', 'users', ?,
-                ?, ?, ?, ?, NOW(), ?
+                ?, ?, ?, ?, NOW(), ?, ?
             )
         ");
 
@@ -144,7 +146,8 @@ try {
             $new_values,
             $_SERVER['REMOTE_ADDR'],
             $_SERVER['HTTP_USER_AGENT'],
-            $tenant_id
+            $tenant_id,
+            $branch_id
         ]);
 
         $message = __('employee_reinstated_successfully', ['name' => $employee['name']]);

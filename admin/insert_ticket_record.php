@@ -4,6 +4,7 @@ session_start();
 $username = isset($_SESSION["name"]) ? htmlspecialchars($_SESSION["name"]) : "Unknown User";
 $user_id = $_SESSION['user_id'] ?? 0;
 $tenant_id = $_SESSION['tenant_id'];
+$branch_id = $_SESSION['branch_id'];
 // Database Connection
 require_once '../includes/conn.php';
 if ($conn->connect_error) {
@@ -41,8 +42,8 @@ if (!in_array($calculationMethod, ['base', 'sold'])) {
 }
 
 // 2. RETRIEVE TICKET DATA
-$stmt = $conn->prepare("SELECT * FROM ticket_bookings WHERE id = ? AND tenant_id = ?");
-$stmt->bind_param("ii", $ticketId, $tenant_id);
+$stmt = $conn->prepare("SELECT * FROM ticket_bookings WHERE id = ? AND tenant_id = ? AND branch_id = ?");
+$stmt->bind_param("iii", $ticketId, $tenant_id, $branch_id);
 if (!$stmt->execute()) {
     error_log("Query execution failed: " . $stmt->error);
     echo json_encode(['status' => 'error', 'message' => 'Failed to retrieve ticket data']);
@@ -67,8 +68,8 @@ $conn->begin_transaction();
 try {
     // 4. FETCH RELATED ENTITY DETAILS
     // 4.1 Supplier Details
-    $stmt_check_balance = $conn->prepare("SELECT balance, currency, name, supplier_type FROM suppliers WHERE id = ? AND tenant_id = ?");
-    $stmt_check_balance->bind_param("ii", $supplierId, $tenant_id);
+    $stmt_check_balance = $conn->prepare("SELECT balance, currency, name, supplier_type FROM suppliers WHERE id = ? AND tenant_id = ? AND branch_id = ?");
+    $stmt_check_balance->bind_param("iii", $supplierId, $tenant_id, $branch_id);
     if (!$stmt_check_balance->execute()) {
         throw new Exception("Failed to fetch supplier details");
     }
@@ -77,8 +78,8 @@ try {
     $stmt_check_balance->close();
 
     // 4.2 Main Account Details
-    $stmt_main_account = $conn->prepare("SELECT name FROM main_account WHERE id = ? AND tenant_id = ?");
-    $stmt_main_account->bind_param("ii", $paidToId, $tenant_id);
+    $stmt_main_account = $conn->prepare("SELECT name FROM main_account WHERE id = ? AND tenant_id = ? AND branch_id = ?");
+    $stmt_main_account->bind_param("iii", $paidToId, $tenant_id, $branch_id);
     if (!$stmt_main_account->execute()) {
         throw new Exception("Failed to fetch main account details");
     }
@@ -87,8 +88,8 @@ try {
     $stmt_main_account->close();
 
     // 4.3 Client Details
-    $clientQuery = $conn->prepare("SELECT client_type, usd_balance, afs_balance, name FROM clients WHERE id = ? AND tenant_id = ?");
-    $clientQuery->bind_param("ii", $soldToId, $tenant_id);
+    $clientQuery = $conn->prepare("SELECT client_type, usd_balance, afs_balance, name FROM clients WHERE id = ? AND tenant_id = ? AND branch_id = ?");
+    $clientQuery->bind_param("iii", $soldToId, $tenant_id, $branch_id);
     if (!$clientQuery->execute()) {
         throw new Exception("Failed to fetch client details");
     }
@@ -118,10 +119,10 @@ try {
     $insertRefundStmt = $conn->prepare("INSERT INTO refunded_tickets 
         (tenant_id, supplier, sold_to, paid_to, ticket_id, title, passenger_name, pnr, origin, destination, phone, airline, gender, 
         issue_date, departure_date, currency, base, sold, supplier_penalty, service_penalty, refund_to_passenger, 
-        status, remarks, created_at, updated_at, calculation_method, created_by)
-        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, NOW(), NOW(), ?, ?)");
+        status, remarks, created_at, updated_at, calculation_method, created_by, branch_id)
+        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, NOW(), NOW(), ?, ?, ?)");
     $insertRefundStmt->bind_param(
-        "iiiissssssssssssddddssssi",
+        "iiiissssssssssssddddssssii",
         $tenant_id,
         $supplierId,
         $soldToId,
@@ -146,7 +147,8 @@ try {
         $status,
         $description,
         $calculationMethod,
-        $user_id
+        $user_id,
+        $branch_id
     );
     if (!$insertRefundStmt->execute()) {
         throw new Exception("Failed to insert refund record: " . $insertRefundStmt->error);
@@ -160,29 +162,29 @@ try {
         $newBalance = $current_balance + $refundToSupplier;
         
         // Update supplier balance
-        $updateSupplierStmt = $conn->prepare("UPDATE suppliers SET balance = ? WHERE id = ? AND tenant_id = ?");
-        $updateSupplierStmt->bind_param("dii", $newBalance, $supplierId, $tenant_id);
+        $updateSupplierStmt = $conn->prepare("UPDATE suppliers SET balance = ? WHERE id = ? AND tenant_id = ? AND branch_id = ?");
+        $updateSupplierStmt->bind_param("diii", $newBalance, $supplierId, $tenant_id, $branch_id);
         if (!$updateSupplierStmt->execute()) {
             throw new Exception("Failed to update supplier balance: " . $updateSupplierStmt->error);
         }
 
         // Record supplier transaction with balance
         $insertSupplierTransactionStmt = $conn->prepare("INSERT INTO supplier_transactions 
-            (tenant_id, transaction_date, supplier_id, reference_id, amount, balance, transaction_type, remarks, transaction_of)
-            VALUES (?, NOW(), ?, ?, ?, ?, 'credit', ?, 'ticket_refund')");
+            (tenant_id, transaction_date, supplier_id, reference_id, amount, balance, transaction_type, remarks, transaction_of, branch_id)
+            VALUES (?, NOW(), ?, ?, ?, ?, 'credit', ?, 'ticket_refund', ?)");
         $supplierRemarks = "Refund for ticket " . htmlspecialchars($ticketData['passenger_name']) . " added to account.";
-        $insertSupplierTransactionStmt->bind_param("iiidds", 
+        $insertSupplierTransactionStmt->bind_param("iiiddsi", 
             $tenant_id,
-            $supplierId, $ticket_id, $refundToSupplier, $newBalance, $supplierRemarks);
+            $supplierId, $ticket_id, $refundToSupplier, $newBalance, $supplierRemarks, $branch_id);
     } else {
         // Record supplier transaction without balance
         $insertSupplierTransactionStmt = $conn->prepare("INSERT INTO supplier_transactions 
-            (tenant_id, transaction_date, supplier_id, reference_id, amount, transaction_type, remarks, transaction_of)
-            VALUES (?, NOW(), ?, ?, ?, 'credit', ?, 'ticket_refund')");
+            (tenant_id, transaction_date, supplier_id, reference_id, amount, transaction_type, remarks, transaction_of, branch_id)
+            VALUES (?, NOW(), ?, ?, ?, 'credit', ?, 'ticket_refund', ?)");
         $supplierRemarks = "Refund for ticket " . htmlspecialchars($ticketData['passenger_name']) . " added to account.";
-        $insertSupplierTransactionStmt->bind_param("iiids", 
+        $insertSupplierTransactionStmt->bind_param("iiidsi", 
             $tenant_id,
-            $supplierId, $ticket_id, $refundToSupplier, $supplierRemarks);
+            $supplierId, $ticket_id, $refundToSupplier, $supplierRemarks, $branch_id);
     }
     if (!$insertSupplierTransactionStmt->execute()) {
         throw new Exception("Failed to record supplier transaction: " . $insertSupplierTransactionStmt->error);
@@ -195,11 +197,11 @@ try {
         $balanceField = ($currency === 'USD') ? "usd_balance" : "afs_balance";
         $updateClientBalanceStmt = null;
         if ($currency === 'USD') {
-            $updateClientBalanceStmt = $conn->prepare("UPDATE clients SET usd_balance = usd_balance + ? WHERE id = ? AND tenant_id = ?");
+            $updateClientBalanceStmt = $conn->prepare("UPDATE clients SET usd_balance = usd_balance + ? WHERE id = ? AND tenant_id = ? AND branch_id = ?");
         } else {
-            $updateClientBalanceStmt = $conn->prepare("UPDATE clients SET afs_balance = afs_balance + ? WHERE id = ? AND tenant_id = ?");
+            $updateClientBalanceStmt = $conn->prepare("UPDATE clients SET afs_balance = afs_balance + ? WHERE id = ? AND tenant_id = ? AND branch_id = ?");
         }
-        $updateClientBalanceStmt->bind_param("dii", $refundToPassenger, $soldToId, $tenant_id);
+        $updateClientBalanceStmt->bind_param("diii", $refundToPassenger, $soldToId, $tenant_id, $branch_id);
         if (!$updateClientBalanceStmt->execute()) {
             throw new Exception("Failed to update client balance: " . $updateClientBalanceStmt->error);
         }
@@ -210,20 +212,20 @@ try {
 
         // Record client transaction
         $insertClientTransactionStmt = $conn->prepare("INSERT INTO client_transactions 
-            (tenant_id, client_id, type, amount, balance, currency, description, transaction_of, reference_id, created_at)
-            VALUES (?, ?, 'Credit', ?, ?, ?, ?, 'ticket_refund', ?, NOW())");
+            (tenant_id, client_id, type, amount, balance, currency, description, transaction_of, reference_id, created_at, branch_id)
+            VALUES (?, ?, 'Credit', ?, ?, ?, ?, 'ticket_refund', ?, NOW(), ?)");
         $clientTransactionDescription = "Refund for ticket " . htmlspecialchars($ticketData['passenger_name']) . ".";
-        $insertClientTransactionStmt->bind_param("iiddssi", 
+        $insertClientTransactionStmt->bind_param("iiddssii", 
             $tenant_id,
-            $soldToId, $refundToPassenger, $newClientBalance, $currency, $clientTransactionDescription, $ticket_id);
+            $soldToId, $refundToPassenger, $newClientBalance, $currency, $clientTransactionDescription, $ticket_id, $branch_id);
         if (!$insertClientTransactionStmt->execute()) {
             throw new Exception("Failed to record client transaction: " . $insertClientTransactionStmt->error);
         }
     }
 
     // 10. UPDATE TICKET STATUS
-    $updateTicketStatusStmt = $conn->prepare("UPDATE ticket_bookings SET status = 'Refunded' WHERE id = ? AND tenant_id = ?");
-    $updateTicketStatusStmt->bind_param("ii", $ticketId, $tenant_id);
+    $updateTicketStatusStmt = $conn->prepare("UPDATE ticket_bookings SET status = 'Refunded' WHERE id = ? AND tenant_id = ? AND branch_id = ?");
+    $updateTicketStatusStmt->bind_param("iii", $ticketId, $tenant_id, $branch_id);
     if (!$updateTicketStatusStmt->execute()) {
         throw new Exception("Failed to update ticket status: " . $updateTicketStatusStmt->error);
     }
@@ -250,11 +252,11 @@ try {
     
     // Insert activity log
     $activity_log_stmt = $conn->prepare("INSERT INTO activity_log 
-        (tenant_id, user_id, action, table_name, record_id, old_values, new_values, ip_address, user_agent, created_at) 
-        VALUES (?, ?, 'add', 'refunded_tickets', ?, ?, '{}', ?, ?, NOW())");
+        (tenant_id, user_id, action, table_name, record_id, old_values, new_values, ip_address, user_agent, created_at, branch_id) 
+        VALUES (?, ?, 'add', 'refunded_tickets', ?, ?, '{}', ?, ?, NOW(), ?)");
     
     $old_values_json = json_encode($old_values);
-    $activity_log_stmt->bind_param("iiisss", $tenant_id, $user_id, $ticket_id, $old_values_json, $ip_address, $user_agent);
+    $activity_log_stmt->bind_param("iiisssi", $tenant_id, $user_id, $ticket_id, $old_values_json, $ip_address, $user_agent, $branch_id);
     $activity_log_stmt->execute();
     $activity_log_stmt->close();
 

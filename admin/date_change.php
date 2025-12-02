@@ -21,6 +21,7 @@ if (!isset($_SESSION['user_id'])  || $_SESSION['role'] !== 'admin') {
     exit();
 }
 $tenant_id = $_SESSION['tenant_id'];
+$branch_id = $_SESSION['branch_id'];
 include 'handlers/date_change_handler.php';
 ?>
 <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/sweetalert/1.1.3/sweetalert.css">
@@ -227,7 +228,7 @@ include '../includes/header.php';
                                                                 $isAgencyClient = false; // Default to not agency client
 
                                                                 // Fix: We need to query the clients table using the client name from sold_to
-                                                                $clientQuery = $conn->query("SELECT client_type FROM clients WHERE tenant_id = $tenant_id AND name = '$soldTo'");
+                                                                $clientQuery = $conn->query("SELECT client_type FROM clients WHERE tenant_id = $tenant_id AND branch_id = $branch_id AND name = '$soldTo'");
                                                                 if ($clientQuery && $clientQuery->num_rows > 0) {
                                                                     $clientRow = $clientQuery->fetch_assoc();
                                                                     // Only show payment status for agency clients
@@ -247,7 +248,9 @@ include '../includes/header.php';
                                                                     // Query transactions from main_account_transactions table
                                                                     $transactionQuery = $conn->query("SELECT * FROM main_account_transactions WHERE
                                                                         transaction_of = 'date_change'
-                                                                        AND reference_id = '$ticketId'");
+                                                                        AND reference_id = '$ticketId'
+                                                                        AND tenant_id = $tenant_id
+                                                                        AND branch_id = $branch_id");
 
                                                                     // Define base exchange rates (can be fetched from DB if dynamic)
 $exchangeRates = [
@@ -392,9 +395,10 @@ if ($transactionQuery && $transactionQuery->num_rows > 0) {
                             <option value=""><?= __('all_clients') ?></option>
                             <?php
                             // Fetch clients from database
-                            $clientQuery = "SELECT DISTINCT c.name FROM clients c 
-                                          INNER JOIN date_change_tickets dct ON c.id = dct.sold_to 
-                                          ORDER BY c.name ASC";
+                            $clientQuery = "SELECT DISTINCT c.name FROM clients c
+                                                                      INNER JOIN date_change_tickets dct ON c.id = dct.sold_to
+                                                                      WHERE c.tenant_id = $tenant_id AND c.branch_id = $branch_id
+                                                                      ORDER BY c.name ASC";
                             $clientResult = $conn->query($clientQuery);
                             
                             if ($clientResult && $clientResult->num_rows > 0) {

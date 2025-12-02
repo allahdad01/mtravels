@@ -32,15 +32,17 @@ $transactionId = intval($data['transaction_id']);
 
 // Database connection
 require_once('../includes/conn.php');
+$tenant_id = $_SESSION['tenant_id'];
+$branch_id = $_SESSION['branch_id'];
 
 // Start transaction
 $conn->begin_transaction();
 
 try {
     // Get transaction details first
-    $getQuery = "SELECT client_id, amount, currency, type, reference_id, created_at, balance FROM client_transactions WHERE id = ?";
+    $getQuery = "SELECT client_id, amount, currency, type, reference_id, created_at, balance FROM client_transactions WHERE id = ? AND tenant_id = ? AND branch_id = ?";
     $getStmt = $conn->prepare($getQuery);
-    $getStmt->bind_param("i", $transactionId);
+    $getStmt->bind_param("iii", $transactionId, $tenant_id, $branch_id);
     $getStmt->execute();
     $result = $getStmt->get_result();
     
@@ -75,49 +77,53 @@ try {
     // Update balances of all subsequent client transactions
     if ($type === 'debit') {
         // For DEBIT transactions, we need to add the amount to subsequent balances
-        $updateSubsequentQuery = "UPDATE client_transactions 
-                                SET balance = balance + ? 
-                                WHERE client_id = ? 
-                                AND currency = ? 
-                                AND created_at > ? 
-                                AND id != ?";
+        $updateSubsequentQuery = "UPDATE client_transactions
+                                SET balance = balance + ?
+                                WHERE client_id = ?
+                                AND currency = ?
+                                AND created_at > ?
+                                AND id != ?
+                                AND tenant_id = ?
+                                AND branch_id = ?";
     } else { // credit
         // For CREDIT transactions, we need to subtract the amount from subsequent balances
-        $updateSubsequentQuery = "UPDATE client_transactions 
-                                SET balance = balance - ? 
-                                WHERE client_id = ? 
-                                AND currency = ? 
-                                AND created_at > ? 
-                                AND id != ?";
+        $updateSubsequentQuery = "UPDATE client_transactions
+                                SET balance = balance - ?
+                                WHERE client_id = ?
+                                AND currency = ?
+                                AND created_at > ?
+                                AND id != ?
+                                AND tenant_id = ?
+                                AND branch_id = ?";
     }
-    
+
     $updateSubsequentStmt = $conn->prepare($updateSubsequentQuery);
-    $updateSubsequentStmt->bind_param("dissi", $amount, $clientId, $currency, $transactionDate, $transactionId);
+    $updateSubsequentStmt->bind_param("dississi", $amount, $clientId, $currency, $transactionDate, $transactionId, $tenant_id, $branch_id);
     $updateSubsequentStmt->execute();
     $updateSubsequentStmt->close();
     
     // Reverse the transaction based on its type
     if ($type === 'credit') {
         // For CREDIT transactions, we need to subtract the amount
-        $updateQuery = "UPDATE clients SET {$updateField} = {$updateField} - ? WHERE id = ? and client_type = 'regular'";
+        $updateQuery = "UPDATE clients SET {$updateField} = {$updateField} - ? WHERE id = ? and client_type = 'regular' AND tenant_id = ? AND branch_id = ?";
     } else if ($type === 'debit') {
         // For DEBIT transactions, we need to add the amount back
-        $updateQuery = "UPDATE clients SET {$updateField} = {$updateField} + ? WHERE id = ? and client_type = 'regular'";
+        $updateQuery = "UPDATE clients SET {$updateField} = {$updateField} + ? WHERE id = ? and client_type = 'regular' AND tenant_id = ? AND branch_id = ?";
     } else {
         throw new Exception("Unknown transaction type: " . $type);
     }
-    
+
     $updateStmt = $conn->prepare($updateQuery);
-    $updateStmt->bind_param("di", $amount, $clientId);
+    $updateStmt->bind_param("diii", $amount, $clientId, $tenant_id, $branch_id);
     $updateStmt->execute();
     $updateStmt->close();
     
     // Handle main account transaction if it exists
     if ($referenceId) {
         // Get main account transaction details
-        $mainTxQuery = "SELECT main_account_id, amount, type, currency, created_at FROM main_account_transactions WHERE reference_id = ? AND transaction_of = 'client_fund'";
+        $mainTxQuery = "SELECT main_account_id, amount, type, currency, created_at FROM main_account_transactions WHERE reference_id = ? AND transaction_of = 'client_fund' AND tenant_id = ? AND branch_id = ?";
         $mainTxStmt = $conn->prepare($mainTxQuery);
-        $mainTxStmt->bind_param("i", $transactionId);
+        $mainTxStmt->bind_param("iii", $transactionId, $tenant_id, $branch_id);
         $mainTxStmt->execute();
         $mainTxResult = $mainTxStmt->get_result();
 
@@ -141,47 +147,51 @@ try {
                                             WHERE main_account_id = ?
                                             AND currency = ?
                                             AND created_at > ?
-                                            AND reference_id != ?";
+                                            AND reference_id != ?
+                                            AND tenant_id = ?
+                                            AND branch_id = ?";
             } else {
                 $updateMainSubsequentQuery = "UPDATE main_account_transactions
                                             SET balance = balance + ?
                                             WHERE main_account_id = ?
                                             AND currency = ?
                                             AND created_at > ?
-                                            AND reference_id != ?";
+                                            AND reference_id != ?
+                                            AND tenant_id = ?
+                                            AND branch_id = ?";
             }
 
             $updateMainSubsequentStmt = $conn->prepare($updateMainSubsequentQuery);
-            $updateMainSubsequentStmt->bind_param("dissi", $mainAmount, $mainAccountId, $mainCurrency, $mainTxDate, $transactionId);
+            $updateMainSubsequentStmt->bind_param("dississi", $mainAmount, $mainAccountId, $mainCurrency, $mainTxDate, $transactionId, $tenant_id, $branch_id);
             $updateMainSubsequentStmt->execute();
             $updateMainSubsequentStmt->close();
 
             // Reverse the main account balance
             if ($mainType === 'credit') {
                 // For CREDIT to main account, subtract the amount
-                $mainUpdateQuery = "UPDATE main_account SET {$mainUpdateField} = {$mainUpdateField} - ? WHERE id = ?";
+                $mainUpdateQuery = "UPDATE main_account SET {$mainUpdateField} = {$mainUpdateField} - ? WHERE id = ? AND tenant_id = ? AND branch_id = ?";
             } else {
                 // For DEBIT from main account, add the amount back
-                $mainUpdateQuery = "UPDATE main_account SET {$mainUpdateField} = {$mainUpdateField} + ? WHERE id = ?";
+                $mainUpdateQuery = "UPDATE main_account SET {$mainUpdateField} = {$mainUpdateField} + ? WHERE id = ? AND tenant_id = ? AND branch_id = ?";
             }
 
             $mainUpdateStmt = $conn->prepare($mainUpdateQuery);
-            $mainUpdateStmt->bind_param("di", $mainAmount, $mainAccountId);
+            $mainUpdateStmt->bind_param("diii", $mainAmount, $mainAccountId, $tenant_id, $branch_id);
             $mainUpdateStmt->execute();
             $mainUpdateStmt->close();
 
             // Get the current balance after update
-            $balanceStmt = $conn->prepare("SELECT {$mainUpdateField} as current_balance FROM main_account WHERE id = ?");
-            $balanceStmt->bind_param("i", $mainAccountId);
+            $balanceStmt = $conn->prepare("SELECT {$mainUpdateField} as current_balance FROM main_account WHERE id = ? AND tenant_id = ? AND branch_id = ?");
+            $balanceStmt->bind_param("iii", $mainAccountId, $tenant_id, $branch_id);
             $balanceStmt->execute();
             $balanceResult = $balanceStmt->get_result();
             $current_balance = $balanceResult->fetch_assoc()['current_balance'];
             $balanceStmt->close();
 
             // Delete the main account transaction
-            $mainDeleteQuery = "DELETE FROM main_account_transactions WHERE reference_id = ? AND transaction_of = 'client_fund'";
+            $mainDeleteQuery = "DELETE FROM main_account_transactions WHERE reference_id = ? AND transaction_of = 'client_fund' AND tenant_id = ? AND branch_id = ?";
             $mainDeleteStmt = $conn->prepare($mainDeleteQuery);
-            $mainDeleteStmt->bind_param("i", $transactionId);
+            $mainDeleteStmt->bind_param("iii", $transactionId, $tenant_id, $branch_id);
             $mainDeleteStmt->execute();
             $mainDeleteStmt->close();
 
@@ -190,9 +200,9 @@ try {
     }
     
     // Delete the client transaction
-    $deleteQuery = "DELETE FROM client_transactions WHERE id = ?";
+    $deleteQuery = "DELETE FROM client_transactions WHERE id = ? AND tenant_id = ? AND branch_id = ?";
     $deleteStmt = $conn->prepare($deleteQuery);
-    $deleteStmt->bind_param("i", $transactionId);
+    $deleteStmt->bind_param("iii", $transactionId, $tenant_id, $branch_id);
     $deleteStmt->execute();
     $deleteStmt->close();
     
@@ -216,11 +226,11 @@ try {
     $user_agent = $_SERVER['HTTP_USER_AGENT'] ?? '';
     
     $stmt_log = $conn->prepare("
-        INSERT INTO activity_log 
-        (user_id, action, table_name, record_id, old_values, new_values, ip_address, user_agent, created_at) 
-        VALUES (?, 'delete', 'client_transactions', ?, ?, ?, ?, ?, NOW())
+        INSERT INTO activity_log
+        (user_id, action, table_name, record_id, old_values, new_values, ip_address, user_agent, created_at, tenant_id, branch_id)
+        VALUES (?, 'delete', 'client_transactions', ?, ?, ?, ?, ?, NOW(), ?, ?)
     ");
-    $stmt_log->bind_param("iissss", $user_id, $transactionId, $old_values, $new_values, $ip_address, $user_agent);
+    $stmt_log->bind_param("iissssii", $user_id, $transactionId, $old_values, $new_values, $ip_address, $user_agent, $tenant_id, $branch_id);
     $stmt_log->execute();
     $stmt_log->close();
     

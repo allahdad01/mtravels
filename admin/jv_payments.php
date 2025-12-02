@@ -6,6 +6,7 @@ if (session_status() === PHP_SESSION_NONE) {
 // Include the security module
 require_once('security.php');
 $tenant_id = $_SESSION['tenant_id'];
+$branch_id = $_SESSION['branch_id'];
 // Include language helper
 require_once '../includes/language_helpers.php';
 
@@ -37,26 +38,26 @@ if (!empty($_GET)) {
 }
 
 // Get all clients
-$clientsQuery = "SELECT id, name, usd_balance, afs_balance FROM clients WHERE status = 'active' AND tenant_id = ? ORDER BY name";
+$clientsQuery = "SELECT id, name, usd_balance, afs_balance FROM clients WHERE status = 'active' AND tenant_id = ? AND branch_id = ? ORDER BY name";
 $clientsStmt = $pdo->prepare($clientsQuery);
-$clientsStmt->execute([$tenant_id]);
+$clientsStmt->execute([$tenant_id, $branch_id]);
 $clients = $clientsStmt->fetchAll(PDO::FETCH_ASSOC);
 
 // Get all suppliers
-$suppliersQuery = "SELECT id, name, balance, currency FROM suppliers WHERE status = 'active' AND tenant_id = ? ORDER BY name";
+$suppliersQuery = "SELECT id, name, balance, currency FROM suppliers WHERE status = 'active' AND tenant_id = ? AND branch_id = ? ORDER BY name";
 $suppliersStmt = $pdo->prepare($suppliersQuery);
-$suppliersStmt->execute([$tenant_id]);
+$suppliersStmt->execute([$tenant_id, $branch_id]);
 $suppliers = $suppliersStmt->fetchAll(PDO::FETCH_ASSOC);
 
 // Get all JV payments
-$jvPaymentsQuery = "SELECT jp.*, u.name as created_by_name 
-                    FROM jv_payments jp 
-                    LEFT JOIN users u ON jp.created_by = u.id 
-                    WHERE jp.tenant_id = ?
+$jvPaymentsQuery = "SELECT jp.*, u.name as created_by_name
+                    FROM jv_payments jp
+                    LEFT JOIN users u ON jp.created_by = u.id
+                    WHERE jp.tenant_id = ? AND jp.branch_id = ?
                     ORDER BY jp.created_at DESC";
 try {
     $jvPaymentsStmt = $pdo->prepare($jvPaymentsQuery);
-    $jvPaymentsStmt->execute([$tenant_id]);
+    $jvPaymentsStmt->execute([$tenant_id, $branch_id]);
     $jvPayments = $jvPaymentsStmt->fetchAll(PDO::FETCH_ASSOC);
 } catch (PDOException $e) {
     error_log("Error fetching JV payments: " . $e->getMessage());
@@ -1012,10 +1013,10 @@ try {
                                                                             FROM jv_payments jp
                                                                             LEFT JOIN clients c ON jp.client_id = c.id
                                                                             LEFT JOIN suppliers s ON jp.supplier_id = s.id
-                                                                            WHERE jp.tenant_id = ?
+                                                                            WHERE jp.tenant_id = ? AND jp.branch_id = ?
                                                                             ORDER BY jp.created_at DESC";
                                                                 $csStmt = $pdo->prepare($csQuery);
-                                                                $csStmt->execute([$tenant_id]);
+                                                                $csStmt->execute([$tenant_id, $branch_id]);
                                                                 $csPayments = $csStmt->fetchAll(PDO::FETCH_ASSOC);
 
                                                                 if (empty($csPayments)): ?>

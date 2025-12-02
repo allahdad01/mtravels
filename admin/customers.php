@@ -13,6 +13,7 @@ if (session_status() === PHP_SESSION_NONE) {
     session_start();
 }
 $tenant_id = $_SESSION['tenant_id'];
+$branch_id = $_SESSION['branch_id'];
 // Check if user is logged in
 if (!isset($_SESSION['user_id']) || $_SESSION['role'] !== 'admin') {
     header('Location: ../login.php');
@@ -29,17 +30,17 @@ unset($_SESSION['error_message']);
 
 // Fetch customers with their total balances
 $stmt = $conn->prepare("
-    SELECT 
+    SELECT
         c.*,
         COALESCE(SUM(w.balance), 0) as current_balance,
         w.currency
     FROM customers c
     LEFT JOIN customer_wallets w ON c.id = w.customer_id
-    WHERE c.status = 'active' AND c.tenant_id = ?
+    WHERE c.status = 'active' AND c.tenant_id = ? AND c.branch_id = ?
     GROUP BY c.id, w.currency
     ORDER BY c.created_at DESC
 ");
-$stmt->bind_param("i", $tenant_id);
+$stmt->bind_param("ii", $tenant_id, $branch_id);
 $stmt->execute();
 $result = $stmt->get_result();
 $customers = [];

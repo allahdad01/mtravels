@@ -10,6 +10,7 @@ require_once('../includes/conn.php');
 require_once('security.php');
 require_once('../vendor/autoload.php');
 $tenant_id = $_SESSION['tenant_id'];
+$branch_id = $_SESSION['branch_id'];
 // Enforce authentication
 enforce_auth();
 
@@ -43,19 +44,19 @@ try {
     // Get booking details with related information
     $query = "
         SELECT um.*, f.package_type, f.head_of_family as family_name, f.contact,
-               u.name as processed_by_name, m.name as account_name,
-               s.name as supplier_name, c.name as client_name
+                u.name as processed_by_name, m.name as account_name,
+                s.name as supplier_name, c.name as client_name
         FROM umrah_bookings um
-        LEFT JOIN families f ON um.family_id = f.family_id
-        LEFT JOIN users u ON u.id = ?
-        LEFT JOIN main_account m ON um.paid_to = m.id
-        LEFT JOIN suppliers s ON um.supplier = s.id
-        LEFT JOIN clients c ON um.sold_to = c.id
-        WHERE um.booking_id = ? AND um.tenant_id = ?
+        LEFT JOIN families f ON um.family_id = f.family_id AND f.tenant_id = ? AND f.branch_id = ?
+        LEFT JOIN users u ON u.id = ? AND u.tenant_id = ? AND u.branch_id = ?
+        LEFT JOIN main_account m ON um.paid_to = m.id AND m.tenant_id = ? AND m.branch_id = ?
+        LEFT JOIN suppliers s ON um.supplier = s.id AND s.tenant_id = ? AND s.branch_id = ?
+        LEFT JOIN clients c ON um.sold_to = c.id AND c.tenant_id = ? AND c.branch_id = ?
+        WHERE um.booking_id = ? AND um.tenant_id = ? AND um.branch_id = ?
     ";
     
     $stmt = $pdo->prepare($query);
-    $stmt->execute([$_SESSION['user_id'], $bookingId, $tenant_id]);
+    $stmt->execute([$tenant_id, $branch_id, $_SESSION['user_id'], $tenant_id, $branch_id, $tenant_id, $branch_id, $tenant_id, $branch_id, $tenant_id, $branch_id, $bookingId, $tenant_id, $branch_id]);
     $booking = $stmt->fetch(PDO::FETCH_ASSOC);
     
     if (!$booking) {

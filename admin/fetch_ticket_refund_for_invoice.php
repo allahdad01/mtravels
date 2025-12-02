@@ -11,6 +11,7 @@ enforce_auth();
 
 include '../includes/conn.php';
 $tenant_id = $_SESSION['tenant_id'];
+$branch_id = $_SESSION['branch_id'];
 
 // Get client filter from request
 $clientId = isset($_GET['client_id']) ? intval($_GET['client_id']) : 0;
@@ -29,8 +30,8 @@ $query = "
         refunded_tickets rt
     LEFT JOIN 
         clients c ON rt.sold_to = c.id
-    WHERE 
-        1=1 AND rt.tenant_id = ?
+    WHERE
+        1=1 AND rt.tenant_id = ? AND rt.branch_id = ?
 ";
 
 // Add client filter if specified
@@ -43,7 +44,7 @@ $query .= " ORDER BY rt.id DESC";
 
 // Execute query
 $stmt = $conn->prepare($query);
-$stmt->bind_param('i', $tenant_id);
+$stmt->bind_param('ii', $tenant_id, $branch_id);
 $stmt->execute();
 $result = $stmt->get_result();
 

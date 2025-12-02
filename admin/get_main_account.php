@@ -2,6 +2,7 @@
 // Include security module
 require_once 'security.php';
 $tenant_id = $_SESSION['tenant_id'];
+$branch_id = $_SESSION['branch_id'];
 // Enforce authentication
 enforce_auth();
 
@@ -18,15 +19,15 @@ $accountId = intval($_GET['id']);
 
 try {
     // Prepare the SQL query
-    $query = "SELECT id, name, 
+    $query = "SELECT id, name,
                      account_type, bank_account_number account_details,
-                     usd_balance, afs_balance, euro_balance, darham_balance, 
-                     status, last_updated 
-              FROM main_account 
-              WHERE id = ? AND tenant_id = ?";
-    
+                     usd_balance, afs_balance, euro_balance, darham_balance,
+                     status, last_updated
+               FROM main_account
+               WHERE id = ? AND tenant_id = ? AND branch_id = ?";
+
     $stmt = $conn->prepare($query);
-    $stmt->bind_param('ii', $accountId, $tenant_id);
+    $stmt->bind_param('iii', $accountId, $tenant_id, $branch_id);
     $stmt->execute();
     
     $result = $stmt->get_result();

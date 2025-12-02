@@ -7,6 +7,7 @@ require_once '../includes/language_helpers.php';
 // Enforce authentication
 enforce_auth();
 $tenant_id = $_SESSION['tenant_id'];
+$branch_id = $_SESSION['branch_id'];
 
 
 // Check if user is logged in
@@ -69,7 +70,7 @@ require_once('../includes/conn.php');
                                             $countSql = "SELECT COUNT(DISTINCT f.family_id) as total
                                                         FROM families f
                                                         LEFT JOIN users u ON f.created_by = u.id
-                                                        WHERE 1=1 AND f.tenant_id = $tenant_id";
+                                                        WHERE 1=1 AND f.tenant_id = $tenant_id AND f.branch_id = $branch_id";
 
                                             // Add filters for count
                                             if (!empty($visaStatus)) {
@@ -84,7 +85,7 @@ require_once('../includes/conn.php');
                                                     f.package_type LIKE '%$search%' OR
                                                     f.location LIKE '%$search%' OR
                                                     u.name LIKE '%$search%' OR
-                                                    EXISTS (SELECT 1 FROM umrah_bookings ub WHERE ub.family_id = f.family_id AND ub.tenant_id = $tenant_id AND (
+                                                    EXISTS (SELECT 1 FROM umrah_bookings ub WHERE ub.family_id = f.family_id AND ub.tenant_id = $tenant_id AND ub.branch_id = $branch_id AND (
                                                         ub.name LIKE '%$search%' OR
                                                         ub.passport_number LIKE '%$search%'
                                                     ))
@@ -96,16 +97,16 @@ require_once('../includes/conn.php');
                                             $totalPages = ceil($totalFamilies / $resultsPerPage);
 
                                             // ---------- MAIN QUERY ----------
-                                            $sqlFamilies = "SELECT 
-                                                                f.*, 
+                                            $sqlFamilies = "SELECT
+                                                                f.*,
                                                                 u.name as created_by,
                                                                 COUNT(ub.booking_id) AS total_members,
                                                                 SUM(CASE WHEN ub.status = 'refunded' THEN 1 ELSE 0 END) AS refunded_members
                                                             FROM families f
-                                                            
+
                                                             LEFT JOIN users u ON f.created_by = u.id
                                                             LEFT JOIN umrah_bookings ub ON f.family_id = ub.family_id
-                                                            WHERE 1=1 AND f.tenant_id = $tenant_id";
+                                                            WHERE 1=1 AND f.tenant_id = $tenant_id AND f.branch_id = $branch_id";
 
                                             // Add filters for main query
                                             if (!empty($visaStatus)) {
@@ -120,7 +121,7 @@ require_once('../includes/conn.php');
                                                     f.package_type LIKE '%$search%' OR
                                                     f.location LIKE '%$search%' OR
                                                     u.name LIKE '%$search%' OR
-                                                    EXISTS (SELECT 1 FROM umrah_bookings ub WHERE ub.family_id = f.family_id AND ub.tenant_id = $tenant_id AND (
+                                                    EXISTS (SELECT 1 FROM umrah_bookings ub WHERE ub.family_id = f.family_id AND ub.tenant_id = $tenant_id AND ub.branch_id = $branch_id AND (
                                                         ub.name LIKE '%$search%' OR
                                                         ub.passport_number LIKE '%$search%'
                                                     ))
@@ -135,7 +136,7 @@ require_once('../includes/conn.php');
                                             $resultFamilies = $conn->query($sqlFamilies);
 
                                             // For dropdown
-                                            $resultFamiliesForDropdown = $conn->query("SELECT * FROM families WHERE tenant_id = $tenant_id");
+                                            $resultFamiliesForDropdown = $conn->query("SELECT * FROM families WHERE tenant_id = $tenant_id AND branch_id = $branch_id");
                                         ?>
                                 <!-- Display Families and Bookings -->
                                 <div class="container-fluid px-4">
@@ -408,7 +409,7 @@ require_once('../includes/conn.php');
                                                                                             LEFT JOIN umrah_booking_services ubs ON um.booking_id = ubs.booking_id
                                                                                             LEFT JOIN suppliers s ON ubs.supplier_id = s.id
                                                                                             LEFT JOIN users u ON um.created_by = u.id
-                                                                                            WHERE um.family_id = $familyId AND um.tenant_id = $tenant_id
+                                                                                            WHERE um.family_id = $familyId AND um.tenant_id = $tenant_id AND um.branch_id = $branch_id
                                                                                             GROUP BY um.booking_id";
                                                                                             $resultMembers = $conn->query($sqlMembers);
                                                                                             if ($resultMembers->num_rows > 0) {
@@ -464,7 +465,8 @@ require_once('../includes/conn.php');
                                                                                                                                                                              $transactionSql = "SELECT SUM(payment_amount / COALESCE(exchange_rate, 1)) as main_account_total
                                                                                                                                                                                              FROM umrah_transactions
                                                                                                                                                                                              WHERE umrah_booking_id = {$member['booking_id']}
-                                                                                                                                                                                             AND transaction_to = 'Internal Account'";
+                                                                                                                                                                                             AND transaction_to = 'Internal Account'
+                                                                                                                                                                                             AND tenant_id = $tenant_id AND branch_id = $branch_id";
                                                                                                                                                                              $transResult = $conn->query($transactionSql);
                                                                                                                                                                              $mainAccountTotal = 0;
                                                                                                                                                                              if ($transResult && $transRow = $transResult->fetch_assoc()) {

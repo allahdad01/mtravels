@@ -2,7 +2,7 @@
 // Function to process currency exchange
 function processCurrencyExchange($conn, $data) {
     $tenant_id = $_SESSION['tenant_id'];
-
+    $branch_id = $_SESSION['branch_id'];
     try {
         // Debug log
         error_log("Starting currency exchange process with data: " . json_encode($data));
@@ -11,8 +11,8 @@ function processCurrencyExchange($conn, $data) {
         $conn->autocommit(FALSE);
         
         // Verify customer has sufficient balance
-        $stmt = $conn->prepare("SELECT balance FROM customer_wallets WHERE customer_id = ? AND currency = ? AND tenant_id = ?");
-        $stmt->bind_param("isi", $data['customer_id'], $data['from_currency'], $tenant_id);
+        $stmt = $conn->prepare("SELECT balance FROM customer_wallets WHERE customer_id = ? AND currency = ? AND tenant_id = ? And branch_id = ?");
+        $stmt->bind_param("isii", $data['customer_id'], $data['from_currency'], $tenant_id, $branch_id);
         $stmt->execute();
         $result = $stmt->get_result();
         $wallet = $result->fetch_assoc();
@@ -43,42 +43,42 @@ function processCurrencyExchange($conn, $data) {
         error_log("Market amount: " . $market_amount . ", Profit amount: " . $profit_amount);
         
         // Insert exchange transaction
-        $stmt = $conn->prepare("INSERT INTO sarafi_transactions (customer_id, amount, currency, type, notes, tenant_id) VALUES (?, ?, ?, 'exchange', ?, ?)");
-        $stmt->bind_param("idssi", $data['customer_id'], $data['from_amount'], $data['from_currency'], $data['notes'], $tenant_id);
+        $stmt = $conn->prepare("INSERT INTO sarafi_transactions (customer_id, amount, currency, type, notes, tenant_id, branch_id) VALUES (?, ?, ?, 'exchange', ?, ?, ?)");
+        $stmt->bind_param("idssiii", $data['customer_id'], $data['from_amount'], $data['from_currency'], $data['notes'], $tenant_id, $branch_id);
         if (!$stmt->execute()) {
             throw new Exception("Error inserting transaction: " . $conn->error);
         }
         $transaction_id = $conn->insert_id;
         
         // Record exchange details
-        $stmt = $conn->prepare("INSERT INTO exchange_transactions (transaction_id, from_amount, from_currency, to_amount, to_currency, rate, profit_amount, profit_currency, tenant_id) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)");
-        $stmt->bind_param("idsdsddsi", $transaction_id, $data['from_amount'], $data['from_currency'], $data['to_amount'], $data['to_currency'], $provided_rate, $profit_amount, $data['to_currency'], $tenant_id);
+        $stmt = $conn->prepare("INSERT INTO exchange_transactions (transaction_id, from_amount, from_currency, to_amount, to_currency, rate, profit_amount, profit_currency, tenant_id, branch_id) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)");
+        $stmt->bind_param("idsdsddsii", $transaction_id, $data['from_amount'], $data['from_currency'], $data['to_amount'], $data['to_currency'], $provided_rate, $profit_amount, $data['to_currency'], $tenant_id, $branch_id);
         if (!$stmt->execute()) {
             throw new Exception("Error inserting exchange details: " . $conn->error);
         }
         
         // Update customer wallets
         // Deduct from source currency wallet
-        $stmt = $conn->prepare("UPDATE customer_wallets SET balance = balance - ? WHERE customer_id = ? AND currency = ? AND tenant_id = ?");
-        $stmt->bind_param("disi", $data['from_amount'], $data['customer_id'], $data['from_currency'], $tenant_id);
+        $stmt = $conn->prepare("UPDATE customer_wallets SET balance = balance - ? WHERE customer_id = ? AND currency = ? AND tenant_id = ? And branch_id = ?");
+        $stmt->bind_param("disii", $data['from_amount'], $data['customer_id'], $data['from_currency'], $tenant_id, $branch_id);
         if (!$stmt->execute()) {
             throw new Exception("Error updating source wallet: " . $conn->error);
         }
         
         // Add to destination currency wallet
         $stmt = $conn->prepare("
-            INSERT INTO customer_wallets (customer_id, currency, balance, tenant_id) 
+            INSERT INTO customer_wallets (customer_id, currency, balance, tenant_id, branch_id) 
             VALUES (?, ?, ?, ?) 
             ON DUPLICATE KEY UPDATE balance = balance + ?
         ");
-        $stmt->bind_param("isddi", $data['customer_id'], $data['to_currency'], $data['to_amount'], $tenant_id, $data['to_amount']);
+        $stmt->bind_param("isddiii", $data['customer_id'], $data['to_currency'], $data['to_amount'], $tenant_id, $data['to_amount'], $tenant_id, $branch_id);
         if (!$stmt->execute()) {
             throw new Exception("Error updating destination wallet: " . $conn->error);
         }
         
         // Store the exchange rate for future reference
         try {
-            updateExchangeRate($conn, $data['from_currency'], $data['to_currency'], $provided_rate);
+            updateExchangeRate($conn, $data['from_currency'], $data['to_currency'], $provided_rate, $tenant_id, $branch_id);
         } catch (Exception $e) {
             error_log("Warning: Could not update exchange rate history: " . $e->getMessage());
             // Don't fail the transaction if we can't update the rate history
@@ -124,6 +124,7 @@ function getCurrentMarketRate($conn, $from_currency, $to_currency) {
         FROM exchange_rates 
         WHERE from_currency = ? 
         AND to_currency = ? 
+        AND tenant_id = ? And branch_id = ?
         ORDER BY created_at DESC 
         LIMIT 1
     ");
@@ -131,7 +132,7 @@ function getCurrentMarketRate($conn, $from_currency, $to_currency) {
         throw new Exception("Error preparing statement: " . $conn->error);
     }
     
-    $stmt->bind_param("ss", $from_currency, $to_currency);
+    $stmt->bind_param("ssii", $from_currency, $to_currency, $tenant_id, $branch_id);
     if (!$stmt->execute()) {
         throw new Exception("Error executing statement: " . $stmt->error);
     }
@@ -152,6 +153,7 @@ function getCurrentMarketRate($conn, $from_currency, $to_currency) {
         FROM exchange_rates 
         WHERE from_currency = ? 
         AND to_currency = ? 
+        AND tenant_id = ? And branch_id = ?
         ORDER BY created_at DESC 
         LIMIT 1
     ");
@@ -159,7 +161,7 @@ function getCurrentMarketRate($conn, $from_currency, $to_currency) {
         throw new Exception("Error preparing statement: " . $conn->error);
     }
     
-    $stmt->bind_param("ss", $to_currency, $from_currency);
+    $stmt->bind_param("ss", $to_currency, $from_currency, $tenant_id, $branch_id);
     if (!$stmt->execute()) {
         throw new Exception("Error executing statement: " . $stmt->error);
     }
@@ -202,25 +204,25 @@ function updateExchangeRate($conn, $from_currency, $to_currency, $rate) {
 
     try {
         $stmt = $conn->prepare("
-            INSERT INTO exchange_rates (from_currency, to_currency, rate, tenant_id) 
+            INSERT INTO exchange_rates (from_currency, to_currency, rate, tenant_id, branch_id) 
             VALUES (?, ?, ?, ?) 
             ON DUPLICATE KEY UPDATE 
                 rate = VALUES(rate),
                 updated_at = CURRENT_TIMESTAMP
         ");
-        $stmt->bind_param("ssdi", $from_currency, $to_currency, $rate, $tenant_id);
+        $stmt->bind_param("ssdii", $from_currency, $to_currency, $rate, $tenant_id, $branch_id);
         $stmt->execute();
         
         // Also update the inverse rate
         $inverse_rate = 1 / $rate;
         $stmt = $conn->prepare("
-            INSERT INTO exchange_rates (from_currency, to_currency, rate, tenant_id) 
+            INSERT INTO exchange_rates (from_currency, to_currency, rate, tenant_id, branch_id) 
             VALUES (?, ?, ?, ?) 
             ON DUPLICATE KEY UPDATE 
                 rate = VALUES(rate),
                 updated_at = CURRENT_TIMESTAMP
         ");
-        $stmt->bind_param("ssdi", $to_currency, $from_currency, $inverse_rate, $tenant_id);
+        $stmt->bind_param("ssdii", $to_currency, $from_currency, $inverse_rate, $tenant_id, $branch_id);
         $stmt->execute();
         
         return [
@@ -245,10 +247,10 @@ function getExchangeRateHistory($conn, $from_currency, $to_currency, $tenant_id,
             WHERE (from_currency = ? AND to_currency = ?) 
             OR (from_currency = ? AND to_currency = ?)
             AND created_at >= DATE_SUB(NOW(), INTERVAL ? DAY)
-            AND tenant_id = ?
+            AND tenant_id = ? And branch_id = ?
             ORDER BY created_at ASC
         ");
-        $stmt->bind_param("ssssii", $from_currency, $to_currency, $to_currency, $from_currency, $days, $tenant_id);
+        $stmt->bind_param("ssssiii", $from_currency, $to_currency, $to_currency, $from_currency, $days, $tenant_id, $branch_id);
         $stmt->execute();
         $result = $stmt->get_result();
         

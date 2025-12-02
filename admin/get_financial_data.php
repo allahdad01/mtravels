@@ -2,6 +2,7 @@
 // Include security module
 require_once 'security.php';
 $tenant_id = $_SESSION['tenant_id'];
+$branch_id = $_SESSION['branch_id'];
 // Enforce authentication
 enforce_auth();
 
@@ -40,12 +41,12 @@ try {
 
     // Fetch ticket bookings income
     $stmt = $pdo->prepare("
-        SELECT SUM(profit) as total, currency 
-        FROM ticket_bookings 
-        WHERE created_at BETWEEN ? AND ? AND tenant_id = ?
+        SELECT SUM(profit) as total, currency
+        FROM ticket_bookings
+        WHERE created_at BETWEEN ? AND ? AND tenant_id = ? AND branch_id = ?
         GROUP BY currency
     ");
-    $stmt->execute([$startDate, $endDate, $tenant_id]);
+    $stmt->execute([$startDate, $endDate, $tenant_id, $branch_id]);
     while($row = $stmt->fetch(PDO::FETCH_ASSOC)) {
         $currency = $row['currency'] ?? 'USD';
         $incomeData['tickets'][$currency] = floatval($row['total']);
@@ -53,13 +54,13 @@ try {
 
     // Fetch ticket bookings income
     $stmt = $pdo->prepare("
-        SELECT SUM(tw.profit) as total, tb.currency 
+        SELECT SUM(tw.profit) as total, tb.currency
         FROM ticket_weights tw
-        Left join ticket_bookings tb ON tb.id = tw.ticket_id 
-        WHERE tw.created_at BETWEEN ? AND ? AND tw.tenant_id = ?
+        Left join ticket_bookings tb ON tb.id = tw.ticket_id
+        WHERE tw.created_at BETWEEN ? AND ? AND tw.tenant_id = ? AND tw.branch_id = ?
         GROUP BY tb.currency
     ");
-    $stmt->execute([$startDate, $endDate, $tenant_id]);
+    $stmt->execute([$startDate, $endDate, $tenant_id, $branch_id]);
     while($row = $stmt->fetch(PDO::FETCH_ASSOC)) {
         $currency = $row['currency'] ?? 'USD';
         $incomeData['ticket_weights'][$currency] = floatval($row['total']);
@@ -67,12 +68,12 @@ try {
 
     // Fetch ticket reservations income
     $stmt = $pdo->prepare("
-        SELECT SUM(profit) as total, currency 
-        FROM ticket_reservations 
-        WHERE created_at BETWEEN ? AND ? AND tenant_id = ?
+        SELECT SUM(profit) as total, currency
+        FROM ticket_reservations
+        WHERE created_at BETWEEN ? AND ? AND tenant_id = ? AND branch_id = ?
         GROUP BY currency
     ");
-    $stmt->execute([$startDate, $endDate, $tenant_id]);
+    $stmt->execute([$startDate, $endDate, $tenant_id, $branch_id]);
     while($row = $stmt->fetch(PDO::FETCH_ASSOC)) {
         $currency = $row['currency'] ?? 'USD';
         $incomeData['reservations'][$currency] = floatval($row['total']);
@@ -80,19 +81,19 @@ try {
 
     // Fetch refunded tickets income
     $stmt = $pdo->prepare("
-        SELECT 
-            SUM(CASE 
+        SELECT
+            SUM(CASE
                 WHEN rt.calculation_method = 'base' THEN rt.service_penalty
                 WHEN rt.calculation_method = 'sold' THEN (rt.service_penalty - COALESCE(tb.profit, 0))
-                ELSE rt.service_penalty 
-            END) as total, 
-            rt.currency 
+                ELSE rt.service_penalty
+            END) as total,
+            rt.currency
         FROM refunded_tickets rt
         JOIN ticket_bookings tb ON rt.ticket_id = tb.id
-        WHERE rt.created_at BETWEEN ? AND ? AND rt.tenant_id = ?
+        WHERE rt.created_at BETWEEN ? AND ? AND rt.tenant_id = ? AND rt.branch_id = ?
         GROUP BY rt.currency
     ");
-    $stmt->execute([$startDate, $endDate, $tenant_id]);
+    $stmt->execute([$startDate, $endDate, $tenant_id, $branch_id]);
     while($row = $stmt->fetch(PDO::FETCH_ASSOC)) {
         $currency = $row['currency'] ?? 'USD';
         $incomeData['refunds'][$currency] = floatval($row['total']);
@@ -100,13 +101,13 @@ try {
 
     // Fetch date change tickets income
     $stmt = $pdo->prepare("
-        SELECT SUM(dt.service_penalty) as total, dt.currency 
-        FROM date_change_tickets dt 
+        SELECT SUM(dt.service_penalty) as total, dt.currency
+        FROM date_change_tickets dt
         JOIN ticket_bookings tb ON dt.ticket_id = tb.id
-        WHERE dt.created_at BETWEEN ? AND ? AND dt.tenant_id = ?
+        WHERE dt.created_at BETWEEN ? AND ? AND dt.tenant_id = ? AND dt.branch_id = ?
         GROUP BY dt.currency
     ");
-    $stmt->execute([$startDate, $endDate, $tenant_id]);
+    $stmt->execute([$startDate, $endDate, $tenant_id, $branch_id]);
     while($row = $stmt->fetch(PDO::FETCH_ASSOC)) {
         $currency = $row['currency'] ?? 'USD';
         $incomeData['dateChanges'][$currency] = floatval($row['total']);
@@ -114,12 +115,12 @@ try {
 
     // Fetch visa income
     $stmt = $pdo->prepare("
-        SELECT SUM(profit) as total, currency 
-        FROM visa_applications 
-        WHERE created_at BETWEEN ? AND ? AND tenant_id = ?
+        SELECT SUM(profit) as total, currency
+        FROM visa_applications
+        WHERE created_at BETWEEN ? AND ? AND tenant_id = ? AND branch_id = ?
         GROUP BY currency
     ");
-    $stmt->execute([$startDate, $endDate, $tenant_id]);
+    $stmt->execute([$startDate, $endDate, $tenant_id, $branch_id]);
     while($row = $stmt->fetch(PDO::FETCH_ASSOC)) {
         $currency = $row['currency'] ?? 'USD';
         $incomeData['visa'][$currency] = floatval($row['total']);
@@ -127,12 +128,12 @@ try {
 
     // Fetch umrah income
     $stmt = $pdo->prepare("
-        SELECT SUM(profit) as total, currency 
-        FROM umrah_bookings 
-        WHERE created_at BETWEEN ? AND ? AND tenant_id = ?
+        SELECT SUM(profit) as total, currency
+        FROM umrah_bookings
+        WHERE created_at BETWEEN ? AND ? AND tenant_id = ? AND branch_id = ?
         GROUP BY currency
     ");
-    $stmt->execute([$startDate, $endDate, $tenant_id]);
+    $stmt->execute([$startDate, $endDate, $tenant_id, $branch_id]);
     while($row = $stmt->fetch(PDO::FETCH_ASSOC)) {
         $currency = $row['currency'] ?? 'USD';
         $incomeData['umrah'][$currency] = floatval($row['total']);
@@ -140,12 +141,12 @@ try {
 
     // Fetch hotel income
     $stmt = $pdo->prepare("
-        SELECT SUM(profit) as total, currency 
-        FROM hotel_bookings 
-        WHERE created_at BETWEEN ? AND ? AND tenant_id = ?
+        SELECT SUM(profit) as total, currency
+        FROM hotel_bookings
+        WHERE created_at BETWEEN ? AND ? AND tenant_id = ? AND branch_id = ?
         GROUP BY currency
     ");
-    $stmt->execute([$startDate, $endDate, $tenant_id]);
+    $stmt->execute([$startDate, $endDate, $tenant_id, $branch_id]);
     while($row = $stmt->fetch(PDO::FETCH_ASSOC)) {
         $currency = $row['currency'] ?? 'USD';
         $incomeData['hotel'][$currency] = floatval($row['total']);
@@ -153,12 +154,12 @@ try {
 
     // Fetch additional payments income
     $stmt = $pdo->prepare("
-        SELECT SUM(profit) as total, currency 
-        FROM additional_payments 
-        WHERE created_at BETWEEN ? AND ? AND tenant_id = ?
+        SELECT SUM(profit) as total, currency
+        FROM additional_payments
+        WHERE created_at BETWEEN ? AND ? AND tenant_id = ? AND branch_id = ?
         GROUP BY currency
     ");
-    $stmt->execute([$startDate, $endDate, $tenant_id]);
+    $stmt->execute([$startDate, $endDate, $tenant_id, $branch_id]);
     while($row = $stmt->fetch(PDO::FETCH_ASSOC)) {
         $currency = $row['currency'] ?? 'USD';
         $incomeData['additionalPayments'][$currency] = floatval($row['total']);
@@ -178,16 +179,16 @@ try {
 
     // Fetch expense categories and their totals - FIXED: Proper tenant_id handling
     $stmt = $pdo->prepare("
-        SELECT 
+        SELECT
             ec.name,
             SUM(CASE WHEN e.currency = 'USD' OR e.currency IS NULL THEN e.amount ELSE 0 END) as usd_amount,
             SUM(CASE WHEN e.currency = 'AFS' THEN e.amount ELSE 0 END) as afs_amount
         FROM expense_categories ec
-        LEFT JOIN expenses e ON e.category_id = ec.id AND e.tenant_id = ?
-        WHERE (e.date BETWEEN ? AND ? OR e.date IS NULL) AND ec.tenant_id = ?
+        LEFT JOIN expenses e ON e.category_id = ec.id AND e.tenant_id = ? AND e.branch_id = ?
+        WHERE (e.date BETWEEN ? AND ? OR e.date IS NULL) AND ec.tenant_id = ? AND ec.branch_id = ?
         GROUP BY ec.id, ec.name
     ");
-    $stmt->execute([$tenant_id, $startDate, $endDate, $tenant_id]);
+    $stmt->execute([$tenant_id, $branch_id, $startDate, $endDate, $tenant_id, $branch_id]);
     
     while($row = $stmt->fetch(PDO::FETCH_ASSOC)) {
         if($row['usd_amount'] > 0) {
@@ -206,12 +207,12 @@ try {
     
     // Get expenses total
     $stmt = $pdo->prepare("
-        SELECT SUM(amount) as total, currency 
+        SELECT SUM(amount) as total, currency
         FROM expenses
-        WHERE date BETWEEN ? AND ? AND tenant_id = ?
+        WHERE date BETWEEN ? AND ? AND tenant_id = ? AND branch_id = ?
         GROUP BY currency
     ");
-    $stmt->execute([$startDate, $endDate, $tenant_id]);
+    $stmt->execute([$startDate, $endDate, $tenant_id, $branch_id]);
     while($row = $stmt->fetch(PDO::FETCH_ASSOC)) {
         $currency = $row['currency'] ?? 'USD';
         $totalExpenses[$currency] += floatval($row['total']);
@@ -219,12 +220,12 @@ try {
 
     // Get salary payments total
     $stmt = $pdo->prepare("
-        SELECT SUM(amount) as total, currency 
+        SELECT SUM(amount) as total, currency
         FROM salary_payments
-        WHERE payment_date BETWEEN ? AND ? AND tenant_id = ?
+        WHERE payment_date BETWEEN ? AND ? AND tenant_id = ? AND branch_id = ?
         GROUP BY currency
     ");
-    $stmt->execute([$startDate, $endDate, $tenant_id]);
+    $stmt->execute([$startDate, $endDate, $tenant_id, $branch_id]);
     while($row = $stmt->fetch(PDO::FETCH_ASSOC)) {
         $currency = $row['currency'] ?? 'USD';
         $totalExpenses[$currency] += floatval($row['total']);
@@ -232,14 +233,14 @@ try {
 
     // Also add salary payments to expense categories
     $stmt = $pdo->prepare("
-        SELECT 
+        SELECT
             'Salaries' as name,
             SUM(CASE WHEN currency = 'USD' OR currency IS NULL THEN amount ELSE 0 END) as usd_amount,
             SUM(CASE WHEN currency = 'AFS' THEN amount ELSE 0 END) as afs_amount
         FROM salary_payments
-        WHERE payment_date BETWEEN ? AND ? AND tenant_id = ?
+        WHERE payment_date BETWEEN ? AND ? AND tenant_id = ? AND branch_id = ?
     ");
-    $stmt->execute([$startDate, $endDate, $tenant_id]);
+    $stmt->execute([$startDate, $endDate, $tenant_id, $branch_id]);
     
     while($row = $stmt->fetch(PDO::FETCH_ASSOC)) {
         if($row['usd_amount'] > 0) {
@@ -318,26 +319,6 @@ try {
     ]);
 }
 
-// Additional debugging function to check table structures
-function debugTableStructures($pdo) {
-    $tables = [
-        'ticket_bookings', 'ticket_reservations', 'refunded_tickets', 
-        'date_change_tickets', 'visa_applications', 'umrah_bookings', 
-        'hotel_bookings', 'additional_payments', 'expenses', 
-        'salary_payments', 'expense_categories'
-    ];
-    
-    foreach($tables as $table) {
-        try {
-            $stmt = $pdo->prepare("SHOW COLUMNS FROM $table LIKE 'tenant_id'");
-            $stmt->execute();
-            $result = $stmt->fetch();
-            error_log("Table $table has tenant_id column: " . ($result ? 'YES' : 'NO'));
-        } catch(Exception $e) {
-            error_log("Error checking table $table: " . $e->getMessage());
-        }
-    }
-}
 
 // Uncomment this line to debug table structures
 // debugTableStructures($pdo);

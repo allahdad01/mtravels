@@ -5,6 +5,7 @@ require_once('../includes/conn.php');
 require_once('security.php');
 require_once('../vendor/autoload.php');
 $tenant_id = $_SESSION['tenant_id'];
+$branch_id = $_SESSION['branch_id'];
 // Enforce authentication
 enforce_auth();
 
@@ -27,11 +28,11 @@ try {
         FROM visa_refunds r
         LEFT JOIN visa_applications v ON r.visa_id = v.id
         LEFT JOIN main_account m ON v.paid_to = m.id
-        WHERE r.id = ? AND r.tenant_id = ?
+        WHERE r.id = ? AND r.tenant_id = ? AND r.branch_id = ?
     ";
-    
+
     $stmt = $pdo->prepare($query);
-    $stmt->execute([$refundId, $tenant_id]);
+    $stmt->execute([$refundId, $tenant_id, $branch_id]);
     $refund = $stmt->fetch(PDO::FETCH_ASSOC);
     
     if (!$refund) {
