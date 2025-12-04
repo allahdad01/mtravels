@@ -10,7 +10,7 @@ function viewMemberDetails(bookingId) {
     });
 
     // Fetch member details
-    fetch(`ajax/get_member_details.php?booking_id=${bookingId}`)
+    fetch(`../api/umrah/get_member_details.php?booking_id=${bookingId}`)
         .then(response => response.json())
         .then(data => {
             if (data.success && data.member) {

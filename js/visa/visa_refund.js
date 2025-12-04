@@ -1,7 +1,7 @@
 // Function to open refund modal
 function openRefundModal(visaId, amount, profit, currency) {
     // Fetch visa details including exchange rate
-    fetch(`get_visa_details.php?id=${visaId}`)
+    fetch(`../api/visa/get_visa_details.php?id=${visaId}`)
         .then(response => response.json())
         .then(data => {
             if (data.success) {
@@ -104,7 +104,7 @@ document.addEventListener('DOMContentLoaded', function() {
         formData.append('currency', currency);
         
         // Send AJAX request to process refund
-        fetch('process_visa_refund.php', {
+        fetch('../api/visa/process_visa_refund.php', {
             method: 'POST',
             body: formData
         })

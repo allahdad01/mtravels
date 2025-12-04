@@ -55,7 +55,7 @@
     // Load transaction history
     loadTransactionHistory: function(refundId) {
         $.ajax({
-            url: 'get_umrah_refund_transactions.php',
+            url: '../api/umrah/get_umrah_refund_transactions.php',
             type: 'GET',
             data: { refund_id: refundId },
             dataType: 'json',
@@ -223,7 +223,7 @@
         formData.set('booking_id', refundId);
         
         $.ajax({
-            url: 'add_umrah_refund_transactoin.php',
+            url: '../api/umrah/add_umrah_refund_transactoin.php',
             type: 'POST',
             data: formData,
             processData: false,
@@ -310,7 +310,7 @@
         const refundId = $('#refund_id').val();
 
         $.ajax({
-            url: 'delete_umrah_refund_transactions.php',
+            url: '../api/umrah/delete_umrah_refund_transactions.php',
             type: 'POST',
             data: {
                 transaction_id: transactionId,
@@ -353,7 +353,7 @@
 };
     // Print receipt function
     function printReceipt(transactionId) {
-        window.open(`print_umrah_refund_receipt.php?id=${transactionId}`, '_blank');
+        window.open(`../api/umrah/print_umrah_refund_receipt.php?id=${transactionId}`, '_blank');
     }
 // Initialize transaction manager when document is ready
 $(document).ready(function() {
@@ -390,7 +390,7 @@ $(document).on('submit', '#editTransactionForm', function(e) {
     formData.set('original_amount', originalAmount);
     
     $.ajax({
-        url: 'update_refund_umrah_transaction.php',
+        url: '../api/umrah/update_refund_umrah_transaction.php',
         type: 'POST',
         data: formData,
         processData: false,

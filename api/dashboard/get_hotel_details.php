@@ -33,7 +33,12 @@ $type = $_POST['type'] ?? 'hotel';
 error_log("get_hotel_details.php - Input parameters: period=$period, filteredDate=$filteredDate, type=$type");
 
 // Set up date condition
-$params = [':tenant_id' => $tenant_id, ':branch_id' => $branch_id];
+$params = [
+    ':tenant_id_join' => $tenant_id,
+    ':branch_id_join' => $branch_id,
+    ':tenant_id' => $tenant_id,
+    ':branch_id' => $branch_id
+];
 
 if ($period === 'daily') {
     $dailyDate = $filteredDate ?: date('Y-m-d');
@@ -70,7 +75,7 @@ try {
         hb.currency,
         ma.name as paid_to
     FROM hotel_bookings hb
-    LEFT JOIN main_account ma ON hb.paid_to = ma.id AND ma.tenant_id = :tenant_id AND ma.branch_id = :branch_id
+    LEFT JOIN main_account ma ON hb.paid_to = ma.id AND ma.tenant_id = :tenant_id_join AND ma.branch_id = :branch_id_join
     WHERE $dateCondition AND hb.tenant_id = :tenant_id AND hb.branch_id = :branch_id
     ORDER BY hb.created_at DESC";
 

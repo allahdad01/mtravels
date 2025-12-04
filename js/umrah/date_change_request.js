@@ -55,7 +55,7 @@ $(document).on('click', '#submitDateChangeRequest', function() {
 
     // Submit request
     $.ajax({
-        url: 'ajax/submit_date_change_request.php',
+        url: '../api/umrah/submit_date_change_request.php',
         type: 'POST',
         data: formData,
         processData: false,
@@ -122,7 +122,7 @@ $(document).on('change', '#newFlightDate, #newReturnDate', function() {
 // Load date change history for a booking
 function loadDateChangeHistory(bookingId) {
     $.ajax({
-        url: 'ajax/get_booking_date_changes.php',
+        url: '../api/umrah/get_booking_date_changes.php',
         type: 'GET',
         data: { booking_id: bookingId },
         success: function(response) {

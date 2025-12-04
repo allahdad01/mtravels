@@ -240,7 +240,7 @@ function editTicket(ticketId) {
     document.getElementById('editLoader').style.display = 'block';
 
     // Fetch ticket data
-    fetch(`fetch_ticket_by_id.php?id=${ticketId}`)
+    fetch(`../api/ticket/fetch_ticket_by_id.php?id=${ticketId}`)
         .then(response => response.json())
         .then(response => {
             if (!response.success) {
@@ -423,7 +423,7 @@ document.addEventListener('DOMContentLoaded', function() {
         const currency = document.getElementById('editCurr').value;
         
         // Make AJAX call to get current supplier balance
-        fetch(`get_supplier_balance.php?supplier_id=${supplierId}`)
+        fetch(`../api/ticket/get_supplier_balance.php?supplier_id=${supplierId}`)
             .then(response => response.json())
             .then(data => {
                 if (data.success) {
@@ -459,7 +459,7 @@ document.addEventListener('DOMContentLoaded', function() {
         const currency = document.getElementById('editCurr').value;
         
         // Make AJAX call to get current client balance
-        fetch(`get_client_balance.php?client_id=${clientId}&currency=${currency}`)
+        fetch(`../api/ticket/get_client_balance.php?client_id=${clientId}&currency=${currency}`)
             .then(response => response.json())
             .then(data => {
                 if (data.success) {
@@ -515,7 +515,7 @@ document.addEventListener('DOMContentLoaded', function() {
             }
         }
         
-        fetch('update_ticket.php', {
+        fetch('../api/ticket/update_ticket.php', {
             method: 'POST',
             body: formData,
         })

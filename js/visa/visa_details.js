@@ -28,7 +28,7 @@ document.querySelectorAll('.view-details').forEach(button => {
 
       function deleteVisa(id) {
             if (confirm('Are you sure you want to delete this Visa?')) {
-                fetch('delete_visa.php', {
+                fetch('../api/visa/delete_visa.php', {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
                     body: JSON.stringify({ id }),

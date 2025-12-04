@@ -362,8 +362,7 @@ include 'handlers/debtors_handler.php';
     }
 
     /* ... existing styles ... */
-</style>
-<style>
+
     /* Apply gradient background to card headers matching the sidebar */
     .card-header {
         background: linear-gradient(135deg, #4099ff 0%, #2ed8b6 100%) !important;

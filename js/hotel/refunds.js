@@ -64,7 +64,7 @@ $(document).ready(function() {
         
         // Send AJAX request
         $.ajax({
-            url: 'process_hotel_refund.php',
+            url: '../api/hotel/process_hotel_refund.php',
             type: 'POST',
             data: formData,
             processData: false,

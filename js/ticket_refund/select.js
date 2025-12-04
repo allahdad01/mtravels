@@ -11,7 +11,7 @@ function searchTickets(searchType) {
         return;
     }
 
-    fetch('ajax/search_tickets.php?' + searchType + '=' + encodeURIComponent(searchValue))
+    fetch('../api/ticket/search_tickets.php?' + searchType + '=' + encodeURIComponent(searchValue))
         .then(response => response.json())
         .then(data => {
             if (data.success) {
@@ -216,7 +216,7 @@ function saveRefundTicket() {
     // Add refund amount to form data
     formData.append('refund_amount', refundAmount);
 
-    fetch('insert_ticket_record.php', {
+    fetch('../api/ticket/insert_ticket_record.php', {
         method: 'POST',
         body: formData
     })

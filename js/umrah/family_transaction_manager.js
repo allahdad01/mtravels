@@ -17,7 +17,7 @@ function openFamilyTransactionModal(familyId, familyName, packageName, totalMemb
 
 function loadFamilyTransactionData(familyId) {
     $.ajax({
-        url: 'get_family_transaction_data.php',
+        url: '../api/umrah/get_family_transaction_data.php',
         type: 'GET',
         data: { family_id: familyId },
         dataType: 'json',
@@ -169,7 +169,7 @@ $(document).ready(function() {
         }
 
         $.ajax({
-            url: 'add_family_umrah_transactions.php',
+            url: '../api/umrah/add_family_umrah_transactions.php',
             type: 'POST',
             data: formData,
             processData: false,

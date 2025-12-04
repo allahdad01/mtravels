@@ -9,7 +9,7 @@
     row.addClass('loading');
 
     // Send delete request
-    fetch('delete_visa_refund.php', {
+    fetch('../api/visa/delete_visa_refund.php', {
         method: 'POST',
         headers: {
             'Content-Type': 'application/json',
@@ -36,5 +36,5 @@
 
 function printRefundAgreement(refundId) {
     // Open the printable agreement page in a new window
-    window.open('print_visa_refund.php?id=' + refundId, '_blank');
+    window.open('../api/visa/print_visa_refund.php?id=' + refundId, '_blank');
 }

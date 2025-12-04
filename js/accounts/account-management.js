@@ -17,7 +17,7 @@ document.addEventListener('DOMContentLoaded', function () {
 
             const formData = new FormData(e.target);
 
-            fetch('add_main_account.php', { // PHP file to handle adding accounts
+            fetch('../api/accounts/add_main_account.php', { // PHP file to handle adding accounts
                 method: 'POST',
                 body: formData
             })
@@ -75,7 +75,7 @@ document.addEventListener('DOMContentLoaded', function () {
             const accountId = this.dataset.accountId;
             
             // Fetch account details including new fields
-            fetch(`get_main_account.php?id=${accountId}`)
+            fetch(`../api/accounts/get_main_account.php?id=${accountId}`)
                 .then(response => response.json())
                 .then(data => {
                     if (data.success) {
@@ -128,7 +128,7 @@ document.addEventListener('DOMContentLoaded', function () {
             saveButton.innerHTML = '<span class="spinner-border spinner-border-sm" role="status" aria-hidden="true"></span> Saving...';
             
             // Send the data to the backend
-            fetch('edit_main_account.php', {
+            fetch('../api/accounts/edit_main_account.php', {
                 method: 'POST',
                 body: formData
             })
@@ -265,7 +265,7 @@ document.addEventListener('DOMContentLoaded', function () {
                 // Wait for modal to close before proceeding
                 $('#paymentConfirmationModal').on('hidden.bs.modal', function() {
                     // Send payment request
-                    fetch('../api/fundClient.php', {
+                    fetch('../api/accounts/fundClient.php', {
                         method: 'POST',
                         body: formData
                     })
@@ -766,7 +766,7 @@ $(document).ready(function() {
         $submitButton.prop('disabled', true).html('<span class="spinner-border spinner-border-sm" role="status" aria-hidden="true"></span> Processing...');
 
         $.ajax({
-            url: 'ajax/add_supplier_bonus.php',
+            url: '../api/accounts/add_supplier_bonus.php',
             type: 'POST',
             data: formData,
             dataType: 'json',

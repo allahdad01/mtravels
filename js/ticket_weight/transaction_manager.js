@@ -50,7 +50,7 @@ $('#transactionCurrency').on('change', toggleExchangeRateField);
 // Function to load weight details
 function loadWeightDetails(weightId) {
     $.ajax({
-        url: 'ajax/get_weight.php',
+        url: '../api/ticket_weight/get_weight.php',
         type: 'GET',
         data: { id: weightId },
         success: function(response) {
@@ -80,7 +80,7 @@ function loadWeightDetails(weightId) {
 // Function to load transactions
 function loadTransactions(weightId) {
     $.ajax({
-        url: 'ajax/get_weight_transactions.php',
+        url: '../api/ticket_weight/get_weight_transactions.php',
         type: 'GET',
         data: { weight_id: weightId },
         dataType: 'json',
@@ -396,7 +396,7 @@ function editWeightTransaction(id, remarks, amount, transaction_date, currency, 
             }
 
             $.ajax({
-                url: 'update_weight_transaction.php',
+                url: '../api/ticket_weight/update_weight_transaction.php',
                 type: 'POST',
                 data: formData,
                 processData: false,
@@ -584,7 +584,7 @@ $('#weightTransactionForm').on('submit', function(e) {
     }
 
     $.ajax({
-        url: 'ajax/save_weight_transaction.php',
+        url: '../api/ticket_weight/save_weight_transaction.php',
         type: 'POST',
         data: formData,
         processData: false,
@@ -649,5 +649,5 @@ function formatDate(dateString) {
 }
     // Print receipt function
     function printReceipt(transactionId) {
-        window.open(`print_weight_receipt.php?id=${transactionId}`, '_blank');
+        window.open(`../api/ticket_weight/print_weight_receipt.php?id=${transactionId}`, '_blank');
     }

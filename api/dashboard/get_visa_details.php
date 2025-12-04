@@ -28,7 +28,12 @@ $period = $_POST['period'];
 $filteredDate = $_POST['filtered_date'] ?? null;
 
 // Prepare parameters array with tenant_id
-$params = [':tenant_id' => $tenant_id, ':branch_id' => $branch_id];
+$params = [
+    ':tenant_id_join' => $tenant_id,
+    ':branch_id_join' => $branch_id,
+    ':tenant_id' => $tenant_id,
+    ':branch_id' => $branch_id
+];
 
 // Set up date condition
 if ($period === 'daily') {
@@ -66,7 +71,7 @@ try {
         va.currency,
         ma.name as paid_to
     FROM visa_applications va
-    LEFT JOIN main_account ma ON va.paid_to = ma.id AND ma.tenant_id = :tenant_id AND ma.branch_id = :branch_id
+    LEFT JOIN main_account ma ON va.paid_to = ma.id AND ma.tenant_id = :tenant_id_join AND ma.branch_id = :branch_id_join
     WHERE $dateCondition AND va.tenant_id = :tenant_id AND va.branch_id = :branch_id
     ORDER BY va.created_at DESC";
 

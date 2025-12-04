@@ -4,7 +4,7 @@ document.getElementById('supplier').addEventListener('change', function () {
     console.log('Selected Supplier ID:', supplierId);
 
     if (supplierId) {
-        fetch(`get_supplier_currency.php?supplier_id=${supplierId}`)
+        fetch(`../api/visa/get_supplier_currency.php?supplier_id=${supplierId}`)
             .then(response => {
                 console.log('Response status:', response.status); // Log status
                 return response.json();

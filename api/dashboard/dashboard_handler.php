@@ -1,8 +1,9 @@
 <?php
 
-require_once '../includes/conn.php';
-require_once '../includes/db.php';
-
+// Use __DIR__ to get the absolute path of this file's directory
+// This ensures the includes work regardless of where this file is included from
+require_once __DIR__ . '/../../includes/db.php';
+require_once __DIR__ . '/../../includes/conn.php';
 $tenant_id = $_SESSION['tenant_id'];
 $branch_id = $_SESSION['branch_id'];
 

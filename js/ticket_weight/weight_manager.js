@@ -11,7 +11,7 @@
             }).then((result) => {
                 if (result.isConfirmed) {
                     $.ajax({
-                        url: 'ajax/delete_weight.php',
+                        url: '../api/ticket_weight/delete_weight.php',
                         type: 'POST',
                         data: { id: weightId },
                         success: function(response) {
@@ -50,7 +50,7 @@
             const formData = new FormData(this);
             
             $.ajax({
-                url: 'ajax/update_weight.php',
+                url: '../api/ticket_weight/update_weight.php',
                 type: 'POST',
                 data: formData,
                 processData: false,
@@ -77,7 +77,7 @@
                 // Function to edit weight
                 function editWeight(weightId) {
                     $.ajax({
-                        url: 'ajax/get_weight.php',
+                        url: '../api/ticket_weight/get_weight.php',
                         type: 'GET',
                         data: { id: weightId },
                         success: function(response) {
@@ -123,7 +123,7 @@
                     }).then((result) => {
                         if (result.isConfirmed) {
                             $.ajax({
-                                url: 'ajax/delete_weight_transaction.php',
+                                url: '../api/ticket_weight/delete_weight_transaction.php',
                                 type: 'POST',
                                 dataType: 'json',  // Let jQuery parse JSON automatically
                                 data: { 

@@ -52,7 +52,7 @@ document.addEventListener('DOMContentLoaded', function() {
         // Send the data to a new page to generate the invoice
         const form = document.createElement('form');
         form.method = 'POST';
-        form.action = 'generate_multi_visa_invoice.php';
+        form.action = '../api/visa/generate_multi_visa_invoice.php';
         form.target = '_blank';
         
         const hiddenField = document.createElement('input');
@@ -71,7 +71,7 @@ document.addEventListener('DOMContentLoaded', function() {
     
     // Load tickets for the invoice table
     function loadTicketsForInvoice() {
-        fetch('fetch_visa_for_invoice.php')
+        fetch('../api/visa/fetch_visa_for_invoice.php')
             .then(response => response.json())
             .then(data => {
                 if (data.status === 'success') {

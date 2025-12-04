@@ -11,7 +11,7 @@ function processRefundTransaction(refundId) {
     
     // Fetch refund details
     $.ajax({
-        url: 'get_umrah_refund_details.php',
+        url: '../api/umrah/get_umrah_refund_details.php',
         type: 'GET',
         data: { id: refundId },
         dataType: 'json',
@@ -81,7 +81,7 @@ function processRefundTransaction(refundId) {
 
 function printRefundAgreement(refundId) {
     // Open the printable agreement page in a new window
-    window.open('print_umrah_refund.php?id=' + refundId, '_blank');
+    window.open('../api/umrah/print_umrah_refund.php?id=' + refundId, '_blank');
 }
 
 
@@ -99,7 +99,7 @@ function printRefundAgreement(refundId) {
         }).then((result) => {
             if (result.isConfirmed) {
                 // Actual delete logic
-                fetch('delete_umrah_refund.php', {
+                fetch('../api/umrah/delete_umrah_refund.php', {
                     method: 'POST',
                     headers: {
                         'Content-Type': 'application/json',

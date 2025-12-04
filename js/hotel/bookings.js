@@ -13,7 +13,7 @@ function calculateProfit() {
 function populateDropdowns() {
     // Fetch suppliers
     $.ajax({
-        url: 'fetch_suppliers.php',
+        url: '../api/hotel/fetch_suppliers.php',
         type: 'GET',
         dataType: 'json',
         success: function(suppliers) {
@@ -28,7 +28,7 @@ function populateDropdowns() {
                 const supplierId = $(this).val();
                 if (supplierId) {
                     $.ajax({
-                        url: '../admin/fetch_supplier_by_id.php',
+                        url: '../api/hotel/fetch_supplier_by_id.php',
                         type: 'GET',
                         data: { id: supplierId },
                         dataType: 'json',
@@ -51,7 +51,7 @@ function populateDropdowns() {
 
     // Fetch clients
     $.ajax({
-        url: 'fetch_clients.php',
+        url: '../api/hotel/fetch_clients.php',
         type: 'GET',
         dataType: 'json',
         success: function(clients) {
@@ -65,7 +65,7 @@ function populateDropdowns() {
 
     // Fetch main accounts
     $.ajax({
-        url: 'fetch_main_accounts.php',
+        url: '../api/hotel/fetch_main_accounts.php',
         type: 'GET',
         dataType: 'json',
         success: function(accounts) {
@@ -101,7 +101,7 @@ function addHotelBookingForm() {
     }
 
     $.ajax({
-        url: 'add_hotel_booking.php',
+        url: '../api/hotel/add_hotel_booking.php',
         type: 'POST',
         data: formData,
         processData: false,
@@ -153,7 +153,7 @@ function deleteBooking(id) {
 
     if (confirm('Are you sure you want to delete this booking?')) {
         $.ajax({
-            url: 'delete_hotel_booking.php',
+            url: '../api/hotel/delete_hotel_booking.php',
             type: 'POST',
             data: JSON.stringify({ id: id }),
             contentType: 'application/json',
@@ -193,7 +193,7 @@ window.viewBooking = function(id) {
     }
 
     $.ajax({
-        url: 'get_hotel_bookings.php',
+        url: '../api/hotel/get_hotel_bookings.php',
         type: 'GET',
         data: { id: id },
         dataType: 'json',
@@ -252,7 +252,7 @@ window.viewBooking = function(id) {
 // Edit booking
 window.editBooking = function(id) {
     $.ajax({
-        url: 'get_hotel_booking.php',
+        url: '../api/hotel/get_hotel_booking.php',
         type: 'GET',
         data: { id: id },
         success: function(response) {
@@ -273,7 +273,7 @@ window.editBooking = function(id) {
                         $('#editBookingForm #supplier_id').val(booking.supplier_id);
 
                         $.ajax({
-                            url: 'fetch_clients.php',
+                            url: '../api/hotel/fetch_clients.php',
                             type: 'GET',
                             dataType: 'json',
                             success: function(clientsResponse) {
@@ -285,7 +285,7 @@ window.editBooking = function(id) {
                                 $('#editBookingForm #sold_to').val(booking.sold_to);
 
                                 $.ajax({
-                                    url: 'fetch_main_accounts.php',
+                                    url: '../api/hotel/fetch_main_accounts.php',
                                     type: 'GET',
                                     dataType: 'json',
                                     success: function(accountsResponse) {
@@ -354,7 +354,7 @@ function submitEditForm() {
     const formData = new FormData($('#editBookingForm')[0]);
 
     $.ajax({
-        url: 'update_hotel_booking.php',
+        url: '../api/hotel/update_hotel_booking.php',
         type: 'POST',
         data: formData,
         processData: false,

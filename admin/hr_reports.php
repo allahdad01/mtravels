@@ -373,7 +373,7 @@ $('#reportForm').on('submit', function(e) {
     submitBtn.html('<i class="feather icon-loader mr-1"></i><?php echo __('generating'); ?>...').prop('disabled', true);
 
     $.ajax({
-        url: 'generate_hr_report.php',
+        url: '../api/employee/generate_hr_report.php',
         type: 'POST',
         data: formData,
         processData: false,

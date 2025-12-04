@@ -31,7 +31,14 @@ $filteredDate = $_POST['filtered_date'] ?? null;
 error_log("get_umrah_details.php - Input parameters: period=$period, filteredDate=$filteredDate");
 
 // Prepare parameters array with tenant_id
-$params = [':tenant_id' => $tenant_id, ':branch_id' => $branch_id];
+$params = [
+    ':tenant_id_f' => $tenant_id,
+    ':branch_id_f' => $branch_id,
+    ':tenant_id_ma' => $tenant_id,
+    ':branch_id_ma' => $branch_id,
+    ':tenant_id' => $tenant_id,
+    ':branch_id' => $branch_id
+];
 
 // Set up date condition
 if ($period === 'daily') {
@@ -69,8 +76,8 @@ try {
         ub.currency,
         ma.name as paid_to
     FROM umrah_bookings ub
-    LEFT JOIN families f ON ub.family_id = f.family_id AND f.tenant_id = :tenant_id AND f.branch_id = :branch_id
-    LEFT JOIN main_account ma ON ub.paid_to = ma.id AND ma.tenant_id = :tenant_id AND ma.branch_id = :branch_id
+    LEFT JOIN families f ON ub.family_id = f.family_id AND f.tenant_id = :tenant_id_f AND f.branch_id = :branch_id_f
+    LEFT JOIN main_account ma ON ub.paid_to = ma.id AND ma.tenant_id = :tenant_id_ma AND ma.branch_id = :branch_id_ma
     WHERE $dateCondition AND ub.tenant_id = :tenant_id AND ub.branch_id = :branch_id
     ORDER BY ub.created_at DESC";
 

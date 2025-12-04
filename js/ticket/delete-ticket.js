@@ -1,6 +1,6 @@
 function deleteTicket(id) {
     if (confirm('Are you sure you want to delete this ticket?')) {
-        fetch('delete_ticket.php', {
+        fetch('../api/ticket/delete_ticket.php', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({ id }),

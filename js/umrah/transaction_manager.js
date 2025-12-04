@@ -9,7 +9,7 @@ function openTransactionTab(umrahId, soldAmount) {
 
     // Fetch Umrah details for the transaction modal
     $.ajax({
-        url: 'get_umrah_details.php',
+        url: '../api/umrah/get_umrah_details.php',
         type: 'GET',
         data: { id: umrahId },
         dataType: 'json',
@@ -64,7 +64,7 @@ function openTransactionTab(umrahId, soldAmount) {
 
 function loadTransactionHistory(umrahId) {
     $.ajax({
-        url: 'fetch_umrah_transactions.php',
+        url: '../api/umrah/fetch_umrah_transactions.php',
         type: 'GET',
         data: { umrah_id: umrahId },
         dataType: 'json',
@@ -234,7 +234,7 @@ function deleteTransaction(transactionId) {
     const umrahId = document.getElementById('transactionUmrahId').textContent;
     
     // Send delete transaction request with JSON format
-    fetch('delete_umrah_transaction.php', {
+    fetch('../api/umrah/delete_umrah_transaction.php', {
         method: 'POST',
         headers: {
             'Content-Type': 'application/json'
@@ -299,7 +299,7 @@ $(document).ready(function() {
         }
 
         $.ajax({
-            url: 'add_umrah_transaction.php',
+            url: '../api/umrah/add_umrah_transaction.php',
             type: 'POST',
             data: formData,
             processData: false,
@@ -425,14 +425,14 @@ $('#paymentCurrency').on('change', function() {
 });
     // Print receipt function
     function printReceipt(transactionId) {
-        window.open(`print_umrah_receipt.php?id=${transactionId}`, '_blank');
+        window.open(`../api/umrah/print_umrah_receipt.php?id=${transactionId}`, '_blank');
     }
 // Function to edit transaction
 function editTransaction(transactionId) {
     console.log('Editing transaction:', transactionId);
     
     // Fetch the transaction details
-    fetch(`fetch_umrah_transactions.php?transaction_id=${transactionId}`)
+    fetch(`../api/umrah/fetch_umrah_transactions.php?transaction_id=${transactionId}`)
         .then(response => {
             if (!response.ok) {
                 throw new Error(`HTTP error! Status: ${response.status}`);
@@ -580,7 +580,7 @@ $(document).ready(function() {
         }
         
         $.ajax({
-            url: 'update_umrah_payment.php',
+            url: '../api/umrah/update_umrah_payment.php',
             type: 'POST',
             data: formData,
             processData: false,

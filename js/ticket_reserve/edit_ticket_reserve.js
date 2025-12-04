@@ -97,7 +97,7 @@
     };
     
     // Fetch ticket data
-    fetch(`fetch_ticket_reserve_by_id.php?id=${ticketId}`)
+    fetch(`../api/ticket_reserve/fetch_ticket_reserve_by_id.php?id=${ticketId}`)
         .then(response => response.json())
         .then(data => {
             // Hide loader
@@ -238,7 +238,7 @@ document.addEventListener('DOMContentLoaded', function() {
         const currency = currencyElement ? currencyElement.value : 'USD';
         
         // Make AJAX call to get current supplier balance
-        fetch(`get_supplier_balance.php?supplier_id=${supplierId}`)
+        fetch(`../api/ticket/get_supplier_balance.php?supplier_id=${supplierId}`)
             .then(response => response.json())
             .then(data => {
                 if (data.success) {
@@ -278,7 +278,7 @@ document.addEventListener('DOMContentLoaded', function() {
         const currency = currencyElement ? currencyElement.value : 'USD';
         
         // Make AJAX call to get current client balance
-        fetch(`get_client_balance.php?client_id=${clientId}&currency=${currency}`)
+        fetch(`../api/ticket/get_client_balance.php?client_id=${clientId}&currency=${currency}`)
             .then(response => response.json())
             .then(data => {
                 if (data.success) {
@@ -345,7 +345,7 @@ document.addEventListener('DOMContentLoaded', function() {
                 }
             }
             
-            fetch('update_ticket_reserve.php', {
+            fetch('../api/ticket_reserve/update_ticket_reserve.php', {
                 method: 'POST',
                 body: formData,
             })

@@ -21,7 +21,7 @@ function deleteRefund(refundId) {
     row.addClass('loading');
 
     // Send delete request
-    fetch('delete_hotel_refund.php', {
+    fetch('../api/hotel/delete_hotel_refund.php', {
         method: 'POST',
         headers: {
             'Content-Type': 'application/json',
@@ -59,7 +59,7 @@ function deleteRefund(refundId) {
         
         // Fetch refund details
         $.ajax({
-            url: 'get_hotel_refund_details.php',
+            url: '../api/hotel/get_hotel_refund_details.php',
             type: 'GET',
             data: { id: refundId },
             dataType: 'json',
@@ -123,5 +123,5 @@ function deleteRefund(refundId) {
     // Add this new function for printing refund agreement
     function printRefundAgreement(refundId) {
         // Open the printable agreement page in a new window
-        window.open('generate_refund_agreement.php?refund_id=' + refundId, '_blank');
+        window.open('../api/hotel/generate_refund_agreement.php?refund_id=' + refundId, '_blank');
     }

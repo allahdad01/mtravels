@@ -46,7 +46,7 @@ function setupFundingModal(supplierId, supplierName, supplierCurrency) {
 
 // Fetch Main Accounts and Populate Dropdown
 function loadMainAccounts() {
-    fetch('fetch_main_accounts.php')
+    fetch('../api/accounts/fetch_main_accounts.php')
         .then(response => response.json())
         .then(data => {
             const mainAccountSelect = document.getElementById('mainAccount');
@@ -134,7 +134,7 @@ document.getElementById('paymentCurrency').addEventListener('change', () => {
 
 // Load main accounts for client dropdowns
 function loadMainAccountsForClients() {
-    fetch('fetch_main_accounts.php')
+    fetch('../api/accounts/fetch_main_accounts.php')
         .then(response => response.json())
         .then(data => {
             // For each client, populate their main account dropdown
@@ -175,7 +175,7 @@ document.addEventListener('DOMContentLoaded', function() {
             e.preventDefault();
             
             const formData = new FormData(e.target);
-            fetch('fund_supplier.php', {
+            fetch('../api/accounts/fund_supplier.php', {
                 method: 'POST',
                 body: formData
             })
@@ -227,7 +227,7 @@ document.addEventListener('DOMContentLoaded', function() {
                 }
 
                 // Send the data to the backend
-                fetch("fund_main_account.php", {
+                fetch("../api/accounts/fund_main_account.php", {
                     method: "POST",
                     headers: {
                         "Content-Type": "application/json",
@@ -282,7 +282,7 @@ document.addEventListener('DOMContentLoaded', function() {
             }
             
             // Send transfer request
-            fetch('transfer_balance.php', {
+            fetch('../api/accounts/transfer_balance.php', {
                 method: 'POST',
                 headers: {
                     'Content-Type': 'application/json',
@@ -399,7 +399,7 @@ function showRemarksModal(clientId, mainAccountId, amount, currency, hasAfsPorti
         }
 
         // Send the funding request to the server via the API
-        fetch("/travelagency/api/fundClient.php", {
+        fetch("../api/accounts/fundClient.php", {
             method: "POST",
             headers: {
                 "Content-Type": "application/json",

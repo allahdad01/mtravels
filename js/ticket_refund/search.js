@@ -11,7 +11,7 @@ function searchTickets(searchType) {
         return;
     }
 
-    fetch('ajax/search_tickets.php?' + searchType + '=' + encodeURIComponent(searchValue))
+    fetch('../api/ticket/search_tickets.php?' + searchType + '=' + encodeURIComponent(searchValue))
         .then(response => response.json())
         .then(data => {
             if (data.success) {

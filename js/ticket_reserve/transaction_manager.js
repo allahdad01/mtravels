@@ -56,7 +56,7 @@ const transactionManager = {
       // Load and display transaction modal
 loadTransactionModal: function(ticketId) {
     $.ajax({
-        url: 'get_ticket_reservations.php',
+        url: '../api/ticket_reserve/get_ticket_reservations.php',
         type: 'GET',
         data: { id: ticketId },
         dataType: 'json',
@@ -104,7 +104,7 @@ loadTransactionModal: function(ticketId) {
     // Load transaction history
     loadTransactionHistory: function(ticketId) {
         $.ajax({
-            url: 'get_ticket_reserve_transactions.php',
+            url: '../api/ticket_reserve/get_ticket_reserve_transactions.php',
             type: 'GET',
             data: { ticket_id: ticketId },
             success: function(response) {
@@ -286,7 +286,7 @@ loadTransactionModal: function(ticketId) {
         }
 
         $.ajax({
-            url: 'add_ticket_reserve_payment.php', // Adjusted path
+            url: '../api/ticket_reserve/add_ticket_reserve_payment.php', // Adjusted path
             type: 'POST',
             data: ajaxData,
             dataType: 'json',
@@ -505,7 +505,7 @@ loadTransactionModal: function(ticketId) {
                 }
 
                 $.ajax({
-                    url: 'update_ticket_reserve_payment.php',
+                    url: '../api/ticket_reserve/update_ticket_reserve_payment.php',
                     type: 'POST',
                     data: formData,
                     processData: false,
@@ -600,7 +600,7 @@ loadTransactionModal: function(ticketId) {
 
         // Send as form data instead of JSON
         $.ajax({
-            url: 'delete_ticket_reserve_payment.php',
+            url: '../api/ticket_reserve/delete_ticket_reserve_payment.php',
             type: 'POST',
             data: {
                 transaction_id: transactionId,
@@ -634,7 +634,7 @@ loadTransactionModal: function(ticketId) {
 };
     // Print receipt function
     function printReceipt(transactionId) {
-        window.open(`print_reserve_receipt.php?id=${transactionId}`, '_blank');
+        window.open(`../api/ticket_reserve/print_reserve_receipt.php?id=${transactionId}`, '_blank');
     }
 // Initialize transaction manager when document is ready
 $(document).ready(function() {

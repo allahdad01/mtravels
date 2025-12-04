@@ -29,7 +29,7 @@
         window.submitCreateFamilyForm = function() {
             var formData = new FormData(document.getElementById("createFamilyForm"));
             
-            fetch('create_family.php', {
+            fetch('../api/umrah/create_family.php', {
                 method: 'POST',
                 body: formData
             }).then(response => response.json())

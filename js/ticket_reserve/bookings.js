@@ -4,7 +4,7 @@ document.getElementById('supplier').addEventListener('change', function () {
     console.log('Selected Supplier ID:', supplierId);
 
     if (supplierId) {
-        fetch(`get_supplier_currency.php?supplier_id=${supplierId}`)
+        fetch(`../api/ticket_reserve/get_supplier_currency.php?supplier_id=${supplierId}`)
             .then(response => {
                 console.log('Response status:', response.status); // Log status
                 return response.json();
@@ -40,7 +40,7 @@ document.getElementById('bookTicketForm').addEventListener('submit', function (e
 
     const formData = new FormData(this); // Collect form data
 
-    fetch('save_ticket_reserve.php', {
+    fetch('../api/ticket_reserve/save_ticket_reserve.php', {
         method: 'POST',
         body: formData
     })
@@ -69,7 +69,7 @@ document.getElementById('bookTicketForm').addEventListener('submit', function (e
 });
 function deleteTicket(id) {
     if (confirm('are_you_sure_you_want_to_delete_this_ticket')) {
-        fetch('delete_ticket_reserve.php', {
+        fetch('../api/ticket_reserve/delete_ticket_reserve.php', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({ id }),

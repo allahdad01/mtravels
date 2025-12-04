@@ -1,7 +1,7 @@
 var suppliersData = [];
 
 function loadSuppliers() {
-    return $.getJSON('ajax/get_suppliers.php').then(data => {
+    return $.getJSON('../api/umrah/get_suppliers.php').then(data => {
         suppliersData = data.success ? data.suppliers : [];
         console.log('Suppliers loaded:', suppliersData.length);
     }).catch(() => { suppliersData = []; });

@@ -140,7 +140,7 @@ const transactionManager = {
         const self = this;
 
         $.ajax({
-            url: 'add_ticket_payment.php',
+            url: '../api/ticket/add_ticket_payment.php',
             type: 'POST',
             data: ajaxData,
             dataType: 'json',
@@ -184,7 +184,7 @@ const transactionManager = {
     // Rest of your existing methods...
     loadTransactionModal: function(ticketId) {
         $.ajax({
-            url: 'get_ticket_bookings.php',
+            url: '../api/ticket/get_ticket_bookings.php',
             type: 'GET',
             data: { id: ticketId },
             dataType: 'json',
@@ -214,7 +214,7 @@ const transactionManager = {
 
     loadTransactionHistory: function(ticketId) {
         $.ajax({
-            url: 'get_ticket_transactions.php',
+            url: '../api/ticket/get_ticket_transactions.php',
             type: 'GET',
             data: { ticket_id: ticketId },
             dataType: 'json',
@@ -523,7 +523,7 @@ const transactionManager = {
                 }
                 
                 $.ajax({
-                    url: 'update_ticket_payment.php',
+                    url: '../api/ticket/update_ticket_payment.php',
                     type: 'POST',
                     data: formData,
                     processData: false,
@@ -597,7 +597,7 @@ const transactionManager = {
         const ticketId = $('#booking_id').val();
 
         $.ajax({
-            url: 'delete_ticket_payment.php',
+            url: '../api/ticket/delete_ticket_payment.php',
             type: 'POST',
             data: {
                 transaction_id: transactionId,
@@ -631,7 +631,7 @@ const transactionManager = {
 };
 
 function printReceipt(transactionId) {
-    window.open(`print_receipt.php?id=${transactionId}`, '_blank');
+    window.open(`../api/ticket/print_receipt.php?id=${transactionId}`, '_blank');
 }
 
 $(document).ready(function() {

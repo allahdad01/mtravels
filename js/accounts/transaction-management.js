@@ -66,11 +66,11 @@
         // Determine endpoint based on account type
         let endpoint;
         if (accountType === 'main') {
-            endpoint = 'get_main_account_transactions.php?account_id=' + accountId;
+            endpoint = '../api/accounts/get_main_account_transactions.php?account_id=' + accountId;
         } else if (accountType === 'supplier') {
-            endpoint = 'get_supplier_transactions_main.php?supplier_id=' + accountId;
+            endpoint = '../api/accounts/get_supplier_transactions_main.php?supplier_id=' + accountId;
         } else if (accountType === 'client') {
-            endpoint = 'get_client_transactions.php?client_id=' + accountId;
+            endpoint = '../api/accounts/get_client_transactions.php?client_id=' + accountId;
         }
         
         // Fetch transactions from the server
@@ -413,7 +413,7 @@ document.getElementById('saveEditTransactionBtn').addEventListener('click', func
     this.innerHTML = '<span class="spinner-border spinner-border-sm" role="status" aria-hidden="true"></span> saving...';
 
     // Send AJAX request to update the transaction
-    fetch('update_transaction.php', {
+    fetch('../api/accounts/update_transaction.php', {
         method: 'POST',
         body: formData
     })
@@ -458,13 +458,13 @@ function deleteTransaction(transactionId, transactionType) {
     let endpoint = '';
     switch(transactionType) {
         case 'main':
-            endpoint = 'delete_main_account_transaction.php';
+            endpoint = '../api/accounts/delete_main_account_transaction.php';
             break;
         case 'supplier':
-            endpoint = 'delete_supplier_transaction.php';
+            endpoint = '../api/accounts/delete_supplier_transaction.php';
             break;
         case 'client':
-            endpoint = 'delete_client_transaction.php';
+            endpoint = '../api/accounts/delete_client_transaction.php';
             break;
         default:
             showErrorToast('invalid_transaction_type');

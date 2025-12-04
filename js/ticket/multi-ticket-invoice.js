@@ -48,7 +48,7 @@ document.addEventListener('DOMContentLoaded', function() {
         // Send the data to generate the invoice
         const form = document.createElement('form');
         form.method = 'POST';
-        form.action = 'generate_multi_ticket_invoice.php';
+        form.action = '../api/ticket/generate_multi_ticket_invoice.php';
         form.target = '_blank';
         
         const hiddenField = document.createElement('input');
@@ -73,7 +73,7 @@ document.addEventListener('DOMContentLoaded', function() {
         // Show loading state
         showToast('Loading tickets, please wait...', 'info');
         
-        fetch('fetch_tickets_for_invoice.php')
+        fetch('../api/ticket/fetch_tickets_for_invoice.php')
             .then(response => response.json())
             .then(data => {
                 if (data.status === 'success') {

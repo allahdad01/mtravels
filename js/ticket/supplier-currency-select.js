@@ -3,7 +3,7 @@ $('#supplier').on('change', function() {
     var supplierId = $(this).val();
     if (supplierId) {
         $.ajax({
-            url: 'ajax/get_supplier_currency.php',
+            url: '../api/ticket/get_supplier_currency.php',
             type: 'POST',
             data: {supplier_id: supplierId},
             dataType: 'json',

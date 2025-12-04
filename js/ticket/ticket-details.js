@@ -96,7 +96,7 @@ $(document).ready(function () {
         // Fetch client type and handle the refund modal
         $.ajax({
             type: 'POST',
-            url: 'getClientType.php',
+            url: '../api/ticket/getClientType.php',
             data: { ticketId: ticketId }, // Send only the ticket ID
             success: function (response) {
                 const data = JSON.parse(response);
@@ -153,7 +153,7 @@ $(document).ready(function () {
         const formData = $(this).serialize();
 
         $.ajax({
-            url: 'insert_ticket_record_dc.php',
+            url: '../api/ticket/insert_ticket_record_dc.php',
             method: 'POST',
             data: formData,
             success: function (response) {
@@ -188,7 +188,7 @@ $(document).ready(function () {
         const formData = $(this).serialize();
 
         $.ajax({
-            url: 'insert_ticket_record.php',
+            url: '../api/ticket/insert_ticket_record.php',
             method: 'POST',
             data: formData,
             success: function (response) {

@@ -1389,143 +1389,6 @@ if (!file_exists($imagePath)) {
                                 </div>
                                 <?php endif; ?>
 
-
-                                <!-- Modal Structure -->
-                                <div class="modal fade" id="receiptModal" tabindex="-1" aria-labelledby="receiptModalLabel" aria-hidden="true">
-                                    <div class="modal-dialog">
-                                        <div class="modal-content">
-                                            <div class="modal-header">
-                                                <h5 class="modal-title" id="receiptModalLabel"><?= __('enter_receipt_details') ?></h5>
-                                                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
-                                            </div>
-                                            <div class="modal-body">
-                                                <form id="receiptForm">
-                                                    <div class="mb-3">
-                                                        <label for="receiptNumber" class="form-label"><?= __('receipt_number') ?></label>
-                                                        <input type="text" class="form-control" id="receiptNumber" name="receipt_number" required>
-                                                    </div>
-                                                    <div class="mb-3">
-                                                        <label for="remarks" class="form-label"><?= __('remarks') ?></label>
-                                                        <input type="text" class="form-control" id="remarks" name="remarks" required>
-                                                    </div>
-                                                    <input type="hidden" id="hiddenNotificationId" name="notification_id">
-                                                </form>
-                                            </div>
-                                            <div class="modal-footer">
-                                                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal"><?= __('close') ?></button>
-                                                <button type="button" id="submitReceipt" class="btn btn-success"><?= __('submit') ?></button>
-                                            </div>
-                                        </div>
-                                    </div>
-                                </div>
-
-
-                                <!-- Debtors Modal -->
-                                <div class="modal fade" id="debtorsModal" tabindex="-1">
-                                    <div class="modal-dialog modal-lg modal-dialog-centered">
-                                        <div class="modal-content border-0">
-                                            <div class="modal-header bg-light border-0">
-                                                <h5 class="modal-title" id="debtorsModalTitle"><?= __('debtors_list') ?></h5>
-                                                <button type="button" class="close" data-dismiss="modal">
-                                                    <span aria-hidden="true">&times;</span>
-                                                </button>
-                                            </div>
-                                            <div class="modal-body">
-                                                <div class="table-responsive">
-                                                    <table class="table table-hover">
-                                                        <thead>
-                                                            <tr>
-                                                                <th><?= __('name') ?></th>
-                                                                <th><?= __('pnr') ?></th>
-                                                                <th><?= __('phone') ?></th>
-                                                                <th><?= __('amount_due') ?></th>
-                                                                <th><?= __('date') ?></th>
-                                                            </tr>
-                                                        </thead>
-                                                        <tbody id="debtorsTableBody">
-                                                            <!-- Will be populated dynamically -->
-                                                        </tbody>
-                                                    </table>
-                                                </div>
-                                            </div>
-                                        </div>
-                                    </div>
-                                </div>
-
-
-                                <!-- Sales Details Modal -->
-                                <div class="modal fade" id="salesDetailsModal" tabindex="-1" role="dialog" aria-labelledby="salesDetailsModalLabel" aria-hidden="true">
-                                    <div class="modal-dialog modal-lg" role="document">
-                                        <div class="modal-content">
-                                            <div class="modal-header">
-                                                
-                                                <button type="button" class="close" data-dismiss="modal" aria-label="Close">
-                                                    <span aria-hidden="true">&times;</span>
-                                                </button>
-                                            </div>
-                                            <div class="modal-body">
-                                                <div class="row mb-3">
-                                                    <div class="col-md-12">
-                                                        <h4 id="salesPeriod"></h4>
-                                                        <div class="table-responsive">
-                                                            <table class="table table-bordered">
-                                                                <tr>
-                                                                    <th><?= __('currency') ?></th>
-                                                                    <th><?= __('total_amount') ?></th>
-                                                                </tr>
-                                                                <tr>
-                                                                    <td><?= __('usd') ?></td>
-                                                                    <td id="salesUsd"></td>
-                                                                </tr>
-                                                                <tr>
-                                                                    <td><?= __('afs') ?></td>
-                                                                    <td id="salesAfs"></td>
-                                                                </tr>
-                                                            </table>
-                                                        </div>
-                                                    </div>
-                                                </div>
-                                                
-                                                <h5><?= __('profit_sources') ?></h5>
-                                                <div class="table-responsive">
-                                                    <table class="table table-hover" id="transactionTable">
-                                                        <thead>
-                                                            <tr>
-                                                                <th><?= __('source') ?></th>
-                                                                <th><?= __('usd_profit') ?></th>
-                                                                <th><?= __('afs_profit') ?></th>
-                                                            </tr>
-                                                        </thead>
-                                                        <tbody id="transactionTableBody">
-                                                        </tbody>
-                                                    </table>
-                                                </div>
-                                                
-                                                <!-- Transaction Details Section (Initially Hidden) -->
-                                                <div id="transactionDetailsSection" class="mt-4" style="display: none;">
-                                                    <h5 class="border-top pt-3"><span id="detailsSectionTitle"><?= __('transaction_details') ?></span></h5>
-                                                    <div class="table-responsive">
-                                                        <table class="table table-striped table-hover">
-                                                            <thead id="transactionDetailsHeader">
-                                                                <!-- Header will be dynamically generated -->
-                                                            </thead>
-                                                            <tbody id="transactionDetailsBody">
-                                                                <tr>
-                                                                    <td colspan="5" class="text-center"><?= __('loading_details') ?></td>
-                                                                </tr>
-                                                            </tbody>
-                                                        </table>
-                                                    </div>
-                                                </div>
-                                            </div>
-                                            <div class="modal-footer">
-                                            <button type="button" class="btn btn-primary" id="printProfitDetails"><i class="feather icon-printer mr-1"></i><?= __('print') ?></button>
-                                                <button type="button" class="btn btn-secondary" data-dismiss="modal"><?= __('close') ?></button>
-                                            </div>
-                                        </div>
-                                    </div>
-                                </div>
-
                             </div>
                             <!-- [ Main Content ] end -->
                         </div>
@@ -1534,8 +1397,12 @@ if (!file_exists($imagePath)) {
             </div>
         </div>
     </div>
-  <!-- Include Admin Footer -->
-<?php include '../includes/admin_footer.php'; ?>
+<!-- Include Admin Footer -->
+<?php include '../modals/dashboard/receipt_modal.php'; ?>
+<?php include '../modals/dashboard/debtor_modal.php'; ?>
+<?php include '../modals/dashboard/sales_modal.php'; ?>
+    <?php include '../includes/admin_footer.php'; ?>
+
     <!-- Required Js -->
     <script src="../assets/js/vendor-all.min.js"></script>
 	<script src="../assets/plugins/bootstrap/js/bootstrap.min.js"></script>
@@ -1543,8 +1410,8 @@ if (!file_exists($imagePath)) {
     
 
 
-<!-- Add ApexCharts JS if not already included -->
-<script src="https://cdn.jsdelivr.net/npm/apexcharts"></script>
+    <!-- Add ApexCharts JS if not already included -->
+    <script src="https://cdn.jsdelivr.net/npm/apexcharts"></script>
 
     <!-- Dashboard JS files -->
     <script src="../js/dashboard/dashboard-charts.js"></script>

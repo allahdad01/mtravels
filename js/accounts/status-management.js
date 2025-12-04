@@ -65,7 +65,7 @@ document.addEventListener('DOMContentLoaded', function() {
             
             showConfirmationModal(title, message, function() {
                 // Send request to toggle status
-                fetch('toggle_account_status.php', {
+                fetch('../api/accounts/toggle_account_status.php', {
                     method: 'POST',
                     headers: {
                         'Content-Type': 'application/json',
@@ -107,7 +107,7 @@ document.addEventListener('DOMContentLoaded', function() {
             
             showConfirmationModal(title, message, function() {
                 // Send request to toggle status
-                fetch('toggle_client_status.php', {
+                fetch('../api/accounts/toggle_client_status.php', {
                     method: 'POST',
                     headers: {
                         'Content-Type': 'application/json',
@@ -150,7 +150,7 @@ document.addEventListener('DOMContentLoaded', function() {
             
             showConfirmationModal(title, message, function() {
                 // Send request to toggle status
-                fetch('toggle_supplier_status.php', {
+                fetch('../api/accounts/toggle_supplier_status.php', {
                     method: 'POST',
                     headers: {
                         'Content-Type': 'application/json',

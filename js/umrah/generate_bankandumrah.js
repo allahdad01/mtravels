@@ -9,7 +9,7 @@ function showBankLetterModal(userId) {
         const container = document.getElementById('bankReciptMembers');
         if (container) {
             container.innerHTML = '<div class="text-muted small">Loading members...</div>';
-            fetch(`ajax/get_family_members.php?family_id=${encodeURIComponent(userId)}`)
+            fetch(`../api/umrah/get_family_members.php?family_id=${encodeURIComponent(userId)}`)
                 .then(r => r.json())
                 .then(json => {
                     // Support multiple response shapes:
@@ -127,10 +127,10 @@ function generateBankRecipt(event, language) {
         let bankReciptUrl = '';
         switch(language) {
             case 'fa':
-                bankReciptUrl = 'generate_bank_recipt.php';
+                bankReciptUrl = '../api/umrah/generate_bank_recipt.php';
                 break;
             case 'ps':
-                bankReciptUrl = 'generate_bank_recipt_pashto.php';
+                bankReciptUrl = '../api/umrah/generate_bank_recipt_pashto.php';
                 break;
             default:
                 createToast('<?= __("error_invalid_language") ?>', 'danger');
@@ -236,10 +236,10 @@ function generateBankRecipt(event, language) {
         let umrahUrl = '';
         switch(language) {
             case 'fa':
-                umrahUrl = 'generate_umrah_presidency.php';    
+                umrahUrl = '../api/umrah/generate_umrah_presidency.php';    
                 break;
             case 'ps':
-                umrahUrl = 'generate_umrah_presidency_pashto.php';
+                umrahUrl = '../api/umrah/generate_umrah_presidency_pashto.php';
                 break;
             default:
                 createToast('<?= __("error_invalid_language") ?>', 'danger');

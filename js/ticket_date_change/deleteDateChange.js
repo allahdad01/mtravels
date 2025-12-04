@@ -9,7 +9,7 @@ function deleteTicket(id) {
         confirmButtonText: 'Yes, delete it!'
     }).then((result) => {
         if (result.isConfirmed) {
-            fetch('delete_ticket_dc.php', {
+            fetch('../api/ticket_date_change/delete_ticket_dc.php', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({ id }),

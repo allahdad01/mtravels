@@ -31,7 +31,12 @@ $filteredDate = $_POST['filtered_date'] ?? null;
 error_log("get_ticket_reservations_details.php - Input parameters: period=$period, filteredDate=$filteredDate");
 
 // Prepare parameters array with tenant_id
-$params = [':tenant_id' => $tenant_id, ':branch_id' => $branch_id];
+$params = [
+    ':tenant_id_join' => $tenant_id,
+    ':branch_id_join' => $branch_id,
+    ':tenant_id' => $tenant_id,
+    ':branch_id' => $branch_id
+];
 
 // Set up date condition
 if ($period === 'daily') {
@@ -69,7 +74,7 @@ try {
         tr.currency,
         ma.name as paid_to
     FROM ticket_reservations tr
-    LEFT JOIN main_account ma ON tr.paid_to = ma.id AND ma.tenant_id = :tenant_id AND ma.branch_id = :branch_id
+    LEFT JOIN main_account ma ON tr.paid_to = ma.id AND ma.tenant_id = :tenant_id_join AND ma.branch_id = :branch_id_join
     WHERE $dateCondition AND tr.tenant_id = :tenant_id AND tr.branch_id = :branch_id
     ORDER BY tr.created_at DESC";
 

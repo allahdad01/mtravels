@@ -81,26 +81,6 @@ function selectAction(action) {
     }, 3000);
 }
 
-// Debug function to test AJAX directly
-function testAjax() {
-    console.log('Testing AJAX...');
-    jQuery.ajax({
-        url: 'test_ajax.php',
-        type: 'POST',
-        data: {
-            test: 'hello world',
-            timestamp: new Date().toISOString()
-        },
-        success: function(response) {
-            console.log('Test AJAX success:', response);
-            alert('Test AJAX worked! Check console for response.');
-        },
-        error: function(xhr, status, error) {
-            console.error('Test AJAX error:', error, status, xhr.responseText);
-            alert('Test AJAX failed! Check console for details.');
-        }
-    });
-}
 
 // Handle cancellation/re-apply processing
 jQuery(document).ready(function($) {
@@ -136,7 +116,7 @@ jQuery(document).ready(function($) {
         
         // Send AJAX request
         $.ajax({
-            url: 'process_cancellation_reapply.php',
+            url: '../api/umrah/process_cancellation_reapply.php',
             type: 'POST',
             data: {
                 booking_id: bookingId,
@@ -365,7 +345,7 @@ function processBulkAction(selectedMembers, action, newStatus) {
     
     // Send bulk AJAX request
     jQuery.ajax({
-        url: 'process_bulk_cancellation_reapply.php',
+        url: '../api/umrah/process_bulk_cancellation_reapply.php',
         type: 'POST',
         data: {
             action: action,

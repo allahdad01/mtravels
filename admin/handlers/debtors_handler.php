@@ -17,6 +17,49 @@ if (!empty($_GET)) {
     $redirect_url .= '?' . http_build_query($_GET);
 }
 
+/**
+ * Support JSON/alternate payloads from programmatic clients.
+ * When the request body is JSON (common with fetch/AJAX) PHP leaves $_POST empty,
+ * so we decode it and hydrate $_POST to let the existing form-based code run.
+ */
+if ($_SERVER['REQUEST_METHOD'] === 'POST' && empty($_POST)) {
+    $raw_body = file_get_contents('php://input');
+    $json_payload = json_decode($raw_body, true);
+    if (json_last_error() === JSON_ERROR_NONE && is_array($json_payload)) {
+        foreach ($json_payload as $key => $value) {
+            if (!isset($_POST[$key])) {
+                $_POST[$key] = $value;
+            }
+        }
+    }
+}
+
+// Allow external callers to pass CSRF token as f_token (legacy field name)
+if (isset($_POST['f_token']) && !isset($_POST['csrf_token'])) {
+    $_POST['csrf_token'] = $_POST['f_token'];
+}
+
+// If an explicit action key is provided (API usage), mirror it to the expected flag name
+if (
+    $_SERVER['REQUEST_METHOD'] === 'POST'
+    && isset($_POST['action'])
+    && is_string($_POST['action'])
+) {
+    $normalized_action = preg_replace('/[^a-z0-9_]/i', '', $_POST['action']);
+    if ($normalized_action !== '' && !isset($_POST[$normalized_action])) {
+        $_POST[$normalized_action] = true;
+    }
+}
+
+// Auto-flag add_debtor for API-style payloads so the main handler executes
+if (
+    $_SERVER['REQUEST_METHOD'] === 'POST'
+    && !isset($_POST['add_debtor'])
+    && isset($_POST['name'], $_POST['balance'], $_POST['currency'], $_POST['main_account_id'])
+) {
+    $_POST['add_debtor'] = true;
+}
+
 
 
 // Handle new debtor submission

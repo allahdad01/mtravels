@@ -1,5 +1,5 @@
 function editVisa(id) {
-    fetch(`fetch_visa_by_id.php?id=${id}`)
+    fetch(`../api/visa/fetch_visa_by_id.php?id=${id}`)
         .then(response => response.json())
         .then(visa => {
             if (visa) {
@@ -125,7 +125,7 @@ function editVisa(id) {
         formData.append('originalBase', originalBase);
         formData.append('originalSold', originalSold);
 
-        fetch('update_visa.php', {
+        fetch('../api/visa/update_visa.php', {
             method: 'POST',
             body: formData,
         })

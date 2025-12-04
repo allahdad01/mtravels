@@ -52,7 +52,7 @@ document.addEventListener('DOMContentLoaded', function() {
         // Send the data to a new page to generate the invoice
         const form = document.createElement('form');
         form.method = 'POST';
-        form.action = 'generate_multi_ticket_dc_invoice.php';
+        form.action = '../api/ticket_date_change/generate_multi_ticket_dc_invoice.php';
         form.target = '_blank';
         
         const hiddenField = document.createElement('input');
@@ -71,7 +71,7 @@ document.addEventListener('DOMContentLoaded', function() {
     
     // Load tickets for the invoice table
     function loadTicketsForInvoice() {
-        fetch('fetch_ticket_dc_for_invoice.php')
+        fetch('../api/ticket_date_change/fetch_ticket_dc_for_invoice.php')
             .then(response => response.json())
             .then(data => {
                 if (data.status === 'success') {
@@ -196,7 +196,7 @@ function generateAgreement(ticketId) {
         return;
     }
     // Open the agreement in a new tab/window
-    window.open(`generate_date_change_agreement.php?id=${ticketId}`, '_blank');
+    window.open(`../api/ticket_date_change/generate_date_change_agreement.php?id=${ticketId}`, '_blank');
 }
 
 function printAgreement(ticketId) {
@@ -206,5 +206,5 @@ function printAgreement(ticketId) {
     }
 
     // Open the printable agreement page in a new window
-    window.open('print_date_change_agreement.php?id=' + ticketId, '_blank');
+    window.open('../api/ticket_date_change/print_date_change_agreement.php?id=' + ticketId, '_blank');
 }

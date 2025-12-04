@@ -1,5 +1,5 @@
 <?php
-session_abort();
+session_start();
 // Include database security module for input validation
 require_once __DIR__ . '/../../admin/includes/db_security.php';
 

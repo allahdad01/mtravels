@@ -47,7 +47,7 @@ $(document).ready(function() {
 
         // Send AJAX request to save weight
         $.ajax({
-            url: 'ajax/save_weight.php',
+            url: '../api/ticket/save_weight.php',
             type: 'POST',
             data: formData,
             success: function(response) {

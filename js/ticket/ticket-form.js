@@ -2,7 +2,7 @@ document.getElementById('bookTicketForm').addEventListener('submit', function (e
     event.preventDefault(); // Prevent default form submission
     const formData = new FormData(this); // Collect form data
 
-    fetch('save_ticket.php', {
+    fetch('../api/ticket/save_ticket.php', {
         method: 'POST',
         body: formData
     })

@@ -220,7 +220,7 @@ function exportComprehensiveReport() {
     const endDate = $('#endDate').val();
     
     $.ajax({
-        url: 'export_comprehensive_report.php',
+        url: '../api/expense/export_comprehensive_report.php',
         type: 'GET',
         data: {
             startDate: startDate,
@@ -261,7 +261,7 @@ function exportToExcel(type) {
     const startDate = $('#startDate').val();
     const endDate = $('#endDate').val();
     
-    let url = 'export_financial_data.php';
+    let url = '../api/expense/export_financial_data.php';
     let data = {
         type: type,
         startDate: startDate,
@@ -270,7 +270,7 @@ function exportToExcel(type) {
 
     // If exporting expenses, use a different endpoint
     if (type === 'expenses') {
-        url = 'export_expenses.php';
+        url = '../api/expense/export_expenses.php';
         data = {
             startDate: startDate,
             endDate: endDate
@@ -423,7 +423,7 @@ function loadFinancialData() {
     const endDate = $('#endDate').val();
 
     $.ajax({
-        url: 'get_financial_data.php',
+        url: '../api/expense/get_financial_data.php',
         type: 'GET',
         data: {
             startDate: startDate,

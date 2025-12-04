@@ -10,7 +10,7 @@ $(document).off('submit', '#umrahForm').on('submit', '#umrahForm', function(even
 
     let formData = new FormData(event.target);
 
-    fetch("add_umrah.php", {
+    fetch("../api/umrah/add_umrah.php", {
         method: "POST",
         body: formData,
     })
@@ -44,7 +44,7 @@ $('#editFamilyForm').off('submit').on('submit', function(e) {
     submitButton.html('<i class="fas fa-spinner fa-spin mr-1"></i>Saving Changes...');
 
     $.ajax({
-        url: 'update_family.php',
+        url: '../api/umrah/update_family.php',
         type: 'POST',
         data: form.serialize(),
         dataType: 'json',
@@ -83,7 +83,7 @@ $(document).ready(function() {
         const umrahId = $('#transactionUmrahIdInput').val();
         
         $.ajax({
-            url: 'add_umrah_transaction.php',
+            url: '../api/umrah/add_umrah_transaction.php',
             type: 'POST',
             data: formData,
             processData: false,
@@ -128,7 +128,7 @@ function submitCreateFamilyForm() {
     submitBtn.disabled = true;
     submitBtn.innerHTML = '<i class="feather icon-loader"></i> Creating...';
     
-    fetch('create_family.php', {
+    fetch('../api/umrah/create_family.php', {
         method: 'POST',
         body: formData
     }).then(response => response.json())
@@ -177,7 +177,7 @@ function deleteFamily(familyId) {
             deleteBtn.innerHTML = '<i class="feather icon-loader"></i> Deleting...';
         }
         
-        fetch('delete_family.php', {
+        fetch('../api/umrah/delete_family.php', {
             method: 'POST',
             body: JSON.stringify({ family_id: familyId }),
             headers: { 'Content-Type': 'application/json' }
@@ -218,7 +218,7 @@ function deleteBooking(bookingId) {
         deleteBtn.innerHTML = '<i class="feather icon-loader"></i> Deleting...';
     }
 
-    fetch("delete_booking.php", {
+    fetch("../api/umrah/delete_booking.php", {
         method: "POST",
         headers: {
             "Content-Type": "application/x-www-form-urlencoded",
@@ -255,7 +255,7 @@ function deleteTransaction(transactionId) {
         deleteBtn.disabled = true;
         deleteBtn.innerHTML = '<i class="feather icon-loader"></i>';
         
-        fetch('delete_umrah_transaction.php', {
+        fetch('../api/umrah/delete_umrah_transaction.php', {
             method: 'POST',
             body: JSON.stringify({ transaction_id: transactionId }),
             headers: { 'Content-Type': 'application/json' }

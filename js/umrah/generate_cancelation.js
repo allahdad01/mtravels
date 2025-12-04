@@ -24,7 +24,7 @@
         $('#cancellationDetailsForm')[0].reset();
         
         // Fetch booking data to pre-fill document return section
-        fetch(`get_umrah_member.php?booking_id=${bookingId}`)
+        fetch(`../api/umrah/get_umrah_member.php?booking_id=${bookingId}`)
             .then(response => response.json())
             .then(data => {
                 if (data.success && data.member) {
@@ -128,7 +128,7 @@
                 }
                 
                 // Build URL with parameters
-                const url = `generate_umrah_cancellation.php?booking_id=${bookingId}&lang=${lang}&${params.toString()}`;
+                const url = `../api/umrah/generate_umrah_cancellation.php?booking_id=${bookingId}&lang=${lang}&${params.toString()}`;
 
                 // Directly open in new window, similar to family agreements
                 window.open(url, '_blank');

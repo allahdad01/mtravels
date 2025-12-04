@@ -189,75 +189,75 @@ $version = '?v=' . time();
                                                             </div>
                                                         </td>
                                                         <td>
-<?php
-$soldTo = $ticket['sold_to_name'];
-$isAgencyClient = false;
+                                                        <?php
+                                                        $soldTo = $ticket['sold_to_name'];
+                                                        $isAgencyClient = false;
 
-$clientQuery = $conn->query("SELECT client_type FROM clients WHERE name = '$soldTo' AND tenant_id = $tenant_id AND branch_id = $branch_id");
-if ($clientQuery && $clientQuery->num_rows > 0) {
-    $clientRow = $clientQuery->fetch_assoc();
-    $isAgencyClient = ($clientRow['client_type'] === 'agency');
-}
+                                                        $clientQuery = $conn->query("SELECT client_type FROM clients WHERE name = '$soldTo' AND tenant_id = $tenant_id AND branch_id = $branch_id");
+                                                        if ($clientQuery && $clientQuery->num_rows > 0) {
+                                                            $clientRow = $clientQuery->fetch_assoc();
+                                                            $isAgencyClient = ($clientRow['client_type'] === 'agency');
+                                                        }
 
-if ($isAgencyClient) {
-    // Calculate payment status using transaction-specific exchange rates
-    $baseCurrency = $ticket['currency'];
-    $soldAmount = floatval($ticket['refund_to_passenger']);
-    $totalPaidInBase = 0.0;
+                                                        if ($isAgencyClient) {
+                                                            // Calculate payment status using transaction-specific exchange rates
+                                                            $baseCurrency = $ticket['currency'];
+                                                            $soldAmount = floatval($ticket['refund_to_passenger']);
+                                                            $totalPaidInBase = 0.0;
 
-    $ticketId = $ticket['id'];
+                                                            $ticketId = $ticket['id'];
 
-    // Query transactions from main_account_transactions table
-    $transactionQuery = $conn->query("SELECT * FROM main_account_transactions WHERE
-        transaction_of = 'ticket_refund'
-        AND reference_id = '$ticketId' AND tenant_id = $tenant_id AND branch_id = $branch_id");
+                                                            // Query transactions from main_account_transactions table
+                                                            $transactionQuery = $conn->query("SELECT * FROM main_account_transactions WHERE
+                                                                transaction_of = 'ticket_refund'
+                                                                AND reference_id = '$ticketId' AND tenant_id = $tenant_id AND branch_id = $branch_id");
 
-    if ($transactionQuery && $transactionQuery->num_rows > 0) {
-        while ($transaction = $transactionQuery->fetch_assoc()) {
-            $amount = floatval($transaction['amount']);
-            $transCurrency = $transaction['currency'];
-            $transExchangeRate = isset($transaction['exchange_rate']) && $transaction['exchange_rate'] > 0
-                ? floatval($transaction['exchange_rate']) : 1.0;
+                                                            if ($transactionQuery && $transactionQuery->num_rows > 0) {
+                                                                while ($transaction = $transactionQuery->fetch_assoc()) {
+                                                                    $amount = floatval($transaction['amount']);
+                                                                    $transCurrency = $transaction['currency'];
+                                                                    $transExchangeRate = isset($transaction['exchange_rate']) && $transaction['exchange_rate'] > 0
+                                                                        ? floatval($transaction['exchange_rate']) : 1.0;
 
-            $convertedAmount = 0.0;
+                                                                    $convertedAmount = 0.0;
 
-            // Conversion logic
-            if ($transCurrency === $baseCurrency) {
-                $convertedAmount = $amount;
-            } else {
-                if ($baseCurrency === 'AFS') {
-                    $convertedAmount = $amount * $transExchangeRate;
-                } else {
-                    $convertedAmount = $amount / $transExchangeRate;
-                }
-            }
+                                                                    // Conversion logic
+                                                                    if ($transCurrency === $baseCurrency) {
+                                                                        $convertedAmount = $amount;
+                                                                    } else {
+                                                                        if ($baseCurrency === 'AFS') {
+                                                                            $convertedAmount = $amount * $transExchangeRate;
+                                                                        } else {
+                                                                            $convertedAmount = $amount / $transExchangeRate;
+                                                                        }
+                                                                    }
 
-            $totalPaidInBase += $convertedAmount;
-        } // End of while loop
-    }
+                                                                    $totalPaidInBase += $convertedAmount;
+                                                                } // End of while loop
+                                                            }
 
-    // Status icon based on payment status
-    if ($totalPaidInBase <= 0) {
-        echo '<i class="fas fa-circle text-danger" title="No payment received"></i>';
-    } elseif ($totalPaidInBase < $soldAmount) {
-        $percentage = round(($totalPaidInBase / $soldAmount) * 100);
-        echo '<i class="fas fa-circle text-warning" style="color: #ffc107 !important;"
-            title="Partial payment: ' . $baseCurrency . ' ' . number_format($totalPaidInBase, 2) . ' / ' . $baseCurrency . ' ' .
-            number_format($soldAmount, 2) . ' (' . $percentage . '%)"></i>';
-    } elseif (abs($totalPaidInBase - $soldAmount) < 0.01) {
-        echo '<i class="fas fa-circle text-success" title="Fully paid"></i>';
-    } else {
-        echo '<i class="fas fa-circle text-success"
-            title="Fully paid (overpaid by ' . $baseCurrency . ' ' .
-            number_format($totalPaidInBase - $soldAmount, 2) . ')"></i>';
-    }
+                                                            // Status icon based on payment status
+                                                            if ($totalPaidInBase <= 0) {
+                                                                echo '<i class="fas fa-circle text-danger" title="No payment received"></i>';
+                                                            } elseif ($totalPaidInBase < $soldAmount) {
+                                                                $percentage = round(($totalPaidInBase / $soldAmount) * 100);
+                                                                echo '<i class="fas fa-circle text-warning" style="color: #ffc107 !important;"
+                                                                    title="Partial payment: ' . $baseCurrency . ' ' . number_format($totalPaidInBase, 2) . ' / ' . $baseCurrency . ' ' .
+                                                                    number_format($soldAmount, 2) . ' (' . $percentage . '%)"></i>';
+                                                            } elseif (abs($totalPaidInBase - $soldAmount) < 0.01) {
+                                                                echo '<i class="fas fa-circle text-success" title="Fully paid"></i>';
+                                                            } else {
+                                                                echo '<i class="fas fa-circle text-success"
+                                                                    title="Fully paid (overpaid by ' . $baseCurrency . ' ' .
+                                                                    number_format($totalPaidInBase - $soldAmount, 2) . ')"></i>';
+                                                            }
 
-} else {
-    // Not an agency client - show neutral icon
-    echo '<i class="fas fa-minus text-muted" title="Not an agency client"></i>';
-}
-?>
-</td>
+                                                        } else {
+                                                            // Not an agency client - show neutral icon
+                                                            echo '<i class="fas fa-minus text-muted" title="Not an agency client"></i>';
+                                                        }
+                                                        ?>
+                                                        </td>
 
                                                         <td>
                                                             <div class="financial-info">
@@ -293,184 +293,13 @@ if ($isAgencyClient) {
         </div>
     </div>
 </div>
+<?php include '../modals/ticket_refund/refund_ticket_modal.php'; ?>
+<?php include '../modals/ticket_refund/transaction_modal.php'; ?>
+<?php include '../modals/ticket_refund/edit_transaction_modal.php'; ?>
+<?php include '../modals/ticket_refund/multi_ticket.php'; ?>
 
 
 
-<!-- Add Refund Ticket Modal -->
-<div class="modal fade" id="addRefundTicketModal" tabindex="-1" role="dialog">
-    <div class="modal-dialog modal-lg" role="document">
-        <div class="modal-content">
-            <div class="modal-header bg-primary text-white">
-                <h5 class="modal-title">
-                    <i class="feather icon-plus mr-2"></i><?= __('add_refund_ticket') ?>
-                </h5>
-                <button type="button" class="close text-white" data-dismiss="modal" aria-label="Close">
-                    <span aria-hidden="true">&times;</span>
-                </button>
-            </div>
-            <div class="modal-body">
-                <!-- Search Section -->
-                <div class="card mb-4">
-                    <div class="card-body">
-                        <div class="form-row">
-                            <div class="col-md-6">
-                                <div class="form-group">
-                                    <label for="searchPNR"><?= __('search_by_pnr') ?></label>
-                                    <div class="input-group">
-                                        <input type="text" class="form-control" id="searchPNR" placeholder="<?= __('enter_pnr') ?>">
-                                        <div class="input-group-append">
-                                            <button class="btn btn-primary" type="button" onclick="searchTickets('pnr')">
-                                                <i class="feather icon-search"></i>
-                                            </button>
-                                        </div>
-                                    </div>
-                                </div>
-                            </div>
-                            <div class="col-md-6">
-                                <div class="form-group">
-                                    <label for="searchName"><?= __('search_by_name') ?></label>
-                                    <div class="input-group">
-                                        <input type="text" class="form-control" id="searchName" placeholder="<?= __('enter_passenger_name') ?>">
-                                        <div class="input-group-append">
-                                            <button class="btn btn-primary" type="button" onclick="searchTickets('passenger')">
-                                                <i class="feather icon-search"></i>
-                                            </button>
-                                        </div>
-                                    </div>
-                                </div>
-                            </div>
-                        </div>
-                        
-                        <div id="searchResults" class="mt-3" style="display: none;">
-                            <h6><?= __('search_results') ?></h6>
-                            <div class="table-responsive">
-                                <table class="table table-hover table-bordered mb-0">
-                                    <thead>
-                                        <tr>
-                                            <th><?= __('passenger') ?></th>
-                                            <th><?= __('pnr') ?></th>
-                                            <th><?= __('flight_details') ?></th>
-                                            <th><?= __('date') ?></th>
-                                            <th><?= __('action') ?></th>
-                                        </tr>
-                                    </thead>
-                                    <tbody id="searchResultsBody">
-                                        <!-- Search results will be populated here -->
-                                    </tbody>
-                                </table>
-                            </div>
-                        </div>
-                    </div>
-                </div>
-
-                <!-- Refund Form -->
-                <form id="refundTicketForm" style="display: none;">
-                    <input type="hidden" id="ticketId" name="ticketId">
-                    <input type="hidden" id="status" name="status" value="pending">
-                    <input type="hidden" id="exchangeRate" name="exchange_rate" value="1">
-                    
-                    <div class="row">
-                        <div class="col-md-6">
-                            <div class="form-group">
-                                <label for="base"><?= __('base') ?></label>
-                                <div class="input-group">
-                                    <div class="input-group-prepend">
-                                        <span class="input-group-text" id="baseCurrency"></span>
-                                    </div>
-                                    <input type="number" class="form-control" id="base" name="base" 
-                                           step="0.01" min="0" required readonly>
-                                </div>
-                            </div>
-                        </div>
-                        <div class="col-md-6">
-                            <div class="form-group">
-                                <label for="sold"><?= __('sold') ?></label>
-                                <div class="input-group">
-                                    <div class="input-group-prepend">
-                                        <span class="input-group-text" id="soldCurrency"></span>
-                                    </div>
-                                    <input type="number" class="form-control" id="sold" name="sold" 
-                                           step="0.01" min="0" required readonly>
-                                </div>
-                            </div>
-                        </div>
-                    </div>
-
-                    <div class="row">
-                        <div class="col-md-6">
-                            <div class="form-group">
-                                <label for="supplier_penalty"><?= __('supplier_penalty') ?></label>
-                                <div class="input-group">
-                                    <div class="input-group-prepend">
-                                        <span class="input-group-text" id="penaltyCurrency"></span>
-                                    </div>
-                                    <input type="number" class="form-control" id="supplier_penalty" name="supplier_penalty" 
-                                           step="0.01" min="0" required value="0">
-                                </div>
-                            </div>
-                        </div>
-                        <div class="col-md-6">
-                            <div class="form-group">
-                                <label for="service_penalty"><?= __('service_penalty') ?></label>
-                                <div class="input-group">
-                                    <div class="input-group-prepend">
-                                        <span class="input-group-text" id="penaltyCurrency2"></span>
-                                    </div>
-                                    <input type="number" class="form-control" id="service_penalty" name="service_penalty" 
-                                           step="0.01" min="0" required value="0">
-                                </div>
-                            </div>
-                        </div>
-                    </div>
-                    
-                    <div class="form-group">
-                        <label for="totalPenalty"><?= __('total_penalty') ?></label>
-                        <div class="input-group">
-                            <div class="input-group-prepend">
-                                <span class="input-group-text" id="totalPenaltyCurrency"></span>
-                            </div>
-                            <input type="text" class="form-control" id="totalPenalty" name="total_penalty" readonly>
-                        </div>
-                    </div>
-
-                    <div class="form-group">
-                        <label for="calculationMethod"><?= __('calculation_method') ?></label>
-                        <select class="form-control" id="calculationMethod" name="calculationMethod" onchange="calculateRefund()">
-                            <option value="sold"><?= __('calculate_from_sold') ?></option>
-                            <option value="base"><?= __('calculate_from_base') ?></option>
-                        </select>
-                    </div>
-
-                    <div class="form-group">
-                        <label for="refundPassengerAmount"><?= __('refund_amount') ?></label>
-                        <div class="input-group">
-                            <div class="input-group-prepend">
-                                <span class="input-group-text" id="refundCurrency">USD</span>
-                            </div>
-                            <input type="text" class="form-control" id="refundPassengerAmount" name="refund_amount" readonly required>
-                        </div>
-                        <small class="form-text text-muted" id="refundCalculationInfo">
-                            <?= __('automatically_calculated_based_on_selected_method') ?>
-                        </small>
-                    </div>
-
-                    <div class="form-group">
-                        <label for="description"><?= __('description') ?></label>
-                        <textarea class="form-control" id="description" name="description" rows="3" required></textarea>
-                    </div>
-                </form>
-            </div>
-            <div class="modal-footer">
-                <button type="button" class="btn btn-secondary" data-dismiss="modal">
-                    <i class="feather icon-x mr-2"></i><?= __('cancel') ?>
-                </button>
-                <button type="button" class="btn btn-primary" onclick="saveRefundTicket()">
-                    <i class="feather icon-save mr-2"></i><?= __('save') ?>
-                </button>
-            </div>
-        </div>
-    </div>
-</div>
 
 
 
@@ -485,411 +314,6 @@ if ($isAgencyClient) {
                                     <script src="https://cdn.datatables.net/responsive/2.2.7/js/dataTables.responsive.min.js"></script>
                                     <script src="https://cdn.datatables.net/responsive/2.2.7/js/responsive.bootstrap4.min.js"></script>
                                 
-                        
-                           
-                                                                
-
-<!-- Transaction Modal -->
-<div class="modal fade" id="transactionsModal" tabindex="-1" role="dialog">
-    <div class="modal-dialog modal-lg" role="document">
-        <div class="modal-content">
-            <div class="modal-header bg-primary text-white">
-                <h5 class="modal-title">
-                    <i class="feather icon-credit-card mr-2"></i><?= __('manage_transactions') ?>
-                </h5>
-                <button type="button" class="close text-white" data-dismiss="modal" aria-label="Close">
-                    <span aria-hidden="true">&times;</span>
-                </button>
-            </div>
-            <div class="modal-body">
-                <!-- Hotel Info Card -->
-                <div class="card mb-4 border-primary">
-                    <div class="card-body">
-                        <div class="row">
-                            <div class="col-md-6">
-                                <h6 class="text-muted mb-2"><?= __('ticket_booking_details') ?></h6>
-                                <p class="mb-1"><strong><?= __('name') ?>:</strong> <span id="trans-guest-name"></span></p>
-                                <p class="mb-1"><strong><?= __('pnr') ?>:</strong> <span id="trans-order-id"></span></p>
-                            </div>
-                            <div class="col-md-6">
-                                <div class="alert alert-info mb-0">
-                                    <div class="d-flex justify-content-between align-items-center mb-2">
-                                        <span><?= __('total_amount') ?>:</span>
-                                        <strong id="totalAmount"></strong>
-                                    </div>
-                                    <div class="d-flex justify-content-between align-items-center mb-2">
-                                        <span><?= __('exchange_rate') ?>:</span>
-                                        <strong id="exchangeRateDisplay"></strong>
-                                    </div>
-                                    <div class="d-flex justify-content-between align-items-center">
-                                        <span><?= __('exchanged_amount') ?>:</span>
-                                        <strong id="exchangedAmount"></strong>
-                                    </div>
-                                    <div id="usdSection" style="display: none;">
-                                        <div class="d-flex justify-content-between align-items-center mb-2">
-                                            <span><?= __('paid_amount_usd') ?>:</span>
-                                            <strong id="paidAmountUSD" class="text-success">USD 0.00</strong>
-                                        </div>
-                                        <div class="d-flex justify-content-between align-items-center mb-2">
-                                            <span><?= __('remaining_amount_usd') ?>:</span>
-                                            <strong id="remainingAmountUSD" class="text-danger">USD 0.00</strong>
-                                        </div>
-                                    </div>
-                                    <div id="afsSection" style="display: none;">
-                                        <div class="d-flex justify-content-between align-items-center mb-2">
-                                            <span><?= __('paid_amount_afs') ?>:</span>
-                                            <strong id="paidAmountAFS" class="text-success">AFS 0.00</strong>
-                                        </div>
-                                        <div class="d-flex justify-content-between align-items-center mb-2">
-                                            <span><?= __('remaining_amount_afs') ?>:</span>
-                                            <strong id="remainingAmountAFS" class="text-danger">AFS 0.00</strong>
-                                        </div>
-                                    </div>
-                                    <div id="eurSection" style="display: none;">
-                                        <div class="d-flex justify-content-between align-items-center mb-2">
-                                            <span><?= __('paid_amount_eur') ?>:</span>
-                                            <strong id="paidAmountEUR" class="text-success">EUR 0.00</strong>
-                                        </div>
-                                        <div class="d-flex justify-content-between align-items-center mb-2">
-                                            <span><?= __('remaining_amount_eur') ?>:</span>
-                                            <strong id="remainingAmountEUR" class="text-danger">EUR 0.00</strong>
-                                        </div>
-                                    </div>
-                                    <div id="aedSection" style="display: none;">
-                                        <div class="d-flex justify-content-between align-items-center mb-2">
-                                            <span><?= __('paid_amount_aed') ?>:</span>
-                                            <strong id="paidAmountAED" class="text-success">AED 0.00</strong>
-                                        </div>
-                                        <div class="d-flex justify-content-between align-items-center mb-2">
-                                            <span><?= __('remaining_amount_aed') ?>:</span>
-                                            <strong id="remainingAmountAED" class="text-danger">AED 0.00</strong>
-                                        </div>
-                                    </div>
-                                </div>
-                            </div>
-                        </div>
-                    </div>
-                </div>
-
-                <!-- Transactions Table -->
-                <div class="card mb-4">
-                    <div class="card-header bg-light d-flex justify-content-between align-items-center">
-                        <h6 class="mb-0"><?= __('transaction_history') ?></h6>
-                        <button type="button" class="btn btn-sm btn-primary" data-toggle="collapse" data-target="#addTransactionForm">
-                            <i class="feather icon-plus"></i> <?= __('new_transaction') ?>
-                        </button>
-                    </div>
-                    <div class="card-body p-0">
-                        <div class="table-responsive">
-                            <table class="table table-hover mb-0">
-                                <thead class="thead-light">
-                                    <tr>
-                                        <th><?= __('date') ?></th>
-                                        <th><?= __('description') ?></th>
-                                        <th><?= __('payment') ?></th>
-                                        <th><?= __('amount') ?></th>
-                                        <th><?= __('exchange_rate') ?></th>
-                                        <th class="text-center"><?= __('actions') ?></th>
-                                    </tr>
-                                </thead>
-                                <tbody id="transactionTableBody">
-                                    <!-- Transactions will be loaded here -->
-                                </tbody>
-                            </table>
-                        </div>
-                    </div>
-                </div>
-
-                <!-- Add Transaction Form -->
-                <div id="addTransactionForm" class="collapse">
-                    <div class="card border-primary">
-                        <div class="card-header bg-primary text-white">
-                            <h6 class="mb-0"><?= __('add_new_transaction') ?></h6>
-                        </div>
-                        <div class="card-body">
-                            <form id="hotelTransactionForm">
-                                <input type="hidden" id="booking_id" name="booking_id">
-                                <div class="row">
-                                    <div class="col-md-6">
-                                        <div class="form-group">
-                                            <label for="paymentDate">
-                                                <i class="feather icon-calendar mr-1"></i><?= __('payment_date') ?>
-                                            </label>
-                                            <input type="date" class="form-control" id="paymentDate" name="payment_date" required>
-                                        </div>
-                                    </div>
-                                    <div class="col-md-6">
-                                        <div class="form-group">
-                                            <label for="paymentTime">
-                                                <i class="feather icon-clock mr-1"></i><?= __('time') ?>
-                                            </label>
-                                            <input type="text" class="form-control" id="paymentTime" name="payment_time" 
-                                                placeholder="HH:MM:SS" pattern="([01]?[0-9]|2[0-3]):[0-5][0-9]:[0-5][0-9]" 
-                                                title="Format: HH:MM:SS" required>
-                                            <small class="form-text text-muted"><?= __('format_hours_minutes_seconds_24_hour') ?></small>
-                                        </div>
-                                    </div>
-                                </div>
-
-                                <div class="row">
-                                    <div class="col-md-6">
-                                        <div class="form-group">
-                                            <label for="paymentAmount">
-                                                <i class="feather icon-dollar-sign mr-1"></i><?= __('amount') ?>
-                                            </label>
-                                            <input type="number" class="form-control" id="paymentAmount" 
-                                                   name="payment_amount" step="0.01" min="0.01" required 
-                                                   placeholder="<?= __('enter_amount') ?>">
-                                        </div>
-                                    </div>
-                                    <div class="col-md-6">
-                                        <div class="form-group">
-                                            <label for="paymentCurrency">
-                                                <i class="feather icon-dollar-sign mr-1"></i><?= __('currency') ?>
-                                            </label>
-                                            <select class="form-control" id="paymentCurrency" name="payment_currency" required>
-                                                <option value=""><?= __('select_currency') ?></option>
-                                                <option value="USD"><?= __('usd') ?></option>
-                                                <option value="AFS"><?= __('afs') ?></option>
-                                                <option value="EUR"><?= __('eur') ?></option>
-                                                <option value="DARHAM"><?= __('darham') ?></option>
-                                            </select>
-                                        </div>
-                                    </div>
-                                </div>
-
-                                <div class="form-group" id="exchangeRateField" style="display: none;">
-                                    <label for="transactionExchangeRate">
-                                        <i class="feather icon-refresh-cw mr-1"></i><?= __('exchange_rate') ?>
-                                    </label>
-                                    <input type="number" class="form-control" id="transactionExchangeRate"
-                                        name="exchange_rate" step="0.01" placeholder="Enter exchange rate">
-                                </div>
-
-                                <div class="form-group">
-                                    <label for="paymentDescription">
-                                        <i class="feather icon-file-text mr-1"></i><?= __('description') ?>
-                                    </label>
-                                    <textarea class="form-control" id="paymentDescription" 
-                                              name="payment_description" rows="2" required
-                                              placeholder="<?= __('enter_payment_description') ?>"></textarea>
-                                </div>
-
-                                <div class="text-right mt-3">
-                                    <button type="button" class="btn btn-secondary" data-toggle="collapse" 
-                                            data-target="#addTransactionForm">
-                                        <i class="feather icon-x mr-1"></i><?= __('cancel') ?>
-                                    </button>
-                                    <button type="submit" class="btn btn-primary">
-                                        <i class="feather icon-check mr-1"></i><?= __('add_transaction') ?>
-                                    </button>
-                                </div>
-                            </form>
-                        </div>
-                    </div>
-                </div>
-            </div>
-            <div class="modal-footer bg-light">
-                <button type="button" class="btn btn-secondary" data-dismiss="modal">
-                    <i class="feather icon-x mr-1"></i><?= __('close') ?>
-                </button>
-            </div>
-        </div>
-    </div>
-</div>
-
-
-
-<!-- Edit Transaction Modal -->
-<div class="modal fade" id="editTransactionModal" tabindex="-1" role="dialog">
-    <div class="modal-dialog" role="document">
-        <div class="modal-content">
-            <div class="modal-header bg-primary text-white">
-                <h5 class="modal-title">
-                    <i class="feather icon-edit mr-2"></i><?= __('edit_transaction') ?>
-                </h5>
-                <button type="button" class="close text-white" data-dismiss="modal" aria-label="Close">
-                    <span aria-hidden="true">&times;</span>
-                </button>
-            </div>
-            <div class="modal-body">
-                <form id="editTransactionForm">
-                    <input type="hidden" id="editTransactionId" name="transaction_id">
-                    <input type="hidden" id="editTicketId" name="ticket_id">
-                    <input type="hidden" id="originalAmount" name="original_amount">
-                    
-                    <div class="form-row">
-                        <div class="form-group col-md-6">
-                            <label for="editPaymentDate">
-                                <i class="feather icon-calendar mr-1"></i><?= __('date') ?>
-                            </label>
-                            <input type="date" class="form-control" id="editPaymentDate" name="payment_date" required>
-                        </div>
-                        <div class="form-group col-md-6">
-                            <label for="editPaymentTime">
-                                <i class="feather icon-clock mr-1"></i><?= __('time') ?>
-                            </label>
-                            <input type="text" class="form-control" id="editPaymentTime" name="payment_time" 
-                                placeholder="HH:MM:SS" pattern="([01]?[0-9]|2[0-3]):[0-5][0-9]:[0-5][0-9]" 
-                                title="Format: HH:MM:SS" required>
-                            <small class="form-text text-muted"><?= __('format_hours_minutes_seconds_24_hour') ?></small>
-                        </div>
-                    </div>
-                    
-                    <div class="form-group">
-                        <label for="editPaymentAmount">
-                            <i class="feather icon-dollar-sign mr-1"></i><?= __('amount') ?>
-                        </label>
-                        <input type="number" step="0.01" class="form-control" id="editPaymentAmount" name="payment_amount" required>
-                    </div>
-
-                    <div class="form-group" id="editExchangeRateField" style="display: none;">
-                        <label for="editExchangeRate">
-                            <i class="feather icon-refresh-cw mr-1"></i><?= __('exchange_rate') ?>
-                        </label>
-                        <input type="number" class="form-control" id="editExchangeRate"
-                            name="exchange_rate" step="0.01" placeholder="Enter exchange rate">
-                    </div>
-
-                    <div class="form-group">
-                        <label for="editPaymentDescription">
-                            <i class="feather icon-file-text mr-1"></i><?= __('description') ?>
-                        </label>
-                        <textarea class="form-control" id="editPaymentDescription" name="payment_description" rows="2" required></textarea>
-                    </div>
-                </form>
-            </div>
-            <div class="modal-footer">
-                <button type="button" class="btn btn-secondary" data-dismiss="modal">
-                    <i class="feather icon-x mr-1"></i><?= __('cancel') ?>
-                </button>
-                <button type="button" id="updateTransactionBtn" class="btn btn-primary">
-                    <i class="feather icon-save mr-1"></i><?= __('update_transaction') ?>
-                </button>
-            </div>
-        </div>
-    </div>
-</div>
-
-<!-- Multiple Ticket Invoice Modal -->
-<div class="modal fade" id="multiTicketInvoiceModal" tabindex="-1" role="dialog">
-    <div class="modal-dialog modal-lg" role="document">
-        <div class="modal-content">
-            <div class="modal-header bg-primary text-white">
-                <h5 class="modal-title">
-                    <i class="feather icon-file-text mr-2"></i><?= __('generate_combined_invoice') ?>
-                </h5>
-                <button type="button" class="close text-white" data-dismiss="modal" aria-label="Close">
-                    <span aria-hidden="true">&times;</span>
-                </button>
-            </div>
-            <div class="modal-body">
-                <div class="alert alert-info mb-3">
-                    <i class="feather icon-info mr-2"></i><?= __('select_multiple_tickets_to_generate_a_combined_invoice') ?>
-                </div>
-                
-                <form id="multiTicketInvoiceForm">
-                    <!-- Client Filter Section -->
-                    <div class="form-group">
-                        <label for="clientFilter"><?= __('filter_by_client') ?></label>
-                        <select class="form-control" id="clientFilter" name="clientFilter">
-                            <option value=""><?= __('all_clients') ?></option>
-                            <?php
-                            // Fetch clients for the filter dropdown
-                            $clientsQuery = "SELECT id, name FROM clients WHERE tenant_id = $tenant_id AND branch_id = $branch_id ORDER BY name";
-                            $clientsResult = $conn->query($clientsQuery);
-                            while ($client = $clientsResult->fetch_assoc()) {
-                                echo "<option value='" . htmlspecialchars($client['id']) . "'>" . 
-                                     htmlspecialchars($client['name']) . "</option>";
-                            }
-                            ?>
-                        </select>
-                    </div>
-
-                    <div class="form-group">
-                        <label for="clientForInvoice"><?= __('invoice_client') ?></label>
-                        <select class="form-control" id="clientForInvoice" name="clientForInvoice" required>
-                            <option value=""><?= __('select_client') ?></option>
-                            <?php
-                            // Reset the clients result pointer
-                            $clientsResult->data_seek(0);
-                            while ($client = $clientsResult->fetch_assoc()) {
-                                echo "<option value='" . htmlspecialchars($client['id']) . "'>" . 
-                                     htmlspecialchars($client['name']) . "</option>";
-                            }
-                            ?>
-                        </select>
-                    </div>
-                    
-                    <div class="form-group">
-                        <label for="invoiceComment"><?= __('comments_notes') ?></label>
-                        <textarea class="form-control" id="invoiceComment" name="invoiceComment" rows="2"></textarea>
-                    </div>
-
-                    <!-- Include Charges Toggle -->
-                    <div class="form-group">
-                        <div class="custom-control custom-switch">
-                            <input type="checkbox" class="custom-control-input" id="includeCharges" name="includeCharges">
-                            <label class="custom-control-label" for="includeCharges"><?= __('include_charges_in_invoice') ?></label>
-                        </div>
-                    </div>
-                    
-                    <div class="table-responsive">
-                        <table class="table table-hover table-bordered" id="ticketSelectionTable">
-                            <thead class="thead-light">
-                                <tr>
-                                    <th width="40">
-                                        <div class="custom-control custom-checkbox">
-                                            <input type="checkbox" class="custom-control-input" id="selectAllTickets">
-                                            <label class="custom-control-label" for="selectAllTickets"></label>
-                                        </div>
-                                    </th>
-                                    <th><?= __('passenger') ?></th>
-                                    <th><?= __('pnr') ?></th>
-                                    <th><?= __('sector') ?></th>
-                                    <th><?= __('flight') ?></th>
-                                    <th><?= __('date') ?></th>
-                                    <th><?= __('charges') ?></th>
-                                    <th><?= __('refund_amount') ?></th>
-                                </tr>
-                            </thead>
-                            <tbody id="ticketsForInvoiceBody">
-                                <!-- Tickets will be loaded here dynamically -->
-                            </tbody>
-                            <tfoot>
-                                <tr class="table-primary">
-                                    <td colspan="6" class="text-right font-weight-bold"><?= __('total') ?>:</td>
-                                    <td id="invoiceTotal" class="font-weight-bold">0.00</td>
-                                </tr>
-                            </tfoot>
-                        </table>
-                    </div>
-                    
-                    <div class="form-group mt-3">
-                        <label for="invoiceCurrency"><?= __('currency') ?></label>
-                        <select class="form-control" id="invoiceCurrency" name="invoiceCurrency" required>
-                            <option value=""><?= __('select_currency') ?></option>
-                            <option value="USD"><?= __('usd') ?></option>
-                            <option value="AFS"><?= __('afs') ?></option>
-                        </select>
-                    </div>
-                </form>
-            </div>
-            <div class="modal-footer">
-                <button type="button" class="btn btn-secondary" data-dismiss="modal"><?= __('close') ?></button>
-                <button type="button" class="btn btn-primary" id="generateCombinedInvoice">
-                    <i class="feather icon-file-text mr-2"></i><?= __('generate_invoice') ?>
-                </button>
-            </div>
-        </div>
-    </div>
-</div>
-
-<!-- Add a floating action button for launching the multi-ticket invoice modal -->
-<div id="floatingActionButton" class="position-fixed" style="bottom: 80px; z-index: 1050;">    <button type="button" class="btn btn-primary btn-lg shadow" id="launchMultiTicketInvoice" title="<?= __('generate_multi_ticket_invoice') ?>">
-        <i class="feather icon-file-text"></i>
-    </button>
-</div>
 
 <style>
     /* Enhanced Card Styles */
@@ -1047,98 +471,17 @@ window.translations = {
 </script>
 
 <!-- Custom JS -->
-<script src="js/refund_ticket/multi_ticket.js<?= $version ?>"></script>
-<script src="js/refund_ticket/search.js<?= $version ?>"></script>
-<script src="js/refund_ticket/transaction_manager.js<?= $version ?>"></script>
-<script src="js/refund_ticket/datatable.js<?= $version ?>"></script>
-<script src="js/refund_ticket/document_actions.js<?= $version ?>"></script>
-<script src="js/refund_ticket/table_search.js<?= $version ?>"></script>
-<script src="js/refund_ticket/select.js<?= $version ?>"></script>
+<script src="../js/refund_ticket/multi_ticket.js<?= $version ?>"></script>
+<script src="../js/refund_ticket/search.js<?= $version ?>"></script>
+<script src="../js/refund_ticket/transaction_manager.js<?= $version ?>"></script>
+<script src="../js/refund_ticket/datatable.js<?= $version ?>"></script>
+<script src="../js/refund_ticket/document_actions.js<?= $version ?>"></script>
+<script src="../js/refund_ticket/table_search.js<?= $version ?>"></script>
+<script src="../js/refund_ticket/select.js<?= $version ?>"></script>
+<script src="../js/refund_ticket/main.js<?= $version ?>"></script>
 
 <!-- Include Admin Footer -->
 <?php include '../includes/admin_footer.php'; ?>
-<script>
-function printRefundAgreement(ticketId) {
-    if (!ticketId) {
-        alert('<?= __('ticket_id_is_missing') ?>');
-        return;
-    }
 
-    // Open the printable agreement page in a new window
-    window.open('print_ticket_refund_agreement.php?id=' + ticketId, '_blank');
-}
-
-function deleteTicket(id) {
-    Swal.fire({
-        title: 'Are you sure?',
-        text: "You won't be able to revert this!",
-        icon: 'warning',
-        showCancelButton: true,
-        confirmButtonColor: '#3085d6',
-        cancelButtonColor: '#d33',
-        confirmButtonText: 'Yes, delete it!'
-    }).then((result) => {
-        if (result.isConfirmed) {
-            // Make the fetch request
-            fetch('delete_ticket_rf.php', {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ id }),
-            })
-            .then(response => response.json())
-            .then(data => {
-                if (data.success) {
-                    Swal.fire({
-                        icon: 'success',
-                        title: 'Success',
-                        text: data.message || 'Ticket deleted successfully'
-                    }).then(() => {
-                        location.reload(); // Or call a table reload function instead of full reload
-                    });
-                } else {
-                    Swal.fire({
-                        icon: 'error',
-                        title: 'Error',
-                        text: data.message || 'Error deleting ticket'
-                    });
-                }
-            })
-            .catch(error => {
-                console.error('Error deleting Ticket:', error);
-                Swal.fire({
-                    icon: 'error',
-                    title: 'Error',
-                    text: 'An unexpected error occurred'
-                });
-            });
-        }
-    });
-}
-
-
-
-                                        </script>
-                                         <script>
-                                    $(document).on('click', '.generate-invoice', function () {
-                                    const ticketId = $(this).data('ticket-id');
-                                    if (!ticketId) {
-                                        alert('<?= __('ticket_id_is_missing') ?>');
-                                        return;
-                                    }
-                                    window.location.href = `rt_generateInvoice.php?ticketId=${ticketId}`;
-                                });
-
-                                </script>
-                                <script>
-// Search functionality
-$(document).ready(function() {
-    $("#ticketSearch").on("keyup", function() {
-        var value = $(this).val().toLowerCase();
-        $("table tbody tr").filter(function() {
-            $(this).toggle($(this).text().toLowerCase().indexOf(value) > -1)
-        });
-    });
-});
-</script>
 </body>
 </html>

@@ -57,10 +57,7 @@
       
       // Determine the correct AJAX URL with more logging
       var possiblePaths = [
-          'ajax/get_family_members1.php',
-          'admin/ajax/get_family_members1.php',
-          '../ajax/get_family_members1.php',
-          'get_family_members1.php'
+          '../api/umrah/get_family_members1.php'
       ];
       
       // Try to find the correct path dynamically
@@ -415,7 +412,7 @@
           var currentLang = typeof currentLang !== 'undefined' ? currentLang : 'en';
           
           // Build URL with parameters
-          var url = 'generate_family_cancellation.php?family_id=' + encodeURIComponent(familyId);
+          var url = '../api/umrah/generate_family_cancellation.php?family_id=' + encodeURIComponent(familyId);
           url += '&booking_id=' + encodeURIComponent(bookingId);
           url += '&cancellation_reason=' + encodeURIComponent(cancellationReason);
           url += '&returned_items=' + encodeURIComponent(JSON.stringify(returnedItems));
@@ -717,7 +714,7 @@ function generateFamilyCancellationForm(lang) {
         console.groupEnd();
         
         // Build URL with parameters
-        var url = 'generate_family_cancellation.php?family_id=' + encodeURIComponent(familyId);
+        var url = '../api/umrah/generate_family_cancellation.php?family_id=' + encodeURIComponent(familyId);
         url += '&booking_id=' + encodeURIComponent(bookingId);
         url += '&cancellation_reason=' + encodeURIComponent(cancellationReason);
         url += '&returned_items=' + encodeURIComponent(JSON.stringify(returnedItems));

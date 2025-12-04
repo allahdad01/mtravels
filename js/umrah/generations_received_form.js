@@ -60,7 +60,7 @@
         });
 
         // Fetch existing booking data to pre-fill passport status and mahram note
-        fetch(`get_umrah_member.php?booking_id=${bookingId}`)
+        fetch(`../api/umrah/get_umrah_member.php?booking_id=${bookingId}`)
             .then(response => response.json())
             .then(data => {
                 if (data.success && data.member) {
@@ -152,7 +152,7 @@
                     return; // User closed modal without selection
                 }
 
-                const url = `generate_umrah_document_receipt.php?booking_id=${bookingId}&lang=${lang}&additional_notes=${encodeURIComponent(additionalNotes)}`;
+                const url = `../api/umrah/generate_umrah_document_receipt.php?booking_id=${bookingId}&lang=${lang}&additional_notes=${encodeURIComponent(additionalNotes)}`;
                 const formTitle = 'generating_document_receipt';
 
                 // Add document details to the URL parameters

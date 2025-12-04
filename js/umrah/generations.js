@@ -23,7 +23,7 @@ function generateTazminAgreement(bookingId) {
         if (result.isConfirmed) {
             var guarantorName = result.value;
             // Open Tazmin agreement in new window
-            window.open('templates/tazmin_agreement_template.php?pilgrim_ids=' + bookingId + '&guarantor_name=' + encodeURIComponent(guarantorName), '_blank');
+            window.open('../api/umrah/tazmin_agreement_template.php?pilgrim_ids=' + bookingId + '&guarantor_name=' + encodeURIComponent(guarantorName), '_blank');
         }
     });
 }
@@ -40,7 +40,7 @@ function generateFamilyTazmin(familyId) {
     }
 
     // First get all booking IDs for this family
-    fetch('ajax/get_family_bookings.php?family_id=' + familyId)
+    fetch('../api/umrah/get_family_bookings.php?family_id=' + familyId)
         .then(response => response.json())
         .then(data => {
             if (data.success && data.bookings && data.bookings.length > 0) {
@@ -60,7 +60,7 @@ function generateFamilyTazmin(familyId) {
                         var guarantorName = result.value;
                         // Open Tazmin agreement in new window with all booking IDs
                         const bookingIds = data.bookings.map(booking => booking.booking_id).join(',');
-                        window.open('templates/tazmin_agreement_template.php?pilgrim_ids=' + bookingIds + '&guarantor_name=' + encodeURIComponent(guarantorName), '_blank');
+                        window.open('../api/umrah/tazmin_agreement_template.php?pilgrim_ids=' + bookingIds + '&guarantor_name=' + encodeURIComponent(guarantorName), '_blank');
                     }
                 });
             } else {

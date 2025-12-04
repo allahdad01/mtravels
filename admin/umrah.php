@@ -722,32 +722,32 @@ require_once('../includes/conn.php');
         });
     </script>
 
-    <script src="js/umrah/transaction_manager.js"></script>
-    <script src="js/umrah/bookings.js"></script>
-    <script src="js/umrah/edit_bookings.js"></script>
-    <script src="js/umrah/refund.js?v=1"></script>
-    <script src="js/umrah/cancellation_reapply.js"></script>
-    <script src="js/umrah/idcard.js"></script>
-    <script src="js/umrah/groupTickets.js"></script>
-    <script src="js/umrah/family.js"></script>
-    <script src="js/umrah/generations.js"></script>
-    <script src="js/umrah/generations_received_form.js"></script>
-    <script src="js/umrah/generate_completion.js"></script>
-    <script src="js/umrah/generate_cancelation.js"></script>
-    <script src="js/umrah-forms.js"></script>
-    <script src="js/umrah/family_documents.js"></script>
-    <script src="js/umrah/generate_bankandumrah.js"></script>
-    <script src="js/umrah/date_change_request.js"></script>
-    <script src="js/umrah/multi_ticket.js"></script>
-    <script src="js/umrah/add_member.js"></script>
-    <script src="js/umrah/edit_member.js"></script>
-    <script src="js/umrah/family_cancellation.js"></script>
-    <script src="js/umrah/view_member_details.js"></script>
-    <script src="js/umrah/family_transaction_manager.js"></script>
+    <script src="../js/umrah/transaction_manager.js"></script>
+    <script src="../js/umrah/bookings.js"></script>
+    <script src="../js/umrah/edit_bookings.js"></script>
+    <script src="../js/umrah/refund.js?v=1"></script>
+    <script src="../js/umrah/cancellation_reapply.js"></script>
+    <script src="../js/umrah/idcard.js"></script>
+    <script src="../js/umrah/groupTickets.js"></script>
+    <script src="../js/umrah/family.js"></script>
+    <script src="../js/umrah/generations.js"></script>
+    <script src="../js/umrah/generations_received_form.js"></script>
+    <script src="../js/umrah/generate_completion.js"></script>
+    <script src="../js/umrah/generate_cancelation.js"></script>
+    <script src="../js/umrah-forms.js"></script>
+    <script src="../js/umrah/family_documents.js"></script>
+    <script src="../js/umrah/generate_bankandumrah.js"></script>
+    <script src="../js/umrah/date_change_request.js"></script>
+    <script src="../js/umrah/multi_ticket.js"></script>
+    <script src="../js/umrah/add_member.js"></script>
+    <script src="../js/umrah/edit_member.js"></script>
+    <script src="../js/umrah/family_cancellation.js"></script>
+    <script src="../js/umrah/view_member_details.js"></script>
+    <script src="../js/umrah/family_transaction_manager.js"></script>
     <!-- Include SweetAlert2 JS -->
     <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11.7.32/dist/sweetalert2.all.min.js"></script>
     <!-- Include Umrah Forms JS -->
-    <script src="js/umrah-forms.js"></script>
+    <script src="../js/umrah/umrah-forms.js"></script>
 
     <script>
         // Auto-expand family members when searching

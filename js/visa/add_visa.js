@@ -7,7 +7,7 @@ document.getElementById('addVisaForm').addEventListener('submit', function (even
     submitButton.disabled = true;
     submitButton.innerHTML = '<i class="fas fa-spinner fa-spin"></i> processing...';
 
-    fetch('add_visa.php', {
+    fetch('../api/visa/add_visa.php', {
     method: 'POST',
     body: formData
 })

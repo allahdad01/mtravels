@@ -93,7 +93,7 @@ $(document).ready(function() {
         
         // Send AJAX request
         $.ajax({
-            url: 'process_umrah_refund.php',
+            url: '../api/umrah/process_umrah_refund.php',
             type: 'POST',
             data: {
                 booking_id: bookingId,
@@ -202,10 +202,10 @@ function generateCancellationForm(bookingId) {
 let currentBookingId = null;
 let currentFormType = null;
 const formEndpoints = {
-    agreement: 'generate_umrah_agreement.php',
-    completion: 'generate_umrah_completion.php',
-    cancellation: 'generate_umrah_cancellation.php',
-    receipt: 'generate_umrah_document_receipt.php'
+    agreement: '../api/umrah/generate_umrah_agreement.php',
+    completion: '../api/umrah/generate_umrah_completion.php',
+    cancellation: '../api/umrah/generate_umrah_cancellation.php',
+    receipt: '../api/umrah/generate_umrah_document_receipt.php'
 };
 const formTitles = {
     agreement: 'generating_agreement',

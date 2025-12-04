@@ -153,7 +153,7 @@ const transactionManager = {
         
         // Load ticket details and transaction history
         $.ajax({
-            url: 'get_date_change_ticket_bookings.php',
+            url: '../api/ticket_date_change/get_date_change_ticket_bookings.php',
             type: 'GET',
             data: { id: ticketId },
             dataType: 'json',
@@ -220,7 +220,7 @@ const transactionManager = {
         const totalAmount = parseFloat(totalAmountText.split(' ')[1]) || 0;
     
         $.ajax({
-            url: 'get_date_change_ticket_transactions.php',
+            url: '../api/ticket_date_change/get_date_change_ticket_transactions.php',
             type: 'GET',
             data: { ticket_id: ticketId },
             dataType: 'json',
@@ -389,7 +389,7 @@ const transactionManager = {
         }
 
         $.ajax({
-            url: 'add_date_change_ticket_payment.php',
+            url: '../api/ticket_date_change/add_date_change_ticket_payment.php',
             type: 'POST',
             data: formData,
             processData: false,
@@ -457,7 +457,7 @@ const transactionManager = {
         console.log('Loading transaction for edit:', transactionId);
 
         $.ajax({
-            url: 'get_date_change_transaction.php',
+            url: '../api/ticket_date_change/get_date_change_transaction.php',
             type: 'GET',
             data: { id: transactionId },
             dataType: 'json',
@@ -561,7 +561,7 @@ const transactionManager = {
         }
 
         $.ajax({
-            url: 'update_date_change_transaction.php',
+            url: '../api/ticket_date_change/update_date_change_transaction.php',
             type: 'POST',
             data: formData,
             processData: false,
@@ -624,7 +624,7 @@ const transactionManager = {
             const amount = parseFloat(amountText.split(' ')[1]);
 
             $.ajax({
-                url: 'delete_date_change_ticket_transaction.php',
+                url: '../api/ticket_date_change/delete_date_change_ticket_transaction.php',
                 type: 'POST',
                 data: {
                     transaction_id: transactionId,
@@ -713,7 +713,7 @@ const transactionManager = {
 };
     // Print receipt function
     function printReceipt(transactionId) {
-        window.open(`print_date_change_receipt.php?id=${transactionId}`, '_blank');
+        window.open(`../api/ticket_date_change/print_date_change_receipt.php?id=${transactionId}`, '_blank');
     }
 // Initialize transaction manager when document is ready
 $(document).ready(function() {

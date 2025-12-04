@@ -2,7 +2,7 @@
  $('.print-category').on('click', function() {
     const categoryId = $(this).data('id');
     // Open the PDF in a new window/tab
-    window.open('generate_category_pdf.php?category_id=' + categoryId, '_blank');
+    window.open('../api/expense/generate_category_pdf.php?category_id=' + categoryId, '_blank');
 });
 
 // Category form submission
@@ -12,7 +12,7 @@ $('#categoryForm').on('submit', function(e) {
     const categoryName = $('#categoryName').val();
     
     $.ajax({
-        url: 'expense_actions.php',
+        url: '../api/expense/expense_actions.php',
         type: 'POST',
         data: {
             action: 'save_category',
@@ -67,7 +67,7 @@ $('#expenseForm').on('submit', function(e) {
     submitBtn.prop('disabled', true);
     
     $.ajax({
-        url: 'expense_actions.php',
+        url: '../api/expense/expense_actions.php',
         type: 'POST',
         data: formData,
         dataType: 'json',
@@ -111,7 +111,7 @@ $('.delete-category').on('click', function() {
         const categoryId = $(this).data('id');
         
         $.ajax({
-            url: 'expense_actions.php',
+            url: '../api/expense/expense_actions.php',
             type: 'POST',
             data: {
                 action: 'delete_category',
@@ -158,7 +158,7 @@ $('.edit-expense').on('click', function() {
     
     // Fetch additional expense details like receipt number and file
     $.ajax({
-        url: 'expense_actions.php',
+        url: '../api/expense/expense_actions.php',
         type: 'POST',
         data: {
             action: 'get_expense_details',
@@ -208,7 +208,7 @@ $('.delete-expense').on('click', function() {
         const expenseId = $(this).data('id');
         
         $.ajax({
-            url: 'expense_actions.php',
+            url: '../api/expense/expense_actions.php',
             type: 'POST',
             data: {
                 action: 'delete_expense',
@@ -340,7 +340,7 @@ const editExpenseId = searchParams.get('edit_expense');
 if (editExpenseId) {
     // Fetch expense details and open the modal
     $.ajax({
-        url: 'expense_actions.php',
+        url: '../api/expense/expense_actions.php',
         type: 'POST',
         data: {
             action: 'get_expense',

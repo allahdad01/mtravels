@@ -34,6 +34,15 @@ $branch_id = $_SESSION['branch_id'];
 error_log("get_datechange_details.php - Input parameters: period=$period, filteredDate=$filteredDate, type=$type");
 
 // Set up date condition based on period and filtered date
+$params = [
+    ':tenant_id_tb' => $tenant_id,
+    ':branch_id_tb' => $branch_id,
+    ':tenant_id_ma' => $tenant_id,
+    ':branch_id_ma' => $branch_id,
+    ':tenant_id' => $tenant_id,
+    ':branch_id' => $branch_id
+];
+
 if ($period === 'daily') {
     if ($filteredDate) {
         $dailyDate = $filteredDate;
@@ -41,7 +50,7 @@ if ($period === 'daily') {
         $dailyDate = date('Y-m-d');
     }
     $dateCondition = "DATE(dt.created_at) = :date";
-    $params = [':date' => $dailyDate];
+    $params[':date'] = $dailyDate;
     
 } elseif ($period === 'monthly') {
     if ($filteredDate) {
@@ -54,7 +63,8 @@ if ($period === 'daily') {
         $month = date('m');
     }
     $dateCondition = "MONTH(dt.created_at) = :month AND YEAR(dt.created_at) = :year";
-    $params = [':month' => $month, ':year' => $year];
+    $params[':month'] = $month;
+    $params[':year'] = $year;
     
 } elseif ($period === 'yearly') {
     if ($filteredDate) {
@@ -63,7 +73,7 @@ if ($period === 'daily') {
         $year = date('Y');
     }
     $dateCondition = "YEAR(dt.created_at) = :year";
-    $params = [':year' => $year];
+    $params[':year'] = $year;
     
 } else {
     echo json_encode(['status' => 'error', 'message' => 'Invalid period']);
@@ -81,14 +91,10 @@ try {
         dt.currency,
         ma.name as paid_to
     FROM date_change_tickets dt
-    LEFT JOIN ticket_bookings tb ON dt.ticket_id = tb.id AND tb.tenant_id = ? AND tb.branch_id = ?
-    LEFT JOIN main_account ma ON dt.paid_to = ma.id AND ma.tenant_id = ? AND ma.branch_id = ?
-    WHERE $dateCondition AND dt.tenant_id = ? AND dt.branch_id = ?
+    LEFT JOIN ticket_bookings tb ON dt.ticket_id = tb.id AND tb.tenant_id = :tenant_id_tb AND tb.branch_id = :branch_id_tb
+    LEFT JOIN main_account ma ON dt.paid_to = ma.id AND ma.tenant_id = :tenant_id_ma AND ma.branch_id = :branch_id_ma
+    WHERE $dateCondition AND dt.tenant_id = :tenant_id AND dt.branch_id = :branch_id
     ORDER BY dt.created_at DESC";
-    
-    // Add branch_id parameters for JOINs and WHERE clause
-    $branchParams = [$tenant_id, $branch_id, $tenant_id, $branch_id, $tenant_id, $branch_id];
-    $params = array_merge($branchParams, $params);
 
     error_log("Executing query: $query with params: " . json_encode($params));
     $stmt = $pdo->prepare($query);

@@ -57,7 +57,7 @@ document.addEventListener('DOMContentLoaded', function() {
         // Send the data to a new page to generate the invoice
         const form = document.createElement('form');
         form.method = 'POST';
-        form.action = 'generate_multi_ticket_refund_invoice.php';
+        form.action = '../api/ticket_refund/generate_multi_ticket_refund_invoice.php';
         form.target = '_blank';
         
         const hiddenField = document.createElement('input');
@@ -78,7 +78,7 @@ document.addEventListener('DOMContentLoaded', function() {
     function loadTicketsForInvoice() {
         const clientFilter = document.getElementById('clientFilter').value;
         
-        fetch('fetch_ticket_refund_for_invoice.php?client_id=' + clientFilter)
+        fetch('../api/ticket_refund/fetch_ticket_refund_for_invoice.php?client_id=' + clientFilter)
             .then(response => response.json())
             .then(data => {
                 if (data.status === 'success') {

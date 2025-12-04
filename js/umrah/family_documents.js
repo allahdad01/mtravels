@@ -65,11 +65,11 @@ function generateDocumentWithLanguage(language) {
     switch (type) {
         
         case 'agreement':
-            url = `generate_family_agreement.php?family_id=${familyId}&lang=${language}`;
+            url = `../api/umrah/generate_family_agreement.php?family_id=${familyId}&lang=${language}`;
             window.open(url, '_blank');
             break;
         case 'completion':
-            url = `generate_family_completion.php?family_id=${familyId}&lang=${language}`;
+            url = `../api/umrah/generate_family_completion.php?family_id=${familyId}&lang=${language}`;
             window.open(url, '_blank');
             break;
         
@@ -79,7 +79,7 @@ function generateDocumentWithLanguage(language) {
 function initializeDocumentDetailsTableForFamily(familyId) {
     // Get family members first
     $.ajax({
-        url: 'ajax/get_family_members.php',
+        url: '../api/umrah/get_family_members.php',
         type: 'GET',
         data: { family_id: familyId },
         dataType: 'json', // Explicitly set dataType to json

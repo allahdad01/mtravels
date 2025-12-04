@@ -541,6 +541,131 @@ $stmt = $pdo->prepare("SELECT id, name FROM main_account where status = 'active'
 $stmt->bindParam(1, $tenant_id, PDO::PARAM_INT);
 $stmt->execute();
 $main_accounts = $stmt->fetchAll(PDO::FETCH_ASSOC);
+
+
+
+// Validate transaction_id
+$transaction_id = isset($_POST['transaction_id']) ? DbSecurity::validateInput($_POST['transaction_id'], 'int', ['min' => 0]) : null;
+
+// Validate delete_transaction
+$delete_transaction = isset($_POST['delete_transaction']) ? DbSecurity::validateInput($_POST['delete_transaction'], 'string', ['maxlength' => 255]) : null;
+
+// Validate paid_to
+$paid_to = isset($_POST['paid_to']) ? DbSecurity::validateInput($_POST['paid_to'], 'string', ['maxlength' => 255]) : null;
+
+// Validate description
+$description = isset($_POST['description']) ? DbSecurity::validateInput($_POST['description'], 'string', ['maxlength' => 255]) : null;
+
+// Validate receipt
+$receipt = isset($_POST['receipt']) ? DbSecurity::validateInput($_POST['receipt'], 'string', ['maxlength' => 255]) : null;
+
+// Validate payment_date
+$payment_date = isset($_POST['payment_date']) ? DbSecurity::validateInput($_POST['payment_date'], 'date') : null;
+
+// Validate amount
+$amount = isset($_POST['amount']) ? DbSecurity::validateInput($_POST['amount'], 'float', ['min' => 0]) : null;
+
+// Validate creditor_id
+$creditor_id = isset($_POST['creditor_id']) ? DbSecurity::validateInput($_POST['creditor_id'], 'int', ['min' => 0]) : null;
+
+// Validate pay
+$pay = isset($_POST['pay']) ? DbSecurity::validateInput($_POST['pay'], 'string', ['maxlength' => 255]) : null;
+
+// Validate currency
+$currency = isset($_POST['currency']) ? DbSecurity::validateInput($_POST['currency'], 'currency') : null;
+
+// Validate balance
+$balance = isset($_POST['balance']) ? DbSecurity::validateInput($_POST['balance'], 'float', ['min' => 0]) : null;
+
+// Validate address
+$address = isset($_POST['address']) ? DbSecurity::validateInput($_POST['address'], 'string', ['maxlength' => 255]) : null;
+
+// Validate phone
+$phone = isset($_POST['phone']) ? DbSecurity::validateInput($_POST['phone'], 'string', ['maxlength' => 255]) : null;
+
+// Validate email
+$email = isset($_POST['email']) ? DbSecurity::validateInput($_POST['email'], 'email') : null;
+
+// Validate name
+$name = isset($_POST['name']) ? DbSecurity::validateInput($_POST['name'], 'string', ['maxlength' => 255]) : null;
+
+// Validate add_creditor
+$add_creditor = isset($_POST['add_creditor']) ? DbSecurity::validateInput($_POST['add_creditor'], 'string', ['maxlength' => 255]) : null;
+
+// Add the delete creditor handler at the end of the file
+if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['delete_creditor'])) {
+    $creditor_id = $_POST['creditor_id'];
+    $creditor_balance = $_POST['creditor_balance'];
+    $creditor_currency = $_POST['creditor_currency'];
+    
+    try {
+        $conn->begin_transaction();
+        
+        // Check if creditor has any main account transactions
+        $stmt = $conn->prepare("SELECT mt.*, ma.id as main_account_id 
+                              FROM main_account_transactions mt 
+                              JOIN main_account ma ON mt.main_account_id = ma.id 
+                              WHERE mt.transaction_of = 'creditor' 
+                              AND mt.reference_id = ? 
+                              AND mt.type = 'credit'
+                              ORDER BY mt.created_at ASC LIMIT 1");
+        $stmt->bind_param("i", $creditor_id);
+        $stmt->execute();
+        $result = $stmt->get_result();
+        $initial_transaction = $result->fetch_assoc();
+
+        if ($initial_transaction) {
+            // Get main account balance column based on currency
+            $balance_column = strtolower($creditor_currency) . '_balance';
+            if ($creditor_currency == 'DARHAM') {
+                $balance_column = 'darham_balance';
+            } elseif ($creditor_currency == 'EUR') {
+                $balance_column = 'euro_balance';
+            } elseif ($creditor_currency == 'USD') {
+                $balance_column = 'usd_balance';
+            } elseif ($creditor_currency == 'AFS') {
+                $balance_column = 'afs_balance';
+            }
+
+            // Update all subsequent transaction balances to remove the creditor's balance
+            $stmt = $conn->prepare("
+                UPDATE main_account_transactions 
+                SET balance = balance - ?
+                WHERE main_account_id = ? 
+                AND currency = ? 
+                AND id > ? 
+                AND id != ?
+            ");
+            $stmt->bind_param("dissi", $creditor_balance, $initial_transaction['main_account_id'], $creditor_currency, $initial_transaction['id'], $initial_transaction['id']);
+            $stmt->execute();
+
+            // Update main account balance
+            $stmt = $conn->prepare("UPDATE main_account SET $balance_column = $balance_column - ? WHERE id = ?");
+            $stmt->bind_param("di", $creditor_balance, $initial_transaction['main_account_id']);
+            $stmt->execute();
+
+            // Delete all transactions related to this creditor
+            $stmt = $conn->prepare("DELETE FROM main_account_transactions WHERE transaction_of = 'creditor' AND reference_id = ?");
+            $stmt->bind_param("i", $creditor_id);
+            $stmt->execute();
+        }
+
+        // Delete the creditor
+        $stmt = $conn->prepare("DELETE FROM creditors WHERE id = ?");
+        $stmt->bind_param("i", $creditor_id);
+        $stmt->execute();
+
+        $conn->commit();
+        $_SESSION['success_message'] = __("creditor_deleted_successfully");
+        header('Location: ' . $redirect_url);
+        exit();
+    } catch (Exception $e) {
+        $conn->rollback();
+        $_SESSION['error_message'] = __("error_deleting_creditor") . ": " . $e->getMessage();
+        header('Location: ' . $redirect_url);
+        exit();
+    }
+}
 ?>
 
 <?php include '../includes/header.php'; ?>

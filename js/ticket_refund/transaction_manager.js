@@ -73,7 +73,7 @@ const transactionManager = {
         }
     
         $.ajax({
-            url: 'get_refund_ticket_bookings.php',
+            url: '../api/ticket_refund/get_refund_ticket_bookings.php',
             type: 'GET',
             data: { id: ticketId },
             dataType: 'json',
@@ -118,7 +118,7 @@ const transactionManager = {
     const totalAmount = parseFloat(totalAmountText.split(' ')[1]) || 0;
 
     $.ajax({
-        url: 'get_refund_ticket_transactions.php',
+        url: '../api/ticket_refund/get_refund_ticket_transactions.php',
         type: 'GET',
         data: { ticket_id: ticketId },
         dataType: 'json',
@@ -249,7 +249,7 @@ const transactionManager = {
         
         // Fetch transaction details
         $.ajax({
-            url: 'get_refund_transaction_details.php',
+            url: '../api/ticket_refund/get_refund_transaction_details.php',
             type: 'GET',
             data: { transaction_id: transactionId },
             dataType: 'json',
@@ -327,7 +327,7 @@ const transactionManager = {
         }
         
        $.ajax({
-    url: 'update_refund_transaction.php',
+    url: '../api/ticket_refund/update_refund_transaction.php',
     type: 'POST',
     data: formData,
     processData: false,
@@ -400,7 +400,7 @@ const transactionManager = {
         }
 
         $.ajax({
-            url: 'add_refund_ticket_payment.php',
+            url: '../api/ticket_refund/add_refund_ticket_payment.php',
             type: 'POST',
             data: formData,
             processData: false,
@@ -473,7 +473,7 @@ const transactionManager = {
     performDeleteTransaction: function(transactionId, ticketId, amount) {
 
        $.ajax({
-    url: 'delete_refund_ticket_transaction.php',
+    url: '../api/ticket_refund/delete_refund_ticket_transaction.php',
     type: 'POST',
     data: {
         transaction_id: transactionId,
@@ -510,7 +510,7 @@ const transactionManager = {
 };
     // Print receipt function
     function printReceipt(transactionId) {
-        window.open(`print_refund_receipt.php?id=${transactionId}`, '_blank');
+        window.open(`../api/ticket_refund/print_refund_receipt.php?id=${transactionId}`, '_blank');
     }
 // Initialize transaction manager when document is ready
 $(document).ready(function() {

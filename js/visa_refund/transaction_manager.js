@@ -58,7 +58,7 @@
         // Load transaction history
         loadTransactionHistory: function(refundId) {
             $.ajax({
-                url: 'get_visa_refund_transactions.php',
+                url: '../api/visa/get_visa_refund_transactions.php',
                 type: 'GET',
                 data: { refund_id: refundId },
                 dataType: 'json',
@@ -249,7 +249,7 @@
             }
 
             $.ajax({
-                url: 'process_visa_refund_transaction.php',
+                url: '../api/visa/process_visa_refund_transaction.php',
                 type: 'POST',
                 data: formData,
                 processData: false,
@@ -305,7 +305,7 @@
             
             // Fetch transaction details
             $.ajax({
-                url: 'get_visa_transaction.php',
+                url: '../api/visa/get_visa_transaction.php',
                 type: 'GET',
                 data: { transaction_id: transactionId },
                 dataType: 'json',
@@ -371,7 +371,7 @@
             const refundId = $('#refund_id').val();
             
             $.ajax({
-                url: 'delete_visa_refund_transaction.php',
+                url: '../api/visa/delete_visa_refund_transaction.php',
                 type: 'POST',
                 data: {
                     transaction_id: transactionId,
@@ -422,7 +422,7 @@
         
         // Fetch refund details
         $.ajax({
-            url: 'get_refund_details.php',
+            url: '../api/visa/get_refund_details.php',
             type: 'GET',
             data: { id: refundId },
             dataType: 'json',
@@ -514,7 +514,7 @@
         }
         
         $.ajax({
-            url: 'update_visa_transaction.php',
+            url: '../api/visa/update_visa_transaction.php',
             type: 'POST',
             data: formData,
             processData: false,

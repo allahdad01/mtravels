@@ -33,7 +33,12 @@ $type = $_POST['type'] ?? 'ticket';
 error_log("get_ticket_details.php - Input parameters: period=$period, filteredDate=$filteredDate, type=$type");
 
 // Set up date condition
-$params = [':tenant_id' => $tenant_id, ':branch_id' => $branch_id];
+$params = [
+    ':tenant_id_join' => $tenant_id, 
+    ':branch_id_join' => $branch_id,
+    ':tenant_id' => $tenant_id, 
+    ':branch_id' => $branch_id
+];
 
 if ($period === 'daily') {
     $dailyDate = $filteredDate ?: date('Y-m-d');
@@ -63,7 +68,7 @@ try {
     $query = "SELECT
         tb.id, tb.passenger_name, tb.pnr, tb.airline, tb.created_at, tb.profit, tb.currency, ma.name as paid_to
     FROM ticket_bookings tb
-    LEFT JOIN main_account ma ON tb.paid_to = ma.id AND ma.tenant_id = :tenant_id AND ma.branch_id = :branch_id
+    LEFT JOIN main_account ma ON tb.paid_to = ma.id AND ma.tenant_id = :tenant_id_join AND ma.branch_id = :branch_id_join
     WHERE $dateCondition AND tb.tenant_id = :tenant_id AND tb.branch_id = :branch_id
     ORDER BY tb.created_at DESC";
 

@@ -99,7 +99,7 @@ $(document).ready(function() {
         showLoading($('#searchResultsTable tbody'));
 
         $.ajax({
-            url: 'ajax/search_tickets.php',
+            url: '../api/ticket/search_tickets.php',
             type: 'GET',
             data: {
                 ...params,
@@ -356,7 +356,7 @@ $(document).ready(function() {
             .html(`<span class="spinner-border spinner-border-sm mr-2"></span>${translations.saving}...`);
 
         $.ajax({
-            url: 'insert_ticket_record_dc.php',
+            url: '../api/ticket/insert_ticket_record_dc.php',
             type: 'POST',
             data: formData,
             processData: false,

@@ -108,7 +108,7 @@ const transactionManager = {
 
         // Load booking details and transaction history
         $.ajax({
-            url: 'get_hotel_bookings.php',
+            url: '../api/hotel/get_hotel_bookings.php',
             type: 'GET',
             data: { id: bookingId },
             dataType: 'json',
@@ -162,7 +162,7 @@ const transactionManager = {
     // Load transaction history
     loadTransactionHistory: function(bookingId) {
         $.ajax({
-            url: 'get_hotel_transactions.php',
+            url: '../api/hotel/get_hotel_transactions.php',
             type: 'GET',
             data: { booking_id: bookingId },
             dataType: 'json',
@@ -361,7 +361,7 @@ const transactionManager = {
         }, 35000); // 35 seconds (5 seconds after the main timeout)
 
         $.ajax({
-            url: 'add_hotel_transaction.php',
+            url: '../api/hotel/add_hotel_transaction.php',
             type: 'POST',
             data: formData,
             processData: false,
@@ -461,7 +461,7 @@ const transactionManager = {
         }
 
         $.ajax({
-            url: 'update_hotel_transaction.php',
+            url: '../api/hotel/update_hotel_transaction.php',
             type: 'POST',
             data: formData,
             processData: false,
@@ -495,7 +495,7 @@ const transactionManager = {
         }
 
         $.ajax({
-            url: 'delete_hotel_transaction.php',
+            url: '../api/hotel/delete_hotel_transaction.php',
             type: 'POST',
             data: {
                 transaction_id: transactionId,
@@ -540,7 +540,7 @@ const transactionManager = {
 };
     // Print receipt function
     function printReceipt(transactionId) {
-        window.open(`print_hotel_receipt.php?id=${transactionId}`, '_blank');
+        window.open(`../api/hotel/print_hotel_receipt.php?id=${transactionId}`, '_blank');
     }
 // Initialize transaction manager when document is ready
 $(document).ready(function() {

@@ -1,6 +1,6 @@
     // Fetch Main Accounts and Populate Dropdown for Withdrawal
     function loadWithdrawMainAccounts() {
-        fetch('fetch_main_accounts.php')
+        fetch('../api/accounts/fetch_main_accounts.php')
             .then(response => response.json())
             .then(data => {
                 const mainAccountSelect = document.getElementById('withdrawMainAccount');
@@ -101,7 +101,7 @@
         }
         
         // Send withdrawal request
-        fetch('withdraw_fund.php', {
+        fetch('../api/accounts/withdraw_fund.php', {
             method: 'POST',
             headers: {
                 'Content-Type': 'application/json'

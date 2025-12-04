@@ -54,7 +54,7 @@ document.addEventListener('DOMContentLoaded', function() {
         // Send the data to a new page to generate the invoice
         const form = document.createElement('form');
         form.method = 'POST';
-        form.action = 'generate_multi_hotel_invoice.php';
+        form.action = '../api/hotel/generate_multi_hotel_invoice.php';
         form.target = '_blank';
         
         const hiddenField = document.createElement('input');
@@ -74,7 +74,7 @@ document.addEventListener('DOMContentLoaded', function() {
 
 // Load tickets for the invoice table
 function loadTicketsForInvoice() {
-    fetch('fetch_hotels_for_invoice.php')
+    fetch('../api/hotel/fetch_hotels_for_invoice.php')
         .then(response => response.json())
         .then(data => {
             if (data.status === 'success') {

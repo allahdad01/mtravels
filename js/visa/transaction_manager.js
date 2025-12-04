@@ -64,7 +64,7 @@
     // Load and display transaction modal
     loadTransactionModal: function(visaId) {
         $.ajax({
-            url: 'get_visa_details.php',
+            url: '../api/visa/get_visa_details.php',
             type: 'GET',
             data: { id: visaId },
             dataType: 'json',
@@ -161,7 +161,7 @@
         }
         
         $.ajax({
-            url: 'add_visa_transaction.php',
+            url: '../api/visa/add_visa_transaction.php',
             type: 'POST',
             data: formData,
             processData: false,
@@ -214,7 +214,7 @@
    // Load transaction history
    loadTransactionHistory: function(visaId) {
        $.ajax({
-           url: 'fetch_visa_transactions.php',
+           url: '../api/visa/fetch_visa_transactions.php',
            type: 'GET',
            data: { visa_id: visaId },
            dataType: 'json',
@@ -430,7 +430,7 @@
 
             console.log('Sending data to server:', postData);
 
-            $.post('update_visa_payment.php', postData)
+            $.post('../api/visa/update_visa_payment.php', postData)
                 .done(function(response) {
                     if (response.success) {
                         alert('transaction_updated_successfully');
@@ -474,7 +474,7 @@
         const visaId = $('#visa_id').val();
 
         $.ajax({
-            url: 'delete_visa_transaction.php',
+            url: '../api/visa/delete_visa_transaction.php',
             type: 'POST',
             data: {
                 transaction_id: transactionId,
@@ -535,7 +535,7 @@
         formData.append('original_transaction_id', transactionId);
         
         $.ajax({
-            url: 'add_visa_transaction.php',
+            url: '../api/visa/add_visa_transaction.php',
             type: 'POST',
             data: formData,
             processData: false,
@@ -568,7 +568,7 @@ $(document).ready(function() {
 });
     // Print receipt function
     function printReceipt(transactionId) {
-        window.open(`print_visa_receipt.php?id=${transactionId}`, '_blank');
+        window.open(`../api/visa/print_visa_receipt.php?id=${transactionId}`, '_blank');
     }
 // Function to open transaction modal - global function called from HTML
 function openTransactionTab(visaId, soldAmount, currency) {

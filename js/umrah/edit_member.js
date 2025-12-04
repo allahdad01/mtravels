@@ -143,7 +143,7 @@ $(document).on('submit', '#editMemberForm', function(event) {
 
     let formData = new FormData(event.target);
 
-    fetch("update_umrah_member.php", {
+    fetch("../api/umrah/update_umrah_member.php", {
         method: "POST",
         body: formData,
     })
@@ -184,7 +184,7 @@ function openEditMemberModal(bookingId) {
     });
 
     // Fetch member details
-    fetch(`ajax/get_member_details.php?booking_id=${bookingId}`)
+    fetch(`../api/umrah/get_member_details.php?booking_id=${bookingId}`)
         .then(response => response.json())
         .then(data => {
             if (data.success && data.member) {
