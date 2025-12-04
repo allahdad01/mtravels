@@ -1,0 +1,81 @@
+<!-- Add Supplier Modal -->
+<div class="modal fade" id="addSupplierModal" tabindex="-1" role="dialog">
+    <div class="modal-dialog modal-dialog-centered" role="document">
+        <form id="addSupplierForm">
+            <div class="modal-content border-0 shadow">
+                <div class="modal-header bg-light border-0">
+                    <h5 class="modal-title">
+                        <i class="feather icon-plus-circle text-primary mr-2"></i>
+                        <?= __('add_new_supplier') ?>
+                    </h5>
+                    <button type="button" class="close" data-dismiss="modal" aria-label="Close">
+                        <span aria-hidden="true">&times;</span>
+                    </button>
+                </div>
+                <div class="modal-body">
+                    <div class="form-group mb-3">
+                        <label class="form-label"><?= __('name') ?></label>
+                        <input type="text" class="form-control" id="supplierName" name="name" required>
+                    </div>
+                    <div class="form-group mb-3">
+                        <label class="form-label"><?= __('contact_person') ?></label>
+                        <input type="text" class="form-control" id="contactPerson" name="contact_person">
+                    </div>
+                    <div class="row">
+                        <div class="col-md-6">
+                            <div class="form-group mb-3">
+                                <label class="form-label"><?= __('phone') ?></label>
+                                <input type="text" class="form-control" id="supplierPhone" name="phone" required>
+                            </div>
+                        </div>
+                        <div class="col-md-6">
+                            <div class="form-group mb-3">
+                                <label class="form-label"><?= __('email') ?></label>
+                                <input type="email" class="form-control" id="supplierEmail" name="email">
+                            </div>
+                        </div>
+                    </div>
+                    <div class="row">
+                        <div class="col-md-6">
+                            <div class="form-group mb-3">
+                                <label class="form-label"><?= __('currency') ?></label>
+                                <select class="form-control" id="currency" name="currency" required>
+                                    <option value="AFS"><?= __('afs') ?></option>
+                                    <option value="USD"><?= __('usd') ?></option>
+                                    <option value="EUR"><?= __('eur') ?></option>
+                                    <option value="DARHAM"><?= __('darham') ?></option>
+                                </select>
+                            </div>
+                        </div>
+                        <div class="col-md-6">
+                            <div class="form-group mb-3">
+                                <label class="form-label"><?= __('balance') ?></label>
+                                <input type="number" step="0.01" class="form-control" id="supplierBalance" 
+                                       name="balance" value="0.00" required>
+                            </div>
+                        </div>
+                        <div class="col-md-6">
+                            <div class="form-group mb-3">
+                                <label class="form-label"><?= __('supplier_type') ?></label>
+                                <select class="form-control" id="supplierType" name="supplier_type" required>
+                                    <option value="Internal"><?= __('internal') ?></option>
+                                    <option value="External"><?= __('external') ?></option>
+                                </select>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="form-group mb-3">
+                        <label class="form-label"><?= __('address') ?></label>
+                        <textarea class="form-control" id="supplierAddress" name="address" rows="3"></textarea>
+                    </div>
+                </div>
+                <div class="modal-footer border-0">
+                    <button type="button" class="btn btn-light-secondary" data-dismiss="modal"><?= __('cancel') ?></button>
+                    <button type="submit" class="btn btn-primary">
+                        <i class="feather icon-save mr-2"></i><?= __('add_supplier') ?>
+                    </button>
+                </div>
+            </div>
+        </form>
+    </div>
+</div>

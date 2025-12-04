@@ -114,7 +114,7 @@
             const form = e.target;
             const formData = new FormData(form);
 
-        fetch('add_supplier.php', {
+        fetch('../api/supplier/add_supplier.php', {
             method: 'POST',
             body: formData,
         })
@@ -136,7 +136,7 @@
             const form = e.target;
             const formData = new FormData(form);
 
-            fetch('update_supplier.php', {
+            fetch('../api/supplier/update_supplier.php', {
                 method: 'POST',
                 body: formData,
             })
@@ -156,7 +156,7 @@
         loadSuppliers: function() {
             Logger.log('Loading suppliers');
 
-            fetch('getSupplier.php')
+            fetch('../api/supplier/getSupplier.php')
                 .then(response => {
                     if (!response.ok) {
                         throw new Error(`HTTP error! status: ${response.status}`);
@@ -298,7 +298,7 @@
 
         editSupplier: function(id) {
             // Fetch supplier details
-            fetch(`fetch_supplier_by_id.php?id=${id}`)
+            fetch(`../api/supplier/fetch_supplier_by_id.php?id=${id}`)
                 .then(response => response.json())
                 .then(supplier => {
                     // Populate modal fields
@@ -330,7 +330,7 @@
 
         deleteSupplier: function(id) {
     if (confirm('are_you_sure_you_want_to_delete_this_supplier')) {
-        fetch('delete_supplier.php', {
+        fetch('../api/supplier/delete_supplier.php', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({ id }),
@@ -350,7 +350,7 @@
 
         deactivateSupplier: function(id) {
             if (confirm('are_you_sure_you_want_to_deactivate_this_supplier')) {
-                fetch('deactivate_supplier.php', {
+                fetch('../api/supplier/deactivate_supplier.php', {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
                     body: JSON.stringify({ id }),
@@ -370,7 +370,7 @@
 
         activateSupplier: function(id) {
             if (confirm('are_you_sure_you_want_to_activate_this_supplier')) {
-                fetch('activate_supplier.php', {
+                fetch('../api/supplier/activate_supplier.php', {
         method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
                     body: JSON.stringify({ id }),
