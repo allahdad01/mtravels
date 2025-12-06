@@ -269,159 +269,9 @@ var errorMessage = <?= $error_message ? json_encode($error_message) : 'null' ?>;
         </div>
     </div>
 </div>
-
-<!-- View Message Modal -->
-<div class="modal fade" id="viewMessageModal" tabindex="-1" role="dialog">
-    <div class="modal-dialog modal-lg" role="document">
-        <div class="modal-content">
-            <div class="modal-header">
-                <h5 class="modal-title">
-                    <i class="feather icon-message-circle mr-2"></i>
-                    <span id="messageSubject"></span>
-                </h5>
-                <button type="button" class="close" data-dismiss="modal" aria-label="Close">
-                    <span aria-hidden="true">&times;</span>
-                </button>
-            </div>
-            <div class="modal-body">
-                <div class="message-info mb-3">
-                    <div class="row">
-                        <div class="col-md-6">
-                            <p><strong><i class="feather icon-user mr-1"></i> <?= __("from") ?>:</strong> <span id="messageSender"></span></p>
-                            <p><strong><i class="feather icon-users mr-1"></i> <?= __("to") ?>:</strong> <span id="messageRecipient"></span></p>
-                        </div>
-                        <div class="col-md-6 text-right">
-                            <p><strong><i class="feather icon-calendar mr-1"></i> <?= __("date") ?>:</strong> <span id="messageDate"></span></p>
-                            <p><strong><i class="feather icon-flag mr-1"></i> <?= __("status") ?>:</strong> <span id="messageStatus"></span></p>
-                        </div>
-                    </div>
-                    <hr>
-                </div>
-                <div class="message-content">
-                    <p id="messageBody"></p>
-                </div>
-            </div>
-            <div class="modal-footer">
-                <button type="button" class="btn btn-secondary" data-dismiss="modal"><?= __("close") ?></button>
-                <button type="button" class="btn btn-primary reply-message">
-                    <i class="feather icon-corner-up-left mr-1"></i> <?= __("reply") ?>
-                </button>
-            </div>
-        </div>
-    </div>
-</div>
-
-<!-- Edit Message Modal -->
-<div class="modal fade" id="editMessageModal" tabindex="-1" role="dialog">
-    <div class="modal-dialog modal-lg" role="document">
-        <div class="modal-content">
-            <div class="modal-header">
-                <h5 class="modal-title">
-                    <i class="feather icon-edit-2 mr-2"></i>
-                    <?= __("edit_message") ?>
-                </h5>
-                <button type="button" class="close" data-dismiss="modal" aria-label="Close">
-                    <span aria-hidden="true">&times;</span>
-                </button>
-            </div>
-            <form id="editMessageForm" method="POST" action="update_message.php">
-                <div class="modal-body">
-                    <input type="hidden" id="edit_message_id" name="message_id">
-                    <div class="form-group">
-                        <label for="edit_subject"><?= __("subject") ?></label>
-                        <div class="input-group">
-                            <div class="input-group-prepend">
-                                <span class="input-group-text"><i class="feather icon-bookmark"></i></span>
-                            </div>
-                            <input type="text" class="form-control" id="edit_subject" name="subject" required>
-                        </div>
-                    </div>
-                    <div class="form-group">
-                        <label for="edit_message"><?= __("message") ?></label>
-                        <div class="input-group">
-                            <div class="input-group-prepend">
-                                <span class="input-group-text"><i class="feather icon-message-circle"></i></span>
-                            </div>
-                            <textarea class="form-control" id="edit_message" name="message" rows="5" required></textarea>
-                        </div>
-                    </div>
-                    <div class="form-group">
-                        <label for="edit_recipient_type"><?= __("send_to") ?></label>
-                        <div class="input-group">
-                            <div class="input-group-prepend">
-                                <span class="input-group-text"><i class="feather icon-users"></i></span>
-                            </div>
-                            <select class="form-control" id="edit_recipient_type" name="recipient_type" required onchange="toggleEditRecipientSelect()">
-                                <option value="clients"><?= __("all_clients") ?></option>
-                                <option value="individual"><?= __("individual_client") ?></option>
-                            </select>
-                        </div>
-                    </div>
-                    <div class="form-group" id="edit_recipient_select_group" style="display: none;">
-                        <label for="edit_recipient_id"><?= __("select_recipient") ?></label>
-                        <div class="input-group">
-                            <div class="input-group-prepend">
-                                <span class="input-group-text"><i class="feather icon-user"></i></span>
-                            </div>
-                            <select class="form-control select2" id="edit_recipient_id" name="recipient_id">
-                                <?php if (!empty($clients)): ?>
-                                <optgroup label="Clients">
-                                    <?php foreach ($clients as $client): ?>
-                                        <option value="<?php echo $client['id']; ?>">
-                                            <?php echo htmlspecialchars($client['name']); ?>
-                                        </option>
-                                    <?php endforeach; ?>
-                                </optgroup>
-                                <?php endif; ?>
-                            </select>
-                        </div>
-                    </div>
-                </div>
-                <div class="modal-footer">
-                    <button type="button" class="btn btn-secondary" data-dismiss="modal"><?= __("cancel") ?></button>
-                    <button type="submit" class="btn btn-primary">
-                        <i class="feather icon-save mr-1"></i> <?= __("save_changes") ?>
-                    </button>
-                </div>
-            </form>
-        </div>
-    </div>
-</div>
-
-<!-- Delete Confirmation Modal -->
-<div class="modal fade" id="deleteMessageModal" tabindex="-1" role="dialog">
-    <div class="modal-dialog" role="document">
-        <div class="modal-content">
-            <div class="modal-header bg-danger text-white">
-                <h5 class="modal-title">
-                    <i class="feather icon-alert-triangle mr-2"></i>
-                    <?= __("confirm_delete") ?>
-                </h5>
-                <button type="button" class="close text-white" data-dismiss="modal" aria-label="Close">
-                    <span aria-hidden="true">&times;</span>
-                </button>
-            </div>
-            <div class="modal-body">
-                <div class="text-center mb-4">
-                    <i class="feather icon-trash-2 text-danger" style="font-size: 4rem;"></i>
-                </div>
-                <p class="text-center lead"><?= __("are_you_sure_you_want_to_delete_this_message") ?></p>
-                <p class="text-center text-muted"><?= __("this_action_cannot_be_undone") ?></p>
-            </div>
-            <div class="modal-footer">
-                <button type="button" class="btn btn-secondary" data-dismiss="modal">
-                    <i class="feather icon-x mr-1"></i> <?= __("cancel") ?>
-                </button>
-                <form id="deleteMessageForm" method="POST" action="delete_message.php">
-                    <input type="hidden" id="delete_message_id" name="message_id">
-                    <button type="submit" class="btn btn-danger">
-                        <i class="feather icon-trash-2 mr-1"></i> <?= __("delete") ?>
-                    </button>
-                </form>
-            </div>
-        </div>
-    </div>
-</div>
+<?php include '../modals/send_message/view_modal.php'; ?>
+<?php include '../modals/send_message/edit_message_modal.php'; ?>
+<?php include '../modals/send_message/view_modal.php'; ?>
 
 <!-- Toast container -->
 <div class="toast-container"></div>
@@ -443,10 +293,10 @@ var errorMessage = <?= $error_message ? json_encode($error_message) : 'null' ?>;
 <script type="text/javascript" src="https://cdn.datatables.net/responsive/2.2.9/js/responsive.bootstrap4.min.js"></script>
 
 <!-- Toast Notification JS - Make sure this is loaded before message-management.js -->
-<script src="js/toast-notifications.js"></script>
+<script src="../js/send_message/toast-notifications.js"></script>
 
 <!-- Custom Message Management JS -->
-<script src="js/message-management.js"></script>
+<script src="../js/send_message/message-management.js"></script>
 
 <!-- Prevent duplicate toast display -->
 <script>

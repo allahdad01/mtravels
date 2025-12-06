@@ -4,11 +4,11 @@ if (session_status() === PHP_SESSION_NONE) {
     session_start();
 }
 // Include database security module for input validation
-require_once 'includes/db_security.php';
+require_once '../../admin/includes/db_security.php';
 $tenant_id = $_SESSION['tenant_id'];
 $branch_id = $_SESSION['branch_id'];
 // Include security module
-require_once 'security.php';
+require_once '../../admin/security.php';
 
 // Enforce authentication
 enforce_auth();
@@ -18,7 +18,7 @@ $username = isset($_SESSION["name"]) ? $_SESSION["name"] : "Unknown User";
 $user_id = $_SESSION['user_id'] ?? 0;
 
 // Establish a connection to the MySQL database
-include '../includes/conn.php';
+include '../../includes/conn.php';
 
 
 // Validate returnDate

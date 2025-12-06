@@ -16,7 +16,7 @@ if (!isset($_SESSION['user_id'])  || $_SESSION['role'] !== 'admin') {
     exit();
 }
 
-include 'handlers/ticket_handler.php';
+include '../api/ticket/ticket_handler.php';
 ?>
 
 <?php 
@@ -346,10 +346,12 @@ include '../includes/header.php';
                                                                     <div class="booking-info__flight-date">
                                                                         <i class="feather icon-plane text-muted mr-1"></i>
                                                                         <?= htmlspecialchars($ticket['ticket']['departure_date']) ?>
+                                                                        <?php if (!empty($ticket['ticket']['departure_time'])): ?> at <?= htmlspecialchars($ticket['ticket']['departure_time']) ?><?php endif; ?>
                                                                         <?php if ($ticket['ticket']['trip_type'] === 'round_trip'): ?>
                                                                             <br>
                                                                             <i class="feather icon-plane text-muted mr-1"></i>
                                                                             <?= htmlspecialchars($ticket['ticket']['return_date']) ?>
+                                                                            <?php if (!empty($ticket['ticket']['return_departure_time'])): ?> at <?= htmlspecialchars($ticket['ticket']['return_departure_time']) ?><?php endif; ?>
                                                                         <?php endif; ?>
                                                                     </div>
                                                                 </div>
@@ -460,14 +462,26 @@ include '../includes/header.php';
             </div>
         </div>
     </div>
-    <?php include '../modals/ticket/transaction_modal.php'; ?>
+        <!-- Add a floating action button for launching the multi-ticket invoice modal -->
+        <div id="floatingActionButton" class="position-fixed" style="bottom: 80px; z-index: 1050;">
+    <button type="button" class="btn btn-primary btn-lg shadow" id="launchMultiTicketInvoice" title="<?= __('generate_multi_ticket_invoice') ?>">
+        <i class="feather icon-file-text"></i>
+    </button>
+</div>
+<?php include '../modals/ticket/multi_ticket_modal.php'; ?> 
     <?php include '../modals/ticket/book_ticket_modal.php'; ?>
-    <?php include '../modals/ticket/edit_ticket_modal.php'; ?>
     <?php include '../modals/ticket/ticket_details.php'; ?>
-    <?php include '../modals/ticket/ticket_weight_modal.php'; ?>
     <?php include '../modals/ticket/ticket_refund_modal.php'; ?>
     <?php include '../modals/ticket/ticket_date_change_modal.php'; ?>
-    <?php include '../modals/ticket/multi_ticket_modal.php'; ?>    
+    <?php include '../modals/ticket/ticket_weight_modal.php'; ?>
+    <?php include '../modals/ticket/transaction_modal.php'; ?>
+
+    <?php include '../modals/ticket/edit_ticket_modal.php'; ?>
+    
+
+
+
+       
 <?php include '../includes/admin_footer.php'; ?>
 
 

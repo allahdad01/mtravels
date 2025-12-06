@@ -5,7 +5,7 @@ if (session_status() === PHP_SESSION_NONE) {
     session_start();
 }
 require_once '../../includes/conn.php';
-require_once '../includes/db_security.php';
+require_once '../../admin/includes/db_security.php';
 
 $tenant_id = $_SESSION['tenant_id'];
 $branch_id = $_SESSION['branch_id'];
@@ -39,7 +39,7 @@ try {
         JOIN ticket_bookings t ON w.ticket_id = t.id AND t.tenant_id = ? AND t.branch_id = ?
         WHERE w.id = ? AND st.transaction_of = 'weight_sale' AND st.tenant_id = ? AND st.branch_id = ?
     ");
-    $stmt_fetch->bind_param("iiiiiiii", $tenant_id, $branch_id, $tenant_id, $branch_id, $tenant_id, $branch_id, $weightId, $tenant_id, $branch_id);
+    $stmt_fetch->bind_param("iiiiiiiii", $tenant_id, $branch_id, $tenant_id, $branch_id, $tenant_id, $branch_id, $weightId, $tenant_id, $branch_id);
     $stmt_fetch->execute();
     $result = $stmt_fetch->get_result();
 

@@ -2,7 +2,7 @@
 function populateAirlineOptions(selectElement, selectedAirline) {
     const airlines = [
           // Middle East & Central Asia (Expanded)
-    { code: 'KM', name: 'KamAir (KM)' },
+    { code: 'RQ', name: 'KamAir (RQ)' },
     { code: 'IR', name: 'Iran Air (IR)' },
     { code: 'W5', name: 'Mahan Airlines (W5)' },
     { code: 'EP', name: 'Iran Aseman Airlines (EP)' },
@@ -279,6 +279,7 @@ function editTicket(ticketId) {
             document.getElementById('editDestination').value = data.destination;
             document.getElementById('editIssueDate').value = data.issue_date;
             document.getElementById('editDepartureDate').value = data.departure_date;
+            document.getElementById('editDepartureTime').value = data.departure_time || '';
             document.getElementById('editBase').value = data.price;
             document.getElementById('editSold').value = data.sold;
             document.getElementById('editDiscount').value = data.discount || 0;
@@ -294,6 +295,7 @@ function editTicket(ticketId) {
                 document.getElementById('editReturnOrigin').value = data.return_origin || '';
                 document.getElementById('editReturnDestination').value = data.return_destination || '';
                 document.getElementById('editReturnDate').value = data.return_date !== '0000-00-00' ? data.return_date : '';
+                document.getElementById('editReturnDepartureTime').value = data.return_departure_time || '';
             } else {
                 document.getElementById('editReturnJourneyFields').style.display = 'none';
                 document.getElementById('editReturnDateField').style.display = 'none';
@@ -366,7 +368,7 @@ document.addEventListener('DOMContentLoaded', function() {
         document.getElementById('editReturnDateField').style.display = isRoundTrip ? 'block' : 'none';
         
         // Make return fields required if round trip is selected
-        const returnFields = ['editReturnOrigin', 'editReturnDestination', 'editReturnDate'];
+        const returnFields = ['editReturnOrigin', 'editReturnDestination', 'editReturnDate', 'editReturnDepartureTime'];
         returnFields.forEach(fieldId => {
             const field = document.getElementById(fieldId);
             if (field) {
@@ -504,7 +506,7 @@ document.addEventListener('DOMContentLoaded', function() {
         
         // Validate required fields for round trip
         if (editTripTypeSelect.value === 'round_trip') {
-            const returnFields = ['editReturnOrigin', 'editReturnDestination', 'editReturnDate'];
+            const returnFields = ['editReturnOrigin', 'editReturnDestination', 'editReturnDate', 'editReturnDepartureTime'];
             for (const fieldId of returnFields) {
                 const field = document.getElementById(fieldId);
                 if (field && !field.value) {
@@ -560,11 +562,13 @@ document.addEventListener('DOMContentLoaded', function() {
         document.getElementById('editAirline').value = ticketData.airline;
         document.getElementById('editIssueDate').value = ticketData.issue_date;
         document.getElementById('editDepartureDate').value = ticketData.departure_date;
+        document.getElementById('editDepartureTime').value = ticketData.departure_time || '';
         
         // Set return journey details if applicable
         if (ticketData.trip_type === 'round_trip') {
             document.getElementById('editReturnDestination').value = ticketData.return_destination || '';
             document.getElementById('editReturnDate').value = ticketData.return_date || '';
+            document.getElementById('editReturnDepartureTime').value = ticketData.return_departure_time || '';
         }
         
         // Set financial details

@@ -296,7 +296,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         $activity_log_stmt = $conn->prepare("INSERT INTO activity_log 
             (user_id, tenant_id, action, table_name, record_id, old_values, new_values, ip_address, user_agent, branch_id) 
             VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)");
-        $activity_log_stmt->bind_param("isisssssi", 
+        $activity_log_stmt->bind_param("isisssssii", 
             $user_id, 
             $tenant_id,
             $action, 

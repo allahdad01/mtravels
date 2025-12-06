@@ -55,6 +55,12 @@ if (
 if (
     $_SERVER['REQUEST_METHOD'] === 'POST'
     && !isset($_POST['add_debtor'])
+    && !isset($_POST['pay'])
+    && !isset($_POST['edit_debtor'])
+    && !isset($_POST['delete_transaction'])
+    && !isset($_POST['deactivate_debtor'])
+    && !isset($_POST['reactivate_debtor'])
+    && !isset($_POST['delete_debtor'])
     && isset($_POST['name'], $_POST['balance'], $_POST['currency'], $_POST['main_account_id'])
 ) {
     $_POST['add_debtor'] = true;

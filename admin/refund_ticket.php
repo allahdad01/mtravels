@@ -21,7 +21,7 @@ if (!isset($_SESSION['user_id'])  || $_SESSION['role'] !== 'admin') {
     header('Location: ../login.php');
     exit();
 }
-include 'handlers/refund_ticket_handler.php';
+include '../api/ticket_refund/refund_ticket_handler.php';
 
 // Generate cache-busting version
 $version = '?v=' . time();
@@ -471,14 +471,14 @@ window.translations = {
 </script>
 
 <!-- Custom JS -->
-<script src="../js/refund_ticket/multi_ticket.js<?= $version ?>"></script>
-<script src="../js/refund_ticket/search.js<?= $version ?>"></script>
-<script src="../js/refund_ticket/transaction_manager.js<?= $version ?>"></script>
-<script src="../js/refund_ticket/datatable.js<?= $version ?>"></script>
-<script src="../js/refund_ticket/document_actions.js<?= $version ?>"></script>
-<script src="../js/refund_ticket/table_search.js<?= $version ?>"></script>
-<script src="../js/refund_ticket/select.js<?= $version ?>"></script>
-<script src="../js/refund_ticket/main.js<?= $version ?>"></script>
+<script src="../js/ticket_refund/multi_ticket.js<?= $version ?>"></script>
+<script src="../js/ticket_refund/search.js<?= $version ?>"></script>
+<script src="../js/ticket_refund/transaction_manager.js<?= $version ?>"></script>
+<script src="../js/ticket_refund/datatable.js<?= $version ?>"></script>
+<script src="../js/ticket_refund/document_actions.js<?= $version ?>"></script>
+<script src="../js/ticket_refund/table_search.js<?= $version ?>"></script>
+<script src="../js/ticket_refund/select.js<?= $version ?>"></script>
+<script src="../js/ticket_refund/main.js<?= $version ?>"></script>
 
 <!-- Include Admin Footer -->
 <?php include '../includes/admin_footer.php'; ?>

@@ -54,9 +54,9 @@ $stmtCount->close();
 $ticketsQuery = "
     SELECT
         tb.id, tb.supplier, tb.sold_to, tb.title, tb.passenger_name, tb.pnr, tb.airline,
-        tb.origin, tb.destination, tb.issue_date, tb.departure_date, tb.sold, tb.price,
+        tb.origin, tb.destination, tb.issue_date, tb.departure_date, tb.departure_time, tb.sold, tb.price,
         tb.profit, tb.gender, tb.currency, tb.phone, tb.description, tb.status,
-        tb.trip_type, tb.return_date, tb.return_origin, tb.return_destination,
+        tb.trip_type, tb.return_date, tb.return_departure_time, tb.return_origin, tb.return_destination,
 
         s.name as supplier_name,
         c.name as sold_to_name,
@@ -130,6 +130,7 @@ while ($row = $ticketsResult->fetch_assoc()) {
                 'destination' => $row['destination'],
                 'issue_date' => $row['issue_date'],
                 'departure_date' => $row['departure_date'],
+                'departure_time' => $row['departure_time'],
                 'sold' => $row['sold'],
                 'price' => $row['price'],
                 'profit' => $row['profit'],
@@ -140,6 +141,7 @@ while ($row = $ticketsResult->fetch_assoc()) {
                 'status' => $row['status'],
                 'trip_type' => $row['trip_type'],
                 'return_date' => $row['return_date'],
+                'return_departure_time' => $row['return_departure_time'],
                 'return_origin' => $row['return_origin'],
                 'return_destination' => $row['return_destination'],
                 'created_by_name' => $row['created_by_name'],

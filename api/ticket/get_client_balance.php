@@ -1,12 +1,12 @@
 <?php
 // Include security module
-require_once 'security.php';
+require_once '../../admin/security.php';
 $tenant_id = $_SESSION['tenant_id'];
 // Enforce authentication
 enforce_auth();
 
 // Database connection
-require_once '../includes/conn.php';
+require_once '../../includes/conn.php';
 
 if ($conn->connect_error) {
     die(json_encode(['success' => false, 'message' => 'Database connection failed']));

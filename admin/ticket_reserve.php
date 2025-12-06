@@ -95,7 +95,7 @@ LIMIT ? OFFSET ?
 // Add pagination params
 $params[] = $recordsPerPage;
 $params[] = $offset;
-$types   .= "ii";
+$types   .= "iis";
 
 // Prepare & execute
 $stmt = $conn->prepare($ticketsQuery);
@@ -604,11 +604,12 @@ foreach ($suppliers as $supplier) {
 </style>
 
 
-<?php include '../modals/ticket/transaction_modal.php'; ?>
-    <?php include '../modals/ticket/book_ticket_modal.php'; ?>
-    <?php include '../modals/ticket/edit_ticket_modal.php'; ?>
-    <?php include '../modals/ticket/ticket_details.php'; ?>
-    <?php include '../modals/ticket/multi_ticket_modal.php'; ?>  
+<?php include '../modals/ticket_reserve/ticket_details.php'; ?>    
+<?php include '../modals/ticket_reserve/transaction_modal.php'; ?>
+    <?php include '../modals/ticket_reserve/book_ticket_modal.php'; ?>
+    <?php include '../modals/ticket_reserve/edit_ticket_modal.php'; ?>
+
+    <?php include '../modals/ticket_reserve/multi_ticket_modal.php'; ?>  
   
 
 <!-- Include Admin Footer -->
@@ -681,11 +682,11 @@ foreach ($suppliers as $supplier) {
                                     <script src="../assets/plugins/bootstrap/js/bootstrap.min.js"></script>
                                     <script src="../assets/js/pcoded.min.js"></script>
                                     <!-- view ticket details -->
-                                    <script src="js/ticket_reserve/view_details.js"></script>
-                                    <script src="js/ticket_reserve/bookings.js"></script>
-                                    <script src="js/ticket_reserve/data/airlines.js"></script>
-                                    <script src="js/ticket_reserve/airline-select.js"></script>
-                                    <script src="js/ticket_reserve/transaction_manager.js"></script>
+                                    <script src="../js/ticket_reserve/view_details.js"></script>
+                                    <script src="../js/ticket_reserve/bookings.js"></script>
+                                    <script src="../js/ticket_reserve/data/airlines.js"></script>
+                                    <script src="../js/ticket_reserve/airline-select.js"></script>
+                                    <script src="../js/ticket_reserve/transaction_manager.js"></script>
                                     <!-- Include toast notification system -->
                                     <script>
                                     // Toast notification system

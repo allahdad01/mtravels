@@ -1,16 +1,16 @@
 <?php
 // Include database security module for input validation
-require_once 'includes/db_security.php';
+require_once '../../admin/includes/db_security.php';
 
 // Include security module
-require_once 'security.php';
+require_once '../../admin/security.php';
 $tenant_id = $_SESSION['tenant_id'];
 $branch_id = $_SESSION['branch_id'];
 // Enforce authentication
 enforce_auth();
 
 // Database connection
-require_once '../includes/conn.php';
+require_once '../../includes/conn.php';
 
 // Check for database connection error
 if ($conn->connect_error) {

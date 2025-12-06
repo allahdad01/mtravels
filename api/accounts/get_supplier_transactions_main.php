@@ -3,12 +3,9 @@
 if (session_status() === PHP_SESSION_NONE) {
     session_start();
 }
-// Include security module
-require_once 'security.php';
 
-// Enforce authentication
-enforce_auth();
 
+$tenant_id = $_SESSION['tenant_id'];
 $branch_id = $_SESSION['branch_id'];
 
 // Check if user is logged in
@@ -28,7 +25,7 @@ if (!isset($_GET['supplier_id']) || !is_numeric($_GET['supplier_id'])) {
 $supplierId = intval($_GET['supplier_id']);
 
 // Database connection
-require_once('../includes/conn.php');
+require_once('../../includes/conn.php');
 
 // Prepare and execute query with left joins to fetch reference information
 $query = "SELECT st.*,

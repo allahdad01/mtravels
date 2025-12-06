@@ -4,12 +4,12 @@ if (session_status() === PHP_SESSION_NONE) {
     session_start();
 }
 // Include security module
-require_once 'security.php';
+require_once '../../admin/security.php';
 
 // Enforce authentication
 enforce_auth();
 
-require_once '../includes/conn.php';
+require_once '../../includes/conn.php';
 // Assuming you have the logged-in user's username stored in session
 $username = isset($_SESSION['name']) ? $_SESSION['name'] : null;
 $user_id = isset($_SESSION['user_id']) ? $_SESSION['user_id'] : null;

@@ -1,9 +1,9 @@
 <?php
 // Include necessary files
-require_once('../includes/db.php');
-require_once('../includes/conn.php');
-require_once('security.php');
-require_once('../vendor/autoload.php');
+require_once('../../includes/db.php');
+require_once('../../includes/conn.php');
+require_once('../../admin/security.php');
+require_once('../../vendor/autoload.php');
 
 // Enforce authentication
 enforce_auth();
@@ -52,7 +52,7 @@ try {
 }
     
     // Include the template to output the HTML directly
-    include 'templates/ticket_refund_agreement_template.php';
+    include 'ticket_refund_agreement_template.php';
     
 } catch (Exception $e) {
     error_log('Error generating refund agreement: ' . $e->getMessage());

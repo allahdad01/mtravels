@@ -22,7 +22,7 @@ if (!isset($_SESSION['user_id'])  || $_SESSION['role'] !== 'admin') {
 }
 $tenant_id = $_SESSION['tenant_id'];
 $branch_id = $_SESSION['branch_id'];
-include 'handlers/date_change_handler.php';
+include '../api/ticket_date_change/date_change_handler.php';
 ?>
 <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/sweetalert/1.1.3/sweetalert.css">
 <link rel="stylesheet" href="../assets/plugins/sweetalert2/sweetalert2.min.css">
@@ -359,10 +359,10 @@ include '../includes/header.php';
         </div>
     </div>
 
-    <?php include '../api/ticket_date_change/multi_ticket.php'; ?>
-    <?php include '../api/ticket_date_change/transaction_modal.php'; ?>
-    <?php include '../api/ticket_date_change/edit_transaction.php'; ?>
-    <?php include '../api/ticket_date_change/add_date_change.php'; ?>
+    <?php include '../modals/ticket_date_change/multi_ticket.php'; ?>
+    <?php include '../modals/ticket_date_change/transaction_modal.php'; ?>
+    <?php include '../modals/ticket_date_change/edit_transaction.php'; ?>
+    <?php include '../modals/ticket_date_change/add_date_change.php'; ?>
 
 <!-- Include Admin Footer -->
 <?php include '../includes/admin_footer.php'; ?>
@@ -379,11 +379,11 @@ include '../includes/header.php';
     <script src="https://cdn.datatables.net/1.11.5/js/dataTables.bootstrap4.min.js"></script>
     <script src="https://cdn.datatables.net/responsive/2.2.9/js/dataTables.responsive.min.js"></script>
     <script src="https://cdn.datatables.net/responsive/2.2.9/js/responsive.bootstrap4.min.js"></script>
-    <script src="js/date-change/dataTable.js"></script>
-    <script src="js/date-change/addDateChange.js"></script>
-    <script src="js/date-change/deleteDateChange.js"></script>
-    <script src="js/date-change/transaction-manager.js"></script>
-    <script src="js/date-change/multiTicket.js"></script>
+    <script src="../js/ticket_date_change/dataTable.js"></script>
+    <script src="../js/ticket_date_change/addDateChange.js"></script>
+    <script src="../js/ticket_date_change/deleteDateChange.js"></script>
+    <script src="../js/ticket_date_change/transaction-manager.js"></script>
+    <script src="../js/ticket_date_change/multiTicket.js"></script>
 
 </body>
 </html>

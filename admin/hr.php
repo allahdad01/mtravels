@@ -219,7 +219,7 @@ include '../includes/header.php';
                                                                         </span>
                                                                     </p>
                                                                     <small class="text-muted">
-                                                                        <?php echo date('M d, Y', strtotime($activity['activity_date'])); ?>
+                                                                        <?php echo $activity['activity_date'] ? date('M d, Y', strtotime($activity['activity_date'])) : 'N/A'; ?>
                                                                     </small>
                                                                 </div>
                                                             </div>

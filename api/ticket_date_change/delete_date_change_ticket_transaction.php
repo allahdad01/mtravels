@@ -4,15 +4,15 @@ if (session_status() === PHP_SESSION_NONE) {
     session_start();
 }
 // Include database security module for input validation
-require_once 'includes/db_security.php';
+require_once '../../admin/includes/db_security.php';
 $tenant_id = $_SESSION['tenant_id'];
 // Include security module
-require_once 'security.php';
+require_once '../../admin/security.php';
 
 // Enforce authentication
 enforce_auth();
 
-require_once('../includes/db.php');
+require_once('../../includes/db.php');
 $branch_id = $_SESSION['branch_id'];
 
 // Check if user is logged in

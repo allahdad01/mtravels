@@ -6,7 +6,7 @@ if (session_status() === PHP_SESSION_NONE) {
 
 // Include database connection and security
 require_once '../../includes/conn.php';
-require_once '../includes/db_security.php';
+require_once '../../admin/includes/db_security.php';
 
 $tenant_id = $_SESSION['tenant_id'];
 $branch_id = $_SESSION['branch_id'];
@@ -52,7 +52,7 @@ try {
     ";
 
     $weightStmt = $conn->prepare($weightQuery);
-    $weightStmt->bind_param('iiiiiiiiii', $tenant_id, $branch_id, $tenant_id, $branch_id, $tenant_id, $branch_id, $tenant_id, $branch_id, $weightId, $tenant_id, $branch_id);
+    $weightStmt->bind_param('iiiiiiiiiii', $tenant_id, $branch_id, $tenant_id, $branch_id, $tenant_id, $branch_id, $tenant_id, $branch_id, $weightId, $tenant_id, $branch_id);
     $weightStmt->execute();
     $weightResult = $weightStmt->get_result();
     $weight = $weightResult->fetch_assoc();
@@ -79,7 +79,7 @@ try {
     ";
 
     $transactionStmt = $conn->prepare($transactionQuery);
-    $transactionStmt->bind_param('iiii', $tenant_id, $branch_id, $weightId, $tenant_id, $branch_id);
+    $transactionStmt->bind_param('iiiii', $tenant_id, $branch_id, $weightId, $tenant_id, $branch_id);
     $transactionStmt->execute();
     $transactionResult = $transactionStmt->get_result();
 

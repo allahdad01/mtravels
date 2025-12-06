@@ -1,6 +1,6 @@
 <?php
 require_once '../../includes/conn.php';
-require_once '../includes/db_security.php';
+require_once '../../admin/includes/db_security.php';
 session_start();
 // Check if it's a POST request
 if ($_SERVER['REQUEST_METHOD'] !== 'POST') {

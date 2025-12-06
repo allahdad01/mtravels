@@ -4,12 +4,12 @@ if (session_status() === PHP_SESSION_NONE) {
     session_start();
 }
 // Include security module
-require_once 'security.php';
+require_once '../../admin/security.php';
 
 // Enforce authentication
 enforce_auth();
 
-include '../includes/conn.php';
+include '../../includes/conn.php';
 
 // Check if the user is logged in
 if (!isset($_SESSION['name'])) {

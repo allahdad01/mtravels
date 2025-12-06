@@ -11,7 +11,7 @@ if (isset($_GET['supplier_id'])) {
     $supplierId = intval($_GET['supplier_id']);
 
     // Connect to your database
-    require_once '../includes/conn.php';
+    require_once '../../includes/conn.php';
 
     if ($conn->connect_error) {
         die("Connection failed: " . $conn->connect_error);

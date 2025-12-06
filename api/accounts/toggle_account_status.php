@@ -1,6 +1,6 @@
 <?php
 // Include security module
-require_once 'security.php';
+require_once '../../admin/security.php';
 
 // Enforce authentication
 enforce_auth();
@@ -16,8 +16,8 @@ if (!isset($_SESSION['user_id'])) {
 }
 
 // Database connection
-require_once('../includes/db.php');
-require_once('../includes/conn.php');
+require_once('../../includes/db.php');
+require_once('../../includes/conn.php');
 
 // Check if it's a POST request
 if ($_SERVER['REQUEST_METHOD'] !== 'POST') {

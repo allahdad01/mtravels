@@ -173,12 +173,20 @@
                                             <i class="feather icon-calendar mr-1"></i><?= __('departure_date') ?>
                                         </label>
                                         <input type="date" class="form-control" id="departureDate" name="departureDate" required>
+                                        <label for="departureTime">
+                                            <i class="feather icon-clock mr-1"></i><?= __('departure_time') ?>
+                                        </label>
+                                        <input type="time" class="form-control" id="departureTime" name="departureTime" required>
                                     </div>
                                     <div id="returnDateField" class="form-group col-md-4" style="display: none;">
                                         <label for="returnDate">
                                             <i class="feather icon-calendar mr-1"></i><?= __('return_date') ?>
                                         </label>
                                         <input type="date" class="form-control" id="returnDate" name="returnDate">
+                                        <label for="returnDepartureTime">
+                                            <i class="feather icon-clock mr-1"></i><?= __('return_departure_time') ?>
+                                        </label>
+                                        <input type="time" class="form-control" id="returnDepartureTime" name="returnDepartureTime">
                                     </div>
                                     
                                 </div>

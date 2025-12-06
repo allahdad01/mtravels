@@ -19,10 +19,6 @@ if (!isset($_SESSION['user_id']) || $_SESSION['role'] !== 'admin') {
     exit();
 }
 
-// Include database connection
-include '../includes/db.php';
-include '../includes/conn.php';
-
 // Include language system
 require_once('../includes/language_helpers.php');
 $lang = init_language();
@@ -35,28 +31,38 @@ $error_message = isset($_SESSION['error_message']) ? $_SESSION['error_message'] 
 unset($_SESSION['success_message']);
 unset($_SESSION['error_message']);
 
-// Handle maktob submission
+// Handle maktob submission via API
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
-    $subject = mysqli_real_escape_string($conn, $_POST['subject']);
-    $content = mysqli_real_escape_string($conn, $_POST['content']);
-    $company_name = mysqli_real_escape_string($conn, $_POST['company_name']);
-    $maktob_number = mysqli_real_escape_string($conn, $_POST['maktob_number']);
-    $maktob_date = mysqli_real_escape_string($conn, $_POST['maktob_date']);
-    $language = mysqli_real_escape_string($conn, $_POST['language']);
-    $sender_id = $_SESSION['user_id'];
+    // Prepare data for API call
+    $postData = [
+        'subject' => $_POST['subject'] ?? '',
+        'content' => $_POST['content'] ?? '',
+        'company_name' => $_POST['company_name'] ?? '',
+        'maktob_number' => $_POST['maktob_number'] ?? '',
+        'maktob_date' => $_POST['maktob_date'] ?? '',
+        'language' => $_POST['language'] ?? 'english'
+    ];
 
-    // Validate company name
-    if (!empty($company_name)) {
-        $query = "INSERT INTO maktobs (tenant_id, branch_id, subject, content, company_name, maktob_number, maktob_date, sender_id, status, language)
-                  VALUES ('$tenant_id', '$branch_id', '$subject', '$content', '$company_name', '$maktob_number', '$maktob_date', $sender_id, 'draft', '$language')";
-        
-        if (mysqli_query($conn, $query)) {
-            $_SESSION['success_message'] = __('letter_created');
-        } else {
-            $_SESSION['error_message'] = __('error_creating_letter') . mysqli_error($conn);
-        }
+    // Call the API endpoint
+    $ch = curl_init();
+    curl_setopt($ch, CURLOPT_URL, '../api/maktob/manage.php');
+    curl_setopt($ch, CURLOPT_POST, true);
+    curl_setopt($ch, CURLOPT_POSTFIELDS, http_build_query($postData));
+    curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
+    curl_setopt($ch, CURLOPT_HTTPHEADER, [
+        'Content-Type: application/x-www-form-urlencoded'
+    ]);
+
+    $response = curl_exec($ch);
+    $httpCode = curl_getinfo($ch, CURLINFO_HTTP_CODE);
+    curl_close($ch);
+
+    $responseData = json_decode($response, true);
+
+    if ($httpCode === 200 && isset($responseData['success']) && $responseData['success']) {
+        $_SESSION['success_message'] = $responseData['message'] ?? __('letter_created');
     } else {
-        $_SESSION['error_message'] = __('please_enter_company');
+        $_SESSION['error_message'] = $responseData['message'] ?? __('error_creating_letter');
     }
 
     // Redirect back to the same page
@@ -64,20 +70,53 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     exit();
 }
 
-// Fetch recent maktobs
-$recent_maktobs_query = "SELECT m.*,
-    u.name as sender_name,
-    m.status,
-    COALESCE(m.language, 'english') as language
-    FROM maktobs m
-    JOIN users u ON m.sender_id = u.id
-    WHERE m.tenant_id = ? AND m.branch_id = ?
-    ORDER BY maktob_date DESC
-    LIMIT 10";
-$stmt = $conn->prepare($recent_maktobs_query);
-$stmt->bind_param("ii", $tenant_id, $branch_id);
-$stmt->execute();
-$recent_maktobs_result = $stmt->get_result();
+// Fetch recent maktobs via API
+$recent_maktobs_result = null;
+try {
+    $ch = curl_init();
+    curl_setopt($ch, CURLOPT_URL, '../api/maktob/manage.php');
+    curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
+    curl_setopt($ch, CURLOPT_HTTPHEADER, [
+        'Content-Type: application/json'
+    ]);
+
+    $response = curl_exec($ch);
+    $httpCode = curl_getinfo($ch, CURLINFO_HTTP_CODE);
+    curl_close($ch);
+
+    if ($httpCode === 200) {
+        $responseData = json_decode($response, true);
+        if (isset($responseData['success']) && $responseData['success'] && isset($responseData['data'])) {
+            // Convert API response to a format similar to the original mysqli result
+            $maktobsData = $responseData['data'];
+
+            // Create a mock result object that mimics mysqli_result
+            class MockMysqliResult {
+                private $data;
+                private $currentIndex = 0;
+
+                public function __construct($data) {
+                    $this->data = $data;
+                }
+
+                public function fetch_assoc() {
+                    if ($this->currentIndex < count($this->data)) {
+                        $row = $this->data[$this->currentIndex];
+                        $this->currentIndex++;
+                        return $row;
+                    }
+                    return null;
+                }
+            }
+
+            $recent_maktobs_result = new MockMysqliResult($maktobsData);
+        }
+    }
+} catch (Exception $e) {
+    error_log("Error fetching maktobs: " . $e->getMessage());
+    // Fallback to empty result
+    $recent_maktobs_result = null;
+}
 
 // Include the header
 include '../includes/header.php';
@@ -288,132 +327,12 @@ include '../includes/header.php';
     </div>
 </div>
 
-<!-- View Maktob Modal -->
-<div class="modal fade" id="viewMaktobModal" tabindex="-1" role="dialog">
-    <div class="modal-dialog modal-lg" role="document">
-        <div class="modal-content">
-            <div class="modal-header">
-                <h5 class="modal-title">
-                    <i class="feather icon-file-text mr-2"></i>
-                    <span id="maktobSubject"></span>
-                </h5>
-                <button type="button" class="close" data-dismiss="modal" aria-label="Close">
-                    <span aria-hidden="true">&times;</span>
-                </button>
-            </div>
-            <div class="modal-body">
-                <div class="maktob-info mb-3">
-                    <div class="row">
-                        <div class="col-md-6">
-                            <p><strong><?= __('letter_number') ?>:</strong> <span id="maktobNumber"></span></p>
-                            <p><strong><?= __('company_name') ?>:</strong> <span id="maktobCompany"></span></p>
-                            <p><strong><?= __('language') ?>:</strong> <span id="maktobLanguage"></span></p>
-                        </div>
-                        <div class="col-md-6 text-right">
-                            <p><strong><?= __('date') ?>:</strong> <span id="maktobDate"></span></p>
-                            <p><strong><?= __('status') ?>:</strong> <span id="maktobStatus"></span></p>
-                            <p id="fileLinks"></p>
-                        </div>
-                    </div>
-                    <hr>
-                </div>
-                <div class="maktob-content">
-                    <p id="maktobContent"></p>
-                </div>
-            </div>
-            <div class="modal-footer">
-                <button type="button" class="btn btn-secondary" data-dismiss="modal"><?= __('cancel') ?></button>
-            </div>
-        </div>
-    </div>
-</div>
 
-<!-- Edit Maktob Modal -->
-<div class="modal fade" id="editMaktobModal" tabindex="-1" role="dialog">
-    <div class="modal-dialog modal-lg" role="document">
-        <div class="modal-content">
-            <div class="modal-header">
-                <h5 class="modal-title">
-                    <i class="feather icon-edit-2 mr-2"></i>
-                    <?= __('edit_letter') ?>
-                </h5>
-                <button type="button" class="close" data-dismiss="modal" aria-label="Close">
-                    <span aria-hidden="true">&times;</span>
-                </button>
-            </div>
-            <form id="editMaktobForm" method="POST" action="update_maktob.php">
-                <div class="modal-body">
-                    <input type="hidden" id="edit_maktob_id" name="maktob_id">
-                    <div class="row">
-                        <div class="col-md-6">
-                            <div class="form-group">
-                                <label for="edit_maktob_number"><?= __('letter_number') ?></label>
-                                <input type="text" class="form-control" id="edit_maktob_number" name="maktob_number" required>
-                            </div>
-                            <div class="form-group">
-                                <label for="edit_maktob_date"><?= __('letter_date') ?></label>
-                                <input type="date" class="form-control" id="edit_maktob_date" name="maktob_date" required>
-                            </div>
-                            <div class="form-group">
-                                <label for="edit_company_name"><?= __('company_name') ?></label>
-                                <input type="text" class="form-control" id="edit_company_name" name="company_name" required>
-                            </div>
-                            <div class="form-group">
-                                <label for="edit_language"><?= __('language') ?></label>
-                                <select class="form-control" id="edit_language" name="language" required>
-                                    <option value="english"><?= __('english') ?></option>
-                                    <option value="dari"><?= __('dari') ?></option>
-                                    <option value="pashto"><?= __('pashto') ?></option>
-                                </select>
-                            </div>
-                        </div>
-                        <div class="col-md-6">
-                            <div class="form-group">
-                                <label for="edit_subject"><?= __('subject') ?></label>
-                                <input type="text" class="form-control" id="edit_subject" name="subject" required>
-                            </div>
-                            <div class="form-group">
-                                <label for="edit_content"><?= __('content') ?></label>
-                                <textarea class="form-control" id="edit_content" name="content" rows="5" required></textarea>
-                            </div>
-                        </div>
-                    </div>
-                </div>
-                <div class="modal-footer">
-                    <button type="button" class="btn btn-secondary" data-dismiss="modal"><?= __('cancel') ?></button>
-                    <button type="submit" class="btn btn-primary"><?= __('save_changes') ?></button>
-                </div>
-            </form>
-        </div>
-    </div>
-</div>
+<?php include '../modals/maktob/view_modal.php'; ?>
+<?php include '../modals/maktob/edit_modal.php'; ?>
+<?php include '../modals/maktob/delete_modal.php'; ?>
 
-<!-- Delete Confirmation Modal -->
-<div class="modal fade" id="deleteMaktobModal" tabindex="-1" role="dialog">
-    <div class="modal-dialog" role="document">
-        <div class="modal-content">
-            <div class="modal-header">
-                <h5 class="modal-title">
-                    <i class="feather icon-alert-triangle text-danger mr-2"></i>
-                    <?= __('confirm_delete') ?>
-                </h5>
-                <button type="button" class="close" data-dismiss="modal" aria-label="Close">
-                    <span aria-hidden="true">&times;</span>
-                </button>
-            </div>
-            <div class="modal-body">
-                <p><?= __('delete_confirmation') ?></p>
-            </div>
-            <div class="modal-footer">
-                <button type="button" class="btn btn-secondary" data-dismiss="modal"><?= __('cancel') ?></button>
-                <form id="deleteMaktobForm" method="POST" action="delete_maktob.php">
-                    <input type="hidden" id="delete_maktob_id" name="maktob_id">
-                    <button type="submit" class="btn btn-danger"><?= __('delete') ?></button>
-                </form>
-            </div>
-        </div>
-    </div>
-</div>
+
 
 <style>
 .maktob-info p {

@@ -1,9 +1,9 @@
 <?php
 // Include database security module for input validation
-require_once 'includes/db_security.php';
+require_once '../../admin/includes/db_security.php';
 
 // Include security module
-require_once 'security.php';
+require_once '../../admin/security.php';
 
 // Enforce authentication
 enforce_auth();
@@ -17,7 +17,7 @@ if (!isset($_SESSION['user_id'])) {
 }
 
 // Include database connection
-include '../includes/conn.php';
+include '../../includes/conn.php';
 
 // Set headers for JSON response
 header('Content-Type: application/json');

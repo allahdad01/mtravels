@@ -1,17 +1,17 @@
 <?php
 // Include database security module for input validation
-require_once 'includes/db_security.php';
+require_once '../../admin/includes/db_security.php';
 
 // Include security module
-require_once 'security.php';
+require_once '../../admin/security.php';
 
 // Enforce authentication
 enforce_auth();
 $tenant_id = $_SESSION['tenant_id'];
 $branch_id = $_SESSION['branch_id'];
 // update_refund_penalties.php
-require_once('../includes/db.php');
-require_once('../includes/conn.php'); // Adding mysqli connection for compatibility
+require_once('../../includes/db.php');
+require_once('../../includes/conn.php'); // Adding mysqli connection for compatibility
 
 // Validate refund_amount
 $refund_amount = isset($_POST['refund_amount']) ? DbSecurity::validateInput($_POST['refund_amount'], 'float', ['min' => 0]) : null;

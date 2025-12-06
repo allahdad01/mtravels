@@ -740,8 +740,9 @@ include 'handlers/debtors_handler.php';
 
                                                                             <?php if ($debtor['balance'] <= 0): ?>
                                                                                 <form method="POST" class="d-inline" name="debtor_status_form" onsubmit="return confirm('<?= __('confirm_deactivate_debtor') ?>');">
-                                                                                    <input type="hidden" name="debtor_id" value="<?php echo h($debtor['id']); ?>">
-                                                                                    <button type="submit" name="deactivate_debtor" class="btn btn-icon btn-danger btn-sm mb-1 mb-sm-0" title="<?= __('deactivate_debtor') ?>">
+                                                                                        <input type="hidden" name="deactivate_debtor" value="1">
+                                                                                        <input type="hidden" name="debtor_id" value="<?php echo h($debtor['id']); ?>">
+                                                                                        <button type="submit" name="deactivate_debtor" class="btn btn-icon btn-danger btn-sm mb-1 mb-sm-0" title="<?= __('deactivate_debtor') ?>">
                                                                                         <i class="feather icon-user-x"></i>
                                                                                     </button>
                                                                                 </form>
@@ -752,6 +753,7 @@ include 'handlers/debtors_handler.php';
                                                                                 <i class="feather icon-list"></i>
                                                                             </button>
                                                                             <form method="POST" class="d-inline" name="debtor_status_form" onsubmit="return confirm('<?= __('confirm_reactivate_debtor') ?>');">
+                                                                                <input type="hidden" name="reactivate_debtor" value="1">
                                                                                 <input type="hidden" name="debtor_id" value="<?php echo h($debtor['id']); ?>">
                                                                                 <button type="submit" name="reactivate_debtor" class="btn btn-icon btn-success btn-sm mr-1 mb-1 mb-sm-0" title="<?= __('reactivate_debtor') ?>">
                                                                                     <i class="feather icon-user-check"></i>
@@ -878,6 +880,7 @@ include 'handlers/debtors_handler.php';
                                                 </div>
                                                 <form method="POST">
                                                     <div class="modal-body">
+                                                        <input type="hidden" name="pay" value="1">
                                                         <input type="hidden" name="debtor_id" value="<?php echo h($debtor['id']); ?>">
                                                         <input type="hidden" name="debtor_currency" value="<?php echo h($debtor['currency']); ?>">
                                                         
@@ -1047,6 +1050,7 @@ include 'handlers/debtors_handler.php';
                                                 </div>
                                                 <form method="POST">
                                                     <div class="modal-body">
+                                                        <input type="hidden" name="edit_debtor" value="1">
                                                         <input type="hidden" name="debtor_id" value="<?php echo h($debtor['id']); ?>">
                                                         
                                                         <div class="form-group">
@@ -1223,9 +1227,14 @@ include 'handlers/debtors_handler.php';
 
 <!-- Direct Fix for Edit Transaction Button -->
 <script>
+// Print debtor receipt function
+function printDebtorReceipt(transactionId) {
+    window.open(`print_debtor_receipt.php?id=${transactionId}`, '_blank');
+}
+
 // This script will ensure the edit transaction button works
 document.addEventListener('DOMContentLoaded', function() {
-    
+
     // Direct event handler for all edit transaction buttons
     const editButtons = document.querySelectorAll('.edit-transaction-btn');
     console.log('Found ' + editButtons.length + ' edit transaction buttons');

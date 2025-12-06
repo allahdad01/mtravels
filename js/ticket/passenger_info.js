@@ -34,58 +34,58 @@ $(document).ready(function() {
 
     // Function to create passenger form fields
     function createPassengerFields(type, index, count) {
-        let titles = type === 'infant' ? ['Infant'] : 
-                   type === 'child' ? ['Child'] : 
-                   ['Mr', 'Mrs', 'Ms'];
+        let titles = type === 'infant' ? ['Infant'] :
+                    type === 'child' ? ['Child'] :
+                    ['Mr', 'Mrs', 'Ms'];
         
         let html = `
             <div class="passenger-info ${type}-passenger" data-passenger="${index}">
                 <h6 class="border-bottom pb-2 mb-3">${type.charAt(0).toUpperCase() + type.slice(1)} Passenger ${count}</h6>
                 <div class="form-row mb-3">
                     <div class="form-group col-md-2 mb-0">
-                        <label for="title_${index}"><?= __('title') ?></label>
+                        <label for="title_${index}">Title</label>
                         <select class="form-control" id="title_${index}" name="passengers[${index}][title]" required>
                             ${titles.map(title => `<option value="${title}">${title}</option>`).join('')}
                         </select>
                     </div>
                     <div class="form-group col-md-2 mb-0">
-                        <label for="gender_${index}"><?= __('gender') ?></label>
+                        <label for="gender_${index}">Gender</label>
                         <select class="form-control" id="gender_${index}" name="passengers[${index}][gender]" required>
-                            <option value="Male"><?= __('male') ?></option>
-                            <option value="Female"><?= __('female') ?></option>
+                            <option value="Male">Male</option>
+                            <option value="Female">Female</option>
                         </select>
                     </div>
                     <div class="form-group col-md-5 mb-0">
-                        <label for="passengerName_${index}"><?= __('passenger_name') ?></label>
+                        <label for="passengerName_${index}">Passenger Name</label>
                         <input type="text" class="form-control" id="passengerName_${index}" name="passengers[${index}][name]" required>
                     </div>
                     <div class="form-group col-md-3 mb-0">
-                        <label for="phone_${index}"><?= __('phone') ?></label>
+                        <label for="phone_${index}">Phone</label>
                         <input type="text" class="form-control" id="phone_${index}" name="passengers[${index}][phone]" required>
                     </div>
                 </div>
                 <div class="form-row">
                     <div class="form-group col-md-3 mb-0">
                         <label for="base_${index}">
-                            <i class="feather icon-dollar-sign mr-1"></i><?= __('base_amount') ?>
+                            <i class="feather icon-dollar-sign mr-1"></i>Base Amount
                         </label>
                         <input type="number" class="form-control base-amount" id="base_${index}" name="passengers[${index}][base]" step="any" required>
                     </div>
                     <div class="form-group col-md-3 mb-0">
                         <label for="sold_${index}">
-                            <i class="feather icon-dollar-sign mr-1"></i><?= __('sold_amount') ?>
+                            <i class="feather icon-dollar-sign mr-1"></i>Sold Amount
                         </label>
                         <input type="number" class="form-control sold-amount" id="sold_${index}" name="passengers[${index}][sold]" step="any" required>
                     </div>
                     <div class="form-group col-md-3 mb-0">
                         <label for="discount_${index}">
-                            <i class="feather icon-minus-circle mr-1"></i><?= __('discount') ?>
+                            <i class="feather icon-minus-circle mr-1"></i>Discount
                         </label>
                         <input type="number" class="form-control discount-amount" id="discount_${index}" name="passengers[${index}][discount]" value="0" step="any">
                     </div>
                     <div class="form-group col-md-3 mb-0">
                         <label for="profit_${index}">
-                            <i class="feather icon-plus-circle mr-1"></i><?= __('profit') ?>
+                            <i class="feather icon-plus-circle mr-1"></i>Profit
                         </label>
                         <input type="number" class="form-control profit-amount" id="profit_${index}" name="passengers[${index}][profit]" step="any" readonly>
                     </div>

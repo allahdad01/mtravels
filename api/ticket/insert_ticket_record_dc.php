@@ -4,10 +4,10 @@ if (session_status() === PHP_SESSION_NONE) {
     session_start();
 }
 // Include database security module for input validation
-require_once 'includes/db_security.php';
+require_once '../../admin/includes/db_security.php';
 
 // Include security module
-require_once 'security.php';
+require_once '../../admin/security.php';
 $tenant_id = $_SESSION['tenant_id'];
 $branch_id = $_SESSION['branch_id'];
 // Enforce authentication
@@ -15,7 +15,7 @@ enforce_auth();
 
 $username = isset($_SESSION["name"]) ? $_SESSION["name"] : "Unknown User";
 $user_id = $_SESSION['user_id'] ?? 0;
-require_once '../includes/conn.php';
+require_once '../../includes/conn.php';
 
 // Validate description
 $description = isset($_POST['description']) ? DbSecurity::validateInput($_POST['description'], 'string', ['maxlength' => 255]) : null;
@@ -166,9 +166,9 @@ if (
                     $refundRemarks = "Penalty for ticket Name {$passengerName} date change deducted from account";
 
 
-                    $insertSupplierTransactionStmt->bind_param("iiissdss", 
+                    $insertSupplierTransactionStmt->bind_param("iiissddsi",
                         $tenant_id,
-                        $supplierId, $ticket_id, $transactionType, $transactionOf, $deductSupplier, $newBalance, $refundRemarks
+                        $supplierId, $ticket_id, $transactionType, $transactionOf, $deductSupplier, $newBalance, $refundRemarks, $branch_id
                     );
 
                     if (!$insertSupplierTransactionStmt->execute()) {
@@ -179,9 +179,9 @@ if (
                     $insertSupplierTransactionStmt->close();
                 } else {
                     // For non-regular suppliers, just record the transaction without balance
-                    $insertSupplierTransactionStmt = $conn->prepare("INSERT INTO supplier_transactions 
-                        (tenant_id, supplier_id, reference_id, transaction_type, transaction_of, amount, remarks, transaction_date)
-                        VALUES (?, ?, ?, ?, ?, ?, ?, NOW())");
+                    $insertSupplierTransactionStmt = $conn->prepare("INSERT INTO supplier_transactions
+                        (tenant_id, supplier_id, reference_id, transaction_type, transaction_of, amount, remarks, transaction_date, branch_id)
+                        VALUES (?, ?, ?, ?, ?, ?, ?, NOW(), ?)");
 
                     if (!$insertSupplierTransactionStmt) {
                         throw new Exception("Error preparing supplier transaction statement: " . $conn->error);

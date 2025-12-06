@@ -1,9 +1,9 @@
 <?php
 // Include security module
-require_once 'security.php';
+require_once '../../admin/security.php';
 
 // Include language helper
-require_once '../includes/language_helpers.php';
+require_once '../../includes/language_helpers.php';
 
 // Enforce authentication
 enforce_auth();
@@ -11,8 +11,8 @@ $tenant_id = $_SESSION['tenant_id'];
 $branch_id = $_SESSION['branch_id'];
 
 // Database connection
-require_once('../includes/db.php');
-include '../includes/conn.php';
+require_once('../../includes/db.php');
+include '../../includes/conn.php';
 
 // Get transaction ID from URL
 $transaction_id = isset($_GET['id']) ? (int)$_GET['id'] : 0;

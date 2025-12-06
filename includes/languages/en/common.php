@@ -434,7 +434,6 @@ return [
     'loading' => 'Loading',
     'loading_transactions' => 'Loading transactions...',
     'no_transactions_found_for_this_account' => 'No transactions found for this account',
-    'no_transactions_found' => 'No transactions found',
     'print_pdf' => 'Print PDF',
     'filter_by_currency' => 'Filter by Currency',
     'search_by_receipt' => 'Search by Receipt',

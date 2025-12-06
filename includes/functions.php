@@ -1,7 +1,7 @@
 <?php
 // Email sending function using PHPMailer with tracking
 function sendEmail($to, $subject, $body, $isHtml = true, $emailType = 'general', $recipientName = '', $tenantId = null) {
-    require_once '../vendor/autoload.php';
+    require_once '../../vendor/autoload.php';
 
     // Get SMTP settings - tenant-specific or platform fallback
     $smtpSettings = getTenantSMTPSettings($tenantId);
@@ -1191,7 +1191,7 @@ function calculateNextBillingDate($payment_date, $billing_cycle) {
 
 // Generate PDF ticket from booking data
 function generateTicketPDF($bookingData, $tenantId) {
-    require_once '../vendor/autoload.php';
+    require_once '../../vendor/autoload.php';
     
     // Create new PDF document
     $mpdf = new \Mpdf\Mpdf([
@@ -1579,7 +1579,7 @@ function generateTicketPDF($bookingData, $tenantId) {
 
 // Send ticket notification email with PDF attachment
 function sendTicketNotificationWithAttachment($email, $name, $subject, $body, $attachmentPath) {
-    require_once '../vendor/autoload.php';
+    require_once '../../vendor/autoload.php';
     
     // Get SMTP settings
     global $tenant_id;

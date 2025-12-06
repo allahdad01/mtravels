@@ -5,7 +5,7 @@ if (session_status() === PHP_SESSION_NONE) {
 }
 
 // Include security module
-require_once 'security.php';
+require_once '../../admin/security.php';
 $tenant_id = $_SESSION['tenant_id'];
 $branch_id = $_SESSION['branch_id'];
 // Enforce authentication
@@ -24,7 +24,7 @@ if (!isset($data['transaction_id']) || !is_numeric($data['transaction_id'])) {
 $transactionId = intval($data['transaction_id']);
 
 // Database connection
-require_once('../includes/conn.php');
+require_once('../../includes/conn.php');
 
 // Start transaction
 $conn->begin_transaction();

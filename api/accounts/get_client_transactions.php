@@ -3,12 +3,9 @@
 if (session_status() === PHP_SESSION_NONE) {
     session_start();
 }
-// Include security module
-require_once 'security.php';
+
 $tenant_id = $_SESSION['tenant_id'];
 $branch_id = $_SESSION['branch_id'];
-// Enforce authentication
-enforce_auth();
 
 
 
@@ -29,7 +26,7 @@ if (!isset($_GET['client_id']) || !is_numeric($_GET['client_id'])) {
 $clientId = intval($_GET['client_id']);
 
 // Database connection
-require_once('../includes/conn.php');
+require_once('../../includes/conn.php');
 
 // Prepare and execute query with left joins to fetch reference information
 $query = "SELECT ct.*, 
@@ -64,7 +61,7 @@ $query = "SELECT ct.*,
           ORDER BY ct.id DESC";
 
 $stmt = $conn->prepare($query);
-$stmt->bind_param("iiiiiiiiiiiiiiiiiiii", $tenant_id, $branch_id, $tenant_id, $branch_id, $tenant_id, $branch_id, $tenant_id, $branch_id, $tenant_id, $branch_id, $tenant_id, $branch_id, $tenant_id, $branch_id, $tenant_id, $branch_id, $tenant_id, $branch_id, $tenant_id, $branch_id, $tenant_id, $branch_id, $clientId, $tenant_id, $branch_id);
+$stmt->bind_param("iiiiiiiiiiiiiiiiiiiiiiiiiii", $tenant_id, $branch_id, $tenant_id, $branch_id, $tenant_id, $branch_id, $tenant_id, $branch_id, $tenant_id, $branch_id, $tenant_id, $branch_id, $tenant_id, $branch_id, $tenant_id, $branch_id, $tenant_id, $branch_id, $tenant_id, $branch_id, $tenant_id, $branch_id, $tenant_id, $branch_id, $clientId, $tenant_id, $branch_id);
 $stmt->execute();
 $result = $stmt->get_result();
 

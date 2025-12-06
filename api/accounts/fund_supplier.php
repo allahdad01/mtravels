@@ -1,13 +1,13 @@
 <?php
 
 // Include security module
-require_once 'security.php';
+require_once '../../admin/security.php';
 $tenant_id = $_SESSION['tenant_id'];
 $branch_id = $_SESSION['branch_id'];
 // Enforce authentication
 enforce_auth();
 
-require_once('../includes/conn.php');
+require_once('../../includes/conn.php');
 // Check if the user is logged in
 $username = isset($_SESSION['name']) ? $_SESSION['name'] : null;
 $user_id = isset($_SESSION['user_id']) ? $_SESSION['user_id'] : null;

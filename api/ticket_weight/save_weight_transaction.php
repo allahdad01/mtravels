@@ -6,7 +6,7 @@ if (session_status() === PHP_SESSION_NONE) {
 
 // Include database connection and security
 require_once '../../includes/conn.php';
-require_once '../includes/db_security.php';
+require_once '../../admin/includes/db_security.php';
 $tenant_id = $_SESSION['tenant_id'];
 $branch_id = $_SESSION['branch_id'];
 // Get and validate POST data
@@ -51,7 +51,7 @@ try {
         SELECT tw.*, t.passenger_name, t.pnr, t.paid_to, t.title
         FROM ticket_weights tw
         JOIN ticket_bookings t ON tw.ticket_id = t.id
-        WHERE tw.id = ? AND tw.tenant_id = ? And branch_id = ?
+        WHERE tw.id = ? AND tw.tenant_id = ? And tw.branch_id = ?
     ");
     $weightCheck->bind_param('iii', $weightId, $tenant_id, $branch_id);
     $weightCheck->execute();
@@ -101,7 +101,7 @@ try {
         VALUES (?, 'credit', ?, ?, ?, ?, 'weight', ?, ?, ?, ?, ?)
     ");
     $mainTransaction->bind_param(
-        'idsssidsi',
+        'idsssidsii',
         $weight['paid_to'],
         $amount,
         $currency,

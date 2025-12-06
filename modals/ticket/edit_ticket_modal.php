@@ -166,12 +166,20 @@
                                             <i class="feather icon-calendar mr-1"></i><?= __('departure_date') ?>
                                         </label>
                                         <input type="date" class="form-control" id="editDepartureDate" name="departureDate" required>
+                                        <label for="editDepartureTime">
+                                            <i class="feather icon-clock mr-1"></i><?= __('departure_time') ?>
+                                        </label>
+                                        <input type="time" class="form-control" id="editDepartureTime" name="departureTime" required>
                                     </div>
                                     <div id="editReturnDateField" class="form-group col-md-4" style="display: none;">
                                         <label for="editReturnDate">
                                             <i class="feather icon-calendar mr-1"></i><?= __('return_date') ?>
                                         </label>
                                         <input type="date" class="form-control" id="editReturnDate" name="returnDate">
+                                        <label for="editReturnDepartureTime">
+                                            <i class="feather icon-clock mr-1"></i><?= __('return_departure_time') ?>
+                                        </label>
+                                        <input type="time" class="form-control" id="editReturnDepartureTime" name="returnDepartureTime">
                                     </div>
                                 </div>
                             </div>

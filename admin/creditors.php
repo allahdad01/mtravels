@@ -79,8 +79,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['add_creditor'])) {
             }
 
             // Get current main account balance
-            $stmt = $conn->prepare("SELECT $balance_column FROM main_account WHERE id = ? AND tenant_id = ?");
-            $stmt->bind_param("ii", $main_account_id, $tenant_id);
+            $stmt = $conn->prepare("SELECT $balance_column FROM main_account WHERE id = ? AND tenant_id = ? AND branch_id = ?");
+            $stmt->bind_param("iii", $main_account_id, $tenant_id, $branch_id);
             $stmt->execute();
             $result = $stmt->get_result();
             $main_account = $result->fetch_assoc();
@@ -91,17 +91,17 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['add_creditor'])) {
 
             // Update main account balance (add the creditor amount)
             $new_main_balance = $main_account[$balance_column] + $balance;
-            $stmt = $conn->prepare("UPDATE main_account SET $balance_column = ? WHERE id = ? AND tenant_id = ?");
-            $stmt->bind_param("dii", $new_main_balance, $main_account_id, $tenant_id);
+            $stmt = $conn->prepare("UPDATE main_account SET $balance_column = ? WHERE id = ? AND tenant_id = ? AND branch_id = ?");
+            $stmt->bind_param("diii", $new_main_balance, $main_account_id, $tenant_id, $branch_id);
             $stmt->execute();
 
             // Create main account transaction record
             $transaction_type = 'credit';
             $description = "Initial credit balance for creditor: $name";
             $tranasction_of = 'creditor';
-            
-            $stmt = $conn->prepare("INSERT INTO main_account_transactions (main_account_id, amount, balance, currency, type, description, transaction_of, reference_id, tenant_id) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)");
-            $stmt->bind_param("idsssssii", $main_account_id, $balance, $new_main_balance, $currency, $transaction_type, $description, $tranasction_of, $creditor_id, $tenant_id);
+
+            $stmt = $conn->prepare("INSERT INTO main_account_transactions (main_account_id, amount, balance, currency, type, description, transaction_of, reference_id, tenant_id, branch_id) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)");
+            $stmt->bind_param("idsssssiii", $main_account_id, $balance, $new_main_balance, $currency, $transaction_type, $description, $tranasction_of, $creditor_id, $tenant_id, $branch_id);
             $stmt->execute();
 
             $_SESSION['success_message'] = __("creditor_added_successfully_with_main_account_transaction");
@@ -136,8 +136,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['pay'])) {
         $conn->begin_transaction();
         
         // Get creditor information
-        $stmt = $conn->prepare("SELECT balance, currency FROM creditors WHERE id = ? AND tenant_id = ?");
-        $stmt->bind_param("ii", $creditor_id, $tenant_id);
+        $stmt = $conn->prepare("SELECT balance, currency FROM creditors WHERE id = ? AND tenant_id = ? AND branch_id = ?");
+        $stmt->bind_param("iii", $creditor_id, $tenant_id, $branch_id);
         $stmt->execute();
         $result = $stmt->get_result();
         $creditor = $result->fetch_assoc();
@@ -176,21 +176,21 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['pay'])) {
         
         if ($creditor['balance'] >= $converted_amount) {
             // Create creditor transaction record
-            $stmt = $conn->prepare("INSERT INTO creditor_transactions (creditor_id, amount, currency, transaction_type, description, payment_date, reference_number, tenant_id) VALUES (?, ?, ?, ?, ?, ?, ?, ?)");
-            $stmt->bind_param("idsssssi", $creditor_id, $converted_amount, $creditor_currency, $transaction_type, $description, $payment_date, $receipt, $tenant_id);
+            $stmt = $conn->prepare("INSERT INTO creditor_transactions (creditor_id, amount, currency, transaction_type, description, payment_date, reference_number, tenant_id, branch_id) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)");
+            $stmt->bind_param("idsssssii", $creditor_id, $converted_amount, $creditor_currency, $transaction_type, $description, $payment_date, $receipt, $tenant_id, $branch_id);
             $stmt->execute();
             $creditor_transaction_id = $conn->insert_id;
             
             // Update creditor balance
             $new_balance = $creditor['balance'] - $converted_amount;
-            $stmt = $conn->prepare("UPDATE creditors SET balance = ? WHERE id = ? AND tenant_id = ?");
-            $stmt->bind_param("dii", $new_balance, $creditor_id, $tenant_id);
+            $stmt = $conn->prepare("UPDATE creditors SET balance = ? WHERE id = ? AND tenant_id = ? AND branch_id = ?");
+            $stmt->bind_param("diii", $new_balance, $creditor_id, $tenant_id, $branch_id);
             $stmt->execute();
 
             // Check if balance is 0 and update status to inactive
             if ($new_balance == 0) {
-                $stmt = $conn->prepare("UPDATE creditors SET status = 'inactive' WHERE id = ? AND tenant_id = ?");
-                $stmt->bind_param("ii", $creditor_id, $tenant_id);
+                $stmt = $conn->prepare("UPDATE creditors SET status = 'inactive' WHERE id = ? AND tenant_id = ? AND branch_id = ?");
+                $stmt->bind_param("iii", $creditor_id, $tenant_id, $branch_id);
                 $stmt->execute();
             }
             
@@ -207,8 +207,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['pay'])) {
             }
             
             // Get current main account balance
-            $stmt = $conn->prepare("SELECT $balance_column FROM main_account WHERE id = ? AND tenant_id = ?");
-            $stmt->bind_param("ii", $paid_to, $tenant_id);
+            $stmt = $conn->prepare("SELECT $balance_column FROM main_account WHERE id = ? AND tenant_id = ? AND branch_id = ?");
+            $stmt->bind_param("iii", $paid_to, $tenant_id, $branch_id);
             $stmt->execute();
             $result = $stmt->get_result();
             $main_account = $result->fetch_assoc();
@@ -219,14 +219,14 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['pay'])) {
             
             // Update main account balance (subtract original amount)
             $new_main_balance = $main_account[$balance_column] - $amount;
-            $stmt = $conn->prepare("UPDATE main_account SET $balance_column = ? WHERE id = ? AND tenant_id = ?");
-            $stmt->bind_param("dii", $new_main_balance, $paid_to, $tenant_id);
+            $stmt = $conn->prepare("UPDATE main_account SET $balance_column = ? WHERE id = ? AND tenant_id = ? AND branch_id = ?");
+            $stmt->bind_param("diii", $new_main_balance, $paid_to, $tenant_id, $branch_id);
             $stmt->execute();
             $tranasction_of = 'creditor';
             // Create main account transaction
             $main_transaction_description = $description;
-            $stmt = $conn->prepare("INSERT INTO main_account_transactions (main_account_id, amount, balance, currency, type, description, transaction_of, reference_id, tenant_id) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)");
-            $stmt->bind_param("idsssssii", $paid_to, $amount, $new_main_balance, $currency, $transaction_type, $main_transaction_description, $tranasction_of, $creditor_transaction_id, $tenant_id);
+            $stmt = $conn->prepare("INSERT INTO main_account_transactions (main_account_id, amount, balance, currency, type, description, transaction_of, reference_id, tenant_id, branch_id) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)");
+            $stmt->bind_param("idsssssiii", $paid_to, $amount, $new_main_balance, $currency, $transaction_type, $main_transaction_description, $tranasction_of, $creditor_transaction_id, $tenant_id, $branch_id);
             $stmt->execute();
             
             // Get the last inserted ID for the main account transaction
@@ -254,8 +254,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['pay'])) {
             require_once '../includes/functions.php';
     
             // Get creditor email
-            $stmt_creditor_email = $conn->prepare("SELECT email FROM creditors WHERE id = ? AND tenant_id = ?");
-            $stmt_creditor_email->bind_param("ii", $creditor_id, $tenant_id);
+            $stmt_creditor_email = $conn->prepare("SELECT email FROM creditors WHERE id = ? AND tenant_id = ? AND branch_id = ?");
+            $stmt_creditor_email->bind_param("iii", $creditor_id, $tenant_id, $branch_id);
             $stmt_creditor_email->execute();
             $creditor_email_result = $stmt_creditor_email->get_result();
             $creditor_email_data = $creditor_email_result->fetch_assoc();
@@ -294,8 +294,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['delete_transaction'])
         $conn->begin_transaction();
         
         // Get transaction details
-        $stmt = $conn->prepare("SELECT * FROM creditor_transactions WHERE id = ? AND tenant_id = ?");
-        $stmt->bind_param("ii", $transaction_id, $tenant_id);
+        $stmt = $conn->prepare("SELECT * FROM creditor_transactions WHERE id = ? AND tenant_id = ? AND branch_id = ?");
+        $stmt->bind_param("iii", $transaction_id, $tenant_id, $branch_id);
         $stmt->execute();
         $result = $stmt->get_result();
         $transaction = $result->fetch_assoc();
@@ -305,8 +305,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['delete_transaction'])
         }
         
         // Get the linked main account transaction
-        $stmt = $conn->prepare("SELECT * FROM main_account_transactions WHERE reference_id = ? AND transaction_of = 'creditor' AND tenant_id = ?");
-        $stmt->bind_param("ii", $transaction_id, $tenant_id);
+        $stmt = $conn->prepare("SELECT * FROM main_account_transactions WHERE reference_id = ? AND transaction_of = 'creditor' AND tenant_id = ? AND branch_id = ?");
+        $stmt->bind_param("iii", $transaction_id, $tenant_id, $branch_id);
         $stmt->execute();
         $result = $stmt->get_result();
         $main_transaction = $result->fetch_assoc();
@@ -321,28 +321,29 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['delete_transaction'])
 
         // Update balances of all subsequent transactions
         $updateSubsequentStmt = $conn->prepare("
-            UPDATE main_account_transactions 
+            UPDATE main_account_transactions
             SET balance = balance + ?
-            WHERE main_account_id = ? 
-            AND currency = ? 
-            AND id > ? 
+            WHERE main_account_id = ?
+            AND currency = ?
+            AND id > ?
             AND id != ?
             AND tenant_id = ?
+            AND branch_id = ?
         ");
-        $updateSubsequentStmt->bind_param("dsssii", $main_amount, $main_transaction['main_account_id'], $main_currency, $main_transaction['id'], $main_transaction['id'], $tenant_id);
+        $updateSubsequentStmt->bind_param("dsssiis", $main_amount, $main_transaction['main_account_id'], $main_currency, $main_transaction['id'], $main_transaction['id'], $tenant_id, $branch_id);
         $updateSubsequentStmt->execute();
         
         // Get creditor information
-        $stmt = $conn->prepare("SELECT balance FROM creditors WHERE id = ? AND tenant_id = ?");
-        $stmt->bind_param("ii", $creditor_id, $tenant_id);
+        $stmt = $conn->prepare("SELECT balance FROM creditors WHERE id = ? AND tenant_id = ? AND branch_id = ?");
+        $stmt->bind_param("iii", $creditor_id, $tenant_id, $branch_id);
         $stmt->execute();
         $result = $stmt->get_result();
         $creditor = $result->fetch_assoc();
         
         // Update creditor balance (add amount back)
         $new_balance = $creditor['balance'] + $transaction['amount'];
-        $stmt = $conn->prepare("UPDATE creditors SET balance = ? WHERE id = ? AND tenant_id = ?");
-        $stmt->bind_param("dii", $new_balance, $creditor_id, $tenant_id);
+        $stmt = $conn->prepare("UPDATE creditors SET balance = ? WHERE id = ? AND tenant_id = ? AND branch_id = ?");
+        $stmt->bind_param("diii", $new_balance, $creditor_id, $tenant_id, $branch_id);
         $stmt->execute();
         
         // Get main account info and update the correct currency balance
@@ -358,8 +359,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['delete_transaction'])
         }
         
         // Get current main account balance
-        $stmt = $conn->prepare("SELECT $balance_column FROM main_account WHERE id = ? AND tenant_id = ?");
-        $stmt->bind_param("ii", $main_transaction['main_account_id'], $tenant_id);
+        $stmt = $conn->prepare("SELECT $balance_column FROM main_account WHERE id = ? AND tenant_id = ? AND branch_id = ?");
+        $stmt->bind_param("iii", $main_transaction['main_account_id'], $tenant_id, $branch_id);
         $stmt->execute();
         $result = $stmt->get_result();
         $main_account = $result->fetch_assoc();
@@ -370,17 +371,17 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['delete_transaction'])
         
         // Update main account balance (add main transaction amount back)
         $new_main_balance = $main_account[$balance_column] + $main_amount;
-        $stmt = $conn->prepare("UPDATE main_account SET $balance_column = ? WHERE id = ? AND tenant_id = ?");
-        $stmt->bind_param("dii", $new_main_balance, $main_transaction['main_account_id'], $tenant_id);
+        $stmt = $conn->prepare("UPDATE main_account SET $balance_column = ? WHERE id = ? AND tenant_id = ? AND branch_id = ?");
+        $stmt->bind_param("diii", $new_main_balance, $main_transaction['main_account_id'], $tenant_id, $branch_id);
         $stmt->execute();
         
         // Delete the transactions
-        $stmt = $conn->prepare("DELETE FROM creditor_transactions WHERE id = ? AND tenant_id = ?");
-        $stmt->bind_param("ii", $transaction_id, $tenant_id);
+        $stmt = $conn->prepare("DELETE FROM creditor_transactions WHERE id = ? AND tenant_id = ? AND branch_id = ?");
+        $stmt->bind_param("iii", $transaction_id, $tenant_id, $branch_id);
         $stmt->execute();
         
-        $stmt = $conn->prepare("DELETE FROM main_account_transactions WHERE reference_id = ? AND tenant_id = ?");
-        $stmt->bind_param("ii", $transaction_id, $tenant_id);
+        $stmt = $conn->prepare("DELETE FROM main_account_transactions WHERE reference_id = ? AND tenant_id = ? AND branch_id = ?");
+        $stmt->bind_param("iii", $transaction_id, $tenant_id, $branch_id);
         $stmt->execute();
         
         $conn->commit();
@@ -409,8 +410,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['edit_creditor'])) {
         $conn->begin_transaction();
         
         // Get current creditor information
-        $stmt = $conn->prepare("SELECT balance, currency FROM creditors WHERE id = ? AND tenant_id = ?");
-        $stmt->bind_param("ii", $creditor_id, $tenant_id);
+        $stmt = $conn->prepare("SELECT balance, currency FROM creditors WHERE id = ? AND tenant_id = ? AND branch_id = ?");
+        $stmt->bind_param("iii", $creditor_id, $tenant_id, $branch_id);
         $stmt->execute();
         $result = $stmt->get_result();
         $current_creditor = $result->fetch_assoc();
@@ -420,22 +421,23 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['edit_creditor'])) {
         }
 
         // Check if creditor has any main account transactions
-        $stmt = $conn->prepare("SELECT mt.*, ma.id as main_account_id 
-                              FROM main_account_transactions mt 
-                              JOIN main_account ma ON mt.main_account_id = ma.id 
-                              WHERE mt.transaction_of = 'creditor' 
-                              AND mt.reference_id = ? 
+        $stmt = $conn->prepare("SELECT mt.*, ma.id as main_account_id
+                              FROM main_account_transactions mt
+                              JOIN main_account ma ON mt.main_account_id = ma.id
+                              WHERE mt.transaction_of = 'creditor'
+                              AND mt.reference_id = ?
                               AND mt.type = 'credit'
                               AND mt.tenant_id = ?
+                              AND mt.branch_id = ?
                               ORDER BY mt.created_at ASC LIMIT 1");
-        $stmt->bind_param("ii", $creditor_id, $tenant_id);
+        $stmt->bind_param("iii", $creditor_id, $tenant_id, $branch_id);
         $stmt->execute();
         $result = $stmt->get_result();
         $initial_transaction = $result->fetch_assoc();
 
         // Update creditor information
-        $stmt = $conn->prepare("UPDATE creditors SET name = ?, email = ?, phone = ?, address = ?, balance = ?, currency = ? WHERE id = ? AND tenant_id = ?");
-        $stmt->bind_param("ssssdsii", $name, $email, $phone, $address, $new_balance, $new_currency, $creditor_id, $tenant_id);
+        $stmt = $conn->prepare("UPDATE creditors SET name = ?, email = ?, phone = ?, address = ?, balance = ?, currency = ? WHERE id = ? AND tenant_id = ? AND branch_id = ?");
+        $stmt->bind_param("ssssdsiii", $name, $email, $phone, $address, $new_balance, $new_currency, $creditor_id, $tenant_id, $branch_id);
         $stmt->execute();
 
         // If creditor has main account transactions, update the transactions and balances
@@ -456,8 +458,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['edit_creditor'])) {
                 }
 
                 // Get current main account balance
-                $stmt = $conn->prepare("SELECT $balance_column FROM main_account WHERE id = ? AND tenant_id = ?");
-                $stmt->bind_param("ii", $initial_transaction['main_account_id'], $tenant_id);
+                $stmt = $conn->prepare("SELECT $balance_column FROM main_account WHERE id = ? AND tenant_id = ? AND branch_id = ?");
+                $stmt->bind_param("iii", $initial_transaction['main_account_id'], $tenant_id, $branch_id);
                 $stmt->execute();
                 $result = $stmt->get_result();
                 $main_account = $result->fetch_assoc();
@@ -468,28 +470,29 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['edit_creditor'])) {
 
                 // Update the initial transaction amount and currency
                 $new_transaction_amount = $initial_transaction['amount'] + $balance_difference;
-                $stmt = $conn->prepare("UPDATE main_account_transactions 
-                                      SET amount = ?, currency = ?, balance = balance + ? 
-                                      WHERE id = ? AND tenant_id = ?");
-                $stmt->bind_param("dsdii", $new_transaction_amount, $new_currency, $balance_difference, $initial_transaction['id'], $tenant_id);
+                $stmt = $conn->prepare("UPDATE main_account_transactions
+                                      SET amount = ?, currency = ?, balance = balance + ?
+                                      WHERE id = ? AND tenant_id = ? AND branch_id = ?");
+                $stmt->bind_param("dsdiii", $new_transaction_amount, $new_currency, $balance_difference, $initial_transaction['id'], $tenant_id, $branch_id);
                 $stmt->execute();
 
                 // Update all subsequent transaction balances in a single query
                 $stmt = $conn->prepare("
-                    UPDATE main_account_transactions 
+                    UPDATE main_account_transactions
                     SET balance = balance + ?
-                    WHERE main_account_id = ? 
-                    AND currency = ? 
-                    AND id > ? 
+                    WHERE main_account_id = ?
+                    AND currency = ?
+                    AND id > ?
                     AND id != ?
                     AND tenant_id = ?
+                    AND branch_id = ?
                 ");
-                $stmt->bind_param("dissii", $balance_difference, $initial_transaction['main_account_id'], $new_currency, $initial_transaction['id'], $initial_transaction['id'], $tenant_id);
+                $stmt->bind_param("dissiii", $balance_difference, $initial_transaction['main_account_id'], $new_currency, $initial_transaction['id'], $initial_transaction['id'], $tenant_id, $branch_id);
                 $stmt->execute();
 
                 // Update the main account's current balance
-                $stmt = $conn->prepare("UPDATE main_account SET $balance_column = $balance_column + ? WHERE id = ? AND tenant_id = ?");
-                $stmt->bind_param("dii", $balance_difference, $initial_transaction['main_account_id'], $tenant_id);
+                $stmt = $conn->prepare("UPDATE main_account SET $balance_column = $balance_column + ? WHERE id = ? AND tenant_id = ? AND branch_id = ?");
+                $stmt->bind_param("diii", $balance_difference, $initial_transaction['main_account_id'], $tenant_id, $branch_id);
                 $stmt->execute();
 
                 $_SESSION['success_message'] = __("creditor_updated_and_all_transactions_recalculated_successfully");
@@ -515,8 +518,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['edit_creditor'])) {
 $status_filter = isset($_GET['status']) && $_GET['status'] === 'inactive' ? 'inactive' : 'active';
 
 // Fetch creditors based on status filter
-$stmt = $conn->prepare("SELECT * FROM creditors WHERE status = ? AND tenant_id = ? ORDER BY created_at DESC");
-$stmt->bind_param("si", $status_filter, $tenant_id);
+$stmt = $conn->prepare("SELECT * FROM creditors WHERE status = ? AND tenant_id = ? AND branch_id = ? ORDER BY created_at DESC");
+$stmt->bind_param("sii", $status_filter, $tenant_id, $branch_id);
 $stmt->execute();
 $result = $stmt->get_result();
 $creditors = $result->fetch_all(MYSQLI_ASSOC);
@@ -537,8 +540,9 @@ if (count($creditors) > 0) {
 }
 
 // Fetch main accounts for payment form
-$stmt = $pdo->prepare("SELECT id, name FROM main_account where status = 'active' AND tenant_id = ?");
+$stmt = $pdo->prepare("SELECT id, name FROM main_account where status = 'active' AND tenant_id = ? AND branch_id = ?");
 $stmt->bindParam(1, $tenant_id, PDO::PARAM_INT);
+$stmt->bindParam(2, $branch_id, PDO::PARAM_INT);
 $stmt->execute();
 $main_accounts = $stmt->fetchAll(PDO::FETCH_ASSOC);
 
@@ -602,14 +606,16 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['delete_creditor'])) {
         $conn->begin_transaction();
         
         // Check if creditor has any main account transactions
-        $stmt = $conn->prepare("SELECT mt.*, ma.id as main_account_id 
-                              FROM main_account_transactions mt 
-                              JOIN main_account ma ON mt.main_account_id = ma.id 
-                              WHERE mt.transaction_of = 'creditor' 
-                              AND mt.reference_id = ? 
+        $stmt = $conn->prepare("SELECT mt.*, ma.id as main_account_id
+                              FROM main_account_transactions mt
+                              JOIN main_account ma ON mt.main_account_id = ma.id
+                              WHERE mt.transaction_of = 'creditor'
+                              AND mt.reference_id = ?
                               AND mt.type = 'credit'
+                              AND mt.tenant_id = ?
+                              AND mt.branch_id = ?
                               ORDER BY mt.created_at ASC LIMIT 1");
-        $stmt->bind_param("i", $creditor_id);
+        $stmt->bind_param("iii", $creditor_id, $tenant_id, $branch_id);
         $stmt->execute();
         $result = $stmt->get_result();
         $initial_transaction = $result->fetch_assoc();
@@ -629,30 +635,32 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['delete_creditor'])) {
 
             // Update all subsequent transaction balances to remove the creditor's balance
             $stmt = $conn->prepare("
-                UPDATE main_account_transactions 
+                UPDATE main_account_transactions
                 SET balance = balance - ?
-                WHERE main_account_id = ? 
-                AND currency = ? 
-                AND id > ? 
+                WHERE main_account_id = ?
+                AND currency = ?
+                AND id > ?
                 AND id != ?
+                AND tenant_id = ?
+                AND branch_id = ?
             ");
-            $stmt->bind_param("dissi", $creditor_balance, $initial_transaction['main_account_id'], $creditor_currency, $initial_transaction['id'], $initial_transaction['id']);
+            $stmt->bind_param("dissiii", $creditor_balance, $initial_transaction['main_account_id'], $creditor_currency, $initial_transaction['id'], $initial_transaction['id'], $tenant_id, $branch_id);
             $stmt->execute();
 
             // Update main account balance
-            $stmt = $conn->prepare("UPDATE main_account SET $balance_column = $balance_column - ? WHERE id = ?");
-            $stmt->bind_param("di", $creditor_balance, $initial_transaction['main_account_id']);
+            $stmt = $conn->prepare("UPDATE main_account SET $balance_column = $balance_column - ? WHERE id = ? AND tenant_id = ? AND branch_id = ?");
+            $stmt->bind_param("diii", $creditor_balance, $initial_transaction['main_account_id'], $tenant_id, $branch_id);
             $stmt->execute();
 
             // Delete all transactions related to this creditor
-            $stmt = $conn->prepare("DELETE FROM main_account_transactions WHERE transaction_of = 'creditor' AND reference_id = ?");
-            $stmt->bind_param("i", $creditor_id);
+            $stmt = $conn->prepare("DELETE FROM main_account_transactions WHERE transaction_of = 'creditor' AND reference_id = ? AND tenant_id = ? AND branch_id = ?");
+            $stmt->bind_param("iii", $creditor_id, $tenant_id, $branch_id);
             $stmt->execute();
         }
 
         // Delete the creditor
-        $stmt = $conn->prepare("DELETE FROM creditors WHERE id = ?");
-        $stmt->bind_param("i", $creditor_id);
+        $stmt = $conn->prepare("DELETE FROM creditors WHERE id = ? AND tenant_id = ? AND branch_id = ?");
+        $stmt->bind_param("iii", $creditor_id, $tenant_id, $branch_id);
         $stmt->execute();
 
         $conn->commit();
@@ -1785,8 +1793,8 @@ $edit_creditor = isset($_POST['edit_creditor']) ? DbSecurity::validateInput($_PO
 // Add Edit Transaction Modals for each transaction
 foreach ($creditors as $creditor): 
     // Fetch transactions for this creditor
-    $transStmt = $conn->prepare("SELECT * FROM creditor_transactions WHERE creditor_id = ? ORDER BY payment_date DESC");
-    $transStmt->bind_param("i", $creditor['id']);
+    $transStmt = $conn->prepare("SELECT * FROM creditor_transactions WHERE creditor_id = ? AND tenant_id = ? AND branch_id = ? ORDER BY payment_date DESC");
+    $transStmt->bind_param("iii", $creditor['id'], $tenant_id, $branch_id);
     $transStmt->execute();
     $transResult = $transStmt->get_result();
     
@@ -1924,14 +1932,16 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['delete_creditor'])) {
         $conn->begin_transaction();
         
         // Check if creditor has any main account transactions
-        $stmt = $conn->prepare("SELECT mt.*, ma.id as main_account_id 
-                              FROM main_account_transactions mt 
-                              JOIN main_account ma ON mt.main_account_id = ma.id 
-                              WHERE mt.transaction_of = 'creditor' 
-                              AND mt.reference_id = ? 
+        $stmt = $conn->prepare("SELECT mt.*, ma.id as main_account_id
+                              FROM main_account_transactions mt
+                              JOIN main_account ma ON mt.main_account_id = ma.id
+                              WHERE mt.transaction_of = 'creditor'
+                              AND mt.reference_id = ?
                               AND mt.type = 'credit'
+                              AND mt.tenant_id = ?
+                              AND mt.branch_id = ?
                               ORDER BY mt.created_at ASC LIMIT 1");
-        $stmt->bind_param("i", $creditor_id);
+        $stmt->bind_param("iii", $creditor_id, $tenant_id, $branch_id);
         $stmt->execute();
         $result = $stmt->get_result();
         $initial_transaction = $result->fetch_assoc();
@@ -1973,8 +1983,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['delete_creditor'])) {
         }
 
         // Delete the creditor
-        $stmt = $conn->prepare("DELETE FROM creditors WHERE id = ?");
-        $stmt->bind_param("i", $creditor_id);
+        $stmt = $conn->prepare("DELETE FROM creditors WHERE id = ? AND tenant_id = ? AND branch_id = ?");
+        $stmt->bind_param("iii", $creditor_id, $tenant_id, $branch_id);
         $stmt->execute();
 
         $conn->commit();

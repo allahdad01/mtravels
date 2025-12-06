@@ -6,7 +6,7 @@ $user_id = $_SESSION['user_id'] ?? 0;
 $tenant_id = $_SESSION['tenant_id'];
 $branch_id = $_SESSION['branch_id'];
 // Database Connection
-require_once '../includes/conn.php';
+require_once '../../includes/conn.php';
 if ($conn->connect_error) {
     error_log("Database connection failed: " . $conn->connect_error);
     echo json_encode(['status' => 'error', 'message' => 'Database connection error']);

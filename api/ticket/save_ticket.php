@@ -5,10 +5,10 @@ if (session_status() === PHP_SESSION_NONE) {
 }
 
 // Include database security module for input validation
-require_once 'includes/db_security.php';
+require_once '../../admin/includes/db_security.php';
 
 // Include security module
-require_once 'security.php';
+require_once '../../admin/security.php';
 
 // Enforce authentication
 enforce_auth();
@@ -16,13 +16,13 @@ $tenant_id = $_SESSION['tenant_id'];
 $branch_id = $_SESSION['branch_id'];
 
 // Include WhatsApp Manager for notifications
-require_once '../api/whatsapp/WhatsAppManager.php';
+require_once '../../api/whatsapp/WhatsAppManager.php';
 
 $username = isset($_SESSION["name"]) ? $_SESSION["name"] : "Unknown User";
 $user_id = isset($_SESSION["user_id"]) ? $_SESSION["user_id"] : 0;
 
 // Establish a connection to the MySQL database
-include '../includes/conn.php';
+include '../../includes/conn.php';
 
 // Validate passengers
 $passengers = isset($_POST['passengers']) ? DbSecurity::validateInput($_POST['passengers'], 'string', ['maxlength' => 255]) : null;
@@ -63,6 +63,12 @@ $issueDate = isset($_POST['issueDate']) ? DbSecurity::validateInput($_POST['issu
 // Validate departureDate
 $departureDate = isset($_POST['departureDate']) ? DbSecurity::validateInput($_POST['departureDate'], 'date') : null;
 
+// Validate departureTime
+$departureTime = isset($_POST['departureTime']) ? DbSecurity::validateInput($_POST['departureTime'], 'string', ['maxlength' => 255]) : null;
+
+// Validate returnDepartureTime
+$returnDepartureTime = isset($_POST['returnDepartureTime']) ? DbSecurity::validateInput($_POST['returnDepartureTime'], 'string', ['maxlength' => 255]) : null;
+
 // Validate airline
 $airline = isset($_POST['airline']) ? DbSecurity::validateInput($_POST['airline'], 'string', ['maxlength' => 255]) : null;
 
@@ -100,6 +106,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     $destination = $conn->real_escape_string($_POST['destination']);
     $airline = $conn->real_escape_string($_POST['airline']);
     $departureDate = $_POST['departureDate'];
+    $departureTime = $_POST['departureTime'];
+    $returnDepartureTime = $_POST['returnDepartureTime'];
     $issueDate = $_POST['issueDate'];
     $currency = $conn->real_escape_string($_POST['curr']);
     $description = $conn->real_escape_string($_POST['description']);
@@ -175,10 +183,10 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 
         // Prepare ticket booking statement
         $stmt_ticket = $conn->prepare("INSERT INTO ticket_bookings (
-            supplier, sold_to, paid_to, passenger_name, pnr, origin, destination, airline, departure_date, issue_date,
-            phone, gender, title, price, sold, discount, profit, currency, description, trip_type, return_destination, return_date,
+            supplier, sold_to, paid_to, passenger_name, pnr, origin, destination, airline, departure_date, departure_time, issue_date,
+            phone, gender, title, price, sold, discount, profit, currency, description, trip_type, return_destination, return_date, return_departure_time,
             created_by, tenant_id, branch_id
-        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)");
+        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)");
 
         // Main booking ID to link all passengers
         $main_booking_id = 0;
@@ -204,10 +212,10 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             $totalProfit += $profit;
 
             $stmt_ticket->bind_param(
-                "iiissssssssssddddsssssiii",
+                "iiisssssssssssddddsssssssii",
                 $supplier_id, $soldTo, $paidTo, $passengerName, $pnr, $origin, $destination, $airline,
-                $departureDate, $issueDate, $phone, $gender, $title, $base, $sold, $discount, $profit, $currency,
-                $description, $tripType, $returnDestination, $returnDate, $user_id, $tenant_id, $branch_id
+                $departureDate, $departureTime, $issueDate, $phone, $gender, $title, $base, $sold, $discount, $profit, $currency,
+                $description, $tripType, $returnDestination, $returnDate, $returnDepartureTime, $user_id, $tenant_id, $branch_id
             );
             
             if (!$stmt_ticket->execute()) {
@@ -316,6 +324,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             'destination' => $destination,
             'airline' => $airline,
             'departure_date' => $departureDate,
+            'departure_time' => $departureTime,
+            'return_departure_time' => $returnDepartureTime,
             'total_base' => $totalBase,
             'total_sold' => $totalSold,
             'total_discount' => $totalDiscount,
@@ -343,7 +353,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         $conn->commit();
 
         // Send ticket notification email to client with PDF attachment
-        require_once '../includes/functions.php';
+        require_once '../../includes/functions.php';
 
         // Get client email and name
         $stmt_client_email = $conn->prepare("SELECT email, name FROM clients WHERE id = ? AND tenant_id = ? AND branch_id = ?");
@@ -356,8 +366,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         $stmt_client_email->close();
 
         // Get agency settings
-        $stmt_agency = $conn->prepare("SELECT agency_name, email, phone, address FROM settings WHERE tenant_id = ? AND branch_id = ?");
-        $stmt_agency->bind_param("ii", $tenant_id, $branch_id);
+        $stmt_agency = $conn->prepare("SELECT agency_name, email, phone, address FROM settings WHERE tenant_id = ?");
+        $stmt_agency->bind_param("i", $tenant_id);
         $stmt_agency->execute();
         $agency_result = $stmt_agency->get_result();
         $agency_data = $agency_result->fetch_assoc();
@@ -376,8 +386,10 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 'origin' => $origin,
                 'destination' => $destination,
                 'departure_date' => $departureDate,
+                'departure_time' => $departureTime,
                 'return_destination' => $returnDestination,
                 'return_date' => $returnDate,
+                'return_departure_time' => $returnDepartureTime,
                 'passengers' => array_map(function($passenger) {
                     return [
                         'name' => $passenger['name'],

@@ -1,13 +1,13 @@
 <?php
 
 // Include security module
-require_once 'security.php';
+require_once '../../admin/security.php';
 
 // Enforce authentication
 enforce_auth();
 $tenant_id = $_SESSION['tenant_id'];
 $branch_id = $_SESSION['branch_id'];
-require_once('../includes/conn.php');
+require_once('../../includes/conn.php');
 // Check if the user is logged in
 $username = isset($_SESSION['name']) ? $_SESSION['name'] : null;
 $user_id = isset($_SESSION['user_id']) ? $_SESSION['user_id'] : null;
@@ -111,7 +111,7 @@ try {
     }
 
     // Calculate new main account balance
-    $newMainBalance = $mainBalance - $amount;
+    $newMainBalance = $mainBalance + $amount;
 
 // Compute amount to credit to supplier in SUPPLIER currency.
 // When currencies differ, we require exchangeRate as USD → AFS.

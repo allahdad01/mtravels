@@ -7,9 +7,9 @@ $tenant_id = $_SESSION['tenant_id'];
 $branch_id = $_SESSION['branch_id'];
 
 // Include necessary files
-require_once '../includes/db.php';
-require_once '../includes/conn.php';
-require_once '../vendor/autoload.php';
+require_once '../../includes/db.php';
+require_once '../../includes/conn.php';
+require_once '../../vendor/autoload.php';
 
 // Check if ticket ID is provided
 if (!isset($_GET['id']) || !is_numeric($_GET['id'])) {
@@ -66,7 +66,7 @@ try {
 
     // Get the template content
     ob_start();
-    include 'templates/tickets/date_change/date_change_agreement_template.php';
+    include 'date_change_agreement_template.php';
     $html = ob_get_clean();
 
       // Create directory if it doesn't exist

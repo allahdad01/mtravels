@@ -3,12 +3,9 @@
 if (session_status() === PHP_SESSION_NONE) {
     session_start();
 }
-// Include security module
-require_once 'security.php';
+
 $tenant_id = $_SESSION['tenant_id'];
 $branch_id = $_SESSION['branch_id'];
-// Enforce authentication
-enforce_auth();
 
 
 // Check if user is logged in
@@ -28,7 +25,7 @@ if (!isset($_GET['account_id']) || !is_numeric($_GET['account_id'])) {
 $accountId = intval($_GET['account_id']);
 
 // Database connection
-require_once('../includes/conn.php');
+require_once('../../includes/conn.php');
 
 // Prepare and execute query
 $query = "SELECT mt.*, 

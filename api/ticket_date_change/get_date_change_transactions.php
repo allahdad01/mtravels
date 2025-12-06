@@ -5,7 +5,7 @@ if (session_status() === PHP_SESSION_NONE) {
 }
 
 // Include security module
-require_once '../security.php';
+require_once '../../admin/security.php';
 
 // Enforce authentication
 enforce_auth();

@@ -1,7 +1,7 @@
 <?php
 
 // Database connection
-require_once '../includes/conn.php';
+require_once '../../includes/conn.php';
 session_start();
 $tenant_id = $_SESSION['tenant_id'];
 $branch_id = $_SESSION['branch_id'];

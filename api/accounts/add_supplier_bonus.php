@@ -1,5 +1,5 @@
 <?php
-require_once '../security.php';
+require_once '../../admin/security.php';
 enforce_auth();
 
 // Start session if not already started
@@ -145,7 +145,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         $transaction_type = 'supplier_bonus';
         $status = 'Unread';
         $notificationStmt = $conn->prepare($notificationQuery);
-        $notificationStmt->bind_param('ississi', $lastInsertId, $transaction_type, $tenant_id, $branch_id, $notificationMessage, $status);
+        $notificationStmt->bind_param('ississ', $lastInsertId, $transaction_type, $tenant_id, $branch_id, $notificationMessage, $status);
         if (!$notificationStmt->execute()) {
             throw new Exception("Failed to send notification to admin.");
         }

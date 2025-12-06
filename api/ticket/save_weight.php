@@ -1,6 +1,6 @@
 <?php
 require_once '../../includes/conn.php';
-require_once '../includes/db_security.php';
+require_once '../../admin/includes/db_security.php';
 session_start();
 // Check if it's a POST request
 if ($_SERVER['REQUEST_METHOD'] !== 'POST') {
@@ -36,7 +36,7 @@ try {
         LEFT JOIN clients c ON t.sold_to = c.id AND c.tenant_id = ? AND c.branch_id = ?
         WHERE t.id = ? AND t.tenant_id = ? AND t.branch_id = ?
     ");
-    $stmt_ticket->bind_param('iiiiii', $tenant_id, $branch_id, $tenant_id, $branch_id, $ticketId, $tenant_id, $branch_id);
+    $stmt_ticket->bind_param('iiiiiii', $tenant_id, $branch_id, $tenant_id, $branch_id, $ticketId, $tenant_id, $branch_id);
     $stmt_ticket->execute();
     $ticket_result = $stmt_ticket->get_result();
     $ticket_details = $ticket_result->fetch_assoc();

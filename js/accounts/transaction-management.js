@@ -133,8 +133,8 @@
                                 transaction.transaction_of.toLowerCase() === 'fund_withdrawal'
                             ));
                         } else if (accountType === 'client') {
-                            // For clients, show delete for client_fund transactions
-                            showDeleteButton = (transaction.transaction_of && transaction.transaction_of.toLowerCase() === 'client_fund');
+                            // For clients, show delete for fund transactions
+                            showDeleteButton = (transaction.transaction_of && transaction.transaction_of.toLowerCase() === 'fund');
                         }
 
                         let actionsHtml = '';
@@ -232,7 +232,7 @@
                                 
                                 ${actionsCell}
                             `;
-                                        } else if (accountType === 'client') {
+                                } else if (accountType === 'client') {
                         // Client row format
                         let referenceText = transaction.reference_name || transaction.reference_id || '-';
                         // Format transaction_of with proper capitalization and spacing
