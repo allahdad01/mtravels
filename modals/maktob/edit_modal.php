@@ -11,7 +11,7 @@
                     <span aria-hidden="true">&times;</span>
                 </button>
             </div>
-            <form id="editMaktobForm" method="POST" action="update_maktob.php">
+            <form id="editMaktobForm" method="POST" action="../../api/maktob/update_maktob.php">
                 <div class="modal-body">
                     <input type="hidden" id="edit_maktob_id" name="maktob_id">
                     <div class="row">
