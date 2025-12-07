@@ -10,6 +10,7 @@ use PhpOffice\PhpSpreadsheet\Cell\Coordinate;
 class ExcelImportHandler {
     private $pdo;
     private $tenantId;
+    private $branchId;
     private $errors = [];
     private $successCount = 0;
     private $processedSheets = [];
@@ -17,6 +18,7 @@ class ExcelImportHandler {
     public function __construct($tenantId) {
         $this->pdo = $GLOBALS['pdo'];
         $this->tenantId = $tenantId;
+        $this->branchId = $_SESSION['branch_id'];
     }
 
     public function importFromExcel($excelFilePath) {
@@ -509,17 +511,17 @@ if (empty(array_filter($data))) continue;
 
         $stmt = $this->pdo->prepare("
             INSERT INTO ticket_bookings (
-                tenant_id, supplier, sold_to, paid_to, pnr, title, passenger_name,
+                tenant_id, branch_id, supplier, sold_to, paid_to, pnr, title, passenger_name,
                 phone, gender, origin, destination, trip_type, airline, issue_date,
                 departure_date, currency, price, sold, profit, status, description, receipt,
                 created_by, created_at, updated_at, imported
             ) VALUES (
-                ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, NOW(), NOW(), 1
+                ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, NOW(), NOW(), 1
             )
         ");
 
         $stmt->execute([
-            $this->tenantId, $supplierId, $clientId, $accountId, $data['pnr'],
+            $this->tenantId, $this->branchId, $supplierId, $clientId, $accountId, $data['pnr'],
             $data['title'], $data['passenger_name'], $data['phone'], $data['gender'],
             $data['origin'], $data['destination'], $data['trip_type'], $data['airline'],
             $data['issue_date'], $data['departure_date'], $data['currency'],
@@ -533,8 +535,8 @@ if (empty(array_filter($data))) continue;
         $data['phone'] = $data['phone'] ?? '';
 
         // Find the ticket booking by PNR
-        $ticketStmt = $this->pdo->prepare("SELECT id FROM ticket_bookings WHERE pnr = ? AND tenant_id = ?");
-        $ticketStmt->execute([$data['pnr'], $this->tenantId]);
+        $ticketStmt = $this->pdo->prepare("SELECT id FROM ticket_bookings WHERE pnr = ? AND tenant_id = ? AND branch_id = ?");
+        $ticketStmt->execute([$data['pnr'], $this->tenantId, $this->branchId]);
         $ticket = $ticketStmt->fetch(PDO::FETCH_ASSOC);
 
         if (!$ticket) {
@@ -555,17 +557,17 @@ if (empty(array_filter($data))) continue;
 
         $stmt = $this->pdo->prepare("
             INSERT INTO refunded_tickets (
-                tenant_id, ticket_id, supplier, sold_to, paid_to, pnr, title, passenger_name,
+                tenant_id, branch_id, ticket_id, supplier, sold_to, paid_to, pnr, title, passenger_name,
                 phone, gender, origin, destination, airline, issue_date, departure_date,
                 currency, sold, base, supplier_penalty, service_penalty, refund_to_passenger,
                 status, remarks, calculation_method, created_by, created_at, updated_at, imported
             ) VALUES (
-                ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, NOW(), NOW(), 1
+                ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, NOW(), NOW(), 1
             )
         ");
 
         $stmt->execute([
-            $this->tenantId, $ticket['id'], $supplierId, $clientId, $accountId, $data['pnr'],
+            $this->tenantId, $this->branchId, $ticket['id'], $supplierId, $clientId, $accountId, $data['pnr'],
             $data['title'], $data['passenger_name'], $data['phone'], $data['gender'],
             $data['origin'], $data['destination'], $data['airline'], $data['issue_date'],
             $data['departure_date'], $data['currency'], $data['sold'], $data['base_amount'],
@@ -576,8 +578,8 @@ if (empty(array_filter($data))) continue;
 
     private function insertTicketDateChange($data) {
         // Find the ticket booking by PNR
-        $ticketStmt = $this->pdo->prepare("SELECT id FROM ticket_bookings WHERE pnr = ? AND tenant_id = ?");
-        $ticketStmt->execute([$data['pnr'], $this->tenantId]);
+        $ticketStmt = $this->pdo->prepare("SELECT id FROM ticket_bookings WHERE pnr = ? AND tenant_id = ? AND branch_id = ?");
+        $ticketStmt->execute([$data['pnr'], $this->tenantId, $this->branchId]);
         $ticket = $ticketStmt->fetch(PDO::FETCH_ASSOC);
 
         if (!$ticket) {
@@ -598,16 +600,16 @@ if (empty(array_filter($data))) continue;
 
         $stmt = $this->pdo->prepare("
             INSERT INTO date_change_tickets (
-                tenant_id, ticket_id, supplier, sold_to, paid_to, pnr, title, passenger_name,
+                tenant_id, branch_id, ticket_id, supplier, sold_to, paid_to, pnr, title, passenger_name,
                 phone, gender, origin, destination, airline, issue_date, departure_date,
                 currency, sold, base, supplier_penalty, service_penalty, created_by, imported
             ) VALUES (
-                ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 1
+                ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 1
             )
         ");
 
         $stmt->execute([
-            $this->tenantId, $ticket['id'], $supplierId, $clientId, $accountId, $data['pnr'],
+            $this->tenantId, $this->branchId, $ticket['id'], $supplierId, $clientId, $accountId, $data['pnr'],
             $data['title'], $data['passenger_name'], $data['phone'], $data['gender'],
             $data['origin'], $data['destination'], $data['airline'], $data['issue_date'],
             $data['departure_date'], $data['currency'], $data['sold'], $data['base'],
@@ -629,8 +631,8 @@ if (empty(array_filter($data))) continue;
         $userId = $this->getImportUserId();
 
         // First, find the ticket booking by PNR
-        $ticketStmt = $this->pdo->prepare("SELECT id FROM ticket_bookings WHERE pnr = ? AND tenant_id = ?");
-        $ticketStmt->execute([$data['pnr'], $this->tenantId]);
+        $ticketStmt = $this->pdo->prepare("SELECT id FROM ticket_bookings WHERE pnr = ? AND tenant_id = ? AND branch_id = ?");
+        $ticketStmt->execute([$data['pnr'], $this->tenantId, $this->branchId]);
         $ticket = $ticketStmt->fetch(PDO::FETCH_ASSOC);
 
         if (!$ticket) {
@@ -639,15 +641,15 @@ if (empty(array_filter($data))) continue;
 
         $stmt = $this->pdo->prepare("
             INSERT INTO ticket_weights (
-                tenant_id, ticket_id, weight, base_price, sold_price, profit,
+                tenant_id, branch_id, ticket_id, weight, base_price, sold_price, profit,
                 remarks, created_by, created_at, updated_at, imported
             ) VALUES (
-                ?, ?, ?, ?, ?, ?, ?, ?, NOW(), NOW(), 1
+                ?, ?, ?, ?, ?, ?, ?, ?, ?, NOW(), NOW(), 1
             )
         ");
 
         $stmt->execute([
-            $this->tenantId, $ticket['id'], $data['weight'], $data['base_price'],
+            $this->tenantId, $this->branchId, $ticket['id'], $data['weight'], $data['base_price'],
             $data['sold_price'], $data['profit'], $data['remarks'], $userId
         ]);
     }
@@ -672,17 +674,17 @@ if (empty(array_filter($data))) continue;
 
         $stmt = $this->pdo->prepare("
             INSERT INTO ticket_reservations (
-                tenant_id, supplier, sold_to, paid_to, pnr, title, passenger_name,
+                tenant_id, branch_id, supplier, sold_to, paid_to, pnr, title, passenger_name,
                 phone, gender, origin, destination, trip_type, airline, issue_date,
                 departure_date, currency, price, sold, profit, status, receipt,
                 description, created_by, imported
             ) VALUES (
-                ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 1
+                ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 1
             )
         ");
 
         $stmt->execute([
-            $this->tenantId, $supplierId, $clientId, $accountId, $data['pnr'],
+            $this->tenantId, $this->branchId, $supplierId, $clientId, $accountId, $data['pnr'],
             $data['title'], $data['passenger_name'], $data['phone'], $data['gender'],
             $data['origin'], $data['destination'], $data['trip_type'], $data['airline'],
             $data['issue_date'], $data['departure_date'], $data['currency'],
@@ -706,17 +708,17 @@ if (empty(array_filter($data))) continue;
 
         $stmt = $this->pdo->prepare("
             INSERT INTO visa_applications (
-                tenant_id, supplier, sold_to, paid_to, passport_number, title,
+                tenant_id, branch_id, supplier, sold_to, paid_to, passport_number, title,
                 applicant_name, gender, country, visa_type, receive_date, applied_date,
                 issued_date, base, sold, profit, currency, status, remarks,
                 created_by, created_at, updated_at, imported
             ) VALUES (
-                ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, NOW(), NOW(), 1
+                ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, NOW(), NOW(), 1
             )
         ");
 
         $stmt->execute([
-            $this->tenantId, $supplierId, $clientId, $accountId, $data['passport_number'],
+            $this->tenantId, $this->branchId, $supplierId, $clientId, $accountId, $data['passport_number'],
             $data['title'], $data['applicant_name'], $data['gender'], $data['country'],
             $data['visa_type'], $data['receive_date'], $data['applied_date'],
             $data['issued_date'], $data['base'], $data['sold'], $data['profit'],
@@ -739,17 +741,17 @@ if (empty(array_filter($data))) continue;
 
         $stmt = $this->pdo->prepare("
             INSERT INTO hotel_bookings (
-                tenant_id, supplier_id, sold_to, paid_to, order_id, title, first_name,
+                tenant_id, branch_id, supplier_id, sold_to, paid_to, order_id, title, first_name,
                 last_name, gender, contact_no, issue_date, check_in_date, check_out_date,
                 accommodation_details, currency, base_amount, sold_amount, profit, remarks,
                 created_by, created_at, updated_at, imported
             ) VALUES (
-                ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, NOW(), NOW(), 1
+                ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, NOW(), NOW(), 1
             )
         ");
 
         $stmt->execute([
-            $this->tenantId, $supplierId, $clientId, $accountId, $data['order_id'],
+            $this->tenantId, $this->branchId, $supplierId, $clientId, $accountId, $data['order_id'],
             $data['title'], $data['first_name'], $data['last_name'], $data['gender'],
             $data['contact_no'], $data['issue_date'], $data['check_in_date'],
             $data['check_out_date'], $data['accommodation_details'], $data['currency'],
@@ -763,17 +765,17 @@ if (empty(array_filter($data))) continue;
 
         $stmt = $this->pdo->prepare("
             INSERT INTO families (
-                tenant_id, head_of_family, contact, address, province, district,
+                tenant_id, branch_id, head_of_family, contact, address, province, district,
                 total_members, package_type, location, tazmin, visa_status,
                 total_price, total_paid, total_paid_to_bank, total_due, created_by,
                 created_at, updated_at
             ) VALUES (
-                ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, NOW(), NOW()
+                ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, NOW(), NOW()
             )
         ");
 
         $stmt->execute([
-            $this->tenantId, $data['head_of_family'], $data['contact'], $data['address'],
+            $this->tenantId, $this->branchId, $data['head_of_family'], $data['contact'], $data['address'],
             $data['province'], $data['district'], $data['total_members'], $data['package_type'],
             $data['location'], $data['tazmin'], $data['visa_status'], $data['total_price'],
             $data['total_paid'], $data['total_paid_to_bank'], $data['total_due'], $userId
@@ -809,18 +811,19 @@ if (empty(array_filter($data))) continue;
 
         $stmt = $this->pdo->prepare("
             INSERT INTO umrah_bookings (
-                tenant_id, family_id, sold_to, paid_to, entry_date, name, fname, gfname,
+                tenant_id, branch_id, family_id, sold_to, paid_to, entry_date, name, fname, gfname,
                 relation, dob, gender, passport_number, passport_expiry, id_type, flight_date,
                 return_date, duration, room_type, price, sold_price, discount, profit,
                 received_bank_payment, bank_receipt_number, paid, due, currency, created_by,
                 created_at, updated_at, remarks, status, imported
             ) VALUES (
-                ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, NOW(), NOW(), ?, ?, 1
+                ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, NOW(), NOW(), ?, ?, 1
             )
         ");
 
         $stmt->execute([
             $this->tenantId,
+            $this->branchId,
             $familyId,
             $clientId,
             $accountId,
@@ -861,7 +864,7 @@ if (empty(array_filter($data))) continue;
 
             $serviceStmt = $this->pdo->prepare("
                 INSERT INTO umrah_booking_services (
-                    tenant_id, booking_id, service_type, supplier_id,
+                    tenant_id, branch_id, booking_id, service_type, supplier_id,
                     base_price, sold_price, profit, currency, created_at, updated_at
                 ) VALUES (
                     ?, ?, ?, ?, ?, ?, ?, ?, NOW(), NOW()
@@ -869,7 +872,8 @@ if (empty(array_filter($data))) continue;
             ");
 
             $serviceStmt->execute([
-                $this->tenantId,
+                $this->tenantId, 
+                $this->branchId,
                 $bookingId,
                 $serviceType,
                 $supplierId,
@@ -885,8 +889,8 @@ if (empty(array_filter($data))) continue;
     private function getOrCreateSupplier($name) {
         if (empty($name)) $name = 'Default Supplier';
 
-        $stmt = $this->pdo->prepare("SELECT id FROM suppliers WHERE name = ? AND tenant_id = ?");
-        $stmt->execute([$name, $this->tenantId]);
+        $stmt = $this->pdo->prepare("SELECT id FROM suppliers WHERE name = ? AND tenant_id = ? AND branch_id = ?");
+        $stmt->execute([$name, $this->tenantId, $this->branchId]);
         $supplier = $stmt->fetch(PDO::FETCH_ASSOC);
 
         if ($supplier) {
@@ -895,18 +899,18 @@ if (empty(array_filter($data))) continue;
 
         // Create new supplier
         $insertStmt = $this->pdo->prepare("
-            INSERT INTO suppliers (tenant_id, name, currency, created_at, updated_at)
+            INSERT INTO suppliers (tenant_id, branch_id, name, currency, created_at, updated_at)
             VALUES (?, ?, 'USD', NOW(), NOW())
         ");
-        $insertStmt->execute([$this->tenantId, $name]);
+        $insertStmt->execute([$this->tenantId, $this->branchId, $name]);
         return $this->pdo->lastInsertId();
     }
 
     private function getOrCreateClient($name) {
         if (empty($name)) $name = 'Default Client';
 
-        $stmt = $this->pdo->prepare("SELECT id FROM clients WHERE name = ? AND tenant_id = ?");
-        $stmt->execute([$name, $this->tenantId]);
+        $stmt = $this->pdo->prepare("SELECT id FROM clients WHERE name = ? AND tenant_id = ? AND tenant_id = ? AND branch_id = ?");
+        $stmt->execute([$name, $this->tenantId, $this->branchId]);
         $client = $stmt->fetch(PDO::FETCH_ASSOC);
 
         if ($client) {
@@ -924,22 +928,22 @@ if (empty(array_filter($data))) continue;
 
         $insertStmt = $this->pdo->prepare("
             INSERT INTO clients (
-                tenant_id, image, name, email, password_hash, phone,
+                tenant_id, branch_id, image, name, email, password_hash, phone,
                 usd_balance, afs_balance, address, status, client_type,
                 totp_enabled, created_at, updated_at
             ) VALUES (
                 ?, '', ?, ?, '', NULL, 0.000, 0.000, '', 'active', 'regular', 0, NOW(), NOW()
             )
         ");
-        $insertStmt->execute([$this->tenantId, $name, $placeholderEmail]);
+        $insertStmt->execute([$this->tenantId, $this->branchId, $name, $placeholderEmail]);
         return $this->pdo->lastInsertId();
     }
 
     private function getOrCreateMainAccount($name) {
         if (empty($name)) $name = 'Default Account';
 
-        $stmt = $this->pdo->prepare("SELECT id FROM main_account WHERE name = ? AND tenant_id = ?");
-        $stmt->execute([$name, $this->tenantId]);
+        $stmt = $this->pdo->prepare("SELECT id FROM main_account WHERE name = ? AND tenant_id = ? AND tenant_id = ? AND branch_id = ?");
+        $stmt->execute([$name, $this->tenantId, $this->branchId]);
         $account = $stmt->fetch(PDO::FETCH_ASSOC);
 
         if ($account) {
@@ -948,18 +952,18 @@ if (empty(array_filter($data))) continue;
 
         // Create new main account
         $insertStmt = $this->pdo->prepare("
-            INSERT INTO main_account (tenant_id, name, usd_balance, afs_balance, euro_balance, darham_balance, created_at, updated_at)
+            INSERT INTO main_account (tenant_id, branch_id, name, usd_balance, afs_balance, euro_balance, darham_balance, created_at, updated_at)
             VALUES (?, ?, 0, 0, 0, 0, NOW(), NOW())
         ");
-        $insertStmt->execute([$this->tenantId, $name]);
+        $insertStmt->execute([$this->tenantId, $this->branchId, $name]);
         return $this->pdo->lastInsertId();
     }
 
     private function getOrCreateFamily($headOfFamily) {
         if (empty($headOfFamily)) return null;
 
-        $stmt = $this->pdo->prepare("SELECT family_id FROM families WHERE head_of_family = ? AND tenant_id = ?");
-        $stmt->execute([$headOfFamily, $this->tenantId]);
+        $stmt = $this->pdo->prepare("SELECT family_id FROM families WHERE head_of_family = ? AND tenant_id = ? AND branch_id = ?");
+        $stmt->execute([$headOfFamily, $this->tenantId, $this->branchId]);
         $family = $stmt->fetch(PDO::FETCH_ASSOC);
 
         if ($family) {
@@ -968,18 +972,18 @@ if (empty(array_filter($data))) continue;
 
         // Create new family
         $insertStmt = $this->pdo->prepare("
-            INSERT INTO families (tenant_id, head_of_family, created_by, created_at, updated_at)
+            INSERT INTO families (tenant_id, branch_id, head_of_family, created_by, created_at, updated_at)
             VALUES (?, ?, ?, NOW(), NOW())
         ");
         $userId = $this->getImportUserId();
-        $insertStmt->execute([$this->tenantId, $headOfFamily, $userId]);
+        $insertStmt->execute([$this->tenantId, $this->branchId, $headOfFamily, $userId]);
         return $this->pdo->lastInsertId();
     }
 
     private function getImportUserId() {
         // Get the first admin user for this tenant
-        $stmt = $this->pdo->prepare("SELECT id FROM users WHERE tenant_id = ? AND role = 'admin' LIMIT 1");
-        $stmt->execute([$this->tenantId]);
+        $stmt = $this->pdo->prepare("SELECT id FROM users WHERE tenant_id = ? AND role = 'admin' AND branch_id = ? LIMIT 1");
+        $stmt->execute([$this->tenantId, $this->branchId]);
         $user = $stmt->fetch(PDO::FETCH_ASSOC);
 
         return $user ? $user['id'] : 1; // Fallback to user ID 1

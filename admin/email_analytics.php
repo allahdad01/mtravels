@@ -34,10 +34,10 @@ if (!empty($_GET)) {
 }
 
 // Get email analytics data
-function getEmailAnalytics($conn, $tenant_id, $startDate, $endDate, $emailType) {
-    $whereClause = "WHERE et.tenant_id = ? AND branch_id = ? AND DATE(et.sent_at) BETWEEN ? AND ?";
-    $params = [$tenant_id, $branch_id, $startDate, $endDate];
-    $types = "iiss";
+function getEmailAnalytics($conn, $tenant_id, $branch_id, $startDate, $endDate, $emailType) {
+   $whereClause = "WHERE et.tenant_id = ? AND et.branch_id = ? AND DATE(et.sent_at) BETWEEN ? AND ?";
+   $params = [$tenant_id, $branch_id, $startDate, $endDate];
+   $types = "iiss";
 
     if ($emailType !== 'all') {
         $whereClause .= " AND et.email_type = ?";
@@ -93,7 +93,7 @@ function getEmailAnalytics($conn, $tenant_id, $startDate, $endDate, $emailType) 
     ];
 }
 
-$analytics = getEmailAnalytics($conn, $tenant_id, $startDate, $endDate, $emailType);
+$analytics = getEmailAnalytics($conn, $tenant_id, $branch_id, $startDate, $endDate, $emailType);
 
 include '../includes/header.php';
 ?>
@@ -155,139 +155,144 @@ include '../includes/header.php';
     margin-bottom: 2rem;
 }
 </style>
-
-<div class="container-fluid">
-    <div class="row">
-        <div class="col-12">
-            <div class="d-flex justify-content-between align-items-center mb-4">
-                <h2><i class="feather icon-mail mr-2"></i>Email Analytics</h2>
-            </div>
-
-            <!-- Filter Section -->
-            <div class="filter-section">
-                <form method="GET" class="row g-3">
-                    <div class="col-md-3">
-                        <label for="start_date" class="form-label">Start Date</label>
-                        <input type="date" class="form-control" id="start_date" name="start_date" value="<?php echo htmlspecialchars($startDate); ?>">
-                    </div>
-                    <div class="col-md-3">
-                        <label for="end_date" class="form-label">End Date</label>
-                        <input type="date" class="form-control" id="end_date" name="end_date" value="<?php echo htmlspecialchars($endDate); ?>">
-                    </div>
-                    <div class="col-md-3">
-                        <label for="email_type" class="form-label">Email Type</label>
-                        <select class="form-control" id="email_type" name="email_type">
-                            <option value="all" <?php echo $emailType === 'all' ? 'selected' : ''; ?>>All Types</option>
-                            <option value="ticket_notification" <?php echo $emailType === 'ticket_notification' ? 'selected' : ''; ?>>Ticket Notifications</option>
-                            <option value="account_notification" <?php echo $emailType === 'account_notification' ? 'selected' : ''; ?>>Account Notifications</option>
-                        </select>
-                    </div>
-                    <div class="col-md-3 d-flex align-items-end">
-                        <button type="submit" class="btn btn-primary mr-2">
-                            <i class="feather icon-filter mr-1"></i>Apply Filters
-                        </button>
-                        <a href="email_analytics.php" class="btn btn-secondary">
-                            <i class="feather icon-refresh-cw mr-1"></i>Reset
-                        </a>
-                    </div>
-                </form>
-            </div>
-
-            <!-- Metrics Cards -->
-            <div class="row mb-4">
-                <div class="col-md-4">
-                    <div class="card analytics-card">
-                        <div class="card-body text-center">
-                            <div class="metric-value"><?php echo number_format($analytics['total_sent']); ?></div>
-                            <div class="metric-label">Total Emails Sent</div>
+    <!-- [ Main Content ] start -->
+    <div class="pcoded-main-container">
+        <div class="pcoded-content">
+            <!-- [ breadcrumb ] start -->
+            <div class="container-fluid">
+                <div class="row">
+                    <div class="col-12">
+                        <div class="d-flex justify-content-between align-items-center mb-4">
+                            <h2><i class="feather icon-mail mr-2"></i>Email Analytics</h2>
                         </div>
-                    </div>
-                </div>
-                <div class="col-md-4">
-                    <div class="card analytics-card">
-                        <div class="card-body text-center">
-                            <div class="metric-value"><?php echo number_format($analytics['total_opened']); ?></div>
-                            <div class="metric-label">Total Emails Opened</div>
-                        </div>
-                    </div>
-                </div>
-                <div class="col-md-4">
-                    <div class="card analytics-card">
-                        <div class="card-body text-center">
-                            <div class="metric-value"><?php echo $analytics['open_rate']; ?>%</div>
-                            <div class="metric-label">Open Rate</div>
-                        </div>
-                    </div>
-                </div>
-            </div>
 
-            <!-- Charts Row -->
-            <div class="row mb-4">
-                <div class="col-md-6">
-                    <div class="card analytics-card">
-                        <div class="card-header">
-                            <h5 class="mb-0">Emails by Type</h5>
+                        <!-- Filter Section -->
+                        <div class="filter-section">
+                            <form method="GET" class="row g-3">
+                                <div class="col-md-3">
+                                    <label for="start_date" class="form-label">Start Date</label>
+                                    <input type="date" class="form-control" id="start_date" name="start_date" value="<?php echo htmlspecialchars($startDate); ?>">
+                                </div>
+                                <div class="col-md-3">
+                                    <label for="end_date" class="form-label">End Date</label>
+                                    <input type="date" class="form-control" id="end_date" name="end_date" value="<?php echo htmlspecialchars($endDate); ?>">
+                                </div>
+                                <div class="col-md-3">
+                                    <label for="email_type" class="form-label">Email Type</label>
+                                    <select class="form-control" id="email_type" name="email_type">
+                                        <option value="all" <?php echo $emailType === 'all' ? 'selected' : ''; ?>>All Types</option>
+                                        <option value="ticket_notification" <?php echo $emailType === 'ticket_notification' ? 'selected' : ''; ?>>Ticket Notifications</option>
+                                        <option value="account_notification" <?php echo $emailType === 'account_notification' ? 'selected' : ''; ?>>Account Notifications</option>
+                                    </select>
+                                </div>
+                                <div class="col-md-3 d-flex align-items-end">
+                                    <button type="submit" class="btn btn-primary mr-2">
+                                        <i class="feather icon-filter mr-1"></i>Apply Filters
+                                    </button>
+                                    <a href="email_analytics.php" class="btn btn-secondary">
+                                        <i class="feather icon-refresh-cw mr-1"></i>Reset
+                                    </a>
+                                </div>
+                            </form>
                         </div>
-                        <div class="card-body">
-                            <div class="chart-container">
-                                <canvas id="typeChart"></canvas>
+
+                        <!-- Metrics Cards -->
+                        <div class="row mb-4">
+                            <div class="col-md-4">
+                                <div class="card analytics-card">
+                                    <div class="card-body text-center">
+                                        <div class="metric-value"><?php echo number_format($analytics['total_sent']); ?></div>
+                                        <div class="metric-label">Total Emails Sent</div>
+                                    </div>
+                                </div>
+                            </div>
+                            <div class="col-md-4">
+                                <div class="card analytics-card">
+                                    <div class="card-body text-center">
+                                        <div class="metric-value"><?php echo number_format($analytics['total_opened']); ?></div>
+                                        <div class="metric-label">Total Emails Opened</div>
+                                    </div>
+                                </div>
+                            </div>
+                            <div class="col-md-4">
+                                <div class="card analytics-card">
+                                    <div class="card-body text-center">
+                                        <div class="metric-value"><?php echo $analytics['open_rate']; ?>%</div>
+                                        <div class="metric-label">Open Rate</div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Charts Row -->
+                        <div class="row mb-4">
+                            <div class="col-md-6">
+                                <div class="card analytics-card">
+                                    <div class="card-header">
+                                        <h5 class="mb-0">Emails by Type</h5>
+                                    </div>
+                                    <div class="card-body">
+                                        <div class="chart-container">
+                                            <canvas id="typeChart"></canvas>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                            <div class="col-md-6">
+                                <div class="card analytics-card">
+                                    <div class="card-header">
+                                        <h5 class="mb-0">Daily Email Activity</h5>
+                                    </div>
+                                    <div class="card-body">
+                                        <div class="chart-container">
+                                            <canvas id="dailyChart"></canvas>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Recent Emails Table -->
+                        <div class="card analytics-card">
+                            <div class="card-header">
+                                <h5 class="mb-0">Recent Email Activity</h5>
+                            </div>
+                            <div class="card-body">
+                                <div class="table-responsive">
+                                    <table class="table table-hover" id="emailsTable">
+                                        <thead>
+                                            <tr>
+                                                <th>Date</th>
+                                                <th>Recipient</th>
+                                                <th>Type</th>
+                                                <th>Status</th>
+                                                <th>Opened At</th>
+                                            </tr>
+                                        </thead>
+                                        <tbody>
+                                            <?php foreach ($analytics['recent_emails'] as $email): ?>
+                                            <tr>
+                                                <td><?php echo date('M d, Y H:i', strtotime($email['sent_at'])); ?></td>
+                                                <td><?php echo htmlspecialchars($email['recipient_email']); ?></td>
+                                                <td><?php echo htmlspecialchars($email['email_type']); ?></td>
+                                                <td>
+                                                    <span class="status-badge <?php echo $email['opened'] ? 'status-opened' : 'status-not-opened'; ?>">
+                                                        <?php echo $email['opened'] ? 'Opened' : 'Sent'; ?>
+                                                    </span>
+                                                </td>
+                                                <td><?php echo $email['opened_at'] ? date('M d, Y H:i', strtotime($email['opened_at'])) : '-'; ?></td>
+                                            </tr>
+                                            <?php endforeach; ?>
+                                        </tbody>
+                                    </table>
+                                </div>
                             </div>
                         </div>
                     </div>
                 </div>
-                <div class="col-md-6">
-                    <div class="card analytics-card">
-                        <div class="card-header">
-                            <h5 class="mb-0">Daily Email Activity</h5>
-                        </div>
-                        <div class="card-body">
-                            <div class="chart-container">
-                                <canvas id="dailyChart"></canvas>
-                            </div>
-                        </div>
-                    </div>
-                </div>
             </div>
-
-            <!-- Recent Emails Table -->
-            <div class="card analytics-card">
-                <div class="card-header">
-                    <h5 class="mb-0">Recent Email Activity</h5>
-                </div>
-                <div class="card-body">
-                    <div class="table-responsive">
-                        <table class="table table-hover" id="emailsTable">
-                            <thead>
-                                <tr>
-                                    <th>Date</th>
-                                    <th>Recipient</th>
-                                    <th>Type</th>
-                                    <th>Status</th>
-                                    <th>Opened At</th>
-                                </tr>
-                            </thead>
-                            <tbody>
-                                <?php foreach ($analytics['recent_emails'] as $email): ?>
-                                <tr>
-                                    <td><?php echo date('M d, Y H:i', strtotime($email['sent_at'])); ?></td>
-                                    <td><?php echo htmlspecialchars($email['recipient_email']); ?></td>
-                                    <td><?php echo htmlspecialchars($email['email_type']); ?></td>
-                                    <td>
-                                        <span class="status-badge <?php echo $email['opened'] ? 'status-opened' : 'status-not-opened'; ?>">
-                                            <?php echo $email['opened'] ? 'Opened' : 'Sent'; ?>
-                                        </span>
-                                    </td>
-                                    <td><?php echo $email['opened_at'] ? date('M d, Y H:i', strtotime($email['opened_at'])) : '-'; ?></td>
-                                </tr>
-                                <?php endforeach; ?>
-                            </tbody>
-                        </table>
-                    </div>
-                </div>
             </div>
-        </div>
-    </div>
-</div>
+            </div>           
 
 <!-- Chart.js -->
 <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
