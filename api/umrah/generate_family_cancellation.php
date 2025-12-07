@@ -6,9 +6,9 @@ if (session_status() === PHP_SESSION_NONE) {
 
 
 // Include necessary files
-require_once('../includes/db.php');
-require_once('../includes/conn.php');
-require_once('security.php');
+require_once('../../includes/db.php');
+require_once('../../includes/conn.php');
+require_once('../../admin/security.php');
 
 // Enforce authentication
 enforce_auth();
@@ -190,7 +190,7 @@ try {
     // Check if language-specific template exists, fallback to English
     if (!file_exists(__DIR__ . '/' . $templatePath)) {
         error_log("Language template not found: $templatePath. Falling back to English.");
-        $templatePath = 'templates/family_cancellation_template_en.php';
+        $templatePath = 'family_cancellation_template_en.php';
     }
 
     // Get the HTML and CSS content by capturing the output buffer

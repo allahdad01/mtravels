@@ -2,10 +2,10 @@
 session_start();
 
 // Include database security module for input validation
-require_once 'includes/db_security.php';
+require_once '../../admin/includes/db_security.php';
 
 // Include security module
-require_once 'security.php';
+require_once '../../admin/security.php';
 $tenant_id = $_SESSION['tenant_id'];
 $branch_id = $_SESSION['branch_id'];
 
@@ -22,7 +22,7 @@ if (!isset($_SESSION['name']) || empty($_SESSION['name'])) {
     echo json_encode(['status' => 'error', 'message' => 'User not logged in.']);
     exit;
 }
-require_once '../includes/conn.php';
+require_once '../../includes/conn.php';
 if ($conn->connect_error) {
     echo json_encode(['status' => 'error', 'message' => 'Database connection failed.']);
     error_log("DB Error: " . $conn->connect_error);

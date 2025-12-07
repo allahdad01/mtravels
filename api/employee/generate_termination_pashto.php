@@ -1,7 +1,7 @@
 <?php
-require_once '../includes/conn.php';
-require_once '../includes/db.php';
-require_once '../includes/language_helpers.php';
+require_once '../../includes/conn.php';
+require_once '../../includes/db.php';
+require_once '../../includes/language_helpers.php';
 
 if (session_status() === PHP_SESSION_NONE) {
     session_start();
@@ -30,9 +30,9 @@ try {
     $settingStmt->execute([$tenant_id]);
     $settings = $settingStmt->fetch(PDO::FETCH_ASSOC);
 
-    $logoPath = __DIR__ . '../uploads/logo/' . $settings['logo'];
-    if (isset($settings['logo']) && !empty($settings['logo']) && file_exists('../uploads/logo/' . $settings['logo'])) {
-        $logoPath = '../uploads/logo/' . $settings['logo'];
+    $logoPath = __DIR__ . '../../uploads/logo/' . $settings['logo'];
+    if (isset($settings['logo']) && !empty($settings['logo']) && file_exists('../../uploads/logo/' . $settings['logo'])) {
+        $logoPath = '../../uploads/logo/' . $settings['logo'];
     }
 } catch (PDOException $e) {
     error_log("Database error: " . $e->getMessage());

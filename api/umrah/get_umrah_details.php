@@ -1,14 +1,14 @@
 <?php
 // Include security module
-require_once 'security.php';
+require_once '../../admin/security.php';
 $tenant_id = $_SESSION['tenant_id'];
 $branch_id = $_SESSION['branch_id'];
 // Enforce authentication
 enforce_auth();
 
 // Include database connection
-include '../includes/db.php';
-include '../includes/conn.php';
+include '../../includes/db.php';
+include '../../includes/conn.php';
 
 // Initialize response array
 $response = array(

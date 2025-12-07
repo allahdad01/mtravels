@@ -4,10 +4,10 @@ ini_set('display_errors', 0);
 error_reporting(E_ERROR | E_PARSE);
 
 // Include database security module for input validation
-require_once 'includes/db_security.php';
+require_once '../../admin/includes/db_security.php';
 
 // Include security module
-require_once 'security.php';
+require_once '../../admin/security.php';
 
 // Enforce authentication
 enforce_auth();
@@ -16,7 +16,7 @@ $branch_id = $_SESSION['branch_id'];
 $username = isset($_SESSION["name"]) ? $_SESSION["name"] : "Unknown User";
 
 // Connect using mysqli
-include_once('../includes/conn.php');
+include_once('../../includes/conn.php');
 
 // Validate inputs
 $family_id = isset($_POST['family_id']) ? DbSecurity::validateInput($_POST['family_id'], 'int', ['min' => 0]) : null;

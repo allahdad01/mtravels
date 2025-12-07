@@ -4,10 +4,10 @@ if (session_status() === PHP_SESSION_NONE) {
     session_start();
 }
 // Include database security module for input validation
-require_once 'includes/db_security.php';
+require_once '../../admin/includes/db_security.php';
 
 // Include security module
-require_once 'security.php';
+require_once '../../admin/security.php';
 $tenant_id = $_SESSION['tenant_id'];
 $branch_id = $_SESSION['branch_id'];
 // Enforce authentication
@@ -17,7 +17,7 @@ enforce_auth();
 
 $username = isset($_SESSION["name"]) ? $_SESSION["name"] : "Unknown User";
 // Connect using mysqli
-include_once('../includes/conn.php');
+include_once('../../includes/conn.php');
 
 // Validate umrah_id
 $umrah_id = isset($_POST['umrah_id']) ? DbSecurity::validateInput($_POST['umrah_id'], 'int', ['min' => 0]) : null;

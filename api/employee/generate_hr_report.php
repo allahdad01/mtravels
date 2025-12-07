@@ -1,7 +1,7 @@
 <?php
-require_once '../includes/language_helpers.php';
-require_once '../includes/db.php';
-require_once 'security.php';
+require_once '../../includes/language_helpers.php';
+require_once '../../includes/db.php';
+require_once '../../admin/security.php';
 
 // Start session if not already started
 if (session_status() === PHP_SESSION_NONE) {
@@ -11,10 +11,7 @@ if (session_status() === PHP_SESSION_NONE) {
 $tenant_id = $_SESSION['tenant_id'];
 $branch_id = $_SESSION['branch_id'];
 
-// Check if user is logged in and is admin
-if (!isset($_SESSION['user_id']) || $_SESSION['role'] !== 'admin') {
-    die(json_encode(['success' => false, 'message' => __('unauthorized_access')]));
-}
+
 
 // Verify CSRF token
 if (!isset($_POST['csrf_token']) || $_POST['csrf_token'] !== $_SESSION['csrf_token']) {

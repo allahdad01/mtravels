@@ -7,22 +7,22 @@ if (session_status() === PHP_SESSION_NONE) {
     session_start();
 }
 // Include security module
-require_once 'security.php';
+require_once '../../admin/security.php';
 
 // Enforce authentication
 enforce_auth();
 
 // Start session and check authentication
 if (!isset($_SESSION['user_id'])) {
-    header('Location: ../login.php');
+    header('Location: ../../login.php');
     exit();
 }
 
 $tenant_id = $_SESSION['tenant_id'];
 $branch_id = $_SESSION['branch_id'];
 
-require_once('../includes/db.php');
-require_once('../vendor/autoload.php'); // For TCPDF
+require_once('../../includes/db.php');
+require_once('../../vendor/autoload.php'); // For TCPDF
 
 
 // Get report type from URL

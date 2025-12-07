@@ -1,9 +1,9 @@
 <?php
 // Include necessary files
-require_once('../includes/db.php');
-require_once('../includes/conn.php');
-require_once('security.php');
-require_once('../vendor/autoload.php');
+require_once('../../includes/db.php');
+require_once('../../includes/conn.php');
+require_once('../../admin/security.php');
+require_once('../../vendor/autoload.php');
 $tenant_id = $_SESSION['tenant_id'];
 $branch_id = $_SESSION['branch_id'];
 // Enforce authentication
@@ -56,7 +56,7 @@ try {
 }
 
     // Include the template to output the HTML directly
-    require_once('templates/umrah_refund_agreement_template.php');
+    require_once('umrah_refund_agreement_template.php');
 
 } catch (Exception $e) {
     error_log("Error generating refund agreement: " . $e->getMessage());

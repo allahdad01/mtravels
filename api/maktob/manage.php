@@ -7,9 +7,11 @@ if (session_status() === PHP_SESSION_NONE) {
     session_start();
 }
 
+// Include database security module for input validation
+require_once '../../admin/includes/db_security.php';
+
 // Include security module
-require_once '../../includes/security.php';
-require_once '../../includes/language_helpers.php';
+require_once '../../admin/security.php';
 
 // Initialize language
 $lang = init_language();

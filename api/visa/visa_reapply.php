@@ -19,9 +19,9 @@ if ($_SERVER['REQUEST_METHOD'] !== 'POST') {
 }
 
 // Include required files
-require_once '../admin/security.php';
-require_once '../includes/db.php';
-require_once '../includes/conn.php';
+require_once '../../admin/security.php';
+require_once '../../includes/db.php';
+require_once '../../includes/conn.php';
 
 // Enforce authentication
 enforce_auth();

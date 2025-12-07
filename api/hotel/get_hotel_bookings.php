@@ -1,12 +1,12 @@
 <?php
 // Include security module
-require_once 'security.php';
+require_once '../../admin/security.php';
 $tenant_id = $_SESSION['tenant_id'];
 $branch_id = $_SESSION['branch_id'];
 // Enforce authentication
 enforce_auth();
 
-require_once('../includes/db.php');
+require_once('../../includes/db.php');
 
 if (!isset($_GET['id'])) {
     echo json_encode(['error' => 'No ID provided']);

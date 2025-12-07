@@ -2,7 +2,7 @@
 session_start();
 
 // Include security module
-require_once 'security.php';
+require_once '../../admin/security.php';
 $tenant_id = $_SESSION['tenant_id'];
 $branch_id = $_SESSION['branch_id'];
 
@@ -13,7 +13,7 @@ $username = isset($_SESSION["name"]) ? $_SESSION["name"] : "Unknown User";
 $user_id = $_SESSION['user_id'] ?? 0;
 
 // Establish a secure connection using mysqli with error handling
-require_once '../includes/conn.php';
+require_once '../../includes/conn.php';
 
 // Include WhatsApp Manager for notifications
 require_once '../api/whatsapp/WhatsAppManager.php';

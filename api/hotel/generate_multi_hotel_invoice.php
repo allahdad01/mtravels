@@ -6,15 +6,15 @@ if (session_status() === PHP_SESSION_NONE) {
 $tenant_id = $_SESSION['tenant_id'];
 $branch_id = $_SESSION['branch_id'];
 // Include database security module for input validation
-require_once 'includes/db_security.php';
+require_once '../../admin/includes/db_security.php';
 
 // Include security module
-require_once 'security.php';
+require_once '../../admin/security.php';
 
 // Enforce authentication
 enforce_auth();
 
-require_once '../includes/db.php';
+require_once '../../includes/db.php';
 
 // Validate invoiceData
 $invoiceData = isset($_POST['invoiceData']) ? DbSecurity::validateInput($_POST['invoiceData'], 'string', ['maxlength' => 255]) : null;
@@ -271,7 +271,7 @@ try {
             
             <div class="logo-container">
                 <?php if (!empty($agencyInfo['logo'])): ?>
-                <img src="<?php echo htmlspecialchars('../uploads/logo/' . $agencyInfo['logo']); ?>" alt="Company Logo" class="logo-image">
+                <img src="<?php echo htmlspecialchars('../../uploads/logo/' . $agencyInfo['logo']); ?>" alt="Company Logo" class="logo-image">
                 <?php endif; ?>
             </div>
             

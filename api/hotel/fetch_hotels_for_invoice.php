@@ -3,10 +3,10 @@ if (session_status() === PHP_SESSION_NONE) {
     session_start();
 }
 
-require_once 'security.php';
+require_once '../../admin/security.php';
 enforce_auth();
 
-include '../includes/conn.php';
+include '../../includes/conn.php';
 $tenant_id = $_SESSION['tenant_id'] ?? 0;
 $branch_id = $_SESSION['branch_id'] ?? 0;
 

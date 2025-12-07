@@ -4,10 +4,10 @@ if (session_status() === PHP_SESSION_NONE) {
     session_start();
 }
 // Include database security module for input validation
-require_once 'includes/db_security.php';
+require_once '../../admin/includes/db_security.php';
 
 // Include security module
-require_once 'security.php';
+require_once '../../admin/security.php';
 
 // Enforce authentication
 enforce_auth();
@@ -17,12 +17,12 @@ $tenant_id = $_SESSION['tenant_id'];
 
 // Check if user is logged in
 if (!isset($_SESSION['user_id'])) {
-    header('Location: ../login.php');
+    header('Location: ../../login.php');
     exit();
 }
 
 // Database connection
-require_once('../includes/db.php');
+require_once('../../includes/db.php');
 
 // Validate allocation_id
 $allocation_id = isset($_POST['allocation_id']) ? DbSecurity::validateInput($_POST['allocation_id'], 'int', ['min' => 0]) : null;

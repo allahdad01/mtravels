@@ -1,6 +1,6 @@
 <?php
 // Include security and database connections
-require_once '../security.php';
+require_once '../../admin/security.php';
 require_once '../../includes/db.php';
 require_once '../../includes/conn.php';
 

@@ -5,9 +5,9 @@ if (session_status() === PHP_SESSION_NONE) {
 }
 
 // Include necessary files
-require_once('../includes/db.php');
-require_once('../includes/conn.php');
-require_once('security.php');
+require_once('../../includes/db.php');
+require_once('../../includes/conn.php');
+require_once('../../admin/security.php');
 
 // Enforce authentication
 enforce_auth();
@@ -115,7 +115,7 @@ try {
 
     // Get the HTML and CSS content by capturing the output buffer
     ob_start();
-    $template = include 'templates/umrah_cancellation_form.php';
+    $template = include 'umrah_cancellation_form.php';
     ob_end_clean();
 
     // Output HTML directly with print styles

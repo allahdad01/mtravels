@@ -5,8 +5,8 @@ if (session_status() === PHP_SESSION_NONE) {
 }
 
 // generate_report.php - Handles report generation in PDF, Excel, or Word formats
-require_once '../includes/db.php';
-include '../vendor/autoload.php'; // Load PhpSpreadsheet and Dompdf
+require_once '../../includes/db.php';
+include '../../vendor/autoload.php'; // Load PhpSpreadsheet and Dompdf
 $user_role = $_SESSION["role"];
 $tenant_id = $_SESSION['tenant_id'];
 $branch_id = $_SESSION['branch_id'];

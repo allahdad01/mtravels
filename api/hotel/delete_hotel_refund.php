@@ -1,12 +1,12 @@
 <?php
 // Include security module
-require_once 'security.php';
+require_once '../../admin/security.php';
 
 // Enforce authentication
 enforce_auth();
 $tenant_id = $_SESSION['tenant_id'];
 $branch_id = $_SESSION['branch_id'];
-require_once '../includes/conn.php';
+require_once '../../includes/conn.php';
 
 $data = json_decode(file_get_contents("php://input"), true);
 if ($_SERVER["REQUEST_METHOD"] == "POST" && isset($data['id'])) {

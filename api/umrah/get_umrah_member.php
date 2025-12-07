@@ -4,7 +4,7 @@ if (session_status() === PHP_SESSION_NONE) {
     session_start();
 }
 // Include security module
-require_once 'security.php';
+require_once '../../admin/security.php';
 $tenant_id = $_SESSION['tenant_id'];
 $branch_id = $_SESSION['branch_id'];
 // Enforce authentication
@@ -12,8 +12,8 @@ enforce_auth();
 
 
 // Database connection
-require_once('../includes/db.php');
-require_once('../includes/conn.php');
+require_once('../../includes/db.php');
+require_once('.././includes/conn.php');
 
 // Check if booking_id is provided
 if (!isset($_GET['booking_id']) || empty($_GET['booking_id'])) {

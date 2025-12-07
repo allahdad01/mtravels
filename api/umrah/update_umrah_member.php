@@ -1,9 +1,9 @@
 <?php
 // Include database security module for input validation
-require_once 'includes/db_security.php';
+require_once '../../admin/includes/db_security.php';
 
 // Include security module
-require_once 'security.php';
+require_once '../../admin/security.php';
 
 // Enforce authentication
 enforce_auth();
@@ -16,7 +16,7 @@ if (!isset($_SESSION['user_id'])) {
 }
 
 // Database connection
-require_once('../includes/db.php');
+require_once('../../includes/db.php');
 
 // Check if form data is submitted
 if ($_SERVER['REQUEST_METHOD'] !== 'POST') {

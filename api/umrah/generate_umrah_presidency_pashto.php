@@ -1,7 +1,7 @@
 <?php
-require_once '../includes/conn.php';
-require_once '../includes/db.php';
-require_once '../includes/language_helpers.php';
+require_once '../../includes/conn.php';
+require_once '../../includes/db.php';
+require_once '../../includes/language_helpers.php';
 
 if (session_status() === PHP_SESSION_NONE) {
     session_start();

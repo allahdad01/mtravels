@@ -199,7 +199,7 @@
         <div class="header">
             <div class="header-left">
                 <?php
-                $logoPath = "../uploads/logo/" . ($settings['logo'] ?? '');
+                $logoPath = "../../uploads/logo/" . ($settings['logo'] ?? '');
                 $fullLogoPath = dirname(__DIR__, 2) . '/uploads/logo/' . ($settings['logo'] ?? '');
                 if (!empty($settings['logo']) && file_exists($fullLogoPath)):
                 ?>

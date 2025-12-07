@@ -1,10 +1,10 @@
 <?php
 // Include necessary files
-require_once('../includes/db.php');
-require_once('../includes/conn.php');
-require_once('security.php');
-require_once('../vendor/autoload.php');
-require_once('../includes/language_helpers.php');
+require_once('../../includes/db.php');
+require_once('../../includes/conn.php');
+require_once('../../admin/security.php');
+require_once('../../vendor/autoload.php');
+require_once('../../includes/language_helpers.php');
 $tenant_id = $_SESSION['tenant_id'];
 $branch_id = $_SESSION['branch_id'];
 // Define a fallback translation function in case the language helper doesn't provide it
@@ -61,7 +61,7 @@ $settingsStmt = $pdo->prepare($settingsQuery);
 $settingsStmt->execute([$tenant_id]);
 $settings = $settingsStmt->fetch(PDO::FETCH_ASSOC);
 $agencyName = $settings['agency_name'] ?? 'Travel Agency';
-$agencyLogo = '../uploads/logo/' . ($settings['logo'] ?? 'assets/images/logo.png');
+$agencyLogo = '../../uploads/logo/' . ($settings['logo'] ?? 'assets/images/logo.png');
 $agencyContact = $settings['phone'] ?? '';
 
 // Fetch pilgrim details

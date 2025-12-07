@@ -1,8 +1,8 @@
 <?php
 // Include necessary files
-require_once('../includes/db.php');
-require_once('../includes/conn.php');
-require_once('security.php');
+require_once('../../includes/db.php');
+require_once('../../includes/conn.php');
+require_once('../../admin/security.php');
 $user_id = $_SESSION['user_id'] ?? 0;
 $tenant_id = $_SESSION['tenant_id'];
 // Enforce authentication

@@ -1,6 +1,6 @@
 <?php
 // Include security module
-require_once 'security.php';
+require_once '../../admin/security.php';
 
 // Enforce authentication
 enforce_auth();
@@ -10,7 +10,7 @@ $tenant_id = $_SESSION['tenant_id'];
 $branch_id = $_SESSION['branch_id'];
 
 // Database connection
-require_once('../includes/db.php');
+require_once('../../includes/db.php');
 
 // Set content type to JSON
 header('Content-Type: application/json');

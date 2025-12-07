@@ -9,8 +9,8 @@ if (!isset($_GET['pilgrim_ids']) || empty($_GET['pilgrim_ids'])) {
 $tenant_id = $_SESSION['tenant_id'];
 $branch_id = $_SESSION['branch_id'];
 // Fetch settings
-$stmt = $conn->prepare("SELECT * FROM settings WHERE tenant_id = ? And branch_id = ?");
-$stmt->bind_param("ii", $tenant_id, $branch_id);
+$stmt = $conn->prepare("SELECT * FROM settings WHERE tenant_id = ?");
+$stmt->bind_param("i", $tenant_id);
 $stmt->execute();
 $result = $stmt->get_result();
 $settings = $result->fetch_assoc();

@@ -58,14 +58,28 @@ echo "\n-->";
 
 $transaction = $debugData;
 
-// Fetch settings data
+// Fetch settings data (using mysqli connection)
 try {
-    $settingStmt = $pdo->query("SELECT * FROM settings WHERE tenant_id = ?");
-    $settingStmt->execute([$tenant_id]);
-    $settings = $settingStmt->fetch(PDO::FETCH_ASSOC);
-} catch (PDOException $e) {
+    $settingStmt = $conn->prepare("SELECT * FROM settings WHERE tenant_id = ?");
+    if (!$settingStmt) {
+        throw new Exception("Prepare failed for settings query: " . $conn->error);
+    }
+
+    $settingStmt->bind_param("i", $tenant_id);
+    if (!$settingStmt->execute()) {
+        throw new Exception("Execute failed for settings query: " . $settingStmt->error);
+    }
+
+    $result = $settingStmt->get_result();
+    $settings = $result ? $result->fetch_assoc() : null;
+
+    if (!$settings) {
+        // Fallback defaults if no settings row found
+        $settings = ['agency_name' => 'Travel Agency'];
+    }
+} catch (Exception $e) {
     error_log("Settings Error: " . $e->getMessage());
-    $settings = ['agency_name' => 'Default Name'];
+    $settings = ['agency_name' => 'Travel Agency'];
 }
 ?>
 
@@ -291,7 +305,7 @@ try {
                     </div>
                     <div class="receipt-title">Payment Receipt</div>
                     <div class="company-logo">
-                        <img src="../uploads/logo/<?= htmlspecialchars($settings['logo']); ?>" alt="Company Logo">
+                        <img src="../../uploads/logo/<?= htmlspecialchars($settings['logo']); ?>" alt="Company Logo">
                     </div>
                 </div>
             </div>

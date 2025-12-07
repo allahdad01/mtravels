@@ -4,7 +4,7 @@ if (session_status() === PHP_SESSION_NONE) {
     session_start();
 }
 // Include security module
-require_once 'security.php';
+require_once '../../admin/security.php';
 $tenant_id = $_SESSION['tenant_id'];
 $branch_id = $_SESSION['branch_id'];
 // Enforce authentication
@@ -13,7 +13,7 @@ enforce_auth();
 
 
 // Include database connection
-require_once('../includes/conn.php');
+require_once('../../includes/conn.php');
 
 
 

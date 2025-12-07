@@ -1,9 +1,9 @@
 <?php
 // Include security module
-require_once 'security.php';
+require_once '../../admin/security.php';
 
 // Include language helper
-require_once '../includes/language_helpers.php';
+require_once '../../includes/language_helpers.php';
 
 // Enforce authentication
 enforce_auth();
@@ -11,8 +11,8 @@ $tenant_id = $_SESSION['tenant_id'];
 $branch_id = $_SESSION['branch_id'];
 
 // Database connection
-require_once('../includes/db.php');
-include '../includes/conn.php';
+require_once('../../includes/db.php');
+include '../../includes/conn.php';
 
 // Get transaction ID from URL
 $transaction_id = isset($_GET['id']) ? (int)$_GET['id'] : 0;
@@ -60,14 +60,28 @@ if ($result->num_rows === 0) {
 
 $transaction = $result->fetch_assoc();
 
-// Fetch settings data
+// Fetch settings data (using mysqli connection)
 try {
-    $settingStmt = $pdo->query("SELECT * FROM settings WHERE tenant_id = ?");
-    $settingStmt->execute([$tenant_id]);
-    $settings = $settingStmt->fetch(PDO::FETCH_ASSOC);
-} catch (PDOException $e) {
+    $settingStmt = $conn->prepare("SELECT * FROM settings WHERE tenant_id = ?");
+    if (!$settingStmt) {
+        throw new Exception("Prepare failed for settings query: " . $conn->error);
+    }
+
+    $settingStmt->bind_param("i", $tenant_id);
+    if (!$settingStmt->execute()) {
+        throw new Exception("Execute failed for settings query: " . $settingStmt->error);
+    }
+
+    $result = $settingStmt->get_result();
+    $settings = $result ? $result->fetch_assoc() : null;
+
+    if (!$settings) {
+        // Fallback defaults if no settings row found
+        $settings = ['agency_name' => 'Travel Agency'];
+    }
+} catch (Exception $e) {
     error_log("Settings Error: " . $e->getMessage());
-    $settings = ['agency_name' => 'Default Name'];
+    $settings = ['agency_name' => 'Travel Agency'];
 }
 ?>
 

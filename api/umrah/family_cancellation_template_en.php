@@ -256,7 +256,7 @@ ob_start();
         <div class="header">
             <?php
             // Create company logo
-            $logoPath = __DIR__ . '../uploads/logo/' . $settings['logo'];
+            $logoPath = __DIR__ . '../../uploads/logo/' . $settings['logo'];
             $logoData = '';
             if (file_exists($logoPath)) {
                 $logoType = pathinfo($logoPath, PATHINFO_EXTENSION);

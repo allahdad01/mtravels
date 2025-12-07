@@ -9,12 +9,12 @@ if (!$tenant_id) {
 }
 
 // Include config file
-require_once "../includes/db.php"; // Make sure this defines $pdo as PDO
-require_once "../includes/conn.php";
-require_once '../vendor/autoload.php'; // For DOMPDF
+require_once "../../includes/db.php"; // Make sure this defines $pdo as PDO
+require_once "../../includes/conn.php";
+require_once '../../vendor/autoload.php'; // For DOMPDF
 
 // Ensure uploads directory exists
-$uploadsDir = '../uploads/hotel/refund_agreements';
+$uploadsDir = '../../uploads/hotel/refund_agreements';
 if (!file_exists($uploadsDir)) {
     mkdir($uploadsDir, 0755, true);
 }
@@ -91,7 +91,7 @@ try {
     $refund_date = date('F d, Y');
 
     // Include the template to output the HTML directly
-    include 'templates/refund_agreement_template.php';
+    include 'refund_agreement_template.php';
 
 } catch (PDOException $e) {
     error_log("Database Error: " . $e->getMessage());

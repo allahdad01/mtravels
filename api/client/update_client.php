@@ -42,7 +42,7 @@ try {
     }
 
     // Database connection
-    include '../includes/db.php';
+    include '../../includes/db.php';
 
     // Update client in the database
     $stmt = $pdo->prepare("UPDATE clients SET name = ?, email = ?, phone = ?, client_type = ?, status = ? WHERE id = ? AND tenant_id = ? AND branch_id = ?");

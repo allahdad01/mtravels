@@ -1,8 +1,8 @@
 <?php
-require_once('../includes/db.php');
-require_once('../includes/conn.php');
-require_once('security.php');
-require_once('../includes/language_helpers.php');
+require_once('../../includes/db.php');
+require_once('../../includes/conn.php');
+require_once('../../admin/security.php');
+require_once('../../includes/language_helpers.php');
 
 $tenant_id = $_SESSION['tenant_id'];
 $branch_id = $_SESSION['branch_id'];
@@ -118,7 +118,7 @@ $agencyName = $settings['agency_name'] ?? 'Travel Agency';
 $agencyEmail = $settings['email'] ?? 'info@travelagency.com';
 $agencyPhone = $settings['phone'] ?? '+1 (555) 123-4567';
 $agencyAddress = $settings['address'] ?? '123 Travel Street';
-$agencyLogoPath = '../uploads/logo/' . ($settings['logo'] ?? 'assets/images/logo.png');
+$agencyLogoPath = '../../uploads/logo/' . ($settings['logo'] ?? 'assets/images/logo.png');
 $logoBase64 = '';
 if (file_exists($agencyLogoPath)) {
     $logoType = pathinfo($agencyLogoPath, PATHINFO_EXTENSION);

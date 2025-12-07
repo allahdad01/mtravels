@@ -304,7 +304,7 @@ try {
             
             <div class="logo-container">
                 <?php if (!empty($agencyInfo['logo'])): ?>
-                <img src="<?php echo htmlspecialchars('../uploads/logo/' . $agencyInfo['logo']); ?>" alt="Company Logo" class="logo-image">
+                <img src="<?php echo htmlspecialchars('../../uploads/logo/' . $agencyInfo['logo']); ?>" alt="Company Logo" class="logo-image">
                 <?php endif; ?>
             </div>
             

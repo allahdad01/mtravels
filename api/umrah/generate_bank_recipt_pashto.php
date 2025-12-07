@@ -23,14 +23,14 @@ if (!$family_id) {
 
 try {
     // Load agency settings
-    $settingsQuery = "SELECT * FROM settings WHERE tenant_id = ? AND branch_id = ?";
+    $settingsQuery = "SELECT * FROM settings WHERE tenant_id = ?";
     $settingsStmt = $pdo->prepare($settingsQuery);
-    $settingsStmt->execute([$tenant_id, $branch_id]);
+    $settingsStmt->execute([$tenant_id]);
     $settings = $settingsStmt->fetch(PDO::FETCH_ASSOC);
 
-    $logoPath = __DIR__ . '../uploads/logo/' . $settings['logo'];
-    if (!empty($settings['logo']) && file_exists('../uploads/logo/' . $settings['logo'])) {
-        $logoPath = '../uploads/logo/' . $settings['logo'];
+    $logoPath = __DIR__ . '../../uploads/logo/' . $settings['logo'];
+    if (!empty($settings['logo']) && file_exists('../../uploads/logo/' . $settings['logo'])) {
+        $logoPath = '../../uploads/logo/' . $settings['logo'];
     }
 
     // Load Umrah bookings for the family

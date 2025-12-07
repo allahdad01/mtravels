@@ -1,8 +1,8 @@
 <?php
 // Include necessary files
-require_once '../includes/conn.php';
-require_once '../includes/db.php';
-require_once '../includes/language_helpers.php';
+require_once '../../includes/conn.php';
+require_once '../../includes/db.php';
+require_once '../../includes/language_helpers.php';
 
 // Start session if not already started
 if (session_status() === PHP_SESSION_NONE) {
@@ -37,9 +37,9 @@ try {
     $settings = $settingStmt->fetch(PDO::FETCH_ASSOC);
 
     // Check if the logo exists and set the path
-    $logoPath = __DIR__ . '../uploads/logo/' . $settings['logo'];
-    if (isset($settings['logo']) && !empty($settings['logo']) && file_exists('../uploads/logo/' . $settings['logo'])) {
-        $logoPath = '../uploads/logo/' . $settings['logo'];
+    $logoPath = __DIR__ . '../../uploads/logo/' . $settings['logo'];
+    if (isset($settings['logo']) && !empty($settings['logo']) && file_exists('../../uploads/logo/' . $settings['logo'])) {
+        $logoPath = '../../uploads/logo/' . $settings['logo'];
     }
 
 
