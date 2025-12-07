@@ -1143,9 +1143,7 @@ include '../api/debtor/debtors_handler.php';
 <script type="text/javascript" src="https://cdn.datatables.net/responsive/2.2.9/js/responsive.bootstrap4.min.js"></script>
 
 <!-- Custom JS for Debtors Page -->
-<script src="js/debtor/debtors-translations.js"></script>
-<script src="js/debtor/modern-ui.js"></script>
-<script src="js/debtor/debtors-management.js"></script>
+
 <script src="../js/debtor/debtors-interactions.js"></script>
 <script src="../js/debtor/currency-check.js"></script>
 <script src="../js/debtor/form-protection.js"></script>
