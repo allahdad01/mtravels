@@ -6,33 +6,23 @@ $branch_id = $_SESSION['branch_id'];
 // Enforce authentication
 enforce_auth();
 
-require_once '../../includes/conn.php';
-
-// Check connection
-if ($conn->connect_error) {
-    die("Connection failed: " . $conn->connect_error);
-}
+require_once '../../includes/db.php';
 
 // Fetch suppliers
 $suppliersQuery = "SELECT id, name FROM suppliers WHERE tenant_id = ? AND branch_id = ?";
-$suppliersResult = $conn->prepare($suppliersQuery);
-$suppliersResult->bind_param("ii", $tenant_id, $branch_id);
-$suppliersResult->execute();
-$suppliersResult = $suppliersResult->get_result();
-
-$suppliers = [];
-while ($row = $suppliersResult->fetch_assoc()) {
-    $suppliers[] = $row;
-}
+$suppliersStmt = $pdo->prepare($suppliersQuery);
+$suppliersStmt->bindParam(1, $tenant_id, PDO::PARAM_INT);
+$suppliersStmt->bindParam(2, $branch_id, PDO::PARAM_INT);
+$suppliersStmt->execute();
+$suppliers = $suppliersStmt->fetchAll(PDO::FETCH_ASSOC);
 
 // Fetch main account details
 $mainAccountQuery = "SELECT id, name FROM main_account WHERE tenant_id = ? AND branch_id = ?";
-$mainAccountResult = $conn->prepare($mainAccountQuery);
-$mainAccountResult->bind_param("ii", $tenant_id, $branch_id);
-$mainAccountResult->execute();
-$mainAccountResult = $mainAccountResult->get_result();
-
-$mainAccount = $mainAccountResult->fetch_assoc();
+$mainAccountStmt = $pdo->prepare($mainAccountQuery);
+$mainAccountStmt->bindParam(1, $tenant_id, PDO::PARAM_INT);
+$mainAccountStmt->bindParam(2, $branch_id, PDO::PARAM_INT);
+$mainAccountStmt->execute();
+$mainAccount = $mainAccountStmt->fetch(PDO::FETCH_ASSOC);
 
 // Combine data into a single response
 $response = [
@@ -41,5 +31,4 @@ $response = [
 ];
 
 echo json_encode($response);
-$conn->close();
 ?>

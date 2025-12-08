@@ -1,7 +1,7 @@
 <?php
 // Email sending function using PHPMailer with tracking
 function sendEmail($to, $subject, $body, $isHtml = true, $emailType = 'general', $recipientName = '', $tenantId = null) {
-    require_once '../../vendor/autoload.php';
+    require_once '../vendor/autoload.php';
 
     // Get SMTP settings - tenant-specific or platform fallback
     $smtpSettings = getTenantSMTPSettings($tenantId);

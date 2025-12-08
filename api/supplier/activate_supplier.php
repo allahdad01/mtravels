@@ -1,7 +1,6 @@
 <?php
 // Include necessary files
 require_once '../../includes/db.php';
-require_once '../../includes/conn.php';
 require_once '../../admin/security.php';
 
 // Enforce authentication
@@ -24,23 +23,19 @@ $supplierId = $data['id'];
 
 try {
     // Prepare SQL to update supplier status
-    $stmt = $conn->prepare("UPDATE suppliers SET status = 'active' WHERE id = ? AND tenant_id = ? And branch_id = ?");
-    $stmt->bind_param("iii", $supplierId, $tenant_id, $branch_id);
-    
+    $stmt = $pdo->prepare("UPDATE suppliers SET status = 'active' WHERE id = ? AND tenant_id = ? AND branch_id = ?");
+    $stmt->bindParam(1, $supplierId, PDO::PARAM_INT);
+    $stmt->bindParam(2, $tenant_id, PDO::PARAM_INT);
+    $stmt->bindParam(3, $branch_id, PDO::PARAM_INT);
+
     // Execute the statement
     if ($stmt->execute()) {
-
-        
         echo json_encode(['success' => true, 'message' => 'Supplier activated successfully']);
     } else {
         echo json_encode(['success' => false, 'message' => 'Failed to activate supplier']);
     }
-    
-    $stmt->close();
 } catch (Exception $e) {
     http_response_code(500);
     echo json_encode(['success' => false, 'message' => 'Database error: ' . $e->getMessage()]);
 }
-
-$conn->close();
 ?>

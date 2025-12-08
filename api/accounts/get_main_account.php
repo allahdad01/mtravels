@@ -6,7 +6,7 @@ $branch_id = $_SESSION['branch_id'];
 // Enforce authentication
 enforce_auth();
 
-require_once '../../includes/conn.php';
+require_once '../../includes/db.php';
 
 header('Content-Type: application/json');
 
@@ -26,23 +26,21 @@ try {
                FROM main_account
                WHERE id = ? AND tenant_id = ? AND branch_id = ?";
 
-    $stmt = $conn->prepare($query);
-    $stmt->bind_param('iii', $accountId, $tenant_id, $branch_id);
+    $stmt = $pdo->prepare($query);
+    $stmt->bindParam(1, $accountId, PDO::PARAM_INT);
+    $stmt->bindParam(2, $tenant_id, PDO::PARAM_INT);
+    $stmt->bindParam(3, $branch_id, PDO::PARAM_INT);
     $stmt->execute();
-    
-    $result = $stmt->get_result();
-    $account = $result->fetch_assoc();
-    
+
+    $account = $stmt->fetch(PDO::FETCH_ASSOC);
+
     if ($account) {
         echo json_encode(['success' => true, 'account' => $account]);
     } else {
         echo json_encode(['success' => false, 'message' => 'Account not found']);
     }
-    
-    $stmt->close();
 } catch (Exception $e) {
     echo json_encode(['success' => false, 'message' => 'Error: ' . $e->getMessage()]);
 }
 
-$conn->close();
 ?> 

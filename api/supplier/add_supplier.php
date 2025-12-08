@@ -9,7 +9,7 @@ require_once '../../admin/security.php';
 enforce_auth();
 
 // Use environment variables or a secure method to store database credentials
-include '../../includes/conn.php';
+require_once '../../includes/db.php';
 $tenant_id = $_SESSION['tenant_id'];
 $branch_id = $_SESSION['branch_id'];
 // Validate supplier_type
@@ -36,11 +36,6 @@ $contact_person = isset($_POST['contact_person']) ? DbSecurity::validateInput($_
 // Validate name
 $name = isset($_POST['name']) ? DbSecurity::validateInput($_POST['name'], 'string', ['maxlength' => 255]) : null;
 
-// Check connection
-if ($conn->connect_error) {
-    die("Connection failed: " . $conn->connect_error);
-}
-
 // Validate and sanitize input data
 $name = htmlspecialchars(trim($_POST['name']));
 $contact_person = htmlspecialchars(trim($_POST['contact_person']));
@@ -52,13 +47,22 @@ $balance = filter_var(trim($_POST['balance']), FILTER_VALIDATE_FLOAT);
 $supplier_type = htmlspecialchars(trim($_POST['supplier_type']));
 
 // Prepare and bind
-$stmt = $conn->prepare("INSERT INTO suppliers (name, contact_person, phone, email, address, currency, balance, supplier_type, tenant_id, branch_id) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)");
-$stmt->bind_param("ssssssdsii", $name, $contact_person, $phone, $email, $address, $currency, $balance, $supplier_type, $tenant_id, $branch_id);
+$stmt = $pdo->prepare("INSERT INTO suppliers (name, contact_person, phone, email, address, currency, balance, supplier_type, tenant_id, branch_id) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)");
+$stmt->bindParam(1, $name, PDO::PARAM_STR);
+$stmt->bindParam(2, $contact_person, PDO::PARAM_STR);
+$stmt->bindParam(3, $phone, PDO::PARAM_STR);
+$stmt->bindParam(4, $email, PDO::PARAM_STR);
+$stmt->bindParam(5, $address, PDO::PARAM_STR);
+$stmt->bindParam(6, $currency, PDO::PARAM_STR);
+$stmt->bindParam(7, $balance, PDO::PARAM_STR);
+$stmt->bindParam(8, $supplier_type, PDO::PARAM_STR);
+$stmt->bindParam(9, $tenant_id, PDO::PARAM_INT);
+$stmt->bindParam(10, $branch_id, PDO::PARAM_INT);
 
 // Execute and check for errors
 if ($stmt->execute()) {
     // Get the insert ID
-    $supplier_id = $conn->insert_id;
+    $supplier_id = $pdo->lastInsertId();
     
     // Log the activity
     $old_values = json_encode([]);
@@ -78,21 +82,23 @@ if ($stmt->execute()) {
     $ip_address = $_SERVER['REMOTE_ADDR'] ?? '';
     $user_agent = $_SERVER['HTTP_USER_AGENT'] ?? '';
     
-    $stmt_log = $conn->prepare("
+    $stmt_log = $pdo->prepare("
         INSERT INTO activity_log
         (user_id, action, table_name, record_id, old_values, new_values, ip_address, user_agent, created_at, tenant_id, branch_id)
         VALUES (?, 'add', 'suppliers', ?, ?, ?, ?, ?, NOW(), ?, ?)
     ");
-    $stmt_log->bind_param("iissssii", $user_id, $supplier_id, $old_values, $new_values, $ip_address, $user_agent, $tenant_id, $branch_id);
+    $stmt_log->bindParam(1, $user_id, PDO::PARAM_INT);
+    $stmt_log->bindParam(2, $supplier_id, PDO::PARAM_INT);
+    $stmt_log->bindParam(3, $old_values, PDO::PARAM_STR);
+    $stmt_log->bindParam(4, $new_values, PDO::PARAM_STR);
+    $stmt_log->bindParam(5, $ip_address, PDO::PARAM_STR);
+    $stmt_log->bindParam(6, $user_agent, PDO::PARAM_STR);
+    $stmt_log->bindParam(7, $tenant_id, PDO::PARAM_INT);
+    $stmt_log->bindParam(8, $branch_id, PDO::PARAM_INT);
     $stmt_log->execute();
-    $stmt_log->close();
     
     echo json_encode(["success" => true]);
 } else {
-    echo json_encode(["success" => false, "message" => $stmt->error]);
+    echo json_encode(["success" => false, "message" => "Database error"]);
 }
-
-// Close statement and connection
-$stmt->close();
-$conn->close();
 ?>

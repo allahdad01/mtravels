@@ -7,7 +7,7 @@ require_once '../../admin/security.php';
 
 // Enforce authentication
 enforce_auth();
-require_once '../../includes/conn.php';
+require_once '../../includes/db.php';
 
 $tenant_id = $_SESSION['tenant_id'];
 $branch_id = $_SESSION['branch_id'];
@@ -45,8 +45,18 @@ $currency = $_POST['currency'] ?? null;
 $balance = $_POST['balance'] ?? 0;
 $supplier_type = $_POST['supplier_type'] ?? null;
 $query = "UPDATE suppliers SET name = ?, contact_person = ?, phone = ?, email = ?, address = ?, currency = ?, balance = ?, supplier_type = ? WHERE id = ? AND tenant_id = ? AND branch_id = ?";
-$stmt = $conn->prepare($query);
-$stmt->bind_param('ssssssdsiii', $name, $contact_person, $phone, $email, $address, $currency, $balance, $supplier_type, $id, $tenant_id, $branch_id);
+$stmt = $pdo->prepare($query);
+$stmt->bindParam(1, $name, PDO::PARAM_STR);
+$stmt->bindParam(2, $contact_person, PDO::PARAM_STR);
+$stmt->bindParam(3, $phone, PDO::PARAM_STR);
+$stmt->bindParam(4, $email, PDO::PARAM_STR);
+$stmt->bindParam(5, $address, PDO::PARAM_STR);
+$stmt->bindParam(6, $currency, PDO::PARAM_STR);
+$stmt->bindParam(7, $balance, PDO::PARAM_STR);
+$stmt->bindParam(8, $supplier_type, PDO::PARAM_STR);
+$stmt->bindParam(9, $id, PDO::PARAM_INT);
+$stmt->bindParam(10, $tenant_id, PDO::PARAM_INT);
+$stmt->bindParam(11, $branch_id, PDO::PARAM_INT);
 
 if ($stmt->execute()) {
     // Add activity logging
@@ -56,13 +66,14 @@ if ($stmt->execute()) {
     
     // Get original supplier data
     $old_values = [];
-    $get_original_stmt = $conn->prepare("SELECT * FROM suppliers WHERE id = ? AND tenant_id = ? AND branch_id = ?");
-    $get_original_stmt->bind_param('iii', $id, $tenant_id, $branch_id);
+    $get_original_stmt = $pdo->prepare("SELECT * FROM suppliers WHERE id = ? AND tenant_id = ? AND branch_id = ?");
+    $get_original_stmt->bindParam(1, $id, PDO::PARAM_INT);
+    $get_original_stmt->bindParam(2, $tenant_id, PDO::PARAM_INT);
+    $get_original_stmt->bindParam(3, $branch_id, PDO::PARAM_INT);
     $get_original_stmt->execute();
-    $original_result = $get_original_stmt->get_result();
-    
-    if ($original_result->num_rows > 0) {
-        $original_data = $original_result->fetch_assoc();
+    $original_data = $get_original_stmt->fetch(PDO::FETCH_ASSOC);
+
+    if ($original_data) {
         $old_values = [
             'name' => $original_data['name'],
             'contact_person' => $original_data['contact_person'],
@@ -89,25 +100,23 @@ if ($stmt->execute()) {
     $old_values = json_encode($old_values);
     $new_values = json_encode($new_values);
     // Insert activity log
-    $activity_log_stmt = $conn->prepare("INSERT INTO activity_log
+    $activity_log_stmt = $pdo->prepare("INSERT INTO activity_log
         (user_id, action, table_name, record_id, old_values, new_values, ip_address, user_agent, tenant_id, branch_id)
         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)");
-    $activity_log_stmt->bind_param("isisssssii",
-        $user_id,
-        $action,
-        $table_name,
-        $id,
-        $old_values,
-        $new_values,
-        $ip_address,
-        $user_agent,
-        $tenant_id,
-        $branch_id
-    );
+    $activity_log_stmt->bindParam(1, $user_id, PDO::PARAM_INT);
+    $activity_log_stmt->bindParam(2, $action, PDO::PARAM_STR);
+    $activity_log_stmt->bindParam(3, $table_name, PDO::PARAM_STR);
+    $activity_log_stmt->bindParam(4, $id, PDO::PARAM_INT);
+    $activity_log_stmt->bindParam(5, $old_values, PDO::PARAM_STR);
+    $activity_log_stmt->bindParam(6, $new_values, PDO::PARAM_STR);
+    $activity_log_stmt->bindParam(7, $ip_address, PDO::PARAM_STR);
+    $activity_log_stmt->bindParam(8, $user_agent, PDO::PARAM_STR);
+    $activity_log_stmt->bindParam(9, $tenant_id, PDO::PARAM_INT);
+    $activity_log_stmt->bindParam(10, $branch_id, PDO::PARAM_INT);
     $activity_log_stmt->execute();
     
     echo json_encode(['success' => true]);
 } else {
-    echo json_encode(['success' => false, 'message' => $stmt->error]);
+    echo json_encode(['success' => false, 'message' => 'Database error']);
 }
 ?>

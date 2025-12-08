@@ -22,7 +22,7 @@ $username = isset($_SESSION["name"]) ? $_SESSION["name"] : "Unknown User";
 $user_id = isset($_SESSION["user_id"]) ? $_SESSION["user_id"] : 0;
 
 // Establish a connection to the MySQL database
-include '../../includes/conn.php';
+require_once '../../includes/db.php';
 
 // Validate passengers
 $passengers = isset($_POST['passengers']) ? DbSecurity::validateInput($_POST['passengers'], 'string', ['maxlength' => 255]) : null;
@@ -90,27 +90,22 @@ $soldTo = isset($_POST['soldTo']) ? DbSecurity::validateInput($_POST['soldTo'], 
 // Validate supplier
 $supplier = isset($_POST['supplier']) ? DbSecurity::validateInput($_POST['supplier'], 'int', ['min' => 0]) : null;
 
-// Check connection and handle errors
-if ($conn->connect_error) {
-    die(json_encode(["status" => "error", "message" => "Database connection failed: " . $conn->connect_error]));
-}
-
 // Check if the request method is POST
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     // Get and sanitize input data from the POST request
     $supplier_id = intval($_POST['supplier']);
     $soldTo = intval($_POST['soldTo']);
     $paidTo = intval($_POST['paidTo']);
-    $pnr = $conn->real_escape_string($_POST['pnr']);
-    $origin = $conn->real_escape_string($_POST['origin']);
-    $destination = $conn->real_escape_string($_POST['destination']);
-    $airline = $conn->real_escape_string($_POST['airline']);
+    $pnr = htmlspecialchars($_POST['pnr'], ENT_QUOTES, 'UTF-8');
+    $origin = htmlspecialchars($_POST['origin'], ENT_QUOTES, 'UTF-8');
+    $destination = htmlspecialchars($_POST['destination'], ENT_QUOTES, 'UTF-8');
+    $airline = htmlspecialchars($_POST['airline'], ENT_QUOTES, 'UTF-8');
     $departureDate = $_POST['departureDate'];
     $departureTime = $_POST['departureTime'];
     $returnDepartureTime = $_POST['returnDepartureTime'];
     $issueDate = $_POST['issueDate'];
-    $currency = $conn->real_escape_string($_POST['curr']);
-    $description = $conn->real_escape_string($_POST['description']);
+    $currency = htmlspecialchars($_POST['curr'], ENT_QUOTES, 'UTF-8');
+    $description = htmlspecialchars($_POST['description'], ENT_QUOTES, 'UTF-8');
     $tripType = $_POST['tripType'];
     $returnDestination = $_POST['returnDestination'];
     $returnDate = $_POST['returnDate'];
@@ -123,18 +118,18 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     $totalProfit = 0;
     
     // Begin a database transaction
-    $conn->begin_transaction();
+    $pdo->beginTransaction();
 
     try {
         // Check if PNR has already been used 6 or more times
-        $stmt_check_pnr = $conn->prepare("SELECT COUNT(*) FROM ticket_bookings WHERE pnr = ? AND tenant_id = ? AND branch_id = ?");
-        $stmt_check_pnr->bind_param("sii", $pnr, $tenant_id, $branch_id);
+        $stmt_check_pnr = $pdo->prepare("SELECT COUNT(*) FROM ticket_bookings WHERE pnr = ? AND tenant_id = ? AND branch_id = ?");
+        $stmt_check_pnr->bindParam(1, $pnr, PDO::PARAM_STR);
+        $stmt_check_pnr->bindParam(2, $tenant_id, PDO::PARAM_INT);
+        $stmt_check_pnr->bindParam(3, $branch_id, PDO::PARAM_INT);
         if (!$stmt_check_pnr->execute()) {
-            throw new Exception("Failed to check PNR: " . $stmt_check_pnr->error);
+            throw new Exception("Failed to check PNR");
         }
-        $stmt_check_pnr->bind_result($pnr_count);
-        $stmt_check_pnr->fetch();
-        $stmt_check_pnr->close();
+        $pnr_count = $stmt_check_pnr->fetchColumn();
         
         // If PNR has been used 25 or more times, throw an exception
         if ($pnr_count >= 25) {
@@ -142,14 +137,18 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         }
 
         // Fetch supplier details
-        $stmt_check_balance = $conn->prepare("SELECT balance, currency, name, supplier_type FROM suppliers WHERE id = ? AND tenant_id = ? AND branch_id = ?");
-        $stmt_check_balance->bind_param("iii", $supplier_id, $tenant_id, $branch_id);
+        $stmt_check_balance = $pdo->prepare("SELECT balance, currency, name, supplier_type FROM suppliers WHERE id = ? AND tenant_id = ? AND branch_id = ?");
+        $stmt_check_balance->bindParam(1, $supplier_id, PDO::PARAM_INT);
+        $stmt_check_balance->bindParam(2, $tenant_id, PDO::PARAM_INT);
+        $stmt_check_balance->bindParam(3, $branch_id, PDO::PARAM_INT);
         if (!$stmt_check_balance->execute()) {
-            throw new Exception("Failed to validate supplier balance: " . $stmt_check_balance->error);
+            throw new Exception("Failed to validate supplier balance");
         }
-        $stmt_check_balance->bind_result($current_balance, $supplier_currency, $supplier_name, $supplier_type);
-        $stmt_check_balance->fetch();
-        $stmt_check_balance->close();
+        $supplierData = $stmt_check_balance->fetch(PDO::FETCH_ASSOC);
+        $current_balance = $supplierData['balance'];
+        $supplier_currency = $supplierData['currency'];
+        $supplier_name = $supplierData['name'];
+        $supplier_type = $supplierData['supplier_type'];
 
         // Ensure that the ticket currency matches the supplier's currency
         if ($currency !== $supplier_currency) {
@@ -157,24 +156,29 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         }
 
         // Fetch main account name
-        $stmt_main_account = $conn->prepare("SELECT name FROM main_account WHERE id = ? AND tenant_id = ? AND branch_id = ?");
-        $stmt_main_account->bind_param("iii", $paidTo, $tenant_id, $branch_id);
+        $stmt_main_account = $pdo->prepare("SELECT name FROM main_account WHERE id = ? AND tenant_id = ? AND branch_id = ?");
+        $stmt_main_account->bindParam(1, $paidTo, PDO::PARAM_INT);
+        $stmt_main_account->bindParam(2, $tenant_id, PDO::PARAM_INT);
+        $stmt_main_account->bindParam(3, $branch_id, PDO::PARAM_INT);
         if (!$stmt_main_account->execute()) {
-            throw new Exception("Failed to fetch main account name: " . $stmt_main_account->error);
+            throw new Exception("Failed to fetch main account name");
         }
-        $stmt_main_account->bind_result($main_account_name);
-        $stmt_main_account->fetch();
-        $stmt_main_account->close();
+        $mainAccountData = $stmt_main_account->fetch(PDO::FETCH_ASSOC);
+        $main_account_name = $mainAccountData['name'];
 
         // Fetch client details
-        $stmt_client_info = $conn->prepare("SELECT name, usd_balance, afs_balance, client_type FROM clients WHERE id = ? AND tenant_id = ? AND branch_id = ?");
-        $stmt_client_info->bind_param("iii", $soldTo, $tenant_id, $branch_id);
+        $stmt_client_info = $pdo->prepare("SELECT name, usd_balance, afs_balance, client_type FROM clients WHERE id = ? AND tenant_id = ? AND branch_id = ?");
+        $stmt_client_info->bindParam(1, $soldTo, PDO::PARAM_INT);
+        $stmt_client_info->bindParam(2, $tenant_id, PDO::PARAM_INT);
+        $stmt_client_info->bindParam(3, $branch_id, PDO::PARAM_INT);
         if (!$stmt_client_info->execute()) {
-            throw new Exception("Failed to fetch client info: " . $stmt_client_info->error);
+            throw new Exception("Failed to fetch client info");
         }
-        $stmt_client_info->bind_result($client_name, $usd_balance, $afs_balance, $client_type);
-        $stmt_client_info->fetch();
-        $stmt_client_info->close();
+        $clientData = $stmt_client_info->fetch(PDO::FETCH_ASSOC);
+        $client_name = $clientData['name'];
+        $usd_balance = $clientData['usd_balance'];
+        $afs_balance = $clientData['afs_balance'];
+        $client_type = $clientData['client_type'];
 
         // Get initial balances
         $current_client_balance = ($currency === 'USD') ? $usd_balance : $afs_balance;
@@ -182,7 +186,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         $initial_supplier_balance = $current_balance;
 
         // Prepare ticket booking statement
-        $stmt_ticket = $conn->prepare("INSERT INTO ticket_bookings (
+        $stmt_ticket = $pdo->prepare("INSERT INTO ticket_bookings (
             supplier, sold_to, paid_to, passenger_name, pnr, origin, destination, airline, departure_date, departure_time, issue_date,
             phone, gender, title, price, sold, discount, profit, currency, description, trip_type, return_destination, return_date, return_departure_time,
             created_by, tenant_id, branch_id
@@ -194,10 +198,10 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         // Process each passenger
         foreach ($passengers as $index => $passenger) {
             // Get passenger details
-            $passengerName = $conn->real_escape_string($passenger['name']);
-            $phone = $conn->real_escape_string($passenger['phone']);
-            $gender = $conn->real_escape_string($passenger['gender']);
-            $title = $conn->real_escape_string($passenger['title']);
+            $passengerName = htmlspecialchars($passenger['name'], ENT_QUOTES, 'UTF-8');
+            $phone = htmlspecialchars($passenger['phone'], ENT_QUOTES, 'UTF-8');
+            $gender = htmlspecialchars($passenger['gender'], ENT_QUOTES, 'UTF-8');
+            $title = htmlspecialchars($passenger['title'], ENT_QUOTES, 'UTF-8');
             
             // Get passenger pricing
             $base = floatval($passenger['base']);
@@ -211,32 +215,53 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             $totalDiscount += $discount;
             $totalProfit += $profit;
 
-            $stmt_ticket->bind_param(
-                "iiisssssssssssddddsssssssii",
-                $supplier_id, $soldTo, $paidTo, $passengerName, $pnr, $origin, $destination, $airline,
-                $departureDate, $departureTime, $issueDate, $phone, $gender, $title, $base, $sold, $discount, $profit, $currency,
-                $description, $tripType, $returnDestination, $returnDate, $returnDepartureTime, $user_id, $tenant_id, $branch_id
-            );
+            $stmt_ticket->bindParam(1, $supplier_id, PDO::PARAM_INT);
+            $stmt_ticket->bindParam(2, $soldTo, PDO::PARAM_INT);
+            $stmt_ticket->bindParam(3, $paidTo, PDO::PARAM_INT);
+            $stmt_ticket->bindParam(4, $passengerName, PDO::PARAM_STR);
+            $stmt_ticket->bindParam(5, $pnr, PDO::PARAM_STR);
+            $stmt_ticket->bindParam(6, $origin, PDO::PARAM_STR);
+            $stmt_ticket->bindParam(7, $destination, PDO::PARAM_STR);
+            $stmt_ticket->bindParam(8, $airline, PDO::PARAM_STR);
+            $stmt_ticket->bindParam(9, $departureDate, PDO::PARAM_STR);
+            $stmt_ticket->bindParam(10, $departureTime, PDO::PARAM_STR);
+            $stmt_ticket->bindParam(11, $issueDate, PDO::PARAM_STR);
+            $stmt_ticket->bindParam(12, $phone, PDO::PARAM_STR);
+            $stmt_ticket->bindParam(13, $gender, PDO::PARAM_STR);
+            $stmt_ticket->bindParam(14, $title, PDO::PARAM_STR);
+            $stmt_ticket->bindParam(15, $base, PDO::PARAM_STR);
+            $stmt_ticket->bindParam(16, $sold, PDO::PARAM_STR);
+            $stmt_ticket->bindParam(17, $discount, PDO::PARAM_STR);
+            $stmt_ticket->bindParam(18, $profit, PDO::PARAM_STR);
+            $stmt_ticket->bindParam(19, $currency, PDO::PARAM_STR);
+            $stmt_ticket->bindParam(20, $description, PDO::PARAM_STR);
+            $stmt_ticket->bindParam(21, $tripType, PDO::PARAM_STR);
+            $stmt_ticket->bindParam(22, $returnDestination, PDO::PARAM_STR);
+            $stmt_ticket->bindParam(23, $returnDate, PDO::PARAM_STR);
+            $stmt_ticket->bindParam(24, $returnDepartureTime, PDO::PARAM_STR);
+            $stmt_ticket->bindParam(25, $user_id, PDO::PARAM_INT);
+            $stmt_ticket->bindParam(26, $tenant_id, PDO::PARAM_INT);
+            $stmt_ticket->bindParam(27, $branch_id, PDO::PARAM_INT);
             
             if (!$stmt_ticket->execute()) {
-                throw new Exception('Failed to book ticket: ' . $stmt_ticket->error);
+                throw new Exception('Failed to book ticket');
             }
-            
-            $ticket_id = $stmt_ticket->insert_id;
-            
+
+            $ticket_id = $pdo->lastInsertId();
+
             // Store first ticket ID as main booking ID
             if ($index === 0) {
                 $main_booking_id = $ticket_id;
             }
-            
+
             // Link additional passengers to main booking
             if ($index > 0 && $main_booking_id > 0) {
-                $stmt_update_ref = $conn->prepare("UPDATE ticket_bookings SET group_booking_id = ? WHERE id = ?");
-                $stmt_update_ref->bind_param("ii", $main_booking_id, $ticket_id);
+                $stmt_update_ref = $pdo->prepare("UPDATE ticket_bookings SET group_booking_id = ? WHERE id = ?");
+                $stmt_update_ref->bindParam(1, $main_booking_id, PDO::PARAM_INT);
+                $stmt_update_ref->bindParam(2, $ticket_id, PDO::PARAM_INT);
                 if (!$stmt_update_ref->execute()) {
-                    throw new Exception('Failed to update group booking reference: ' . $stmt_update_ref->error);
+                    throw new Exception('Failed to update group booking reference');
                 }
-                $stmt_update_ref->close();
             }
             
             // Process supplier transaction
@@ -245,76 +270,91 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 $new_supplier_balance = $initial_supplier_balance - $base;
                 
                 // Insert supplier transaction
-                $stmt_transaction = $conn->prepare("INSERT INTO supplier_transactions (
+                $stmt_transaction = $pdo->prepare("INSERT INTO supplier_transactions (
                     supplier_id, reference_id, transaction_type, amount, balance, remarks, transaction_date, transaction_of, tenant_id, branch_id
                 ) VALUES (?, ?, 'Debit', ?, ?, ?, NOW(), 'ticket_sale', ?, ?)");
                 $remarks = "Base amount of $base $currency deducted for ticket booking for $title $passengerName with PNR: $pnr.";
-                $stmt_transaction->bind_param("iiddsii", $supplier_id, $ticket_id, $base, $new_supplier_balance, $remarks, $tenant_id, $branch_id);
+                $stmt_transaction->bindParam(1, $supplier_id, PDO::PARAM_INT);
+                $stmt_transaction->bindParam(2, $ticket_id, PDO::PARAM_INT);
+                $stmt_transaction->bindParam(3, $base, PDO::PARAM_STR);
+                $stmt_transaction->bindParam(4, $new_supplier_balance, PDO::PARAM_STR);
+                $stmt_transaction->bindParam(5, $remarks, PDO::PARAM_STR);
+                $stmt_transaction->bindParam(6, $tenant_id, PDO::PARAM_INT);
+                $stmt_transaction->bindParam(7, $branch_id, PDO::PARAM_INT);
                 if (!$stmt_transaction->execute()) {
-                    throw new Exception('Failed to create supplier transaction: ' . $stmt_transaction->error);
+                    throw new Exception('Failed to create supplier transaction');
                 }
-                $stmt_transaction->close();
 
                 // Update supplier balance
-                $stmt_balance = $conn->prepare("UPDATE suppliers SET balance = ? WHERE id = ?");
-                $stmt_balance->bind_param("di", $new_supplier_balance, $supplier_id);
+                $stmt_balance = $pdo->prepare("UPDATE suppliers SET balance = ? WHERE id = ?");
+                $stmt_balance->bindParam(1, $new_supplier_balance, PDO::PARAM_STR);
+                $stmt_balance->bindParam(2, $supplier_id, PDO::PARAM_INT);
                 if (!$stmt_balance->execute()) {
-                    throw new Exception('Failed to update supplier balance: ' . $stmt_balance->error);
+                    throw new Exception('Failed to update supplier balance');
                 }
-                $stmt_balance->close();
                 
                 // Update initial balance for next passenger
                 $initial_supplier_balance = $new_supplier_balance;
             } else {
                 // For non-regular suppliers, just record the transaction
-                $stmt_transaction = $conn->prepare("INSERT INTO supplier_transactions (
+                $stmt_transaction = $pdo->prepare("INSERT INTO supplier_transactions (
                     supplier_id, reference_id, transaction_type, amount, remarks, transaction_date, transaction_of, tenant_id, branch_id
                 ) VALUES (?, ?, 'Debit', ?, ?, NOW(), 'ticket_sale', ?, ?)");
                 $remarks = "Base amount of $base $currency deducted for ticket booking for $title $passengerName with PNR: $pnr.";
-                $stmt_transaction->bind_param("iidsii", $supplier_id, $ticket_id, $base, $remarks, $tenant_id, $branch_id);
+                $stmt_transaction->bindParam(1, $supplier_id, PDO::PARAM_INT);
+                $stmt_transaction->bindParam(2, $ticket_id, PDO::PARAM_INT);
+                $stmt_transaction->bindParam(3, $base, PDO::PARAM_STR);
+                $stmt_transaction->bindParam(4, $remarks, PDO::PARAM_STR);
+                $stmt_transaction->bindParam(5, $tenant_id, PDO::PARAM_INT);
+                $stmt_transaction->bindParam(6, $branch_id, PDO::PARAM_INT);
                 if (!$stmt_transaction->execute()) {
-                    throw new Exception('Failed to create supplier transaction: ' . $stmt_transaction->error);
+                    throw new Exception('Failed to create supplier transaction');
                 }
-                $stmt_transaction->close();
             }
 
             // Process client transaction
             $new_client_balance = $initial_client_balance - $sold;
             
             // Insert client transaction
-            $stmt_client_transaction = $conn->prepare("INSERT INTO client_transactions (
+            $stmt_client_transaction = $pdo->prepare("INSERT INTO client_transactions (
                 client_id, type, transaction_of, reference_id, amount, balance, currency, description, created_at, tenant_id, branch_id
             ) VALUES (?, 'Debit', 'ticket_sale', ?, ?, ?, ?, ?, NOW(), ?, ?)");
             $description = "Ticket booked for $title $passengerName with PNR: $pnr from $origin to $destination.";
 
-            $stmt_client_transaction->bind_param("iiddssii", $soldTo, $ticket_id, $sold, $new_client_balance, $currency, $description, $tenant_id, $branch_id);
+            $stmt_client_transaction->bindParam(1, $soldTo, PDO::PARAM_INT);
+            $stmt_client_transaction->bindParam(2, $ticket_id, PDO::PARAM_INT);
+            $stmt_client_transaction->bindParam(3, $sold, PDO::PARAM_STR);
+            $stmt_client_transaction->bindParam(4, $new_client_balance, PDO::PARAM_STR);
+            $stmt_client_transaction->bindParam(5, $currency, PDO::PARAM_STR);
+            $stmt_client_transaction->bindParam(6, $description, PDO::PARAM_STR);
+            $stmt_client_transaction->bindParam(7, $tenant_id, PDO::PARAM_INT);
+            $stmt_client_transaction->bindParam(8, $branch_id, PDO::PARAM_INT);
             if (!$stmt_client_transaction->execute()) {
-                throw new Exception('Failed to log client transaction: ' . $stmt_client_transaction->error);
+                throw new Exception('Failed to log client transaction');
             }
-            $stmt_client_transaction->close();
 
             // Update client balance for regular clients
             if ($client_type === 'regular') {
                 $balance_column = $currency === 'USD' ? 'usd_balance' : 'afs_balance';
-                $stmt_deduct_client_balance = $conn->prepare("UPDATE clients SET $balance_column = ? WHERE id = ? AND tenant_id = ? AND branch_id = ?");
-                $stmt_deduct_client_balance->bind_param("diii", $new_client_balance, $soldTo, $tenant_id, $branch_id);
+                $stmt_deduct_client_balance = $pdo->prepare("UPDATE clients SET {$balance_column} = ? WHERE id = ? AND tenant_id = ? AND branch_id = ?");
+                $stmt_deduct_client_balance->bindParam(1, $new_client_balance, PDO::PARAM_STR);
+                $stmt_deduct_client_balance->bindParam(2, $soldTo, PDO::PARAM_INT);
+                $stmt_deduct_client_balance->bindParam(3, $tenant_id, PDO::PARAM_INT);
+                $stmt_deduct_client_balance->bindParam(4, $branch_id, PDO::PARAM_INT);
                 if (!$stmt_deduct_client_balance->execute()) {
-                    throw new Exception('Failed to update client balance: ' . $stmt_deduct_client_balance->error);
+                    throw new Exception('Failed to update client balance');
                 }
-                $stmt_deduct_client_balance->close();
-                
+
                 // Update initial balance for next passenger
                 $initial_client_balance = $new_client_balance;
             }
         }
         
-        $stmt_ticket->close();
-
         // Add activity log
         $user_id = $user_id ?? 0;
         $ip_address = $_SERVER['REMOTE_ADDR'] ?? '';
         $user_agent = $_SERVER['HTTP_USER_AGENT'] ?? '';
-        
+
         // Prepare activity log data
         $new_values = [
             'multiple_passengers' => true,
@@ -337,45 +377,48 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             'client_name' => $client_name,
             'trip_type' => $tripType,
         ];
-        
+
         // Insert activity log
         $record_id = $main_booking_id > 0 ? $main_booking_id : $ticket_id;
-        $activity_log_stmt = $conn->prepare("INSERT INTO activity_log
+        $activity_log_stmt = $pdo->prepare("INSERT INTO activity_log
             (user_id, action, table_name, record_id, old_values, new_values, ip_address, user_agent, created_at, tenant_id, branch_id)
             VALUES (?, 'add', 'ticket_bookings', ?, '{}', ?, ?, ?, NOW(), ?, ?)");
 
         $new_values_json = json_encode($new_values);
-        $activity_log_stmt->bind_param("iisssii", $user_id, $record_id, $new_values_json, $ip_address, $user_agent, $tenant_id, $branch_id);
+        $activity_log_stmt->bindParam(1, $user_id, PDO::PARAM_INT);
+        $activity_log_stmt->bindParam(2, $record_id, PDO::PARAM_INT);
+        $activity_log_stmt->bindParam(3, $new_values_json, PDO::PARAM_STR);
+        $activity_log_stmt->bindParam(4, $ip_address, PDO::PARAM_STR);
+        $activity_log_stmt->bindParam(5, $user_agent, PDO::PARAM_STR);
+        $activity_log_stmt->bindParam(6, $tenant_id, PDO::PARAM_INT);
+        $activity_log_stmt->bindParam(7, $branch_id, PDO::PARAM_INT);
         $activity_log_stmt->execute();
-        $activity_log_stmt->close();
 
         // Commit transaction
-        $conn->commit();
+        $pdo->commit();
 
         // Send ticket notification email to client with PDF attachment
         require_once '../../includes/functions.php';
 
         // Get client email and name
-        $stmt_client_email = $conn->prepare("SELECT email, name FROM clients WHERE id = ? AND tenant_id = ? AND branch_id = ?");
-        $stmt_client_email->bind_param("iii", $soldTo, $tenant_id, $branch_id);
+        $stmt_client_email = $pdo->prepare("SELECT email, name FROM clients WHERE id = ? AND tenant_id = ? AND branch_id = ?");
+        $stmt_client_email->bindParam(1, $soldTo, PDO::PARAM_INT);
+        $stmt_client_email->bindParam(2, $tenant_id, PDO::PARAM_INT);
+        $stmt_client_email->bindParam(3, $branch_id, PDO::PARAM_INT);
         $stmt_client_email->execute();
-        $client_email_result = $stmt_client_email->get_result();
-        $client_email_data = $client_email_result->fetch_assoc();
+        $client_email_data = $stmt_client_email->fetch(PDO::FETCH_ASSOC);
         $client_email = $client_email_data['email'];
         $client_name = $client_email_data['name'];
-        $stmt_client_email->close();
 
         // Get agency settings
-        $stmt_agency = $conn->prepare("SELECT agency_name, email, phone, address FROM settings WHERE tenant_id = ?");
-        $stmt_agency->bind_param("i", $tenant_id);
+        $stmt_agency = $pdo->prepare("SELECT agency_name, email, phone, address FROM settings WHERE tenant_id = ?");
+        $stmt_agency->bindParam(1, $tenant_id, PDO::PARAM_INT);
         $stmt_agency->execute();
-        $agency_result = $stmt_agency->get_result();
-        $agency_data = $agency_result->fetch_assoc();
+        $agency_data = $stmt_agency->fetch(PDO::FETCH_ASSOC);
         $agencyName = $agency_data['agency_name'] ?? 'MTravels';
         $agencyEmail = $agency_data['email'] ?? 'info@mtravels.com';
         $agencyPhone = $agency_data['phone'] ?? '+93 (0) 123 456 789';
         $agencyAddress = $agency_data['address'] ?? '';
-        $stmt_agency->close();
 
         if (!empty($client_email)) {
             // Prepare booking data for PDF
@@ -793,11 +836,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         ]);
     } catch (Exception $e) {
         // Rollback transaction on error
-        $conn->rollback();
+        $pdo->rollback();
         echo json_encode(["status" => "error", "message" => $e->getMessage()]);
     }
-
-    // Close database connection
-    $conn->close();
 }
 ?>

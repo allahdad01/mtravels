@@ -12,8 +12,7 @@ enforce_auth();
 $tenant_id = $_SESSION['tenant_id'];
 $branch_id = $_SESSION['branch_id'];
 // Include database connection
-include '../includes/db.php';
-include '../includes/conn.php';
+require_once('../includes/db.php');
 
 // Get maktob ID from URL
 $maktob_id = isset($_GET['id']) ? (int)$_GET['id'] : 0;
@@ -23,26 +22,29 @@ if ($maktob_id <= 0) {
 }
 
 // Query to get maktob details
-$query = "SELECT m.*, u.name as sender_name 
-          FROM maktobs m 
-          JOIN users u ON m.sender_id = u.id 
-          WHERE m.id = $maktob_id AND m.tenant_id = $tenant_id And m.branch_id = $branch_id";
-$result = mysqli_query($conn, $query);
+$query = "SELECT m.*, u.name as sender_name
+          FROM maktobs m
+          JOIN users u ON m.sender_id = u.id
+          WHERE m.id = ? AND m.tenant_id = ? AND m.branch_id = ?";
+$stmt = $pdo->prepare($query);
+$stmt->bindParam(1, $maktob_id, PDO::PARAM_INT);
+$stmt->bindParam(2, $tenant_id, PDO::PARAM_INT);
+$stmt->bindParam(3, $branch_id, PDO::PARAM_INT);
+$stmt->execute();
+$maktob = $stmt->fetch(PDO::FETCH_ASSOC);
 
-if (!$result || mysqli_num_rows($result) == 0) {
+if (!$maktob) {
     die("Maktob not found");
 }
 
-$maktob = mysqli_fetch_assoc($result);
-
 // Get company information from settings table
-$settings_query = "SELECT * FROM settings WHERE tenant_id = $tenant_id";
-$settings_result = mysqli_query($conn, $settings_query);
-$settings = [];
+$settings_query = "SELECT * FROM settings WHERE tenant_id = ?";
+$settings_stmt = $pdo->prepare($settings_query);
+$settings_stmt->bindParam(1, $tenant_id, PDO::PARAM_INT);
+$settings_stmt->execute();
+$settings = $settings_stmt->fetch(PDO::FETCH_ASSOC);
 
-if ($settings_result && mysqli_num_rows($settings_result) > 0) {
-    $settings = mysqli_fetch_assoc($settings_result);
-} else {
+if (!$settings) {
     // Default values if settings not found
     $settings = [
         'agency_name' => 'AL MOQADAS TRAVEL & TOURS',

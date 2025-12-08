@@ -6,7 +6,6 @@ require_once '../../admin/security.php';
 enforce_auth();
 
 require_once('../../includes/db.php');
-require_once('../../includes/conn.php');
 $tenant_id = $_SESSION['tenant_id'];
 $branch_id = $_SESSION['branch_id'];
 // Check if user is logged in
@@ -38,25 +37,27 @@ if ($amount <= 0) {
 
 try {
     // Start transaction
-    $conn->begin_transaction();
+    $pdo->beginTransaction();
 
     // Get from account balance
-    $fromAccountStmt = $conn->prepare("SELECT * FROM main_account WHERE id = ? AND tenant_id = ? AND branch_id = ?");
-    $fromAccountStmt->bind_param("iii", $fromAccountId, $tenant_id, $branch_id);
+    $fromAccountStmt = $pdo->prepare("SELECT * FROM main_account WHERE id = ? AND tenant_id = ? AND branch_id = ?");
+    $fromAccountStmt->bindParam(1, $fromAccountId, PDO::PARAM_INT);
+    $fromAccountStmt->bindParam(2, $tenant_id, PDO::PARAM_INT);
+    $fromAccountStmt->bindParam(3, $branch_id, PDO::PARAM_INT);
     $fromAccountStmt->execute();
-    $fromAccount = $fromAccountStmt->get_result()->fetch_assoc();
-    $fromAccountStmt->close();
+    $fromAccount = $fromAccountStmt->fetch(PDO::FETCH_ASSOC);
 
     if (!$fromAccount) {
         throw new Exception("Source account not found");
     }
 
     // Get to account balance
-    $toAccountStmt = $conn->prepare("SELECT * FROM main_account WHERE id = ? AND tenant_id = ? AND branch_id = ?");
-    $toAccountStmt->bind_param("iii", $toAccountId, $tenant_id, $branch_id);
+    $toAccountStmt = $pdo->prepare("SELECT * FROM main_account WHERE id = ? AND tenant_id = ? AND branch_id = ?");
+    $toAccountStmt->bindParam(1, $toAccountId, PDO::PARAM_INT);
+    $toAccountStmt->bindParam(2, $tenant_id, PDO::PARAM_INT);
+    $toAccountStmt->bindParam(3, $branch_id, PDO::PARAM_INT);
     $toAccountStmt->execute();
-    $toAccount = $toAccountStmt->get_result()->fetch_assoc();
-    $toAccountStmt->close();
+    $toAccount = $toAccountStmt->fetch(PDO::FETCH_ASSOC);
 
     if (!$toAccount) {
         throw new Exception("Destination account not found");
@@ -103,24 +104,28 @@ try {
     }
 
     // Update source account balance
-    $updateFromStmt = $conn->prepare("UPDATE main_account SET {$fromBalanceField} = {$fromBalanceField} - ? WHERE id = ? AND tenant_id = ? AND branch_id = ?");
-    $updateFromStmt->bind_param("diii", $amount, $fromAccountId, $tenant_id, $branch_id);
+    $updateFromStmt = $pdo->prepare("UPDATE main_account SET {$fromBalanceField} = {$fromBalanceField} - ? WHERE id = ? AND tenant_id = ? AND branch_id = ?");
+    $updateFromStmt->bindParam(1, $amount, PDO::PARAM_STR);
+    $updateFromStmt->bindParam(2, $fromAccountId, PDO::PARAM_INT);
+    $updateFromStmt->bindParam(3, $tenant_id, PDO::PARAM_INT);
+    $updateFromStmt->bindParam(4, $branch_id, PDO::PARAM_INT);
     $updateFromStmt->execute();
-    $updateFromStmt->close();
 
     // Update destination account balance
     $toBalanceField = strtolower($toCurrency) . '_balance';
-    $updateToStmt = $conn->prepare("UPDATE main_account SET {$toBalanceField} = {$toBalanceField} + ? WHERE id = ? AND tenant_id = ? AND branch_id = ?");
-    $updateToStmt->bind_param("diii", $convertedAmount, $toAccountId, $tenant_id, $branch_id);
+    $updateToStmt = $pdo->prepare("UPDATE main_account SET {$toBalanceField} = {$toBalanceField} + ? WHERE id = ? AND tenant_id = ? AND branch_id = ?");
+    $updateToStmt->bindParam(1, $convertedAmount, PDO::PARAM_STR);
+    $updateToStmt->bindParam(2, $toAccountId, PDO::PARAM_INT);
+    $updateToStmt->bindParam(3, $tenant_id, PDO::PARAM_INT);
+    $updateToStmt->bindParam(4, $branch_id, PDO::PARAM_INT);
     $updateToStmt->execute();
-    $updateToStmt->close();
 
     // Normalize euro currency to EUR before transaction insertion
     $fromCurrency = (strtolower($fromCurrency) === 'euro') ? 'EUR' : $fromCurrency;
     $toCurrency = (strtolower($toCurrency) === 'euro') ? 'EUR' : $toCurrency;
 
     // Record transaction for source account (debit)
-    $fromTransactionStmt = $conn->prepare("
+    $fromTransactionStmt = $pdo->prepare("
         INSERT INTO main_account_transactions (
             main_account_id, type, amount, currency, description,
             transaction_of, reference_id, balance, tenant_id, branch_id
@@ -128,22 +133,18 @@ try {
         ) VALUES (?, 'debit', ?, ?, ?, 'transfer', ?, ?, ?, ?)
     ");
     $fromBalance = $fromAccount[$fromBalanceField] - $amount;
-    $fromTransactionStmt->bind_param(
-        "idssiisi",
-        $fromAccountId,
-        $amount,
-        $fromCurrency,
-        $description,
-        $toAccountId,
-        $fromBalance,
-        $tenant_id,
-        $branch_id
-    );
+    $fromTransactionStmt->bindParam(1, $fromAccountId, PDO::PARAM_INT);
+    $fromTransactionStmt->bindParam(2, $amount, PDO::PARAM_STR);
+    $fromTransactionStmt->bindParam(3, $fromCurrency, PDO::PARAM_STR);
+    $fromTransactionStmt->bindParam(4, $description, PDO::PARAM_STR);
+    $fromTransactionStmt->bindParam(5, $toAccountId, PDO::PARAM_INT);
+    $fromTransactionStmt->bindParam(6, $fromBalance, PDO::PARAM_STR);
+    $fromTransactionStmt->bindParam(7, $tenant_id, PDO::PARAM_INT);
+    $fromTransactionStmt->bindParam(8, $branch_id, PDO::PARAM_INT);
     $fromTransactionStmt->execute();
-    $fromTransactionStmt->close();
 
     // Record transaction for destination account (credit)
-    $toTransactionStmt = $conn->prepare("
+    $toTransactionStmt = $pdo->prepare("
         INSERT INTO main_account_transactions (
             main_account_id, type, amount, currency, description,
             transaction_of, reference_id, balance, tenant_id, branch_id
@@ -151,19 +152,15 @@ try {
         ) VALUES (?, 'credit', ?, ?, ?, 'transfer', ?, ?, ?, ?)
     ");
     $toBalance = $toAccount[$toBalanceField] + $convertedAmount;
-    $toTransactionStmt->bind_param(
-        "idssiisi",
-        $toAccountId,
-        $convertedAmount,
-        $toCurrency,
-        $description,
-        $fromAccountId,
-        $toBalance,
-        $tenant_id,
-        $branch_id
-    );
+    $toTransactionStmt->bindParam(1, $toAccountId, PDO::PARAM_INT);
+    $toTransactionStmt->bindParam(2, $convertedAmount, PDO::PARAM_STR);
+    $toTransactionStmt->bindParam(3, $toCurrency, PDO::PARAM_STR);
+    $toTransactionStmt->bindParam(4, $description, PDO::PARAM_STR);
+    $toTransactionStmt->bindParam(5, $fromAccountId, PDO::PARAM_INT);
+    $toTransactionStmt->bindParam(6, $toBalance, PDO::PARAM_STR);
+    $toTransactionStmt->bindParam(7, $tenant_id, PDO::PARAM_INT);
+    $toTransactionStmt->bindParam(8, $branch_id, PDO::PARAM_INT);
     $toTransactionStmt->execute();
-    $toTransactionStmt->close();
 
     // Add activity logging
     $user_id = $_SESSION['user_id'] ?? 0;
@@ -185,25 +182,29 @@ try {
     ];
     
     // Insert activity log
-    $activity_log_stmt = $conn->prepare("INSERT INTO activity_log
+    $activity_log_stmt = $pdo->prepare("INSERT INTO activity_log
         (user_id, action, table_name, record_id, old_values, new_values, ip_address, user_agent, created_at, tenant_id, branch_id)
 
         VALUES (?, 'transfer', 'main_account_transactions', ?, '{}', ?, ?, ?, NOW(), ?, ?)");
 
     $new_values_json = json_encode($new_values);
-    $activity_log_stmt->bind_param("iissssi", $user_id, $fromAccountId, $new_values_json, $ip_address, $user_agent, $tenant_id, $branch_id);
+    $activity_log_stmt->bindParam(1, $user_id, PDO::PARAM_INT);
+    $activity_log_stmt->bindParam(2, $fromAccountId, PDO::PARAM_INT);
+    $activity_log_stmt->bindParam(3, $new_values_json, PDO::PARAM_STR);
+    $activity_log_stmt->bindParam(4, $ip_address, PDO::PARAM_STR);
+    $activity_log_stmt->bindParam(5, $user_agent, PDO::PARAM_STR);
+    $activity_log_stmt->bindParam(6, $tenant_id, PDO::PARAM_INT);
+    $activity_log_stmt->bindParam(7, $branch_id, PDO::PARAM_INT);
     $activity_log_stmt->execute();
-    $activity_log_stmt->close();
 
     // Commit transaction
-    $conn->commit();
+    $pdo->commit();
 
     echo json_encode(['success' => true, 'message' => 'Transfer completed successfully']);
 } catch (Exception $e) {
     // Rollback transaction on error
-    $conn->rollback();
+    $pdo->rollBack();
     echo json_encode(['success' => false, 'message' => $e->getMessage()]);
 }
 
-$conn->close();
 ?> 

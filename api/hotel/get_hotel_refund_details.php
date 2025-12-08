@@ -8,7 +8,6 @@ enforce_auth();
 
 // Database connection
 require_once('../../includes/db.php');
-require_once('../../includes/conn.php');
 
 // Initialize response array
 $response = [

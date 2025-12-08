@@ -1,7 +1,6 @@
 <?php
 // Database connection
 require_once('../includes/db.php');
-require_once '../includes/conn.php';
 
 $tenant_id = $_SESSION['tenant_id'];
 $branch_id = $_SESSION['branch_id'];
@@ -38,25 +37,14 @@ $ticketsQuery = "
         rt.id ASC
  ";
 
-$stmt = $conn->prepare($ticketsQuery);
+$stmt = $pdo->prepare($ticketsQuery);
 $stmt->execute([$tenant_id, $branch_id, $tenant_id, $branch_id, $tenant_id, $branch_id, $tenant_id, $branch_id, $tenant_id, $branch_id, $tenant_id, $branch_id]);
-$ticketsResult = $stmt->get_result();
-
-// Initialize the array to hold ticket details
-$tickets = [];
-
-if ($ticketsResult && $ticketsResult->num_rows > 0) {
-    // Fetch results and push them into the array
-    while ($row = $ticketsResult->fetch_assoc()) {
-        $tickets[] = $row;
-    }
-}
+$tickets = $stmt->fetchAll(PDO::FETCH_ASSOC);
 // Fetch Suppliers
 $suppliersQuery = "SELECT id, name FROM suppliers WHERE tenant_id = ? AND branch_id = ?";
-$stmt = $conn->prepare($suppliersQuery);
+$stmt = $pdo->prepare($suppliersQuery);
 $stmt->execute([$tenant_id, $branch_id]);
-$suppliersResult = $stmt->get_result();
-$suppliers = $suppliersResult->fetch_all(MYSQLI_ASSOC);
+$suppliers = $stmt->fetchAll(PDO::FETCH_ASSOC);
 
 // Create an associative array of supplier id to supplier name for easy lookup
 $supplier_names = [];

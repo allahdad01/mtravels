@@ -25,7 +25,7 @@ if (!isset($_GET['account_id']) || !is_numeric($_GET['account_id'])) {
 $accountId = intval($_GET['account_id']);
 
 // Database connection
-require_once('../../includes/conn.php');
+require_once('../../includes/db.php');
 
 // Prepare and execute query
 $query = "SELECT mt.*, 
@@ -53,20 +53,14 @@ $query = "SELECT mt.*,
           LEFT JOIN users usr ON usr.id = mt.reference_id AND mt.transaction_of = 'fund'
           WHERE mt.main_account_id = ? AND mt.tenant_id = ? AND mt.branch_id = ?
           ORDER BY mt.id DESC";
-$stmt = $conn->prepare($query);
-$stmt->bind_param("iii", $accountId, $tenant_id, $branch_id);
+$stmt = $pdo->prepare($query);
+$stmt->bindParam(1, $accountId, PDO::PARAM_INT);
+$stmt->bindParam(2, $tenant_id, PDO::PARAM_INT);
+$stmt->bindParam(3, $branch_id, PDO::PARAM_INT);
 $stmt->execute();
-$result = $stmt->get_result();
 
 // Fetch all transactions
-$transactions = [];
-while ($row = $result->fetch_assoc()) {
-    $transactions[] = $row;
-}
-
-// Close connection
-$stmt->close();
-$conn->close();
+$transactions = $stmt->fetchAll(PDO::FETCH_ASSOC);
 
 // Return transactions as JSON
 header('Content-Type: application/json');

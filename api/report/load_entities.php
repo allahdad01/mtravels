@@ -10,7 +10,7 @@ $branch_id = $_SESSION['branch_id'];
 enforce_auth();
 
 // load_entities.php - Fetches entities dynamically based on the selected report type
-require_once '../../includes/conn.php';
+require_once '../../includes/db.php';
 
 // Validate type
 $type = isset($_POST['type']) ? DbSecurity::validateInput($_POST['type'], 'string', ['maxlength' => 255]) : null;
@@ -34,14 +34,11 @@ switch ($type) {
         exit();
 }
 
-$stmt = $conn->prepare($query);
-$stmt->bind_param("ii", $tenant_id, $branch_id);
+$stmt = $pdo->prepare($query);
+$stmt->bindParam(1, $tenant_id, PDO::PARAM_INT);
+$stmt->bindParam(2, $branch_id, PDO::PARAM_INT);
 $stmt->execute();
-$result = $stmt->get_result();
-while ($row = $result->fetch_assoc()) {
-    $options[] = $row;
-}
-$stmt->close();
+$options = $stmt->fetchAll(PDO::FETCH_ASSOC);
 
 echo json_encode(["success" => true, "data" => $options]);
 ?>

@@ -9,7 +9,6 @@ $branch_id = $_SESSION['branch_id'];
 // Enforce authentication
 enforce_auth();
 
-include '../../includes/conn.php';
 include '../../includes/db.php';
 
 

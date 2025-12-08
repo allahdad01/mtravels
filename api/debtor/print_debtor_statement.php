@@ -18,7 +18,6 @@ if (session_status() === PHP_SESSION_NONE) {
 $tenant_id = $_SESSION['tenant_id'];
 $branch_id = $_SESSION['branch_id'];
 
-require_once '../includes/conn.php';
 require_once '../includes/db.php';
 
 // Fetch settings data
@@ -39,22 +38,24 @@ if (!isset($_GET['id']) || !is_numeric($_GET['id'])) {
 $debtor_id = intval($_GET['id']);
 
 // Fetch debtor details
-$stmt = $conn->prepare("SELECT * FROM debtors WHERE id = ? AND tenant_id = ? AND branch_id = ?");
-$stmt->bind_param("iii", $debtor_id, $tenant_id, $branch_id);
+$stmt = $pdo->prepare("SELECT * FROM debtors WHERE id = ? AND tenant_id = ? AND branch_id = ?");
+$stmt->bindParam(1, $debtor_id, PDO::PARAM_INT);
+$stmt->bindParam(2, $tenant_id, PDO::PARAM_INT);
+$stmt->bindParam(3, $branch_id, PDO::PARAM_INT);
 $stmt->execute();
-$result = $stmt->get_result();
-$debtor = $result->fetch_assoc();
+$debtor = $stmt->fetch(PDO::FETCH_ASSOC);
 
 if (!$debtor) {
     die("Debtor not found");
 }
 
 // Fetch debtor transactions
-$stmt = $conn->prepare("SELECT * FROM debtor_transactions WHERE debtor_id = ? AND tenant_id = ? AND branch_id = ? ORDER BY payment_date DESC");
-$stmt->bind_param("iii", $debtor_id, $tenant_id, $branch_id);
+$stmt = $pdo->prepare("SELECT * FROM debtor_transactions WHERE debtor_id = ? AND tenant_id = ? AND branch_id = ? ORDER BY payment_date DESC");
+$stmt->bindParam(1, $debtor_id, PDO::PARAM_INT);
+$stmt->bindParam(2, $tenant_id, PDO::PARAM_INT);
+$stmt->bindParam(3, $branch_id, PDO::PARAM_INT);
 $stmt->execute();
-$transResult = $stmt->get_result();
-$transactions = $transResult->fetch_all(MYSQLI_ASSOC);
+$transactions = $stmt->fetchAll(PDO::FETCH_ASSOC);
 
 // Calculate total paid amount
 $total_paid = 0;

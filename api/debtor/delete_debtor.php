@@ -24,7 +24,7 @@ if (!isset($_SESSION['user_id']) || $_SESSION['role'] !== 'admin') {
 
 $tenant_id = $_SESSION['tenant_id'];
 $branch_id = $_SESSION['branch_id'];
-require_once '../includes/conn.php';
+require_once '../includes/db.php';
 
 // Handle debtor deletion via AJAX
 if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['delete_debtor'])) {
@@ -32,22 +32,24 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['delete_debtor'])) {
 
     try {
         // Get debtor information
-        $stmt = $conn->prepare("SELECT * FROM debtors WHERE id = ? AND tenant_id = ? AND branch_id = ?");
-        $stmt->bind_param("iii", $debtor_id, $tenant_id, $branch_id);
+        $stmt = $pdo->prepare("SELECT * FROM debtors WHERE id = ? AND tenant_id = ? AND branch_id = ?");
+        $stmt->bindParam(1, $debtor_id, PDO::PARAM_INT);
+        $stmt->bindParam(2, $tenant_id, PDO::PARAM_INT);
+        $stmt->bindParam(3, $branch_id, PDO::PARAM_INT);
         $stmt->execute();
-        $result = $stmt->get_result();
-        $debtor = $result->fetch_assoc();
+        $debtor = $stmt->fetch(PDO::FETCH_ASSOC);
 
         if (!$debtor) {
             throw new Exception("Debtor not found");
         }
 
         // Check if debtor has any transactions
-        $stmt = $conn->prepare("SELECT COUNT(*) as transaction_count FROM debtor_transactions WHERE debtor_id = ? AND tenant_id = ? AND branch_id = ?");
-        $stmt->bind_param("iii", $debtor_id, $tenant_id, $branch_id);
+        $stmt = $pdo->prepare("SELECT COUNT(*) as transaction_count FROM debtor_transactions WHERE debtor_id = ? AND tenant_id = ? AND branch_id = ?");
+        $stmt->bindParam(1, $debtor_id, PDO::PARAM_INT);
+        $stmt->bindParam(2, $tenant_id, PDO::PARAM_INT);
+        $stmt->bindParam(3, $branch_id, PDO::PARAM_INT);
         $stmt->execute();
-        $result = $stmt->get_result();
-        $transaction_count = $result->fetch_assoc()['transaction_count'];
+        $transaction_count = $stmt->fetch(PDO::FETCH_ASSOC)['transaction_count'];
 
         if ($transaction_count > 0) {
             // Return error response if transactions exist
@@ -59,14 +61,16 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['delete_debtor'])) {
         }
 
         // If no transactions, proceed with deletion
-        $conn->begin_transaction();
+        $pdo->beginTransaction();
 
         // Delete the debtor
-        $stmt = $conn->prepare("DELETE FROM debtors WHERE id = ? AND tenant_id = ? AND branch_id = ?");
-        $stmt->bind_param("iii", $debtor_id, $tenant_id, $branch_id);
+        $stmt = $pdo->prepare("DELETE FROM debtors WHERE id = ? AND tenant_id = ? AND branch_id = ?");
+        $stmt->bindParam(1, $debtor_id, PDO::PARAM_INT);
+        $stmt->bindParam(2, $tenant_id, PDO::PARAM_INT);
+        $stmt->bindParam(3, $branch_id, PDO::PARAM_INT);
         $stmt->execute();
 
-        $conn->commit();
+        $pdo->commit();
 
         // Return success response
         echo json_encode([
@@ -75,9 +79,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['delete_debtor'])) {
         ]);
 
     } catch (Exception $e) {
-        if (isset($conn) && $conn->connect_error === null) {
-            $conn->rollback();
-        }
+        $pdo->rollback();
 
         // Return error response
         echo json_encode([

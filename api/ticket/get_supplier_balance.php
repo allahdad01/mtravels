@@ -7,11 +7,7 @@ $branch_id = $_SESSION['branch_id'];
 enforce_auth();
 
 // Database connection
-require_once '../../includes/conn.php';
-
-if ($conn->connect_error) {
-    die(json_encode(['success' => false, 'message' => 'Database connection failed']));
-}
+require_once '../../includes/db.php';
 
 // Get supplier ID from request
 $supplierId = isset($_GET['supplier_id']) ? intval($_GET['supplier_id']) : 0;
@@ -22,20 +18,22 @@ if (!$supplierId) {
 
 // Get the supplier type and balance
 $query = "SELECT name, supplier_type, balance FROM suppliers WHERE id = ? AND tenant_id = ? AND branch_id = ?";
-$stmt = $conn->prepare($query);
-$stmt->bind_param('iii', $supplierId, $tenant_id, $branch_id);
+$stmt = $pdo->prepare($query);
+$stmt->bindParam(1, $supplierId, PDO::PARAM_INT);
+$stmt->bindParam(2, $tenant_id, PDO::PARAM_INT);
+$stmt->bindParam(3, $branch_id, PDO::PARAM_INT);
 $stmt->execute();
-$result = $stmt->get_result();
+$row = $stmt->fetch(PDO::FETCH_ASSOC);
 
-if ($row = $result->fetch_assoc()) {
+if ($row) {
     // Check if supplier is External (case-insensitive comparison)
     $isExternal = (strtolower(trim($row['supplier_type'])) === 'external');
-    
+
     // Debug information
     error_log("Supplier Type: '" . $row['supplier_type'] . "', Is External: " . ($isExternal ? 'true' : 'false'));
-    
+
     echo json_encode([
-        'success' => true, 
+        'success' => true,
         'balance' => $row['balance'],
         'supplier_name' => $row['name'],
         'supplier_type' => $row['supplier_type'],
@@ -44,7 +42,4 @@ if ($row = $result->fetch_assoc()) {
 } else {
     echo json_encode(['success' => false, 'message' => 'Supplier not found']);
 }
-
-$stmt->close();
-$conn->close();
 ?>

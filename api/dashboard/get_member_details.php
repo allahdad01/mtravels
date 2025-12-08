@@ -1,7 +1,5 @@
 <?php
 require_once '../../includes/db.php';
-require_once '../../includes/conn.php';
-
 
 // Start session if not already started
 if (session_status() === PHP_SESSION_NONE) {
@@ -28,24 +26,16 @@ $sql = "SELECT ub.*,
         LEFT JOIN users u ON ub.created_by = u.id AND u.tenant_id = ? AND u.branch_id = ?
         WHERE ub.booking_id = ? AND ub.tenant_id = ? AND ub.branch_id = ?";
 
-$stmt = $conn->prepare($sql);
-$stmt->bind_param('iiiiiii', $tenant_id, $branch_id, $tenant_id, $branch_id, $tenant_id, $branch_id, $bookingId, $tenant_id, $branch_id);
-$stmt->execute();
-$result = $stmt->get_result();
+$stmt = $pdo->prepare($sql);
+$stmt->execute([$tenant_id, $branch_id, $tenant_id, $branch_id, $tenant_id, $branch_id, $bookingId, $tenant_id, $branch_id]);
+$member = $stmt->fetch(PDO::FETCH_ASSOC);
 
-if ($result->num_rows > 0) {
-    $member = $result->fetch_assoc();
-
+if ($member) {
     // Fetch services
     $servicesSql = "SELECT * FROM umrah_booking_services WHERE booking_id = ? AND tenant_id = ? AND branch_id = ?";
-    $servicesStmt = $conn->prepare($servicesSql);
-    $servicesStmt->bind_param('iii', $bookingId, $tenant_id, $branch_id);
-    $servicesStmt->execute();
-    $servicesResult = $servicesStmt->get_result();
-    $services = [];
-    while ($service = $servicesResult->fetch_assoc()) {
-        $services[] = $service;
-    }
+    $servicesStmt = $pdo->prepare($servicesSql);
+    $servicesStmt->execute([$bookingId, $tenant_id, $branch_id]);
+    $services = $servicesStmt->fetchAll(PDO::FETCH_ASSOC);
     $member['services'] = $services;
 
     // Format dates for display
@@ -66,6 +56,4 @@ if ($result->num_rows > 0) {
 } else {
     echo json_encode(['success' => false, 'message' => 'Member not found']);
 }
-
-$stmt->close();
-$conn->close(); 
+?>

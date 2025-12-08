@@ -27,8 +27,7 @@ if (!isset($_SESSION['user_id']) || $_SESSION['role'] !== 'admin') {
 }
 
 // Include database connection
-include '../../includes/db.php';
-include '../../includes/conn.php';
+require_once('../../includes/db.php');
 
 $tenant_id = $_SESSION['tenant_id'];
 $branch_id = $_SESSION['branch_id'];
@@ -64,7 +63,7 @@ try {
  * Handle GET requests - fetch recent maktobs
  */
 function handleGetRequest() {
-    global $conn, $tenant_id, $branch_id;
+    global $pdo, $tenant_id, $branch_id;
 
     $recent_maktobs_query = "SELECT m.*,
         u.name as sender_name,
@@ -76,15 +75,11 @@ function handleGetRequest() {
         ORDER BY maktob_date DESC
         LIMIT 10";
 
-    $stmt = $conn->prepare($recent_maktobs_query);
-    $stmt->bind_param("ii", $tenant_id, $branch_id);
+    $stmt = $pdo->prepare($recent_maktobs_query);
+    $stmt->bindParam(1, $tenant_id, PDO::PARAM_INT);
+    $stmt->bindParam(2, $branch_id, PDO::PARAM_INT);
     $stmt->execute();
-    $recent_maktobs_result = $stmt->get_result();
-
-    $maktobs = [];
-    while ($row = mysqli_fetch_assoc($recent_maktobs_result)) {
-        $maktobs[] = $row;
-    }
+    $maktobs = $stmt->fetchAll(PDO::FETCH_ASSOC);
 
     echo json_encode([
         'success' => true,
@@ -96,15 +91,15 @@ function handleGetRequest() {
  * Handle POST requests - create new maktob
  */
 function handlePostRequest() {
-    global $conn, $tenant_id, $branch_id;
+    global $pdo, $tenant_id, $branch_id;
 
-    // Get and sanitize input data
-    $subject = mysqli_real_escape_string($conn, $_POST['subject'] ?? '');
-    $content = mysqli_real_escape_string($conn, $_POST['content'] ?? '');
-    $company_name = mysqli_real_escape_string($conn, $_POST['company_name'] ?? '');
-    $maktob_number = mysqli_real_escape_string($conn, $_POST['maktob_number'] ?? '');
-    $maktob_date = mysqli_real_escape_string($conn, $_POST['maktob_date'] ?? '');
-    $language = mysqli_real_escape_string($conn, $_POST['language'] ?? 'english');
+    // Get input data
+    $subject = $_POST['subject'] ?? '';
+    $content = $_POST['content'] ?? '';
+    $company_name = $_POST['company_name'] ?? '';
+    $maktob_number = $_POST['maktob_number'] ?? '';
+    $maktob_date = $_POST['maktob_date'] ?? '';
+    $language = $_POST['language'] ?? 'english';
     $sender_id = $_SESSION['user_id'];
 
     // Validate required fields
@@ -128,10 +123,21 @@ function handlePostRequest() {
 
     // Insert new maktob
     $query = "INSERT INTO maktobs (tenant_id, branch_id, subject, content, company_name, maktob_number, maktob_date, sender_id, status, language)
-              VALUES ('$tenant_id', '$branch_id', '$subject', '$content', '$company_name', '$maktob_number', '$maktob_date', $sender_id, 'draft', '$language')";
+              VALUES (?, ?, ?, ?, ?, ?, ?, ?, 'draft', ?)";
 
-    if (mysqli_query($conn, $query)) {
-        $insert_id = mysqli_insert_id($conn);
+    $stmt = $pdo->prepare($query);
+    $stmt->bindParam(1, $tenant_id, PDO::PARAM_INT);
+    $stmt->bindParam(2, $branch_id, PDO::PARAM_INT);
+    $stmt->bindParam(3, $subject, PDO::PARAM_STR);
+    $stmt->bindParam(4, $content, PDO::PARAM_STR);
+    $stmt->bindParam(5, $company_name, PDO::PARAM_STR);
+    $stmt->bindParam(6, $maktob_number, PDO::PARAM_STR);
+    $stmt->bindParam(7, $maktob_date, PDO::PARAM_STR);
+    $stmt->bindParam(8, $sender_id, PDO::PARAM_INT);
+    $stmt->bindParam(9, $language, PDO::PARAM_STR);
+
+    if ($stmt->execute()) {
+        $insert_id = $pdo->lastInsertId();
 
         echo json_encode([
             'success' => true,
@@ -142,7 +148,7 @@ function handlePostRequest() {
         http_response_code(500);
         echo json_encode([
             'success' => false,
-            'message' => __('error_creating_letter') . ': ' . mysqli_error($conn)
+            'message' => __('error_creating_letter')
         ]);
     }
 }

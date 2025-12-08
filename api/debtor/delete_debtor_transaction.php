@@ -1,6 +1,6 @@
 <?php
 // Include database connection
-require_once '../includes/conn.php';
+require_once '../includes/db.php';
 
 // Include database security module for input validation
 require_once 'includes/db_security.php';
@@ -44,25 +44,27 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['delete_transaction'])
     }
     
     try {
-        $conn->begin_transaction();
-        
+        $pdo->beginTransaction();
+
         // Get transaction details
-        $stmt = $conn->prepare("SELECT * FROM debtor_transactions WHERE id = ? AND tenant_id = ? AND branch_id = ?");
-        $stmt->bind_param("iii", $transaction_id, $tenant_id, $branch_id);
+        $stmt = $pdo->prepare("SELECT * FROM debtor_transactions WHERE id = ? AND tenant_id = ? AND branch_id = ?");
+        $stmt->bindParam(1, $transaction_id, PDO::PARAM_INT);
+        $stmt->bindParam(2, $tenant_id, PDO::PARAM_INT);
+        $stmt->bindParam(3, $branch_id, PDO::PARAM_INT);
         $stmt->execute();
-        $result = $stmt->get_result();
-        $transaction = $result->fetch_assoc();
+        $transaction = $stmt->fetch(PDO::FETCH_ASSOC);
         
         if (!$transaction) {
             throw new Exception("Transaction not found");
         }
         
         // Get the linked main account transaction
-        $stmt = $conn->prepare("SELECT * FROM main_account_transactions WHERE reference_id = ? AND transaction_of = 'debtor' AND tenant_id = ? AND branch_id = ?");
-        $stmt->bind_param("iii", $transaction_id, $tenant_id, $branch_id);
+        $stmt = $pdo->prepare("SELECT * FROM main_account_transactions WHERE reference_id = ? AND transaction_of = 'debtor' AND tenant_id = ? AND branch_id = ?");
+        $stmt->bindParam(1, $transaction_id, PDO::PARAM_INT);
+        $stmt->bindParam(2, $tenant_id, PDO::PARAM_INT);
+        $stmt->bindParam(3, $branch_id, PDO::PARAM_INT);
         $stmt->execute();
-        $result = $stmt->get_result();
-        $main_transaction = $result->fetch_assoc();
+        $main_transaction = $stmt->fetch(PDO::FETCH_ASSOC);
         
         if (!$main_transaction) {
             throw new Exception("Main account transaction not found");
@@ -76,7 +78,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['delete_transaction'])
         $adjustment = ($main_transaction['type'] == 'credit') ? -$main_amount : $main_amount;
 
         // Update balances of all subsequent transactions
-        $updateSubsequentStmt = $conn->prepare("
+        $updateSubsequentStmt = $pdo->prepare("
             UPDATE main_account_transactions
             SET balance = balance + ?
             WHERE main_account_id = ?
@@ -85,15 +87,22 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['delete_transaction'])
             AND id != ? AND tenant_id = ?
             AND branch_id = ?
         ");
-        $updateSubsequentStmt->bind_param("dsssisi", $adjustment, $main_transaction['main_account_id'], $main_currency, $main_transaction['id'], $main_transaction['id'], $tenant_id, $branch_id);
+        $updateSubsequentStmt->bindParam(1, $adjustment, PDO::PARAM_STR);
+        $updateSubsequentStmt->bindParam(2, $main_transaction['main_account_id'], PDO::PARAM_INT);
+        $updateSubsequentStmt->bindParam(3, $main_currency, PDO::PARAM_STR);
+        $updateSubsequentStmt->bindParam(4, $main_transaction['id'], PDO::PARAM_INT);
+        $updateSubsequentStmt->bindParam(5, $main_transaction['id'], PDO::PARAM_INT);
+        $updateSubsequentStmt->bindParam(6, $tenant_id, PDO::PARAM_INT);
+        $updateSubsequentStmt->bindParam(7, $branch_id, PDO::PARAM_INT);
         $updateSubsequentStmt->execute();
         
         // Get debtor information
-        $stmt = $conn->prepare("SELECT balance FROM debtors WHERE id = ? AND tenant_id = ? AND branch_id = ?");
-        $stmt->bind_param("iii", $debtor_id, $tenant_id, $branch_id);
+        $stmt = $pdo->prepare("SELECT balance FROM debtors WHERE id = ? AND tenant_id = ? AND branch_id = ?");
+        $stmt->bindParam(1, $debtor_id, PDO::PARAM_INT);
+        $stmt->bindParam(2, $tenant_id, PDO::PARAM_INT);
+        $stmt->bindParam(3, $branch_id, PDO::PARAM_INT);
         $stmt->execute();
-        $result = $stmt->get_result();
-        $debtor = $result->fetch_assoc();
+        $debtor = $stmt->fetch(PDO::FETCH_ASSOC);
         
         // Update debtor balance based on transaction type
         if ($transaction['transaction_type'] == 'credit') {
@@ -103,8 +112,11 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['delete_transaction'])
         } else {
             throw new Exception("Invalid transaction type");
         }
-        $stmt = $conn->prepare("UPDATE debtors SET balance = ? WHERE id = ? AND tenant_id = ? AND branch_id = ?");
-        $stmt->bind_param("diii", $new_balance, $debtor_id, $tenant_id, $branch_id);
+        $stmt = $pdo->prepare("UPDATE debtors SET balance = ? WHERE id = ? AND tenant_id = ? AND branch_id = ?");
+        $stmt->bindParam(1, $new_balance, PDO::PARAM_STR);
+        $stmt->bindParam(2, $debtor_id, PDO::PARAM_INT);
+        $stmt->bindParam(3, $tenant_id, PDO::PARAM_INT);
+        $stmt->bindParam(4, $branch_id, PDO::PARAM_INT);
         $stmt->execute();
         
         // Get main account info and update the correct currency balance
@@ -120,11 +132,12 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['delete_transaction'])
         }
         
         // Get current main account balance
-        $stmt = $conn->prepare("SELECT $balance_column FROM main_account WHERE id = ? AND tenant_id = ? AND branch_id = ?");
-        $stmt->bind_param("iii", $main_transaction['main_account_id'], $tenant_id, $branch_id);
+        $stmt = $pdo->prepare("SELECT $balance_column FROM main_account WHERE id = ? AND tenant_id = ? AND branch_id = ?");
+        $stmt->bindParam(1, $main_transaction['main_account_id'], PDO::PARAM_INT);
+        $stmt->bindParam(2, $tenant_id, PDO::PARAM_INT);
+        $stmt->bindParam(3, $branch_id, PDO::PARAM_INT);
         $stmt->execute();
-        $result = $stmt->get_result();
-        $main_account = $result->fetch_assoc();
+        $main_account = $stmt->fetch(PDO::FETCH_ASSOC);
         
         if (!$main_account) {
             throw new Exception("Main account not found");
@@ -133,22 +146,29 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['delete_transaction'])
         // Update main account balance based on transaction type: credit deducts, debit adds
         $balance_adjustment = ($main_transaction['type'] == 'credit') ? -$main_amount : $main_amount;
         $new_main_balance = $main_account[$balance_column] + $balance_adjustment;
-        $stmt = $conn->prepare("UPDATE main_account SET $balance_column = ? WHERE id = ? AND tenant_id = ? AND branch_id = ?");
-        $stmt->bind_param("diii", $new_main_balance, $main_transaction['main_account_id'], $tenant_id, $branch_id);
+        $stmt = $pdo->prepare("UPDATE main_account SET $balance_column = ? WHERE id = ? AND tenant_id = ? AND branch_id = ?");
+        $stmt->bindParam(1, $new_main_balance, PDO::PARAM_STR);
+        $stmt->bindParam(2, $main_transaction['main_account_id'], PDO::PARAM_INT);
+        $stmt->bindParam(3, $tenant_id, PDO::PARAM_INT);
+        $stmt->bindParam(4, $branch_id, PDO::PARAM_INT);
         $stmt->execute();
         
         // Delete the transactions
-        $stmt = $conn->prepare("DELETE FROM debtor_transactions WHERE id = ? AND tenant_id = ? AND branch_id = ?");
-        $stmt->bind_param("iii", $transaction_id, $tenant_id, $branch_id);
+        $stmt = $pdo->prepare("DELETE FROM debtor_transactions WHERE id = ? AND tenant_id = ? AND branch_id = ?");
+        $stmt->bindParam(1, $transaction_id, PDO::PARAM_INT);
+        $stmt->bindParam(2, $tenant_id, PDO::PARAM_INT);
+        $stmt->bindParam(3, $branch_id, PDO::PARAM_INT);
         $stmt->execute();
 
-        $stmt = $conn->prepare("DELETE FROM main_account_transactions WHERE id = ? AND tenant_id = ? AND branch_id = ?");
-        $stmt->bind_param("iii", $main_transaction['id'], $tenant_id, $branch_id);
+        $stmt = $pdo->prepare("DELETE FROM main_account_transactions WHERE id = ? AND tenant_id = ? AND branch_id = ?");
+        $stmt->bindParam(1, $main_transaction['id'], PDO::PARAM_INT);
+        $stmt->bindParam(2, $tenant_id, PDO::PARAM_INT);
+        $stmt->bindParam(3, $branch_id, PDO::PARAM_INT);
         $stmt->execute();
         
        
         
-        $conn->commit();
+        $pdo->commit();
         $response = [
             'success' => true, 
             'message' => 'Transaction reversed and deleted successfully!',
@@ -157,7 +177,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['delete_transaction'])
         ];
     } catch (Exception $e) {
         // Rollback transaction on error
-        $conn->rollback();
+        $pdo->rollback();
         $response = ['success' => false, 'message' => $e->getMessage()];
     }
 }

@@ -9,7 +9,7 @@ require_once '../../admin/security.php';
 enforce_auth();
 $tenant_id = $_SESSION['tenant_id'];
 $branch_id = $_SESSION['branch_id'];
-require_once '../../includes/conn.php';
+require_once '../../includes/db.php';
 
 // Validate status
 $status = isset($_POST['status']) ? DbSecurity::validateInput($_POST['status'], 'string', ['maxlength' => 255]) : null;
@@ -47,13 +47,22 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     $query = "INSERT INTO main_account (name, account_type, bank_account_number, bank_account_afs_number, bank_name, usd_balance, afs_balance, last_updated, status, tenant_id, branch_id)
               VALUES (?, ?, ?, ?, ?, ?, ?, NOW(), ?, ?, ?)";
 
-    $stmt = $conn->prepare($query);
-    // Updated bind_param to include tenant_id and branch_id (added 'i' for integers and parameters)
-    $stmt->bind_param("sssssssssi", $accountName, $accountType, $bankAccountNumber, $bankAccountAfsNumber, $bankName, $usdBalance, $afsBalance, $status, $tenant_id, $branch_id);
+    $stmt = $pdo->prepare($query);
+    // Updated bindParam to include tenant_id and branch_id
+    $stmt->bindParam(1, $accountName, PDO::PARAM_STR);
+    $stmt->bindParam(2, $accountType, PDO::PARAM_STR);
+    $stmt->bindParam(3, $bankAccountNumber, PDO::PARAM_STR);
+    $stmt->bindParam(4, $bankAccountAfsNumber, PDO::PARAM_STR);
+    $stmt->bindParam(5, $bankName, PDO::PARAM_STR);
+    $stmt->bindParam(6, $usdBalance, PDO::PARAM_STR);
+    $stmt->bindParam(7, $afsBalance, PDO::PARAM_STR);
+    $stmt->bindParam(8, $status, PDO::PARAM_STR);
+    $stmt->bindParam(9, $tenant_id, PDO::PARAM_INT);
+    $stmt->bindParam(10, $branch_id, PDO::PARAM_INT);
 
     if ($stmt->execute()) {
         // Get the insert ID
-        $account_id = $conn->insert_id;
+        $account_id = $pdo->lastInsertId();
         
         // Log the activity
         $old_values = json_encode([]);
@@ -73,21 +82,25 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         $ip_address = $_SERVER['REMOTE_ADDR'] ?? '';
         $user_agent = $_SERVER['HTTP_USER_AGENT'] ?? '';
         
-        $stmt_log = $conn->prepare("
+        $stmt_log = $pdo->prepare("
             INSERT INTO activity_log
             (user_id, action, table_name, record_id, old_values, new_values, ip_address, user_agent, created_at, tenant_id, branch_id)
             VALUES (?, 'add', 'main_account', ?, ?, ?, ?, ?, NOW(), ?, ?)
         ");
-        $stmt_log->bind_param("iissssii", $user_id, $account_id, $old_values, $new_values, $ip_address, $user_agent, $tenant_id, $branch_id);
+        $stmt_log->bindParam(1, $user_id, PDO::PARAM_INT);
+        $stmt_log->bindParam(2, $account_id, PDO::PARAM_INT);
+        $stmt_log->bindParam(3, $old_values, PDO::PARAM_STR);
+        $stmt_log->bindParam(4, $new_values, PDO::PARAM_STR);
+        $stmt_log->bindParam(5, $ip_address, PDO::PARAM_STR);
+        $stmt_log->bindParam(6, $user_agent, PDO::PARAM_STR);
+        $stmt_log->bindParam(7, $tenant_id, PDO::PARAM_INT);
+        $stmt_log->bindParam(8, $branch_id, PDO::PARAM_INT);
         $stmt_log->execute();
-        $stmt_log->close();
         
         echo json_encode(['success' => true]);
     } else {
         echo json_encode(['success' => false, 'message' => 'Failed to add account.']);
     }
 
-    $stmt->close();
-    $conn->close();
 }
 ?>

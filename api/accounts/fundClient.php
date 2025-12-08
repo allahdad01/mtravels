@@ -1,6 +1,6 @@
 <?php
 session_start();
-require_once('../../includes/conn.php');
+require_once('../../includes/db.php');
 // Check if the user is logged in
 $username = isset($_SESSION['name']) ? $_SESSION['name'] : null;
 $user_id = isset($_SESSION['user_id']) ? $_SESSION['user_id'] : null;
@@ -69,10 +69,6 @@ if (empty($mainAccountId)) {
     exit;
 }
 
-if ($conn->connect_error) {
-    echo json_encode(['success' => false, 'message' => 'Connection failed: ' . $conn->connect_error]);
-    exit;
-}
 
 // Validate amounts
 if ($totalAmount <= 0) {
@@ -87,10 +83,12 @@ if ($usdAmount <= 0 && $afsAmount <= 0) {
 
 // Fetch the client's account balances (USD and AFS) based on client ID
 $clientAccountQuery = "SELECT name, usd_balance, afs_balance FROM clients WHERE id = ? AND tenant_id = ? AND branch_id = ?";
-$stmt = $conn->prepare($clientAccountQuery);
-$stmt->bind_param('iii', $clientId, $tenant_id, $branch_id);
+$stmt = $pdo->prepare($clientAccountQuery);
+$stmt->bindParam(1, $clientId, PDO::PARAM_INT);
+$stmt->bindParam(2, $tenant_id, PDO::PARAM_INT);
+$stmt->bindParam(3, $branch_id, PDO::PARAM_INT);
 $stmt->execute();
-$clientAccount = $stmt->get_result()->fetch_assoc();
+$clientAccount = $stmt->fetch(PDO::FETCH_ASSOC);
 $clientName = $clientAccount['name'];
 
 if (!$clientAccount) {
@@ -100,10 +98,12 @@ if (!$clientAccount) {
 
 // Fetch main account details
 $mainAccountQuery = "SELECT id, name, usd_balance, afs_balance FROM main_account WHERE id = ? AND tenant_id = ? AND branch_id = ?";
-$mainAccountStmt = $conn->prepare($mainAccountQuery);
-$mainAccountStmt->bind_param('iii', $mainAccountId, $tenant_id, $branch_id);
+$mainAccountStmt = $pdo->prepare($mainAccountQuery);
+$mainAccountStmt->bindParam(1, $mainAccountId, PDO::PARAM_INT);
+$mainAccountStmt->bindParam(2, $tenant_id, PDO::PARAM_INT);
+$mainAccountStmt->bindParam(3, $branch_id, PDO::PARAM_INT);
 $mainAccountStmt->execute();
-$mainAccount = $mainAccountStmt->get_result()->fetch_assoc();
+$mainAccount = $mainAccountStmt->fetch(PDO::FETCH_ASSOC);
 
 if (!$mainAccount) {
     echo json_encode(['success' => false, 'message' => 'Main account not found.']);
@@ -114,7 +114,7 @@ if (!$mainAccount) {
 $fullRemark = "Client: $clientName, Account funded by $username. Remarks: $remarks";
 $timestamp = date('Y-m-d H:i:s');
 
-$conn->begin_transaction();
+$pdo->beginTransaction();
 
 try {
     // Calculate total payment in selected currency
@@ -136,30 +136,51 @@ try {
         // Update client USD balance with the total payment
         $newUsdBalance = $clientAccount['usd_balance'] + $totalAmount;
         $updateQuery = "UPDATE clients SET usd_balance = ? WHERE id = ? AND tenant_id = ? AND branch_id = ?";
-        $stmt = $conn->prepare($updateQuery);
-        $stmt->bind_param('diii', $newUsdBalance, $clientId, $tenant_id, $branch_id);
+        $stmt = $pdo->prepare($updateQuery);
+        $stmt->bindParam(1, $newUsdBalance, PDO::PARAM_STR);
+        $stmt->bindParam(2, $clientId, PDO::PARAM_INT);
+        $stmt->bindParam(3, $tenant_id, PDO::PARAM_INT);
+        $stmt->bindParam(4, $branch_id, PDO::PARAM_INT);
         $stmt->execute();
 
         // If there's a USD portion, update main account USD balance and record transactions
         if ($usdAmount > 0) {
             $newMainUsdBalance = $mainAccount['usd_balance'] + $usdAmount;
             $updateMainUsdQuery = "UPDATE main_account SET usd_balance = ? WHERE id = ? AND tenant_id = ? AND branch_id = ?";
-            $mainUsdStmt = $conn->prepare($updateMainUsdQuery);
-            $mainUsdStmt->bind_param('diii', $newMainUsdBalance, $mainAccountId, $tenant_id, $branch_id);
+            $mainUsdStmt = $pdo->prepare($updateMainUsdQuery);
+            $mainUsdStmt->bindParam(1, $newMainUsdBalance, PDO::PARAM_STR);
+            $mainUsdStmt->bindParam(2, $mainAccountId, PDO::PARAM_INT);
+            $mainUsdStmt->bindParam(3, $tenant_id, PDO::PARAM_INT);
+            $mainUsdStmt->bindParam(4, $branch_id, PDO::PARAM_INT);
             $mainUsdStmt->execute();
 
             // Record client transaction for the USD payment
-            $transactionStmt = $conn->prepare("INSERT INTO client_transactions (client_id, type, currency, amount, balance, transaction_of, description, reference_id, receipt,exchange_rate, tenant_id, branch_id)
+            $transactionStmt = $pdo->prepare("INSERT INTO client_transactions (client_id, type, currency, amount, balance, transaction_of, description, reference_id, receipt,exchange_rate, tenant_id, branch_id)
                                             VALUES (?, 'Credit', 'USD', ?, ?, 'fund', ?, ?, ?, ?, ?, ?)");
-            $transactionStmt->bind_param('iddsssiid', $clientId, $usdAmount, $newUsdBalance, $fullRemark, $user_id, $receipt, $exchangeRate, $tenant_id, $branch_id);
+            $transactionStmt->bindParam(1, $clientId, PDO::PARAM_INT);
+            $transactionStmt->bindParam(2, $usdAmount, PDO::PARAM_STR);
+            $transactionStmt->bindParam(3, $newUsdBalance, PDO::PARAM_STR);
+            $transactionStmt->bindParam(4, $fullRemark, PDO::PARAM_STR);
+            $transactionStmt->bindParam(5, $user_id, PDO::PARAM_INT);
+            $transactionStmt->bindParam(6, $receipt, PDO::PARAM_STR);
+            $transactionStmt->bindParam(7, $exchangeRate, PDO::PARAM_STR);
+            $transactionStmt->bindParam(8, $tenant_id, PDO::PARAM_INT);
+            $transactionStmt->bindParam(9, $branch_id, PDO::PARAM_INT);
             $transactionStmt->execute();
-            $lastInsertId = $transactionStmt->insert_id;
+            $lastInsertId = $pdo->lastInsertId();
 
             // Record USD main account transaction
             $mainUsdTransactionRemarks = "Client: $clientName, Received $usdAmount USD for client account funding, processed by: $username, Remarks: $remarks";
-            $mainUsdTransactionStmt = $conn->prepare("INSERT INTO main_account_transactions (main_account_id, type, amount, transaction_of, reference_id, description, balance, receipt,currency, tenant_id, branch_id)
-                                                 VALUES (?, 'credit', ?, 'client_fund', ?, ?, ?, ?, 'USD', ?, ?)");
-            $mainUsdTransactionStmt->bind_param('idisdssi', $mainAccountId, $usdAmount, $lastInsertId, $mainUsdTransactionRemarks, $newMainUsdBalance, $receipt, $tenant_id, $branch_id);
+            $mainUsdTransactionStmt = $pdo->prepare("INSERT INTO main_account_transactions (main_account_id, type, amount, transaction_of, reference_id, description, balance, receipt,currency, tenant_id, branch_id)
+                                                  VALUES (?, 'credit', ?, 'client_fund', ?, ?, ?, ?, 'USD', ?, ?)");
+            $mainUsdTransactionStmt->bindParam(1, $mainAccountId, PDO::PARAM_INT);
+            $mainUsdTransactionStmt->bindParam(2, $usdAmount, PDO::PARAM_STR);
+            $mainUsdTransactionStmt->bindParam(3, $lastInsertId, PDO::PARAM_INT);
+            $mainUsdTransactionStmt->bindParam(4, $mainUsdTransactionRemarks, PDO::PARAM_STR);
+            $mainUsdTransactionStmt->bindParam(5, $newMainUsdBalance, PDO::PARAM_STR);
+            $mainUsdTransactionStmt->bindParam(6, $receipt, PDO::PARAM_STR);
+            $mainUsdTransactionStmt->bindParam(7, $tenant_id, PDO::PARAM_INT);
+            $mainUsdTransactionStmt->bindParam(8, $branch_id, PDO::PARAM_INT);
             $mainUsdTransactionStmt->execute();
 
 
@@ -186,8 +207,13 @@ try {
                 ?
             )
             ";
-            $notificationStmt = $conn->prepare($notificationQuery);
-            $notificationStmt->bind_param('isssii', $lastInsertId, $transaction_type, $notificationMessage, $status, $tenant_id, $branch_id);
+            $notificationStmt = $pdo->prepare($notificationQuery);
+            $notificationStmt->bindParam(1, $lastInsertId, PDO::PARAM_INT);
+            $notificationStmt->bindParam(2, $transaction_type, PDO::PARAM_STR);
+            $notificationStmt->bindParam(3, $notificationMessage, PDO::PARAM_STR);
+            $notificationStmt->bindParam(4, $status, PDO::PARAM_STR);
+            $notificationStmt->bindParam(5, $tenant_id, PDO::PARAM_INT);
+            $notificationStmt->bindParam(6, $branch_id, PDO::PARAM_INT);
 
             if (!$notificationStmt->execute()) {
                 throw new Exception("Failed to send notification to admin.");
@@ -200,21 +226,39 @@ try {
             // Update main account AFS balance
             $newMainAfsBalance = $mainAccount['afs_balance'] + $afsAmount;
             $updateMainAfsQuery = "UPDATE main_account SET afs_balance = ? WHERE id = ? AND tenant_id = ? AND branch_id = ?";
-            $mainAfsStmt = $conn->prepare($updateMainAfsQuery);
-            $mainAfsStmt->bind_param('diii', $newMainAfsBalance, $mainAccountId, $tenant_id, $branch_id);
+            $mainAfsStmt = $pdo->prepare($updateMainAfsQuery);
+            $mainAfsStmt->bindParam(1, $newMainAfsBalance, PDO::PARAM_STR);
+            $mainAfsStmt->bindParam(2, $mainAccountId, PDO::PARAM_INT);
+            $mainAfsStmt->bindParam(3, $tenant_id, PDO::PARAM_INT);
+            $mainAfsStmt->bindParam(4, $branch_id, PDO::PARAM_INT);
             $mainAfsStmt->execute();
             // Record client transaction for the AFS payment
-            $transactionStmt = $conn->prepare("INSERT INTO client_transactions (client_id, type, currency, amount, balance, transaction_of, description, reference_id, receipt,exchange_rate, tenant_id, branch_id)
+            $transactionStmt = $pdo->prepare("INSERT INTO client_transactions (client_id, type, currency, amount, balance, transaction_of, description, reference_id, receipt,exchange_rate, tenant_id, branch_id)
             VALUES (?, 'Credit', 'USD', ?, ?, 'fund', ?, ?, ?, ?, ?, ?)");
-            $transactionStmt->bind_param('iddsssiid', $clientId, $afsInUsd, $newUsdBalance, $fullRemark, $user_id, $receipt, $exchangeRate, $tenant_id, $branch_id);
+            $transactionStmt->bindParam(1, $clientId, PDO::PARAM_INT);
+            $transactionStmt->bindParam(2, $afsInUsd, PDO::PARAM_STR);
+            $transactionStmt->bindParam(3, $newUsdBalance, PDO::PARAM_STR);
+            $transactionStmt->bindParam(4, $fullRemark, PDO::PARAM_STR);
+            $transactionStmt->bindParam(5, $user_id, PDO::PARAM_INT);
+            $transactionStmt->bindParam(6, $receipt, PDO::PARAM_STR);
+            $transactionStmt->bindParam(7, $exchangeRate, PDO::PARAM_STR);
+            $transactionStmt->bindParam(8, $tenant_id, PDO::PARAM_INT);
+            $transactionStmt->bindParam(9, $branch_id, PDO::PARAM_INT);
             $transactionStmt->execute();
-            $lastInsertId = $transactionStmt->insert_id;
+            $lastInsertId = $pdo->lastInsertId();
 
             // Record AFS main account transaction
             $mainAfsTransactionRemarks = "Client: $clientName, Received $afsAmount AFS (equivalent to $afsInUsd USD) for client account funding, processed by: $username, Remarks: $remarks";
-            $mainAfsTransactionStmt = $conn->prepare("INSERT INTO main_account_transactions (main_account_id, type, amount, transaction_of, reference_id, description, balance, receipt,currency, tenant_id, branch_id)
+            $mainAfsTransactionStmt = $pdo->prepare("INSERT INTO main_account_transactions (main_account_id, type, amount, transaction_of, reference_id, description, balance, receipt,currency, tenant_id, branch_id)
                                                  VALUES (?, 'credit', ?, 'client_fund', ?, ?, ?, ?, 'AFS', ?, ?)");
-            $mainAfsTransactionStmt->bind_param('idisdssi', $mainAccountId, $afsAmount, $lastInsertId, $mainAfsTransactionRemarks, $newMainAfsBalance, $receipt, $tenant_id, $branch_id);
+            $mainAfsTransactionStmt->bindParam(1, $mainAccountId, PDO::PARAM_INT);
+            $mainAfsTransactionStmt->bindParam(2, $afsAmount, PDO::PARAM_STR);
+            $mainAfsTransactionStmt->bindParam(3, $lastInsertId, PDO::PARAM_INT);
+            $mainAfsTransactionStmt->bindParam(4, $mainAfsTransactionRemarks, PDO::PARAM_STR);
+            $mainAfsTransactionStmt->bindParam(5, $newMainAfsBalance, PDO::PARAM_STR);
+            $mainAfsTransactionStmt->bindParam(6, $receipt, PDO::PARAM_STR);
+            $mainAfsTransactionStmt->bindParam(7, $tenant_id, PDO::PARAM_INT);
+            $mainAfsTransactionStmt->bindParam(8, $branch_id, PDO::PARAM_INT);
             $mainAfsTransactionStmt->execute();
 
             //notification
@@ -240,8 +284,13 @@ try {
                 ?
             )
             ";
-            $notificationStmt = $conn->prepare($notificationQuery);
-            $notificationStmt->bind_param('isssii', $lastInsertId, $transaction_type, $notificationMessage, $status, $tenant_id, $branch_id);
+            $notificationStmt = $pdo->prepare($notificationQuery);
+            $notificationStmt->bindParam(1, $lastInsertId, PDO::PARAM_INT);
+            $notificationStmt->bindParam(2, $transaction_type, PDO::PARAM_STR);
+            $notificationStmt->bindParam(3, $notificationMessage, PDO::PARAM_STR);
+            $notificationStmt->bindParam(4, $status, PDO::PARAM_STR);
+            $notificationStmt->bindParam(5, $tenant_id, PDO::PARAM_INT);
+            $notificationStmt->bindParam(6, $branch_id, PDO::PARAM_INT);
             if (!$notificationStmt->execute()) {
                 throw new Exception("Failed to send notification to admin.");
             }
@@ -260,30 +309,51 @@ try {
         // Update client AFS balance with the total payment
         $newAfsBalance = $clientAccount['afs_balance'] + $totalAmount;
         $updateQuery = "UPDATE clients SET afs_balance = ? WHERE id = ? AND tenant_id = ? AND branch_id = ?";
-        $stmt = $conn->prepare($updateQuery);
-        $stmt->bind_param('diii', $newAfsBalance, $clientId, $tenant_id, $branch_id);
+        $stmt = $pdo->prepare($updateQuery);
+        $stmt->bindParam(1, $newAfsBalance, PDO::PARAM_STR);
+        $stmt->bindParam(2, $clientId, PDO::PARAM_INT);
+        $stmt->bindParam(3, $tenant_id, PDO::PARAM_INT);
+        $stmt->bindParam(4, $branch_id, PDO::PARAM_INT);
         $stmt->execute();
         
         // Update main account USD balance with the USD portion
         if ($usdAmount > 0) {
             $newMainUsdBalance = $mainAccount['usd_balance'] + $usdAmount;
             $updateMainUsdQuery = "UPDATE main_account SET usd_balance = ? WHERE id = ? AND tenant_id = ? AND branch_id = ?";
-            $mainUsdStmt = $conn->prepare($updateMainUsdQuery);
-            $mainUsdStmt->bind_param('diii', $newMainUsdBalance, $mainAccountId, $tenant_id, $branch_id);
+            $mainUsdStmt = $pdo->prepare($updateMainUsdQuery);
+            $mainUsdStmt->bindParam(1, $newMainUsdBalance, PDO::PARAM_STR);
+            $mainUsdStmt->bindParam(2, $mainAccountId, PDO::PARAM_INT);
+            $mainUsdStmt->bindParam(3, $tenant_id, PDO::PARAM_INT);
+            $mainUsdStmt->bindParam(4, $branch_id, PDO::PARAM_INT);
             $mainUsdStmt->execute();
 
             // Record client transaction for the USD payment
-            $transactionStmt = $conn->prepare("INSERT INTO client_transactions (client_id, type, currency, amount, balance, transaction_of, description, reference_id, receipt,exchange_rate, tenant_id, branch_id)
+            $transactionStmt = $pdo->prepare("INSERT INTO client_transactions (client_id, type, currency, amount, balance, transaction_of, description, reference_id, receipt,exchange_rate, tenant_id, branch_id)
                                              VALUES (?, 'Credit', 'AFS', ?, ?, 'fund', ?, ?, ?, ?, ?, ?)");
-            $transactionStmt->bind_param('iddsssiid', $clientId, $usdInAfs, $newAfsBalance, $fullRemark, $user_id, $receipt, $exchangeRate, $tenant_id, $branch_id);
+            $transactionStmt->bindParam(1, $clientId, PDO::PARAM_INT);
+            $transactionStmt->bindParam(2, $usdInAfs, PDO::PARAM_STR);
+            $transactionStmt->bindParam(3, $newAfsBalance, PDO::PARAM_STR);
+            $transactionStmt->bindParam(4, $fullRemark, PDO::PARAM_STR);
+            $transactionStmt->bindParam(5, $user_id, PDO::PARAM_INT);
+            $transactionStmt->bindParam(6, $receipt, PDO::PARAM_STR);
+            $transactionStmt->bindParam(7, $exchangeRate, PDO::PARAM_STR);
+            $transactionStmt->bindParam(8, $tenant_id, PDO::PARAM_INT);
+            $transactionStmt->bindParam(9, $branch_id, PDO::PARAM_INT);
             $transactionStmt->execute();
-            $lastInsertId = $transactionStmt->insert_id;
+            $lastInsertId = $pdo->lastInsertId();
 
             // Record USD main account transaction
             $mainUsdTransactionRemarks = "Client: $clientName, Received $usdAmount USD (equivalent to $usdInAfs AFS) for client account funding, processed by: $username, Remarks: $remarks";
-            $mainUsdTransactionStmt = $conn->prepare("INSERT INTO main_account_transactions (main_account_id, type, amount, transaction_of, reference_id, description, balance, receipt,currency, tenant_id, branch_id)
+            $mainUsdTransactionStmt = $pdo->prepare("INSERT INTO main_account_transactions (main_account_id, type, amount, transaction_of, reference_id, description, balance, receipt,currency, tenant_id, branch_id)
                                                  VALUES (?, 'credit', ?, 'client_fund', ?, ?, ?, ?, 'USD', ?, ?)");
-            $mainUsdTransactionStmt->bind_param('idisds' . 'i', $mainAccountId, $usdAmount, $lastInsertId, $mainUsdTransactionRemarks, $newMainUsdBalance, $receipt, $tenant_id, $branch_id);
+            $mainUsdTransactionStmt->bindParam(1, $mainAccountId, PDO::PARAM_INT);
+            $mainUsdTransactionStmt->bindParam(2, $usdAmount, PDO::PARAM_STR);
+            $mainUsdTransactionStmt->bindParam(3, $lastInsertId, PDO::PARAM_INT);
+            $mainUsdTransactionStmt->bindParam(4, $mainUsdTransactionRemarks, PDO::PARAM_STR);
+            $mainUsdTransactionStmt->bindParam(5, $newMainUsdBalance, PDO::PARAM_STR);
+            $mainUsdTransactionStmt->bindParam(6, $receipt, PDO::PARAM_STR);
+            $mainUsdTransactionStmt->bindParam(7, $tenant_id, PDO::PARAM_INT);
+            $mainUsdTransactionStmt->bindParam(8, $branch_id, PDO::PARAM_INT);
             $mainUsdTransactionStmt->execute();
 
             //notification
@@ -309,8 +379,13 @@ try {
                 ?
             )
             ";
-            $notificationStmt = $conn->prepare($notificationQuery);
-            $notificationStmt->bind_param('isssii', $lastInsertId, $transaction_type, $notificationMessage, $status, $tenant_id, $branch_id);
+            $notificationStmt = $pdo->prepare($notificationQuery);
+            $notificationStmt->bindParam(1, $lastInsertId, PDO::PARAM_INT);
+            $notificationStmt->bindParam(2, $transaction_type, PDO::PARAM_STR);
+            $notificationStmt->bindParam(3, $notificationMessage, PDO::PARAM_STR);
+            $notificationStmt->bindParam(4, $status, PDO::PARAM_STR);
+            $notificationStmt->bindParam(5, $tenant_id, PDO::PARAM_INT);
+            $notificationStmt->bindParam(6, $branch_id, PDO::PARAM_INT);
             if (!$notificationStmt->execute()) {
                 throw new Exception("Failed to send notification to admin.");
             }
@@ -320,23 +395,40 @@ try {
         if ($afsAmount > 0) {
             $newMainAfsBalance = $mainAccount['afs_balance'] + $afsAmount;
             $updateMainAfsQuery = "UPDATE main_account SET afs_balance = ? WHERE id = ? AND tenant_id = ? AND branch_id = ?";
-            $mainAfsStmt = $conn->prepare($updateMainAfsQuery);
-            $mainAfsStmt->bind_param('diii', $newMainAfsBalance, $mainAccountId, $tenant_id, $branch_id);
+            $mainAfsStmt = $pdo->prepare($updateMainAfsQuery);
+            $mainAfsStmt->bindParam(1, $newMainAfsBalance, PDO::PARAM_STR);
+            $mainAfsStmt->bindParam(2, $mainAccountId, PDO::PARAM_INT);
+            $mainAfsStmt->bindParam(3, $tenant_id, PDO::PARAM_INT);
+            $mainAfsStmt->bindParam(4, $branch_id, PDO::PARAM_INT);
             $mainAfsStmt->execute();
         }
-        
+
         // Record client transaction for the total AFS payment
-        $transactionStmt = $conn->prepare("INSERT INTO client_transactions (client_id, type, currency, amount, balance, transaction_of, description, reference_id, receipt, tenant_id, branch_id)
+        $transactionStmt = $pdo->prepare("INSERT INTO client_transactions (client_id, type, currency, amount, balance, transaction_of, description, reference_id, receipt, tenant_id, branch_id)
                                         VALUES (?, 'Credit', 'AFS', ?, ?, 'fund', ?, ?, ?, ?, ?)");
-        $transactionStmt->bind_param('iddsssid', $clientId, $afsAmount, $newAfsBalance, $fullRemark, $user_id, $receipt, $tenant_id, $branch_id);
+        $transactionStmt->bindParam(1, $clientId, PDO::PARAM_INT);
+        $transactionStmt->bindParam(2, $afsAmount, PDO::PARAM_STR);
+        $transactionStmt->bindParam(3, $newAfsBalance, PDO::PARAM_STR);
+        $transactionStmt->bindParam(4, $fullRemark, PDO::PARAM_STR);
+        $transactionStmt->bindParam(5, $user_id, PDO::PARAM_INT);
+        $transactionStmt->bindParam(6, $receipt, PDO::PARAM_STR);
+        $transactionStmt->bindParam(7, $tenant_id, PDO::PARAM_INT);
+        $transactionStmt->bindParam(8, $branch_id, PDO::PARAM_INT);
         $transactionStmt->execute();
-        $lastInsertId = $transactionStmt->insert_id;
-        
+        $lastInsertId = $pdo->lastInsertId();
+
         // Record AFS main account transaction
         $mainAfsTransactionRemarks = "Client: $clientName, Received $afsAmount AFS for client account funding, processed by: $username, Remarks: $remarks";
-        $mainAfsTransactionStmt = $conn->prepare("INSERT INTO main_account_transactions (main_account_id, type, amount, transaction_of, reference_id, description, balance, receipt,currency, tenant_id, branch_id)
+        $mainAfsTransactionStmt = $pdo->prepare("INSERT INTO main_account_transactions (main_account_id, type, amount, transaction_of, reference_id, description, balance, receipt,currency, tenant_id, branch_id)
                                             VALUES (?, 'credit', ?, 'client_fund', ?, ?, ?, ?, 'AFS', ?, ?)");
-        $mainAfsTransactionStmt->bind_param('idisds' . 'i', $mainAccountId, $afsAmount, $lastInsertId, $mainAfsTransactionRemarks, $newMainAfsBalance, $receipt, $tenant_id, $branch_id);
+        $mainAfsTransactionStmt->bindParam(1, $mainAccountId, PDO::PARAM_INT);
+        $mainAfsTransactionStmt->bindParam(2, $afsAmount, PDO::PARAM_STR);
+        $mainAfsTransactionStmt->bindParam(3, $lastInsertId, PDO::PARAM_INT);
+        $mainAfsTransactionStmt->bindParam(4, $mainAfsTransactionRemarks, PDO::PARAM_STR);
+        $mainAfsTransactionStmt->bindParam(5, $newMainAfsBalance, PDO::PARAM_STR);
+        $mainAfsTransactionStmt->bindParam(6, $receipt, PDO::PARAM_STR);
+        $mainAfsTransactionStmt->bindParam(7, $tenant_id, PDO::PARAM_INT);
+        $mainAfsTransactionStmt->bindParam(8, $branch_id, PDO::PARAM_INT);
         $mainAfsTransactionStmt->execute();
 
         //notification
@@ -362,19 +454,23 @@ try {
             ?
         )
         ";
-        $notificationStmt = $conn->prepare($notificationQuery);
-        $notificationStmt->bind_param('isssii', $lastInsertId, $transaction_type, $notificationMessage, $status, $tenant_id, $branch_id);
+        $notificationStmt = $pdo->prepare($notificationQuery);
+        $notificationStmt->bindParam(1, $lastInsertId, PDO::PARAM_INT);
+        $notificationStmt->bindParam(2, $transaction_type, PDO::PARAM_STR);
+        $notificationStmt->bindParam(3, $notificationMessage, PDO::PARAM_STR);
+        $notificationStmt->bindParam(4, $status, PDO::PARAM_STR);
+        $notificationStmt->bindParam(5, $tenant_id, PDO::PARAM_INT);
+        $notificationStmt->bindParam(6, $branch_id, PDO::PARAM_INT);
         if (!$notificationStmt->execute()) {
             throw new Exception("Failed to send notification to admin.");
         }
     }
     
-    $conn->commit();
+    $pdo->commit();
     echo json_encode(['success' => true, 'message' => 'Client account funded successfully.']);
 } catch (Exception $e) {
-    $conn->rollback();
+    $pdo->rollBack();
     echo json_encode(['success' => false, 'message' => 'Failed to fund account: ' . $e->getMessage()]);
 }
 
-$conn->close();
 ?>

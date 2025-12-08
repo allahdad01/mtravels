@@ -9,7 +9,7 @@ $branch_id = $_SESSION['branch_id'];
 // Enforce authentication
 enforce_auth();
 
-require_once '../../includes/conn.php';
+require_once '../../includes/db.php';
 
 // Validate address
 $address = isset($_POST['address']) ? DbSecurity::validateInput($_POST['address'], 'string', ['maxlength' => 255]) : null;
@@ -56,32 +56,29 @@ if ($_SERVER["REQUEST_METHOD"] === "POST") {
     $password_hash = password_hash($password, PASSWORD_BCRYPT);
 
     // Prepare SQL query
-    $stmt = $conn->prepare("
+    $stmt = $pdo->prepare("
         INSERT INTO clients (name, email, client_type,password_hash, phone, usd_balance, afs_balance, address, tenant_id, branch_id)
         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
     ");
 
     // Bind parameters
-    $stmt->bind_param(
-        'sssssddsii',  // 's' for strings, 'd' for doubles (for numeric values like balance)
-        $name, 
-        $email,
-        $clientType, 
-        $password_hash, 
-        $phone, 
-        $usd_balance, 
-        $afs_balance, 
-        $address,
-        $tenant_id,
-        $branch_id
-    );
+    $stmt->bindParam(1, $name, PDO::PARAM_STR);
+    $stmt->bindParam(2, $email, PDO::PARAM_STR);
+    $stmt->bindParam(3, $clientType, PDO::PARAM_STR);
+    $stmt->bindParam(4, $password_hash, PDO::PARAM_STR);
+    $stmt->bindParam(5, $phone, PDO::PARAM_STR);
+    $stmt->bindParam(6, $usd_balance, PDO::PARAM_STR); // Note: PDO::PARAM_STR for floats
+    $stmt->bindParam(7, $afs_balance, PDO::PARAM_STR);
+    $stmt->bindParam(8, $address, PDO::PARAM_STR);
+    $stmt->bindParam(9, $tenant_id, PDO::PARAM_INT);
+    $stmt->bindParam(10, $branch_id, PDO::PARAM_INT);
 
     // Execute the query and handle success or failure
     try {
         $stmt->execute();
         
         // Get the inserted client ID
-        $client_id = $conn->insert_id;
+        $client_id = $pdo->lastInsertId();
         
         // Log the activity
         $old_values = json_encode([]);
@@ -99,22 +96,24 @@ if ($_SERVER["REQUEST_METHOD"] === "POST") {
         $ip_address = $_SERVER['REMOTE_ADDR'] ?? '';
         $user_agent = $_SERVER['HTTP_USER_AGENT'] ?? '';
         
-        $stmt_log = $conn->prepare("
-            INSERT INTO activity_log 
-            (user_id, action, table_name, record_id, old_values, new_values, ip_address, user_agent, created_at, tenant_id, branch_id) 
+        $stmt_log = $pdo->prepare("
+            INSERT INTO activity_log
+            (user_id, action, table_name, record_id, old_values, new_values, ip_address, user_agent, created_at, tenant_id, branch_id)
             VALUES (?, 'add', 'clients', ?, ?, ?, ?, ?, NOW(), ?, ?)
         ");
-        $stmt_log->bind_param("iissssii", $user_id, $client_id, $old_values, $new_values, $ip_address, $user_agent, $tenant_id, $branch_id);
+        $stmt_log->bindParam(1, $user_id, PDO::PARAM_INT);
+        $stmt_log->bindParam(2, $client_id, PDO::PARAM_INT);
+        $stmt_log->bindParam(3, $old_values, PDO::PARAM_STR);
+        $stmt_log->bindParam(4, $new_values, PDO::PARAM_STR);
+        $stmt_log->bindParam(5, $ip_address, PDO::PARAM_STR);
+        $stmt_log->bindParam(6, $user_agent, PDO::PARAM_STR);
+        $stmt_log->bindParam(7, $tenant_id, PDO::PARAM_INT);
+        $stmt_log->bindParam(8, $branch_id, PDO::PARAM_INT);
         $stmt_log->execute();
-        $stmt_log->close();
 
         echo json_encode(["status" => "success", "message" => "Client added successfully"]);
     } catch (Exception $e) {
         echo json_encode(["status" => "error", "message" => "Database error: " . $e->getMessage()]);
     }
-
-    // Close statement and connection
-    $stmt->close();
-    $conn->close();
 }
 ?>

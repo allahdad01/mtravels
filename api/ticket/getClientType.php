@@ -10,13 +10,7 @@ $branch_id = $_SESSION['branch_id'];
 enforce_auth();
 
 // Database connection
-require_once '../../includes/conn.php';
-
-// Check for database connection error
-if ($conn->connect_error) {
-    echo json_encode(['status' => 'error', 'message' => 'Database connection failed']);
-    exit;
-}
+require_once '../../includes/db.php';
 
 // Ensure the required parameter is set
 
@@ -34,23 +28,21 @@ if (isset($_POST['ticketId'])) {
     ";
 
     // Prepare and execute the query
-    $stmt = $conn->prepare($query);
-    $stmt->bind_param("iiii", $ticketId, $tenant_id, $branch_id, $branch_id); // Bind the ticket ID as an integer
+    $stmt = $pdo->prepare($query);
+    $stmt->bindParam(1, $ticketId, PDO::PARAM_INT);
+    $stmt->bindParam(2, $tenant_id, PDO::PARAM_INT);
+    $stmt->bindParam(3, $branch_id, PDO::PARAM_INT);
+    $stmt->bindParam(4, $branch_id, PDO::PARAM_INT);
     $stmt->execute();
-    $result = $stmt->get_result();
+    $data = $stmt->fetch(PDO::FETCH_ASSOC);
 
     // Check if a matching record was found
-    if ($result->num_rows > 0) {
-        $data = $result->fetch_assoc(); // Fetch the client type
+    if ($data) {
         echo json_encode(['status' => 'success', 'client_type' => $data['client_type']]);
     } else {
         // No matching ticket or client found
         echo json_encode(['status' => 'error', 'message' => 'No matching client type found for the given ticket.']);
     }
-
-    // Close the statement and connection
-    $stmt->close();
-    $conn->close();
 } else {
     // Handle the case where the ticket ID is not provided
     echo json_encode(['status' => 'error', 'message' => 'Invalid request. Ticket ID is missing.']);

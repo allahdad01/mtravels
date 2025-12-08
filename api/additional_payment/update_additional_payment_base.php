@@ -4,7 +4,7 @@ if (session_status() === PHP_SESSION_NONE) {
     session_start();
 }
 
-require_once '../includes/conn.php';
+require_once '../includes/db.php';
 $tenant_id = $_SESSION['tenant_id'];
 $branch_id = $_SESSION['branch_id'];
 // Debug: Log the incoming request
@@ -72,15 +72,16 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         error_log("Parsed values: paymentId=$paymentId, baseAmount=$newBaseAmount, soldAmount=$newSoldAmount, profit=$newProfit, supplierId=" . ($supplierId ?? 'null') . ", clientId=" . ($clientId ?? 'null') . ", isFromSupplier=$isFromSupplier, isForClient=$isForClient");
 
         // Begin transaction
-        $conn->begin_transaction();
+        $pdo->beginTransaction();
         error_log("Transaction started");
 
         // Get the original payment details
-        $stmt = $conn->prepare("SELECT * FROM additional_payments WHERE id = ? AND tenant_id = ? And branch_id = ?");
-        $stmt->bind_param("iii", $paymentId, $tenant_id, $branch_id);
+        $stmt = $pdo->prepare("SELECT * FROM additional_payments WHERE id = ? AND tenant_id = ? And branch_id = ?");
+        $stmt->bindParam(1, $paymentId, PDO::PARAM_INT);
+        $stmt->bindParam(2, $tenant_id, PDO::PARAM_INT);
+        $stmt->bindParam(3, $branch_id, PDO::PARAM_INT);
         $stmt->execute();
-        $result = $stmt->get_result();
-        $payment = $result->fetch_assoc();
+        $payment = $stmt->fetch(PDO::FETCH_ASSOC);
 
         if (!$payment) {
             error_log("Payment not found for ID: $paymentId");
@@ -100,11 +101,12 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             error_log("Processing supplier updates for supplier ID: $supplierId");
             
             // Get supplier's current balance
-            $stmt = $conn->prepare("SELECT balance FROM suppliers WHERE id = ? AND tenant_id = ? And branch_id = ?");
-            $stmt->bind_param("iii", $supplierId, $tenant_id, $branch_id);
+            $stmt = $pdo->prepare("SELECT balance FROM suppliers WHERE id = ? AND tenant_id = ? And branch_id = ?");
+            $stmt->bindParam(1, $supplierId, PDO::PARAM_INT);
+            $stmt->bindParam(2, $tenant_id, PDO::PARAM_INT);
+            $stmt->bindParam(3, $branch_id, PDO::PARAM_INT);
             $stmt->execute();
-            $result = $stmt->get_result();
-            $supplier = $result->fetch_assoc();
+            $supplier = $stmt->fetch(PDO::FETCH_ASSOC);
 
             // Calculate new supplier balance
             $supplierBalanceDifference = -$baseAmountDifference; // Negative because we're paying the supplier
@@ -113,59 +115,59 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             error_log("Supplier balance: current={$supplier['balance']}, diff=$supplierBalanceDifference, new=$newSupplierBalance");
 
             // Update supplier balance
-            $updateSupplierStmt = $conn->prepare("
-                UPDATE suppliers 
-                SET balance = ? 
+            $updateSupplierStmt = $pdo->prepare("
+                UPDATE suppliers
+                SET balance = ?
                 WHERE id = ? AND tenant_id = ? And branch_id = ?
             ");
-            $updateSupplierStmt->bind_param("diii", $newSupplierBalance, $supplierId, $tenant_id, $branch_id);
+            $updateSupplierStmt->bindParam(1, $newSupplierBalance, PDO::PARAM_STR);
+            $updateSupplierStmt->bindParam(2, $supplierId, PDO::PARAM_INT);
+            $updateSupplierStmt->bindParam(3, $tenant_id, PDO::PARAM_INT);
+            $updateSupplierStmt->bindParam(4, $branch_id, PDO::PARAM_INT);
             $updateSupplierStmt->execute();
             error_log("Updated supplier balance");
 
             // Get the current payment's creation date
-            $stmt = $conn->prepare("SELECT created_at FROM additional_payments WHERE id = ? AND tenant_id = ? And branch_id = ?");
-            $stmt->bind_param("iii", $paymentId, $tenant_id, $branch_id);
+            $stmt = $pdo->prepare("SELECT created_at FROM additional_payments WHERE id = ? AND tenant_id = ? And branch_id = ?");
+            $stmt->bindParam(1, $paymentId, PDO::PARAM_INT);
+            $stmt->bindParam(2, $tenant_id, PDO::PARAM_INT);
+            $stmt->bindParam(3, $branch_id, PDO::PARAM_INT);
             $stmt->execute();
-            $result = $stmt->get_result();
-            $paymentDate = $result->fetch_assoc()['created_at'];
+            $paymentDate = $stmt->fetch(PDO::FETCH_ASSOC)['created_at'];
 
             // Update the current supplier transaction
-            $updateCurrentStmt = $conn->prepare("
-                UPDATE supplier_transactions 
+            $updateCurrentStmt = $pdo->prepare("
+                UPDATE supplier_transactions
                 SET amount = ?,
                     balance = balance + ?
-                WHERE supplier_id = ? 
+                WHERE supplier_id = ?
                 AND reference_id = ?
                 AND transaction_of = 'additional_payment'
                 AND tenant_id = ? And branch_id = ?
             ");
-            $updateCurrentStmt->bind_param(
-                "ddiiii", 
-                $newBaseAmount,
-                $supplierBalanceDifference,
-                $supplierId,
-                $paymentId,
-                $tenant_id, $branch_id
-            );
+            $updateCurrentStmt->bindParam(1, $newBaseAmount, PDO::PARAM_STR);
+            $updateCurrentStmt->bindParam(2, $supplierBalanceDifference, PDO::PARAM_STR);
+            $updateCurrentStmt->bindParam(3, $supplierId, PDO::PARAM_INT);
+            $updateCurrentStmt->bindParam(4, $paymentId, PDO::PARAM_INT);
+            $updateCurrentStmt->bindParam(5, $tenant_id, PDO::PARAM_INT);
+            $updateCurrentStmt->bindParam(6, $branch_id, PDO::PARAM_INT);
             $updateCurrentStmt->execute();
             error_log("Updated supplier transaction");
 
             // Update subsequent supplier transactions' balances
-            $updateSubsequentStmt = $conn->prepare("
-                UPDATE supplier_transactions 
-                SET balance = balance + ? 
-                WHERE supplier_id = ? 
-                AND transaction_date > ? 
+            $updateSubsequentStmt = $pdo->prepare("
+                UPDATE supplier_transactions
+                SET balance = balance + ?
+                WHERE supplier_id = ?
+                AND transaction_date > ?
                 AND tenant_id = ? And branch_id = ?
                 ORDER BY transaction_date ASC
             ");
-            $updateSubsequentStmt->bind_param(
-                "disii", 
-                $supplierBalanceDifference, 
-                $supplierId, 
-                $paymentDate,
-                $tenant_id, $branch_id
-            );
+            $updateSubsequentStmt->bindParam(1, $supplierBalanceDifference, PDO::PARAM_STR);
+            $updateSubsequentStmt->bindParam(2, $supplierId, PDO::PARAM_INT);
+            $updateSubsequentStmt->bindParam(3, $paymentDate, PDO::PARAM_STR);
+            $updateSubsequentStmt->bindParam(4, $tenant_id, PDO::PARAM_INT);
+            $updateSubsequentStmt->bindParam(5, $branch_id, PDO::PARAM_INT);
             $updateSubsequentStmt->execute();
             error_log("Updated subsequent supplier transactions");
         }
@@ -175,11 +177,12 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             error_log("Processing client updates for client ID: $clientId");
             
             // Get client's current balances and type
-            $stmt = $conn->prepare("SELECT usd_balance, afs_balance, client_type FROM clients WHERE id = ? AND tenant_id = ? And branch_id = ?");
-            $stmt->bind_param("iii", $clientId, $tenant_id, $branch_id);
+            $stmt = $pdo->prepare("SELECT usd_balance, afs_balance, client_type FROM clients WHERE id = ? AND tenant_id = ? And branch_id = ?");
+            $stmt->bindParam(1, $clientId, PDO::PARAM_INT);
+            $stmt->bindParam(2, $tenant_id, PDO::PARAM_INT);
+            $stmt->bindParam(3, $branch_id, PDO::PARAM_INT);
             $stmt->execute();
-            $result = $stmt->get_result();
-            $client = $result->fetch_assoc();
+            $client = $stmt->fetch(PDO::FETCH_ASSOC);
 
             if ($client['client_type'] === 'regular') {
                 // Calculate client balance difference (negative because we're charging the client)
@@ -193,61 +196,61 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 error_log("Client balance: current=$currentBalance, diff=$clientBalanceDifference, new=$newClientBalance, currency=$currency");
 
                 // Update client balance
-                $updateClientStmt = $conn->prepare("
-                    UPDATE clients 
-                    SET $balanceColumn = ? 
+                $updateClientStmt = $pdo->prepare("
+                    UPDATE clients
+                    SET $balanceColumn = ?
                     WHERE id = ? AND tenant_id = ? And branch_id = ?
                 ");
-                $updateClientStmt->bind_param("diii", $newClientBalance, $clientId, $tenant_id, $branch_id);
+                $updateClientStmt->bindParam(1, $newClientBalance, PDO::PARAM_STR);
+                $updateClientStmt->bindParam(2, $clientId, PDO::PARAM_INT);
+                $updateClientStmt->bindParam(3, $tenant_id, PDO::PARAM_INT);
+                $updateClientStmt->bindParam(4, $branch_id, PDO::PARAM_INT);
                 $updateClientStmt->execute();
                 error_log("Updated client balance");
 
                 // Get the current payment's creation date
-                $stmt = $conn->prepare("SELECT created_at FROM additional_payments WHERE id = ? AND tenant_id = ? And branch_id = ?");
-                $stmt->bind_param("iii", $paymentId, $tenant_id, $branch_id);
+                $stmt = $pdo->prepare("SELECT created_at FROM additional_payments WHERE id = ? AND tenant_id = ? And branch_id = ?");
+                $stmt->bindParam(1, $paymentId, PDO::PARAM_INT);
+                $stmt->bindParam(2, $tenant_id, PDO::PARAM_INT);
+                $stmt->bindParam(3, $branch_id, PDO::PARAM_INT);
                 $stmt->execute();
-                $result = $stmt->get_result();
-                $paymentDate = $result->fetch_assoc()['created_at'];
+                $paymentDate = $stmt->fetch(PDO::FETCH_ASSOC)['created_at'];
 
                 // Update the current client transaction
-                $updateCurrentStmt = $conn->prepare("
-                    UPDATE client_transactions 
+                $updateCurrentStmt = $pdo->prepare("
+                    UPDATE client_transactions
                     SET amount = ?,
                         balance = balance - ?
-                    WHERE client_id = ? 
+                    WHERE client_id = ?
                     AND reference_id = ?
                     AND transaction_of = 'additional_payment'
                     AND tenant_id = ? And branch_id = ?
                 ");
-                $updateCurrentStmt->bind_param(
-                    "ddiiii", 
-                    $newSoldAmount,
-                    $clientBalanceDifference,
-                    $clientId,
-                    $paymentId,
-                    $tenant_id, $branch_id
-                );
+                $updateCurrentStmt->bindParam(1, $newSoldAmount, PDO::PARAM_STR);
+                $updateCurrentStmt->bindParam(2, $clientBalanceDifference, PDO::PARAM_STR);
+                $updateCurrentStmt->bindParam(3, $clientId, PDO::PARAM_INT);
+                $updateCurrentStmt->bindParam(4, $paymentId, PDO::PARAM_INT);
+                $updateCurrentStmt->bindParam(5, $tenant_id, PDO::PARAM_INT);
+                $updateCurrentStmt->bindParam(6, $branch_id, PDO::PARAM_INT);
                 $updateCurrentStmt->execute();
                 error_log("Updated client transaction");
 
                 // Update subsequent client transactions' balances
-                $updateSubsequentStmt = $conn->prepare("
-                    UPDATE client_transactions 
-                    SET balance = balance - ? 
-                    WHERE client_id = ? 
-                    AND created_at > ? 
+                $updateSubsequentStmt = $pdo->prepare("
+                    UPDATE client_transactions
+                    SET balance = balance - ?
+                    WHERE client_id = ?
+                    AND created_at > ?
                     AND currency = ?
                     AND tenant_id = ? And branch_id = ?
                     ORDER BY created_at ASC
                 ");
-                $updateSubsequentStmt->bind_param(
-                    "dissii", 
-                    $clientBalanceDifference, 
-                    $clientId, 
-                    $paymentDate,
-                    $currency,
-                    $tenant_id, $branch_id
-                );
+                $updateSubsequentStmt->bindParam(1, $clientBalanceDifference, PDO::PARAM_STR);
+                $updateSubsequentStmt->bindParam(2, $clientId, PDO::PARAM_INT);
+                $updateSubsequentStmt->bindParam(3, $paymentDate, PDO::PARAM_STR);
+                $updateSubsequentStmt->bindParam(4, $currency, PDO::PARAM_STR);
+                $updateSubsequentStmt->bindParam(5, $tenant_id, PDO::PARAM_INT);
+                $updateSubsequentStmt->bindParam(6, $branch_id, PDO::PARAM_INT);
                 $updateSubsequentStmt->execute();
                 error_log("Updated subsequent client transactions");
             }
@@ -255,40 +258,39 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 
         // Update the payment record
         error_log("Updating payment record");
-        $updatePaymentStmt = $conn->prepare("
-            UPDATE additional_payments 
+        $updatePaymentStmt = $pdo->prepare("
+            UPDATE additional_payments
             SET base_amount = ?, sold_amount = ?, profit = ?,
                 payment_type = ?, description = ?, currency = ?,
                 main_account_id = ?, supplier_id = ?, is_from_supplier = ?,
                 client_id = ?, is_for_client = ?
             WHERE id = ? AND tenant_id = ? And branch_id = ?
         ");
-        
+
         $paymentType = $_POST['payment_type'];
         $description = $_POST['description'];
-        
-        $updatePaymentStmt->bind_param(
-            "dddsssiiiiiiii", 
-            $newBaseAmount, 
-            $newSoldAmount, 
-            $newProfit,
-            $paymentType,
-            $description,
-            $currency,
-            $mainAccountId,
-            $supplierId,
-            $isFromSupplier,
-            $clientId,
-            $isForClient,
-            $paymentId,
-            $tenant_id, $branch_id
-        );
-        
+
+        $updatePaymentStmt->bindParam(1, $newBaseAmount, PDO::PARAM_STR);
+        $updatePaymentStmt->bindParam(2, $newSoldAmount, PDO::PARAM_STR);
+        $updatePaymentStmt->bindParam(3, $newProfit, PDO::PARAM_STR);
+        $updatePaymentStmt->bindParam(4, $paymentType, PDO::PARAM_STR);
+        $updatePaymentStmt->bindParam(5, $description, PDO::PARAM_STR);
+        $updatePaymentStmt->bindParam(6, $currency, PDO::PARAM_STR);
+        $updatePaymentStmt->bindParam(7, $mainAccountId, PDO::PARAM_INT);
+        $updatePaymentStmt->bindParam(8, $supplierId, PDO::PARAM_INT);
+        $updatePaymentStmt->bindParam(9, $isFromSupplier, PDO::PARAM_INT);
+        $updatePaymentStmt->bindParam(10, $clientId, PDO::PARAM_INT);
+        $updatePaymentStmt->bindParam(11, $isForClient, PDO::PARAM_INT);
+        $updatePaymentStmt->bindParam(12, $paymentId, PDO::PARAM_INT);
+        $updatePaymentStmt->bindParam(13, $tenant_id, PDO::PARAM_INT);
+        $updatePaymentStmt->bindParam(14, $branch_id, PDO::PARAM_INT);
+
         $result = $updatePaymentStmt->execute();
-        
+
         if (!$result) {
-            error_log("Error updating payment: " . $updatePaymentStmt->error);
-            throw new Exception("Error updating payment: " . $updatePaymentStmt->error);
+            $errorInfo = $updatePaymentStmt->errorInfo();
+            error_log("Error updating payment: " . $errorInfo[2]);
+            throw new Exception("Error updating payment: " . $errorInfo[2]);
         }
         
         error_log("Payment record updated successfully");
@@ -332,22 +334,32 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             ]);
             
             // Insert activity log record
-            $logStmt = $conn->prepare("INSERT INTO activity_log (user_id, ip_address, user_agent, action, table_name, record_id, old_values, new_values, created_at, tenant_id, branch_id) 
+            $logStmt = $pdo->prepare("INSERT INTO activity_log (user_id, ip_address, user_agent, action, table_name, record_id, old_values, new_values, created_at, tenant_id, branch_id)
                                       VALUES (?, ?, ?, ?, ?, ?, ?, ?, NOW(), ?, ?)");
             $action = 'update';
             $tableName = 'additional_payments';
-            $logStmt->bind_param("isssisssii", $userId, $ipAddress, $userAgent, $action, $tableName, $paymentId, $oldValues, $newValues, $tenant_id, $branch_id);
-            
+            $logStmt->bindParam(1, $userId, PDO::PARAM_INT);
+            $logStmt->bindParam(2, $ipAddress, PDO::PARAM_STR);
+            $logStmt->bindParam(3, $userAgent, PDO::PARAM_STR);
+            $logStmt->bindParam(4, $action, PDO::PARAM_STR);
+            $logStmt->bindParam(5, $tableName, PDO::PARAM_STR);
+            $logStmt->bindParam(6, $paymentId, PDO::PARAM_INT);
+            $logStmt->bindParam(7, $oldValues, PDO::PARAM_STR);
+            $logStmt->bindParam(8, $newValues, PDO::PARAM_STR);
+            $logStmt->bindParam(9, $tenant_id, PDO::PARAM_INT);
+            $logStmt->bindParam(10, $branch_id, PDO::PARAM_INT);
+
             if (!$logStmt->execute()) {
                 // Just log the error, don't affect the transaction success
-                error_log("Failed to insert activity log: " . $logStmt->error);
+                $errorInfo = $logStmt->errorInfo();
+                error_log("Failed to insert activity log: " . $errorInfo[2]);
             } else {
                 error_log("Activity log created");
             }
         }
 
         // Commit transaction
-        $conn->commit();
+        $pdo->commit();
         error_log("Transaction committed successfully");
         
         echo json_encode(['success' => true, 'message' => 'Payment updated successfully']);
@@ -356,12 +368,12 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         // Check if transaction is active using a different method since inTransaction() might not be available
         try {
             // Try to start a transaction - if one is already active, this will fail
-            $conn->begin_transaction();
+            $pdo->beginTransaction();
             // If we get here, no transaction was active, so roll it back
-            $conn->rollback();
+            $pdo->rollBack();
         } catch (Exception $ex) {
             // An exception means a transaction was already active, so roll it back
-            $conn->rollback();
+            $pdo->rollBack();
             error_log("Transaction rolled back due to error");
         }
         

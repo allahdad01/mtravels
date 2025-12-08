@@ -10,7 +10,6 @@ if (!$tenant_id) {
 
 // Include config file
 require_once "../../includes/db.php"; // Make sure this defines $pdo as PDO
-require_once "../../includes/conn.php";
 require_once '../../vendor/autoload.php'; // For DOMPDF
 
 // Ensure uploads directory exists

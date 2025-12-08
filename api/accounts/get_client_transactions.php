@@ -26,7 +26,7 @@ if (!isset($_GET['client_id']) || !is_numeric($_GET['client_id'])) {
 $clientId = intval($_GET['client_id']);
 
 // Database connection
-require_once('../../includes/conn.php');
+require_once('../../includes/db.php');
 
 // Prepare and execute query with left joins to fetch reference information
 $query = "SELECT ct.*, 
@@ -60,20 +60,38 @@ $query = "SELECT ct.*,
           WHERE ct.client_id = ? AND ct.tenant_id = ? AND ct.branch_id = ?
           ORDER BY ct.id DESC";
 
-$stmt = $conn->prepare($query);
-$stmt->bind_param("iiiiiiiiiiiiiiiiiiiiiiiiiii", $tenant_id, $branch_id, $tenant_id, $branch_id, $tenant_id, $branch_id, $tenant_id, $branch_id, $tenant_id, $branch_id, $tenant_id, $branch_id, $tenant_id, $branch_id, $tenant_id, $branch_id, $tenant_id, $branch_id, $tenant_id, $branch_id, $tenant_id, $branch_id, $tenant_id, $branch_id, $clientId, $tenant_id, $branch_id);
+$stmt = $pdo->prepare($query);
+$stmt->bindParam(1, $tenant_id, PDO::PARAM_INT);
+$stmt->bindParam(2, $branch_id, PDO::PARAM_INT);
+$stmt->bindParam(3, $tenant_id, PDO::PARAM_INT);
+$stmt->bindParam(4, $branch_id, PDO::PARAM_INT);
+$stmt->bindParam(5, $tenant_id, PDO::PARAM_INT);
+$stmt->bindParam(6, $branch_id, PDO::PARAM_INT);
+$stmt->bindParam(7, $tenant_id, PDO::PARAM_INT);
+$stmt->bindParam(8, $branch_id, PDO::PARAM_INT);
+$stmt->bindParam(9, $tenant_id, PDO::PARAM_INT);
+$stmt->bindParam(10, $branch_id, PDO::PARAM_INT);
+$stmt->bindParam(11, $tenant_id, PDO::PARAM_INT);
+$stmt->bindParam(12, $branch_id, PDO::PARAM_INT);
+$stmt->bindParam(13, $tenant_id, PDO::PARAM_INT);
+$stmt->bindParam(14, $branch_id, PDO::PARAM_INT);
+$stmt->bindParam(15, $tenant_id, PDO::PARAM_INT);
+$stmt->bindParam(16, $branch_id, PDO::PARAM_INT);
+$stmt->bindParam(17, $tenant_id, PDO::PARAM_INT);
+$stmt->bindParam(18, $branch_id, PDO::PARAM_INT);
+$stmt->bindParam(19, $tenant_id, PDO::PARAM_INT);
+$stmt->bindParam(20, $branch_id, PDO::PARAM_INT);
+$stmt->bindParam(21, $tenant_id, PDO::PARAM_INT);
+$stmt->bindParam(22, $branch_id, PDO::PARAM_INT);
+$stmt->bindParam(23, $tenant_id, PDO::PARAM_INT);
+$stmt->bindParam(24, $branch_id, PDO::PARAM_INT);
+$stmt->bindParam(25, $clientId, PDO::PARAM_INT);
+$stmt->bindParam(26, $tenant_id, PDO::PARAM_INT);
+$stmt->bindParam(27, $branch_id, PDO::PARAM_INT);
 $stmt->execute();
-$result = $stmt->get_result();
 
 // Fetch all transactions
-$transactions = [];
-while ($row = $result->fetch_assoc()) {
-    $transactions[] = $row;
-}
-
-// Close connection
-$stmt->close();
-$conn->close();
+$transactions = $stmt->fetchAll(PDO::FETCH_ASSOC);
 
 // Return transactions as JSON
 header('Content-Type: application/json');

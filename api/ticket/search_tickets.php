@@ -11,7 +11,7 @@ require_once '../../admin/security.php';
 enforce_auth();
 
 // Database connection
-require_once '../../includes/conn.php';
+require_once '../../includes/db.php';
 $tenant_id = $_SESSION['tenant_id'];
 $branch_id = $_SESSION['branch_id'];
 // Enable error reporting for debugging
@@ -54,53 +54,52 @@ if (isset($_GET['pnr']) || isset($_GET['passenger'])) {
                 WHERE 1=1 AND t.tenant_id = ? AND t.branch_id = ?";
                 
 
-        $params = [$tenant_id, $branch_id, $tenant_id, $branch_id, $tenant_id, $branch_id];
-        $types = "iiiiii";
+        $params = [];
 
         if (isset($_GET['pnr']) && !empty($_GET['pnr'])) {
             $query .= " AND t.pnr LIKE ?";
             $params[] = "%" . $_GET['pnr'] . "%";
-            $types .= "s";
             $response['debug'][] = "Searching by PNR: " . $_GET['pnr'];
         }
 
         if (isset($_GET['passenger']) && !empty($_GET['passenger'])) {
             $query .= " AND t.passenger_name LIKE ?";
             $params[] = "%" . $_GET['passenger'] . "%";
-            $types .= "s";
             $response['debug'][] = "Searching by passenger name: " . $_GET['passenger'];
         }
 
         // Add order by clause
         $query .= " ORDER BY t.departure_date DESC";
-        
+
         $response['debug'][] = "Query: " . $query;
 
         // Prepare and execute the statement
-        $stmt = $conn->prepare($query);
+        $stmt = $pdo->prepare($query);
         if ($stmt === false) {
-            throw new Exception("Prepare failed: " . $conn->error);
+            throw new Exception("Prepare failed");
         }
 
-        if (!empty($params)) {
-            $bind_result = $stmt->bind_param($types, ...$params);
-            if ($bind_result === false) {
-                throw new Exception("Bind param failed: " . $stmt->error);
-            }
+        // Bind tenant and branch parameters
+        $stmt->bindParam(1, $tenant_id, PDO::PARAM_INT);
+        $stmt->bindParam(2, $branch_id, PDO::PARAM_INT);
+        $stmt->bindParam(3, $tenant_id, PDO::PARAM_INT);
+        $stmt->bindParam(4, $branch_id, PDO::PARAM_INT);
+        $stmt->bindParam(5, $tenant_id, PDO::PARAM_INT);
+        $stmt->bindParam(6, $branch_id, PDO::PARAM_INT);
+
+        // Bind additional search parameters
+        $paramIndex = 7;
+        foreach ($params as $param) {
+            $stmt->bindParam($paramIndex++, $param, PDO::PARAM_STR);
         }
 
         $execute_result = $stmt->execute();
         if ($execute_result === false) {
-            throw new Exception("Execute failed: " . $stmt->error);
-        }
-
-        $result = $stmt->get_result();
-        if ($result === false) {
-            throw new Exception("Get result failed: " . $stmt->error);
+            throw new Exception("Execute failed");
         }
 
         // Fetch results
-        while ($row = $result->fetch_assoc()) {
+        while ($row = $stmt->fetch(PDO::FETCH_ASSOC)) {
             $response['tickets'][] = [
                 'id' => $row['id'],
                 'title' => $row['title'],
@@ -125,8 +124,6 @@ if (isset($_GET['pnr']) || isset($_GET['passenger'])) {
         } else {
             $response['message'] = count($response['tickets']) . ' ticket(s) found.';
         }
-        
-        $stmt->close();
         
     } catch (Exception $e) {
         $response['success'] = false;

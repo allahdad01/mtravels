@@ -1,13 +1,13 @@
 <?php
 // Include database security module for input validation
-require_once 'includes/db_security.php';
+require_once '../../admin/includes/db_security.php';
 
 // Include security module
-require_once 'security.php';
+require_once '../../admin/security.php';
 $tenant_id = $_SESSION['tenant_id'];
 $branch_id = $_SESSION['branch_id'];
 // Include language helper
-require_once '../includes/language_helpers.php';
+require_once '../../includes/language_helpers.php';
 
 // Enforce authentication
 enforce_auth();
@@ -18,8 +18,7 @@ if (session_status() === PHP_SESSION_NONE) {
 }
 
 
-require_once '../includes/conn.php';
-require_once '../includes/db.php';
+require_once '../../includes/db.php';
 
 // Fetch settings data
 try {
@@ -38,22 +37,24 @@ if (!isset($_GET['id']) || !is_numeric($_GET['id'])) {
 $creditor_id = intval($_GET['id']);
 
 // Fetch creditor details
-$stmt = $conn->prepare("SELECT * FROM creditors WHERE id = ? AND tenant_id = ? AND branch_id = ?");
-$stmt->bind_param("iii", $creditor_id, $tenant_id, $branch_id);
+$stmt = $pdo->prepare("SELECT * FROM creditors WHERE id = ? AND tenant_id = ? AND branch_id = ?");
+$stmt->bindParam(1, $creditor_id, PDO::PARAM_INT);
+$stmt->bindParam(2, $tenant_id, PDO::PARAM_INT);
+$stmt->bindParam(3, $branch_id, PDO::PARAM_INT);
 $stmt->execute();
-$result = $stmt->get_result();
-$creditor = $result->fetch_assoc();
+$creditor = $stmt->fetch(PDO::FETCH_ASSOC);
 
 if (!$creditor) {
     die("Creditor not found");
 }
 
 // Fetch creditor transactions
-$stmt = $conn->prepare("SELECT * FROM creditor_transactions WHERE creditor_id = ? AND tenant_id = ? AND branch_id = ? ORDER BY payment_date DESC");
-$stmt->bind_param("iii", $creditor_id, $tenant_id, $branch_id);
+$stmt = $pdo->prepare("SELECT * FROM creditor_transactions WHERE creditor_id = ? AND tenant_id = ? AND branch_id = ? ORDER BY payment_date DESC");
+$stmt->bindParam(1, $creditor_id, PDO::PARAM_INT);
+$stmt->bindParam(2, $tenant_id, PDO::PARAM_INT);
+$stmt->bindParam(3, $branch_id, PDO::PARAM_INT);
 $stmt->execute();
-$transResult = $stmt->get_result();
-$transactions = $transResult->fetch_all(MYSQLI_ASSOC);
+$transactions = $stmt->fetchAll(PDO::FETCH_ASSOC);
 
 // Calculate total paid amount
 $total_paid = 0;

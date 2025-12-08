@@ -15,7 +15,7 @@ enforce_auth();
 
 $username = isset($_SESSION["name"]) ? $_SESSION["name"] : "Unknown User";
 $user_id = $_SESSION['user_id'] ?? 0;
-require_once '../../includes/conn.php';
+require_once '../../includes/db.php';
 
 // Validate description
 $description = isset($_POST['description']) ? DbSecurity::validateInput($_POST['description'], 'string', ['maxlength' => 255]) : null;
@@ -41,10 +41,6 @@ $status = isset($_POST['status']) ? DbSecurity::validateInput($_POST['status'], 
 // Validate ticketId
 $ticketId = isset($_POST['ticketId']) ? DbSecurity::validateInput($_POST['ticketId'], 'string', ['maxlength' => 255]) : null;
 
-if ($conn->connect_error) {
-    die("Connection failed: " . $conn->connect_error);
-}
-
 if (
     isset($_POST['ticketId'], $_POST['status'], $_POST['base'], $_POST['sold'], 
           $_POST['supplier_penalty'], $_POST['service_penalty'], $_POST['departureDate'],$_POST['description'])
@@ -60,11 +56,12 @@ if (
     $description = $_POST['description'];
 
     // Retrieve ticket data (ticket booking and supplier info)
-    $stmt = $conn->prepare("SELECT * FROM ticket_bookings WHERE id = ? AND tenant_id = ? AND branch_id = ?");
-    $stmt->bind_param("iii", $ticketId, $tenant_id, $branch_id);
+    $stmt = $pdo->prepare("SELECT * FROM ticket_bookings WHERE id = ? AND tenant_id = ? AND branch_id = ?");
+    $stmt->bindParam(1, $ticketId, PDO::PARAM_INT);
+    $stmt->bindParam(2, $tenant_id, PDO::PARAM_INT);
+    $stmt->bindParam(3, $branch_id, PDO::PARAM_INT);
     $stmt->execute();
-    $result = $stmt->get_result();
-    $ticketData = $result->fetch_assoc();
+    $ticketData = $stmt->fetch(PDO::FETCH_ASSOC);
 
     if ($ticketData) {
         $currency = $ticketData['currency']; // Currency from the ticket
@@ -74,11 +71,12 @@ if (
         $passengerName = $ticketData['passenger_name'];
 
         // Get client type (regular or agency)
-        $clientStmt = $conn->prepare("SELECT client_type, usd_balance, afs_balance, name FROM clients WHERE id = ? AND tenant_id = ? AND branch_id = ?");
-        $clientStmt->bind_param("iii", $soldToId, $tenant_id, $branch_id); // Using sold_to ID to fetch client type
+        $clientStmt = $pdo->prepare("SELECT client_type, usd_balance, afs_balance, name FROM clients WHERE id = ? AND tenant_id = ? AND branch_id = ?");
+        $clientStmt->bindParam(1, $soldToId, PDO::PARAM_INT);
+        $clientStmt->bindParam(2, $tenant_id, PDO::PARAM_INT);
+        $clientStmt->bindParam(3, $branch_id, PDO::PARAM_INT);
         $clientStmt->execute();
-        $clientResult = $clientStmt->get_result();
-        $clientData = $clientResult->fetch_assoc();
+        $clientData = $clientStmt->fetch(PDO::FETCH_ASSOC);
         $clientType = $clientData['client_type']; // Default to regular if not found
         $client_name = $clientData['name'];
 
@@ -92,73 +90,92 @@ if (
             throw new Exception("Invalid client type.");
         }
 
-        $conn->begin_transaction(); // Start a transaction
+        $pdo->beginTransaction(); // Start a transaction
 
         try {
             // 1. Update supplier balance (ensure foreign key validation)
             $deductSupplier = $supplierPenalty;
 
             // Check if supplier exists in suppliers table before proceeding
-            $checkSupplierStmt = $conn->prepare("SELECT id, name FROM suppliers WHERE id = ? AND tenant_id = ? AND branch_id = ?");
-            $checkSupplierStmt->bind_param("iii", $supplierId, $tenant_id, $branch_id);
+            $checkSupplierStmt = $pdo->prepare("SELECT id, name FROM suppliers WHERE id = ? AND tenant_id = ? AND branch_id = ?");
+            $checkSupplierStmt->bindParam(1, $supplierId, PDO::PARAM_INT);
+            $checkSupplierStmt->bindParam(2, $tenant_id, PDO::PARAM_INT);
+            $checkSupplierStmt->bindParam(3, $branch_id, PDO::PARAM_INT);
             $checkSupplierStmt->execute();
-            $checkSupplierStmt->store_result();
+            $supplierExists = $checkSupplierStmt->fetch(PDO::FETCH_ASSOC);
 
-            if ($checkSupplierStmt->num_rows === 0) {
+            if (!$supplierExists) {
                 throw new Exception("Supplier with ID $supplierId does not exist.");
             }
 
             // 3. Insert date change record into date_change_tickets table
-            $insertDateChangeStmt = $conn->prepare("INSERT INTO date_change_tickets 
-                (tenant_id, supplier, sold_to, paid_to, ticket_id, title, passenger_name, pnr, origin, destination, phone, airline, gender, 
+            $insertDateChangeStmt = $pdo->prepare("INSERT INTO date_change_tickets
+                (tenant_id, supplier, sold_to, paid_to, ticket_id, title, passenger_name, pnr, origin, destination, phone, airline, gender,
                 issue_date, departure_date, currency, base, sold, supplier_penalty, service_penalty,
                 status, remarks, created_at, updated_at, created_by)
                 VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, NOW(), NOW(), ?)");
 
-            $insertDateChangeStmt->bind_param(
-                "iiiiissssssssssssssddss", 
-                $tenant_id,
-                $supplierId, $soldToId, $paidToId, $ticketId, $ticketData['title'],
-                $ticketData['passenger_name'], $ticketData['pnr'], $ticketData['origin'], 
-                $ticketData['destination'], $ticketData['phone'], $ticketData['airline'], 
-                $ticketData['gender'], $ticketData['issue_date'], $newDepartureDate, $currency, 
-                $base, $sold, $supplierPenalty, $servicePenalty, $status, $description, $user_id
-            );
+            $insertDateChangeStmt->bindParam(1, $tenant_id, PDO::PARAM_INT);
+            $insertDateChangeStmt->bindParam(2, $supplierId, PDO::PARAM_INT);
+            $insertDateChangeStmt->bindParam(3, $soldToId, PDO::PARAM_INT);
+            $insertDateChangeStmt->bindParam(4, $paidToId, PDO::PARAM_INT);
+            $insertDateChangeStmt->bindParam(5, $ticketId, PDO::PARAM_INT);
+            $insertDateChangeStmt->bindParam(6, $ticketData['title'], PDO::PARAM_STR);
+            $insertDateChangeStmt->bindParam(7, $ticketData['passenger_name'], PDO::PARAM_STR);
+            $insertDateChangeStmt->bindParam(8, $ticketData['pnr'], PDO::PARAM_STR);
+            $insertDateChangeStmt->bindParam(9, $ticketData['origin'], PDO::PARAM_STR);
+            $insertDateChangeStmt->bindParam(10, $ticketData['destination'], PDO::PARAM_STR);
+            $insertDateChangeStmt->bindParam(11, $ticketData['phone'], PDO::PARAM_STR);
+            $insertDateChangeStmt->bindParam(12, $ticketData['airline'], PDO::PARAM_STR);
+            $insertDateChangeStmt->bindParam(13, $ticketData['gender'], PDO::PARAM_STR);
+            $insertDateChangeStmt->bindParam(14, $ticketData['issue_date'], PDO::PARAM_STR);
+            $insertDateChangeStmt->bindParam(15, $newDepartureDate, PDO::PARAM_STR);
+            $insertDateChangeStmt->bindParam(16, $currency, PDO::PARAM_STR);
+            $insertDateChangeStmt->bindParam(17, $base, PDO::PARAM_STR);
+            $insertDateChangeStmt->bindParam(18, $sold, PDO::PARAM_STR);
+            $insertDateChangeStmt->bindParam(19, $supplierPenalty, PDO::PARAM_STR);
+            $insertDateChangeStmt->bindParam(20, $servicePenalty, PDO::PARAM_STR);
+            $insertDateChangeStmt->bindParam(21, $status, PDO::PARAM_STR);
+            $insertDateChangeStmt->bindParam(22, $description, PDO::PARAM_STR);
+            $insertDateChangeStmt->bindParam(23, $user_id, PDO::PARAM_INT);
 
             if (!$insertDateChangeStmt->execute()) {
                 throw new Exception("Failed to insert date change record.");
             }
-            $ticket_id = $insertDateChangeStmt->insert_id;  // Get the inserted transaction ID
+            $ticket_id = $pdo->lastInsertId();  // Get the inserted transaction ID
 
             if ($deductSupplier > 0) {
                 // First check supplier type
-                $supplierTypeStmt = $conn->prepare("SELECT supplier_type, balance FROM suppliers WHERE id = ? AND tenant_id = ? AND branch_id = ?");
-                $supplierTypeStmt->bind_param("iii", $supplierId, $tenant_id, $branch_id);
+                $supplierTypeStmt = $pdo->prepare("SELECT supplier_type, balance FROM suppliers WHERE id = ? AND tenant_id = ? AND branch_id = ?");
+                $supplierTypeStmt->bindParam(1, $supplierId, PDO::PARAM_INT);
+                $supplierTypeStmt->bindParam(2, $tenant_id, PDO::PARAM_INT);
+                $supplierTypeStmt->bindParam(3, $branch_id, PDO::PARAM_INT);
                 if (!$supplierTypeStmt->execute()) {
                     throw new Exception("Failed to fetch supplier type.");
                 }
-                $supplierResult = $supplierTypeStmt->get_result();
-                $supplierData = $supplierResult->fetch_assoc();
+                $supplierData = $supplierTypeStmt->fetch(PDO::FETCH_ASSOC);
                 $supplierType = $supplierData['supplier_type'];
                 $currentBalance = $supplierData['balance'];
-                $supplierTypeStmt->close();
 
                 // Only update balance for regular suppliers
                 if ($supplierType === 'External') {
                     $newBalance = $currentBalance - $deductSupplier;
                     
-                    $updateSupplierStmt = $conn->prepare("UPDATE suppliers SET balance = balance - ? WHERE id = ? And tenant_id = ? And branch_id = ?");
-                    $updateSupplierStmt->bind_param("diii", $deductSupplier, $supplierId, $tenant_id, $branch_id);
+                    $updateSupplierStmt = $pdo->prepare("UPDATE suppliers SET balance = balance - ? WHERE id = ? And tenant_id = ? And branch_id = ?");
+                    $updateSupplierStmt->bindParam(1, $deductSupplier, PDO::PARAM_STR);
+                    $updateSupplierStmt->bindParam(2, $supplierId, PDO::PARAM_INT);
+                    $updateSupplierStmt->bindParam(3, $tenant_id, PDO::PARAM_INT);
+                    $updateSupplierStmt->bindParam(4, $branch_id, PDO::PARAM_INT);
                     if (!$updateSupplierStmt->execute()) {
                         throw new Exception("Failed to update supplier balance.");
                     }
 
-                    $insertSupplierTransactionStmt = $conn->prepare("INSERT INTO supplier_transactions 
+                    $insertSupplierTransactionStmt = $pdo->prepare("INSERT INTO supplier_transactions
                         (tenant_id, supplier_id, reference_id, transaction_type, transaction_of, amount, balance, remarks, transaction_date, branch_id)
                         VALUES (?, ?, ?, ?, ?, ?, ?, ?, NOW(), ?)");
 
                     if (!$insertSupplierTransactionStmt) {
-                        throw new Exception("Error preparing supplier transaction statement: " . $conn->error);
+                        throw new Exception("Error preparing supplier transaction statement");
                     }
 
                     $transactionType = 'Debit';
@@ -166,52 +183,62 @@ if (
                     $refundRemarks = "Penalty for ticket Name {$passengerName} date change deducted from account";
 
 
-                    $insertSupplierTransactionStmt->bind_param("iiissddsi",
-                        $tenant_id,
-                        $supplierId, $ticket_id, $transactionType, $transactionOf, $deductSupplier, $newBalance, $refundRemarks, $branch_id
-                    );
+                    $insertSupplierTransactionStmt->bindParam(1, $tenant_id, PDO::PARAM_INT);
+                    $insertSupplierTransactionStmt->bindParam(2, $supplierId, PDO::PARAM_INT);
+                    $insertSupplierTransactionStmt->bindParam(3, $ticket_id, PDO::PARAM_INT);
+                    $insertSupplierTransactionStmt->bindParam(4, $transactionType, PDO::PARAM_STR);
+                    $insertSupplierTransactionStmt->bindParam(5, $transactionOf, PDO::PARAM_STR);
+                    $insertSupplierTransactionStmt->bindParam(6, $deductSupplier, PDO::PARAM_STR);
+                    $insertSupplierTransactionStmt->bindParam(7, $newBalance, PDO::PARAM_STR);
+                    $insertSupplierTransactionStmt->bindParam(8, $refundRemarks, PDO::PARAM_STR);
+                    $insertSupplierTransactionStmt->bindParam(9, $branch_id, PDO::PARAM_INT);
 
                     if (!$insertSupplierTransactionStmt->execute()) {
-                        throw new Exception("Failed to insert supplier transaction: " . $insertSupplierTransactionStmt->error);
+                        throw new Exception("Failed to insert supplier transaction");
                     }
 
-                    $transaction_id = $insertSupplierTransactionStmt->insert_id;
-                    $insertSupplierTransactionStmt->close();
+                    $transaction_id = $pdo->lastInsertId();
                 } else {
                     // For non-regular suppliers, just record the transaction without balance
-                    $insertSupplierTransactionStmt = $conn->prepare("INSERT INTO supplier_transactions
+                    $insertSupplierTransactionStmt = $pdo->prepare("INSERT INTO supplier_transactions
                         (tenant_id, supplier_id, reference_id, transaction_type, transaction_of, amount, remarks, transaction_date, branch_id)
                         VALUES (?, ?, ?, ?, ?, ?, ?, NOW(), ?)");
 
                     if (!$insertSupplierTransactionStmt) {
-                        throw new Exception("Error preparing supplier transaction statement: " . $conn->error);
+                        throw new Exception("Error preparing supplier transaction statement");
                     }
 
                     $transactionType = 'Debit';
                     $transactionOf = 'date_change';
                     $refundRemarks = "Penalty for ticket Name {$passengerName} date change deducted from account";
-                    
 
-                    $insertSupplierTransactionStmt->bind_param("iissdssi", 
-                        $tenant_id,
-                        $supplierId, $ticket_id, $transactionType, $transactionOf, $deductSupplier, $refundRemarks, $branch_id
-                    );
+
+                    $insertSupplierTransactionStmt->bindParam(1, $tenant_id, PDO::PARAM_INT);
+                    $insertSupplierTransactionStmt->bindParam(2, $supplierId, PDO::PARAM_INT);
+                    $insertSupplierTransactionStmt->bindParam(3, $ticket_id, PDO::PARAM_INT);
+                    $insertSupplierTransactionStmt->bindParam(4, $transactionType, PDO::PARAM_STR);
+                    $insertSupplierTransactionStmt->bindParam(5, $transactionOf, PDO::PARAM_STR);
+                    $insertSupplierTransactionStmt->bindParam(6, $deductSupplier, PDO::PARAM_STR);
+                    $insertSupplierTransactionStmt->bindParam(7, $refundRemarks, PDO::PARAM_STR);
+                    $insertSupplierTransactionStmt->bindParam(8, $branch_id, PDO::PARAM_INT);
 
                     if (!$insertSupplierTransactionStmt->execute()) {
-                        throw new Exception("Failed to insert supplier transaction: " . $insertSupplierTransactionStmt->error);
+                        throw new Exception("Failed to insert supplier transaction");
                     }
 
-                    $transaction_id = $insertSupplierTransactionStmt->insert_id;
-                    $insertSupplierTransactionStmt->close();
+                    $transaction_id = $pdo->lastInsertId();
                 }
             }
 
             // 2. Refund to client (if regular or agency)
             if ($clientType === 'regular') {
                 $balanceField = ($currency === 'USD') ? "usd_balance" : "afs_balance";
-                $updateClientBalanceStmt = $conn->prepare("UPDATE clients SET {$balanceField} = {$balanceField} - ? WHERE id = ? And tenant_id = ? And branch_id = ?");
+                $updateClientBalanceStmt = $pdo->prepare("UPDATE clients SET {$balanceField} = {$balanceField} - ? WHERE id = ? And tenant_id = ? And branch_id = ?");
                 $penaltyAmount = $supplierPenalty + $servicePenalty; // Calculate refund amount
-                $updateClientBalanceStmt->bind_param("diii", $penaltyAmount, $soldToId, $tenant_id, $branch_id);
+                $updateClientBalanceStmt->bindParam(1, $penaltyAmount, PDO::PARAM_STR);
+                $updateClientBalanceStmt->bindParam(2, $soldToId, PDO::PARAM_INT);
+                $updateClientBalanceStmt->bindParam(3, $tenant_id, PDO::PARAM_INT);
+                $updateClientBalanceStmt->bindParam(4, $branch_id, PDO::PARAM_INT);
 
                 if (!$updateClientBalanceStmt->execute()) {
                     throw new Exception("Failed to update client balance.");
@@ -225,30 +252,29 @@ if (
                 $currentBalance = ($currency === 'USD') ? $clientData['usd_balance'] : $clientData['afs_balance'];
                 $newBalance = $currentBalance - $penaltyAmount;
                 
-                $insertClientTransactionStmt = $conn->prepare("INSERT INTO client_transactions 
+                $insertClientTransactionStmt = $pdo->prepare("INSERT INTO client_transactions
                     (tenant_id, client_id, type, amount, balance, currency, description, transaction_of, reference_id, created_at, branch_id)
                     VALUES (?, ?, ?, ?, ?, ?, ?, 'date_change', ?, NOW(), ?)");
 
-                $insertClientTransactionStmt->bind_param(
-                    "iisddsssi", 
-                    $tenant_id,
-                    $soldToId,
-                    $clientTransactionType,
-                    $penaltyAmount,
-                    $newBalance,
-                    $currency,
-                    $clientTransactionDescription,
-                    $ticket_id,
-                    $branch_id
-                );
+                $insertClientTransactionStmt->bindParam(1, $tenant_id, PDO::PARAM_INT);
+                $insertClientTransactionStmt->bindParam(2, $soldToId, PDO::PARAM_INT);
+                $insertClientTransactionStmt->bindParam(3, $clientTransactionType, PDO::PARAM_STR);
+                $insertClientTransactionStmt->bindParam(4, $penaltyAmount, PDO::PARAM_STR);
+                $insertClientTransactionStmt->bindParam(5, $newBalance, PDO::PARAM_STR);
+                $insertClientTransactionStmt->bindParam(6, $currency, PDO::PARAM_STR);
+                $insertClientTransactionStmt->bindParam(7, $clientTransactionDescription, PDO::PARAM_STR);
+                $insertClientTransactionStmt->bindParam(8, $ticket_id, PDO::PARAM_INT);
+                $insertClientTransactionStmt->bindParam(9, $branch_id, PDO::PARAM_INT);
 
                 if (!$insertClientTransactionStmt->execute()) {
                     throw new Exception("Failed to record refund transaction for client.");
                 }
             }
             // 4. Update ticket status to "Date Changed"
-            $updateTicketStatusStmt = $conn->prepare("UPDATE ticket_bookings SET status = 'Date Changed' WHERE id = ? AND tenant_id = ? AND branch_id = ?");
-            $updateTicketStatusStmt->bind_param("iii", $ticketId, $tenant_id, $branch_id);
+            $updateTicketStatusStmt = $pdo->prepare("UPDATE ticket_bookings SET status = 'Date Changed' WHERE id = ? AND tenant_id = ? AND branch_id = ?");
+            $updateTicketStatusStmt->bindParam(1, $ticketId, PDO::PARAM_INT);
+            $updateTicketStatusStmt->bindParam(2, $tenant_id, PDO::PARAM_INT);
+            $updateTicketStatusStmt->bindParam(3, $branch_id, PDO::PARAM_INT);
 
             if (!$updateTicketStatusStmt->execute()) {
                 throw new Exception("Failed to update ticket status.");
@@ -273,29 +299,29 @@ if (
             ];
             
             // Insert activity log
-            $activity_log_stmt = $conn->prepare("INSERT INTO activity_log 
-                (tenant_id, user_id, action, table_name, record_id, old_values, new_values, ip_address, user_agent, created_at, branch_id) 
+            $activity_log_stmt = $pdo->prepare("INSERT INTO activity_log
+                (tenant_id, user_id, action, table_name, record_id, old_values, new_values, ip_address, user_agent, created_at, branch_id)
                 VALUES (?, ?, 'add', 'date_change_tickets', ?, ?, '{}', ?, ?, NOW(), ?)");
-            
-            $old_values_json = json_encode($old_values);
-            $activity_log_stmt->bind_param("iiisssi", $tenant_id, $user_id, $ticket_id, $old_values_json, $ip_address, $user_agent, $branch_id);
-            $activity_log_stmt->execute();
-            $activity_log_stmt->close();
 
-            $conn->commit(); // Commit the transaction
+            $old_values_json = json_encode($old_values);
+            $activity_log_stmt->bindParam(1, $tenant_id, PDO::PARAM_INT);
+            $activity_log_stmt->bindParam(2, $user_id, PDO::PARAM_INT);
+            $activity_log_stmt->bindParam(3, $ticket_id, PDO::PARAM_INT);
+            $activity_log_stmt->bindParam(4, $old_values_json, PDO::PARAM_STR);
+            $activity_log_stmt->bindParam(5, $ip_address, PDO::PARAM_STR);
+            $activity_log_stmt->bindParam(6, $user_agent, PDO::PARAM_STR);
+            $activity_log_stmt->bindParam(7, $branch_id, PDO::PARAM_INT);
+            $activity_log_stmt->execute();
+
+            $pdo->commit(); // Commit the transaction
             echo 'success';
         } catch (Exception $e) {
-            $conn->rollback(); // Roll back the transaction in case of errors
+            $pdo->rollback(); // Roll back the transaction in case of errors
             echo 'error: ' . $e->getMessage();
         }
-
-        // Close statements
-        $stmt->close();
     } else {
         echo 'ticket not found';
     }
-
-    $conn->close();
 } else {
     echo 'invalid parameters';
 }

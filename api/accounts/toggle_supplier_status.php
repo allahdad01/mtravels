@@ -15,7 +15,6 @@ $tenant_id = $_SESSION['tenant_id'];
 $branch_id = $_SESSION['branch_id'];
 // Database connection
 require_once('../../includes/db.php');
-require_once('../../includes/conn.php');
 
 // Check if it's a POST request
 if ($_SERVER['REQUEST_METHOD'] !== 'POST') {

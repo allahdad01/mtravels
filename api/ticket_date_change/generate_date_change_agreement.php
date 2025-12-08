@@ -8,7 +8,6 @@ $branch_id = $_SESSION['branch_id'];
 
 // Include necessary files
 require_once '../../includes/db.php';
-require_once '../../includes/conn.php';
 require_once '../../vendor/autoload.php';
 
 // Check if ticket ID is provided

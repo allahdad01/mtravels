@@ -6,7 +6,7 @@ if (session_status() === PHP_SESSION_NONE) {
 require_once '../../admin/security.php';
 enforce_auth();
 
-include '../../includes/conn.php';
+require_once '../../includes/db.php';
 $tenant_id = $_SESSION['tenant_id'] ?? 0;
 $branch_id = $_SESSION['branch_id'] ?? 0;
 
@@ -39,20 +39,14 @@ try {
               ORDER BY hb.id DESC
               LIMIT 100";
 
-    $stmt = $conn->prepare($query);
-    $stmt->bind_param("ii", $tenant_id, $branch_id);
+    $stmt = $pdo->prepare($query);
+    $stmt->bindParam(1, $tenant_id, PDO::PARAM_INT);
+    $stmt->bindParam(2, $branch_id, PDO::PARAM_INT);
     $stmt->execute();
-    $res = $stmt->get_result(); // ✅ correct way
-
-    $tickets = [];
-    while ($row = $res->fetch_assoc()) {
-        $tickets[] = $row;
-    }
+    $tickets = $stmt->fetchAll(PDO::FETCH_ASSOC);
 
     echo json_encode(['status' => 'success', 'tickets' => $tickets]);
 
 } catch (Exception $e) {
     echo json_encode(['status' => 'error', 'message' => $e->getMessage()]);
 }
-
-$conn->close();

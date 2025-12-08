@@ -1,9 +1,9 @@
 <?php
 // Include security module
-require_once 'security.php';
+require_once '../../admin/security.php';
 
 // Include language helper
-require_once '../includes/language_helpers.php';
+require_once '../../includes/language_helpers.php';
 
 // Enforce authentication
 enforce_auth();
@@ -11,8 +11,7 @@ $tenant_id = $_SESSION['tenant_id'];
 $branch_id = $_SESSION['branch_id'];
 
 // Database connection
-require_once('../includes/db.php');
-include '../includes/conn.php';
+require_once('../../includes/db.php');
 
 // Get transaction ID from URL
 $transaction_id = isset($_GET['id']) ? (int)$_GET['id'] : 0;
@@ -40,16 +39,16 @@ $query = "
     WHERE mat.reference_id = ? AND mat.transaction_of = 'creditor' AND mat.tenant_id = ? AND mat.branch_id = ?
 ";
 
-$stmt = $conn->prepare($query);
-$stmt->bind_param("iii", $transaction_id, $tenant_id, $branch_id);
+$stmt = $pdo->prepare($query);
+$stmt->bindParam(1, $transaction_id, PDO::PARAM_INT);
+$stmt->bindParam(2, $tenant_id, PDO::PARAM_INT);
+$stmt->bindParam(3, $branch_id, PDO::PARAM_INT);
 $stmt->execute();
-$result = $stmt->get_result();
+$transaction = $stmt->fetch(PDO::FETCH_ASSOC);
 
-if ($result->num_rows === 0) {
+if (!$transaction) {
     die(__('transaction_not_found'));
 }
-
-$transaction = $result->fetch_assoc();
 
 // Fetch settings data
 try {

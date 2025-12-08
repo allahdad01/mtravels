@@ -24,30 +24,30 @@ if (!isset($data['transaction_id']) || !is_numeric($data['transaction_id'])) {
 $transactionId = intval($data['transaction_id']);
 
 // Database connection
-require_once('../../includes/conn.php');
+require_once('../../includes/db.php');
 
 // Start transaction
-$conn->begin_transaction();
+$pdo->beginTransaction();
 
 try {
     // Get transaction details first (to get account_id, amount, currency, type and created_at)
     $getQuery = "SELECT main_account_id, amount, currency, type, created_at FROM main_account_transactions WHERE id = ? AND tenant_id = ? AND branch_id = ?";
-    $getStmt = $conn->prepare($getQuery);
-    $getStmt->bind_param("iii", $transactionId, $tenant_id, $branch_id);
+    $getStmt = $pdo->prepare($getQuery);
+    $getStmt->bindParam(1, $transactionId, PDO::PARAM_INT);
+    $getStmt->bindParam(2, $tenant_id, PDO::PARAM_INT);
+    $getStmt->bindParam(3, $branch_id, PDO::PARAM_INT);
     $getStmt->execute();
-    $result = $getStmt->get_result();
-    
-    if ($result->num_rows === 0) {
+    $transaction = $getStmt->fetch(PDO::FETCH_ASSOC);
+
+    if (!$transaction) {
         throw new Exception("Transaction not found");
     }
-    
-    $transaction = $result->fetch_assoc();
+
     $accountId = $transaction['main_account_id'];
     $amount = $transaction['amount'];
     $currency = $transaction['currency'];
     $type = $transaction['type']; // CREDIT or DEBIT
     $transactionDate = $transaction['created_at'];
-    $getStmt->close();
     
     // Map currency codes to the correct database field names
     $currencyFieldMap = [
@@ -67,15 +67,20 @@ try {
     
     // Update balances of all subsequent transactions
     $updateSubsequentQuery = "UPDATE main_account_transactions
-                             SET balance = balance - ?
-                             WHERE main_account_id = ?
-                             AND currency = ?
-                             AND id > ?
-                             AND id != ? AND tenant_id = ? AND branch_id = ?";
-    $updateSubsequentStmt = $conn->prepare($updateSubsequentQuery);
-    $updateSubsequentStmt->bind_param("dissisi", $amount, $accountId, $currency, $transactionId, $transactionId, $tenant_id, $branch_id);
+                              SET balance = balance - ?
+                              WHERE main_account_id = ?
+                              AND currency = ?
+                              AND id > ?
+                              AND id != ? AND tenant_id = ? AND branch_id = ?";
+    $updateSubsequentStmt = $pdo->prepare($updateSubsequentQuery);
+    $updateSubsequentStmt->bindParam(1, $amount, PDO::PARAM_STR);
+    $updateSubsequentStmt->bindParam(2, $accountId, PDO::PARAM_INT);
+    $updateSubsequentStmt->bindParam(3, $currency, PDO::PARAM_STR);
+    $updateSubsequentStmt->bindParam(4, $transactionId, PDO::PARAM_INT);
+    $updateSubsequentStmt->bindParam(5, $transactionId, PDO::PARAM_INT);
+    $updateSubsequentStmt->bindParam(6, $tenant_id, PDO::PARAM_INT);
+    $updateSubsequentStmt->bindParam(7, $branch_id, PDO::PARAM_INT);
     $updateSubsequentStmt->execute();
-    $updateSubsequentStmt->close();
     
     // Reverse the transaction based on its type
     if ($type === 'credit') {
@@ -86,20 +91,23 @@ try {
         $updateQuery = "UPDATE main_account SET {$updateField} = {$updateField} + ? WHERE id = ? AND tenant_id = ? AND branch_id = ?";
     }
 
-    $updateStmt = $conn->prepare($updateQuery);
-    $updateStmt->bind_param("diii", $amount, $accountId, $tenant_id, $branch_id);
+    $updateStmt = $pdo->prepare($updateQuery);
+    $updateStmt->bindParam(1, $amount, PDO::PARAM_STR);
+    $updateStmt->bindParam(2, $accountId, PDO::PARAM_INT);
+    $updateStmt->bindParam(3, $tenant_id, PDO::PARAM_INT);
+    $updateStmt->bindParam(4, $branch_id, PDO::PARAM_INT);
     $updateStmt->execute();
-    $updateStmt->close();
     
     // Delete the transaction
     $deleteQuery = "DELETE FROM main_account_transactions WHERE id = ? AND tenant_id = ? AND branch_id = ?";
-    $deleteStmt = $conn->prepare($deleteQuery);
-    $deleteStmt->bind_param("iii", $transactionId, $tenant_id, $branch_id);
+    $deleteStmt = $pdo->prepare($deleteQuery);
+    $deleteStmt->bindParam(1, $transactionId, PDO::PARAM_INT);
+    $deleteStmt->bindParam(2, $tenant_id, PDO::PARAM_INT);
+    $deleteStmt->bindParam(3, $branch_id, PDO::PARAM_INT);
     $deleteStmt->execute();
-    $deleteStmt->close();
     
     // Commit the transaction
-    $conn->commit();
+    $pdo->commit();
     
     // Log the activity
     $old_values = json_encode([
@@ -116,14 +124,19 @@ try {
     $ip_address = $_SERVER['REMOTE_ADDR'] ?? '';
     $user_agent = $_SERVER['HTTP_USER_AGENT'] ?? '';
     
-    $stmt_log = $conn->prepare("
-        INSERT INTO activity_log 
-        (user_id, action, table_name, record_id, old_values, new_values, ip_address, user_agent, created_at, tenant_id) 
+    $stmt_log = $pdo->prepare("
+        INSERT INTO activity_log
+        (user_id, action, table_name, record_id, old_values, new_values, ip_address, user_agent, created_at, tenant_id)
         VALUES (?, 'delete', 'main_account_transactions', ?, ?, ?, ?, ?, NOW(), ?)
     ");
-    $stmt_log->bind_param("iisssss", $user_id, $transactionId, $old_values, $new_values, $ip_address, $user_agent, $tenant_id);
+    $stmt_log->bindParam(1, $user_id, PDO::PARAM_INT);
+    $stmt_log->bindParam(2, $transactionId, PDO::PARAM_INT);
+    $stmt_log->bindParam(3, $old_values, PDO::PARAM_STR);
+    $stmt_log->bindParam(4, $new_values, PDO::PARAM_STR);
+    $stmt_log->bindParam(5, $ip_address, PDO::PARAM_STR);
+    $stmt_log->bindParam(6, $user_agent, PDO::PARAM_STR);
+    $stmt_log->bindParam(7, $tenant_id, PDO::PARAM_INT);
     $stmt_log->execute();
-    $stmt_log->close();
     
     // Return success response
     echo json_encode([
@@ -133,7 +146,7 @@ try {
     
 } catch (Exception $e) {
     // Rollback the transaction
-    $conn->rollback();
+    $pdo->rollBack();
     
     // Return error response
     echo json_encode([
@@ -142,5 +155,3 @@ try {
     ]);
 }
 
-// Close connection
-$conn->close();

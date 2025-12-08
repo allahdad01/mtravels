@@ -10,7 +10,7 @@ enforce_auth();
 $tenant_id = $_SESSION['tenant_id'];
 $branch_id = $_SESSION['branch_id'];
 // Database connection
-require_once '../../includes/conn.php';
+require_once '../../includes/db.php';
 
 // Validate editExchangeRate
 $editExchangeRate = isset($_POST['editExchangeRate']) ? DbSecurity::validateInput($_POST['editExchangeRate'], 'float', ['min' => 0]) : null;
@@ -124,12 +124,12 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 
     // Get original values to calculate differences
     $originalQuery = "SELECT price, sold, supplier, sold_to, currency FROM ticket_bookings WHERE id = ? AND tenant_id = ? AND branch_id = ?";
-    $stmtOriginal = $conn->prepare($originalQuery);
-    $stmtOriginal->bind_param('iii', $id, $tenant_id, $branch_id);
+    $stmtOriginal = $pdo->prepare($originalQuery);
+    $stmtOriginal->bindParam(1, $id, PDO::PARAM_INT);
+    $stmtOriginal->bindParam(2, $tenant_id, PDO::PARAM_INT);
+    $stmtOriginal->bindParam(3, $branch_id, PDO::PARAM_INT);
     $stmtOriginal->execute();
-    $resultOriginal = $stmtOriginal->get_result();
-    $originalData = $resultOriginal->fetch_assoc();
-    $stmtOriginal->close();
+    $originalData = $stmtOriginal->fetch(PDO::FETCH_ASSOC);
 
     if (!$originalData) {
         $response['message'] = 'Original ticket data not found.';
@@ -147,7 +147,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     $originalClient = $originalData['sold_to'];
 
     // Start transaction
-    $conn->begin_transaction();
+    $pdo->beginTransaction();
 
     try {
         // Handle supplier changes or price differences
@@ -155,12 +155,12 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             // Check if original supplier exists and is external
             if ($originalSupplier > 0) {
                 $oldSupplierQuery = "SELECT * FROM suppliers WHERE id = ? AND tenant_id = ? AND branch_id = ?";
-                $stmtOldSupplier = $conn->prepare($oldSupplierQuery);
-                $stmtOldSupplier->bind_param('iii', $originalSupplier, $tenant_id, $branch_id);
+                $stmtOldSupplier = $pdo->prepare($oldSupplierQuery);
+                $stmtOldSupplier->bindParam(1, $originalSupplier, PDO::PARAM_INT);
+                $stmtOldSupplier->bindParam(2, $tenant_id, PDO::PARAM_INT);
+                $stmtOldSupplier->bindParam(3, $branch_id, PDO::PARAM_INT);
                 $stmtOldSupplier->execute();
-                $oldSupplierResult = $stmtOldSupplier->get_result();
-                $oldSupplierData = $oldSupplierResult->fetch_assoc();
-                $stmtOldSupplier->close();
+                $oldSupplierData = $stmtOldSupplier->fetch(PDO::FETCH_ASSOC);
                 
                 $oldSupplierType = isset($oldSupplierData['supplier_type']) ? $oldSupplierData['supplier_type'] : '';
                 if (!$oldSupplierType) {
@@ -181,11 +181,13 @@ if ($supplier != $originalSupplier) {
                                             AND tenant_id = ?
                                             AND branch_id = ?
                                             ORDER BY transaction_date ASC";
-        $stmtGetOldSupplierTransactions = $conn->prepare($getOldSupplierTransactionsQuery);
-        $stmtGetOldSupplierTransactions->bind_param('iiii', $originalSupplier, $id, $tenant_id, $branch_id);
+        $stmtGetOldSupplierTransactions = $pdo->prepare($getOldSupplierTransactionsQuery);
+        $stmtGetOldSupplierTransactions->bindParam(1, $originalSupplier, PDO::PARAM_INT);
+        $stmtGetOldSupplierTransactions->bindParam(2, $id, PDO::PARAM_INT);
+        $stmtGetOldSupplierTransactions->bindParam(3, $tenant_id, PDO::PARAM_INT);
+        $stmtGetOldSupplierTransactions->bindParam(4, $branch_id, PDO::PARAM_INT);
         $stmtGetOldSupplierTransactions->execute();
-        $oldSupplierTransactions = $stmtGetOldSupplierTransactions->get_result()->fetch_all(MYSQLI_ASSOC);
-        $stmtGetOldSupplierTransactions->close();
+        $oldSupplierTransactions = $stmtGetOldSupplierTransactions->fetchAll(PDO::FETCH_ASSOC);
 
         // Calculate total amount from old supplier transactions
         $totalAmount = 0;
@@ -195,10 +197,12 @@ if ($supplier != $originalSupplier) {
 
         // Update old supplier balance (adding back amount)
         $updateOldSupplierQuery = "UPDATE suppliers SET balance = balance + ? WHERE id = ? AND tenant_id = ? AND branch_id = ?";
-        $stmtUpdateOldSupplier = $conn->prepare($updateOldSupplierQuery);
-        $stmtUpdateOldSupplier->bind_param('diii', $totalAmount, $originalSupplier, $tenant_id, $branch_id);
+        $stmtUpdateOldSupplier = $pdo->prepare($updateOldSupplierQuery);
+        $stmtUpdateOldSupplier->bindParam(1, $totalAmount, PDO::PARAM_STR);
+        $stmtUpdateOldSupplier->bindParam(2, $originalSupplier, PDO::PARAM_INT);
+        $stmtUpdateOldSupplier->bindParam(3, $tenant_id, PDO::PARAM_INT);
+        $stmtUpdateOldSupplier->bindParam(4, $branch_id, PDO::PARAM_INT);
         $stmtUpdateOldSupplier->execute();
-        $stmtUpdateOldSupplier->close();
 
         // Update subsequent transactions for old supplier (adding back amount)
         $updateOldSupplierSubsequentQuery = "UPDATE supplier_transactions
@@ -214,20 +218,25 @@ if ($supplier != $originalSupplier) {
                                                   AND branch_id = ?
                                                   LIMIT 1
                                               )";
-        $stmtUpdateOldSupplierSubsequent = $conn->prepare($updateOldSupplierSubsequentQuery);
-        $stmtUpdateOldSupplierSubsequent->bind_param('diiiiii', $totalAmount, $originalSupplier, $branch_id, $originalSupplier, $id, $tenant_id, $branch_id);
+        $stmtUpdateOldSupplierSubsequent = $pdo->prepare($updateOldSupplierSubsequentQuery);
+        $stmtUpdateOldSupplierSubsequent->bindParam(1, $totalAmount, PDO::PARAM_STR);
+        $stmtUpdateOldSupplierSubsequent->bindParam(2, $originalSupplier, PDO::PARAM_INT);
+        $stmtUpdateOldSupplierSubsequent->bindParam(3, $branch_id, PDO::PARAM_INT);
+        $stmtUpdateOldSupplierSubsequent->bindParam(4, $originalSupplier, PDO::PARAM_INT);
+        $stmtUpdateOldSupplierSubsequent->bindParam(5, $id, PDO::PARAM_INT);
+        $stmtUpdateOldSupplierSubsequent->bindParam(6, $tenant_id, PDO::PARAM_INT);
+        $stmtUpdateOldSupplierSubsequent->bindParam(7, $branch_id, PDO::PARAM_INT);
         $stmtUpdateOldSupplierSubsequent->execute();
-        $stmtUpdateOldSupplierSubsequent->close();
     }
 
     // Check if new supplier is external
     $supplierQuery = "SELECT * FROM suppliers WHERE id = ? AND tenant_id = ? AND branch_id = ?";
-    $stmtSupplier = $conn->prepare($supplierQuery);
-    $stmtSupplier->bind_param('iii', $supplier, $tenant_id, $branch_id);
+    $stmtSupplier = $pdo->prepare($supplierQuery);
+    $stmtSupplier->bindParam(1, $supplier, PDO::PARAM_INT);
+    $stmtSupplier->bindParam(2, $tenant_id, PDO::PARAM_INT);
+    $stmtSupplier->bindParam(3, $branch_id, PDO::PARAM_INT);
     $stmtSupplier->execute();
-    $supplierResult = $stmtSupplier->get_result();
-    $supplierData = $supplierResult->fetch_assoc();
-    $stmtSupplier->close();
+    $supplierData = $stmtSupplier->fetch(PDO::FETCH_ASSOC);
 
     $supplierType = isset($supplierData['supplier_type']) ? $supplierData['supplier_type'] : '';
     if (!$supplierType) {
@@ -239,20 +248,22 @@ if ($supplier != $originalSupplier) {
     if ($isExternal) {
         // Get current balance of new supplier
         $getCurrentSupplierBalanceQuery = "SELECT balance FROM suppliers WHERE id = ? AND tenant_id = ? AND branch_id = ?";
-        $stmtGetCurrentSupplierBalance = $conn->prepare($getCurrentSupplierBalanceQuery);
-        $stmtGetCurrentSupplierBalance->bind_param('iii', $supplier, $tenant_id, $branch_id);
+        $stmtGetCurrentSupplierBalance = $pdo->prepare($getCurrentSupplierBalanceQuery);
+        $stmtGetCurrentSupplierBalance->bindParam(1, $supplier, PDO::PARAM_INT);
+        $stmtGetCurrentSupplierBalance->bindParam(2, $tenant_id, PDO::PARAM_INT);
+        $stmtGetCurrentSupplierBalance->bindParam(3, $branch_id, PDO::PARAM_INT);
         $stmtGetCurrentSupplierBalance->execute();
-        $stmtGetCurrentSupplierBalance->bind_result($currentSupplierBalance);
-        $stmtGetCurrentSupplierBalance->fetch();
-        $stmtGetCurrentSupplierBalance->close();
+        $currentSupplierBalance = $stmtGetCurrentSupplierBalance->fetch(PDO::FETCH_ASSOC)['balance'];
 
         // Update new supplier balance
         $newBalance = $currentSupplierBalance - $base;
         $updateSupplierQuery = "UPDATE suppliers SET balance = ? WHERE id = ? AND tenant_id = ? AND branch_id = ?";
-        $stmtUpdateSupplier = $conn->prepare($updateSupplierQuery);
-        $stmtUpdateSupplier->bind_param('diii', $newBalance, $supplier, $tenant_id, $branch_id);
+        $stmtUpdateSupplier = $pdo->prepare($updateSupplierQuery);
+        $stmtUpdateSupplier->bindParam(1, $newBalance, PDO::PARAM_STR);
+        $stmtUpdateSupplier->bindParam(2, $supplier, PDO::PARAM_INT);
+        $stmtUpdateSupplier->bindParam(3, $tenant_id, PDO::PARAM_INT);
+        $stmtUpdateSupplier->bindParam(4, $branch_id, PDO::PARAM_INT);
         $stmtUpdateSupplier->execute();
-        $stmtUpdateSupplier->close();
 
         // Insert or update supplier transactions for external supplier
         $checkExistingTransactionsQuery = "SELECT COUNT(*) FROM supplier_transactions
@@ -261,12 +272,13 @@ if ($supplier != $originalSupplier) {
                                            AND transaction_of = 'ticket_sale'
                                            AND tenant_id = ?
                                            AND branch_id = ?";
-        $stmtCheckExisting = $conn->prepare($checkExistingTransactionsQuery);
-        $stmtCheckExisting->bind_param('iiii', $originalSupplier, $id, $tenant_id, $branch_id);
+        $stmtCheckExisting = $pdo->prepare($checkExistingTransactionsQuery);
+        $stmtCheckExisting->bindParam(1, $originalSupplier, PDO::PARAM_INT);
+        $stmtCheckExisting->bindParam(2, $id, PDO::PARAM_INT);
+        $stmtCheckExisting->bindParam(3, $tenant_id, PDO::PARAM_INT);
+        $stmtCheckExisting->bindParam(4, $branch_id, PDO::PARAM_INT);
         $stmtCheckExisting->execute();
-        $stmtCheckExisting->bind_result($existingCount);
-        $stmtCheckExisting->fetch();
-        $stmtCheckExisting->close();
+        $existingCount = $stmtCheckExisting->fetch(PDO::FETCH_ASSOC)['COUNT(*)'];
 
         if ($existingCount > 0) {
             $updateTransactionsQuery = "UPDATE supplier_transactions
@@ -280,18 +292,29 @@ if ($supplier != $originalSupplier) {
                                         AND transaction_of = 'ticket_sale'
                                         AND tenant_id = ?
                                         AND branch_id = ?";
-            $stmtUpdateTransactions = $conn->prepare($updateTransactionsQuery);
-            $stmtUpdateTransactions->bind_param('iddiiiisi', $supplier, $base, $newBalance, $originalSupplier, $originalSupplier, $id, $tenant_id, $branch_id);
+            $stmtUpdateTransactions = $pdo->prepare($updateTransactionsQuery);
+            $stmtUpdateTransactions->bindParam(1, $supplier, PDO::PARAM_INT);
+            $stmtUpdateTransactions->bindParam(2, $base, PDO::PARAM_STR);
+            $stmtUpdateTransactions->bindParam(3, $newBalance, PDO::PARAM_STR);
+            $stmtUpdateTransactions->bindParam(4, $originalSupplier, PDO::PARAM_INT);
+            $stmtUpdateTransactions->bindParam(5, $originalSupplier, PDO::PARAM_INT);
+            $stmtUpdateTransactions->bindParam(6, $id, PDO::PARAM_INT);
+            $stmtUpdateTransactions->bindParam(7, $tenant_id, PDO::PARAM_INT);
+            $stmtUpdateTransactions->bindParam(8, $branch_id, PDO::PARAM_INT);
             $stmtUpdateTransactions->execute();
-            $stmtUpdateTransactions->close();
         } else {
             $insertSupplierTransactionQuery = "INSERT INTO supplier_transactions (supplier_id, reference_id, transaction_type, amount, balance, remarks, transaction_of, transaction_date, tenant_id, branch_id, receipt)
                                                VALUES (?, ?, 'debit', ?, ?, ?, 'ticket_sale', NOW(), ?, ?, '')";
-            $stmtInsertSupplierTransaction = $conn->prepare($insertSupplierTransactionQuery);
+            $stmtInsertSupplierTransaction = $pdo->prepare($insertSupplierTransactionQuery);
             $description = "Purchase for ticket: $passenger_name ($origin to $destination)";
-            $stmtInsertSupplierTransaction->bind_param('iiddsiii', $supplier, $id, $base, $newBalance, $description, $tenant_id, $branch_id);
+            $stmtInsertSupplierTransaction->bindParam(1, $supplier, PDO::PARAM_INT);
+            $stmtInsertSupplierTransaction->bindParam(2, $id, PDO::PARAM_INT);
+            $stmtInsertSupplierTransaction->bindParam(3, $base, PDO::PARAM_STR);
+            $stmtInsertSupplierTransaction->bindParam(4, $newBalance, PDO::PARAM_STR);
+            $stmtInsertSupplierTransaction->bindParam(5, $description, PDO::PARAM_STR);
+            $stmtInsertSupplierTransaction->bindParam(6, $tenant_id, PDO::PARAM_INT);
+            $stmtInsertSupplierTransaction->bindParam(7, $branch_id, PDO::PARAM_INT);
             $stmtInsertSupplierTransaction->execute();
-            $stmtInsertSupplierTransaction->close();
         }
     }
 
@@ -302,76 +325,85 @@ if ($supplier != $originalSupplier) {
                                    AND transaction_of = 'ticket_sale'
                                    AND tenant_id = ?
                                    AND branch_id = ?";
-    $stmtDeleteOldTransactions = $conn->prepare($deleteOldTransactionsQuery);
-    $stmtDeleteOldTransactions->bind_param('iiii', $originalSupplier, $id, $tenant_id, $branch_id);
+    $stmtDeleteOldTransactions = $pdo->prepare($deleteOldTransactionsQuery);
+    $stmtDeleteOldTransactions->bindParam(1, $originalSupplier, PDO::PARAM_INT);
+    $stmtDeleteOldTransactions->bindParam(2, $id, PDO::PARAM_INT);
+    $stmtDeleteOldTransactions->bindParam(3, $tenant_id, PDO::PARAM_INT);
+    $stmtDeleteOldTransactions->bindParam(4, $branch_id, PDO::PARAM_INT);
     $stmtDeleteOldTransactions->execute();
-    $stmtDeleteOldTransactions->close();
 }
 
                 // Handle case where supplier remains the same but price changes
                 else if ($supplier == $originalSupplier && $priceDifference != 0 && $oldSupplierIsExternal) {
                     // Get current supplier balance
                     $getCurrentSupplierBalanceQuery = "SELECT balance FROM suppliers WHERE id = ? AND tenant_id = ? AND branch_id = ?";
-                    $stmtGetCurrentSupplierBalance = $conn->prepare($getCurrentSupplierBalanceQuery);
-                    $stmtGetCurrentSupplierBalance->bind_param('iii', $supplier, $tenant_id, $branch_id);
+                    $stmtGetCurrentSupplierBalance = $pdo->prepare($getCurrentSupplierBalanceQuery);
+                    $stmtGetCurrentSupplierBalance->bindParam(1, $supplier, PDO::PARAM_INT);
+                    $stmtGetCurrentSupplierBalance->bindParam(2, $tenant_id, PDO::PARAM_INT);
+                    $stmtGetCurrentSupplierBalance->bindParam(3, $branch_id, PDO::PARAM_INT);
                     $stmtGetCurrentSupplierBalance->execute();
-                    $stmtGetCurrentSupplierBalance->bind_result($currentSupplierBalance);
-                    $stmtGetCurrentSupplierBalance->fetch();
-                    $stmtGetCurrentSupplierBalance->close();
+                    $currentSupplierBalance = $stmtGetCurrentSupplierBalance->fetch(PDO::FETCH_ASSOC)['balance'];
                     
                     // Update supplier balance based on price difference
                     // If priceDifference is positive: base decreased, add to balance (supplier gets money back)
                     // If priceDifference is negative: base increased, subtract from balance (supplier pays more)
                     $newBalance = $currentSupplierBalance + $priceDifference;
                     $updateSupplierQuery = "UPDATE suppliers SET balance = ? WHERE id = ? AND tenant_id = ? AND branch_id = ?";
-                    $stmtUpdateSupplier = $conn->prepare($updateSupplierQuery);
-                    $stmtUpdateSupplier->bind_param('diii', $newBalance, $supplier, $tenant_id, $branch_id);
+                    $stmtUpdateSupplier = $pdo->prepare($updateSupplierQuery);
+                    $stmtUpdateSupplier->bindParam(1, $newBalance, PDO::PARAM_STR);
+                    $stmtUpdateSupplier->bindParam(2, $supplier, PDO::PARAM_INT);
+                    $stmtUpdateSupplier->bindParam(3, $tenant_id, PDO::PARAM_INT);
+                    $stmtUpdateSupplier->bindParam(4, $branch_id, PDO::PARAM_INT);
                     $stmtUpdateSupplier->execute();
-                    $stmtUpdateSupplier->close();
                     
                     // Check if transaction record exists for this supplier
                     $checkSupplierTransactionQuery = "SELECT id, transaction_date, balance, amount FROM supplier_transactions
-                                                     WHERE supplier_id = ?
-                                                     AND reference_id = ?
-                                                     AND transaction_of = 'ticket_sale'
-                                                     AND tenant_id = ?
-                                                     AND branch_id = ?
-                                                     LIMIT 1";
-                    $stmtCheckSupplierTransaction = $conn->prepare($checkSupplierTransactionQuery);
-                    $stmtCheckSupplierTransaction->bind_param('iiii', $supplier, $id, $tenant_id, $branch_id);
+                                                      WHERE supplier_id = ?
+                                                      AND reference_id = ?
+                                                      AND transaction_of = 'ticket_sale'
+                                                      AND tenant_id = ?
+                                                      AND branch_id = ?
+                                                      LIMIT 1";
+                    $stmtCheckSupplierTransaction = $pdo->prepare($checkSupplierTransactionQuery);
+                    $stmtCheckSupplierTransaction->bindParam(1, $supplier, PDO::PARAM_INT);
+                    $stmtCheckSupplierTransaction->bindParam(2, $id, PDO::PARAM_INT);
+                    $stmtCheckSupplierTransaction->bindParam(3, $tenant_id, PDO::PARAM_INT);
+                    $stmtCheckSupplierTransaction->bindParam(4, $branch_id, PDO::PARAM_INT);
                     $stmtCheckSupplierTransaction->execute();
-                    $supplierTransactionResult = $stmtCheckSupplierTransaction->get_result();
+                    $supplierTransaction = $stmtCheckSupplierTransaction->fetch(PDO::FETCH_ASSOC);
                     
-                    if ($supplierTransactionResult->num_rows > 0) {
-                        $transactionRow = $supplierTransactionResult->fetch_assoc();
-                        $transactionId = $transactionRow['id'];
-                        $transactionDate = $transactionRow['transaction_date'];
-                        $currentTransactionAmount = $transactionRow['amount'];
+                    if ($supplierTransaction) {
+                        $transactionId = $supplierTransaction['id'];
+                        $transactionDate = $supplierTransaction['transaction_date'];
+                        $currentTransactionAmount = $supplierTransaction['amount'];
                         
                         // Get the current transaction's date and balance
                         $getCurrentTransactionQuery = "SELECT transaction_date, balance FROM supplier_transactions WHERE id = ? AND tenant_id = ? AND branch_id = ? LIMIT 1";
-                        $stmtGetCurrentTransaction = $conn->prepare($getCurrentTransactionQuery);
-                        $stmtGetCurrentTransaction->bind_param('iii', $transactionId, $tenant_id, $branch_id);
+                        $stmtGetCurrentTransaction = $pdo->prepare($getCurrentTransactionQuery);
+                        $stmtGetCurrentTransaction->bindParam(1, $transactionId, PDO::PARAM_INT);
+                        $stmtGetCurrentTransaction->bindParam(2, $tenant_id, PDO::PARAM_INT);
+                        $stmtGetCurrentTransaction->bindParam(3, $branch_id, PDO::PARAM_INT);
                         $stmtGetCurrentTransaction->execute();
-                        $currentTransactionResult = $stmtGetCurrentTransaction->get_result();
-                        $currentTransactionData = $currentTransactionResult->fetch_assoc();
+                        $currentTransactionData = $stmtGetCurrentTransaction->fetch(PDO::FETCH_ASSOC);
                         $currentTransactionDate = $currentTransactionData['transaction_date'];
                         $currentTransactionBalance = $currentTransactionData['balance'];
-                        $stmtGetCurrentTransaction->close();
                         
                         // Calculate the new transaction balance by applying the price difference
                         $newTransactionBalance = $currentTransactionBalance + $priceDifference;
                         
                         // Update existing transaction record with new amount and balance
-                        $updateSupplierTransactionQuery = "UPDATE supplier_transactions 
-                                                         SET amount = ?,
-                                                             balance = ?,
-                                                             remarks = CONCAT('Updated: ', remarks) 
-                                                         WHERE id = ? AND tenant_id = ? AND branch_id = ?";
-                        $stmtUpdateSupplierTransaction = $conn->prepare($updateSupplierTransactionQuery);
-                        $stmtUpdateSupplierTransaction->bind_param('ddii', $base, $newTransactionBalance, $transactionId, $tenant_id);
+                        $updateSupplierTransactionQuery = "UPDATE supplier_transactions
+                                                          SET amount = ?,
+                                                              balance = ?,
+                                                              remarks = CONCAT('Updated: ', remarks)
+                                                          WHERE id = ? AND tenant_id = ? AND branch_id = ?";
+                        $stmtUpdateSupplierTransaction = $pdo->prepare($updateSupplierTransactionQuery);
+                        $stmtUpdateSupplierTransaction->bindParam(1, $base, PDO::PARAM_STR);
+                        $stmtUpdateSupplierTransaction->bindParam(2, $newTransactionBalance, PDO::PARAM_STR);
+                        $stmtUpdateSupplierTransaction->bindParam(3, $transactionId, PDO::PARAM_INT);
+                        $stmtUpdateSupplierTransaction->bindParam(4, $tenant_id, PDO::PARAM_INT);
+                        $stmtUpdateSupplierTransaction->bindParam(5, $branch_id, PDO::PARAM_INT);
                         $stmtUpdateSupplierTransaction->execute();
-                        $stmtUpdateSupplierTransaction->close();
 
                         // Update all subsequent transactions' balances
                         $updateSubsequentQuery = "UPDATE supplier_transactions
@@ -382,22 +414,29 @@ if ($supplier != $originalSupplier) {
                                                  AND tenant_id = ?
                                                  ORDER BY transaction_date ASC";
 
-                        $stmtUpdateSubsequent = $conn->prepare($updateSubsequentQuery);
-                        $stmtUpdateSubsequent->bind_param('diiii', $priceDifference, $supplier, $branch_id, $transactionId, $tenant_id);
+                        $stmtUpdateSubsequent = $pdo->prepare($updateSubsequentQuery);
+                        $stmtUpdateSubsequent->bindParam(1, $priceDifference, PDO::PARAM_STR);
+                        $stmtUpdateSubsequent->bindParam(2, $supplier, PDO::PARAM_INT);
+                        $stmtUpdateSubsequent->bindParam(3, $branch_id, PDO::PARAM_INT);
+                        $stmtUpdateSubsequent->bindParam(4, $transactionId, PDO::PARAM_INT);
+                        $stmtUpdateSubsequent->bindParam(5, $tenant_id, PDO::PARAM_INT);
                         $stmtUpdateSubsequent->execute();
-                        $stmtUpdateSubsequent->close();
                     } else {
                         // For a new transaction record, the balance should equal the current supplier balance
                         // Create new transaction record
                         $insertSupplierTransactionQuery = "INSERT INTO supplier_transactions (supplier_id, reference_id, transaction_type, amount, balance, remarks, transaction_of, transaction_date, tenant_id, branch_id, receipt)
                                                          VALUES (?, ?, 'debit', ?, ?, ?, 'ticket_sale', NOW(), ?, ?, '')";
-                        $stmtInsertSupplierTransaction = $conn->prepare($insertSupplierTransactionQuery);
+                        $stmtInsertSupplierTransaction = $pdo->prepare($insertSupplierTransactionQuery);
                         $description = "Purchase for ticket: $passenger_name ($origin to $destination)";
-                        $stmtInsertSupplierTransaction->bind_param('iiddsiii', $supplier, $id, $base, $newBalance, $description, $tenant_id, $branch_id);
+                        $stmtInsertSupplierTransaction->bindParam(1, $supplier, PDO::PARAM_INT);
+                        $stmtInsertSupplierTransaction->bindParam(2, $id, PDO::PARAM_INT);
+                        $stmtInsertSupplierTransaction->bindParam(3, $base, PDO::PARAM_STR);
+                        $stmtInsertSupplierTransaction->bindParam(4, $newBalance, PDO::PARAM_STR);
+                        $stmtInsertSupplierTransaction->bindParam(5, $description, PDO::PARAM_STR);
+                        $stmtInsertSupplierTransaction->bindParam(6, $tenant_id, PDO::PARAM_INT);
+                        $stmtInsertSupplierTransaction->bindParam(7, $branch_id, PDO::PARAM_INT);
                         $stmtInsertSupplierTransaction->execute();
-                        $stmtInsertSupplierTransaction->close();
                     }
-                    $stmtCheckSupplierTransaction->close();
                 }
             }
         }
@@ -407,12 +446,12 @@ if ($supplier != $originalSupplier) {
             // Check if original client exists and is regular
             if ($originalClient > 0) {
                 $oldClientQuery = "SELECT * FROM clients WHERE id = ? AND tenant_id = ? AND branch_id = ?";
-                $stmtOldClient = $conn->prepare($oldClientQuery);
-                $stmtOldClient->bind_param('iii', $originalClient, $tenant_id, $branch_id);
+                $stmtOldClient = $pdo->prepare($oldClientQuery);
+                $stmtOldClient->bindParam(1, $originalClient, PDO::PARAM_INT);
+                $stmtOldClient->bindParam(2, $tenant_id, PDO::PARAM_INT);
+                $stmtOldClient->bindParam(3, $branch_id, PDO::PARAM_INT);
                 $stmtOldClient->execute();
-                $oldClientResult = $stmtOldClient->get_result();
-                $oldClientData = $oldClientResult->fetch_assoc();
-                $stmtOldClient->close();
+                $oldClientData = $stmtOldClient->fetch(PDO::FETCH_ASSOC);
                 
                 $oldClientType = isset($oldClientData['client_type']) ? $oldClientData['client_type'] : '';
                 if (!$oldClientType) {
@@ -430,11 +469,13 @@ if ($supplier != $originalSupplier) {
                                                     AND tenant_id = ?
                                                     AND branch_id = ?
                                                     ORDER BY created_at ASC";
-                    $stmtGetOldClientTransactions = $conn->prepare($getOldClientTransactionsQuery);
-                    $stmtGetOldClientTransactions->bind_param('iiii', $originalClient, $id, $tenant_id, $branch_id);
+                    $stmtGetOldClientTransactions = $pdo->prepare($getOldClientTransactionsQuery);
+                    $stmtGetOldClientTransactions->bindParam(1, $originalClient, PDO::PARAM_INT);
+                    $stmtGetOldClientTransactions->bindParam(2, $id, PDO::PARAM_INT);
+                    $stmtGetOldClientTransactions->bindParam(3, $tenant_id, PDO::PARAM_INT);
+                    $stmtGetOldClientTransactions->bindParam(4, $branch_id, PDO::PARAM_INT);
                     $stmtGetOldClientTransactions->execute();
-                    $oldClientTransactions = $stmtGetOldClientTransactions->get_result()->fetch_all(MYSQLI_ASSOC);
-                    $stmtGetOldClientTransactions->close();
+                    $oldClientTransactions = $stmtGetOldClientTransactions->fetchAll(PDO::FETCH_ASSOC);
 
                     // Get the earliest transaction date for this ticket
                     $earliestTransactionDate = null;
@@ -450,12 +491,14 @@ if ($supplier != $originalSupplier) {
                                                   AND tenant_id = ?
                                                   AND branch_id = ?
                                                   LIMIT 1";
-                    $stmtGetTransferTransaction = $conn->prepare($getTransferTransactionQuery);
-                    $stmtGetTransferTransaction->bind_param('iiii', $originalClient, $id, $tenant_id, $branch_id);
+                    $stmtGetTransferTransaction = $pdo->prepare($getTransferTransactionQuery);
+                    $stmtGetTransferTransaction->bindParam(1, $originalClient, PDO::PARAM_INT);
+                    $stmtGetTransferTransaction->bindParam(2, $id, PDO::PARAM_INT);
+                    $stmtGetTransferTransaction->bindParam(3, $tenant_id, PDO::PARAM_INT);
+                    $stmtGetTransferTransaction->bindParam(4, $branch_id, PDO::PARAM_INT);
                     $stmtGetTransferTransaction->execute();
-                    $transferTransactionResult = $stmtGetTransferTransaction->get_result();
-                    $transferTransactionDate = $transferTransactionResult->fetch_assoc()['created_at'];
-                    $stmtGetTransferTransaction->close();
+                    $transferTransactionData = $stmtGetTransferTransaction->fetch(PDO::FETCH_ASSOC);
+                    $transferTransactionDate = $transferTransactionData['created_at'];
 
                     // Calculate total amounts for USD and AFS
                     $totalUsdAmount = 0;
@@ -474,38 +517,47 @@ if ($supplier != $originalSupplier) {
                         // For example: if balance is -6095.600 and removing amount 265
                         // New balance should be -5830.600 (client owes less)
                         $updateOldClientUsdQuery = "UPDATE clients SET usd_balance = usd_balance + ? WHERE id = ? AND tenant_id = ? AND branch_id = ?";
-                        $stmtUpdateOldClientUsd = $conn->prepare($updateOldClientUsdQuery);
-                        $stmtUpdateOldClientUsd->bind_param('diii', $totalUsdAmount, $originalClient, $tenant_id, $branch_id);
+                        $stmtUpdateOldClientUsd = $pdo->prepare($updateOldClientUsdQuery);
+                        $stmtUpdateOldClientUsd->bindParam(1, $totalUsdAmount, PDO::PARAM_STR);
+                        $stmtUpdateOldClientUsd->bindParam(2, $originalClient, PDO::PARAM_INT);
+                        $stmtUpdateOldClientUsd->bindParam(3, $tenant_id, PDO::PARAM_INT);
+                        $stmtUpdateOldClientUsd->bindParam(4, $branch_id, PDO::PARAM_INT);
                         $stmtUpdateOldClientUsd->execute();
-                        $stmtUpdateOldClientUsd->close();
 
                         // Update subsequent USD transactions for old client
                         $updateOldClientUsdSubsequentQuery = "UPDATE client_transactions
-                                                             SET balance = balance + ?
-                                                             WHERE client_id = ?
-                                                             AND branch_id = ?
-                                                             AND id > (SELECT id FROM client_transactions
-                                                                      WHERE client_id = ?
-                                                                      AND reference_id = ?
-                                                                      AND transaction_of = 'ticket_sale'
-                                                                      AND branch_id = ?
-                                                                      LIMIT 1)
-                                                             AND currency = 'USD'
-                                                             AND tenant_id = ?
-                                                             ORDER BY created_at ASC, id ASC";
-                        $stmtUpdateOldClientUsdSubsequent = $conn->prepare($updateOldClientUsdSubsequentQuery);
-                        $stmtUpdateOldClientUsdSubsequent->bind_param('diiiiii', $totalUsdAmount, $originalClient, $branch_id, $originalClient, $id, $branch_id, $tenant_id);
-                        $stmtUpdateOldClientUsdSubsequent->execute();
-                        $stmtUpdateOldClientUsdSubsequent->close();
+                                                         SET balance = balance + ?
+                                                         WHERE client_id = ?
+                                                         AND branch_id = ?
+                                                         AND id > (SELECT id FROM client_transactions
+                                                                  WHERE client_id = ?
+                                                                  AND reference_id = ?
+                                                                  AND transaction_of = 'ticket_sale'
+                                                                  AND branch_id = ?
+                                                                  LIMIT 1)
+                                                         AND currency = 'USD'
+                                                         AND tenant_id = ?
+                                                         ORDER BY created_at ASC, id ASC";
+                    $stmtUpdateOldClientUsdSubsequent = $pdo->prepare($updateOldClientUsdSubsequentQuery);
+                    $stmtUpdateOldClientUsdSubsequent->bindParam(1, $totalUsdAmount, PDO::PARAM_STR);
+                    $stmtUpdateOldClientUsdSubsequent->bindParam(2, $originalClient, PDO::PARAM_INT);
+                    $stmtUpdateOldClientUsdSubsequent->bindParam(3, $branch_id, PDO::PARAM_INT);
+                    $stmtUpdateOldClientUsdSubsequent->bindParam(4, $originalClient, PDO::PARAM_INT);
+                    $stmtUpdateOldClientUsdSubsequent->bindParam(5, $id, PDO::PARAM_INT);
+                    $stmtUpdateOldClientUsdSubsequent->bindParam(6, $branch_id, PDO::PARAM_INT);
+                    $stmtUpdateOldClientUsdSubsequent->bindParam(7, $tenant_id, PDO::PARAM_INT);
+                    $stmtUpdateOldClientUsdSubsequent->execute();
                     }
                     
                     if ($totalAfsAmount > 0) {
                         // When removing a ticket from a client, we need to add the amount back
                         $updateOldClientAfsQuery = "UPDATE clients SET afs_balance = afs_balance + ? WHERE id = ? AND tenant_id = ? AND branch_id = ?";
-                        $stmtUpdateOldClientAfs = $conn->prepare($updateOldClientAfsQuery);
-                        $stmtUpdateOldClientAfs->bind_param('diii', $totalAfsAmount, $originalClient, $tenant_id, $branch_id);
+                        $stmtUpdateOldClientAfs = $pdo->prepare($updateOldClientAfsQuery);
+                        $stmtUpdateOldClientAfs->bindParam(1, $totalAfsAmount, PDO::PARAM_STR);
+                        $stmtUpdateOldClientAfs->bindParam(2, $originalClient, PDO::PARAM_INT);
+                        $stmtUpdateOldClientAfs->bindParam(3, $tenant_id, PDO::PARAM_INT);
+                        $stmtUpdateOldClientAfs->bindParam(4, $branch_id, PDO::PARAM_INT);
                         $stmtUpdateOldClientAfs->execute();
-                        $stmtUpdateOldClientAfs->close();
 
                         // Update subsequent AFS transactions for old client
                         $updateOldClientAfsSubsequentQuery = "UPDATE client_transactions
@@ -521,20 +573,25 @@ if ($supplier != $originalSupplier) {
                                                              AND currency = 'AFS'
                                                              AND tenant_id = ?
                                                              ORDER BY created_at ASC, id ASC";
-                        $stmtUpdateOldClientAfsSubsequent = $conn->prepare($updateOldClientAfsSubsequentQuery);
-                        $stmtUpdateOldClientAfsSubsequent->bind_param('diiiiii', $totalAfsAmount, $originalClient, $branch_id, $originalClient, $id, $branch_id, $tenant_id);
+                        $stmtUpdateOldClientAfsSubsequent = $pdo->prepare($updateOldClientAfsSubsequentQuery);
+                        $stmtUpdateOldClientAfsSubsequent->bindParam(1, $totalAfsAmount, PDO::PARAM_STR);
+                        $stmtUpdateOldClientAfsSubsequent->bindParam(2, $originalClient, PDO::PARAM_INT);
+                        $stmtUpdateOldClientAfsSubsequent->bindParam(3, $branch_id, PDO::PARAM_INT);
+                        $stmtUpdateOldClientAfsSubsequent->bindParam(4, $originalClient, PDO::PARAM_INT);
+                        $stmtUpdateOldClientAfsSubsequent->bindParam(5, $id, PDO::PARAM_INT);
+                        $stmtUpdateOldClientAfsSubsequent->bindParam(6, $branch_id, PDO::PARAM_INT);
+                        $stmtUpdateOldClientAfsSubsequent->bindParam(7, $tenant_id, PDO::PARAM_INT);
                         $stmtUpdateOldClientAfsSubsequent->execute();
-                        $stmtUpdateOldClientAfsSubsequent->close();
                     }
 
                     // Check if new client is regular
                     $newClientQuery = "SELECT * FROM clients WHERE id = ? AND tenant_id = ? AND branch_id = ?";
-                    $stmtNewClient = $conn->prepare($newClientQuery);
-                    $stmtNewClient->bind_param('iii', $sold_to, $tenant_id, $branch_id);
+                    $stmtNewClient = $pdo->prepare($newClientQuery);
+                    $stmtNewClient->bindParam(1, $sold_to, PDO::PARAM_INT);
+                    $stmtNewClient->bindParam(2, $tenant_id, PDO::PARAM_INT);
+                    $stmtNewClient->bindParam(3, $branch_id, PDO::PARAM_INT);
                     $stmtNewClient->execute();
-                    $newClientResult = $stmtNewClient->get_result();
-                    $newClientData = $newClientResult->fetch_assoc();
-                    $stmtNewClient->close();
+                    $newClientData = $stmtNewClient->fetch(PDO::FETCH_ASSOC);
 
                     $newClientType = isset($newClientData['client_type']) ? $newClientData['client_type'] : '';
                     if (!$newClientType) {
@@ -547,22 +604,22 @@ if ($supplier != $originalSupplier) {
                         // Get current balances of new client
                         $newClientUsdBalance = 0;
                         $newClientAfsBalance = 0;
-                        
+
                         $getNewClientUsdBalanceQuery = "SELECT usd_balance FROM clients WHERE id = ? AND tenant_id = ? AND branch_id = ?";
-                        $stmtGetNewClientUsdBalance = $conn->prepare($getNewClientUsdBalanceQuery);
-                        $stmtGetNewClientUsdBalance->bind_param('iii', $sold_to, $tenant_id, $branch_id);
+                        $stmtGetNewClientUsdBalance = $pdo->prepare($getNewClientUsdBalanceQuery);
+                        $stmtGetNewClientUsdBalance->bindParam(1, $sold_to, PDO::PARAM_INT);
+                        $stmtGetNewClientUsdBalance->bindParam(2, $tenant_id, PDO::PARAM_INT);
+                        $stmtGetNewClientUsdBalance->bindParam(3, $branch_id, PDO::PARAM_INT);
                         $stmtGetNewClientUsdBalance->execute();
-                        $stmtGetNewClientUsdBalance->bind_result($newClientUsdBalance);
-                        $stmtGetNewClientUsdBalance->fetch();
-                        $stmtGetNewClientUsdBalance->close();
+                        $newClientUsdBalance = $stmtGetNewClientUsdBalance->fetch(PDO::FETCH_ASSOC)['usd_balance'];
 
                         $getNewClientAfsBalanceQuery = "SELECT afs_balance FROM clients WHERE id = ? AND tenant_id = ? AND branch_id = ?";
-                        $stmtGetNewClientAfsBalance = $conn->prepare($getNewClientAfsBalanceQuery);
-                        $stmtGetNewClientAfsBalance->bind_param('iii', $sold_to, $tenant_id, $branch_id);
+                        $stmtGetNewClientAfsBalance = $pdo->prepare($getNewClientAfsBalanceQuery);
+                        $stmtGetNewClientAfsBalance->bindParam(1, $sold_to, PDO::PARAM_INT);
+                        $stmtGetNewClientAfsBalance->bindParam(2, $tenant_id, PDO::PARAM_INT);
+                        $stmtGetNewClientAfsBalance->bindParam(3, $branch_id, PDO::PARAM_INT);
                         $stmtGetNewClientAfsBalance->execute();
-                        $stmtGetNewClientAfsBalance->bind_result($newClientAfsBalance);
-                        $stmtGetNewClientAfsBalance->fetch();
-                        $stmtGetNewClientAfsBalance->close();
+                        $newClientAfsBalance = $stmtGetNewClientAfsBalance->fetch(PDO::FETCH_ASSOC)['afs_balance'];
 
                         // Update new client balances
                         if ($totalUsdAmount > 0) {
@@ -573,10 +630,12 @@ if ($supplier != $originalSupplier) {
                             $negativeAmount = abs($totalUsdAmount);
                             $ClientUsdBalance = $newClientUsdBalance - $negativeAmount;
                             $updateNewClientUsdQuery = "UPDATE clients SET usd_balance = ? WHERE id = ? AND tenant_id = ? AND branch_id = ?";
-                            $stmtUpdateNewClientUsd = $conn->prepare($updateNewClientUsdQuery);
-                            $stmtUpdateNewClientUsd->bind_param('diii', $ClientUsdBalance, $sold_to, $tenant_id, $branch_id);
+                            $stmtUpdateNewClientUsd = $pdo->prepare($updateNewClientUsdQuery);
+                            $stmtUpdateNewClientUsd->bindParam(1, $ClientUsdBalance, PDO::PARAM_STR);
+                            $stmtUpdateNewClientUsd->bindParam(2, $sold_to, PDO::PARAM_INT);
+                            $stmtUpdateNewClientUsd->bindParam(3, $tenant_id, PDO::PARAM_INT);
+                            $stmtUpdateNewClientUsd->bindParam(4, $branch_id, PDO::PARAM_INT);
                             $stmtUpdateNewClientUsd->execute();
-                            $stmtUpdateNewClientUsd->close();
 
                             // Update subsequent USD transactions for new client
                             if ($earliestTransactionDate) {
@@ -593,20 +652,27 @@ if ($supplier != $originalSupplier) {
                                                                     AND currency = 'USD'
                                                                     AND tenant_id = ?
                                                                     ORDER BY created_at ASC, id ASC";
-                                $stmtUpdateNewClientUsdSubsequent = $conn->prepare($updateNewClientUsdSubsequentQuery);
-                                $stmtUpdateNewClientUsdSubsequent->bind_param('diiiiii', $negativeAmount, $sold_to, $branch_id, $sold_to, $id, $branch_id, $tenant_id);
+                                $stmtUpdateNewClientUsdSubsequent = $pdo->prepare($updateNewClientUsdSubsequentQuery);
+                                $stmtUpdateNewClientUsdSubsequent->bindParam(1, $negativeAmount, PDO::PARAM_STR);
+                                $stmtUpdateNewClientUsdSubsequent->bindParam(2, $sold_to, PDO::PARAM_INT);
+                                $stmtUpdateNewClientUsdSubsequent->bindParam(3, $branch_id, PDO::PARAM_INT);
+                                $stmtUpdateNewClientUsdSubsequent->bindParam(4, $sold_to, PDO::PARAM_INT);
+                                $stmtUpdateNewClientUsdSubsequent->bindParam(5, $id, PDO::PARAM_INT);
+                                $stmtUpdateNewClientUsdSubsequent->bindParam(6, $branch_id, PDO::PARAM_INT);
+                                $stmtUpdateNewClientUsdSubsequent->bindParam(7, $tenant_id, PDO::PARAM_INT);
                                 $stmtUpdateNewClientUsdSubsequent->execute();
-                                $stmtUpdateNewClientUsdSubsequent->close();
                             }
                         }
                         
                         if ($totalAfsAmount > 0) {
                             // When adding a ticket to a client with negative balance, we need to subtract the amount
                             $updateNewClientAfsQuery = "UPDATE clients SET afs_balance = afs_balance - ? WHERE id = ? AND tenant_id = ? AND branch_id = ?";
-                            $stmtUpdateNewClientAfs = $conn->prepare($updateNewClientAfsQuery);
-                            $stmtUpdateNewClientAfs->bind_param('diii', $totalAfsAmount, $sold_to, $tenant_id, $branch_id);
+                            $stmtUpdateNewClientAfs = $pdo->prepare($updateNewClientAfsQuery);
+                            $stmtUpdateNewClientAfs->bindParam(1, $totalAfsAmount, PDO::PARAM_STR);
+                            $stmtUpdateNewClientAfs->bindParam(2, $sold_to, PDO::PARAM_INT);
+                            $stmtUpdateNewClientAfs->bindParam(3, $tenant_id, PDO::PARAM_INT);
+                            $stmtUpdateNewClientAfs->bindParam(4, $branch_id, PDO::PARAM_INT);
                             $stmtUpdateNewClientAfs->execute();
-                            $stmtUpdateNewClientAfs->close();
 
                             // Update subsequent AFS transactions for new client
                             if ($earliestTransactionDate) {
@@ -623,10 +689,15 @@ if ($supplier != $originalSupplier) {
                                                                     AND currency = 'AFS'
                                                                     AND tenant_id = ?
                                                                     ORDER BY created_at ASC, id ASC";
-                                $stmtUpdateNewClientAfsSubsequent = $conn->prepare($updateNewClientAfsSubsequentQuery);
-                                $stmtUpdateNewClientAfsSubsequent->bind_param('diiiiii', $totalAfsAmount, $sold_to, $branch_id, $sold_to, $id, $branch_id, $tenant_id);
+                                $stmtUpdateNewClientAfsSubsequent = $pdo->prepare($updateNewClientAfsSubsequentQuery);
+                                $stmtUpdateNewClientAfsSubsequent->bindParam(1, $totalAfsAmount, PDO::PARAM_STR);
+                                $stmtUpdateNewClientAfsSubsequent->bindParam(2, $sold_to, PDO::PARAM_INT);
+                                $stmtUpdateNewClientAfsSubsequent->bindParam(3, $branch_id, PDO::PARAM_INT);
+                                $stmtUpdateNewClientAfsSubsequent->bindParam(4, $sold_to, PDO::PARAM_INT);
+                                $stmtUpdateNewClientAfsSubsequent->bindParam(5, $id, PDO::PARAM_INT);
+                                $stmtUpdateNewClientAfsSubsequent->bindParam(6, $branch_id, PDO::PARAM_INT);
+                                $stmtUpdateNewClientAfsSubsequent->bindParam(7, $tenant_id, PDO::PARAM_INT);
                                 $stmtUpdateNewClientAfsSubsequent->execute();
-                                $stmtUpdateNewClientAfsSubsequent->close();
                             }
                         }
                     }
@@ -640,22 +711,26 @@ if ($supplier != $originalSupplier) {
                                               AND transaction_of = 'ticket_sale'
                                               AND tenant_id = ?
                                               AND branch_id = ?";
-                    $stmtUpdateTransactions = $conn->prepare($updateTransactionsQuery);
-                    $stmtUpdateTransactions->bind_param('iiiiii', $sold_to, $originalClient, $originalClient, $id, $tenant_id, $branch_id);
+                    $stmtUpdateTransactions = $pdo->prepare($updateTransactionsQuery);
+                    $stmtUpdateTransactions->bindParam(1, $sold_to, PDO::PARAM_INT);
+                    $stmtUpdateTransactions->bindParam(2, $originalClient, PDO::PARAM_INT);
+                    $stmtUpdateTransactions->bindParam(3, $originalClient, PDO::PARAM_INT);
+                    $stmtUpdateTransactions->bindParam(4, $id, PDO::PARAM_INT);
+                    $stmtUpdateTransactions->bindParam(5, $tenant_id, PDO::PARAM_INT);
+                    $stmtUpdateTransactions->bindParam(6, $branch_id, PDO::PARAM_INT);
                     $stmtUpdateTransactions->execute();
-                    $stmtUpdateTransactions->close();
                 }
             }
             
             // Check if new client exists and is regular
             if ($sold_to > 0) {
                 $clientQuery = "SELECT * FROM clients WHERE id = ? AND tenant_id = ? AND branch_id = ?";
-                $stmtClient = $conn->prepare($clientQuery);
-                $stmtClient->bind_param('iii', $sold_to, $tenant_id, $branch_id);
+                $stmtClient = $pdo->prepare($clientQuery);
+                $stmtClient->bindParam(1, $sold_to, PDO::PARAM_INT);
+                $stmtClient->bindParam(2, $tenant_id, PDO::PARAM_INT);
+                $stmtClient->bindParam(3, $branch_id, PDO::PARAM_INT);
                 $stmtClient->execute();
-                $clientResult = $stmtClient->get_result();
-                $clientData = $clientResult->fetch_assoc();
-                $stmtClient->close();
+                $clientData = $stmtClient->fetch(PDO::FETCH_ASSOC);
                 
                 $clientType = isset($clientData['client_type']) ? $clientData['client_type'] : '';
                 if (!$clientType) {
@@ -670,27 +745,35 @@ if ($supplier != $originalSupplier) {
                         // This DECREASES the balance (client owes more)
                         $balanceField = strtolower($currency) === 'usd' ? 'usd_balance' : 'afs_balance';
                         $updateClientQuery = "UPDATE clients SET $balanceField = $balanceField - ? WHERE id = ? AND tenant_id = ? AND branch_id = ?";
-                        $stmtUpdateClient = $conn->prepare($updateClientQuery);
-                        $stmtUpdateClient->bind_param('diii', $sold, $sold_to, $tenant_id, $branch_id);
+                        $stmtUpdateClient = $pdo->prepare($updateClientQuery);
+                        $stmtUpdateClient->bindParam(1, $sold, PDO::PARAM_STR);
+                        $stmtUpdateClient->bindParam(2, $sold_to, PDO::PARAM_INT);
+                        $stmtUpdateClient->bindParam(3, $tenant_id, PDO::PARAM_INT);
+                        $stmtUpdateClient->bindParam(4, $branch_id, PDO::PARAM_INT);
                         $stmtUpdateClient->execute();
-                        $stmtUpdateClient->close();
                         
                         // Get current client balance for the transaction record
                         $getCurrentBalanceQuery = "SELECT $balanceField FROM clients WHERE id = ? AND tenant_id = ? AND branch_id = ?";
-                        $stmtGetCurrentBalance = $conn->prepare($getCurrentBalanceQuery);
-                        $stmtGetCurrentBalance->bind_param('iii', $sold_to, $tenant_id, $branch_id);
+                        $stmtGetCurrentBalance = $pdo->prepare($getCurrentBalanceQuery);
+                        $stmtGetCurrentBalance->bindParam(1, $sold_to, PDO::PARAM_INT);
+                        $stmtGetCurrentBalance->bindParam(2, $tenant_id, PDO::PARAM_INT);
+                        $stmtGetCurrentBalance->bindParam(3, $branch_id, PDO::PARAM_INT);
                         $stmtGetCurrentBalance->execute();
-                        $stmtGetCurrentBalance->bind_result($currentBalance);
-                        $stmtGetCurrentBalance->fetch();
-                        $stmtGetCurrentBalance->close();
+                        $currentBalance = $stmtGetCurrentBalance->fetch(PDO::FETCH_ASSOC)[$balanceField];
                         
                         // Create new transaction record for new client
                         $insertClientTransactionQuery = "INSERT INTO client_transactions (client_id, reference_id, type, amount, currency, balance, description, transaction_of, tenant_id, branch_id, receipt) VALUES (?, ?, 'debit', ?, ?, ?, ?, 'ticket_sale', ?, ?, NULL)";
-                        $stmtInsertClientTransaction = $conn->prepare($insertClientTransactionQuery);
+                        $stmtInsertClientTransaction = $pdo->prepare($insertClientTransactionQuery);
                         $description = "Sale for ticket: $passenger_name ($origin to $destination)";
-                        $stmtInsertClientTransaction->bind_param('iidsdsiii', $sold_to, $id, $sold, $currency, $currentBalance, $description, $tenant_id, $branch_id);
+                        $stmtInsertClientTransaction->bindParam(1, $sold_to, PDO::PARAM_INT);
+                        $stmtInsertClientTransaction->bindParam(2, $id, PDO::PARAM_INT);
+                        $stmtInsertClientTransaction->bindParam(3, $sold, PDO::PARAM_STR);
+                        $stmtInsertClientTransaction->bindParam(4, $currency, PDO::PARAM_STR);
+                        $stmtInsertClientTransaction->bindParam(5, $currentBalance, PDO::PARAM_STR);
+                        $stmtInsertClientTransaction->bindParam(6, $description, PDO::PARAM_STR);
+                        $stmtInsertClientTransaction->bindParam(7, $tenant_id, PDO::PARAM_INT);
+                        $stmtInsertClientTransaction->bindParam(8, $branch_id, PDO::PARAM_INT);
                         $stmtInsertClientTransaction->execute();
-                        $stmtInsertClientTransaction->close();
                     } 
                     // Same client but sold price changed
                     else if ($soldDifference != 0) {
@@ -698,12 +781,12 @@ if ($supplier != $originalSupplier) {
                         
                         // Get current client balance before update
                         $getCurrentBalanceQuery = "SELECT $balanceField FROM clients WHERE id = ? AND tenant_id = ? AND branch_id = ?";
-                        $stmtGetCurrentBalance = $conn->prepare($getCurrentBalanceQuery);
-                        $stmtGetCurrentBalance->bind_param('iii', $sold_to, $tenant_id, $branch_id);
+                        $stmtGetCurrentBalance = $pdo->prepare($getCurrentBalanceQuery);
+                        $stmtGetCurrentBalance->bindParam(1, $sold_to, PDO::PARAM_INT);
+                        $stmtGetCurrentBalance->bindParam(2, $tenant_id, PDO::PARAM_INT);
+                        $stmtGetCurrentBalance->bindParam(3, $branch_id, PDO::PARAM_INT);
                         $stmtGetCurrentBalance->execute();
-                        $stmtGetCurrentBalance->bind_result($currentBalance);
-                        $stmtGetCurrentBalance->fetch();
-                        $stmtGetCurrentBalance->close();
+                        $currentBalance = $stmtGetCurrentBalance->fetch(PDO::FETCH_ASSOC)[$balanceField];
                         
                         // Calculate new balance
                         $newBalance = 0;
@@ -719,24 +802,28 @@ if ($supplier != $originalSupplier) {
                             $newBalance = $currentBalance - $soldDifference;
                         }
                         
-                        $stmtUpdateClient = $conn->prepare($updateClientQuery);
-                        $stmtUpdateClient->bind_param('diii', $soldDifference, $sold_to, $tenant_id, $branch_id);
+                        $stmtUpdateClient = $pdo->prepare($updateClientQuery);
+                        $stmtUpdateClient->bindParam(1, $soldDifference, PDO::PARAM_STR);
+                        $stmtUpdateClient->bindParam(2, $sold_to, PDO::PARAM_INT);
+                        $stmtUpdateClient->bindParam(3, $tenant_id, PDO::PARAM_INT);
+                        $stmtUpdateClient->bindParam(4, $branch_id, PDO::PARAM_INT);
                         $stmtUpdateClient->execute();
-                        $stmtUpdateClient->close();
                         
                         // Check if transaction record exists for this client
                         $checkClientTransactionQuery = "SELECT id, created_at, balance, amount FROM client_transactions WHERE client_id = ? AND reference_id = ? AND transaction_of = 'ticket_sale' AND tenant_id = ? AND branch_id = ? LIMIT 1";
-                        $stmtCheckClientTransaction = $conn->prepare($checkClientTransactionQuery);
-                        $stmtCheckClientTransaction->bind_param('iiii', $sold_to, $id, $tenant_id, $branch_id);
+                        $stmtCheckClientTransaction = $pdo->prepare($checkClientTransactionQuery);
+                        $stmtCheckClientTransaction->bindParam(1, $sold_to, PDO::PARAM_INT);
+                        $stmtCheckClientTransaction->bindParam(2, $id, PDO::PARAM_INT);
+                        $stmtCheckClientTransaction->bindParam(3, $tenant_id, PDO::PARAM_INT);
+                        $stmtCheckClientTransaction->bindParam(4, $branch_id, PDO::PARAM_INT);
                         $stmtCheckClientTransaction->execute();
-                        $clientTransactionResult = $stmtCheckClientTransaction->get_result();
+                        $clientTransaction = $stmtCheckClientTransaction->fetch(PDO::FETCH_ASSOC);
                         
-                        if ($clientTransactionResult->num_rows > 0) {
-                            $transactionRow = $clientTransactionResult->fetch_assoc();
-                            $transactionId = $transactionRow['id'];
-                            $transactionDate = $transactionRow['created_at'];
-                            $currentTransactionBalance = $transactionRow['balance'];
-                            $currentTransactionAmount = $transactionRow['amount'];
+                        if ($clientTransaction) {
+                            $transactionId = $clientTransaction['id'];
+                            $transactionDate = $clientTransaction['created_at'];
+                            $currentTransactionBalance = $clientTransaction['balance'];
+                            $currentTransactionAmount = $clientTransaction['amount'];
                             
                             // Calculate the difference between the new sold amount and the current transaction amount
                             $amountDifference = $sold - $currentTransactionAmount;
@@ -748,12 +835,12 @@ if ($supplier != $originalSupplier) {
                             
                             // Get the current transaction's date
                             $getCurrentTransactionQuery = "SELECT created_at FROM client_transactions WHERE id = ? AND tenant_id = ? AND branch_id = ? LIMIT 1";
-                            $stmtGetCurrentTransaction = $conn->prepare($getCurrentTransactionQuery);
-                            $stmtGetCurrentTransaction->bind_param('iii', $transactionId, $tenant_id, $branch_id);
+                            $stmtGetCurrentTransaction = $pdo->prepare($getCurrentTransactionQuery);
+                            $stmtGetCurrentTransaction->bindParam(1, $transactionId, PDO::PARAM_INT);
+                            $stmtGetCurrentTransaction->bindParam(2, $tenant_id, PDO::PARAM_INT);
+                            $stmtGetCurrentTransaction->bindParam(3, $branch_id, PDO::PARAM_INT);
                             $stmtGetCurrentTransaction->execute();
-                            $currentTransactionResult = $stmtGetCurrentTransaction->get_result();
-                            $currentTransactionDate = $currentTransactionResult->fetch_assoc()['created_at'];
-                            $stmtGetCurrentTransaction->close();
+                            $currentTransactionDate = $stmtGetCurrentTransaction->fetch(PDO::FETCH_ASSOC)['created_at'];
                             
                             // Update existing transaction record with adjusted balance
                             $updateClientTransactionQuery = "UPDATE client_transactions
@@ -761,10 +848,13 @@ if ($supplier != $originalSupplier) {
                                                                balance = balance + ?,
                                                                description = CONCAT('Updated: ', description)
                                                            WHERE id = ? AND tenant_id = ? AND branch_id = ?";
-                            $stmtUpdateClientTransaction = $conn->prepare($updateClientTransactionQuery);
-                            $stmtUpdateClientTransaction->bind_param('ddiii', $sold, $balanceAdjustment, $transactionId, $tenant_id, $branch_id);
+                            $stmtUpdateClientTransaction = $pdo->prepare($updateClientTransactionQuery);
+                            $stmtUpdateClientTransaction->bindParam(1, $sold, PDO::PARAM_STR);
+                            $stmtUpdateClientTransaction->bindParam(2, $balanceAdjustment, PDO::PARAM_STR);
+                            $stmtUpdateClientTransaction->bindParam(3, $transactionId, PDO::PARAM_INT);
+                            $stmtUpdateClientTransaction->bindParam(4, $tenant_id, PDO::PARAM_INT);
+                            $stmtUpdateClientTransaction->bindParam(5, $branch_id, PDO::PARAM_INT);
                             $stmtUpdateClientTransaction->execute();
-                            $stmtUpdateClientTransaction->close();
                             
                             // Update all subsequent transactions' balances
                             $updateSubsequentQuery = "UPDATE client_transactions
@@ -776,20 +866,30 @@ if ($supplier != $originalSupplier) {
                                                      AND tenant_id = ?
                                                      ORDER BY created_at ASC";
 
-                            $stmtUpdateSubsequent = $conn->prepare($updateSubsequentQuery);
-                            $stmtUpdateSubsequent->bind_param('dissii', $balanceAdjustment, $sold_to, $branch_id, $currency, $transactionId, $tenant_id);
+                            $stmtUpdateSubsequent = $pdo->prepare($updateSubsequentQuery);
+                            $stmtUpdateSubsequent->bindParam(1, $balanceAdjustment, PDO::PARAM_STR);
+                            $stmtUpdateSubsequent->bindParam(2, $sold_to, PDO::PARAM_INT);
+                            $stmtUpdateSubsequent->bindParam(3, $branch_id, PDO::PARAM_INT);
+                            $stmtUpdateSubsequent->bindParam(4, $currency, PDO::PARAM_STR);
+                            $stmtUpdateSubsequent->bindParam(5, $transactionId, PDO::PARAM_INT);
+                            $stmtUpdateSubsequent->bindParam(6, $tenant_id, PDO::PARAM_INT);
                             $stmtUpdateSubsequent->execute();
                             $stmtUpdateSubsequent->close();
                         } else {
                             // Create new transaction record if one doesn't exist
                             $insertClientTransactionQuery = "INSERT INTO client_transactions (client_id, reference_id, type, amount, currency, balance, description, transaction_of, tenant_id, branch_id, receipt) VALUES (?, ?, 'debit', ?, ?, ?, ?, 'ticket_sale', ?, ?, '')";
-                            $stmtInsertClientTransaction = $conn->prepare($insertClientTransactionQuery);
+                            $stmtInsertClientTransaction = $pdo->prepare($insertClientTransactionQuery);
                             $description = "Sale for ticket: $passenger_name ($origin to $destination)";
-                            $stmtInsertClientTransaction->bind_param('iidsdsiii', $sold_to, $id, $sold, $currency, $newBalance, $description, $tenant_id, $branch_id);
+                            $stmtInsertClientTransaction->bindParam(1, $sold_to, PDO::PARAM_INT);
+                            $stmtInsertClientTransaction->bindParam(2, $id, PDO::PARAM_INT);
+                            $stmtInsertClientTransaction->bindParam(3, $sold, PDO::PARAM_STR);
+                            $stmtInsertClientTransaction->bindParam(4, $currency, PDO::PARAM_STR);
+                            $stmtInsertClientTransaction->bindParam(5, $newBalance, PDO::PARAM_STR);
+                            $stmtInsertClientTransaction->bindParam(6, $description, PDO::PARAM_STR);
+                            $stmtInsertClientTransaction->bindParam(7, $tenant_id, PDO::PARAM_INT);
+                            $stmtInsertClientTransaction->bindParam(8, $branch_id, PDO::PARAM_INT);
                             $stmtInsertClientTransaction->execute();
-                            $stmtInsertClientTransaction->close();
                         }
-                        $stmtCheckClientTransaction->close();
                     }
                 }
             }
@@ -823,38 +923,35 @@ if ($supplier != $originalSupplier) {
             paid_to = ?
             WHERE id = ? AND tenant_id = ? AND branch_id = ?";
 
-        $stmtTicket = $conn->prepare($updateTicketQuery);
-        $stmtTicket->bind_param(
-            'iisssssssssssssssssdddssisii',
-            $supplier,
-            $sold_to,
-            $trip_type,
-            $title,
-            $gender,
-            $passenger_name,
-            $pnr,
-            $phone,
-            $origin,
-            $destination,
-            $return_origin,
-            $return_destination,
-            $airline,
-            $issue_date,
-            $departure_date,
-            $departure_time,
-            $return_date,
-            $return_departure_time,
-            $base,  // This maps to the 'price' field in the database
-            $sold,
-            $profit,
-            $currency,
-            $description,
-            $paid_to,
-            $id,
-            $tenant_id,
-            $branch_id
-        );
-        
+        $stmtTicket = $pdo->prepare($updateTicketQuery);
+        $stmtTicket->bindParam(1, $supplier, PDO::PARAM_INT);
+        $stmtTicket->bindParam(2, $sold_to, PDO::PARAM_INT);
+        $stmtTicket->bindParam(3, $trip_type, PDO::PARAM_STR);
+        $stmtTicket->bindParam(4, $title, PDO::PARAM_STR);
+        $stmtTicket->bindParam(5, $gender, PDO::PARAM_STR);
+        $stmtTicket->bindParam(6, $passenger_name, PDO::PARAM_STR);
+        $stmtTicket->bindParam(7, $pnr, PDO::PARAM_STR);
+        $stmtTicket->bindParam(8, $phone, PDO::PARAM_STR);
+        $stmtTicket->bindParam(9, $origin, PDO::PARAM_STR);
+        $stmtTicket->bindParam(10, $destination, PDO::PARAM_STR);
+        $stmtTicket->bindParam(11, $return_origin, PDO::PARAM_STR);
+        $stmtTicket->bindParam(12, $return_destination, PDO::PARAM_STR);
+        $stmtTicket->bindParam(13, $airline, PDO::PARAM_STR);
+        $stmtTicket->bindParam(14, $issue_date, PDO::PARAM_STR);
+        $stmtTicket->bindParam(15, $departure_date, PDO::PARAM_STR);
+        $stmtTicket->bindParam(16, $departure_time, PDO::PARAM_STR);
+        $stmtTicket->bindParam(17, $return_date, PDO::PARAM_STR);
+        $stmtTicket->bindParam(18, $return_departure_time, PDO::PARAM_STR);
+        $stmtTicket->bindParam(19, $base, PDO::PARAM_STR);  // This maps to the 'price' field in the database
+        $stmtTicket->bindParam(20, $sold, PDO::PARAM_STR);
+        $stmtTicket->bindParam(21, $profit, PDO::PARAM_STR);
+        $stmtTicket->bindParam(22, $currency, PDO::PARAM_STR);
+        $stmtTicket->bindParam(23, $description, PDO::PARAM_STR);
+        $stmtTicket->bindParam(24, $paid_to, PDO::PARAM_INT);
+        $stmtTicket->bindParam(25, $id, PDO::PARAM_INT);
+        $stmtTicket->bindParam(26, $tenant_id, PDO::PARAM_INT);
+        $stmtTicket->bindParam(27, $branch_id, PDO::PARAM_INT);
+
         $stmtTicket->execute();
         
         // Add activity logging
@@ -903,40 +1000,37 @@ if ($supplier != $originalSupplier) {
         $action = 'update';
         $table_name = 'ticket_bookings';
         // Insert activity log
-        $activity_log_stmt = $conn->prepare("INSERT INTO activity_log
+        $activity_log_stmt = $pdo->prepare("INSERT INTO activity_log
             (user_id, action, table_name, record_id, old_values, new_values, ip_address, user_agent, tenant_id, branch_id)
             VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)");
 
         // Store JSON encoded values in variables first
         $old_values_json = json_encode($old_values);
         $new_values_json = json_encode($new_values);
-        
-        $activity_log_stmt->bind_param("isisssssii",
-            $user_id,
-            $action,
-            $table_name,
-            $id,
-            $old_values_json,  // Use the stored JSON string
-            $new_values_json,  // Use the stored JSON string
-            $ip_address,
-            $user_agent,
-            $tenant_id,
-            $branch_id
-        );
+
+        $activity_log_stmt->bindParam(1, $user_id, PDO::PARAM_INT);
+        $activity_log_stmt->bindParam(2, $action, PDO::PARAM_STR);
+        $activity_log_stmt->bindParam(3, $table_name, PDO::PARAM_STR);
+        $activity_log_stmt->bindParam(4, $id, PDO::PARAM_INT);
+        $activity_log_stmt->bindParam(5, $old_values_json, PDO::PARAM_STR);  // Use the stored JSON string
+        $activity_log_stmt->bindParam(6, $new_values_json, PDO::PARAM_STR);  // Use the stored JSON string
+        $activity_log_stmt->bindParam(7, $ip_address, PDO::PARAM_STR);
+        $activity_log_stmt->bindParam(8, $user_agent, PDO::PARAM_STR);
+        $activity_log_stmt->bindParam(9, $tenant_id, PDO::PARAM_INT);
+        $activity_log_stmt->bindParam(10, $branch_id, PDO::PARAM_INT);
         $activity_log_stmt->execute();
         
         // Commit transaction
-        $conn->commit();
-        
+        $pdo->commit();
+
         $response['success'] = true;
         $response['message'] = 'Ticket updated successfully';
     } catch (Exception $e) {
         // Rollback transaction on error
-        $conn->rollback();
+        $pdo->rollback();
         $response['message'] = 'Error updating ticket: ' . $e->getMessage();
     }
 }
 
 echo json_encode($response);
-$conn->close();
 ?>

@@ -9,7 +9,6 @@ $branch_id = $_SESSION['branch_id'];
 
 // Database connection
 require_once('../../includes/db.php');
-include '../../includes/conn.php';
 
 // Get transaction ID from URL
 $transaction_id = isset($_GET['transaction_id']) ? (int)$_GET['transaction_id'] : 0;
@@ -39,31 +38,23 @@ $query = "
     WHERE mat.id = ? AND mat.tenant_id = ? AND mat.branch_id = ?
 ";
 
-$stmt = $conn->prepare($query);
-$stmt->bind_param("iii", $transaction_id, $tenant_id, $branch_id);
+$stmt = $pdo->prepare($query);
+$stmt->bindParam(1, $transaction_id, PDO::PARAM_INT);
+$stmt->bindParam(2, $tenant_id, PDO::PARAM_INT);
+$stmt->bindParam(3, $branch_id, PDO::PARAM_INT);
 $stmt->execute();
-$result = $stmt->get_result();
 
-if ($result->num_rows === 0) {
+$transaction = $stmt->fetch(PDO::FETCH_ASSOC);
+if (!$transaction) {
     die(__('transaction_not_found'));
 }
 
-$transaction = $result->fetch_assoc();
-
-// Fetch settings data (using mysqli connection)
+// Fetch settings data (using PDO connection)
 try {
-    $settingStmt = $conn->prepare("SELECT * FROM settings WHERE tenant_id = ?");
-    if (!$settingStmt) {
-        throw new Exception("Prepare failed for settings query: " . $conn->error);
-    }
-
-    $settingStmt->bind_param("i", $tenant_id);
-    if (!$settingStmt->execute()) {
-        throw new Exception("Execute failed for settings query: " . $settingStmt->error);
-    }
-
-    $result = $settingStmt->get_result();
-    $settings = $result ? $result->fetch_assoc() : null;
+    $settingStmt = $pdo->prepare("SELECT * FROM settings WHERE tenant_id = ?");
+    $settingStmt->bindParam(1, $tenant_id, PDO::PARAM_INT);
+    $settingStmt->execute();
+    $settings = $settingStmt->fetch(PDO::FETCH_ASSOC);
 
     if (!$settings) {
         // Fallback defaults if no settings row found
@@ -76,18 +67,11 @@ try {
 
 // Fetch branch data (from branches table)
 try {
-    $branchStmt = $conn->prepare("SELECT name, code FROM branches WHERE id = ? AND tenant_id = ?");
-    if (!$branchStmt) {
-        throw new Exception("Prepare failed for branch query: " . $conn->error);
-    }
-
-    $branchStmt->bind_param("ii", $branch_id, $tenant_id);
-    if (!$branchStmt->execute()) {
-        throw new Exception("Execute failed for branch query: " . $branchStmt->error);
-    }
-
-    $branchResult = $branchStmt->get_result();
-    $branch       = $branchResult ? $branchResult->fetch_assoc() : null;
+    $branchStmt = $pdo->prepare("SELECT name, code FROM branches WHERE id = ? AND tenant_id = ?");
+    $branchStmt->bindParam(1, $branch_id, PDO::PARAM_INT);
+    $branchStmt->bindParam(2, $tenant_id, PDO::PARAM_INT);
+    $branchStmt->execute();
+    $branch = $branchStmt->fetch(PDO::FETCH_ASSOC);
 } catch (Exception $e) {
     error_log("Branch Error: " . $e->getMessage());
     $branch = null;

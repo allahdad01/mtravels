@@ -25,7 +25,7 @@ if (!isset($_GET['supplier_id']) || !is_numeric($_GET['supplier_id'])) {
 $supplierId = intval($_GET['supplier_id']);
 
 // Database connection
-require_once('../../includes/conn.php');
+require_once('../../includes/db.php');
 
 // Prepare and execute query with left joins to fetch reference information
 $query = "SELECT st.*,
@@ -69,20 +69,14 @@ $query = "SELECT st.*,
           WHERE st.supplier_id = ? AND st.tenant_id = ? AND st.branch_id = ?
           ORDER BY st.id DESC";
 
-$stmt = $conn->prepare($query);
-$stmt->bind_param("iii", $supplierId, $tenant_id, $branch_id);
+$stmt = $pdo->prepare($query);
+$stmt->bindParam(1, $supplierId, PDO::PARAM_INT);
+$stmt->bindParam(2, $tenant_id, PDO::PARAM_INT);
+$stmt->bindParam(3, $branch_id, PDO::PARAM_INT);
 $stmt->execute();
-$result = $stmt->get_result();
 
 // Fetch all transactions
-$transactions = [];
-while ($row = $result->fetch_assoc()) {
-    $transactions[] = $row;
-}
-
-// Close connection
-$stmt->close();
-$conn->close();
+$transactions = $stmt->fetchAll(PDO::FETCH_ASSOC);
 
 // Return transactions as JSON
 header('Content-Type: application/json');

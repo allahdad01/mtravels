@@ -12,7 +12,6 @@ enforce_auth();
 
 // Include database connection
 include '../../includes/db.php';
-include '../../includes/conn.php';
 
 // Initialize variables
 $hotelId = isset($_GET['id']) ? intval($_GET['id']) : 0;

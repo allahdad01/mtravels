@@ -32,16 +32,6 @@ try {
     die("A database error occurred. Please try again later.");
 }
 
-// Legacy mysqli connection for backward compatibility
-try {
-    $conection_db = new mysqli(DB_SERVER, DB_USERNAME, DB_PASSWORD, DB_NAME);
-    if ($conection_db->connect_error) {
-        throw new Exception("Connection failed: " . $conection_db->connect_error);
-    }
-} catch (Exception $e) {
-    error_log("MySQLi Connection Error: " . $e->getMessage());
-    die("A database error occurred. Please try again later.");
-}
 
 // Function to sanitize input data
 function sanitize_input($data) {

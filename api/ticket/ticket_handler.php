@@ -1,7 +1,6 @@
 <?php
 // Database connection
 require_once('../includes/db.php');
-include '../includes/conn.php';
 
 $tenant_id = $_SESSION['tenant_id'];
 $branch_id = $_SESSION['branch_id'];
@@ -38,17 +37,22 @@ if (!empty($search)) {
 $totalCountQuery = "SELECT COUNT(*) as total
                     FROM ticket_bookings tb
                     WHERE tb.tenant_id = ? AND tb.branch_id = ? $searchCondition";
-$stmtCount = $conn->prepare($totalCountQuery);
+$stmtCount = $pdo->prepare($totalCountQuery);
 
 if (!empty($searchCondition)) {
-    $stmtCount->bind_param("s".$searchTypes, $tenant_id, $branch_id, ...$searchParams);
+    $stmtCount->bindParam(1, $tenant_id, PDO::PARAM_INT);
+    $stmtCount->bindParam(2, $branch_id, PDO::PARAM_INT);
+    $paramIndex = 3;
+    foreach ($searchParams as $param) {
+        $stmtCount->bindParam($paramIndex++, $param, PDO::PARAM_STR);
+    }
 } else {
-    $stmtCount->bind_param("si", $tenant_id, $branch_id);
+    $stmtCount->bindParam(1, $tenant_id, PDO::PARAM_INT);
+    $stmtCount->bindParam(2, $branch_id, PDO::PARAM_INT);
 }
 $stmtCount->execute();
-$totalTickets = $stmtCount->get_result()->fetch_assoc()['total'];
+$totalTickets = $stmtCount->fetch(PDO::FETCH_ASSOC)['total'];
 $total_pages  = ceil($totalTickets / $results_per_page);
-$stmtCount->close();
 
 // Main query
 $ticketsQuery = "
@@ -88,32 +92,37 @@ $ticketsQuery = "
     LIMIT ?, ?
 ";
 
-$stmt = $conn->prepare($ticketsQuery);
+$stmt = $pdo->prepare($ticketsQuery);
 
 // Bind params
 if (!empty($searchCondition)) {
-    // Add tenant_id, branch_id, offset, and limit to params
-    $params = array_merge([$tenant_id, $branch_id], $searchParams, [$offset, $results_per_page]);
-    $types  = "i" . $searchTypes . "ii";
+    // Bind tenant_id, branch_id, offset, and limit
+    $stmt->bindParam(1, $tenant_id, PDO::PARAM_INT);
+    $stmt->bindParam(2, $branch_id, PDO::PARAM_INT);
 
-    // Prepare array for bind_param (needs references)
-    $bind_names[] = $types;
-    foreach ($params as $key => $value) {
-        $bind_names[] = &$params[$key];
+    // Bind search parameters
+    $paramIndex = 3;
+    foreach ($searchParams as $param) {
+        $stmt->bindParam($paramIndex++, $param, PDO::PARAM_STR);
     }
 
-    call_user_func_array([$stmt, 'bind_param'], $bind_names);
+    // Bind offset and limit
+    $stmt->bindParam($paramIndex++, $offset, PDO::PARAM_INT);
+    $stmt->bindParam($paramIndex++, $results_per_page, PDO::PARAM_INT);
 
 } else {
-    $stmt->bind_param("iiii", $tenant_id, $branch_id, $offset, $results_per_page);
+    $stmt->bindParam(1, $tenant_id, PDO::PARAM_INT);
+    $stmt->bindParam(2, $branch_id, PDO::PARAM_INT);
+    $stmt->bindParam(3, $offset, PDO::PARAM_INT);
+    $stmt->bindParam(4, $results_per_page, PDO::PARAM_INT);
 }
 
 $stmt->execute();
-$ticketsResult = $stmt->get_result();
+$ticketsResult = $stmt->fetchAll(PDO::FETCH_ASSOC);
 
 // Build result
 $tickets = [];
-while ($row = $ticketsResult->fetch_assoc()) {
+foreach ($ticketsResult as $row) {
     $ticket_id = $row['id'];
     if (!isset($tickets[$ticket_id])) {
         $tickets[$ticket_id] = [
@@ -173,16 +182,14 @@ while ($row = $ticketsResult->fetch_assoc()) {
         ];
     }
 }
-$stmt->close();
 
 // Fetch Suppliers
 $suppliersQuery = "SELECT id, name FROM suppliers WHERE status = 'active' AND tenant_id = ? AND branch_id = ?";
-$stmt = $conn->prepare($suppliersQuery);
-$stmt->bind_param("si", $tenant_id, $branch_id);
+$stmt = $pdo->prepare($suppliersQuery);
+$stmt->bindParam(1, $tenant_id, PDO::PARAM_INT);
+$stmt->bindParam(2, $branch_id, PDO::PARAM_INT);
 $stmt->execute();
-$suppliersResult = $stmt->get_result();
-$suppliers = $suppliersResult->fetch_all(MYSQLI_ASSOC);
-$stmt->close();
+$suppliers = $stmt->fetchAll(PDO::FETCH_ASSOC);
 
 // Supplier names map
 $supplier_names = [];

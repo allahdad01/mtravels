@@ -7,7 +7,7 @@ $branch_id = $_SESSION['branch_id'];
 // Enforce authentication
 enforce_auth();
 
-require_once('../../includes/conn.php');
+require_once('../../includes/db.php');
 // Check if the user is logged in
 $username = isset($_SESSION['name']) ? $_SESSION['name'] : null;
 $user_id = isset($_SESSION['user_id']) ? $_SESSION['user_id'] : null;
@@ -28,10 +28,6 @@ $receiptNumber = $data['receipt_number'];
 $paymentCurrency = strtoupper(trim($data['payment_currency'])); // USD or AFS
 $exchangeRate = isset($data['exchange_rate']) && $data['exchange_rate'] !== '' ? (float)$data['exchange_rate'] : null; // USD → AFS
 
-if ($conn->connect_error) {
-    echo json_encode(['success' => false, 'message' => 'Connection failed: ' . $conn->connect_error]);
-    exit;
-}
 
 // Fetch supplier's currency and balance
 $supplierQuery = "
@@ -39,17 +35,17 @@ $supplierQuery = "
     FROM suppliers
     WHERE id = ? AND tenant_id = ? AND branch_id = ?
 ";
-$supplierStmt = $conn->prepare($supplierQuery);
-$supplierStmt->bind_param('iii', $supplierId, $tenant_id, $branch_id);
+$supplierStmt = $pdo->prepare($supplierQuery);
+$supplierStmt->bindParam(1, $supplierId, PDO::PARAM_INT);
+$supplierStmt->bindParam(2, $tenant_id, PDO::PARAM_INT);
+$supplierStmt->bindParam(3, $branch_id, PDO::PARAM_INT);
 $supplierStmt->execute();
-$supplierResult = $supplierStmt->get_result();
+$supplier = $supplierStmt->fetch(PDO::FETCH_ASSOC);
 
-if ($supplierResult->num_rows === 0) {
+if (!$supplier) {
     echo json_encode(['success' => false, 'message' => 'Supplier not found.']);
     exit;
 }
-
-$supplier = $supplierResult->fetch_assoc();
 $supplierName = $supplier['name'];
 
 // Fetch main account balances and name
@@ -58,17 +54,17 @@ $mainAccountQuery = "
     FROM main_account
     WHERE id = ? AND tenant_id = ? AND branch_id = ?
 ";
-$mainAccountStmt = $conn->prepare($mainAccountQuery);
-$mainAccountStmt->bind_param('iii', $mainAccountId, $tenant_id, $branch_id);
+$mainAccountStmt = $pdo->prepare($mainAccountQuery);
+$mainAccountStmt->bindParam(1, $mainAccountId, PDO::PARAM_INT);
+$mainAccountStmt->bindParam(2, $tenant_id, PDO::PARAM_INT);
+$mainAccountStmt->bindParam(3, $branch_id, PDO::PARAM_INT);
 $mainAccountStmt->execute();
-$mainAccountResult = $mainAccountStmt->get_result();
+$mainAccount = $mainAccountStmt->fetch(PDO::FETCH_ASSOC);
 
-if ($mainAccountResult->num_rows === 0) {
+if (!$mainAccount) {
     echo json_encode(['success' => false, 'message' => 'Main account not found.']);
     exit;
 }
-
-$mainAccount = $mainAccountResult->fetch_assoc();
 $supplierCurrency = $supplier['currency']; // Supplier's currency (USD or AFS)
 
 // Determine which main account balance to deduct based on PAYMENT currency
@@ -95,7 +91,7 @@ $mainAccountName = $mainAccount['name'];
 
 
 // Begin transaction
-$conn->begin_transaction();
+$pdo->beginTransaction();
 
 try {
     // Deduct from the main account balance (USD or AFS)
@@ -104,8 +100,11 @@ try {
         SET {$balanceField} = {$balanceField} - ?
         WHERE id = ? AND tenant_id = ? AND branch_id = ?
     ";
-    $mainUpdateStmt = $conn->prepare($mainUpdateQuery);
-    $mainUpdateStmt->bind_param('diii', $amount, $mainAccountId, $tenant_id, $branch_id);
+    $mainUpdateStmt = $pdo->prepare($mainUpdateQuery);
+    $mainUpdateStmt->bindParam(1, $amount, PDO::PARAM_STR);
+    $mainUpdateStmt->bindParam(2, $mainAccountId, PDO::PARAM_INT);
+    $mainUpdateStmt->bindParam(3, $tenant_id, PDO::PARAM_INT);
+    $mainUpdateStmt->bindParam(4, $branch_id, PDO::PARAM_INT);
     if (!$mainUpdateStmt->execute()) {
         throw new Exception("Failed to update main account balance.");
     }
@@ -135,8 +134,11 @@ $supplierUpdateQuery = "
         SET balance = balance + ?
         WHERE id = ? AND tenant_id = ? AND branch_id = ?
     ";
-$supplierUpdateStmt = $conn->prepare($supplierUpdateQuery);
-$supplierUpdateStmt->bind_param('diii', $creditedAmount, $supplierId, $tenant_id, $branch_id);
+$supplierUpdateStmt = $pdo->prepare($supplierUpdateQuery);
+$supplierUpdateStmt->bindParam(1, $creditedAmount, PDO::PARAM_STR);
+$supplierUpdateStmt->bindParam(2, $supplierId, PDO::PARAM_INT);
+$supplierUpdateStmt->bindParam(3, $tenant_id, PDO::PARAM_INT);
+$supplierUpdateStmt->bindParam(4, $branch_id, PDO::PARAM_INT);
     if (!$supplierUpdateStmt->execute()) {
         throw new Exception("Failed to update supplier account balance.");
     }
@@ -180,21 +182,19 @@ $supplierUpdateStmt->bind_param('diii', $creditedAmount, $supplierId, $tenant_id
             ?
         )
     ";
-    $transactionStmt = $conn->prepare($transactionQuery);
-    $transactionStmt->bind_param('idsssssi',
-        $supplierId,
-        $creditedAmount,
-        $user_id,
-        $completeRemarks,
-        $newBalance,
-        $receiptNumber,
-        $tenant_id,
-        $branch_id
-    );
+    $transactionStmt = $pdo->prepare($transactionQuery);
+    $transactionStmt->bindParam(1, $supplierId, PDO::PARAM_INT);
+    $transactionStmt->bindParam(2, $creditedAmount, PDO::PARAM_STR);
+    $transactionStmt->bindParam(3, $user_id, PDO::PARAM_INT);
+    $transactionStmt->bindParam(4, $completeRemarks, PDO::PARAM_STR);
+    $transactionStmt->bindParam(5, $newBalance, PDO::PARAM_STR);
+    $transactionStmt->bindParam(6, $receiptNumber, PDO::PARAM_STR);
+    $transactionStmt->bindParam(7, $tenant_id, PDO::PARAM_INT);
+    $transactionStmt->bindParam(8, $branch_id, PDO::PARAM_INT);
     if (!$transactionStmt->execute()) {
         throw new Exception("Failed to log the supplier transaction.");
     }
-    $lastInsertId = $transactionStmt->insert_id;
+    $lastInsertId = $pdo->lastInsertId();
 
     // Insert into main_account_transaction
     $mainTransactionRemarks = "Supplier: $supplierName, Funded by main account: $mainAccountName, processed by: $username, Remarks: $userRemarks$exchangeNarrative";
@@ -225,18 +225,16 @@ $supplierUpdateStmt->bind_param('diii', $creditedAmount, $supplierId, $tenant_id
             ?
         )
     ";
-    $mainTransactionStmt = $conn->prepare($mainTransactionQuery);
-    $mainTransactionStmt->bind_param('idisdssii',
-        $mainAccountId,
-        $amount,
-        $lastInsertId,
-        $mainTransactionRemarks,
-        $newMainBalance,
-        $paymentCurrency,
-        $receiptNumber,
-        $tenant_id,
-        $branch_id
-    );
+    $mainTransactionStmt = $pdo->prepare($mainTransactionQuery);
+    $mainTransactionStmt->bindParam(1, $mainAccountId, PDO::PARAM_INT);
+    $mainTransactionStmt->bindParam(2, $amount, PDO::PARAM_STR);
+    $mainTransactionStmt->bindParam(3, $lastInsertId, PDO::PARAM_INT);
+    $mainTransactionStmt->bindParam(4, $mainTransactionRemarks, PDO::PARAM_STR);
+    $mainTransactionStmt->bindParam(5, $newMainBalance, PDO::PARAM_STR);
+    $mainTransactionStmt->bindParam(6, $paymentCurrency, PDO::PARAM_STR);
+    $mainTransactionStmt->bindParam(7, $receiptNumber, PDO::PARAM_STR);
+    $mainTransactionStmt->bindParam(8, $tenant_id, PDO::PARAM_INT);
+    $mainTransactionStmt->bindParam(9, $branch_id, PDO::PARAM_INT);
     if (!$mainTransactionStmt->execute()) {
         throw new Exception("Failed to log the main account transaction.");
     }
@@ -264,14 +262,19 @@ $supplierUpdateStmt->bind_param('diii', $creditedAmount, $supplierId, $tenant_id
 
     $transaction_type = 'supplier_fund';
     $status = 'Unread';
-    $notificationStmt = $conn->prepare($notificationQuery);
-    $notificationStmt->bind_param('isssii', $lastInsertId, $transaction_type, $notificationMessage, $status, $tenant_id, $branch_id);
+    $notificationStmt = $pdo->prepare($notificationQuery);
+    $notificationStmt->bindParam(1, $lastInsertId, PDO::PARAM_INT);
+    $notificationStmt->bindParam(2, $transaction_type, PDO::PARAM_STR);
+    $notificationStmt->bindParam(3, $notificationMessage, PDO::PARAM_STR);
+    $notificationStmt->bindParam(4, $status, PDO::PARAM_STR);
+    $notificationStmt->bindParam(5, $tenant_id, PDO::PARAM_INT);
+    $notificationStmt->bindParam(6, $branch_id, PDO::PARAM_INT);
     if (!$notificationStmt->execute()) {
         throw new Exception("Failed to send notification to admin.");
     }
 
     // Commit transaction
-    $conn->commit();
+    $pdo->commit();
     
     // Log the activity
     $old_values = json_encode([
@@ -295,20 +298,26 @@ $supplierUpdateStmt->bind_param('diii', $creditedAmount, $supplierId, $tenant_id
     $ip_address = $_SERVER['REMOTE_ADDR'] ?? '';
     $user_agent = $_SERVER['HTTP_USER_AGENT'] ?? '';
     
-    $activityStmt = $conn->prepare("
+    $activityStmt = $pdo->prepare("
         INSERT INTO activity_log
         (user_id, action, table_name, record_id, old_values, new_values, ip_address, user_agent, created_at, tenant_id, branch_id)
         VALUES (?, 'fund', 'suppliers', ?, ?, ?, ?, ?, NOW(), ?, ?)
     ");
-    $activityStmt->bind_param("iissssii", $user_id, $supplierId, $old_values, $new_values, $ip_address, $user_agent, $tenant_id, $branch_id);
+    $activityStmt->bindParam(1, $user_id, PDO::PARAM_INT);
+    $activityStmt->bindParam(2, $supplierId, PDO::PARAM_INT);
+    $activityStmt->bindParam(3, $old_values, PDO::PARAM_STR);
+    $activityStmt->bindParam(4, $new_values, PDO::PARAM_STR);
+    $activityStmt->bindParam(5, $ip_address, PDO::PARAM_STR);
+    $activityStmt->bindParam(6, $user_agent, PDO::PARAM_STR);
+    $activityStmt->bindParam(7, $tenant_id, PDO::PARAM_INT);
+    $activityStmt->bindParam(8, $branch_id, PDO::PARAM_INT);
     $activityStmt->execute();
     
     echo json_encode(['success' => true, 'message' => 'Supplier account funded successfully.']);
 } catch (Exception $e) {
     // Rollback transaction on error
-    $conn->rollback();
+    $pdo->rollBack();
     echo json_encode(['success' => false, 'message' => 'Transaction failed: ' . $e->getMessage()]);
 }
 
-$conn->close();
 ?>

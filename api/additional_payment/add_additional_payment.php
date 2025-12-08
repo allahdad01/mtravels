@@ -18,7 +18,6 @@ if (!isset($_POST['csrf_token']) || $_POST['csrf_token'] !== $_SESSION['csrf_tok
 
 // Database connection
 require_once __DIR__ . '/../../includes/db.php';
-require_once __DIR__ . '/../../includes/conn.php';
 
 try {
     // Validate and sanitize input
@@ -35,26 +34,40 @@ try {
     $client_id = $is_for_client ? DbSecurity::validateInput($_POST['client_id'], 'int', ['min' => 0]) : null;
 
     // Begin transaction
-    $conn->begin_transaction();
+    $pdo->beginTransaction();
 
     // Insert the payment
-    $stmt = $conn->prepare("INSERT INTO additional_payments (payment_type, description, base_amount, profit, sold_amount, currency, main_account_id, supplier_id, is_from_supplier, client_id, is_for_client, created_by, created_at, tenant_id, branch_id) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, NOW(), ?, ?)");
-    $stmt->bind_param("ssdddsiiiiisii", $payment_type, $description, $base_amount, $profit, $sold_amount, $currency, $main_account_id, $supplier_id, $is_from_supplier, $client_id, $is_for_client, $_SESSION['user_id'], $tenant_id, $branch_id);
+    $stmt = $pdo->prepare("INSERT INTO additional_payments (payment_type, description, base_amount, profit, sold_amount, currency, main_account_id, supplier_id, is_from_supplier, client_id, is_for_client, created_by, created_at, tenant_id, branch_id) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, NOW(), ?, ?)");
+    $stmt->bindParam(1, $payment_type, PDO::PARAM_STR);
+    $stmt->bindParam(2, $description, PDO::PARAM_STR);
+    $stmt->bindParam(3, $base_amount, PDO::PARAM_STR);
+    $stmt->bindParam(4, $profit, PDO::PARAM_STR);
+    $stmt->bindParam(5, $sold_amount, PDO::PARAM_STR);
+    $stmt->bindParam(6, $currency, PDO::PARAM_STR);
+    $stmt->bindParam(7, $main_account_id, PDO::PARAM_INT);
+    $stmt->bindParam(8, $supplier_id, PDO::PARAM_INT);
+    $stmt->bindParam(9, $is_from_supplier, PDO::PARAM_INT);
+    $stmt->bindParam(10, $client_id, PDO::PARAM_INT);
+    $stmt->bindParam(11, $is_for_client, PDO::PARAM_INT);
+    $stmt->bindParam(12, $_SESSION['user_id'], PDO::PARAM_INT);
+    $stmt->bindParam(13, $tenant_id, PDO::PARAM_INT);
+    $stmt->bindParam(14, $branch_id, PDO::PARAM_INT);
     
     if (!$stmt->execute()) {
         throw new Exception("Error inserting payment: " . $stmt->error);
     }
     
-    $payment_id = $conn->insert_id;
+    $payment_id = $pdo->lastInsertId();
     
     // If payment is from supplier, deduct from supplier's balance
     if ($is_from_supplier && $supplier_id) {
         // Get supplier's current balance
-        $supplierStmt = $conn->prepare("SELECT balance, currency FROM suppliers WHERE id = ? AND tenant_id = ? And branch_id = ?");
-        $supplierStmt->bind_param("iii", $supplier_id, $tenant_id, $branch_id);
+        $supplierStmt = $pdo->prepare("SELECT balance, currency FROM suppliers WHERE id = ? AND tenant_id = ? And branch_id = ?");
+        $supplierStmt->bindParam(1, $supplier_id, PDO::PARAM_INT);
+        $supplierStmt->bindParam(2, $tenant_id, PDO::PARAM_INT);
+        $supplierStmt->bindParam(3, $branch_id, PDO::PARAM_INT);
         $supplierStmt->execute();
-        $supplierResult = $supplierStmt->get_result();
-        $supplier = $supplierResult->fetch_assoc();
+        $supplier = $supplierStmt->fetch(PDO::FETCH_ASSOC);
         
         if (!$supplier) {
             throw new Exception("Supplier not found");
@@ -69,16 +82,25 @@ try {
         $newSupplierBalance = $supplier['balance'] - $base_amount;
         
         // Update supplier balance
-        $updateSupplierStmt = $conn->prepare("UPDATE suppliers SET balance = ? WHERE id = ? AND tenant_id = ? And branch_id = ?");
-        $updateSupplierStmt->bind_param("diii", $newSupplierBalance, $supplier_id, $tenant_id, $branch_id);
+        $updateSupplierStmt = $pdo->prepare("UPDATE suppliers SET balance = ? WHERE id = ? AND tenant_id = ? And branch_id = ?");
+        $updateSupplierStmt->bindParam(1, $newSupplierBalance, PDO::PARAM_STR);
+        $updateSupplierStmt->bindParam(2, $supplier_id, PDO::PARAM_INT);
+        $updateSupplierStmt->bindParam(3, $tenant_id, PDO::PARAM_INT);
+        $updateSupplierStmt->bindParam(4, $branch_id, PDO::PARAM_INT);
         
         if (!$updateSupplierStmt->execute()) {
             throw new Exception("Error updating supplier balance: " . $updateSupplierStmt->error);
         }
         
         // Add transaction record for supplier deduction with new balance
-        $transactionStmt = $conn->prepare("INSERT INTO supplier_transactions (supplier_id, amount, transaction_type, remarks, reference_id, transaction_of, transaction_date, balance, tenant_id, branch_id) VALUES (?, ?, 'debit', ?, ?, 'additional_payment', NOW(), ?, ?, ?)");
-        $transactionStmt->bind_param("idsssii", $supplier_id, $base_amount, $description, $payment_id, $newSupplierBalance, $tenant_id, $branch_id);
+        $transactionStmt = $pdo->prepare("INSERT INTO supplier_transactions (supplier_id, amount, transaction_type, remarks, reference_id, transaction_of, transaction_date, balance, tenant_id, branch_id) VALUES (?, ?, 'debit', ?, ?, 'additional_payment', NOW(), ?, ?, ?)");
+        $transactionStmt->bindParam(1, $supplier_id, PDO::PARAM_INT);
+        $transactionStmt->bindParam(2, $base_amount, PDO::PARAM_STR);
+        $transactionStmt->bindParam(3, $description, PDO::PARAM_STR);
+        $transactionStmt->bindParam(4, $payment_id, PDO::PARAM_INT);
+        $transactionStmt->bindParam(5, $newSupplierBalance, PDO::PARAM_STR);
+        $transactionStmt->bindParam(6, $tenant_id, PDO::PARAM_INT);
+        $transactionStmt->bindParam(7, $branch_id, PDO::PARAM_INT);
         
         if (!$transactionStmt->execute()) {
             throw new Exception("Error recording supplier transaction: " . $transactionStmt->error);
@@ -88,11 +110,12 @@ try {
     // If payment is for client, add to client's balance
     if ($is_for_client && $client_id) {
         // Get client's current balance and type
-        $clientStmt = $conn->prepare("SELECT usd_balance, afs_balance, client_type, name FROM clients WHERE id = ? AND tenant_id = ? And branch_id = ?");
-        $clientStmt->bind_param("iii", $client_id, $tenant_id, $branch_id);
+        $clientStmt = $pdo->prepare("SELECT usd_balance, afs_balance, client_type, name FROM clients WHERE id = ? AND tenant_id = ? And branch_id = ?");
+        $clientStmt->bindParam(1, $client_id, PDO::PARAM_INT);
+        $clientStmt->bindParam(2, $tenant_id, PDO::PARAM_INT);
+        $clientStmt->bindParam(3, $branch_id, PDO::PARAM_INT);
         $clientStmt->execute();
-        $clientResult = $clientStmt->get_result();
-        $client = $clientResult->fetch_assoc();
+        $client = $clientStmt->fetch(PDO::FETCH_ASSOC);
         
         if (!$client) {
             throw new Exception("Client not found");
@@ -106,8 +129,11 @@ try {
         if ($client['client_type'] === 'regular') {
             // Update the appropriate balance column based on currency
             $balance_column = ($currency === 'USD') ? 'usd_balance' : 'afs_balance';
-            $updateClientStmt = $conn->prepare("UPDATE clients SET $balance_column = ? WHERE id = ? AND tenant_id = ? And branch_id = ?");
-            $updateClientStmt->bind_param("diii", $new_balance, $client_id, $tenant_id, $branch_id);
+            $updateClientStmt = $pdo->prepare("UPDATE clients SET $balance_column = ? WHERE id = ? AND tenant_id = ? And branch_id = ?");
+            $updateClientStmt->bindParam(1, $new_balance, PDO::PARAM_STR);
+            $updateClientStmt->bindParam(2, $client_id, PDO::PARAM_INT);
+            $updateClientStmt->bindParam(3, $tenant_id, PDO::PARAM_INT);
+            $updateClientStmt->bindParam(4, $branch_id, PDO::PARAM_INT);
             
             if (!$updateClientStmt->execute()) {
                 throw new Exception("Error updating client balance: " . $updateClientStmt->error);
@@ -115,12 +141,19 @@ try {
         }
         
         // Add transaction record
-        $transactionStmt = $conn->prepare("INSERT INTO client_transactions (
+        $transactionStmt = $pdo->prepare("INSERT INTO client_transactions (
             client_id, type, transaction_of, reference_id, amount, balance, currency, description, tenant_id, branch_id
         ) VALUES (?, 'debit', 'additional_payment', ?, ?, ?, ?, ?, ?, ?)");
-        
+
         $transaction_description = "Additional payment: $payment_type - $description";
-        $transactionStmt->bind_param("iiddssii", $client_id, $payment_id, $sold_amount, $new_balance, $currency, $transaction_description, $tenant_id, $branch_id);
+        $transactionStmt->bindParam(1, $client_id, PDO::PARAM_INT);
+        $transactionStmt->bindParam(2, $payment_id, PDO::PARAM_INT);
+        $transactionStmt->bindParam(3, $sold_amount, PDO::PARAM_STR);
+        $transactionStmt->bindParam(4, $new_balance, PDO::PARAM_STR);
+        $transactionStmt->bindParam(5, $currency, PDO::PARAM_STR);
+        $transactionStmt->bindParam(6, $transaction_description, PDO::PARAM_STR);
+        $transactionStmt->bindParam(7, $tenant_id, PDO::PARAM_INT);
+        $transactionStmt->bindParam(8, $branch_id, PDO::PARAM_INT);
         
         if (!$transactionStmt->execute()) {
             throw new Exception("Error recording client transaction: " . $transactionStmt->error);
@@ -128,7 +161,7 @@ try {
     }
     
     // Commit transaction
-    $conn->commit();
+    $pdo->commit();
     
     // Log activity
     $userId = $_SESSION['user_id'];
@@ -152,9 +185,15 @@ try {
     ]);
     
     // Insert activity log record
-    $logStmt = $conn->prepare("INSERT INTO activity_log (user_id, ip_address, user_agent, action, table_name, record_id, old_values, new_values, created_at, tenant_id, branch_id) 
+    $logStmt = $pdo->prepare("INSERT INTO activity_log (user_id, ip_address, user_agent, action, table_name, record_id, old_values, new_values, created_at, tenant_id, branch_id)
                               VALUES (?, ?, ?, 'add', 'additional_payments', ?, NULL, ?, NOW(), ?, ?)");
-    $logStmt->bind_param("issisii", $userId, $ipAddress, $userAgent, $payment_id, $newValues, $tenant_id, $branch_id);
+    $logStmt->bindParam(1, $userId, PDO::PARAM_INT);
+    $logStmt->bindParam(2, $ipAddress, PDO::PARAM_STR);
+    $logStmt->bindParam(3, $userAgent, PDO::PARAM_STR);
+    $logStmt->bindParam(4, $payment_id, PDO::PARAM_INT);
+    $logStmt->bindParam(5, $newValues, PDO::PARAM_STR);
+    $logStmt->bindParam(6, $tenant_id, PDO::PARAM_INT);
+    $logStmt->bindParam(7, $branch_id, PDO::PARAM_INT);
     
     if (!$logStmt->execute()) {
         // Just log the error, don't affect the transaction success
@@ -168,8 +207,8 @@ try {
     
 } catch (Exception $e) {
     // Rollback transaction on error
-    if (isset($conn)) {
-        $conn->rollback();
+    if (isset($pdo)) {
+        $pdo->rollBack();
     }
     
     // Return error response
