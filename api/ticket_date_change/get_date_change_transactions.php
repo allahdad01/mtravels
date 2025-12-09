@@ -11,7 +11,7 @@ require_once '../../admin/security.php';
 enforce_auth();
 
 // Database connection
-require_once '../../includes/conn.php';
+require_once '../../includes/db.php';
 
 // Check if ticket_id is provided
 if (!isset($_GET['ticket_id'])) {
@@ -29,11 +29,14 @@ try {
                    FROM date_change_tickets t
                    LEFT JOIN clients c ON t.sold_to = c.id AND c.tenant_id = ? AND c.branch_id = ?
                    WHERE t.id = ? AND t.tenant_id = ? AND t.branch_id = ?";
-    $stmt = $conn->prepare($ticketQuery);
-    $stmt->bind_param('iiiii', $tenant_id, $branch_id, $ticketId, $tenant_id, $branch_id);
+    $stmt = $pdo->prepare($ticketQuery);
+    $stmt->bindParam(1, $tenant_id, PDO::PARAM_INT);
+    $stmt->bindParam(2, $branch_id, PDO::PARAM_INT);
+    $stmt->bindParam(3, $ticketId, PDO::PARAM_INT);
+    $stmt->bindParam(4, $tenant_id, PDO::PARAM_INT);
+    $stmt->bindParam(5, $branch_id, PDO::PARAM_INT);
     $stmt->execute();
-    $ticketResult = $stmt->get_result();
-    $ticket = $ticketResult->fetch_assoc();
+    $ticket = $stmt->fetch(PDO::FETCH_ASSOC);
 
     if (!$ticket) {
         echo '<div class="alert alert-danger">Ticket not found.</div>';
@@ -47,24 +50,26 @@ try {
                   WHERE t.transaction_of = 'date_change'
                   AND t.reference_id = ? AND t.tenant_id = ? AND t.branch_id = ?
                   ORDER BY t.transaction_date DESC";
-    $stmt = $conn->prepare($transQuery);
-    $stmt->bind_param('iiiii', $tenant_id, $branch_id, $ticketId, $tenant_id, $branch_id);
+    $stmt = $pdo->prepare($transQuery);
+    $stmt->bindParam(1, $tenant_id, PDO::PARAM_INT);
+    $stmt->bindParam(2, $branch_id, PDO::PARAM_INT);
+    $stmt->bindParam(3, $ticketId, PDO::PARAM_INT);
+    $stmt->bindParam(4, $tenant_id, PDO::PARAM_INT);
+    $stmt->bindParam(5, $branch_id, PDO::PARAM_INT);
     $stmt->execute();
-    $transResult = $stmt->get_result();
-    
+    $transactions = $stmt->fetchAll(PDO::FETCH_ASSOC);
+
     // Calculate totals
     $totalAmount = $ticket['supplier_penalty'] + $ticket['service_penalty'];
     $totalPaid = 0;
-    $transactions = [];
-    while ($row = $transResult->fetch_assoc()) {
-        $transactions[] = $row;
+    foreach ($transactions as $row) {
         if ($row['currency'] === 'USD') {
             $totalPaid += $row['amount'] * $ticket['exchange_rate'];
         } else {
             $totalPaid += $row['amount'];
         }
     }
-    
+
     // Display ticket details and transactions
     ?>
     <div class="card mb-3">
@@ -131,7 +136,8 @@ try {
         </div>
     </div>
     <?php
-} catch (Exception $e) {
+} catch (PDOException $e) {
     echo '<div class="alert alert-danger">Error loading transactions: ' . htmlspecialchars($e->getMessage()) . '</div>';
     error_log("Error in get_date_change_transactions.php: " . $e->getMessage());
-} 
+}
+?>

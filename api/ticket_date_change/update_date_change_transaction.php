@@ -8,8 +8,6 @@ require_once '../../admin/security.php';
 // Enforce authentication
 enforce_auth();
 
-
-
 // Check if user is logged in
 if (!isset($_SESSION['user_id'])) {
     header('HTTP/1.1 403 Forbidden');
@@ -19,7 +17,7 @@ if (!isset($_SESSION['user_id'])) {
 $tenant_id = $_SESSION['tenant_id'];
 $branch_id = $_SESSION['branch_id'];
 // Include database connection
-include '../../includes/conn.php';
+require_once '../../includes/db.php';
 
 // Set headers for JSON response
 header('Content-Type: application/json');
@@ -57,41 +55,44 @@ $transaction_id = isset($_POST['transaction_id']) ? DbSecurity::validateInput($_
         echo json_encode(['success' => false, 'message' => 'Missing transaction or date change ID']);
         exit;
     }
-    
-    // Start transaction
-    $conn->begin_transaction();
-    
+
     try {
+        // Start transaction
+        $pdo->beginTransaction();
+
         // Get transaction details before update
-        $stmt = $conn->prepare("SELECT amount, type, main_account_id, created_at FROM main_account_transactions WHERE id = ? AND tenant_id = ? AND branch_id = ?");
-        $stmt->bind_param("iii", $transactionId, $tenant_id, $branch_id);
+        $stmt = $pdo->prepare("SELECT amount, type, main_account_id, created_at FROM main_account_transactions WHERE id = ? AND tenant_id = ? AND branch_id = ?");
+        $stmt->bindParam(1, $transactionId, PDO::PARAM_INT);
+        $stmt->bindParam(2, $tenant_id, PDO::PARAM_INT);
+        $stmt->bindParam(3, $branch_id, PDO::PARAM_INT);
         $stmt->execute();
-        $result = $stmt->get_result();
-        
-        if ($result->num_rows === 0) {
-            throw new Exception("Transaction not found");
+        $transaction = $stmt->fetch(PDO::FETCH_ASSOC);
+
+        if (!$transaction) {
+            throw new PDOException("Transaction not found");
         }
-        
-        $transaction = $result->fetch_assoc();
+
         $type = $transaction['type'];
         $mainAccountId = $transaction['main_account_id'];
         $originalDate = $transaction['created_at'];
-        
+
         // Get currency from date_change_tickets
-        $currencyStmt = $conn->prepare("SELECT currency FROM date_change_tickets WHERE id = ? AND tenant_id = ? AND branch_id = ?");
-        $currencyStmt->bind_param("iii", $dateChangeId, $tenant_id, $branch_id);
+        $currencyStmt = $pdo->prepare("SELECT currency FROM date_change_tickets WHERE id = ? AND tenant_id = ? AND branch_id = ?");
+        $currencyStmt->bindParam(1, $dateChangeId, PDO::PARAM_INT);
+        $currencyStmt->bindParam(2, $tenant_id, PDO::PARAM_INT);
+        $currencyStmt->bindParam(3, $branch_id, PDO::PARAM_INT);
         $currencyStmt->execute();
-        $currencyResult = $currencyStmt->get_result();
-        
-        if ($currencyResult->num_rows === 0) {
-            throw new Exception("Date change ticket not found");
+        $currencyResult = $currencyStmt->fetch(PDO::FETCH_ASSOC);
+
+        if (!$currencyResult) {
+            throw new PDOException("Date change ticket not found");
         }
-        
-        $currency = $currencyResult->fetch_assoc()['currency'];
-        
+
+        $currency = $currencyResult['currency'];
+
         // Calculate the difference between original and new amount
         $amountDifference = $newAmount - $originalAmount;
-        
+
         // Map currency codes to the correct database field names
         $currencyFieldMap = [
             'USD' => 'usd_balance',
@@ -99,21 +100,21 @@ $transaction_id = isset($_POST['transaction_id']) ? DbSecurity::validateInput($_
             'EUR' => 'euro_balance',
             'DARHAM' => 'darham_balance'
         ];
-        
+
         // Check if the currency is in our map
         if (!isset($currencyFieldMap[$currency])) {
-            throw new Exception("Unknown currency: " . $currency);
+            throw new PDOException("Unknown currency: " . $currency);
         }
-        
+
         // Get the correct field name
         $balanceField = $currencyFieldMap[$currency];
-        
+
         // Update subsequent transactions' balances if amount changed
         if ($amountDifference != 0) {
             // For credit transactions, subsequent balances increase when amount increases
             // For debit transactions, subsequent balances decrease when amount increases
             $balanceAdjustment = ($type == 'credit') ? $amountDifference : -$amountDifference;
-            
+
             $updateSubsequentQuery = "UPDATE main_account_transactions
                                      SET balance = balance + ?
                                      WHERE main_account_id = ?
@@ -121,78 +122,78 @@ $transaction_id = isset($_POST['transaction_id']) ? DbSecurity::validateInput($_
                                      AND id != ?
                                      AND tenant_id = ?
                                      AND branch_id = ?";
-            $updateSubsequentStmt = $conn->prepare($updateSubsequentQuery);
-            $updateSubsequentStmt->bind_param("disiis", $balanceAdjustment, $mainAccountId, $transactionId, $transactionId, $tenant_id, $branch_id);
-            
-            if (!$updateSubsequentStmt->execute()) {
-                throw new Exception("Failed to update subsequent transactions: " . $updateSubsequentStmt->error);
-            }
-            
+            $updateSubsequentStmt = $pdo->prepare($updateSubsequentQuery);
+            $updateSubsequentStmt->bindParam(1, $balanceAdjustment, PDO::PARAM_STR);
+            $updateSubsequentStmt->bindParam(2, $mainAccountId, PDO::PARAM_INT);
+            $updateSubsequentStmt->bindParam(3, $transactionId, PDO::PARAM_INT);
+            $updateSubsequentStmt->bindParam(4, $transactionId, PDO::PARAM_INT);
+            $updateSubsequentStmt->bindParam(5, $tenant_id, PDO::PARAM_INT);
+            $updateSubsequentStmt->bindParam(6, $branch_id, PDO::PARAM_INT);
+            $updateSubsequentStmt->execute();
+
             // Get the current balance of the transaction
             $getCurrentBalanceQuery = "SELECT balance FROM main_account_transactions WHERE id = ? AND tenant_id = ? AND branch_id = ?";
-            $getCurrentBalanceStmt = $conn->prepare($getCurrentBalanceQuery);
-            $getCurrentBalanceStmt->bind_param("iii", $transactionId, $tenant_id, $branch_id);
-            
-            if (!$getCurrentBalanceStmt->execute()) {
-                throw new Exception("Failed to get current transaction balance: " . $getCurrentBalanceStmt->error);
-            }
-            
-            $balanceResult = $getCurrentBalanceStmt->get_result();
-            $currentBalance = $balanceResult->fetch_assoc()['balance'];
-            
+            $getCurrentBalanceStmt = $pdo->prepare($getCurrentBalanceQuery);
+            $getCurrentBalanceStmt->bindParam(1, $transactionId, PDO::PARAM_INT);
+            $getCurrentBalanceStmt->bindParam(2, $tenant_id, PDO::PARAM_INT);
+            $getCurrentBalanceStmt->bindParam(3, $branch_id, PDO::PARAM_INT);
+            $getCurrentBalanceStmt->execute();
+            $balanceResult = $getCurrentBalanceStmt->fetch(PDO::FETCH_ASSOC);
+            $currentBalance = $balanceResult['balance'];
+
             // Calculate new balance for this transaction
             $newBalance = $currentBalance + (($type == 'credit') ? $amountDifference : -$amountDifference);
-            
+
             // Update the balance of the current transaction
             $updateCurrentBalanceQuery = "UPDATE main_account_transactions SET balance = ? WHERE id = ? AND tenant_id = ? AND branch_id = ?";
-            $updateCurrentBalanceStmt = $conn->prepare($updateCurrentBalanceQuery);
-            $updateCurrentBalanceStmt->bind_param("diii", $newBalance, $transactionId, $tenant_id, $branch_id);
-            
-            if (!$updateCurrentBalanceStmt->execute()) {
-                throw new Exception("Failed to update current transaction balance: " . $updateCurrentBalanceStmt->error);
-            }
+            $updateCurrentBalanceStmt = $pdo->prepare($updateCurrentBalanceQuery);
+            $updateCurrentBalanceStmt->bindParam(1, $newBalance, PDO::PARAM_STR);
+            $updateCurrentBalanceStmt->bindParam(2, $transactionId, PDO::PARAM_INT);
+            $updateCurrentBalanceStmt->bindParam(3, $tenant_id, PDO::PARAM_INT);
+            $updateCurrentBalanceStmt->bindParam(4, $branch_id, PDO::PARAM_INT);
+            $updateCurrentBalanceStmt->execute();
         }
-        
+
         // Update the transaction
-        $stmt = $conn->prepare("UPDATE main_account_transactions SET amount = ?, description = ?, exchange_rate = ?, created_at = ? WHERE id = ? AND tenant_id = ? AND branch_id = ?");
-        $stmt->bind_param("dsssiis", $newAmount, $newDescription, $exchange_rate, $newDate, $transactionId, $tenant_id, $branch_id);
-        
-        if (!$stmt->execute()) {
-            throw new Exception("Failed to update transaction: " . $stmt->error);
-        }
-        
+        $stmt = $pdo->prepare("UPDATE main_account_transactions SET amount = ?, description = ?, exchange_rate = ?, created_at = ? WHERE id = ? AND tenant_id = ? AND branch_id = ?");
+        $stmt->bindParam(1, $newAmount, PDO::PARAM_STR);
+        $stmt->bindParam(2, $newDescription, PDO::PARAM_STR);
+        $stmt->bindParam(3, $exchange_rate, PDO::PARAM_STR);
+        $stmt->bindParam(4, $newDate, PDO::PARAM_STR);
+        $stmt->bindParam(5, $transactionId, PDO::PARAM_INT);
+        $stmt->bindParam(6, $tenant_id, PDO::PARAM_INT);
+        $stmt->bindParam(7, $branch_id, PDO::PARAM_INT);
+        $stmt->execute();
+
         // Update main account balance if amount changed
         if ($amountDifference != 0 && $mainAccountId) {
             // For credit transactions (received payments), increase balance if amount increases
             // For debit transactions (paid out), decrease balance if amount increases
             $balanceAdjustment = ($type == 'credit') ? $amountDifference : -$amountDifference;
-            
-            $stmt = $conn->prepare("UPDATE main_account SET $balanceField = $balanceField + ? WHERE id = ? AND tenant_id = ? AND branch_id = ?");
-            $stmt->bind_param("diii", $balanceAdjustment, $mainAccountId, $tenant_id, $branch_id);
-            
-            if (!$stmt->execute()) {
-                throw new Exception("Failed to update main account balance: " . $stmt->error);
-            }
+
+            $stmt = $pdo->prepare("UPDATE main_account SET $balanceField = $balanceField + ? WHERE id = ? AND tenant_id = ? AND branch_id = ?");
+            $stmt->bindParam(1, $balanceAdjustment, PDO::PARAM_STR);
+            $stmt->bindParam(2, $mainAccountId, PDO::PARAM_INT);
+            $stmt->bindParam(3, $tenant_id, PDO::PARAM_INT);
+            $stmt->bindParam(4, $branch_id, PDO::PARAM_INT);
+            $stmt->execute();
         }
-        
+
         // If date changed, we need to reorder transactions and recalculate all balances
         if ($newDate != $originalDate) {
             // Get all transactions for this account, ordered by date
-            $stmt = $conn->prepare("SELECT id, amount, type, created_at
+            $stmt = $pdo->prepare("SELECT id, amount, type, created_at
                                    FROM main_account_transactions
                                    WHERE main_account_id = ?
                                    AND tenant_id = ?
                                    AND branch_id = ?
                                    ORDER BY created_at ASC, id ASC");
-            $stmt->bind_param("iii", $mainAccountId, $tenant_id, $branch_id);
-            
-            if (!$stmt->execute()) {
-                throw new Exception("Failed to retrieve transactions for reordering: " . $stmt->error);
-            }
-            
-            $result = $stmt->get_result();
-            $transactions = $result->fetch_all(MYSQLI_ASSOC);
-            
+            $stmt->bindParam(1, $mainAccountId, PDO::PARAM_INT);
+            $stmt->bindParam(2, $tenant_id, PDO::PARAM_INT);
+            $stmt->bindParam(3, $branch_id, PDO::PARAM_INT);
+            $stmt->execute();
+            $transactions = $stmt->fetchAll(PDO::FETCH_ASSOC);
+
             // Recalculate running balance for all transactions
             $runningBalance = 0;
             foreach ($transactions as $tx) {
@@ -202,22 +203,22 @@ $transaction_id = isset($_POST['transaction_id']) ? DbSecurity::validateInput($_
                 } else {
                     $runningBalance -= $txAmount;
                 }
-                
+
                 // Update the balance for this transaction
-                $updateStmt = $conn->prepare("UPDATE main_account_transactions SET balance = ? WHERE id = ? AND tenant_id = ? AND branch_id = ?");
-                $updateStmt->bind_param("diii", $runningBalance, $tx['id'], $tenant_id, $branch_id);
-                
-                if (!$updateStmt->execute()) {
-                    throw new Exception("Failed to update transaction balance during reordering: " . $updateStmt->error);
-                }
+                $updateStmt = $pdo->prepare("UPDATE main_account_transactions SET balance = ? WHERE id = ? AND tenant_id = ? AND branch_id = ?");
+                $updateStmt->bindParam(1, $runningBalance, PDO::PARAM_STR);
+                $updateStmt->bindParam(2, $tx['id'], PDO::PARAM_INT);
+                $updateStmt->bindParam(3, $tenant_id, PDO::PARAM_INT);
+                $updateStmt->bindParam(4, $branch_id, PDO::PARAM_INT);
+                $updateStmt->execute();
             }
         }
-        
+
         // Add activity logging
         $user_id = $_SESSION['user_id'] ?? 0;
         $ip_address = $_SERVER['REMOTE_ADDR'] ?? '';
         $user_agent = $_SERVER['HTTP_USER_AGENT'] ?? '';
-        
+
         // Prepare old values
         $old_values = [
             'transaction_id' => $transactionId,
@@ -226,7 +227,7 @@ $transaction_id = isset($_POST['transaction_id']) ? DbSecurity::validateInput($_
             'description' => $transaction['description'] ?? '',
             'created_at' => $originalDate
         ];
-        
+
         // Prepare new values
         $new_values = [
             'amount' => $newAmount,
@@ -240,24 +241,33 @@ $transaction_id = isset($_POST['transaction_id']) ? DbSecurity::validateInput($_
         $new_values = json_encode($new_values);
         $ip_address = $_SERVER['REMOTE_ADDR'] ?? '';
         $user_agent = $_SERVER['HTTP_USER_AGENT'] ?? '';
-        
+
         // Insert activity log
-        $activity_log_stmt = $conn->prepare("INSERT INTO activity_log
+        $activity_log_stmt = $pdo->prepare("INSERT INTO activity_log
             (user_id, action, table_name, record_id, old_values, new_values, ip_address, user_agent, tenant_id, branch_id)
             VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)");
-        $activity_log_stmt->bind_param("isssssssis", $user_id, $action, $table_name, $record_id, $old_values, $new_values, $ip_address, $user_agent, $tenant_id, $branch_id);
+        $activity_log_stmt->bindParam(1, $user_id, PDO::PARAM_INT);
+        $activity_log_stmt->bindParam(2, $action, PDO::PARAM_STR);
+        $activity_log_stmt->bindParam(3, $table_name, PDO::PARAM_STR);
+        $activity_log_stmt->bindParam(4, $record_id, PDO::PARAM_INT);
+        $activity_log_stmt->bindParam(5, $old_values, PDO::PARAM_STR);
+        $activity_log_stmt->bindParam(6, $new_values, PDO::PARAM_STR);
+        $activity_log_stmt->bindParam(7, $ip_address, PDO::PARAM_STR);
+        $activity_log_stmt->bindParam(8, $user_agent, PDO::PARAM_STR);
+        $activity_log_stmt->bindParam(9, $tenant_id, PDO::PARAM_INT);
+        $activity_log_stmt->bindParam(10, $branch_id, PDO::PARAM_INT);
         $activity_log_stmt->execute();
-        
+
         // Commit transaction
-        $conn->commit();
-        
+        $pdo->commit();
+
         echo json_encode(['success' => true]);
-    } catch (Exception $e) {
+    } catch (PDOException $e) {
         // Rollback transaction on error
-        $conn->rollback();
+        $pdo->rollBack();
         echo json_encode(['success' => false, 'message' => $e->getMessage()]);
     }
 } else {
     echo json_encode(['success' => false, 'message' => 'Invalid request method']);
 }
-?> 
+?>

@@ -5,7 +5,7 @@ if (session_status() === PHP_SESSION_NONE) {
 }
 
 // Include database connection and security
-require_once '../../includes/conn.php';
+require_once '../../includes/db.php';
 require_once '../../admin/includes/db_security.php';
 $tenant_id = $_SESSION['tenant_id'];
 $branch_id = $_SESSION['branch_id'];
@@ -43,23 +43,24 @@ if (empty($transactionDate)) {
 }
 
 // Start transaction
-$conn->begin_transaction();
+$pdo->beginTransaction();
 
 try {
     // First get weight and ticket details
-    $weightCheck = $conn->prepare("
+    $weightCheck = $pdo->prepare("
         SELECT tw.*, t.passenger_name, t.pnr, t.paid_to, t.title
         FROM ticket_weights tw
         JOIN ticket_bookings t ON tw.ticket_id = t.id
         WHERE tw.id = ? AND tw.tenant_id = ? And tw.branch_id = ?
     ");
-    $weightCheck->bind_param('iii', $weightId, $tenant_id, $branch_id);
+    $weightCheck->bindParam(1, $weightId, PDO::PARAM_INT);
+    $weightCheck->bindParam(2, $tenant_id, PDO::PARAM_INT);
+    $weightCheck->bindParam(3, $branch_id, PDO::PARAM_INT);
     $weightCheck->execute();
-    $weightResult = $weightCheck->get_result();
-    $weight = $weightResult->fetch_assoc();
-    
+    $weight = $weightCheck->fetch(PDO::FETCH_ASSOC);
+
     if (!$weight) {
-        throw new Exception('Weight not found');
+        throw new PDOException('Weight not found');
     }
 
     // Get current balance from main account
@@ -77,46 +78,47 @@ try {
             $balanceField = 'darham_balance';
             break;
         default:
-            throw new Exception("Unsupported currency: $currency");
+            throw new PDOException("Unsupported currency: $currency");
     }
-    
-    $balanceCheck = $conn->prepare("SELECT $balanceField as current_balance FROM main_account WHERE id = ? AND tenant_id = ? And branch_id = ?");
-    $balanceCheck->bind_param('iii', $weight['paid_to'], $tenant_id, $branch_id);
+
+    $balanceCheck = $pdo->prepare("SELECT $balanceField as current_balance FROM main_account WHERE id = ? AND tenant_id = ? And branch_id = ?");
+    $balanceCheck->bindParam(1, $weight['paid_to'], PDO::PARAM_INT);
+    $balanceCheck->bindParam(2, $tenant_id, PDO::PARAM_INT);
+    $balanceCheck->bindParam(3, $branch_id, PDO::PARAM_INT);
     $balanceCheck->execute();
-    $balanceResult = $balanceCheck->get_result();
-    $balance = $balanceResult->fetch_assoc();
+    $balance = $balanceCheck->fetch(PDO::FETCH_ASSOC);
     $newBalance = $balance['current_balance'] + $amount;
 
     // Update main account balance
-    $updateBalance = $conn->prepare("UPDATE main_account SET $balanceField = ? WHERE id = ? AND tenant_id = ? And branch_id = ?");
-    $updateBalance->bind_param('didi', $newBalance, $weight['paid_to'], $tenant_id, $branch_id);
+    $updateBalance = $pdo->prepare("UPDATE main_account SET $balanceField = ? WHERE id = ? AND tenant_id = ? And branch_id = ?");
+    $updateBalance->bindParam(1, $newBalance, PDO::PARAM_STR);
+    $updateBalance->bindParam(2, $weight['paid_to'], PDO::PARAM_INT);
+    $updateBalance->bindParam(3, $tenant_id, PDO::PARAM_INT);
+    $updateBalance->bindParam(4, $branch_id, PDO::PARAM_INT);
     if (!$updateBalance->execute()) {
-        throw new Exception('Failed to update account balance');
+        throw new PDOException('Failed to update account balance');
     }
 
     // Insert main account transaction
-    $mainTransaction = $conn->prepare("
+    $mainTransaction = $pdo->prepare("
         INSERT INTO main_account_transactions
         (main_account_id, type, amount, currency, exchange_rate, description, transaction_of, reference_id, balance, created_at, tenant_id, branch_id)
         VALUES (?, 'credit', ?, ?, ?, ?, 'weight', ?, ?, ?, ?, ?)
     ");
-    $mainTransaction->bind_param(
-        'idsssidsii',
-        $weight['paid_to'],
-        $amount,
-        $currency,
-        $exchangeRate,
-        $remarks,
-        $weightId,
-        $newBalance,
-        $transactionDate,
-        $tenant_id,
-        $branch_id
-    );
+    $mainTransaction->bindParam(1, $weight['paid_to'], PDO::PARAM_INT);
+    $mainTransaction->bindParam(2, $amount, PDO::PARAM_STR);
+    $mainTransaction->bindParam(3, $currency, PDO::PARAM_STR);
+    $mainTransaction->bindParam(4, $exchangeRate, PDO::PARAM_STR);
+    $mainTransaction->bindParam(5, $remarks, PDO::PARAM_STR);
+    $mainTransaction->bindParam(6, $weightId, PDO::PARAM_INT);
+    $mainTransaction->bindParam(7, $newBalance, PDO::PARAM_STR);
+    $mainTransaction->bindParam(8, $transactionDate, PDO::PARAM_STR);
+    $mainTransaction->bindParam(9, $tenant_id, PDO::PARAM_INT);
+    $mainTransaction->bindParam(10, $branch_id, PDO::PARAM_INT);
     if (!$mainTransaction->execute()) {
-        throw new Exception('Failed to save transaction');
+        throw new PDOException('Failed to save transaction');
     }
-    $transactionId = $mainTransaction->insert_id;
+    $transactionId = $pdo->lastInsertId();
 
     // Create notification
     $notificationMessage = sprintf(
@@ -128,21 +130,24 @@ try {
         $amount
     );
 
-    $notification = $conn->prepare("
-        INSERT INTO notifications 
-        (transaction_id, transaction_type, message, status, created_at, tenant_id, branch_id) 
+    $notification = $pdo->prepare("
+        INSERT INTO notifications
+        (transaction_id, transaction_type, message, status, created_at, tenant_id, branch_id)
         VALUES (?, 'weight', ?, 'Unread', NOW(), ?, ?)
     ");
-    if (!$notification->execute([$transactionId, $notificationMessage, $tenant_id, $branch_id])) {
-
-        throw new Exception('Failed to create notification');
+    $notification->bindParam(1, $transactionId, PDO::PARAM_INT);
+    $notification->bindParam(2, $notificationMessage, PDO::PARAM_STR);
+    $notification->bindParam(3, $tenant_id, PDO::PARAM_INT);
+    $notification->bindParam(4, $branch_id, PDO::PARAM_INT);
+    if (!$notification->execute()) {
+        throw new PDOException('Failed to create notification');
     }
 
     // Log the activity
     $user_id = $_SESSION["user_id"] ?? 0;
     $ip_address = $_SERVER['REMOTE_ADDR'] ?? '';
     $user_agent = $_SERVER['HTTP_USER_AGENT'] ?? '';
-    
+
     // Prepare activity log data
     $new_values = json_encode([
         'weight_id' => $weightId,
@@ -154,44 +159,42 @@ try {
         'main_account_id' => $weight['paid_to'],
         'balance' => $newBalance
     ]);
-    
+
     // Insert activity log
-    $activityLog = $conn->prepare("
-        INSERT INTO activity_log 
-        (user_id, tenant_id, action, table_name, record_id, old_values, new_values, ip_address, user_agent, created_at, branch_id) 
+    $activityLog = $pdo->prepare("
+        INSERT INTO activity_log
+        (user_id, tenant_id, action, table_name, record_id, old_values, new_values, ip_address, user_agent, created_at, branch_id)
         VALUES (?, ?, 'create', 'main_account_transactions', ?, NULL, ?, ?, ?, NOW(), ?)
     ");
-    
-    $activityLog->bind_param("iisssii", $user_id, $tenant_id, $transactionId, $new_values, $ip_address, $user_agent, $branch_id);
-    
+
+    $activityLog->bindParam(1, $user_id, PDO::PARAM_INT);
+    $activityLog->bindParam(2, $tenant_id, PDO::PARAM_INT);
+    $activityLog->bindParam(3, $transactionId, PDO::PARAM_INT);
+    $activityLog->bindParam(4, $new_values, PDO::PARAM_STR);
+    $activityLog->bindParam(5, $ip_address, PDO::PARAM_STR);
+    $activityLog->bindParam(6, $user_agent, PDO::PARAM_STR);
+    $activityLog->bindParam(7, $branch_id, PDO::PARAM_INT);
+
     if (!$activityLog->execute()) {
-        throw new Exception('Failed to log activity');
+        throw new PDOException('Failed to log activity');
     }
 
     // Commit transaction
-    $conn->commit();
+    $pdo->commit();
 
     echo json_encode([
         'success' => true,
         'message' => 'Transaction saved successfully'
     ]);
 
-} catch (Exception $e) {
+} catch (PDOException $e) {
     // Rollback transaction on error
-    $conn->rollback();
-    
+    $pdo->rollBack();
+
     error_log("Error in save_weight_transaction.php: " . $e->getMessage());
     echo json_encode([
         'success' => false,
         'message' => $e->getMessage()
     ]);
 }
-
-// Close connections
-if (isset($weightCheck)) $weightCheck->close();
-if (isset($balanceCheck)) $balanceCheck->close();
-if (isset($updateBalance)) $updateBalance->close();
-if (isset($mainTransaction)) $mainTransaction->close();
-if (isset($notification)) $notification->close();
-if (isset($activityLog)) $activityLog->close();
-$conn->close(); 
+?>

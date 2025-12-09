@@ -10,7 +10,8 @@ require_once '../../admin/security.php';
 // Enforce authentication
 enforce_auth();
 
-include '../../includes/conn.php';
+// Database connection
+require_once '../../includes/db.php';
 
 // Check if the user is logged in
 if (!isset($_SESSION['user_id']) || $_SESSION['role'] !== 'admin') {
@@ -50,35 +51,15 @@ try {
             tw.created_at DESC
     ";
 
-    $stmt = $conn->prepare($query);
-    if (!$stmt) {
-        throw new Exception("Prepare failed: " . $conn->error);
-    }
-
-    // Detect type of tenant_id
-    if (is_int($tenant_id)) {
-        $stmt->bind_param("ii", $tenant_id, $branch_id);
-    } else {
-        $stmt->bind_param("si", $tenant_id, $branch_id);
-    }
-
-    if (!$stmt->execute()) {
-        throw new Exception("Execute failed: " . $stmt->error);
-    }
-
-    $result = $stmt->get_result();
-    if ($result === false) {
-        throw new Exception("get_result() failed: " . $stmt->error);
-    }
-
-    $weights = $result->fetch_all(MYSQLI_ASSOC);
+    $stmt = $pdo->prepare($query);
+    $stmt->bindParam(1, $tenant_id, PDO::PARAM_INT);
+    $stmt->bindParam(2, $branch_id, PDO::PARAM_INT);
+    $stmt->execute();
+    $weights = $stmt->fetchAll(PDO::FETCH_ASSOC);
 
     echo json_encode(['success' => true, 'weights' => $weights]);
 
-    $stmt->close();
-    $conn->close();
-
-} catch (Exception $e) {
+} catch (PDOException $e) {
     echo json_encode(['success' => false, 'message' => $e->getMessage()]);
 }
 ?>

@@ -12,7 +12,6 @@ $branch_id = $_SESSION['branch_id'];
 
 // Database connection
 require_once('../../includes/db.php');
-include '../../includes/conn.php';
 
 // Get transaction ID from URL
 $transaction_id = isset($_GET['id']) ? (int)$_GET['id'] : 0;
@@ -41,32 +40,33 @@ $query = "
     WHERE mat.id = ? AND mat.tenant_id = ? AND mat.branch_id = ?
 ";
 
-$stmt = $conn->prepare($query);
-$stmt->bind_param("iii", $transaction_id, $tenant_id, $branch_id);
+$stmt = $pdo->prepare($query);
+$stmt->bindParam(1, $transaction_id, PDO::PARAM_INT);
+$stmt->bindParam(2, $tenant_id, PDO::PARAM_INT);
+$stmt->bindParam(3, $branch_id, PDO::PARAM_INT);
 $stmt->execute();
-$result = $stmt->get_result();
+$transaction = $stmt->fetch(PDO::FETCH_ASSOC);
 
-if ($result->num_rows === 0) {
+if (!$transaction) {
     die(__('transaction_not_found'));
 }
 
-// Debug output
-$debugData = $result->fetch_assoc();
-echo "<!-- Debug: Transaction data\n";
-print_r($debugData);
-echo "\n-->";
-
-$transaction = $debugData;
-
-// Fetch settings data (using mysqli connection)
+// Fetch settings data
 try {
-    $settingStmt = $conn->prepare("SELECT * FROM settings WHERE tenant_id = ?");
-    if (!$settingStmt) {
-        throw new Exception("Prepare failed for settings query: " . $conn->error);
-    }
+    $settingStmt = $pdo->prepare("SELECT * FROM settings WHERE tenant_id = ?");
+    $settingStmt->bindParam(1, $tenant_id, PDO::PARAM_INT);
+    $settingStmt->execute();
+    $settings = $settingStmt->fetch(PDO::FETCH_ASSOC);
 
-    $settingStmt->bind_param("i", $tenant_id);
-    if (!$settingStmt->execute()) {
+    if (!$settings) {
+        // Fallback defaults if no settings row found
+        $settings = ['agency_name' => 'Travel Agency'];
+    }
+} catch (PDOException $e) {
+    error_log("Settings Error: " . $e->getMessage());
+    $settings = ['agency_name' => 'Travel Agency'];
+}
+?>
         throw new Exception("Execute failed for settings query: " . $settingStmt->error);
     }
 

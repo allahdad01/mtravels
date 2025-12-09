@@ -5,7 +5,7 @@ if (session_status() === PHP_SESSION_NONE) {
 }
 
 // Include database connection and security
-require_once '../../includes/conn.php';
+require_once '../../includes/db.php';
 require_once '../../admin/includes/db_security.php';
 
 $tenant_id = $_SESSION['tenant_id'];
@@ -51,14 +51,23 @@ try {
             tw.id = ? AND tw.tenant_id = ? AND tw.branch_id = ?
     ";
 
-    $weightStmt = $conn->prepare($weightQuery);
-    $weightStmt->bind_param('iiiiiiiiiii', $tenant_id, $branch_id, $tenant_id, $branch_id, $tenant_id, $branch_id, $tenant_id, $branch_id, $weightId, $tenant_id, $branch_id);
+    $weightStmt = $pdo->prepare($weightQuery);
+    $weightStmt->bindParam(1, $tenant_id, PDO::PARAM_INT);
+    $weightStmt->bindParam(2, $branch_id, PDO::PARAM_INT);
+    $weightStmt->bindParam(3, $tenant_id, PDO::PARAM_INT);
+    $weightStmt->bindParam(4, $branch_id, PDO::PARAM_INT);
+    $weightStmt->bindParam(5, $tenant_id, PDO::PARAM_INT);
+    $weightStmt->bindParam(6, $branch_id, PDO::PARAM_INT);
+    $weightStmt->bindParam(7, $tenant_id, PDO::PARAM_INT);
+    $weightStmt->bindParam(8, $branch_id, PDO::PARAM_INT);
+    $weightStmt->bindParam(9, $weightId, PDO::PARAM_INT);
+    $weightStmt->bindParam(10, $tenant_id, PDO::PARAM_INT);
+    $weightStmt->bindParam(11, $branch_id, PDO::PARAM_INT);
     $weightStmt->execute();
-    $weightResult = $weightStmt->get_result();
-    $weight = $weightResult->fetch_assoc();
+    $weight = $weightStmt->fetch(PDO::FETCH_ASSOC);
 
     if (!$weight) {
-        throw new Exception('Weight not found');
+        throw new PDOException('Weight not found');
     }
 
     // Get transactions from main_account_transactions
@@ -78,27 +87,14 @@ try {
             mat.created_at DESC
     ";
 
-    $transactionStmt = $conn->prepare($transactionQuery);
-    $transactionStmt->bind_param('iiiii', $tenant_id, $branch_id, $weightId, $tenant_id, $branch_id);
+    $transactionStmt = $pdo->prepare($transactionQuery);
+    $transactionStmt->bindParam(1, $tenant_id, PDO::PARAM_INT);
+    $transactionStmt->bindParam(2, $branch_id, PDO::PARAM_INT);
+    $transactionStmt->bindParam(3, $weightId, PDO::PARAM_INT);
+    $transactionStmt->bindParam(4, $tenant_id, PDO::PARAM_INT);
+    $transactionStmt->bindParam(5, $branch_id, PDO::PARAM_INT);
     $transactionStmt->execute();
-    $transactionResult = $transactionStmt->get_result();
-
-    $transactions = [];
-    while ($row = $transactionResult->fetch_assoc()) {
-        // Format the transaction data
-        $transactions[] = [
-            'id' => $row['id'],
-            'amount' => $row['amount'],
-            'currency' => $row['currency'],
-            'exchange_rate' => $row['exchange_rate'] ?? null,
-            'transaction_date' => date('Y-m-d', strtotime($row['created_at'])),
-            'remarks' => $row['description'] ?? '',
-            'balance' => $row['balance'],
-            'account_name' => $row['account_name'],
-            'created_at' => $row['created_at'],
-            'reference_id' => $row['reference_id']
-        ];
-    }
+    $transactions = $transactionStmt->fetchAll(PDO::FETCH_ASSOC);
 
     echo json_encode([
         'success' => true,
@@ -106,15 +102,11 @@ try {
         'transactions' => $transactions
     ]);
 
-} catch (Exception $e) {
+} catch (PDOException $e) {
     error_log("Error in get_weight_transactions.php: " . $e->getMessage());
     echo json_encode([
         'success' => false,
         'message' => $e->getMessage()
     ]);
 }
-
-// Close connections
-if (isset($weightStmt)) $weightStmt->close();
-if (isset($transactionStmt)) $transactionStmt->close();
-$conn->close(); 
+?>

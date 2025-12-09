@@ -6,7 +6,8 @@ require_once '../../admin/security.php';
 enforce_auth();
 
 // Database connection
-require_once '../../includes/conn.php';
+require_once '../../includes/db.php';
+
 $tenant_id = $_SESSION['tenant_id'];
 $branch_id = $_SESSION['branch_id'];
 
@@ -18,8 +19,8 @@ if (!$ticketId) {
 }
 
 // Query to get ticket data
-$query = "SELECT t.*, 
-          s.name AS supplier_name, 
+$query = "SELECT t.*,
+          s.name AS supplier_name,
           c.name AS client_name,
           m.name AS paid_to_name
           FROM ticket_reservations t
@@ -28,12 +29,14 @@ $query = "SELECT t.*,
           LEFT JOIN main_account m ON t.paid_to = m.id
           WHERE t.id = ? AND t.tenant_id = ? AND t.branch_id = ?";
 
-$stmt = $conn->prepare($query);
-$stmt->bind_param('iii', $ticketId, $tenant_id, $branch_id);
+$stmt = $pdo->prepare($query);
+$stmt->bindParam(1, $ticketId, PDO::PARAM_INT);
+$stmt->bindParam(2, $tenant_id, PDO::PARAM_INT);
+$stmt->bindParam(3, $branch_id, PDO::PARAM_INT);
 $stmt->execute();
-$result = $stmt->get_result();
+$ticket = $stmt->fetch(PDO::FETCH_ASSOC);
 
-if ($ticket = $result->fetch_assoc()) {
+if ($ticket) {
     echo json_encode([
         'success' => true,
         'ticket' => $ticket
@@ -41,7 +44,4 @@ if ($ticket = $result->fetch_assoc()) {
 } else {
     echo json_encode(['success' => false, 'message' => 'Ticket not found']);
 }
-
-$stmt->close();
-$conn->close();
 ?>

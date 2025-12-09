@@ -11,7 +11,7 @@ error_reporting(E_ERROR | E_PARSE);
 header('Content-Type: application/json');
 
 // Include database connection and security
-require_once '../../includes/conn.php';
+require_once '../../includes/db.php';
 require_once '../../admin/includes/db_security.php';
 $tenant_id = $_SESSION['tenant_id'] ?? 0;
 $branch_id = $_SESSION['branch_id'] ?? 0;
@@ -31,11 +31,11 @@ $weightId = DbSecurity::validateInput($_POST['weight_id'], 'int', ['min' => 0]);
 $amount = DbSecurity::validateInput($_POST['amount'], 'float', ['min' => 0]);
 
 // Start transaction
-$conn->begin_transaction();
+$pdo->beginTransaction();
 
 try {
     // Fetch transaction details
-    $getTransaction = $conn->prepare("
+    $getTransaction = $pdo->prepare("
         SELECT t.*, t.currency as transaction_currency, t.created_at as transaction_date,
                tw.ticket_id, tb.paid_to as main_account_id
         FROM main_account_transactions t
@@ -43,13 +43,19 @@ try {
         JOIN ticket_bookings tb ON tw.ticket_id = tb.id AND tb.tenant_id = ? AND tb.branch_id = ?
         WHERE t.id = ? AND t.reference_id = ? AND t.transaction_of = 'weight' AND t.tenant_id = ? AND t.branch_id = ?
     ");
-    $getTransaction->bind_param('iiiiiiii', $tenant_id, $branch_id, $tenant_id, $branch_id, $transactionId, $weightId, $tenant_id, $branch_id);
+    $getTransaction->bindParam(1, $tenant_id, PDO::PARAM_INT);
+    $getTransaction->bindParam(2, $branch_id, PDO::PARAM_INT);
+    $getTransaction->bindParam(3, $tenant_id, PDO::PARAM_INT);
+    $getTransaction->bindParam(4, $branch_id, PDO::PARAM_INT);
+    $getTransaction->bindParam(5, $transactionId, PDO::PARAM_INT);
+    $getTransaction->bindParam(6, $weightId, PDO::PARAM_INT);
+    $getTransaction->bindParam(7, $tenant_id, PDO::PARAM_INT);
+    $getTransaction->bindParam(8, $branch_id, PDO::PARAM_INT);
     $getTransaction->execute();
-    $transactionResult = $getTransaction->get_result();
-    $transaction = $transactionResult->fetch_assoc();
+    $transaction = $getTransaction->fetch(PDO::FETCH_ASSOC);
 
     if (!$transaction) {
-        throw new Exception('Transaction not found');
+        throw new PDOException('Transaction not found');
     }
 
     // Determine balance column
@@ -59,48 +65,51 @@ try {
         case 'AFS': $balanceColumn = 'afs_balance'; break;
         case 'EUR': $balanceColumn = 'euro_balance'; break;
         case 'DARHAM': $balanceColumn = 'darham_balance'; break;
-        default: throw new Exception('Unsupported currency: ' . $transaction['currency']);
+        default: throw new PDOException('Unsupported currency: ' . $transaction['currency']);
     }
 
     // Update subsequent transactions
-    $updateSubsequent = $conn->prepare("
+    $updateSubsequent = $pdo->prepare("
         UPDATE main_account_transactions
         SET balance = balance - ?
         WHERE main_account_id = ? AND tenant_id = ? AND branch_id = ? AND currency = ? AND created_at > ? AND id != ?
     ");
-    $updateSubsequent->bind_param(
-        'diissii',
-        $amount,
-        $transaction['main_account_id'],
-        $tenant_id,
-        $branch_id,
-        $transaction['currency'],
-        $transaction['transaction_date'],
-        $transactionId
-    );
+    $updateSubsequent->bindParam(1, $amount, PDO::PARAM_STR);
+    $updateSubsequent->bindParam(2, $transaction['main_account_id'], PDO::PARAM_INT);
+    $updateSubsequent->bindParam(3, $tenant_id, PDO::PARAM_INT);
+    $updateSubsequent->bindParam(4, $branch_id, PDO::PARAM_INT);
+    $updateSubsequent->bindParam(5, $transaction['currency'], PDO::PARAM_STR);
+    $updateSubsequent->bindParam(6, $transaction['transaction_date'], PDO::PARAM_STR);
+    $updateSubsequent->bindParam(7, $transactionId, PDO::PARAM_INT);
     if (!$updateSubsequent->execute()) {
-        throw new Exception('Failed to update subsequent transaction balances');
+        throw new PDOException('Failed to update subsequent transaction balances');
     }
 
     // Delete main transaction
-    $deleteMainTransaction = $conn->prepare("
+    $deleteMainTransaction = $pdo->prepare("
         DELETE FROM main_account_transactions
         WHERE id = ? AND reference_id = ? AND transaction_of = 'weight' AND tenant_id = ? AND branch_id = ?
     ");
-    $deleteMainTransaction->bind_param('iiii', $transactionId, $weightId, $tenant_id, $branch_id);
-    if (!$deleteMainTransaction->execute() || $deleteMainTransaction->affected_rows === 0) {
-        throw new Exception('Failed to delete transaction');
+    $deleteMainTransaction->bindParam(1, $transactionId, PDO::PARAM_INT);
+    $deleteMainTransaction->bindParam(2, $weightId, PDO::PARAM_INT);
+    $deleteMainTransaction->bindParam(3, $tenant_id, PDO::PARAM_INT);
+    $deleteMainTransaction->bindParam(4, $branch_id, PDO::PARAM_INT);
+    if (!$deleteMainTransaction->execute() || $deleteMainTransaction->rowCount() === 0) {
+        throw new PDOException('Failed to delete transaction');
     }
 
     // Update main account balance
-    $updateBalance = $conn->prepare("
+    $updateBalance = $pdo->prepare("
         UPDATE main_account
         SET $balanceColumn = $balanceColumn - ?
         WHERE id = ? AND tenant_id = ? AND branch_id = ?
     ");
-    $updateBalance->bind_param('diii', $amount, $transaction['main_account_id'], $tenant_id, $branch_id);
+    $updateBalance->bindParam(1, $amount, PDO::PARAM_STR);
+    $updateBalance->bindParam(2, $transaction['main_account_id'], PDO::PARAM_INT);
+    $updateBalance->bindParam(3, $tenant_id, PDO::PARAM_INT);
+    $updateBalance->bindParam(4, $branch_id, PDO::PARAM_INT);
     if (!$updateBalance->execute()) {
-        throw new Exception('Failed to update main account balance');
+        throw new PDOException('Failed to update main account balance');
     }
 
     // Log activity
@@ -117,26 +126,32 @@ try {
         'created_at' => $transaction['transaction_date']
     ]);
 
-    $activityLog = $conn->prepare("
+    $activityLog = $pdo->prepare("
         INSERT INTO activity_log
         (user_id, tenant_id, branch_id, action, table_name, record_id, old_values, new_values, ip_address, user_agent, created_at)
         VALUES (?, ?, ?, 'delete', 'main_account_transactions', ?, ?, NULL, ?, ?, NOW())
     ");
-    $activityLog->bind_param("iiiisss", $user_id, $tenant_id, $branch_id, $transactionId, $old_values, $ip_address, $user_agent);
+    $activityLog->bindParam(1, $user_id, PDO::PARAM_INT);
+    $activityLog->bindParam(2, $tenant_id, PDO::PARAM_INT);
+    $activityLog->bindParam(3, $branch_id, PDO::PARAM_INT);
+    $activityLog->bindParam(4, $transactionId, PDO::PARAM_INT);
+    $activityLog->bindParam(5, $old_values, PDO::PARAM_STR);
+    $activityLog->bindParam(6, $ip_address, PDO::PARAM_STR);
+    $activityLog->bindParam(7, $user_agent, PDO::PARAM_STR);
     if (!$activityLog->execute()) {
-        throw new Exception('Failed to log activity');
+        throw new PDOException('Failed to log activity');
     }
 
     // Commit transaction
-    $conn->commit();
+    $pdo->commit();
 
     echo json_encode([
         'success' => true,
         'message' => 'Transaction deleted successfully'
     ]);
 
-} catch (Exception $e) {
-    $conn->rollback();
+} catch (PDOException $e) {
+    $pdo->rollBack();
     error_log("Error in delete_weight_transaction.php: " . $e->getMessage());
     echo json_encode([
         'success' => false,
@@ -144,12 +159,5 @@ try {
     ]);
 }
 
-// Close statements and connection
-$getTransaction->close();
-$updateSubsequent->close();
-$deleteMainTransaction->close();
-$updateBalance->close();
-$activityLog->close();
-$conn->close();
-
 // No closing PHP tag to avoid accidental whitespace
+?>

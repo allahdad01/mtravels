@@ -6,15 +6,15 @@ $branch_id = $_SESSION['branch_id'];
 // Enforce authentication
 enforce_auth();
 
-require_once('../../includes/db.php');
-include '../../includes/conn.php';
+// Database connection
+require_once '../../includes/db.php';
 
 if (isset($_GET['ticket_id'])) {
     $ticket_id = intval($_GET['ticket_id']);
 
     try {
         // Prepare a query to fetch all transactions for the given ticket reservation ID
-        $stmt = $conn->prepare("
+        $stmt = $pdo->prepare("
             SELECT t.*
             FROM main_account_transactions t
             LEFT JOIN main_account m ON t.main_account_id = m.id
@@ -24,12 +24,13 @@ if (isset($_GET['ticket_id'])) {
             AND t.transaction_of = 'ticket_reserve'
             ORDER BY t.created_at DESC
         ");
-        $stmt->bind_param("iii", $ticket_id, $tenant_id, $branch_id);
+        $stmt->bindParam(1, $ticket_id, PDO::PARAM_INT);
+        $stmt->bindParam(2, $tenant_id, PDO::PARAM_INT);
+        $stmt->bindParam(3, $branch_id, PDO::PARAM_INT);
         $stmt->execute();
 
         // Fetch all the results
-        $result = $stmt->get_result();
-        $transactions = $result->fetch_all(MYSQLI_ASSOC);
+        $transactions = $stmt->fetchAll(PDO::FETCH_ASSOC);
 
         if (empty($transactions)) {
             echo json_encode([]);
@@ -37,9 +38,7 @@ if (isset($_GET['ticket_id'])) {
             echo json_encode($transactions);
         }
 
-        $stmt->close();
-
-    } catch (Exception $e) {
+    } catch (PDOException $e) {
         error_log("Error fetching ticket reservation transactions: " . $e->getMessage());
         echo json_encode(['error' => 'Error fetching transactions']);
     }

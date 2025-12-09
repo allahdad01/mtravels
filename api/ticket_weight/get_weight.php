@@ -5,7 +5,7 @@ if (session_status() === PHP_SESSION_NONE) {
 }
 
 // Include database connection
-require_once '../../includes/conn.php';
+require_once '../../includes/db.php';
 
 $tenant_id = $_SESSION['tenant_id'];
 $branch_id = $_SESSION['branch_id'];
@@ -44,12 +44,20 @@ $query = "
         tw.id = ? AND tw.tenant_id = ? AND tw.branch_id = ?
 ";
 
-$stmt = $conn->prepare($query);
-$stmt->bind_param('iiiiiiii', $tenant_id, $branch_id, $tenant_id, $branch_id, $tenant_id, $branch_id, $weightId, $tenant_id, $branch_id);
+$stmt = $pdo->prepare($query);
+$stmt->bindParam(1, $tenant_id, PDO::PARAM_INT);
+$stmt->bindParam(2, $branch_id, PDO::PARAM_INT);
+$stmt->bindParam(3, $tenant_id, PDO::PARAM_INT);
+$stmt->bindParam(4, $branch_id, PDO::PARAM_INT);
+$stmt->bindParam(5, $tenant_id, PDO::PARAM_INT);
+$stmt->bindParam(6, $branch_id, PDO::PARAM_INT);
+$stmt->bindParam(7, $weightId, PDO::PARAM_INT);
+$stmt->bindParam(8, $tenant_id, PDO::PARAM_INT);
+$stmt->bindParam(9, $branch_id, PDO::PARAM_INT);
 $stmt->execute();
-$result = $stmt->get_result();
+$row = $stmt->fetch(PDO::FETCH_ASSOC);
 
-if ($result && $row = $result->fetch_assoc()) {
+if ($row) {
     echo json_encode([
         'success' => true,
         'weight' => $row
@@ -60,6 +68,4 @@ if ($result && $row = $result->fetch_assoc()) {
         'message' => 'Weight not found'
     ]);
 }
-
-$stmt->close();
-$conn->close(); 
+?>
