@@ -23,7 +23,6 @@ $tenant_id = $_SESSION['tenant_id'];
 $branch_id = $_SESSION['branch_id'];
 // Include database connection
 include '../includes/db.php';
-include '../includes/conn.php';
 
 // Initialize search variables
 $searchTerm = '';

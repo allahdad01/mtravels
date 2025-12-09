@@ -12,7 +12,6 @@ enforce_auth();
 
 require_once '../config.php';
 require_once '../includes/db.php';
-require_once '../includes/conn.php';
 
 // Validate id
 $id = isset($_POST['id']) ? DbSecurity::validateInput($_POST['id'], 'int', ['min' => 0]) : null;
@@ -27,15 +26,18 @@ if (!isset($_SESSION['user_id'])) {
 if (isset($_POST['id'])) {
     $id = $_POST['id'];
     
-    $stmt = $conn->prepare("SELECT ap.*, ma.name as main_account_name
+    $stmt = $pdo->prepare("SELECT ap.*, ma.name as main_account_name
                            FROM additional_payments ap
                            LEFT JOIN main_account ma ON ap.main_account_id = ma.id
                            WHERE ap.id = ? AND ap.tenant_id = ? AND ap.branch_id = ?");
-    $stmt->bind_param("sii", $id, $tenant_id, $branch_id);
+    $stmt->bindParam(1, $id, PDO::PARAM_STR);
+    $stmt->bindParam(2, $tenant_id, PDO::PARAM_INT);
+    $stmt->bindParam(3, $branch_id, PDO::PARAM_INT);
     $stmt->execute();
-    $result = $stmt->get_result();
-    
-    if ($payment = $result->fetch_assoc()) {
+    $result = $stmt->fetchAll();
+
+    if (count($result) > 0) {
+        $payment = $result[0];
         echo json_encode($payment);
     } else {
         header('HTTP/1.1 404 Not Found');

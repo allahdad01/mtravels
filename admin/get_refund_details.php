@@ -1,7 +1,6 @@
 <?php
 // Include necessary files
 require_once('../includes/db.php');
-require_once('../includes/conn.php');
 require_once('security.php');
 $tenant_id = $_SESSION['tenant_id'];
 $branch_id = $_SESSION['branch_id'];
@@ -34,13 +33,15 @@ try {
         WHERE r.id = ? AND r.tenant_id = ? AND r.branch_id = ?
     ";
 
-    $stmt = $conn->prepare($query);
-    $stmt->bind_param('iii', $refundId, $tenant_id, $branch_id);
+    $stmt = $pdo->prepare($query);
+    $stmt->bindParam(1, $refundId, PDO::PARAM_INT);
+    $stmt->bindParam(2, $tenant_id, PDO::PARAM_INT);
+    $stmt->bindParam(3, $branch_id, PDO::PARAM_INT);
     $stmt->execute();
-    
+
     // Get the result
-    $result = $stmt->get_result();
-    $refund = $result->fetch_assoc();
+    $result = $stmt->fetchAll();
+    $refund = count($result) > 0 ? $result[0] : null;
     
     if ($refund) {
         echo json_encode([
@@ -61,11 +62,4 @@ try {
     ]);
 }
 
-// Close the prepared statement and result
-if (isset($result)) {
-    $result->close();
-}
-if (isset($stmt)) {
-    $stmt->close();
-}
 ?> 

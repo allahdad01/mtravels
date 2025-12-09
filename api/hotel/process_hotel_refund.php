@@ -5,6 +5,14 @@ require_once('../../admin/security.php');
 
 // Enforce authentication
 enforce_auth();
+
+// ✅ CSRF Token Validation
+if (!verify_csrf_token()) {
+    http_response_code(403);
+    echo json_encode(['success' => false, 'message' => 'Security validation failed. Please try again.']);
+    exit;
+}
+
 $tenant_id = $_SESSION['tenant_id'];
 $branch_id = $_SESSION['branch_id'];
 // Set header for JSON response

@@ -23,6 +23,8 @@
                 </div>
                 
                 <form id="idCardForm" action="generate_id_cards.php" method="post" target="_blank" enctype="multipart/form-data">
+                    <!-- CSRF Protection -->
+                    <input type="hidden" name="csrf_token" value="<?php echo h($_SESSION['csrf_token'] ?? ''); ?>">
                     <input type="hidden" name="selected_pilgrims" id="selectedPilgrimsInput">
                     
                     <div class="form-group">

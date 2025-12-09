@@ -36,22 +36,19 @@ function sendEmail($to, $subject, $body, $isHtml = true, $emailType = 'general',
 
         // Get tenant name for sender
         global $tenant_id;
+        global $branch_id;
         $tenantName = 'MTravels'; // Default fallback
 
         if (isset($tenant_id) && $tenant_id) {
-            global $conn, $conection_db;
-            $db = isset($conn) ? $conn : (isset($conection_db) ? $conection_db : null);
-            
-            if ($db !== null) {
-                $stmt = $db->prepare("SELECT name FROM tenants WHERE id = ?");
-            $stmt->bind_param("i", $tenant_id);
-            $stmt->execute();
-                $result = $stmt->get_result();
-                $tenant = $result->fetch_assoc();
+            global $pdo;
+            if ($pdo !== null) {
+                $stmt = $pdo->prepare("SELECT name FROM tenants WHERE id = ?");
+                $stmt->bindParam(1, $tenant_id, PDO::PARAM_INT);
+                $stmt->execute();
+                $tenant = $stmt->fetch(PDO::FETCH_ASSOC);
                 if ($tenant) {
                     $tenantName = $tenant['name'];
                 }
-                $stmt->close();
             }
         }
 
@@ -92,18 +89,20 @@ function sendEmail($to, $subject, $body, $isHtml = true, $emailType = 'general',
 
 // Record email tracking
 function recordEmailTracking($emailId, $recipientEmail, $emailType, $tenantId) {
-    global $conn, $conection_db;
-    $db = isset($conn) ? $conn : (isset($conection_db) ? $conection_db : null);
-    
-    if ($db === null) {
+    global $pdo;
+
+    if ($pdo === null) {
         error_log("No database connection available in recordEmailTracking");
         return false;
     }
 
-    $stmt = $db->prepare("INSERT INTO email_tracking (email_id, recipient_email, email_type, tenant_id) VALUES (?, ?, ?, ?)");
-    $stmt->bind_param("sssi", $emailId, $recipientEmail, $emailType, $tenantId);
+    $stmt = $pdo->prepare("INSERT INTO email_tracking (email_id, recipient_email, email_type, tenant_id, branch_id) VALUES (?, ?, ?, ?, ?)");
+    $stmt->bindParam(1, $emailId, PDO::PARAM_STR);
+    $stmt->bindParam(2, $recipientEmail, PDO::PARAM_STR);
+    $stmt->bindParam(3, $emailType, PDO::PARAM_STR);
+    $stmt->bindParam(4, $tenantId, PDO::PARAM_INT);
+    $stmt->bindParam(5, $branchId, PDO::PARAM_INT);
     $stmt->execute();
-    $stmt->close();
 }
 
 // Get base URL for tracking
@@ -118,22 +117,19 @@ function getPlatformSettings() {
     static $settings = null;
 
     if ($settings === null) {
-        global $conn, $conection_db;
-        $db = isset($conn) ? $conn : (isset($conection_db) ? $conection_db : null);
-        
-        if ($db === null) {
+        global $pdo;
+
+        if ($pdo === null) {
             error_log("No database connection available in getPlatformSettings");
             return [];
         }
-        
-        $stmt = $db->prepare("SELECT `key`, `value` FROM platform_settings");
+
+        $stmt = $pdo->prepare("SELECT `key`, `value` FROM platform_settings");
         $stmt->execute();
-        $result = $stmt->get_result();
         $settings = [];
-        while ($row = $result->fetch_assoc()) {
+        while ($row = $stmt->fetch(PDO::FETCH_ASSOC)) {
             $settings[$row['key']] = $row['value'];
         }
-        $stmt->close();
     }
 
     return $settings;
@@ -141,10 +137,9 @@ function getPlatformSettings() {
 
 // Get tenant-specific SMTP settings (fallback to platform settings)
 function getTenantSMTPSettings($tenantId = null) {
-    global $conn, $conection_db;
-    $db = isset($conn) ? $conn : (isset($conection_db) ? $conection_db : null);
-    
-    if ($db === null) {
+    global $pdo;
+
+    if ($pdo === null) {
         error_log("No database connection available in getTenantSMTPSettings");
         return [];
     }
@@ -154,12 +149,10 @@ function getTenantSMTPSettings($tenantId = null) {
     }
 
     // Check if tenant has custom SMTP settings in settings table
-    $stmt = $db->prepare("SELECT smtp_host, smtp_port, smtp_encryption, smtp_username, smtp_password, smtp_from_email, smtp_from_name FROM settings WHERE tenant_id = ?");
-    $stmt->bind_param("i", $tenantId);
+    $stmt = $pdo->prepare("SELECT smtp_host, smtp_port, smtp_encryption, smtp_username, smtp_password, smtp_from_email, smtp_from_name FROM settings WHERE tenant_id = ?");
+    $stmt->bindParam(1, $tenantId, PDO::PARAM_INT);
     $stmt->execute();
-    $result = $stmt->get_result();
-    $tenantSettings = $result->fetch_assoc();
-    $stmt->close();
+    $tenantSettings = $stmt->fetch(PDO::FETCH_ASSOC);
 
     // Filter out empty values and return only configured settings
     $filteredSettings = array_filter($tenantSettings, function($value) {
@@ -181,19 +174,15 @@ function sendTicketNotification($clientEmail, $clientName, $ticketType, $ticketD
     $tenantName = 'MTravels'; // Default fallback
 
     if (isset($tenant_id) && $tenant_id) {
-        global $conn, $conection_db;
-        $db = isset($conn) ? $conn : (isset($conection_db) ? $conection_db : null);
-        
-        if ($db !== null) {
-            $stmt = $db->prepare("SELECT name FROM tenants WHERE id = ?");
-            $stmt->bind_param("i", $tenant_id);
+        global $pdo;
+        if ($pdo !== null) {
+            $stmt = $pdo->prepare("SELECT name FROM tenants WHERE id = ?");
+            $stmt->bindParam(1, $tenant_id, PDO::PARAM_INT);
             $stmt->execute();
-            $result = $stmt->get_result();
-            $tenant = $result->fetch_assoc();
+            $tenant = $stmt->fetch(PDO::FETCH_ASSOC);
             if ($tenant) {
                 $tenantName = $tenant['name'];
             }
-            $stmt->close();
         }
     }
 
@@ -249,19 +238,15 @@ function sendVisaNotification($clientEmail, $clientName, $applicationId, $applic
     $tenantName = 'MTravels'; // Default fallback
 
     if (isset($tenant_id) && $tenant_id) {
-        global $conn, $conection_db;
-        $db = isset($conn) ? $conn : (isset($conection_db) ? $conection_db : null);
-        
-        if ($db !== null) {
-            $stmt = $db->prepare("SELECT name FROM tenants WHERE id = ?");
-            $stmt->bind_param("i", $tenant_id);
+        global $pdo;
+        if ($pdo !== null) {
+            $stmt = $pdo->prepare("SELECT name FROM tenants WHERE id = ?");
+            $stmt->bindParam(1, $tenant_id, PDO::PARAM_INT);
             $stmt->execute();
-            $result = $stmt->get_result();
-            $tenant = $result->fetch_assoc();
+            $tenant = $stmt->fetch(PDO::FETCH_ASSOC);
             if ($tenant) {
                 $tenantName = $tenant['name'];
             }
-            $stmt->close();
         }
     }
 
@@ -324,19 +309,15 @@ function sendHotelNotification($clientEmail, $clientName, $bookingId, $guestName
     $tenantName = 'MTravels'; // Default fallback
 
     if (isset($tenant_id) && $tenant_id) {
-        global $conn, $conection_db;
-        $db = isset($conn) ? $conn : (isset($conection_db) ? $conection_db : null);
-        
-        if ($db !== null) {
-            $stmt = $db->prepare("SELECT name FROM tenants WHERE id = ?");
-            $stmt->bind_param("i", $tenant_id);
+        global $pdo;
+        if ($pdo !== null) {
+            $stmt = $pdo->prepare("SELECT name FROM tenants WHERE id = ?");
+            $stmt->bindParam(1, $tenant_id, PDO::PARAM_INT);
             $stmt->execute();
-            $result = $stmt->get_result();
-            $tenant = $result->fetch_assoc();
+            $tenant = $stmt->fetch(PDO::FETCH_ASSOC);
             if ($tenant) {
                 $tenantName = $tenant['name'];
             }
-            $stmt->close();
         }
     }
 
@@ -397,19 +378,15 @@ function sendUmrahNotification($clientEmail, $clientName, $bookingId, $passenger
     $tenantName = 'MTravels'; // Default fallback
 
     if (isset($tenant_id) && $tenant_id) {
-        global $conn, $conection_db;
-        $db = isset($conn) ? $conn : (isset($conection_db) ? $conection_db : null);
-        
-        if ($db !== null) {
-            $stmt = $db->prepare("SELECT name FROM tenants WHERE id = ?");
-            $stmt->bind_param("i", $tenant_id);
+        global $pdo;
+        if ($pdo !== null) {
+            $stmt = $pdo->prepare("SELECT name FROM tenants WHERE id = ?");
+            $stmt->bindParam(1, $tenant_id, PDO::PARAM_INT);
             $stmt->execute();
-            $result = $stmt->get_result();
-            $tenant = $result->fetch_assoc();
+            $tenant = $stmt->fetch(PDO::FETCH_ASSOC);
             if ($tenant) {
                 $tenantName = $tenant['name'];
             }
-            $stmt->close();
         }
     }
 
@@ -472,19 +449,15 @@ function sendTicketReservationNotification($clientEmail, $clientName, $ticketId,
     $tenantName = 'MTravels'; // Default fallback
 
     if (isset($tenant_id) && $tenant_id) {
-        global $conn, $conection_db;
-        $db = isset($conn) ? $conn : (isset($conection_db) ? $conection_db : null);
-        
-        if ($db !== null) {
-            $stmt = $db->prepare("SELECT name FROM tenants WHERE id = ?");
-            $stmt->bind_param("i", $tenant_id);
+        global $pdo;
+        if ($pdo !== null) {
+            $stmt = $pdo->prepare("SELECT name FROM tenants WHERE id = ?");
+            $stmt->bindParam(1, $tenant_id, PDO::PARAM_INT);
             $stmt->execute();
-            $result = $stmt->get_result();
-            $tenant = $result->fetch_assoc();
+            $tenant = $stmt->fetch(PDO::FETCH_ASSOC);
             if ($tenant) {
                 $tenantName = $tenant['name'];
             }
-            $stmt->close();
         }
     }
 
@@ -547,19 +520,15 @@ function sendSalaryAdvanceNotification($employeeEmail, $employeeName, $advanceId
     $tenantName = 'MTravels'; // Default fallback
 
     if (isset($tenant_id) && $tenant_id) {
-        global $conn, $conection_db;
-        $db = isset($conn) ? $conn : (isset($conection_db) ? $conection_db : null);
-        
-        if ($db !== null) {
-            $stmt = $db->prepare("SELECT name FROM tenants WHERE id = ?");
-            $stmt->bind_param("i", $tenant_id);
+        global $pdo;
+        if ($pdo !== null) {
+            $stmt = $pdo->prepare("SELECT name FROM tenants WHERE id = ?");
+            $stmt->bindParam(1, $tenant_id, PDO::PARAM_INT);
             $stmt->execute();
-            $result = $stmt->get_result();
-            $tenant = $result->fetch_assoc();
+            $tenant = $stmt->fetch(PDO::FETCH_ASSOC);
             if ($tenant) {
                 $tenantName = $tenant['name'];
             }
-            $stmt->close();
         }
     }
 
@@ -619,23 +588,19 @@ function sendSalaryPaymentNotification($employeeEmail, $employeeName, $paymentId
     $tenantName = 'MTravels'; // Default fallback
 
     if (isset($tenant_id) && $tenant_id) {
-        global $conn, $conection_db;
-        $db = isset($conn) ? $conn : (isset($conection_db) ? $conection_db : null);
-        
-        if ($db === null) {
+        global $pdo;
+        if ($pdo === null) {
             error_log("No database connection available in sendSalaryPaymentNotification");
             return false;
         }
-        
-        $stmt = $db->prepare("SELECT name FROM tenants WHERE id = ?");
-        $stmt->bind_param("i", $tenant_id);
+
+        $stmt = $pdo->prepare("SELECT name FROM tenants WHERE id = ?");
+        $stmt->bindParam(1, $tenant_id, PDO::PARAM_INT);
         $stmt->execute();
-        $result = $stmt->get_result();
-        $tenant = $result->fetch_assoc();
+        $tenant = $stmt->fetch(PDO::FETCH_ASSOC);
         if ($tenant) {
             $tenantName = $tenant['name'];
         }
-        $stmt->close();
     }
 
     $subject = "Salary Payment Processed - {$tenantName}";
@@ -697,19 +662,15 @@ function sendAccountNotification($email, $name, $type, $amount, $currency, $mess
     $tenantName = 'MTravels'; // Default fallback
 
     if (isset($tenant_id) && $tenant_id) {
-        global $conn, $conection_db;
-        $db = isset($conn) ? $conn : (isset($conection_db) ? $conection_db : null);
-        
-        if ($db !== null) {
-            $stmt = $db->prepare("SELECT name FROM tenants WHERE id = ?");
-            $stmt->bind_param("i", $tenant_id);
+        global $pdo;
+        if ($pdo !== null) {
+            $stmt = $pdo->prepare("SELECT name FROM tenants WHERE id = ?");
+            $stmt->bindParam(1, $tenant_id, PDO::PARAM_INT);
             $stmt->execute();
-            $result = $stmt->get_result();
-            $tenant = $result->fetch_assoc();
+            $tenant = $stmt->fetch(PDO::FETCH_ASSOC);
             if ($tenant) {
                 $tenantName = $tenant['name'];
             }
-            $stmt->close();
         }
     }
 
@@ -847,30 +808,25 @@ function sendUserCredentialsEmail($userEmail, $userName, $password, $role, $tena
     $agencyName = '';
 
     if ($tenantId) {
-        global $conn, $conection_db;
-        $db = isset($conn) ? $conn : (isset($conection_db) ? $conection_db : null);
-        
-        if ($db !== null) {
-            $stmt = $db->prepare("SELECT name, subdomain FROM tenants WHERE id = ?");
-            $stmt->bind_param("i", $tenantId);
+        global $pdo;
+        if ($pdo !== null) {
+            $stmt = $pdo->prepare("SELECT name, subdomain FROM tenants WHERE id = ?");
+            $stmt->bindParam(1, $tenantId, PDO::PARAM_INT);
             $stmt->execute();
-            $result = $stmt->get_result();
-            $tenant = $result->fetch_assoc();
+            $tenant = $stmt->fetch(PDO::FETCH_ASSOC);
             if ($tenant) {
                 $tenantName = $tenant['name'];
                 $subdomain = $tenant['subdomain'];
 
                 // Get agency name from settings
-                $stmt2 = $db->prepare("SELECT agency_name FROM settings WHERE tenant_id = ?");
-                $stmt2->bind_param("i", $tenantId);
+                $stmt2 = $pdo->prepare("SELECT agency_name FROM settings WHERE tenant_id = ?");
+                $stmt2->bindParam(1, $tenantId, PDO::PARAM_INT);
                 $stmt2->execute();
-                $settings = $stmt2->get_result()->fetch_assoc();
+                $settings = $stmt2->fetch(PDO::FETCH_ASSOC);
                 if ($settings && $settings['agency_name']) {
                     $agencyName = $settings['agency_name'];
                 }
-                $stmt2->close();
             }
-            $stmt->close();
         }
     }
 
@@ -959,21 +915,18 @@ function sendUserCredentialsEmail($userEmail, $userName, $password, $role, $tena
 
 // Send notification to tenant admin about new user creation
 function sendTenantUserNotificationEmail($tenantId, $userName, $userEmail, $userRole) {
-    global $conn, $conection_db;
-    $db = isset($conn) ? $conn : (isset($conection_db) ? $conection_db : null);
-    
-    if ($db === null) {
+    global $pdo;
+
+    if ($pdo === null) {
         error_log("No database connection available in sendTenantUserNotificationEmail");
         return false;
     }
 
     // Get tenant information
-    $stmt = $db->prepare("SELECT name, billing_email, subdomain FROM tenants WHERE id = ?");
-    $stmt->bind_param("i", $tenantId);
+    $stmt = $pdo->prepare("SELECT name, billing_email, subdomain FROM tenants WHERE id = ?");
+    $stmt->bindParam(1, $tenantId, PDO::PARAM_INT);
     $stmt->execute();
-    $result = $stmt->get_result();
-    $tenant = $result->fetch_assoc();
-    $stmt->close();
+    $tenant = $stmt->fetch(PDO::FETCH_ASSOC);
 
     if (!$tenant) {
         error_log("Tenant not found for user notification email: {$tenantId}");
@@ -986,14 +939,13 @@ function sendTenantUserNotificationEmail($tenantId, $userName, $userEmail, $user
 
     // Get agency name from settings
     $agencyName = '';
-    $stmt = $db->prepare("SELECT agency_name FROM settings WHERE tenant_id = ?");
-    $stmt->bind_param("i", $tenantId);
+    $stmt = $pdo->prepare("SELECT agency_name FROM settings WHERE tenant_id = ?");
+    $stmt->bindParam(1, $tenantId, PDO::PARAM_INT);
     $stmt->execute();
-    $settings = $stmt->get_result()->fetch_assoc();
+    $settings = $stmt->fetch(PDO::FETCH_ASSOC);
     if ($settings && $settings['agency_name']) {
         $agencyName = $settings['agency_name'];
     }
-    $stmt->close();
 
     $roleDisplay = ucfirst(str_replace('_', ' ', $userRole));
     $subject = "New User Added to Your {$tenantName} Account";
@@ -1062,21 +1014,18 @@ function sendTenantUserNotificationEmail($tenantId, $userName, $userEmail, $user
 
 // Send payment confirmation email to tenant
 function sendPaymentConfirmationEmail($tenantId, $amount, $currency, $paymentDate, $billingCycle) {
-    global $conn, $conection_db;
-    $db = isset($conn) ? $conn : (isset($conection_db) ? $conection_db : null);
-    
-    if ($db === null) {
+    global $pdo;
+
+    if ($pdo === null) {
         error_log("No database connection available in sendPaymentConfirmationEmail");
         return false;
     }
 
     // Get tenant information
-    $stmt = $db->prepare("SELECT name, billing_email, subdomain FROM tenants WHERE id = ?");
-    $stmt->bind_param("i", $tenantId);
+    $stmt = $pdo->prepare("SELECT name, billing_email, subdomain FROM tenants WHERE id = ?");
+    $stmt->bindParam(1, $tenantId, PDO::PARAM_INT);
     $stmt->execute();
-    $result = $stmt->get_result();
-    $tenant = $result->fetch_assoc();
-    $stmt->close();
+    $tenant = $stmt->fetch(PDO::FETCH_ASSOC);
 
     if (!$tenant) {
         error_log("Tenant not found for payment confirmation email: {$tenantId}");
@@ -1089,14 +1038,13 @@ function sendPaymentConfirmationEmail($tenantId, $amount, $currency, $paymentDat
 
     // Get agency name from settings
     $agencyName = '';
-    $stmt = $db->prepare("SELECT agency_name FROM settings WHERE tenant_id = ?");
-    $stmt->bind_param("i", $tenantId);
+    $stmt = $pdo->prepare("SELECT agency_name FROM settings WHERE tenant_id = ?");
+    $stmt->bindParam(1, $tenantId, PDO::PARAM_INT);
     $stmt->execute();
-    $settings = $stmt->get_result()->fetch_assoc();
+    $settings = $stmt->fetch(PDO::FETCH_ASSOC);
     if ($settings && $settings['agency_name']) {
         $agencyName = $settings['agency_name'];
     }
-    $stmt->close();
 
     $subject = "Payment Confirmation - {$tenantName} Subscription";
 
@@ -1209,27 +1157,24 @@ function generateTicketPDF($bookingData, $tenantId) {
     $mpdf->SetSubject('Flight Ticket');
     
     // Get agency settings for header
-    global $conn, $conection_db;
-    $db = isset($conn) ? $conn : (isset($conection_db) ? $conection_db : null);
-    
+    global $pdo;
+
     $agencyName = 'MTravels';
     $agencyEmail = 'info@mtravels.com';
     $agencyPhone = '+93 (0) 123 456 789';
     $agencyAddress = '';
-    
-    if ($tenantId && $db !== null) {
-        $stmt = $db->prepare("SELECT agency_name, email, phone, address FROM settings WHERE tenant_id = ?");
-        $stmt->bind_param("i", $tenantId);
+
+    if ($tenantId && $pdo !== null) {
+        $stmt = $pdo->prepare("SELECT agency_name, email, phone, address FROM settings WHERE tenant_id = ?");
+        $stmt->bindParam(1, $tenantId, PDO::PARAM_INT);
         $stmt->execute();
-        $result = $stmt->get_result();
-        $settings = $result->fetch_assoc();
+        $settings = $stmt->fetch(PDO::FETCH_ASSOC);
         if ($settings) {
             $agencyName = $settings['agency_name'] ?: 'MTravels';
             $agencyEmail = $settings['email'] ?: 'info@mtravels.com';
             $agencyPhone = $settings['phone'] ?: '+93 (0) 123 456 789';
             $agencyAddress = $settings['address'] ?: '';
         }
-        $stmt->close();
     }
     
     // Format dates for display
@@ -1614,19 +1559,15 @@ function sendTicketNotificationWithAttachment($email, $name, $subject, $body, $a
         $tenantName = 'MTravels'; // Default fallback
         
         if (isset($tenant_id) && $tenant_id) {
-            global $conn, $conection_db;
-            $db = isset($conn) ? $conn : (isset($conection_db) ? $conection_db : null);
-            
-            if ($db !== null) {
-                $stmt = $db->prepare("SELECT name FROM tenants WHERE id = ?");
-                $stmt->bind_param("i", $tenant_id);
+            global $pdo;
+            if ($pdo !== null) {
+                $stmt = $pdo->prepare("SELECT name FROM tenants WHERE id = ?");
+                $stmt->bindParam(1, $tenant_id, PDO::PARAM_INT);
                 $stmt->execute();
-                $result = $stmt->get_result();
-                $tenant = $result->fetch_assoc();
+                $tenant = $stmt->fetch(PDO::FETCH_ASSOC);
                 if ($tenant) {
                     $tenantName = $tenant['name'];
                 }
-                $stmt->close();
             }
         }
         

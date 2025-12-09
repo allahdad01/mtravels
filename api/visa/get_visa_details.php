@@ -13,7 +13,7 @@ enforce_auth();
 
 
 // Include database connection
-require_once('../../includes/conn.php');
+require_once('../../includes/db.php');
 
 
 
@@ -33,34 +33,34 @@ try {
 
                WHERE v.id = ? AND v.tenant_id = ? AND v.branch_id = ?";
 
-    $stmt = $conn->prepare($query);
-    $stmt->bind_param('iii', $visaId, $tenant_id, $branch_id);
+    $stmt = $pdo->prepare($query);
+    $stmt->bindParam(1, $visaId, PDO::PARAM_INT);
+    $stmt->bindParam(2, $tenant_id, PDO::PARAM_INT);
+    $stmt->bindParam(3, $branch_id, PDO::PARAM_INT);
     $stmt->execute();
-    $result = $stmt->get_result();
-    
-    if ($result->num_rows === 0) {
+
+    $visa = $stmt->fetch(PDO::FETCH_ASSOC);
+
+    if (!$visa) {
         echo json_encode(['success' => false, 'message' => 'Visa not found']);
         exit;
     }
-    
-    // Fetch the visa data
-    $visa = $result->fetch_assoc();
-    
-    
+
+
     // Return success response with visa data
     echo json_encode([
         'success' => true,
         'visa' => $visa
     ]);
-    
-} catch (Exception $e) {
+
+} catch (PDOException $e) {
     // Log error (adjust this according to your logging system)
     error_log('Error fetching visa details: ' . $e->getMessage());
-    
+
     // Return error response
     echo json_encode([
         'success' => false,
         'message' => 'An error occurred while fetching visa details'
     ]);
 }
-?> 
+?>

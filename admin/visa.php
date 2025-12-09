@@ -19,10 +19,9 @@ if (!isset($_SESSION['user_id'])  || $_SESSION['role'] !== 'admin') {
 
 // Database connection
 require_once('../includes/db.php');
-require_once '../includes/conn.php';
 
 // Pagination and search setup
-$search = isset($_GET['search']) ? $conn->real_escape_string($_GET['search']) : '';
+$search = isset($_GET['search']) ? trim($_GET['search']) : '';
 
 $searchCondition = " WHERE tenant_id = ? AND branch_id = ?";
 $params = [$tenant_id, $branch_id];
@@ -71,17 +70,17 @@ if (!empty($search)) {
 }
 
 /* ---------- COUNT QUERY ---------- */
-$totalRecordsQuery = "SELECT COUNT(*) as total 
-                      FROM visa_applications va 
+$totalRecordsQuery = "SELECT COUNT(*) as total
+                      FROM visa_applications va
                       $searchCondition";
 
-$stmt = $conn->prepare($totalRecordsQuery);
-$stmt->bind_param($types, ...$params);
+$stmt = $pdo->prepare($totalRecordsQuery);
+foreach ($params as $index => $param) {
+    $stmt->bindParam($index + 1, $params[$index], is_int($param) ? PDO::PARAM_INT : PDO::PARAM_STR);
+}
 $stmt->execute();
-$result = $stmt->get_result();
-$totalRecords = $result->fetch_assoc()['total'];
+$totalRecords = $stmt->fetch(PDO::FETCH_ASSOC)['total'];
 $totalPages = ceil($totalRecords / $recordsPerPage);
-$stmt->close();
 
 /* ---------- MAIN VISA QUERY ---------- */
 $visaQuery = "SELECT va.*, u.name as created_by
@@ -99,23 +98,23 @@ $paramsWithLimit[] = $branch_id; // for users table branch_id
 $paramsWithLimit[] = $recordsPerPage;
 $paramsWithLimit[] = $offset;
 
-$stmt = $conn->prepare($visaQuery);
-$stmt->bind_param($typesWithLimit, ...$paramsWithLimit);
+$stmt = $pdo->prepare($visaQuery);
+foreach ($paramsWithLimit as $index => $param) {
+    $stmt->bindParam($index + 1, $paramsWithLimit[$index], is_int($param) ? PDO::PARAM_INT : PDO::PARAM_STR);
+}
 $stmt->execute();
-$visaResult = $stmt->get_result();
-$visas = $visaResult->fetch_all(MYSQLI_ASSOC);
+$visas = $stmt->fetchAll(PDO::FETCH_ASSOC);
 
 // Fetch Suppliers
 $suppliersQuery = "SELECT id, name
                    FROM suppliers
                    WHERE status = 'active' AND tenant_id = ? AND branch_id = ?";
 
-$stmt = $conn->prepare($suppliersQuery);
-$stmt->bind_param("ii", $tenant_id, $branch_id); // assuming tenant_id and branch_id are integers
+$stmt = $pdo->prepare($suppliersQuery);
+$stmt->bindParam(1, $tenant_id, PDO::PARAM_INT);
+$stmt->bindParam(2, $branch_id, PDO::PARAM_INT);
 $stmt->execute();
-$suppliersResult = $stmt->get_result();
-$suppliers = $suppliersResult->fetch_all(MYSQLI_ASSOC);
-$stmt->close();
+$suppliers = $stmt->fetchAll(PDO::FETCH_ASSOC);
 
 
 
@@ -124,24 +123,22 @@ $clientsQuery = "SELECT id, name
                  FROM clients
                  WHERE status = 'active' AND tenant_id = ? AND branch_id = ?";
 
-$stmt = $conn->prepare($clientsQuery);
-$stmt->bind_param("ii", $tenant_id, $branch_id); // assuming tenant_id and branch_id are integers
+$stmt = $pdo->prepare($clientsQuery);
+$stmt->bindParam(1, $tenant_id, PDO::PARAM_INT);
+$stmt->bindParam(2, $branch_id, PDO::PARAM_INT);
 $stmt->execute();
-$clientsResult = $stmt->get_result();
-$clients = $clientsResult->fetch_all(MYSQLI_ASSOC);
-$stmt->close();
+$clients = $stmt->fetchAll(PDO::FETCH_ASSOC);
 
 // Fetch Internal Accounts
 $internalQuery = "SELECT id, name
                   FROM main_account
                   WHERE status = 'active' AND tenant_id = ? AND branch_id = ?";
 
-$stmt = $conn->prepare($internalQuery);
-$stmt->bind_param("ii", $tenant_id, $branch_id);
+$stmt = $pdo->prepare($internalQuery);
+$stmt->bindParam(1, $tenant_id, PDO::PARAM_INT);
+$stmt->bindParam(2, $branch_id, PDO::PARAM_INT);
 $stmt->execute();
-$internalResult = $stmt->get_result();
-$internal = $internalResult->fetch_all(MYSQLI_ASSOC);
-$stmt->close();
+$internal = $stmt->fetchAll(PDO::FETCH_ASSOC);
 
 // Create an associative array of supplier id to supplier name for easy lookup
 $supplier_names = [];
@@ -302,9 +299,13 @@ foreach ($visas as $key => $visa) {
                                                             foreach ($visas as $visa): 
                                                                 $isAgencyClient = false;
                                                                 $soldTo = $visa['sold_to'];
-                                                                $clientQuery = $conn->query("SELECT client_type FROM clients WHERE tenant_id = $tenant_id AND branch_id = $branch_id AND name = '".$visa['sold_name']."'");
-                                                                if ($clientQuery && $clientQuery->num_rows > 0) {
-                                                                    $clientRow = $clientQuery->fetch_assoc();
+                                                                $clientStmt = $pdo->prepare("SELECT client_type FROM clients WHERE tenant_id = ? AND branch_id = ? AND name = ?");
+                                                                $clientStmt->bindParam(1, $tenant_id, PDO::PARAM_INT);
+                                                                $clientStmt->bindParam(2, $branch_id, PDO::PARAM_INT);
+                                                                $clientStmt->bindParam(3, $visa['sold_name'], PDO::PARAM_STR);
+                                                                $clientStmt->execute();
+                                                                if ($clientStmt->rowCount() > 0) {
+                                                                    $clientRow = $clientStmt->fetch(PDO::FETCH_ASSOC);
                                                                     $isAgencyClient = ($clientRow['client_type'] === 'agency');
                                                                 }
                                                             ?>
@@ -355,9 +356,13 @@ foreach ($visas as $key => $visa) {
                                                                     $isAgencyClient = false; // Default to not agency client
 
                                                                     // Fix: We need to query the clients table using the client name from sold_to
-                                                                    $clientQuery = $conn->query("SELECT client_type FROM clients WHERE tenant_id = $tenant_id AND branch_id = $branch_id AND name = '".$visa['sold_name']."'");
-                                                                    if ($clientQuery && $clientQuery->num_rows > 0) {
-                                                                        $clientRow = $clientQuery->fetch_assoc();
+                                                                    $clientStmt = $pdo->prepare("SELECT client_type FROM clients WHERE tenant_id = ? AND branch_id = ? AND name = ?");
+                                                                    $clientStmt->bindParam(1, $tenant_id, PDO::PARAM_INT);
+                                                                    $clientStmt->bindParam(2, $branch_id, PDO::PARAM_INT);
+                                                                    $clientStmt->bindParam(3, $visa['sold_name'], PDO::PARAM_STR);
+                                                                    $clientStmt->execute();
+                                                                    if ($clientStmt->rowCount() > 0) {
+                                                                        $clientRow = $clientStmt->fetch(PDO::FETCH_ASSOC);
                                                                         // Only show payment status for agency clients
                                                                         $isAgencyClient = ($clientRow['client_type'] === 'agency');
                                                                     }
@@ -373,14 +378,19 @@ foreach ($visas as $key => $visa) {
                                                                         $visaId = $visa['id'];
 
                                                                         // Query transactions from main_account_transactions table
-                                                                        $transactionQuery = $conn->query("SELECT * FROM main_account_transactions WHERE
+                                                                        $transactionStmt = $pdo->prepare("SELECT * FROM main_account_transactions WHERE
                                                                             transaction_of = 'visa_sale'
-                                                                            AND reference_id = '$visaId'
-                                                                            AND tenant_id = $tenant_id
-                                                                            AND branch_id = $branch_id");
+                                                                            AND reference_id = ?
+                                                                            AND tenant_id = ?
+                                                                            AND branch_id = ?");
+                                                                        $transactionStmt->bindParam(1, $visaId, PDO::PARAM_INT);
+                                                                        $transactionStmt->bindParam(2, $tenant_id, PDO::PARAM_INT);
+                                                                        $transactionStmt->bindParam(3, $branch_id, PDO::PARAM_INT);
+                                                                        $transactionStmt->execute();
+                                                                        $transactions = $transactionStmt->fetchAll(PDO::FETCH_ASSOC);
 
-                                                                        if ($transactionQuery && $transactionQuery->num_rows > 0) {
-                                                                            while ($transaction = $transactionQuery->fetch_assoc()) {
+                                                                        if ($transactions && count($transactions) > 0) {
+                                                                            foreach ($transactions as $transaction) {
                                                                                 $amount = floatval($transaction['amount']);
                                                                                 $transCurrency = $transaction['currency'];
                                                                                 $transExchangeRate = isset($transaction['exchange_rate']) && $transaction['exchange_rate'] > 0 ? floatval($transaction['exchange_rate']) : 1.0;

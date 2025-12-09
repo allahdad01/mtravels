@@ -2,6 +2,9 @@
 // Include security module
 require_once 'security.php';
 
+// Include secure headers helper
+require_once 'includes/set_secure_headers.php';
+
 // Enforce authentication
 enforce_auth();
 
@@ -19,53 +22,44 @@ if (!isset($_SESSION['user_id'])  || $_SESSION['role'] !== 'admin') {
 
 // Database connection
 require_once('../includes/db.php');
-require_once('../includes/conn.php');
 
 // Note: Client accounts are fetched later with a more detailed query
 
 // Fetch main account balances
 $mainAccountQuery = "SELECT * FROM main_account WHERE tenant_id = ? And branch_id = ?";
-$stmt = $conn->prepare($mainAccountQuery);
-$stmt->bind_param("ii", $tenant_id, $branch_id);
+$stmt = $pdo->prepare($mainAccountQuery);
+$stmt->bindParam(1, $tenant_id, PDO::PARAM_INT);
+$stmt->bindParam(2, $branch_id, PDO::PARAM_INT);
 $stmt->execute();
-$result = $stmt->get_result(); // Use get_result() instead of another query
-
-if ($result && $result->num_rows > 0) {
-    $mainAccounts = $result->fetch_all(MYSQLI_ASSOC); // Fetch all rows as an array of associative arrays
-} else {
-    $mainAccounts = [];
-}
+$mainAccounts = $stmt->fetchAll(PDO::FETCH_ASSOC);
 
 // Fetch client accounts balances
 $clientAccountQuery = "SELECT * FROM clients where status = 'active' AND tenant_id = ? And branch_id = ?";
-$stmt = $conn->prepare($clientAccountQuery);
-$stmt->bind_param("ii", $tenant_id, $branch_id);
+$stmt = $pdo->prepare($clientAccountQuery);
+$stmt->bindParam(1, $tenant_id, PDO::PARAM_INT);
+$stmt->bindParam(2, $branch_id, PDO::PARAM_INT);
 $stmt->execute();
-$result = $stmt->get_result();
-
-if ($result && $result->num_rows > 0) {
-    $clientAccounts = $result->fetch_all(MYSQLI_ASSOC); // Fetch all rows as an array of associative arrays
-} else {
-    $clientAccounts = [];
-}
+$clientAccounts = $stmt->fetchAll(PDO::FETCH_ASSOC);
 
 // Fetch supplier accounts with their balances
     $supplierQuery = "
     SELECT sa.id, sa.name AS supplier_name, sa.currency, sa.balance, sa.updated_at, sa.status
     FROM suppliers sa where status = 'active' AND tenant_id = ? And branch_id = ?";
-$supplier = $conn->prepare($supplierQuery);
-$supplier->bind_param("ii", $tenant_id, $branch_id);
-$supplier->execute();
-$supplier = $supplier->get_result()->fetch_all(MYSQLI_ASSOC);
+$supplierStmt = $pdo->prepare($supplierQuery);
+$supplierStmt->bindParam(1, $tenant_id, PDO::PARAM_INT);
+$supplierStmt->bindParam(2, $branch_id, PDO::PARAM_INT);
+$supplierStmt->execute();
+$supplier = $supplierStmt->fetchAll(PDO::FETCH_ASSOC);
 
 // Fetch client accounts with their balances
 $clientQuery = "
 SELECT cl.id, cl.name, cl.usd_balance, cl.afs_balance, cl.updated_at, cl.status
 FROM clients cl where status = 'active' AND tenant_id = ? And branch_id = ?";
-$clientAccounts = $conn->prepare($clientQuery);
-$clientAccounts->bind_param("ii", $tenant_id, $branch_id);
-$clientAccounts->execute();
-$clientAccounts = $clientAccounts->get_result()->fetch_all(MYSQLI_ASSOC);
+$clientStmt = $pdo->prepare($clientQuery);
+$clientStmt->bindParam(1, $tenant_id, PDO::PARAM_INT);
+$clientStmt->bindParam(2, $branch_id, PDO::PARAM_INT);
+$clientStmt->execute();
+$clientAccounts = $clientStmt->fetchAll(PDO::FETCH_ASSOC);
 
 
 ?>

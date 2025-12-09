@@ -1,15 +1,33 @@
 <?php
-/* Database credentials. Assuming you are running MySQL
-server with default setting (user 'root' with no password) */
-define('DB_SERVER', 'localhost');
-define('DB_USERNAME', 'root');
-define('DB_PASSWORD', '');
-define('DB_NAME', 'travelagency_saas');
+/* Database credentials. Using environment variables for security */
+define('DB_SERVER', getenv('DB_SERVER') ?: 'localhost');
+define('DB_USERNAME', getenv('DB_USERNAME') ?: 'root');
 
-// Hesabpay API Configuration
-define('HESABPAY_MERCHANT_ID', '0780310431'); // Replace with actual merchant ID
-define('HESABPAY_API_KEY', 'MzI0ZjM3NzEtMTg3OS00YzllLTgzZjMtOTg4ZDdmOTY1MTg4X185OGE2Njg3MWU0YzgzZmZjOTFmMQ=='); // Replace with actual API key
-define('HESABPAY_BASE_URL', 'https://api-sandbox.hesab.com/api/v1');
+// Validate DB_PASSWORD is configured (cannot be empty for security)
+$db_password = getenv('DB_PASSWORD');
+if ($db_password === false) {
+    // In development (localhost/XAMPP), allow empty password
+    // In production (non-localhost), require environment variable
+    $is_localhost = ($_SERVER['HTTP_HOST'] === 'localhost' || $_SERVER['HTTP_HOST'] === '127.0.0.1' || strpos($_SERVER['HTTP_HOST'], 'xampp') !== false);
+    
+    if ($is_localhost) {
+        // Development environment - allow empty password for XAMPP
+        define('DB_PASSWORD', '');
+    } else {
+        // Production environment - require password
+        error_log("CRITICAL: DB_PASSWORD environment variable not configured");
+        die("ERROR: Database security not configured. Please set DB_PASSWORD environment variable.");
+    }
+} else {
+    define('DB_PASSWORD', $db_password);
+}
+
+define('DB_NAME', getenv('DB_NAME') ?: 'travelagency_saas');
+
+// Hesabpay API Configuration - Using environment variables for security
+define('HESABPAY_MERCHANT_ID', getenv('HESABPAY_MERCHANT_ID') ?: ''); // Set in environment variables
+define('HESABPAY_API_KEY', getenv('HESABPAY_API_KEY') ?: ''); // Set in environment variables
+define('HESABPAY_BASE_URL', getenv('HESABPAY_BASE_URL') ?: 'https://api-sandbox.hesab.com/api/v1');
 
 // Platform Configuration
 define('PLATFORM_NAME', 'MTravels');
@@ -23,7 +41,8 @@ $conection_db = mysqli_connect(DB_SERVER, DB_USERNAME, DB_PASSWORD, DB_NAME);
  
 // Check connection
 if($conection_db === false){
-    die("ERROR: Could not connect. " . mysqli_connect_error());
+    error_log("Database connection failed: " . mysqli_connect_error());
+    die("A database error occurred. Please try again later.");
 }
 
 // Function to fetch settings data

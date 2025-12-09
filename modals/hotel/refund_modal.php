@@ -11,6 +11,8 @@
                 </button>
             </div>
             <form id="refundForm" class="needs-validation" novalidate>
+                    <!-- CSRF Protection -->
+                    <input type="hidden" name="csrf_token" value="<?php echo h($_SESSION['csrf_token'] ?? ''); ?>">
                 <div class="modal-body">
                     <input type="hidden" id="refund_booking_id" name="booking_id">
                     <input type="hidden" id="refund_original_amount" name="original_amount">

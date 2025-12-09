@@ -12,6 +12,9 @@
             </div>
             <div class="modal-body">
                 <form id="transferForm">
+                    <!-- CSRF Protection -->
+                    <input type="hidden" name="csrf_token" value="<?php echo h($_SESSION['csrf_token'] ?? ''); ?>">
+                    
                     <div class="row">
                         <div class="col-md-6">
                     <div class="form-group">

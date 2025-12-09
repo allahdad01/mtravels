@@ -2,7 +2,6 @@
 // Include security and database connections
 require_once '../../admin/security.php';
 require_once '../../includes/db.php';
-require_once '../../includes/conn.php';
 
 // Enforce authentication
 enforce_auth();
@@ -28,7 +27,7 @@ if (!$id) {
 
 try {
     // Get the approved request details with booking and supplier/client info
-    $stmt = $conn->prepare("
+    $stmt = $pdo->prepare("
         SELECT dc.*, ub.price as current_price, ub.sold_price, ub.profit, ub.due, ubs.supplier_id as supplier, ub.sold_to, ub.currency, ub.family_id,
                s.name as supplier_name, s.balance as supplier_balance, s.supplier_type,
                c.name as client_name, c.usd_balance, c.afs_balance, c.client_type
@@ -39,19 +38,27 @@ try {
         LEFT JOIN clients c ON ub.sold_to = c.id AND c.tenant_id = ? AND c.branch_id = ?
         WHERE dc.id = ? AND dc.tenant_id = ? AND dc.branch_id = ? AND dc.status = 'Approved'
     ");
-    $stmt->bind_param("iiiiiiiiii", $tenant_id, $branch_id, $tenant_id, $branch_id, $tenant_id, $branch_id, $tenant_id, $branch_id, $id, $tenant_id, $branch_id);
+    $stmt->bindParam(1, $tenant_id, PDO::PARAM_INT);
+    $stmt->bindParam(2, $branch_id, PDO::PARAM_INT);
+    $stmt->bindParam(3, $tenant_id, PDO::PARAM_INT);
+    $stmt->bindParam(4, $branch_id, PDO::PARAM_INT);
+    $stmt->bindParam(5, $tenant_id, PDO::PARAM_INT);
+    $stmt->bindParam(6, $branch_id, PDO::PARAM_INT);
+    $stmt->bindParam(7, $tenant_id, PDO::PARAM_INT);
+    $stmt->bindParam(8, $branch_id, PDO::PARAM_INT);
+    $stmt->bindParam(9, $id, PDO::PARAM_INT);
+    $stmt->bindParam(10, $tenant_id, PDO::PARAM_INT);
+    $stmt->bindParam(11, $branch_id, PDO::PARAM_INT);
     $stmt->execute();
-    $result = $stmt->get_result();
+    $request = $stmt->fetch(PDO::FETCH_ASSOC);
 
-    if ($result->num_rows === 0) {
+    if (!$request) {
         echo json_encode(['success' => false, 'message' => 'Approved date change request not found']);
         exit;
     }
 
-    $request = $result->fetch_assoc();
-
     // Start transaction
-    $conn->begin_transaction();
+    $pdo->beginTransaction();
 
     try {
         // Calculate new prices with penalties
@@ -76,17 +83,17 @@ try {
             $new_profit,
             $new_due
         ];
-        $types = "sssdddd";
 
         $updateBookingSql .= " WHERE booking_id = ? AND tenant_id = ? AND branch_id = ?";
         $params = array_merge($params, [$request['umrah_booking_id'], $tenant_id, $branch_id]);
-        $types .= "iii";
 
-        $stmt = $conn->prepare($updateBookingSql);
-        $stmt->bind_param($types, ...$params);
+        $stmt = $pdo->prepare($updateBookingSql);
+        for ($i = 0; $i < count($params); $i++) {
+            $stmt->bindParam($i + 1, $params[$i]);
+        }
 
         if (!$stmt->execute()) {
-            throw new Exception('Failed to update booking');
+            throw new PDOException('Failed to update booking');
         }
 
         // Handle supplier penalty deduction
@@ -95,35 +102,35 @@ try {
 
             // Insert supplier transaction
             $supplier_remarks = "Supplier penalty of {$request['supplier_penalty']} {$request['currency']} deducted for date change on booking #{$request['umrah_booking_id']}";
-            $stmt_supplier_transaction = $conn->prepare("
+            $stmt_supplier_transaction = $pdo->prepare("
                 INSERT INTO supplier_transactions (
                     supplier_id, reference_id, transaction_type, amount, balance, remarks, transaction_date, transaction_of, tenant_id, branch_id
                 ) VALUES (?, ?, 'Debit', ?, ?, ?, NOW(), 'umrah_date_change', ?, ?)
             ");
-            $stmt_supplier_transaction->bind_param(
-                "iiddsii",
-                $request['supplier'],
-                $request['umrah_booking_id'],
-                $request['supplier_penalty'],
-                $new_supplier_balance,
-                $supplier_remarks,
-                $tenant_id,
-                $branch_id
-            );
+            $stmt_supplier_transaction->bindParam(1, $request['supplier'], PDO::PARAM_INT);
+            $stmt_supplier_transaction->bindParam(2, $request['umrah_booking_id'], PDO::PARAM_INT);
+            $stmt_supplier_transaction->bindParam(3, $request['supplier_penalty'], PDO::PARAM_STR);
+            $stmt_supplier_transaction->bindParam(4, $new_supplier_balance, PDO::PARAM_STR);
+            $stmt_supplier_transaction->bindParam(5, $supplier_remarks, PDO::PARAM_STR);
+            $stmt_supplier_transaction->bindParam(6, $tenant_id, PDO::PARAM_INT);
+            $stmt_supplier_transaction->bindParam(7, $branch_id, PDO::PARAM_INT);
 
             if (!$stmt_supplier_transaction->execute()) {
-                throw new Exception('Failed to create supplier penalty transaction');
+                throw new PDOException('Failed to create supplier penalty transaction');
             }
 
             // Update supplier balance if external supplier
             if ($request['supplier_type'] === 'External') {
-                $stmt_update_supplier_balance = $conn->prepare("
+                $stmt_update_supplier_balance = $pdo->prepare("
                     UPDATE suppliers SET balance = balance - ? WHERE id = ? AND tenant_id = ? AND branch_id = ?
                 ");
-                $stmt_update_supplier_balance->bind_param("diii", $request['supplier_penalty'], $request['supplier'], $tenant_id, $branch_id);
+                $stmt_update_supplier_balance->bindParam(1, $request['supplier_penalty'], PDO::PARAM_STR);
+                $stmt_update_supplier_balance->bindParam(2, $request['supplier'], PDO::PARAM_INT);
+                $stmt_update_supplier_balance->bindParam(3, $tenant_id, PDO::PARAM_INT);
+                $stmt_update_supplier_balance->bindParam(4, $branch_id, PDO::PARAM_INT);
 
                 if (!$stmt_update_supplier_balance->execute()) {
-                    throw new Exception('Failed to update supplier balance');
+                    throw new PDOException('Failed to update supplier balance');
                 }
             }
         }
@@ -137,66 +144,69 @@ try {
             $new_client_balance = $current_client_balance - $request['total_penalty'];
 
             // Insert client transaction
-            $stmt_client_transaction = $conn->prepare("
+            $stmt_client_transaction = $pdo->prepare("
                 INSERT INTO client_transactions (
                     client_id, type, transaction_of, reference_id, amount, balance, currency, description, created_at, tenant_id, branch_id
                 ) VALUES (?, 'Debit', 'umrah_date_change', ?, ?, ?, ?, ?, NOW(), ?, ?)
             ");
-            $stmt_client_transaction->bind_param(
-                "iiddsssi",
-                $request['sold_to'],
-                $request['umrah_booking_id'],
-                $request['total_penalty'],
-                $new_client_balance,
-                $request['currency'],
-                $client_description,
-                $tenant_id,
-                $branch_id
-            );
+            $stmt_client_transaction->bindParam(1, $request['sold_to'], PDO::PARAM_INT);
+            $stmt_client_transaction->bindParam(2, $request['umrah_booking_id'], PDO::PARAM_INT);
+            $stmt_client_transaction->bindParam(3, $request['total_penalty'], PDO::PARAM_STR);
+            $stmt_client_transaction->bindParam(4, $new_client_balance, PDO::PARAM_STR);
+            $stmt_client_transaction->bindParam(5, $request['currency'], PDO::PARAM_STR);
+            $stmt_client_transaction->bindParam(6, $client_description, PDO::PARAM_STR);
+            $stmt_client_transaction->bindParam(7, $tenant_id, PDO::PARAM_INT);
+            $stmt_client_transaction->bindParam(8, $branch_id, PDO::PARAM_INT);
 
             if (!$stmt_client_transaction->execute()) {
-                throw new Exception('Failed to create client penalty transaction');
+                throw new PDOException('Failed to create client penalty transaction');
             }
 
             // Update client balance if regular client
             if ($request['client_type'] === 'regular') {
                 if ($request['currency'] === 'USD') {
-                    $stmt_update_client_balance = $conn->prepare("
+                    $stmt_update_client_balance = $pdo->prepare("
                         UPDATE clients SET usd_balance = usd_balance - ? WHERE id = ? AND tenant_id = ? AND branch_id = ?
                     ");
                 } else {
-                    $stmt_update_client_balance = $conn->prepare("
+                    $stmt_update_client_balance = $pdo->prepare("
                         UPDATE clients SET afs_balance = afs_balance - ? WHERE id = ? AND tenant_id = ? AND branch_id = ?
                     ");
                 }
 
-                $stmt_update_client_balance->bind_param("diii", $request['total_penalty'], $request['sold_to'], $tenant_id, $branch_id);
+                $stmt_update_client_balance->bindParam(1, $request['total_penalty'], PDO::PARAM_STR);
+                $stmt_update_client_balance->bindParam(2, $request['sold_to'], PDO::PARAM_INT);
+                $stmt_update_client_balance->bindParam(3, $tenant_id, PDO::PARAM_INT);
+                $stmt_update_client_balance->bindParam(4, $branch_id, PDO::PARAM_INT);
 
                 if (!$stmt_update_client_balance->execute()) {
-                    throw new Exception('Failed to update client balance');
+                    throw new PDOException('Failed to update client balance');
                 }
             }
         }
 
         // Update the request status to completed
-        $stmt = $conn->prepare("
+        $stmt = $pdo->prepare("
             UPDATE date_change_umrah
             SET status = 'Completed',
                 processed_by = ?,
                 processed_at = NOW()
             WHERE id = ? AND tenant_id = ? AND branch_id = ?
         ");
-        $stmt->bind_param("iiii", $_SESSION['user_id'], $id, $tenant_id, $branch_id);
+        $stmt->bindParam(1, $_SESSION['user_id'], PDO::PARAM_INT);
+        $stmt->bindParam(2, $id, PDO::PARAM_INT);
+        $stmt->bindParam(3, $tenant_id, PDO::PARAM_INT);
+        $stmt->bindParam(4, $branch_id, PDO::PARAM_INT);
 
         if (!$stmt->execute()) {
-            throw new Exception('Failed to update request status');
+            throw new PDOException('Failed to update request status');
         }
 
         // Commit transaction
-        $conn->commit();
+        $pdo->commit();
 
         // Update family totals
-        $updateFamilyStmt = $conn->prepare("
+        $updateFamilyStmt = $pdo->prepare("
             UPDATE families f
             SET
                 f.total_members = (SELECT COUNT(*) FROM umrah_bookings WHERE family_id = f.family_id AND tenant_id = ? AND branch_id = ?),
@@ -206,7 +216,19 @@ try {
                 f.total_due = (SELECT SUM(due) FROM umrah_bookings WHERE family_id = f.family_id AND tenant_id = ? AND branch_id = ?)
             WHERE f.family_id = ? AND f.tenant_id = ? AND f.branch_id = ?
         ");
-        $updateFamilyStmt->bind_param("iiiiiiiiiiii", $tenant_id, $branch_id, $tenant_id, $branch_id, $tenant_id, $branch_id, $tenant_id, $branch_id, $tenant_id, $branch_id, $request['family_id'], $tenant_id, $branch_id);
+        $updateFamilyStmt->bindParam(1, $tenant_id, PDO::PARAM_INT);
+        $updateFamilyStmt->bindParam(2, $branch_id, PDO::PARAM_INT);
+        $updateFamilyStmt->bindParam(3, $tenant_id, PDO::PARAM_INT);
+        $updateFamilyStmt->bindParam(4, $branch_id, PDO::PARAM_INT);
+        $updateFamilyStmt->bindParam(5, $tenant_id, PDO::PARAM_INT);
+        $updateFamilyStmt->bindParam(6, $branch_id, PDO::PARAM_INT);
+        $updateFamilyStmt->bindParam(7, $tenant_id, PDO::PARAM_INT);
+        $updateFamilyStmt->bindParam(8, $branch_id, PDO::PARAM_INT);
+        $updateFamilyStmt->bindParam(9, $tenant_id, PDO::PARAM_INT);
+        $updateFamilyStmt->bindParam(10, $branch_id, PDO::PARAM_INT);
+        $updateFamilyStmt->bindParam(11, $request['family_id'], PDO::PARAM_INT);
+        $updateFamilyStmt->bindParam(12, $tenant_id, PDO::PARAM_INT);
+        $updateFamilyStmt->bindParam(13, $branch_id, PDO::PARAM_INT);
         $updateFamilyStmt->execute();
 
         // Log the processing
@@ -217,13 +239,13 @@ try {
             'message' => 'Date changes applied successfully to booking #' . $request['umrah_booking_id'] . ' with penalties processed'
         ]);
 
-    } catch (Exception $e) {
+    } catch (PDOException $e) {
         // Rollback transaction
-        $conn->rollback();
+        $pdo->rollBack();
         throw $e;
     }
 
-} catch (Exception $e) {
+} catch (PDOException $e) {
     error_log("Process date change request error: " . $e->getMessage());
     echo json_encode(['success' => false, 'message' => 'An error occurred while processing the date changes']);
 }

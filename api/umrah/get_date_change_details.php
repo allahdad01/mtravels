@@ -2,7 +2,6 @@
 // Include security and database connections
 session_start();
 require_once '../../includes/db.php';
-require_once '../../includes/conn.php';
 
 // Enforce authentication
 enforce_auth();
@@ -21,7 +20,7 @@ if (!$id) {
 
 try {
     // Get date change request details
-    $stmt = $conn->prepare("
+    $stmt = $pdo->prepare("
         SELECT dc.*, f.head_of_family, f.contact, f.address,
                s.name as supplier_name, c.name as client_name, ma.name as main_account_name,
                u1.name as created_by_name, u2.name as approved_by_name, u3.name as processed_by_name
@@ -35,16 +34,30 @@ try {
         LEFT JOIN users u3 ON dc.processed_by = u3.id AND u3.tenant_id = ? AND u3.branch_id = ?
         WHERE dc.id = ? AND dc.tenant_id = ? AND dc.branch_id = ?
     ");
-    $stmt->bind_param("iiiiiiiiiiiiiii", $tenant_id, $branch_id, $tenant_id, $branch_id, $tenant_id, $branch_id, $tenant_id, $branch_id, $tenant_id, $branch_id, $tenant_id, $branch_id, $tenant_id, $branch_id, $id, $tenant_id, $branch_id);
+    $stmt->bindParam(1, $tenant_id, PDO::PARAM_INT);
+    $stmt->bindParam(2, $branch_id, PDO::PARAM_INT);
+    $stmt->bindParam(3, $tenant_id, PDO::PARAM_INT);
+    $stmt->bindParam(4, $branch_id, PDO::PARAM_INT);
+    $stmt->bindParam(5, $tenant_id, PDO::PARAM_INT);
+    $stmt->bindParam(6, $branch_id, PDO::PARAM_INT);
+    $stmt->bindParam(7, $tenant_id, PDO::PARAM_INT);
+    $stmt->bindParam(8, $branch_id, PDO::PARAM_INT);
+    $stmt->bindParam(9, $tenant_id, PDO::PARAM_INT);
+    $stmt->bindParam(10, $branch_id, PDO::PARAM_INT);
+    $stmt->bindParam(11, $tenant_id, PDO::PARAM_INT);
+    $stmt->bindParam(12, $branch_id, PDO::PARAM_INT);
+    $stmt->bindParam(13, $tenant_id, PDO::PARAM_INT);
+    $stmt->bindParam(14, $branch_id, PDO::PARAM_INT);
+    $stmt->bindParam(15, $id, PDO::PARAM_INT);
+    $stmt->bindParam(16, $tenant_id, PDO::PARAM_INT);
+    $stmt->bindParam(17, $branch_id, PDO::PARAM_INT);
     $stmt->execute();
-    $result = $stmt->get_result();
+    $request = $stmt->fetch(PDO::FETCH_ASSOC);
 
-    if ($result->num_rows === 0) {
+    if (!$request) {
         echo json_encode(['success' => false, 'message' => 'Date change request not found']);
         exit;
     }
-
-    $request = $result->fetch_assoc();
 
     // Generate HTML content
     $html = '
@@ -174,7 +187,7 @@ try {
         'action_buttons' => $action_buttons
     ]);
 
-} catch (Exception $e) {
+} catch (PDOException $e) {
     error_log("Get date change details error: " . $e->getMessage());
     echo json_encode(['success' => false, 'message' => 'Failed to load request details']);
 }

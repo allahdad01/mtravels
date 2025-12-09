@@ -1,10 +1,29 @@
 // Dashboard Dues JS - Updates dues cards with dynamic percentages
 document.addEventListener('DOMContentLoaded', function() {
+    // Get CSRF token from meta tag or hidden input
+    const csrfToken = document.querySelector('meta[name="csrf-token"]')?.content || 
+                     document.querySelector('input[name="csrf_token"]')?.value;
+    
     // Fetch dues data from the server
-    fetch('../api/dashboard/get_dues_summary.php')
-        .then(response => response.json())
+    fetch('../api/dashboard/get_dues_summary.php', {
+        method: 'GET',
+        headers: {
+            'Content-Type': 'application/json',
+            'X-CSRF-Token': csrfToken || ''
+        },
+        credentials: 'same-origin'
+    })
+        .then(response => {
+            if (!response.ok) {
+                throw new Error(`HTTP error! status: ${response.status}`);
+            }
+            return response.json();
+        })
         .then(data => {
-            
+            if (data.error) {
+                console.error('API Error:', data.error);
+                return;
+            }
             // Update the dues amounts
             updateDuesAmounts(data);
         })

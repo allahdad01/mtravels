@@ -12,9 +12,27 @@ document.addEventListener('DOMContentLoaded', function() {
 });
 
 function loadDuesData() {
-    fetch('../api/dashboard/get_dues_summary.php')
-        .then(response => response.json())
+    // Get CSRF token
+    const csrfToken = document.querySelector('meta[name="csrf-token"]')?.content || 
+                     document.querySelector('input[name="csrf_token"]')?.value;
+    
+    fetch('../api/dashboard/get_dues_summary.php', {
+        method: 'GET',
+        headers: {
+            'Content-Type': 'application/json',
+            'X-CSRF-Token': csrfToken || ''
+        },
+        credentials: 'same-origin'
+    })
+        .then(response => {
+            if (!response.ok) throw new Error(`HTTP error! status: ${response.status}`);
+            return response.json();
+        })
         .then(data => {
+            if (data.error) {
+                console.error('API Error:', data.error);
+                return;
+            }
             // Update USD dues
             document.getElementById('ticketDuesUSD').textContent = formatCurrency(data.ticket_dues_usd, 'USD');
             document.getElementById('ticketReserveDuesUSD').textContent = formatCurrency(data.ticket_reserve_dues_usd, 'USD');

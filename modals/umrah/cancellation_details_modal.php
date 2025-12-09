@@ -12,6 +12,8 @@
             </div>
             <div class="modal-body">
                 <form id="cancellationDetailsForm">
+                    <!-- CSRF Protection -->
+                    <input type="hidden" name="csrf_token" value="<?php echo h($_SESSION['csrf_token'] ?? ''); ?>">
                     <input type="hidden" id="cancellationBookingId" name="booking_id">
                     
                     <div class="alert alert-warning">

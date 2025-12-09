@@ -24,6 +24,8 @@
                     <i class="feather icon-x mr-1"></i> <?= __("cancel") ?>
                 </button>
                 <form id="deleteMessageForm" method="POST" action="delete_message.php">
+                    <!-- CSRF Protection -->
+                    <input type="hidden" name="csrf_token" value="<?php echo h($_SESSION['csrf_token'] ?? ''); ?>">
                     <input type="hidden" id="delete_message_id" name="message_id">
                     <button type="submit" class="btn btn-danger">
                         <i class="feather icon-trash-2 mr-1"></i> <?= __("delete") ?>

@@ -7,6 +7,8 @@
                 </div>
                 <div class="modal-body">
                     <form id="bankReciptForm" onsubmit="generateBankRecipt(event)">
+                    <!-- CSRF Protection -->
+                    <input type="hidden" name="csrf_token" value="<?php echo h($_SESSION['csrf_token'] ?? ''); ?>">
                     <div class="form-group">
                     <label for="bank_name"><?= __("bank_name") ?></label>
                     <input type="text" class="form-control" id="bank_name" placeholder="<?= __("bank_name") ?>">

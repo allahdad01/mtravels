@@ -142,6 +142,8 @@
                         </div>
                         <div class="card-body">
                             <form id="dateChangeTransactionForm">
+                    <!-- CSRF Protection -->
+                    <input type="hidden" name="csrf_token" value="<?php echo h($_SESSION['csrf_token'] ?? ''); ?>">
                                 <input type="hidden" id="booking_id" name="booking_id">
 
                                 <!-- Transaction Details Section -->

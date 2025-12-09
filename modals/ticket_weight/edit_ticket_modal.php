@@ -9,6 +9,8 @@
                     <button type="button" class="close text-white" data-dismiss="modal">&times;</button>
                 </div>
                 <form id="editWeightForm">
+                    <!-- CSRF Protection -->
+                    <input type="hidden" name="csrf_token" value="<?php echo h($_SESSION['csrf_token'] ?? ''); ?>">
                     <div class="modal-body">
                         <input type="hidden" id="editWeightId" name="weight_id">
                         

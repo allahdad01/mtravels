@@ -92,6 +92,8 @@
                     <div id="transactionFormContainer" class="collapse show">
                         <div class="card-body">
                             <form id="transactionForm">
+                    <!-- CSRF Protection -->
+                    <input type="hidden" name="csrf_token" value="<?php echo h($_SESSION['csrf_token'] ?? ''); ?>">
                                 <input type="hidden" id="transaction_payment_id" name="payment_id">
                                 <input type="hidden" id="transaction_payment_type" name="payment_type">
                                 <input type="hidden" id="original_payment_currency" name="original_payment_currency">

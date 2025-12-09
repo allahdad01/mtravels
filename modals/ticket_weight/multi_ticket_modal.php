@@ -23,6 +23,8 @@
                     </div>
 
                     <form id="multiWeightInvoiceForm">
+                    <!-- CSRF Protection -->
+                    <input type="hidden" name="csrf_token" value="<?php echo h($_SESSION['csrf_token'] ?? ''); ?>">
                         <div class="form-group">
                             <label for="clientFilterWeight"><?= __('filter_by_client') ?></label>
                             <select class="form-control" id="clientFilterWeight" name="clientFilter">

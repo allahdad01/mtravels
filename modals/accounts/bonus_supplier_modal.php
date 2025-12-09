@@ -12,6 +12,9 @@
                 </div>
                 <div class="modal-body">
                     <form id="addBonusForm">
+                        <!-- CSRF Protection -->
+                        <input type="hidden" name="csrf_token" value="<?php echo h($_SESSION['csrf_token'] ?? ''); ?>">
+                        
                         <input type="hidden" id="bonusSupplierId" name="supplier_id">
                         <input type="hidden" id="bonusSupplierName" name="supplier_name">
                         <input type="hidden" id="bonusSupplierCurrency" name="supplier_currency">

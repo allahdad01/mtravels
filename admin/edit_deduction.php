@@ -60,22 +60,31 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
     if (empty($user_id_err) && empty($amount_err) && empty($description_err) && empty($deduction_date_err)) {
         // Prepare an update statement
         $sql = "UPDATE salary_deductions SET user_id=?, amount=?, description=?, deduction_date=?, type=? WHERE id=? AND tenant_id = ? AND branch_id = ?";
-        
-        if ($stmt = mysqli_prepare($conection_db, $sql)) {
-            // Bind variables to the prepared statement as parameters
-            mysqli_stmt_bind_param($stmt, "idsssiii", $user_id, $amount, $description, $deduction_date, $type, $id, $tenant_id, $branch_id);
-            
+
+        try {
+            $stmt = $pdo->prepare($sql);
+
+            // Bind parameters
+            $stmt->bindParam(1, $user_id, PDO::PARAM_INT);
+            $stmt->bindParam(2, $amount, PDO::PARAM_STR);
+            $stmt->bindParam(3, $description, PDO::PARAM_STR);
+            $stmt->bindParam(4, $deduction_date, PDO::PARAM_STR);
+            $stmt->bindParam(5, $type, PDO::PARAM_STR);
+            $stmt->bindParam(6, $id, PDO::PARAM_INT);
+            $stmt->bindParam(7, $tenant_id, PDO::PARAM_INT);
+            $stmt->bindParam(8, $branch_id, PDO::PARAM_INT);
+
             // Attempt to execute the prepared statement
-            if (mysqli_stmt_execute($stmt)) {
+            if ($stmt->execute()) {
                 // Records updated successfully. Redirect to landing page
                 header("location: manage_deductions.php?updated=1");
                 exit();
             } else {
                 echo "Oops! Something went wrong. Please try again later.";
             }
-
-            // Close statement
-            mysqli_stmt_close($stmt);
+        } catch (PDOException $e) {
+            echo "Oops! Something went wrong. Please try again later.";
+            error_log("Update deduction error: " . $e->getMessage());
         }
     }
 } else {
@@ -86,22 +95,24 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
         
         // Prepare a select statement
         $sql = "SELECT * FROM salary_deductions WHERE id = ? AND tenant_id = ? AND branch_id = ?";
-        if ($stmt = mysqli_prepare($conection_db, $sql)) {
-            // Bind variables to the prepared statement as parameters
-            mysqli_stmt_bind_param($stmt, "iii", $param_id, $tenant_id, $branch_id);
-            
-            // Set parameters
+        try {
+            $stmt = $pdo->prepare($sql);
+
+            // Bind parameters
             $param_id = $id;
-            
+            $stmt->bindParam(1, $param_id, PDO::PARAM_INT);
+            $stmt->bindParam(2, $tenant_id, PDO::PARAM_INT);
+            $stmt->bindParam(3, $branch_id, PDO::PARAM_INT);
+
             // Attempt to execute the prepared statement
-            if (mysqli_stmt_execute($stmt)) {
-                $result = mysqli_stmt_get_result($stmt);
-    
-                if (mysqli_num_rows($result) == 1) {
+            if ($stmt->execute()) {
+                $result = $stmt->fetchAll();
+
+                if (count($result) == 1) {
                     /* Fetch result row as an associative array. Since the result set
                     contains only one row, we don't need to use while loop */
-                    $row = mysqli_fetch_array($result, MYSQLI_ASSOC);
-                    
+                    $row = $result[0];
+
                     // Retrieve individual field value
                     $user_id = $row["user_id"];
                     $amount = $row["amount"];
@@ -113,14 +124,14 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
                     header("location: error.php");
                     exit();
                 }
-                
+
             } else {
                 echo "Oops! Something went wrong. Please try again later.";
             }
+        } catch (PDOException $e) {
+            echo "Oops! Something went wrong. Please try again later.";
+            error_log("Select deduction error: " . $e->getMessage());
         }
-        
-        // Close statement
-        mysqli_stmt_close($stmt);
     } else {
         // URL doesn't contain id parameter. Redirect to error page
         header("location: error.php");
@@ -200,15 +211,23 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
                                             <select class="form-control <?php echo (!empty($user_id_err)) ? 'is-invalid' : ''; ?>" id="user_id" name="user_id">
                                                 <?php
                                                 // Get all active users with salary records
-                                                $sql = "SELECT u.id, u.name 
-                                                        FROM users u 
-                                                        JOIN salary_management sm ON u.id = sm.user_id 
-                                                        WHERE sm.status = 'active' AND u.tenant_id = $tenant_id And u.branch_id = $branch_id
+                                                $sql = "SELECT u.id, u.name
+                                                        FROM users u
+                                                        JOIN salary_management sm ON u.id = sm.user_id
+                                                        WHERE sm.status = 'active' AND u.tenant_id = ? AND u.branch_id = ?
                                                         ORDER BY u.name ASC";
-                                                $result = mysqli_query($conection_db, $sql);
-                                                while ($row = mysqli_fetch_array($result)) {
-                                                    $selected = ($row['id'] == $user_id) ? 'selected' : '';
-                                                    echo "<option value='" . $row['id'] . "' " . $selected . ">" . $row['name'] . "</option>";
+                                                try {
+                                                    $stmt = $pdo->prepare($sql);
+                                                    $stmt->bindParam(1, $tenant_id, PDO::PARAM_INT);
+                                                    $stmt->bindParam(2, $branch_id, PDO::PARAM_INT);
+                                                    $stmt->execute();
+                                                    $result = $stmt->fetchAll();
+                                                    foreach ($result as $row) {
+                                                        $selected = ($row['id'] == $user_id) ? 'selected' : '';
+                                                        echo "<option value='" . $row['id'] . "' " . $selected . ">" . $row['name'] . "</option>";
+                                                    }
+                                                } catch (PDOException $e) {
+                                                    error_log("Select users error: " . $e->getMessage());
                                                 }
                                                 ?>
                                             </select>

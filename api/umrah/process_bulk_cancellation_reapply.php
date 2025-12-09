@@ -1,8 +1,6 @@
 <?php
 // Include necessary files
 require_once('../../includes/db.php');
-require_once('../../includes/conn.php');
-require_once('../../admin/security.php');
 
 // Enforce authentication
 enforce_auth();
@@ -60,7 +58,7 @@ try {
     if (json_last_error() !== JSON_ERROR_NONE) {
         throw new Exception('Invalid bookings data format');
     }
-    
+
     if (empty($bookings) || !is_array($bookings)) {
         throw new Exception('No bookings data provided');
     }
@@ -74,31 +72,31 @@ try {
 
 try {
     // Begin transaction
-    $conn->begin_transaction();
-    
+    $pdo->beginTransaction();
+
     $processed_count = 0;
     $errors = [];
-    
+
     // Process each booking
     foreach ($bookings as $booking) {
         $booking_id = intval($booking['booking_id']);
         $base_price = floatval($booking['base_price']);
         $sold_price = floatval($booking['sold_price']);
         $current_profit = floatval($booking['current_profit']);
-        
+
         try {
             // Check if the booking exists and get its details
             $bookingQuery = "SELECT * FROM umrah_bookings WHERE booking_id = ? AND tenant_id = ? AND branch_id = ?";
-            $stmt = $conn->prepare($bookingQuery);
-            $stmt->bind_param('iii', $booking_id, $tenant_id, $branch_id);
+            $stmt = $pdo->prepare($bookingQuery);
+            $stmt->bindParam(1, $booking_id, PDO::PARAM_INT);
+            $stmt->bindParam(2, $tenant_id, PDO::PARAM_INT);
+            $stmt->bindParam(3, $branch_id, PDO::PARAM_INT);
             $stmt->execute();
-            $bookingResult = $stmt->get_result();
+            $booking_data = $stmt->fetch(PDO::FETCH_ASSOC);
 
-            if ($bookingResult->num_rows === 0) {
+            if (!$booking_data) {
                 throw new Exception("Umrah booking #{$booking_id} not found");
             }
-
-            $booking_data = $bookingResult->fetch_assoc();
 
             // Calculate new profit based on action
             if ($action === 'cancel') {
@@ -111,8 +109,12 @@ try {
 
             // Update booking profit and status
             $updateQuery = "UPDATE umrah_bookings SET profit = ?, status = ? WHERE booking_id = ? AND tenant_id = ? AND branch_id = ?";
-            $stmt = $conn->prepare($updateQuery);
-            $stmt->bind_param('dsiii', $new_profit, $new_status, $booking_id, $tenant_id, $branch_id);
+            $stmt = $pdo->prepare($updateQuery);
+            $stmt->bindParam(1, $new_profit, PDO::PARAM_STR);
+            $stmt->bindParam(2, $new_status, PDO::PARAM_STR);
+            $stmt->bindParam(3, $booking_id, PDO::PARAM_INT);
+            $stmt->bindParam(4, $tenant_id, PDO::PARAM_INT);
+            $stmt->bindParam(5, $branch_id, PDO::PARAM_INT);
             if (!$stmt->execute()) {
                 throw new Exception("Failed to update booking #{$booking_id}");
             }
@@ -121,25 +123,31 @@ try {
             if ($action === 'cancel') {
                 // Set due to 0 for cancelled bookings
                 $updateDueQuery = "UPDATE umrah_bookings SET due = 0 WHERE booking_id = ? AND tenant_id = ? AND branch_id = ?";
-                $stmt = $conn->prepare($updateDueQuery);
-                $stmt->bind_param('iii', $booking_id, $tenant_id, $branch_id);
+                $stmt = $pdo->prepare($updateDueQuery);
+                $stmt->bindParam(1, $booking_id, PDO::PARAM_INT);
+                $stmt->bindParam(2, $tenant_id, PDO::PARAM_INT);
+                $stmt->bindParam(3, $branch_id, PDO::PARAM_INT);
                 $stmt->execute();
             } else {
                 // Recalculate due for re-applied bookings
                 $calculateDueQuery = "UPDATE umrah_bookings SET due = sold_price - paid WHERE booking_id = ? AND tenant_id = ? AND branch_id = ?";
-                $stmt = $conn->prepare($calculateDueQuery);
-                $stmt->bind_param('iii', $booking_id, $tenant_id, $branch_id);
+                $stmt = $pdo->prepare($calculateDueQuery);
+                $stmt->bindParam(1, $booking_id, PDO::PARAM_INT);
+                $stmt->bindParam(2, $tenant_id, PDO::PARAM_INT);
+                $stmt->bindParam(3, $branch_id, PDO::PARAM_INT);
                 $stmt->execute();
             }
 
             // Get all services for this booking (multi-supplier support)
             $servicesQuery = "SELECT * FROM umrah_booking_services WHERE booking_id = ? AND tenant_id = ? AND branch_id = ?";
-            $stmt = $conn->prepare($servicesQuery);
-            $stmt->bind_param('iii', $booking_id, $tenant_id, $branch_id);
+            $stmt = $pdo->prepare($servicesQuery);
+            $stmt->bindParam(1, $booking_id, PDO::PARAM_INT);
+            $stmt->bindParam(2, $tenant_id, PDO::PARAM_INT);
+            $stmt->bindParam(3, $branch_id, PDO::PARAM_INT);
             $stmt->execute();
-            $servicesResult = $stmt->get_result();
+            $servicesResult = $stmt->fetchAll(PDO::FETCH_ASSOC);
 
-            if ($servicesResult->num_rows === 0) {
+            if (empty($servicesResult)) {
                 // Fallback to old single-supplier logic if no services found
                 $services = array(array(
                     'supplier_id' => $booking_data['supplier'],
@@ -149,7 +157,7 @@ try {
                     'currency' => $booking_data['currency']
                 ));
             } else {
-                $services = $servicesResult->fetch_all(MYSQLI_ASSOC);
+                $services = $servicesResult;
             }
 
             // Update services and handle supplier/client balances for both actions
@@ -168,19 +176,25 @@ try {
                 }
 
                 $updateServiceQuery = "UPDATE umrah_booking_services SET profit = ? WHERE booking_id = ? AND id = ? AND tenant_id = ? AND branch_id = ?";
-                $stmt = $conn->prepare($updateServiceQuery);
-                $stmt->bind_param('diiii', $serviceNewProfit, $booking_id, $service['id'], $tenant_id, $branch_id);
+                $stmt = $pdo->prepare($updateServiceQuery);
+                $stmt->bindParam(1, $serviceNewProfit, PDO::PARAM_STR);
+                $stmt->bindParam(2, $booking_id, PDO::PARAM_INT);
+                $stmt->bindParam(3, $service['id'], PDO::PARAM_INT);
+                $stmt->bindParam(4, $tenant_id, PDO::PARAM_INT);
+                $stmt->bindParam(5, $branch_id, PDO::PARAM_INT);
                 $stmt->execute();
 
                 // Handle supplier balance for External suppliers
                 if ($action === 'cancel' || $action === 'reapply') {
                     // Get supplier details
-                    $stmt_check_balance = $conn->prepare("SELECT balance, currency, name, supplier_type FROM suppliers WHERE id = ? AND tenant_id = ? AND branch_id = ?");
-                    $stmt_check_balance->bind_param("iii", $supplier_id, $tenant_id, $branch_id);
+                    $stmt_check_balance = $pdo->prepare("SELECT balance, currency, name, supplier_type FROM suppliers WHERE id = ? AND tenant_id = ? AND branch_id = ?");
+                    $stmt_check_balance->bindParam(1, $supplier_id, PDO::PARAM_INT);
+                    $stmt_check_balance->bindParam(2, $tenant_id, PDO::PARAM_INT);
+                    $stmt_check_balance->bindParam(3, $branch_id, PDO::PARAM_INT);
                     if (!$stmt_check_balance->execute()) {
                         throw new Exception("Failed to fetch supplier details for supplier ID: $supplier_id");
                     }
-                    $supplierResult = $stmt_check_balance->get_result()->fetch_assoc();
+                    $supplierResult = $stmt_check_balance->fetch(PDO::FETCH_ASSOC);
                     if (!$supplierResult) {
                         throw new Exception("Supplier not found for ID: $supplier_id");
                     }
@@ -206,28 +220,29 @@ try {
                         }
 
                         // Update supplier balance
-                        $updateSupplierStmt = $conn->prepare("UPDATE suppliers SET balance = ? WHERE id = ? AND tenant_id = ? AND branch_id = ?");
-                        $updateSupplierStmt->bind_param("diii", $newSupplierBalance, $supplier_id, $tenant_id, $branch_id);
+                        $updateSupplierStmt = $pdo->prepare("UPDATE suppliers SET balance = ? WHERE id = ? AND tenant_id = ? AND branch_id = ?");
+                        $updateSupplierStmt->bindParam(1, $newSupplierBalance, PDO::PARAM_STR);
+                        $updateSupplierStmt->bindParam(2, $supplier_id, PDO::PARAM_INT);
+                        $updateSupplierStmt->bindParam(3, $tenant_id, PDO::PARAM_INT);
+                        $updateSupplierStmt->bindParam(4, $branch_id, PDO::PARAM_INT);
                         if (!$updateSupplierStmt->execute()) {
                             throw new Exception("Failed to update supplier balance for supplier ID: $supplier_id");
                         }
 
                         // Record supplier transaction
-                        $insertSupplierTransactionStmt = $conn->prepare("INSERT INTO supplier_transactions
+                        $insertSupplierTransactionStmt = $pdo->prepare("INSERT INTO supplier_transactions
                             (transaction_date, supplier_id, reference_id, amount, balance, transaction_type, remarks, transaction_of, tenant_id, branch_id)
                             VALUES (NOW(), ?, ?, ?, ?, ?, ?, ?, ?, ?)");
                         $supplierRemarks = ucfirst($action) . " for umrah booking #$booking_id - " . $reason;
-                        $insertSupplierTransactionStmt->bind_param("iiddsssii",
-                            $supplier_id,
-                            $booking_id,
-                            $supplierAmount,
-                            $newSupplierBalance,
-                            $transactionType,
-                            $supplierRemarks,
-                            $transactionOf,
-                            $tenant_id,
-                            $branch_id
-                        );
+                        $insertSupplierTransactionStmt->bindParam(1, $supplier_id, PDO::PARAM_INT);
+                        $insertSupplierTransactionStmt->bindParam(2, $booking_id, PDO::PARAM_INT);
+                        $insertSupplierTransactionStmt->bindParam(3, $supplierAmount, PDO::PARAM_STR);
+                        $insertSupplierTransactionStmt->bindParam(4, $newSupplierBalance, PDO::PARAM_STR);
+                        $insertSupplierTransactionStmt->bindParam(5, $transactionType, PDO::PARAM_STR);
+                        $insertSupplierTransactionStmt->bindParam(6, $supplierRemarks, PDO::PARAM_STR);
+                        $insertSupplierTransactionStmt->bindParam(7, $transactionOf, PDO::PARAM_STR);
+                        $insertSupplierTransactionStmt->bindParam(8, $tenant_id, PDO::PARAM_INT);
+                        $insertSupplierTransactionStmt->bindParam(9, $branch_id, PDO::PARAM_INT);
                         if (!$insertSupplierTransactionStmt->execute()) {
                             throw new Exception("Failed to record supplier transaction for supplier ID: $supplier_id");
                         }
@@ -238,18 +253,20 @@ try {
             // Handle client balance for both regular and non-regular clients
             if ($action === 'cancel' || $action === 'reapply') {
                 // Get client details and type
-                $clientQuery = $conn->prepare("SELECT client_type, usd_balance, afs_balance, name FROM clients WHERE id = ? AND tenant_id = ? AND branch_id = ?");
-                $clientQuery->bind_param("iii", $booking_data['sold_to'], $tenant_id, $branch_id);
+                $clientQuery = $pdo->prepare("SELECT client_type, usd_balance, afs_balance, name FROM clients WHERE id = ? AND tenant_id = ? AND branch_id = ?");
+                $clientQuery->bindParam(1, $booking_data['sold_to'], PDO::PARAM_INT);
+                $clientQuery->bindParam(2, $tenant_id, PDO::PARAM_INT);
+                $clientQuery->bindParam(3, $branch_id, PDO::PARAM_INT);
                 if (!$clientQuery->execute()) {
                     throw new Exception("Failed to fetch client details");
                 }
-                $clientResult = $clientQuery->get_result()->fetch_assoc();
+                $clientResult = $clientQuery->fetch(PDO::FETCH_ASSOC);
                 if (!$clientResult) {
                     throw new Exception("Client not found");
                 }
 
                 $currency = $booking_data['currency'] ?: 'USD';
-                
+
                 if ($action === 'cancel') {
                     // Cancellation: Return sold price to client (credit)
                     $clientAmount = $sold_price;
@@ -273,8 +290,11 @@ try {
                             $newBalance -= $clientAmount; // Debit
                         }
                         $updateClientQuery = "UPDATE clients SET usd_balance = ? WHERE id = ? AND tenant_id = ? AND branch_id = ?";
-                        $stmt = $conn->prepare($updateClientQuery);
-                        $stmt->bind_param("diii", $newBalance, $booking_data['sold_to'], $tenant_id, $branch_id);
+                        $stmt = $pdo->prepare($updateClientQuery);
+                        $stmt->bindParam(1, $newBalance, PDO::PARAM_STR);
+                        $stmt->bindParam(2, $booking_data['sold_to'], PDO::PARAM_INT);
+                        $stmt->bindParam(3, $tenant_id, PDO::PARAM_INT);
+                        $stmt->bindParam(4, $branch_id, PDO::PARAM_INT);
                     } else {
                         $newBalance = $clientResult['afs_balance'];
                         if ($action === 'cancel') {
@@ -283,8 +303,11 @@ try {
                             $newBalance -= $clientAmount; // Debit
                         }
                         $updateClientQuery = "UPDATE clients SET afs_balance = ? WHERE id = ? AND tenant_id = ? AND branch_id = ?";
-                        $stmt = $conn->prepare($updateClientQuery);
-                        $stmt->bind_param("diii", $newBalance, $booking_data['sold_to'], $tenant_id, $branch_id);
+                        $stmt = $pdo->prepare($updateClientQuery);
+                        $stmt->bindParam(1, $newBalance, PDO::PARAM_STR);
+                        $stmt->bindParam(2, $booking_data['sold_to'], PDO::PARAM_INT);
+                        $stmt->bindParam(3, $tenant_id, PDO::PARAM_INT);
+                        $stmt->bindParam(4, $branch_id, PDO::PARAM_INT);
                     }
                     if (!$stmt->execute()) {
                         throw new Exception("Failed to update client balance");
@@ -294,20 +317,18 @@ try {
                     $clientTransactionQuery = "INSERT INTO client_transactions
                         (client_id, type, amount, balance, currency, description, transaction_of, reference_id, created_at, tenant_id, branch_id)
                         VALUES (?, ?, ?, ?, ?, ?, ?, ?, NOW(), ?, ?)";
-                    $stmt = $conn->prepare($clientTransactionQuery);
+                    $stmt = $pdo->prepare($clientTransactionQuery);
                     $clientTransactionDescription = ucfirst($action) . " for umrah booking #$booking_id - $reason";
-                    $stmt->bind_param("sdsssssiii",
-                        $booking_data['sold_to'],
-                        $clientTransactionType,
-                        $clientAmount,
-                        $newBalance,
-                        $currency,
-                        $clientTransactionDescription,
-                        $clientTransactionOf,
-                        $booking_id,
-                        $tenant_id,
-                        $branch_id
-                    );
+                    $stmt->bindParam(1, $booking_data['sold_to'], PDO::PARAM_INT);
+                    $stmt->bindParam(2, $clientTransactionType, PDO::PARAM_STR);
+                    $stmt->bindParam(3, $clientAmount, PDO::PARAM_STR);
+                    $stmt->bindParam(4, $newBalance, PDO::PARAM_STR);
+                    $stmt->bindParam(5, $currency, PDO::PARAM_STR);
+                    $stmt->bindParam(6, $clientTransactionDescription, PDO::PARAM_STR);
+                    $stmt->bindParam(7, $clientTransactionOf, PDO::PARAM_STR);
+                    $stmt->bindParam(8, $booking_id, PDO::PARAM_INT);
+                    $stmt->bindParam(9, $tenant_id, PDO::PARAM_INT);
+                    $stmt->bindParam(10, $branch_id, PDO::PARAM_INT);
                     if (!$stmt->execute()) {
                         throw new Exception("Failed to record client transaction");
                     }
@@ -316,19 +337,17 @@ try {
                     $clientTransactionQuery = "INSERT INTO client_transactions
                         (client_id, type, amount, currency, description, transaction_of, reference_id, created_at, tenant_id, branch_id)
                         VALUES (?, ?, ?, ?, ?, ?, ?, NOW(), ?, ?)";
-                    $stmt = $conn->prepare($clientTransactionQuery);
+                    $stmt = $pdo->prepare($clientTransactionQuery);
                     $clientTransactionDescription = ucfirst($action) . " for umrah booking #$booking_id - $reason";
-                    $stmt->bind_param("sdssssiii",
-                        $booking_data['sold_to'],
-                        $clientTransactionType,
-                        $clientAmount,
-                        $currency,
-                        $clientTransactionDescription,
-                        $clientTransactionOf,
-                        $booking_id,
-                        $tenant_id,
-                        $branch_id
-                    );
+                    $stmt->bindParam(1, $booking_data['sold_to'], PDO::PARAM_INT);
+                    $stmt->bindParam(2, $clientTransactionType, PDO::PARAM_STR);
+                    $stmt->bindParam(3, $clientAmount, PDO::PARAM_STR);
+                    $stmt->bindParam(4, $currency, PDO::PARAM_STR);
+                    $stmt->bindParam(5, $clientTransactionDescription, PDO::PARAM_STR);
+                    $stmt->bindParam(6, $clientTransactionOf, PDO::PARAM_STR);
+                    $stmt->bindParam(7, $booking_id, PDO::PARAM_INT);
+                    $stmt->bindParam(8, $tenant_id, PDO::PARAM_INT);
+                    $stmt->bindParam(9, $branch_id, PDO::PARAM_INT);
                     if (!$stmt->execute()) {
                         throw new Exception("Failed to record client transaction");
                     }
@@ -339,9 +358,18 @@ try {
             try {
                 $logQuery = "INSERT INTO cancellation_reapply_log (booking_id, action, base_price, sold_price, previous_profit, new_profit, reason, tenant_id, branch_id, created_by, created_at)
                              VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, NOW())";
-                $stmt = $conn->prepare($logQuery);
+                $stmt = $pdo->prepare($logQuery);
                 $action_type = ($action === 'cancel') ? 'cancellation' : 'reapplication';
-                $stmt->bind_param('issddssiii', $booking_id, $action_type, $base_price, $sold_price, $current_profit, $new_profit, $reason, $tenant_id, $branch_id, $_SESSION['user_id']);
+                $stmt->bindParam(1, $booking_id, PDO::PARAM_INT);
+                $stmt->bindParam(2, $action_type, PDO::PARAM_STR);
+                $stmt->bindParam(3, $base_price, PDO::PARAM_STR);
+                $stmt->bindParam(4, $sold_price, PDO::PARAM_STR);
+                $stmt->bindParam(5, $current_profit, PDO::PARAM_STR);
+                $stmt->bindParam(6, $new_profit, PDO::PARAM_STR);
+                $stmt->bindParam(7, $reason, PDO::PARAM_STR);
+                $stmt->bindParam(8, $tenant_id, PDO::PARAM_INT);
+                $stmt->bindParam(9, $branch_id, PDO::PARAM_INT);
+                $stmt->bindParam(10, $_SESSION['user_id'], PDO::PARAM_INT);
                 $stmt->execute();
             } catch (Exception $e) {
                 // Log table might not exist, continue without logging
@@ -355,7 +383,7 @@ try {
                     'status' => $booking_data['status'],
                     'due' => $booking_data['due']
                 ]);
-                
+
                 $new_values = json_encode([
                     'profit' => $new_profit,
                     'status' => $new_status,
@@ -365,7 +393,7 @@ try {
                     'bulk_operation' => true
                 ]);
 
-                $activity_log_stmt = $conn->prepare("
+                $activity_log_stmt = $pdo->prepare("
                     INSERT INTO activity_log
                     (user_id, action, table_name, record_id, old_values, new_values, ip_address, user_agent, created_at, tenant_id, branch_id)
                     VALUES (?, ?, ?, ?, ?, ?, ?, ?, NOW(), ?, ?)
@@ -375,22 +403,20 @@ try {
                 $ip_address = $_SERVER['REMOTE_ADDR'] ?? 'unknown';
                 $user_agent = $_SERVER['HTTP_USER_AGENT'] ?? 'unknown';
 
-                $activity_log_stmt->bind_param("isssssii",
-                    $_SESSION['user_id'],
-                    $activity_action,
-                    $booking_id,
-                    $old_values,
-                    $new_values,
-                    $ip_address,
-                    $user_agent,
-                    $tenant_id,
-                    $branch_id
-                );
-                
+                $activity_log_stmt->bindParam(1, $_SESSION['user_id'], PDO::PARAM_INT);
+                $activity_log_stmt->bindParam(2, $activity_action, PDO::PARAM_STR);
+                $activity_log_stmt->bindParam(3, $booking_id, PDO::PARAM_INT);
+                $activity_log_stmt->bindParam(4, $old_values, PDO::PARAM_STR);
+                $activity_log_stmt->bindParam(5, $new_values, PDO::PARAM_STR);
+                $activity_log_stmt->bindParam(6, $ip_address, PDO::PARAM_STR);
+                $activity_log_stmt->bindParam(7, $user_agent, PDO::PARAM_STR);
+                $activity_log_stmt->bindParam(8, $tenant_id, PDO::PARAM_INT);
+                $activity_log_stmt->bindParam(9, $branch_id, PDO::PARAM_INT);
+
                 if (!$activity_log_stmt->execute()) {
                     error_log("Failed to insert activity log for bulk booking #{$booking_id}: " . $activity_log_stmt->error);
                 }
-                
+
                 $activity_log_stmt->close();
             } catch (Exception $e) {
                 // Activity log is critical but don't break the process if it fails
@@ -403,31 +429,31 @@ try {
             $errors[] = "Error processing booking #{$booking_id}: " . $e->getMessage();
         }
     }
-    
+
     // Check if we processed any bookings successfully
     if ($processed_count === 0) {
         throw new Exception('No bookings were successfully processed. ' . implode('; ', $errors));
     }
-    
+
     // If there were some errors but we processed some successfully, we still commit
     if ($processed_count < count($bookings)) {
         $warning_message = "Processed {$processed_count} of " . count($bookings) . " bookings successfully.";
         if (!empty($errors)) {
             $warning_message .= " Errors: " . implode('; ', $errors);
         }
-        
+
         // Log warning but don't throw exception
         error_log("Bulk {$action} processing warning: " . $warning_message);
     }
-    
+
     // Commit transaction
-    $conn->commit();
-    
+    $pdo->commit();
+
     $message = "Successfully processed {$processed_count} booking" . ($processed_count > 1 ? 's' : '') . " with bulk {$action}";
     if (!empty($errors)) {
         $message .= ". Some bookings had errors: " . implode('; ', $errors);
     }
-    
+
     echo json_encode([
         'success' => true,
         'message' => $message,
@@ -439,11 +465,11 @@ try {
         'supplier_transactions' => ($action === 'cancel' || $action === 'reapply'),
         'client_transactions' => ($action === 'cancel' || $action === 'reapply')
     ]);
-    
+
 } catch (Exception $e) {
     // Rollback transaction on error
-    $conn->rollback();
-    
+    $pdo->rollBack();
+
     echo json_encode([
         'success' => false,
         'message' => 'Error processing bulk ' . $action . ': ' . $e->getMessage(),

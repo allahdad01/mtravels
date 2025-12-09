@@ -13,7 +13,6 @@ enforce_auth();
 
 // Database connection
 require_once('../../includes/db.php');
-require_once('.././includes/conn.php');
 
 // Check if booking_id is provided
 if (!isset($_GET['booking_id']) || empty($_GET['booking_id'])) {

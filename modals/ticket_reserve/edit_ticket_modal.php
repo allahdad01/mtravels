@@ -7,6 +7,8 @@
                                             </div>
 
                                             <form id="editTicketForm">
+                    <!-- CSRF Protection -->
+                    <input type="hidden" name="csrf_token" value="<?php echo h($_SESSION['csrf_token'] ?? ''); ?>">
                                                 <div class="modal-content">
                                                     <div class="modal-header">
                                                         <h5 class="modal-title"><?= __('edit_ticket') ?></h5>

@@ -16,6 +16,8 @@
                 </div>
                 
                 <form id="multiTicketInvoiceForm">
+                    <!-- CSRF Protection -->
+                    <input type="hidden" name="csrf_token" value="<?php echo h($_SESSION['csrf_token'] ?? ''); ?>">
                     <div class="form-group">
                         <label for="clientForInvoice"><?= __('client') ?></label>
                         

@@ -9,6 +9,8 @@
                 </button>
             </div>
             <form id="editClientForm">
+                    <!-- CSRF Protection -->
+                    <input type="hidden" name="csrf_token" value="<?php echo h($_SESSION['csrf_token'] ?? ''); ?>">
                 <div class="modal-body">
                     <input type="hidden" id="editClientId">
                     <div class="mb-3">

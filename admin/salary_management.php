@@ -52,29 +52,34 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
                           WHERE id = ? AND tenant_id = ? AND branch_id = ?";
 
             try {
-                mysqli_begin_transaction($conection_db);
+                $pdo->beginTransaction();
 
-                if ($stmt_salary = mysqli_prepare($conection_db, $sql_salary)) {
-                    mysqli_stmt_bind_param($stmt_salary, "dsssiii", $base_salary, $currency, $payment_day, $status, $user_id, $tenant_id, $branch_id);
-                    if (!mysqli_stmt_execute($stmt_salary)) {
-                        throw new Exception("Error updating salary management");
-                    }
-                    mysqli_stmt_close($stmt_salary);
+                $stmt_salary = $pdo->prepare($sql_salary);
+                $stmt_salary->bindParam(1, $base_salary, PDO::PARAM_STR);
+                $stmt_salary->bindParam(2, $currency, PDO::PARAM_STR);
+                $stmt_salary->bindParam(3, $payment_day, PDO::PARAM_STR);
+                $stmt_salary->bindParam(4, $status, PDO::PARAM_STR);
+                $stmt_salary->bindParam(5, $user_id, PDO::PARAM_INT);
+                $stmt_salary->bindParam(6, $tenant_id, PDO::PARAM_INT);
+                $stmt_salary->bindParam(7, $branch_id, PDO::PARAM_INT);
+                if (!$stmt_salary->execute()) {
+                    throw new Exception("Error updating salary management");
                 }
 
-                if ($stmt_user = mysqli_prepare($conection_db, $sql_user)) {
-                    mysqli_stmt_bind_param($stmt_user, "iiii", $fired, $user_id, $tenant_id, $branch_id);
-                    if (!mysqli_stmt_execute($stmt_user)) {
-                        throw new Exception("Error updating user fired status");
-                    }
-                    mysqli_stmt_close($stmt_user);
+                $stmt_user = $pdo->prepare($sql_user);
+                $stmt_user->bindParam(1, $fired, PDO::PARAM_INT);
+                $stmt_user->bindParam(2, $user_id, PDO::PARAM_INT);
+                $stmt_user->bindParam(3, $tenant_id, PDO::PARAM_INT);
+                $stmt_user->bindParam(4, $branch_id, PDO::PARAM_INT);
+                if (!$stmt_user->execute()) {
+                    throw new Exception("Error updating user fired status");
                 }
 
-                mysqli_commit($conection_db);
+                $pdo->commit();
                 header("location: salary_management.php");
                 exit();
             } catch (Exception $e) {
-                mysqli_rollback($conection_db);
+                $pdo->rollBack();
                 error_log("Salary update error: " . $e->getMessage());
                 echo "Oops! Something went wrong. Please try again later.";
             }
@@ -87,15 +92,13 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
             $user_id = $_POST["user_id"];
 
             $sql = "SELECT id FROM salary_management WHERE user_id = ? AND tenant_id = ? AND branch_id = ?";
-            if ($stmt = mysqli_prepare($conection_db, $sql)) {
-                mysqli_stmt_bind_param($stmt, "iii", $user_id, $tenant_id, $branch_id);
-                if (mysqli_stmt_execute($stmt)) {
-                    mysqli_stmt_store_result($stmt);
-                    if (mysqli_stmt_num_rows($stmt) == 1) {
-                        $user_id_err = "This employee already has a salary record.";
-                    }
-                }
-                mysqli_stmt_close($stmt);
+            $stmt = $pdo->prepare($sql);
+            $stmt->bindParam(1, $user_id, PDO::PARAM_INT);
+            $stmt->bindParam(2, $tenant_id, PDO::PARAM_INT);
+            $stmt->bindParam(3, $branch_id, PDO::PARAM_INT);
+            $stmt->execute();
+            if ($stmt->rowCount() == 1) {
+                $user_id_err = "This employee already has a salary record.";
             }
         }
 
@@ -118,19 +121,23 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
             $sql = "INSERT INTO salary_management (user_id, base_salary, currency, joining_date, payment_day, tenant_id, branch_id)
                     VALUES (?, ?, ?, ?, ?, ?, ?)";
 
-            if ($stmt = mysqli_prepare($conection_db, $sql)) {
-                mysqli_stmt_bind_param($stmt, "idssiid", $user_id, $base_salary, $currency, $joining_date, $payment_day, $tenant_id, $branch_id);
-                if (mysqli_stmt_execute($stmt)) {
-                    header("location: salary_management.php");
-                    exit();
-                } else {
-                    echo "Oops! Something went wrong. Please try again later.";
-                }
-                mysqli_stmt_close($stmt);
+            $stmt = $pdo->prepare($sql);
+            $stmt->bindParam(1, $user_id, PDO::PARAM_INT);
+            $stmt->bindParam(2, $base_salary, PDO::PARAM_STR);
+            $stmt->bindParam(3, $currency, PDO::PARAM_STR);
+            $stmt->bindParam(4, $joining_date, PDO::PARAM_STR);
+            $stmt->bindParam(5, $payment_day, PDO::PARAM_INT);
+            $stmt->bindParam(6, $tenant_id, PDO::PARAM_INT);
+            $stmt->bindParam(7, $branch_id, PDO::PARAM_INT);
+            if ($stmt->execute()) {
+                header("location: salary_management.php");
+                exit();
+            } else {
+                echo "Oops! Something went wrong. Please try again later.";
             }
         }
     }
-    mysqli_close($conection_db);
+    // PDO connection will be closed automatically when script ends
 }
 
 // ---------- FETCH DATA FOR DISPLAY ----------
@@ -240,11 +247,12 @@ try {
                                                         FROM users u
                                                         LEFT JOIN salary_management sm ON u.id = sm.user_id
                                                         WHERE sm.id IS NULL AND u.tenant_id = ? AND u.branch_id = ?";
-                                                $stmt = mysqli_prepare($conection_db, $sql);
-                                                mysqli_stmt_bind_param($stmt, "ii", $tenant_id, $branch_id);
-                                                mysqli_stmt_execute($stmt);
-                                                $result = mysqli_stmt_get_result($stmt);
-                                                while ($row = mysqli_fetch_assoc($result)) {
+                                                $stmt = $pdo->prepare($sql);
+                                                $stmt->bindParam(1, $tenant_id, PDO::PARAM_INT);
+                                                $stmt->bindParam(2, $branch_id, PDO::PARAM_INT);
+                                                $stmt->execute();
+                                                $result = $stmt->fetchAll(PDO::FETCH_ASSOC);
+                                                foreach ($result as $row) {
                                                     echo "<option value='" . $row['id'] . "'>" . $row['name'] . "</option>";
                                                 }
                                                 ?>
@@ -371,11 +379,12 @@ try {
                                                 JOIN users u ON sm.user_id = u.id
                                                 WHERE u.tenant_id = ? AND u.branch_id = ?
                                                 ORDER BY sm.id DESC";
-                                        $stmt = mysqli_prepare($conection_db, $sql);
-                                        mysqli_stmt_bind_param($stmt, "ii", $tenant_id, $branch_id);
-                                        mysqli_stmt_execute($stmt);
-                                        $result = mysqli_stmt_get_result($stmt);
-                                        while ($row = mysqli_fetch_assoc($result)) {
+                                        $stmt = $pdo->prepare($sql);
+                                        $stmt->bindParam(1, $tenant_id, PDO::PARAM_INT);
+                                        $stmt->bindParam(2, $branch_id, PDO::PARAM_INT);
+                                        $stmt->execute();
+                                        $result = $stmt->fetchAll(PDO::FETCH_ASSOC);
+                                        foreach ($result as $row) {
                                             $row_class = $row['is_fired'] ? 'table-danger fired-user' : '';
                                             $status_badge = $row['status'] == 'active' 
                                                 ? ($row['is_fired'] 

@@ -5,6 +5,21 @@ if (session_status() === PHP_SESSION_NONE) {
 }
 // Include database security module for input validation
 require_once __DIR__ . '/../../admin/includes/db_security.php';
+
+// Include security module
+require_once __DIR__ . '/../../admin/security.php';
+
+// Enforce authentication
+enforce_auth();
+
+// ✅ CSRF Token Validation
+if (!verify_csrf_token()) {
+    http_response_code(403);
+    header('Content-Type: application/json');
+    echo json_encode(['success' => false, 'message' => 'Security validation failed. Please try again.']);
+    exit;
+}
+
 $tenant_id = $_SESSION['tenant_id'];
 $branch_id = $_SESSION['branch_id'];
 // Database connection

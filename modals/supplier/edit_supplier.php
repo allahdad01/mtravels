@@ -2,6 +2,8 @@
 <div class="modal fade" id="editSupplierModal" tabindex="-1" role="dialog">
     <div class="modal-dialog modal-dialog-centered" role="document">
         <form id="editSupplierForm">
+                    <!-- CSRF Protection -->
+                    <input type="hidden" name="csrf_token" value="<?php echo h($_SESSION['csrf_token'] ?? ''); ?>">
             <div class="modal-content border-0 shadow">
                 <div class="modal-header bg-light border-0">
                     <h5 class="modal-title">

@@ -9,6 +9,9 @@
                     <button type="button" class="close" data-dismiss="modal">&times;</button>
                 </div>
                 <form id="bookTicketForm" enctype="multipart/form-data">
+                    <!-- CSRF Protection -->
+                    <input type="hidden" name="csrf_token" value="<?php echo h($_SESSION['csrf_token'] ?? ''); ?>">
+                    
                     <div class="modal-body">
                         <!-- Client and Trip Information -->
                         <div class="card">
@@ -37,14 +40,12 @@
                                         <select class="form-control selectpicker" id="soldTo" name="soldTo" required 
                                                 data-live-search="true" data-style="btn-light">
                                             <option value=""><?= __('select_client') ?></option>
-                                            <?php 
-                                            if ($conn->connect_error) {
-                                                echo "<option value=''>Database connection failed</option>";
-                                            } else {
-                                                $result = $conn->query("SELECT id, name, usd_balance, afs_balance FROM clients where status = 'active' AND tenant_id = $tenant_id AND branch_id = $branch_id");
-                                                while ($row = $result->fetch_assoc()) {
-                                                    echo "<option value='{$row['id']}' data-tokens='{$row['name']}'>{$row['name']}</option>";
-                                                }
+                                            <?php
+                                            $stmt = $pdo->prepare("SELECT id, name, usd_balance, afs_balance FROM clients WHERE status = 'active' AND tenant_id = ? AND branch_id = ?");
+                                            $stmt->execute([$tenant_id, $branch_id]);
+                                            $clients = $stmt->fetchAll(PDO::FETCH_ASSOC);
+                                            foreach ($clients as $row) {
+                                                echo "<option value='{$row['id']}' data-tokens='{$row['name']}'>{$row['name']}</option>";
                                             }
                                             ?>
                                         </select>
@@ -213,13 +214,11 @@
                                         <select class="form-control select2" id="paidTo" name="paidTo" required>
                                             <option value=""><?= __('select_main_account') ?></option>
                                             <?php
-                                            if ($conn->connect_error) {
-                                                echo "<option value=''>Database connection failed</option>";
-                                            } else {
-                                                $result = $conn->query("SELECT id, name, usd_balance, afs_balance FROM main_account where status = 'active' AND tenant_id = $tenant_id AND branch_id = $branch_id");
-                                                while ($row = $result->fetch_assoc()) {
-                                                    echo "<option value='{$row['id']}'>{$row['name']}</option>";
-                                                }
+                                            $stmt = $pdo->prepare("SELECT id, name, usd_balance, afs_balance FROM main_account WHERE status = 'active' AND tenant_id = ? AND branch_id = ?");
+                                            $stmt->execute([$tenant_id, $branch_id]);
+                                            $accounts = $stmt->fetchAll(PDO::FETCH_ASSOC);
+                                            foreach ($accounts as $row) {
+                                                echo "<option value='{$row['id']}'>{$row['name']}</option>";
                                             }
                                             ?>
                                         </select>

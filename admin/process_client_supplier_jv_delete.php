@@ -20,7 +20,6 @@ $user_id = $_SESSION['user_id'];
 
 // Database connection
 require_once('../includes/db.php');
-require_once('../includes/conn.php');
 
 // Validate id
 $id = isset($_POST['id']) ? DbSecurity::validateInput($_POST['id'], 'int', ['min' => 0]) : null;
@@ -165,9 +164,9 @@ try {
                 }
                 
                 // Delete the specific client transaction for this JV payment
-                $deleteClientTransQuery = "DELETE FROM client_transactions WHERE id = ?";
+                $deleteClientTransQuery = "DELETE FROM client_transactions WHERE id = ? AND tenant_id = ? AND branch_id = ?";
                 $deleteClientTransStmt = $pdo->prepare($deleteClientTransQuery);
-                $deleteClientTransStmt->execute([$clientTransId]);
+                $deleteClientTransStmt->execute([$clientTransId, $tenant_id, $branch_id]);
                 
                 if ($log_errors) $error_log[] = "Client transaction ID {$clientTransId} deleted successfully";
             } else {
@@ -286,7 +285,7 @@ try {
                 // Delete the specific supplier transaction for this JV payment
                 $deleteSupplierTransQuery = "DELETE FROM supplier_transactions WHERE id = ? And tenant_id = ? And branch_id = ?";
                 $deleteSupplierTransStmt = $pdo->prepare($deleteSupplierTransQuery);
-                $deleteSupplierTransStmt->execute([$supplierTransId], $tenant_id, $branch_id);
+                $deleteSupplierTransStmt->execute([$supplierTransId, $tenant_id, $branch_id]);
                 
                 if ($log_errors) $error_log[] = "Supplier transaction ID {$supplierTransId} deleted successfully";
             } else {

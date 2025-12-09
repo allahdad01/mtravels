@@ -21,6 +21,13 @@ if (!isset($_SESSION['user_id'])) {
 // Get POST data
 $data = json_decode(file_get_contents('php://input'), true);
 
+// ✅ CSRF Token Validation
+if (!verify_csrf_token($data['csrf_token'] ?? null)) {
+    http_response_code(403);
+    echo json_encode(['success' => false, 'message' => 'Security validation failed. Please try again.']);
+    exit();
+}
+
 // Validate transaction_id
 if (!isset($data['transaction_id']) || !is_numeric($data['transaction_id'])) {
     header('HTTP/1.1 400 Bad Request');

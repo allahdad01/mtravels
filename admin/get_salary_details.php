@@ -33,25 +33,20 @@ try {
                          AND currency = ?
                          AND payment_type = 'regular'
                          AND DATE_FORMAT(payment_for_month, '%Y-%m') = ?";
-                    
-    if (!($payment_check_stmt = mysqli_prepare($conection_db, $payment_check_sql))) {
-        throw new Exception("Prepare failed for payment check: " . mysqli_error($conection_db));
+
+    $payment_check_stmt = $pdo->prepare($payment_check_sql);
+    $payment_check_stmt->bindParam(1, $user_id, PDO::PARAM_INT);
+    $payment_check_stmt->bindParam(2, $tenant_id, PDO::PARAM_INT);
+    $payment_check_stmt->bindParam(3, $branch_id, PDO::PARAM_INT);
+    $payment_check_stmt->bindParam(4, $currency, PDO::PARAM_STR);
+    $payment_check_stmt->bindParam(5, $payment_for_month, PDO::PARAM_STR);
+
+    if (!$payment_check_stmt->execute()) {
+        throw new Exception("Execute failed for payment check");
     }
-    
-    if (!mysqli_stmt_bind_param($payment_check_stmt, "iiiss", $user_id, $tenant_id, $branch_id, $currency, $payment_for_month)) {
-        throw new Exception("Bind param failed for payment check: " . mysqli_stmt_error($payment_check_stmt));
-    }
-    
-    if (!mysqli_stmt_execute($payment_check_stmt)) {
-        throw new Exception("Execute failed for payment check: " . mysqli_stmt_error($payment_check_stmt));
-    }
-    
-    $payment_check_result = mysqli_stmt_get_result($payment_check_stmt);
-    if (!$payment_check_result) {
-        throw new Exception("Get result failed for payment check: " . mysqli_error($conection_db));
-    }
-    
-    $existing_payment = mysqli_fetch_assoc($payment_check_result);
+
+    $payment_check_result = $payment_check_stmt->fetchAll();
+    $existing_payment = count($payment_check_result) > 0 ? $payment_check_result[0] : null;
 
     // Get total advances for this month
     $advance_sql = "SELECT COALESCE(SUM(amount), 0) as total_advances
@@ -59,78 +54,58 @@ try {
                    WHERE user_id = ? AND tenant_id = ? AND branch_id = ?
                    AND currency = ?
                    AND DATE_FORMAT(created_at, '%Y-%m') = ?";
-                    
-    if (!($advance_stmt = mysqli_prepare($conection_db, $advance_sql))) {
-        throw new Exception("Prepare failed for advances: " . mysqli_error($conection_db));
+
+    $advance_stmt = $pdo->prepare($advance_sql);
+    $advance_stmt->bindParam(1, $user_id, PDO::PARAM_INT);
+    $advance_stmt->bindParam(2, $tenant_id, PDO::PARAM_INT);
+    $advance_stmt->bindParam(3, $branch_id, PDO::PARAM_INT);
+    $advance_stmt->bindParam(4, $currency, PDO::PARAM_STR);
+    $advance_stmt->bindParam(5, $payment_for_month, PDO::PARAM_STR);
+
+    if (!$advance_stmt->execute()) {
+        throw new Exception("Execute failed for advances");
     }
-    
-    if (!mysqli_stmt_bind_param($advance_stmt, "iiiss", $user_id, $tenant_id, $branch_id, $currency, $payment_for_month)) {
-        throw new Exception("Bind param failed for advances: " . mysqli_stmt_error($advance_stmt));
-    }
-    
-    if (!mysqli_stmt_execute($advance_stmt)) {
-        throw new Exception("Execute failed for advances: " . mysqli_stmt_error($advance_stmt));
-    }
-    
-    $advance_result = mysqli_stmt_get_result($advance_stmt);
-    if (!$advance_result) {
-        throw new Exception("Get result failed for advances: " . mysqli_error($conection_db));
-    }
-    
-    $advance_row = mysqli_fetch_assoc($advance_result);
-    $totalAdvances = floatval($advance_row['total_advances']);
+
+    $advance_result = $advance_stmt->fetch();
+    $totalAdvances = floatval($advance_result['total_advances']);
 
     // Get total deductions for this month
     $deduction_sql = "SELECT COALESCE(SUM(amount), 0) as total_deductions
                      FROM salary_deductions
                      WHERE user_id = ? AND tenant_id = ? AND branch_id = ?
                      AND DATE_FORMAT(deduction_date, '%Y-%m') = ?";
-                      
-    if (!($deduction_stmt = mysqli_prepare($conection_db, $deduction_sql))) {
-        throw new Exception("Prepare failed for deductions: " . mysqli_error($conection_db));
+
+    $deduction_stmt = $pdo->prepare($deduction_sql);
+    $deduction_stmt->bindParam(1, $user_id, PDO::PARAM_INT);
+    $deduction_stmt->bindParam(2, $tenant_id, PDO::PARAM_INT);
+    $deduction_stmt->bindParam(3, $branch_id, PDO::PARAM_INT);
+    $deduction_stmt->bindParam(4, $payment_for_month, PDO::PARAM_STR);
+
+    if (!$deduction_stmt->execute()) {
+        throw new Exception("Execute failed for deductions");
     }
-    
-    if (!mysqli_stmt_bind_param($deduction_stmt, "iiis", $user_id, $tenant_id, $branch_id, $payment_for_month)) {
-        throw new Exception("Bind param failed for deductions: " . mysqli_stmt_error($deduction_stmt));
-    }
-    
-    if (!mysqli_stmt_execute($deduction_stmt)) {
-        throw new Exception("Execute failed for deductions: " . mysqli_stmt_error($deduction_stmt));
-    }
-    
-    $deduction_result = mysqli_stmt_get_result($deduction_stmt);
-    if (!$deduction_result) {
-        throw new Exception("Get result failed for deductions: " . mysqli_error($conection_db));
-    }
-    
-    $deduction_row = mysqli_fetch_assoc($deduction_result);
-    $totalDeductions = floatval($deduction_row['total_deductions']);
+
+    $deduction_result = $deduction_stmt->fetch();
+    $totalDeductions = floatval($deduction_result['total_deductions']);
 
     // Get total bonuses for this month
     $bonus_sql = "SELECT COALESCE(SUM(amount), 0) as total_bonuses
                  FROM salary_bonuses
                  WHERE user_id = ? AND tenant_id = ? AND branch_id = ?
                  AND DATE_FORMAT(bonus_date, '%Y-%m') = ?";
-                  
-    if (!($bonus_stmt = mysqli_prepare($conection_db, $bonus_sql))) {
-        throw new Exception("Prepare failed for bonuses: " . mysqli_error($conection_db));
+
+    $bonus_stmt = $pdo->prepare($bonus_sql);
+    $bonus_stmt->bindParam(1, $user_id, PDO::PARAM_INT);
+    $bonus_stmt->bindParam(2, $tenant_id, PDO::PARAM_INT);
+    $bonus_stmt->bindParam(3, $branch_id, PDO::PARAM_INT);
+    $bonus_stmt->bindParam(4, $payment_for_month, PDO::PARAM_STR);
+
+    if (!$bonus_stmt->execute()) {
+        throw new Exception("Execute failed for bonuses");
     }
-    
-    if (!mysqli_stmt_bind_param($bonus_stmt, "iiis", $user_id, $tenant_id, $branch_id, $payment_for_month)) {
-        throw new Exception("Bind param failed for bonuses: " . mysqli_stmt_error($bonus_stmt));
-    }
-    
-    if (!mysqli_stmt_execute($bonus_stmt)) {
-        throw new Exception("Execute failed for bonuses: " . mysqli_stmt_error($bonus_stmt));
-    }
-    
-    $bonus_result = mysqli_stmt_get_result($bonus_stmt);
-    if (!$bonus_result) {
-        throw new Exception("Get result failed for bonuses: " . mysqli_error($conection_db));
-    }
-    
-    $bonus_row = mysqli_fetch_assoc($bonus_result);
-    $totalBonuses = floatval($bonus_row['total_bonuses']);
+
+    $bonus_result = $bonus_stmt->fetch();
+    $totalBonuses = floatval($bonus_result['total_bonuses']);
 
     // Return the results
     $response = [
@@ -157,8 +132,3 @@ try {
     ]);
     exit;
 }
-
-// Close database connection
-if (isset($conection_db)) {
-    mysqli_close($conection_db);
-} 

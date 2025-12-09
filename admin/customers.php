@@ -1,5 +1,4 @@
 <?php
-require_once '../includes/conn.php';
 require_once '../includes/db.php';
 require_once 'security.php';
 require_once '../includes/language_helpers.php';
@@ -29,24 +28,25 @@ unset($_SESSION['success_message']);
 unset($_SESSION['error_message']);
 
 // Fetch customers with their total balances
-$stmt = $conn->prepare("
+$stmt = $pdo->prepare("
     SELECT
         c.*,
         COALESCE(SUM(w.balance), 0) as current_balance,
         w.currency
     FROM customers c
-    LEFT JOIN customer_wallets w ON c.id = w.customer_id
+    LEFT JOIN customer_wallets w ON c.id = w.customer_id AND w.tenant_id = c.tenant_id AND w.branch_id = c.branch_id
     WHERE c.status = 'active' AND c.tenant_id = ? AND c.branch_id = ?
     GROUP BY c.id, w.currency
     ORDER BY c.created_at DESC
 ");
-$stmt->bind_param("ii", $tenant_id, $branch_id);
+$stmt->bindParam(1, $tenant_id, PDO::PARAM_INT);
+$stmt->bindParam(2, $branch_id, PDO::PARAM_INT);
 $stmt->execute();
-$result = $stmt->get_result();
+$result = $stmt->fetchAll();
 $customers = [];
 
 // Organize customer data
-while ($row = $result->fetch_assoc()) {
+foreach ($result as $row) {
     $customerId = $row['id'];
     if (!isset($customers[$customerId])) {
         $customers[$customerId] = [

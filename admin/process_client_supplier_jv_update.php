@@ -19,7 +19,6 @@ $user_id = $_SESSION['user_id'];
 
 // Database connection
 require_once('../includes/db.php');
-require_once('../includes/conn.php');
 
 // Validate remarks
 $remarks = isset($_POST['remarks']) ? DbSecurity::validateInput($_POST['remarks'], 'string', ['maxlength' => 255]) : null;

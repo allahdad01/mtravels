@@ -17,13 +17,24 @@ if ($conn->connect_error) {
     exit;
 }
 
-// Get suppliers
-$result = $conn->query("SELECT id, name, currency FROM suppliers WHERE tenant_id = $tenant_id AND branch_id = $branch_id");
+// Get suppliers using prepared statement to prevent SQL injection
+$stmt = $conn->prepare("SELECT id, name, currency FROM suppliers WHERE tenant_id = ? AND branch_id = ?");
+
+if (!$stmt) {
+    echo json_encode(['success' => false, 'error' => 'Database error: ' . $conn->error]);
+    exit;
+}
+
+$stmt->bind_param("ii", $tenant_id, $branch_id);
+$stmt->execute();
+$result = $stmt->get_result();
 
 $suppliers = [];
 while ($row = $result->fetch_assoc()) {
     $suppliers[] = $row;
 }
+
+$stmt->close();
 
 echo json_encode(['success' => true, 'suppliers' => $suppliers]);
 

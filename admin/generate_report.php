@@ -13,7 +13,7 @@ use PhpOffice\PhpWord\PhpWord;
 use Dompdf\Dompdf;
 
 // Database connection
-require '../includes/conn.php';
+require '../includes/db.php';
 
 // Get query parameters
 $supplierId = $_GET['supplierId'] ?? '';
@@ -87,25 +87,16 @@ if (!empty($startDate) && !empty($endDate)) {
 }
 
 // Prepare and execute the query
-$stmt = $conn->prepare($query);
+$stmt = $pdo->prepare($query);
 if (!$stmt) {
-    die("Prepare failed: " . $conn->error);
+    die("Prepare failed");
 }
 
-// Bind parameters
-$stmt->bind_param($types, ...$params);
-$stmt->execute();
-
-// Get result
-$result = $stmt->get_result();
+// Execute with parameters
+$stmt->execute($params);
 
 // Fetch transactions
-$transactions = [];
-while ($row = $result->fetch_assoc()) {
-    $transactions[] = $row;
-}
-
-$stmt->close();
+$transactions = $stmt->fetchAll();
 
 // Generate the report
 if ($format === 'excel') {

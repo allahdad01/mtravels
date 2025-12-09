@@ -129,6 +129,8 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
             $password_err = "Please enter your password.";
         } else {
             $password = trim($_POST["password"]);
+            // During login, only check that password is not empty
+            // Password strength validation applies only during password creation/reset
         }
 
         // Authenticate user if no errors

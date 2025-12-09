@@ -23,49 +23,45 @@ if (!isset($_GET['id']) || empty($_GET['id'])) {
 $customer_id = intval($_GET['id']);
 
 // Fetch customer details
-$stmt = $conn->prepare("
+$stmt = $pdo->prepare("
     SELECT * FROM customers WHERE id = ? AND status = 'active' AND tenant_id = ? AND branch_id = ?
 ");
-$stmt->bind_param('iii', $customer_id, $tenant_id, $branch_id);
+$stmt->bindParam(1, $customer_id, PDO::PARAM_INT);
+$stmt->bindParam(2, $tenant_id, PDO::PARAM_INT);
+$stmt->bindParam(3, $branch_id, PDO::PARAM_INT);
 $stmt->execute();
-$result = $stmt->get_result();
+$result = $stmt->fetchAll();
 
-if ($result->num_rows === 0) {
+if (count($result) === 0) {
     header('Location: customers.php');
     exit();
 }
 
-$customer = $result->fetch_assoc();
+$customer = $result[0];
 
 // Fetch customer wallet balances
-$wallet_stmt = $conn->prepare("
+$wallet_stmt = $pdo->prepare("
     SELECT * FROM customer_wallets WHERE customer_id = ? AND tenant_id = ? AND branch_id = ?
 ");
-$wallet_stmt->bind_param('iii', $customer_id, $tenant_id, $branch_id);
+$wallet_stmt->bindParam(1, $customer_id, PDO::PARAM_INT);
+$wallet_stmt->bindParam(2, $tenant_id, PDO::PARAM_INT);
+$wallet_stmt->bindParam(3, $branch_id, PDO::PARAM_INT);
 $wallet_stmt->execute();
-$wallet_result = $wallet_stmt->get_result();
-$wallets = [];
-
-while ($row = $wallet_result->fetch_assoc()) {
-    $wallets[] = $row;
-}
+$wallets = $wallet_stmt->fetchAll();
 
 // Fetch recent transactions (last 30 days)
-$transactions_stmt = $conn->prepare("
+$transactions_stmt = $pdo->prepare("
     SELECT
         st.*
     FROM sarafi_transactions st
     WHERE st.customer_id = ? AND st.tenant_id = ? AND st.branch_id = ?
     ORDER BY st.created_at ASC
 ");
-$transactions_stmt->bind_param('iii', $customer_id, $tenant_id, $branch_id);
+$transactions_stmt->bindParam(1, $customer_id, PDO::PARAM_INT);
+$transactions_stmt->bindParam(2, $tenant_id, PDO::PARAM_INT);
+$transactions_stmt->bindParam(3, $branch_id, PDO::PARAM_INT);
 $transactions_stmt->execute();
-$transactions_result = $transactions_stmt->get_result();
-$transactions = [];
-
-while ($row = $transactions_result->fetch_assoc()) {
-    $transactions[] = $row;
-}
+$transactions = $transactions_stmt->fetchAll();
 
 // Fetch company settings
 try {

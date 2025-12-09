@@ -1,5 +1,5 @@
 <?php
-require_once '../../includes/conn.php';
+require_once '../../includes/db.php';
 session_start();
 
 if (!isset($_GET['pilgrim_ids']) || empty($_GET['pilgrim_ids'])) {
@@ -9,22 +9,23 @@ if (!isset($_GET['pilgrim_ids']) || empty($_GET['pilgrim_ids'])) {
 $tenant_id = $_SESSION['tenant_id'];
 $branch_id = $_SESSION['branch_id'];
 // Fetch settings
-$stmt = $conn->prepare("SELECT * FROM settings WHERE tenant_id = ?");
-$stmt->bind_param("i", $tenant_id);
+$stmt = $pdo->prepare("SELECT * FROM settings WHERE tenant_id = ?");
+$stmt->bindParam(1, $tenant_id, PDO::PARAM_INT);
 $stmt->execute();
-$result = $stmt->get_result();
-$settings = $result->fetch_assoc();
+$settings = $stmt->fetch(PDO::FETCH_ASSOC);
 
 $pilgrim_ids = explode(',', $_GET['pilgrim_ids']);
 $pilgrims_info = [];
 
 foreach ($pilgrim_ids as $pilgrim_id) {
-    $stmt = $conn->prepare("SELECT name, passport_number, duration FROM umrah_bookings WHERE booking_id = ? AND tenant_id = ? And branch_id = ?");
-    $stmt->bind_param("iii", $pilgrim_id, $tenant_id, $branch_id);
+    $stmt = $pdo->prepare("SELECT name, passport_number, duration FROM umrah_bookings WHERE booking_id = ? AND tenant_id = ? AND branch_id = ?");
+    $stmt->bindParam(1, $pilgrim_id, PDO::PARAM_INT);
+    $stmt->bindParam(2, $tenant_id, PDO::PARAM_INT);
+    $stmt->bindParam(3, $branch_id, PDO::PARAM_INT);
     $stmt->execute();
-    $result = $stmt->get_result();
-    if ($row = $result->fetch_assoc()) {
-        $pilgrims_info[] = $row;
+    $result = $stmt->fetch(PDO::FETCH_ASSOC);
+    if ($result) {
+        $pilgrims_info[] = $result;
     }
 }
 
@@ -167,18 +168,18 @@ if (!empty($pilgrims_info) && isset($pilgrims_info[0]['duration'])) {
             <li>که معتمر چیرته تخلف وکړی نو ضامن اړ دی چی حداقل (۱۰۰۰۰۰) سل زره سعودی ریال د یو معتمر په سر تحویل کړی، او هرډول خساره چی له ټاکلی اندازی زیاته وی نو ضامن مسؤل دی چی داخساره هم ادا کړی.</li>
             <li>که په ویزه کی کوم ډول جعل او تذویر پیداکیږی او یاهم د معتمر لخوا تری غیر قانونی استفاده کیږی نو پدی حالت کی معتمر متخلف بلل کیږی کومه جریمه چی په <?php echo htmlspecialchars($settings['agency_name']); ?> شرکت راځی نو ضامن د ادا کولو مسؤلیت لری.</li>
             <li>د پرواز د نیټی تغیرولو په صورت کی ضامن اړ دی چی د <?php echo htmlspecialchars($settings['agency_name']); ?> شرکت ته خبر ورکړی او که نه معتمر متخلف مسؤلیت یی د ضامن پر غاړه دی.</li>
-            <li>که د معتمر په پاسپورت کی دخولی او خروجی لګیدلی وی، او په سیستم کی څرکند نه شو پدی حالت کی ضامن مسؤل دی چی پاسپورت د <?php echo htmlspecialchars($settings['agency_name']); ?> شرکت ته وسپاری او که نه متخلف دی مسؤلیت یی د ضامن پرغاړه دی.</li>
+            <li>که د معتمر په پاسپورت کی دخولی او خروجی لګیدلی وی، او په سیستم کی څرکند نه شو پدی حالت کی ضامن مسؤل دی چی پاسپورت د <?php echo htmlspecialchars($settings['agency_name']); ?> شرکت ته وسپاری او که نه متخلف دی مسؤلیت یی د ضامن پر غاړه دی.</li>
             <li>که کوم شخص په سعودی عربستان کی له شخصی ترانسپورت څخه استفاده کوی، خدای ج مه کړه کومه ستونزه، حادثه ورته پیښه شی نو مسؤلیت یی د معتمر پرغاړه دی.</li>
-            <li>هرڅوک چی عمری ته د تګ نیت لری باید د سالم عقل کامل هوش څښتن وی. خو د معتمر راستنیدل په ټاکلی وخت کی لازمی امر دی که له ټاکلی مهال یی زیات وخت تیر کړ نو ضامن د هرډول نقصان مسؤلیت پر غاړه لری که معتمر له ټاکلی مهال زیات وخت تیر کړ ضامن د جبران خساری مسؤلیت لری او که معتمر ورک شو نو ضامن باید ډیر ژرد <?php echo htmlspecialchars($settings['agency_name']); ?> شرکت ته خبر ورکړی ترڅو د خپل مسؤلیت له مخی د ورک شوو، مړو او زندانونو له ریاستونو معلومات حاصل کړی که معتمر به نوموړو ځایو کی وجود نه درلود نو ضامن د راتلونکو مسؤلیتونو ځواب ویونکی دی.</li>
+            <li>هرڅوک چی عمری ته د تګ نیت لری باید د سالم عقل کامل هوش څښتن وی. خو د معتمر راستنیدل په ټاکلی وخت کی لازمی امر دی که له ټاکلی مهال یی زیات وخت تیر کړ نو ضامن د هرډول نقصان مسؤلیت لری که معتمر له ټاکلی مهال زیات وخت تیر کړ ضامن د جبران خساری مسؤلیت لری او که معتمر ورک شو نو ضامن باید ډیر ژرد <?php echo htmlspecialchars($settings['agency_name']); ?> شرکت ته خبر ورکړی ترڅو د خپل مسؤلیت له مخی د ورک شوو، مړو او زندانونو له ریاستونو معلومات حاصل کړی که معتمر به نوموړو ځایو کی وجود نه درلود نو ضامن د راتلونکو مسؤلیتونو ځواب ویونکی دی.</li>
             <li>معتمر باید د خپلی عمری د ویزی قیمت (۵۰٪) پنځوس فیصده مبلغ له پاسپورت سره سم دفتر ته ورکړی او نور مبلغ (۲۴) څلورویشت ساعته د پرواز څخه دمخه د <?php echo htmlspecialchars($settings['agency_name']); ?> دفتر ته وسپاری، او که نه د ټکټ د باطلیدو مسؤلیت به د معتمر پر غاړه وی.</li>
             <li>په سعودی عربستان کی د <?php echo htmlspecialchars($settings['agency_name']); ?> شرکت نمایندګان له معتمر سره تر راستنیدو پوری به لازمه همکاری کوی.</li>
-            <li>د معتمرینو د بیرته راتګ ځخه وروسته هر معتمر مکلف دی چی خپل پاسپورت د (۱۰) ورځوو په موده کی د <?php echo htmlspecialchars($settings['agency_name']); ?> شرکت ته ددوخول او خروج لپاره <?php echo htmlspecialchars($settings['agency_name']); ?> شرکت ته راوړی او خپل اصلی اسناد د <?php echo htmlspecialchars($settings['agency_name']); ?> شرکت څخه تسلیم شی.</li>
+            <li>د معتمرینو د بیرته راتګ څخه وروسته هر معتمر مکلف دی چی خپل پاسپورت د (۱۰) ورځوو په موده کی د <?php echo htmlspecialchars($settings['agency_name']); ?> شرکت ته ددوخول او خروج لپاره <?php echo htmlspecialchars($settings['agency_name']); ?> شرکت ته راوړی او خپل اصلی اسناد د <?php echo htmlspecialchars($settings['agency_name']); ?> شرکت څخه تسلیم شی.</li>
             <li>که کوم معتمر د پاسپورت د تسلیمیدو سره سم د کوم شخصی یا قدرتی افت یا ستونزی سره مخامخ او د پرواز څخه پاتی شی باید پاسپورت بیرته شرکت ته تسلیم کړی او که چیرته یی تسلیم نه کړی او دکومی ستونزی سره مخامخ شی مسؤلیت یی پر خپله غاړه دی.</li>
             <li>ټول معتمرین مکلف دی چی هیڅ غیر قانونی مواد لکه هیروین، چرس، پوډر او داسی نور... عربستان سعودی ته انتقال نکړی، او دعمری د سپیڅلی نوم څخه ناوړه ګټه وانخلی.</li>
             <li>ټول معتمرین مکلف دی چی د افغانستان او سعودی عربستان دولتونو وضع شوی قوانین مراعت کړی او د تخلف په صورت کی معتمر مجرم او ټول مسؤلیت یی ضمانت کونکی ته راجع کیږی.</li>
             <li>هر معتمر مکلف دی چی د ضمانت ترڅنګ د نږدی خپلوانو څخه یو کس لکه ورور، پلار، تره او داسی نور داصلی تذکره سره هم د معتمرد ضمانت په خاطر شرکت ته حاضر کړی.</li>
             <li>د پرواز د نیټی تغیرولو په صورت کی معتمرین اړدی چی د <?php echo htmlspecialchars($settings['agency_name']); ?> شرکت ته خبر ورکړی او که نه ټول مسؤلیت یی د معتمر پر غاړه دی.</li>
-            
+
         </ol>
 
         <div class="guarantor-section">
@@ -214,4 +215,4 @@ if (!empty($pilgrims_info) && isset($pilgrims_info[0]['duration'])) {
         </div>
     </div>
 </body>
-</html> 
+</html>

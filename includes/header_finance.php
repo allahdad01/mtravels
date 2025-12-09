@@ -21,7 +21,6 @@ if (isset($_GET['lang'])) {
 
 // Database connection
 require_once('../includes/db.php');
-include '../includes/conn.php';
 $tenant_id = $_SESSION['tenant_id'];
 
 // Fetch user data with proper error handling
@@ -52,13 +51,12 @@ if ($tenant_id) {
         ORDER BY ts.start_date DESC
         LIMIT 1
     ";
-    $stmt = $conn->prepare($query);
-    $stmt->bind_param('i', $tenant_id);
+    $stmt = $pdo->prepare($query);
+    $stmt->bindParam(1, $tenant_id, PDO::PARAM_INT);
     $stmt->execute();
-    $result = $stmt->get_result();
-    if ($row = $result->fetch_assoc()) {
+    if ($row = $stmt->fetch(PDO::FETCH_ASSOC)) {
         $allowed_features = json_decode($row['features'], true) ?? [];
-        
+
         // Debug: Log the features for troubleshooting
         error_log("Tenant ID: " . $tenant_id);
         error_log("Features JSON: " . $row['features']);
@@ -66,25 +64,23 @@ if ($tenant_id) {
     } else {
         // Debug: Log if no subscription found
         error_log("No active subscription found for tenant: " . $tenant_id);
-        
+
         // Check if tenant exists in tenant_subscriptions
         $debug_query = "SELECT * FROM tenant_subscriptions WHERE tenant_id = ?";
-        $debug_stmt = $conn->prepare($debug_query);
-        $debug_stmt->bind_param('i', $tenant_id);
+        $debug_stmt = $pdo->prepare($debug_query);
+        $debug_stmt->bindParam(1, $tenant_id, PDO::PARAM_INT);
         $debug_stmt->execute();
-        $debug_result = $debug_stmt->get_result();
-        
-        if ($debug_result->num_rows === 0) {
+        $debug_rows = $debug_stmt->fetchAll(PDO::FETCH_ASSOC);
+
+        if (count($debug_rows) === 0) {
             error_log("No subscriptions found for tenant: " . $tenant_id);
         } else {
             error_log("Found subscriptions but none active for tenant: " . $tenant_id);
-            while ($debug_row = $debug_result->fetch_assoc()) {
+            foreach ($debug_rows as $debug_row) {
                 error_log("Subscription: " . print_r($debug_row, true));
             }
         }
-        $debug_stmt->close();
     }
-    $stmt->close();
 } else {
     error_log("Tenant ID is empty or null");
 }

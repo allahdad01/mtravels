@@ -9,11 +9,27 @@ if($_SERVER["REQUEST_METHOD"] == "POST")
     // Validate new password
     if(empty(trim($_POST["new_password"])))
     {
-        $new_password_err = "Please enter the new password.";     
+        $new_password_err = "Please enter the new password.";
     }
-    elseif(strlen(trim($_POST["new_password"])) < 6)
+    elseif(strlen(trim($_POST["new_password"])) < 12)
     {
-        $new_password_err = "Password must have atleast 6 characters.";
+        $new_password_err = "Password must be at least 12 characters long.";
+    }
+    elseif(!preg_match("/[A-Z]/", $_POST["new_password"]))
+    {
+        $new_password_err = "Password must contain at least one uppercase letter.";
+    }
+    elseif(!preg_match("/[a-z]/", $_POST["new_password"]))
+    {
+        $new_password_err = "Password must contain at least one lowercase letter.";
+    }
+    elseif(!preg_match("/[0-9]/", $_POST["new_password"]))
+    {
+        $new_password_err = "Password must contain at least one number.";
+    }
+    elseif(!preg_match("/[!@#$%^&*()_+\-=\[\]{};':\"\\|,.<>\/?]/", $_POST["new_password"]))
+    {
+        $new_password_err = "Password must contain at least one special character.";
     }
     else
     {

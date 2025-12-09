@@ -22,6 +22,13 @@ if (!$data) {
     exit;
 }
 
+// ✅ CSRF Token Validation
+if (!verify_csrf_token($data['csrf_token'] ?? null)) {
+    http_response_code(403);
+    echo json_encode(['success' => false, 'message' => 'Security validation failed. Please try again.']);
+    exit;
+}
+
 $fromAccountId = $data['fromAccount'];
 $fromCurrency = $data['fromCurrency'];
 $toAccountId = $data['toAccount'];

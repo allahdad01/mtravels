@@ -12,6 +12,9 @@
             </div>
             <div class="modal-body">
                 <form id="editTransactionForm">
+                    <!-- CSRF Protection -->
+                    <input type="hidden" name="csrf_token" value="<?php echo h($_SESSION['csrf_token'] ?? ''); ?>">
+                    
                     <input type="hidden" id="editTransactionId" name="transaction_id">
                     <input type="hidden" id="editTransactionType" name="transaction_type">
                     <input type="hidden" id="originalAmount" name="original_amount">

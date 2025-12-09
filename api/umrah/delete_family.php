@@ -5,7 +5,7 @@ require_once '../../admin/security.php';
 // Enforce authentication
 enforce_auth();
 
-require_once '../../includes/conn.php';
+require_once '../../includes/db.php';
 $tenant_id = $_SESSION['tenant_id'];
 $branch_id = $_SESSION['branch_id'];
 header('Content-Type: application/json');
@@ -20,33 +20,38 @@ if (!isset($data['family_id'])) {
 
 $family_id = intval($data['family_id']);
 
-$conn->begin_transaction();
+$pdo->beginTransaction();
 
 try {
     // Check if the family exists
-    $stmt_check = $conn->prepare("SELECT family_id FROM families WHERE family_id = ? AND tenant_id = ? AND branch_id = ?");
-    $stmt_check->bind_param("iii", $family_id, $tenant_id, $branch_id);
+    $stmt_check = $pdo->prepare("SELECT family_id FROM families WHERE family_id = ? AND tenant_id = ? AND branch_id = ?");
+    $stmt_check->bindParam(1, $family_id, PDO::PARAM_INT);
+    $stmt_check->bindParam(2, $tenant_id, PDO::PARAM_INT);
+    $stmt_check->bindParam(3, $branch_id, PDO::PARAM_INT);
     $stmt_check->execute();
-    $result = $stmt_check->get_result();
+    $result = $stmt_check->fetch(PDO::FETCH_ASSOC);
 
-    if ($result->num_rows === 0) {
+    if (!$result) {
         echo json_encode(["success" => false, "message" => "Family not found"]);
         exit();
     }
-    $stmt_check->close();
 
     // Get all family members (umrah bookings)
-    $stmt_get_members = $conn->prepare("
+    $stmt_get_members = $pdo->prepare("
         SELECT ub.*, c.client_type
         FROM umrah_bookings ub
         JOIN clients c ON ub.sold_to = c.id
         WHERE ub.family_id = ? AND ub.tenant_id = ? AND ub.branch_id = ? AND c.tenant_id = ? AND c.branch_id = ?
     ");
-    $stmt_get_members->bind_param("iiiii", $family_id, $tenant_id, $branch_id, $tenant_id, $branch_id);
+    $stmt_get_members->bindParam(1, $family_id, PDO::PARAM_INT);
+    $stmt_get_members->bindParam(2, $tenant_id, PDO::PARAM_INT);
+    $stmt_get_members->bindParam(3, $branch_id, PDO::PARAM_INT);
+    $stmt_get_members->bindParam(4, $tenant_id, PDO::PARAM_INT);
+    $stmt_get_members->bindParam(5, $branch_id, PDO::PARAM_INT);
     $stmt_get_members->execute();
-    $members_result = $stmt_get_members->get_result();
+    $members_result = $stmt_get_members->fetchAll(PDO::FETCH_ASSOC);
 
-    while ($member = $members_result->fetch_assoc()) {
+    foreach ($members_result as $member) {
         $booking_id = $member['booking_id'];
         $client_id = $member['sold_to'];
         $supplier_id = $member['supplier'];
@@ -58,12 +63,15 @@ try {
         $clientTransactions = "SELECT id, amount, type, created_at FROM client_transactions
                                WHERE client_id = ? AND transaction_of = 'umrah'
                                AND reference_id = ? AND tenant_id = ? AND branch_id = ?";
-        $stmt = $conn->prepare($clientTransactions);
-        $stmt->bind_param("iiiii", $client_id, $booking_id, $tenant_id, $branch_id);
+        $stmt = $pdo->prepare($clientTransactions);
+        $stmt->bindParam(1, $client_id, PDO::PARAM_INT);
+        $stmt->bindParam(2, $booking_id, PDO::PARAM_INT);
+        $stmt->bindParam(3, $tenant_id, PDO::PARAM_INT);
+        $stmt->bindParam(4, $branch_id, PDO::PARAM_INT);
         $stmt->execute();
-        $clientResults = $stmt->get_result();
+        $clientResults = $stmt->fetchAll(PDO::FETCH_ASSOC);
 
-        while ($row = $clientResults->fetch_assoc()) {
+        foreach ($clientResults as $row) {
             $amount = abs($row['amount']);
             $transaction_date = $row['created_at'];
             $transaction_id = $row['id'];
@@ -73,7 +81,17 @@ try {
             if ($client_type === 'regular') {
                 // Adjust Client Balance
                 $clientBalanceField = ($currency == 'USD') ? 'usd_balance' : 'afs_balance';
-                
+
+                // Get current client balance before update
+                $getCurrentBalanceQuery = "SELECT $clientBalanceField FROM clients WHERE id = ? AND tenant_id = ? AND branch_id = ?";
+                $stmtGetCurrentBalance = $pdo->prepare($getCurrentBalanceQuery);
+                $stmtGetCurrentBalance->bindParam(1, $client_id, PDO::PARAM_INT);
+                $stmtGetCurrentBalance->bindParam(2, $tenant_id, PDO::PARAM_INT);
+                $stmtGetCurrentBalance->bindParam(3, $branch_id, PDO::PARAM_INT);
+                $stmtGetCurrentBalance->execute();
+                $currentBalanceResult = $stmtGetCurrentBalance->fetch(PDO::FETCH_ASSOC);
+                $currentBalance = $currentBalanceResult[$clientBalanceField];
+
                 if ($transaction_type == 'debit') {
                     $adjustClientBalance = "UPDATE clients
                                            SET $clientBalanceField = $clientBalanceField + ?
@@ -84,8 +102,11 @@ try {
                                            WHERE id = ? AND tenant_id = ? AND branch_id = ?";
                 }
 
-                $stmt = $conn->prepare($adjustClientBalance);
-                $stmt->bind_param("diii", $amount, $client_id, $tenant_id, $branch_id);
+                $stmt = $pdo->prepare($adjustClientBalance);
+                $stmt->bindParam(1, $amount, PDO::PARAM_STR);
+                $stmt->bindParam(2, $client_id, PDO::PARAM_INT);
+                $stmt->bindParam(3, $tenant_id, PDO::PARAM_INT);
+                $stmt->bindParam(4, $branch_id, PDO::PARAM_INT);
                 $stmt->execute();
 
                 // Update subsequent transactions' running balances
@@ -105,112 +126,127 @@ try {
                                                 AND tenant_id = ? AND branch_id = ?";
                 }
 
-                $stmtUpdate = $conn->prepare($updateSubsequentBalances);
-                $stmtUpdate->bind_param("dissii", $amount, $client_id, $transaction_id, $currency, $tenant_id, $branch_id);
+                $stmtUpdate = $pdo->prepare($updateSubsequentBalances);
+                $stmtUpdate->bindParam(1, $amount, PDO::PARAM_STR);
+                $stmtUpdate->bindParam(2, $client_id, PDO::PARAM_INT);
+                $stmtUpdate->bindParam(3, $transaction_id, PDO::PARAM_INT);
+                $stmtUpdate->bindParam(4, $currency, PDO::PARAM_STR);
+                $stmtUpdate->bindParam(5, $tenant_id, PDO::PARAM_INT);
+                $stmtUpdate->bindParam(6, $branch_id, PDO::PARAM_INT);
                 $stmtUpdate->execute();
             }
 
             // Delete Client Transaction
             $deleteClientTransaction = "DELETE FROM client_transactions WHERE id = ? AND tenant_id = ? AND branch_id = ?";
-            $stmt = $conn->prepare($deleteClientTransaction);
-            $stmt->bind_param("iii", $transaction_id, $tenant_id, $branch_id);
+            $stmt = $pdo->prepare($deleteClientTransaction);
+            $stmt->bindParam(1, $transaction_id, PDO::PARAM_INT);
+            $stmt->bindParam(2, $tenant_id, PDO::PARAM_INT);
+            $stmt->bindParam(3, $branch_id, PDO::PARAM_INT);
             $stmt->execute();
         }
 
         // Handle supplier transactions
         $supplierTypeQuery = "SELECT supplier_type FROM suppliers WHERE id = ? AND tenant_id = ? AND branch_id = ?";
-        $stmt = $conn->prepare($supplierTypeQuery);
-        $stmt->bind_param("iii", $supplier_id, $tenant_id, $branch_id);
+        $stmt = $pdo->prepare($supplierTypeQuery);
+        $stmt->bindParam(1, $supplier_id, PDO::PARAM_INT);
+        $stmt->bindParam(2, $tenant_id, PDO::PARAM_INT);
+        $stmt->bindParam(3, $branch_id, PDO::PARAM_INT);
         $stmt->execute();
-        $supplierTypeResult = $stmt->get_result();
-        $supplierTypeRow = $supplierTypeResult->fetch_assoc();
+        $supplierTypeRow = $stmt->fetch(PDO::FETCH_ASSOC);
         $supplier_type = $supplierTypeRow['supplier_type'];
 
         $supplierTransactions = "SELECT id, amount, transaction_type, transaction_date FROM supplier_transactions
                                  WHERE supplier_id = ? AND transaction_of = 'umrah'
                                  AND reference_id = ? AND tenant_id = ? AND branch_id = ?";
-        $stmt = $conn->prepare($supplierTransactions);
-        $stmt->bind_param("iiiii", $supplier_id, $booking_id, $tenant_id, $branch_id);
+        $stmt = $pdo->prepare($supplierTransactions);
+        $stmt->bindParam(1, $supplier_id, PDO::PARAM_INT);
+        $stmt->bindParam(2, $booking_id, PDO::PARAM_INT);
+        $stmt->bindParam(3, $tenant_id, PDO::PARAM_INT);
+        $stmt->bindParam(4, $branch_id, PDO::PARAM_INT);
         $stmt->execute();
-        $supplierResults = $stmt->get_result();
+        $supplierResults = $stmt->fetchAll(PDO::FETCH_ASSOC);
 
-        while ($row = $supplierResults->fetch_assoc()) {
+        foreach ($supplierResults as $row) {
             $amount = $row['amount'];
             $transaction_date = $row['transaction_date'];
             $transaction_id = $row['id'];
-            
+
             // Only adjust balance for external suppliers
             if ($supplier_type === 'External') {
                 // Adjust Supplier Balance
                 $adjustSupplierBalance = "UPDATE suppliers
                                           SET balance = balance " . ($row['transaction_type'] == 'Credit' ? '-' : '+') . " ?
                                           WHERE id = ? AND tenant_id = ? AND branch_id = ?";
-                $stmt = $conn->prepare($adjustSupplierBalance);
-                $stmt->bind_param("diii", $amount, $supplier_id, $tenant_id, $branch_id);
+                $stmt = $pdo->prepare($adjustSupplierBalance);
+                $stmt->bindParam(1, $amount, PDO::PARAM_STR);
+                $stmt->bindParam(2, $supplier_id, PDO::PARAM_INT);
+                $stmt->bindParam(3, $tenant_id, PDO::PARAM_INT);
+                $stmt->bindParam(4, $branch_id, PDO::PARAM_INT);
                 $stmt->execute();
-                
+
                 // Update subsequent transactions' running balances
                 $updateSubsequentSupplierBalances = "UPDATE supplier_transactions
                                                     SET balance = balance " . ($row['transaction_type'] == 'Credit' ? '-' : '+') . " ?
                                                     WHERE supplier_id = ?
                                                     AND id > ?
                                                     AND tenant_id = ? AND branch_id = ?";
-                $stmtUpdate = $conn->prepare($updateSubsequentSupplierBalances);
-                $stmtUpdate->bind_param("disii", $amount, $supplier_id, $transaction_id, $tenant_id, $branch_id);
+                $stmtUpdate = $pdo->prepare($updateSubsequentSupplierBalances);
+                $stmtUpdate->bindParam(1, $amount, PDO::PARAM_STR);
+                $stmtUpdate->bindParam(2, $supplier_id, PDO::PARAM_INT);
+                $stmtUpdate->bindParam(3, $transaction_id, PDO::PARAM_INT);
+                $stmtUpdate->bindParam(4, $tenant_id, PDO::PARAM_INT);
+                $stmtUpdate->bindParam(5, $branch_id, PDO::PARAM_INT);
                 $stmtUpdate->execute();
             }
 
             // Delete Supplier Transaction
             $deleteSupplierTransaction = "DELETE FROM supplier_transactions WHERE id = ? AND tenant_id = ? AND branch_id = ?";
-            $stmt = $conn->prepare($deleteSupplierTransaction);
-            $stmt->bind_param("iii", $transaction_id, $tenant_id, $branch_id);
+            $stmt = $pdo->prepare($deleteSupplierTransaction);
+            $stmt->bindParam(1, $transaction_id, PDO::PARAM_INT);
+            $stmt->bindParam(2, $tenant_id, PDO::PARAM_INT);
+            $stmt->bindParam(3, $branch_id, PDO::PARAM_INT);
             $stmt->execute();
         }
 
         // Handle main account transactions
         if ($mainAccountId && $mainAccountId > 0) {
             // First fetch all transactions to calculate balances
-            $stmt_fetch_main_transactions = $conn->prepare("
+            $stmt_fetch_main_transactions = $pdo->prepare("
                 SELECT mat.id, mat.amount, mat.type, mat.currency, mat.created_at
                 FROM main_account_transactions mat
                 JOIN umrah_transactions ut ON mat.reference_id = ut.id
                 WHERE ut.umrah_booking_id = ? AND mat.transaction_of = 'umrah'
                 AND mat.tenant_id = ? AND mat.branch_id = ?
             ");
-            $stmt_fetch_main_transactions->bind_param("iii", $booking_id, $tenant_id, $branch_id);
+            $stmt_fetch_main_transactions->bindParam(1, $booking_id, PDO::PARAM_INT);
+            $stmt_fetch_main_transactions->bindParam(2, $tenant_id, PDO::PARAM_INT);
+            $stmt_fetch_main_transactions->bindParam(3, $branch_id, PDO::PARAM_INT);
             $stmt_fetch_main_transactions->execute();
-            $result_main_transactions = $stmt_fetch_main_transactions->get_result();
-            
-            // Store transactions in an array for processing
-            $transactions = [];
-            while ($main_transaction = $result_main_transactions->fetch_assoc()) {
-                $transactions[] = $main_transaction;
-            }
-            $stmt_fetch_main_transactions->close();
+            $result_main_transactions = $stmt_fetch_main_transactions->fetchAll(PDO::FETCH_ASSOC);
 
             // Process each transaction for balance adjustments
-            foreach ($transactions as $main_transaction) {
+            foreach ($result_main_transactions as $main_transaction) {
                 $main_amount = $main_transaction['amount'];
                 $main_type = $main_transaction['type'];
                 $main_currency = $main_transaction['currency'];
                 $transaction_date = $main_transaction['created_at'];
                 $transaction_id = $main_transaction['id'];
-                
+
                 // Update main account balance
                 if ($main_type === 'credit') {
                     if ($main_currency === 'USD') {
-                        $stmt_update_main = $conn->prepare("UPDATE main_account SET usd_balance = usd_balance - ? WHERE id = ? AND tenant_id = ? AND branch_id = ?");
+                        $stmt_update_main = $pdo->prepare("UPDATE main_account SET usd_balance = usd_balance - ? WHERE id = ? AND tenant_id = ? AND branch_id = ?");
                     } elseif ($main_currency === 'AFS') {
-                        $stmt_update_main = $conn->prepare("UPDATE main_account SET afs_balance = afs_balance - ? WHERE id = ? AND tenant_id = ? AND branch_id = ?");
-                    }  elseif ($main_currency === 'EUR') {
-                        $stmt_update_main = $conn->prepare("UPDATE main_account SET euro_balance = euro_balance - ? WHERE id = ? AND tenant_id = ? AND branch_id = ?");
+                        $stmt_update_main = $pdo->prepare("UPDATE main_account SET afs_balance = afs_balance - ? WHERE id = ? AND tenant_id = ? AND branch_id = ?");
+                    } elseif ($main_currency === 'EUR') {
+                        $stmt_update_main = $pdo->prepare("UPDATE main_account SET euro_balance = euro_balance - ? WHERE id = ? AND tenant_id = ? AND branch_id = ?");
                     } elseif ($main_currency === 'DARHAM') {
-                        $stmt_update_main = $conn->prepare("UPDATE main_account SET darham_balance = darham_balance - ? WHERE id = ? AND tenant_id = ? AND branch_id = ?");
+                        $stmt_update_main = $pdo->prepare("UPDATE main_account SET darham_balance = darham_balance - ? WHERE id = ? AND tenant_id = ? AND branch_id = ?");
                     } else {
-                        throw new Exception("Unsupported currency type for main account balance update.");
+                        throw new PDOException("Unsupported currency type for main account balance update.");
                     }
 
-                    $update_subsequent_main = $conn->prepare("
+                    $update_subsequent_main = $pdo->prepare("
                         UPDATE main_account_transactions
                         SET balance = balance - ?
                         WHERE main_account_id = ? AND created_at > ?
@@ -220,18 +256,18 @@ try {
                     ");
                 } else {
                     if ($main_currency === 'USD') {
-                        $stmt_update_main = $conn->prepare("UPDATE main_account SET usd_balance = usd_balance + ? WHERE id = ? AND tenant_id = ? AND branch_id = ?");
+                        $stmt_update_main = $pdo->prepare("UPDATE main_account SET usd_balance = usd_balance + ? WHERE id = ? AND tenant_id = ? AND branch_id = ?");
                     } elseif ($main_currency === 'AFS') {
-                        $stmt_update_main = $conn->prepare("UPDATE main_account SET afs_balance = afs_balance + ? WHERE id = ? AND tenant_id = ? AND branch_id = ?");
-                    }  elseif ($main_currency === 'EUR') {
-                        $stmt_update_main = $conn->prepare("UPDATE main_account SET euro_balance = euro_balance + ? WHERE id = ? AND tenant_id = ? AND branch_id = ?");
+                        $stmt_update_main = $pdo->prepare("UPDATE main_account SET afs_balance = afs_balance + ? WHERE id = ? AND tenant_id = ? AND branch_id = ?");
+                    } elseif ($main_currency === 'EUR') {
+                        $stmt_update_main = $pdo->prepare("UPDATE main_account SET euro_balance = euro_balance + ? WHERE id = ? AND tenant_id = ? AND branch_id = ?");
                     } elseif ($main_currency === 'DARHAM') {
-                        $stmt_update_main = $conn->prepare("UPDATE main_account SET darham_balance = darham_balance + ? WHERE id = ? AND tenant_id = ? AND branch_id = ?");
+                        $stmt_update_main = $pdo->prepare("UPDATE main_account SET darham_balance = darham_balance + ? WHERE id = ? AND tenant_id = ? AND branch_id = ?");
                     } else {
-                        throw new Exception("Unsupported currency type for main account balance update.");
+                        throw new PDOException("Unsupported currency type for main account balance update.");
                     }
 
-                    $update_subsequent_main = $conn->prepare("
+                    $update_subsequent_main = $pdo->prepare("
                         UPDATE main_account_transactions
                         SET balance = balance + ?
                         WHERE main_account_id = ?
@@ -240,80 +276,95 @@ try {
                         AND tenant_id = ? AND branch_id = ?
                     ");
                 }
-                
-                $stmt_update_main->bind_param("diii", $main_amount, $mainAccountId, $tenant_id, $branch_id);
-                $stmt_update_main->execute();
-                $stmt_update_main->close();
 
-                $update_subsequent_main->bind_param("dissii", $main_amount, $mainAccountId, $transaction_id, $main_currency, $tenant_id, $branch_id);
+                $stmt_update_main->bindParam(1, $main_amount, PDO::PARAM_STR);
+                $stmt_update_main->bindParam(2, $mainAccountId, PDO::PARAM_INT);
+                $stmt_update_main->bindParam(3, $tenant_id, PDO::PARAM_INT);
+                $stmt_update_main->bindParam(4, $branch_id, PDO::PARAM_INT);
+                $stmt_update_main->execute();
+
+                $update_subsequent_main->bindParam(1, $main_amount, PDO::PARAM_STR);
+                $update_subsequent_main->bindParam(2, $mainAccountId, PDO::PARAM_INT);
+                $update_subsequent_main->bindParam(3, $transaction_id, PDO::PARAM_INT);
+                $update_subsequent_main->bindParam(4, $main_currency, PDO::PARAM_STR);
+                $update_subsequent_main->bindParam(5, $tenant_id, PDO::PARAM_INT);
+                $update_subsequent_main->bindParam(6, $branch_id, PDO::PARAM_INT);
                 $update_subsequent_main->execute();
-                $update_subsequent_main->close();
             }
 
             // Now delete all main account transactions
-            $stmt_delete_main_transactions = $conn->prepare("
+            $stmt_delete_main_transactions = $pdo->prepare("
                 DELETE mat FROM main_account_transactions mat
                 JOIN umrah_transactions ut ON mat.reference_id = ut.id
                 WHERE ut.umrah_booking_id = ? AND mat.transaction_of = 'umrah'
                 AND mat.tenant_id = ? AND mat.branch_id = ?
             ");
-            $stmt_delete_main_transactions->bind_param("iii", $booking_id, $tenant_id, $branch_id);
+            $stmt_delete_main_transactions->bindParam(1, $booking_id, PDO::PARAM_INT);
+            $stmt_delete_main_transactions->bindParam(2, $tenant_id, PDO::PARAM_INT);
+            $stmt_delete_main_transactions->bindParam(3, $branch_id, PDO::PARAM_INT);
             $stmt_delete_main_transactions->execute();
-            $stmt_delete_main_transactions->close();
         }
 
         // Delete all umrah transactions
-        $stmt_delete_transactions = $conn->prepare("DELETE FROM umrah_transactions WHERE umrah_booking_id = ? AND tenant_id = ? AND branch_id = ?");
-        $stmt_delete_transactions->bind_param("iii", $booking_id, $tenant_id, $branch_id);
+        $stmt_delete_transactions = $pdo->prepare("DELETE FROM umrah_transactions WHERE umrah_booking_id = ? AND tenant_id = ? AND branch_id = ?");
+        $stmt_delete_transactions->bindParam(1, $booking_id, PDO::PARAM_INT);
+        $stmt_delete_transactions->bindParam(2, $tenant_id, PDO::PARAM_INT);
+        $stmt_delete_transactions->bindParam(3, $branch_id, PDO::PARAM_INT);
         $stmt_delete_transactions->execute();
-        $stmt_delete_transactions->close();
 
         // Delete all notifications
-        $stmt_delete_notifications = $conn->prepare("DELETE FROM notifications WHERE transaction_id IN (SELECT id FROM umrah_transactions WHERE umrah_booking_id = ?) AND tenant_id = ? AND branch_id = ?");
-        $stmt_delete_notifications->bind_param("iii", $booking_id, $tenant_id, $branch_id);
+        $stmt_delete_notifications = $pdo->prepare("DELETE FROM notifications WHERE transaction_id IN (SELECT id FROM umrah_transactions WHERE umrah_booking_id = ?) AND tenant_id = ? AND branch_id = ?");
+        $stmt_delete_notifications->bindParam(1, $booking_id, PDO::PARAM_INT);
+        $stmt_delete_notifications->bindParam(2, $tenant_id, PDO::PARAM_INT);
+        $stmt_delete_notifications->bindParam(3, $branch_id, PDO::PARAM_INT);
         $stmt_delete_notifications->execute();
-        $stmt_delete_notifications->close();
     }
-    $stmt_get_members->close();
 
     // Delete all family members (umrah bookings)
-    $stmt_delete_members = $conn->prepare("DELETE FROM umrah_bookings WHERE family_id = ? AND tenant_id = ? AND branch_id = ?");
-    $stmt_delete_members->bind_param("iii", $family_id, $tenant_id, $branch_id);
+    $stmt_delete_members = $pdo->prepare("DELETE FROM umrah_bookings WHERE family_id = ? AND tenant_id = ? AND branch_id = ?");
+    $stmt_delete_members->bindParam(1, $family_id, PDO::PARAM_INT);
+    $stmt_delete_members->bindParam(2, $tenant_id, PDO::PARAM_INT);
+    $stmt_delete_members->bindParam(3, $branch_id, PDO::PARAM_INT);
     $stmt_delete_members->execute();
-    $stmt_delete_members->close();
 
     // Delete the family
-    $stmt_delete_family = $conn->prepare("DELETE FROM families WHERE family_id = ? AND tenant_id = ? AND branch_id = ?");
-    $stmt_delete_family->bind_param("iii", $family_id, $tenant_id, $branch_id);
+    $stmt_delete_family = $pdo->prepare("DELETE FROM families WHERE family_id = ? AND tenant_id = ? AND branch_id = ?");
+    $stmt_delete_family->bindParam(1, $family_id, PDO::PARAM_INT);
+    $stmt_delete_family->bindParam(2, $tenant_id, PDO::PARAM_INT);
+    $stmt_delete_family->bindParam(3, $branch_id, PDO::PARAM_INT);
     $stmt_delete_family->execute();
-    $stmt_delete_family->close();
 
     // Commit the transaction
-    $conn->commit();
-    
+    $pdo->commit();
+
     // Log the activity
     $old_values = json_encode([
         'family_id' => $family_id
     ]);
     $new_values = json_encode([]);
-    
+
     $user_id = $_SESSION['user_id'] ?? 0;
     $ip_address = $_SERVER['REMOTE_ADDR'] ?? '';
     $user_agent = $_SERVER['HTTP_USER_AGENT'] ?? '';
-    
-    $stmt_log = $conn->prepare("
-        INSERT INTO activity_log 
-        (user_id, action, table_name, record_id, old_values, new_values, ip_address, user_agent, created_at, tenant_id) 
-        VALUES (?, 'delete', 'families', ?, ?, ?, ?, ?, NOW(), ?)
+
+    $stmt_log = $pdo->prepare("
+        INSERT INTO activity_log
+        (user_id, action, table_name, record_id, old_values, new_values, ip_address, user_agent, created_at, tenant_id, branch_id)
+        VALUES (?, 'delete', 'families', ?, ?, ?, ?, ?, NOW(), ?, ?)
     ");
-    $stmt_log->bind_param("iissssi", $user_id, $family_id, $old_values, $new_values, $ip_address, $user_agent, $tenant_id);
+    $stmt_log->bindParam(1, $user_id, PDO::PARAM_INT);
+    $stmt_log->bindParam(2, $family_id, PDO::PARAM_INT);
+    $stmt_log->bindParam(3, $old_values, PDO::PARAM_STR);
+    $stmt_log->bindParam(4, $new_values, PDO::PARAM_STR);
+    $stmt_log->bindParam(5, $ip_address, PDO::PARAM_STR);
+    $stmt_log->bindParam(6, $user_agent, PDO::PARAM_STR);
+    $stmt_log->bindParam(7, $tenant_id, PDO::PARAM_INT);
+    $stmt_log->bindParam(8, $branch_id, PDO::PARAM_INT);
     $stmt_log->execute();
-    $stmt_log->close();
-    
+
     echo json_encode(["success" => true, "message" => "Family and all associated records deleted successfully"]);
-} catch (Exception $e) {
-    $conn->rollback();
+} catch (PDOException $e) {
+    $pdo->rollback();
     echo json_encode(["success" => false, "message" => "Error: " . $e->getMessage()]);
 }
-
-$conn->close();
+?>

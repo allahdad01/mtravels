@@ -10,6 +10,15 @@ require_once '../../admin/security.php';
 enforce_auth();
 
 require_once '../../includes/db.php';
+
+// Get JSON data and verify CSRF token
+$data = json_decode(file_get_contents("php://input"), true);
+if (!verify_csrf_token($data['csrf_token'] ?? null)) {
+    http_response_code(403);
+    echo json_encode(['success' => false, 'message' => 'Security validation failed. Please try again.']);
+    exit;
+}
+
 // Assuming you have the logged-in user's username stored in session
 $username = isset($_SESSION['name']) ? $_SESSION['name'] : null;
 $user_id = isset($_SESSION['user_id']) ? $_SESSION['user_id'] : null;
@@ -19,8 +28,6 @@ if (!$username) {
     echo json_encode(['success' => false, 'message' => 'User is not logged in.']);
     exit;
 }
-
-$data = json_decode(file_get_contents("php://input"), true);
 
 $accountId = $data['accountId'];
 $currency = $data['currency'];

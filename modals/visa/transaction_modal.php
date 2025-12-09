@@ -116,6 +116,7 @@
                                                                 </div>
                                                                 <div class="card-body">
                                                                     <form id="visaTransactionForm">
+                                                                        <input type="hidden" name="csrf_token" value="<?php echo h($_SESSION['csrf_token']); ?>">
                                                                         <input type="hidden" id="visa_id" name="visa_id">
                                                                         <div class="row">
                                                                             <div class="col-md-6">

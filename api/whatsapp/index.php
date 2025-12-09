@@ -276,6 +276,14 @@ class WhatsAppAPI {
         $status = $_GET['status'] ?? '';
         $type = $_GET['type'] ?? '';
         
+        // Validate and sanitize pagination parameters
+        // Ensure page is at least 1
+        if ($page < 1) $page = 1;
+        
+        // Limit maximum results per page to prevent abuse
+        if ($limit < 1) $limit = 50;
+        if ($limit > 1000) $limit = 1000;
+        
         $offset = ($page - 1) * $limit;
         
         $where_conditions = ["tenant_id = ?"];
@@ -300,14 +308,24 @@ class WhatsAppAPI {
         $count_stmt->execute($params);
         $total = $count_stmt->fetch(PDO::FETCH_ASSOC)['total'];
         
-        // Get messages
+        // Get messages - use parameterized LIMIT and OFFSET
         $stmt = $GLOBALS['pdo']->prepare("
             SELECT * FROM whatsapp_messages 
             WHERE $where_clause 
             ORDER BY created_at DESC 
-            LIMIT $limit OFFSET $offset
+            LIMIT :limit OFFSET :offset
         ");
-        $stmt->execute($params);
+        
+        // Bind pagination parameters
+        $stmt->bindParam(':limit', $limit, PDO::PARAM_INT);
+        $stmt->bindParam(':offset', $offset, PDO::PARAM_INT);
+        
+        // Bind WHERE clause parameters
+        foreach ($params as $index => $param) {
+            $stmt->bindValue($index + 1, $param);
+        }
+        
+        $stmt->execute();
         $messages = $stmt->fetchAll(PDO::FETCH_ASSOC);
         
         $this->successResponse([
@@ -513,32 +531,113 @@ if (isset($_GET['webhook'])) {
 }
 
 /**
+ * Verify webhook signature from WhatsApp provider
+ * @param string $payload Raw request body
+ * @param string $signature Signature from X-Hub-Signature header
+ * @param string $secret Webhook secret from WhatsApp
+ * @return bool True if signature is valid
+ */
+function verifyWebhookSignature($payload, $signature, $secret) {
+    // Expected format: sha256=<hash>
+    if (strpos($signature, 'sha256=') !== 0) {
+        return false;
+    }
+    
+    $expected_signature = 'sha256=' . hash_hmac('sha256', $payload, $secret);
+    return hash_equals($signature, $expected_signature);
+}
+
+/**
+ * Identify tenant from webhook data
+ * Webhook should contain phone number that maps to a tenant
+ * @param array $data Webhook data
+ * @return int|null Tenant ID or null if not found
+ */
+function identifyTenantFromWebhook($data) {
+    global $pdo;
+    
+    // Try to identify from phone number or webhook metadata
+    $phone = $data['from'] ?? $data['phone'] ?? null;
+    
+    if (!$phone) {
+        error_log("Webhook: Could not identify tenant - no phone number");
+        return null;
+    }
+    
+    // Query WhatsApp settings to find matching tenant
+    try {
+        $stmt = $pdo->prepare("SELECT tenant_id FROM whatsapp_settings WHERE phone_number = ? OR business_phone = ? LIMIT 1");
+        $stmt->execute([$phone, $phone]);
+        $result = $stmt->fetch(PDO::FETCH_ASSOC);
+        
+        if ($result) {
+            return (int)$result['tenant_id'];
+        }
+    } catch (Exception $e) {
+        error_log("Webhook error identifying tenant: " . $e->getMessage());
+    }
+    
+    return null;
+}
+
+/**
  * Handle incoming webhook from WhatsApp provider
+ * @throws Exception if webhook verification fails
  */
 function handleWebhook() {
     try {
+        // 1. Get webhook secret from settings or environment
+        $webhook_secret = getenv('WHATSAPP_WEBHOOK_SECRET');
+        if (!$webhook_secret) {
+            // If no environment variable, try to get from database (first active tenant)
+            global $pdo;
+            $stmt = $pdo->prepare("SELECT webhook_secret FROM whatsapp_settings WHERE status = 'active' LIMIT 1");
+            $stmt->execute();
+            $result = $stmt->fetch(PDO::FETCH_ASSOC);
+            $webhook_secret = $result['webhook_secret'] ?? null;
+        }
+        
+        if (!$webhook_secret) {
+            throw new Exception("Webhook secret not configured");
+        }
+        
+        // 2. Verify webhook signature
         $raw_payload = file_get_contents('php://input');
+        $signature = $_SERVER['HTTP_X_HUB_SIGNATURE'] ?? '';
+        
+        if (empty($signature) || !verifyWebhookSignature($raw_payload, $signature, $webhook_secret)) {
+            error_log("Webhook verification failed - Invalid signature");
+            http_response_code(401);
+            echo json_encode(['error' => 'Unauthorized']);
+            return;
+        }
+        
+        // 3. Parse and validate JSON payload
         $data = json_decode($raw_payload, true);
         
         if (!$data) {
             throw new Exception("Invalid JSON payload");
         }
         
-        // Verify webhook (implement based on provider)
-        // For now, we'll just log the webhook
-        error_log("WhatsApp Webhook: " . $raw_payload);
+        // 4. Identify tenant from webhook data
+        $tenant_id = identifyTenantFromWebhook($data);
+        if (!$tenant_id) {
+            throw new Exception("Could not identify tenant from webhook");
+        }
         
-        // Process webhook based on type
+        error_log("Webhook received for tenant $tenant_id: " . json_encode($data));
+        
+        // 5. Process webhook based on type
         if (isset($data['type'])) {
             switch ($data['type']) {
                 case 'message_status':
-                    updateMessageStatus($data);
+                    updateMessageStatus($data, $tenant_id);
                     break;
                 case 'received_message':
-                    handleReceivedMessage($data);
+                    handleReceivedMessage($data, $tenant_id);
                     break;
                 default:
-                    logWebhook($data);
+                    logWebhook($data, $tenant_id);
             }
         }
         
@@ -554,8 +653,10 @@ function handleWebhook() {
 
 /**
  * Update message status from webhook
+ * @param array $data Webhook data
+ * @param int $tenant_id Tenant ID (verified from webhook)
  */
-function updateMessageStatus($data) {
+function updateMessageStatus($data, $tenant_id) {
     global $pdo;
     
     $message_id = $data['message_id'] ?? '';
@@ -566,7 +667,7 @@ function updateMessageStatus($data) {
         return;
     }
     
-    // Update message status
+    // Update message status - only for messages belonging to this tenant
     $update_field = '';
     switch ($status) {
         case 'sent':
@@ -584,35 +685,38 @@ function updateMessageStatus($data) {
         $stmt = $pdo->prepare("
             UPDATE whatsapp_messages 
             SET status = ?, $update_field = ? 
-            WHERE provider_message_id = ?
+            WHERE provider_message_id = ? AND tenant_id = ?
         ");
-        $stmt->execute([$status, $timestamp, $message_id]);
+        $stmt->execute([$status, $timestamp, $message_id, $tenant_id]);
     }
     
-    // Log delivery status
+    // Log delivery status - ensure we're logging for the correct tenant
     $stmt = $pdo->prepare("
         INSERT INTO whatsapp_delivery_status (
             message_id, provider_message_id, status, status_message, 
             delivery_timestamp, raw_response
         ) SELECT id, provider_message_id, ?, ?, ?, ?
-        FROM whatsapp_messages WHERE provider_message_id = ?
+        FROM whatsapp_messages WHERE provider_message_id = ? AND tenant_id = ?
     ");
     $stmt->execute([
         $status, 
         $data['message'] ?? '', 
         $timestamp, 
         json_encode($data), 
-        $message_id
+        $message_id,
+        $tenant_id
     ]);
 }
 
 /**
  * Handle received message
+ * @param array $data Webhook data
+ * @param int $tenant_id Tenant ID (verified from webhook)
  */
-function handleReceivedMessage($data) {
+function handleReceivedMessage($data, $tenant_id) {
     global $pdo;
     
-    // Log received message
+    // Log received message - tenant already verified
     $stmt = $pdo->prepare("
         INSERT INTO whatsapp_webhook_log (
             tenant_id, webhook_type, from_number, to_number, 
@@ -620,8 +724,6 @@ function handleReceivedMessage($data) {
         ) VALUES (?, 'message', ?, ?, ?, ?, 0)
     ");
     
-    // This would need tenant identification logic
-    $tenant_id = 1; // Default for now
     $stmt->execute([
         $tenant_id,
         $data['from'] ?? '',
@@ -633,8 +735,10 @@ function handleReceivedMessage($data) {
 
 /**
  * Log webhook for debugging
+ * @param array $data Webhook data
+ * @param int $tenant_id Tenant ID (verified from webhook)
  */
-function logWebhook($data) {
+function logWebhook($data, $tenant_id) {
     global $pdo;
     
     $stmt = $pdo->prepare("
@@ -643,7 +747,7 @@ function logWebhook($data) {
         ) VALUES (?, ?, ?, 0)
     ");
     
-    $tenant_id = 1; // Default for now
+    // Tenant is verified at this point
     $stmt->execute([$tenant_id, $data['type'] ?? 'unknown', json_encode($data)]);
 }
 

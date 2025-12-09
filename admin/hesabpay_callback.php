@@ -3,7 +3,6 @@
 // This script handles payment callbacks from Hesabpay
 
 require_once '../config.php';
-require_once '../includes/conn.php';
 require_once '../includes/db.php';
 
 // Check if $pdo is available

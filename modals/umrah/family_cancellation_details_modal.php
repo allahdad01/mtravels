@@ -12,6 +12,8 @@
             </div>
             <div class="modal-body">
                 <form id="familyCancellationDetailsForm">
+                    <!-- CSRF Protection -->
+                    <input type="hidden" name="csrf_token" value="<?php echo h($_SESSION['csrf_token'] ?? ''); ?>">
                     <input type="hidden" id="familyCancellationFamilyId" name="family_id">
                     <input type="hidden" id="familyCancellationBookingId" name="booking_id">
                     

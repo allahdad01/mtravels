@@ -12,6 +12,8 @@
                 <div class="modal-body">
                 <div>
                     <form id="agreementForm" onsubmit="generateAgreement(event)">
+                    <!-- CSRF Protection -->
+                    <input type="hidden" name="csrf_token" value="<?php echo h($_SESSION['csrf_token'] ?? ''); ?>">
                         <div class="form-group">
                             <label for="rule"><?php echo __('rule'); ?></label>
                             <textarea type="text" class="form-control" id="rule" placeholder="<?php echo __('rule'); ?>"></textarea>

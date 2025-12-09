@@ -26,27 +26,25 @@ if (isset($_GET["adjustment_user_id"]) && !empty(trim($_GET["adjustment_user_id"
             JOIN salary_management sm ON u.id = sm.user_id
             WHERE u.id = ? AND u.tenant_id = ? AND u.branch_id = ?";
 
-    if ($stmt = mysqli_prepare($conection_db, $sql)) {
-        mysqli_stmt_bind_param($stmt, "iii", $adjustment_user_id, $tenant_id, $branch_id);
-        
-        if (mysqli_stmt_execute($stmt)) {
-            $result = mysqli_stmt_get_result($stmt);
-            
-            if (mysqli_num_rows($result) == 1) {
-                $row = mysqli_fetch_array($result, MYSQLI_ASSOC);
-                $employee_name = $row["name"];
-                $current_salary = $row["base_salary"];
-                $currency = $row["currency"];
-            } else {
-                // URL doesn't contain valid id parameter
-                header("location: salary_management.php");
-                exit();
-            }
+    $stmt = $pdo->prepare($sql);
+    $stmt->bindParam(1, $adjustment_user_id, PDO::PARAM_INT);
+    $stmt->bindParam(2, $tenant_id, PDO::PARAM_INT);
+    $stmt->bindParam(3, $branch_id, PDO::PARAM_INT);
+
+    if ($stmt->execute()) {
+        $result = $stmt->fetch(PDO::FETCH_ASSOC);
+
+        if ($result) {
+            $employee_name = $result["name"];
+            $current_salary = $result["base_salary"];
+            $currency = $result["currency"];
         } else {
-            echo "Oops! Something went wrong. Please try again later.";
+            // URL doesn't contain valid id parameter
+            header("location: salary_management.php");
+            exit();
         }
-        
-        mysqli_stmt_close($stmt);
+    } else {
+        echo "Oops! Something went wrong. Please try again later.";
     }
 } else {
     // URL doesn't contain id parameter
@@ -112,53 +110,58 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
     // Check input errors before inserting in database
     if (empty($amount_err) && empty($percentage_err) && empty($effective_date_err) && empty($reason_err)) {
         // Start transaction
-        mysqli_begin_transaction($conection_db);
-        
+        $pdo->beginTransaction();
+
         try {
             // First, insert into salary_adjustments table
             $sql = "INSERT INTO salary_adjustments (user_id, adjustment_type, amount, percentage, effective_date,
                    previous_salary, new_salary, reason, approved_by, tenant_id, branch_id)
                    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)";
 
-            if ($stmt = mysqli_prepare($conection_db, $sql)) {
-                // Get approved_by (current user ID)
-                $approved_by = $_SESSION["user_id"];
+            $stmt = $pdo->prepare($sql);
+            // Get approved_by (current user ID)
+            $approved_by = $_SESSION["user_id"];
 
-                // Bind variables to the statement
-                mysqli_stmt_bind_param($stmt, "issdsddssii", $adjustment_user_id, $adjustment_type, $amount, $percentage,
-                                     $effective_date, $current_salary, $new_salary, $reason, $approved_by, $tenant_id, $branch_id);
-                
-                // Execute the statement
-                mysqli_stmt_execute($stmt);
-                
-                // Update the base salary in salary_management table
-                $update_sql = "UPDATE salary_management SET base_salary = ? WHERE user_id = ? AND tenant_id = ? AND branch_id = ?";
+            // Bind variables to the statement
+            $stmt->bindParam(1, $adjustment_user_id, PDO::PARAM_INT);
+            $stmt->bindParam(2, $adjustment_type, PDO::PARAM_STR);
+            $stmt->bindParam(3, $amount, PDO::PARAM_STR);
+            $stmt->bindParam(4, $percentage, PDO::PARAM_STR);
+            $stmt->bindParam(5, $effective_date, PDO::PARAM_STR);
+            $stmt->bindParam(6, $current_salary, PDO::PARAM_STR);
+            $stmt->bindParam(7, $new_salary, PDO::PARAM_STR);
+            $stmt->bindParam(8, $reason, PDO::PARAM_STR);
+            $stmt->bindParam(9, $approved_by, PDO::PARAM_INT);
+            $stmt->bindParam(10, $tenant_id, PDO::PARAM_INT);
+            $stmt->bindParam(11, $branch_id, PDO::PARAM_INT);
 
-                if ($update_stmt = mysqli_prepare($conection_db, $update_sql)) {
-                    mysqli_stmt_bind_param($update_stmt, "diii", $new_salary, $adjustment_user_id, $tenant_id, $branch_id);
-                    mysqli_stmt_execute($update_stmt);
-                    mysqli_stmt_close($update_stmt);
-                }
-                
-                // Commit transaction
-                mysqli_commit($conection_db);
-                
-                // Redirect to success page
-                header("location: salary_adjustment.php?adjustment_user_id=$adjustment_user_id&success=1");
-                exit();
-            }
-            
-            // Close statement
-            mysqli_stmt_close($stmt);
+            // Execute the statement
+            $stmt->execute();
+
+            // Update the base salary in salary_management table
+            $update_sql = "UPDATE salary_management SET base_salary = ? WHERE user_id = ? AND tenant_id = ? AND branch_id = ?";
+
+            $update_stmt = $pdo->prepare($update_sql);
+            $update_stmt->bindParam(1, $new_salary, PDO::PARAM_STR);
+            $update_stmt->bindParam(2, $adjustment_user_id, PDO::PARAM_INT);
+            $update_stmt->bindParam(3, $tenant_id, PDO::PARAM_INT);
+            $update_stmt->bindParam(4, $branch_id, PDO::PARAM_INT);
+            $update_stmt->execute();
+
+            // Commit transaction
+            $pdo->commit();
+
+            // Redirect to success page
+            header("location: salary_adjustment.php?adjustment_user_id=$adjustment_user_id&success=1");
+            exit();
         } catch (Exception $e) {
             // Roll back transaction on error
-            mysqli_rollback($conection_db);
+            $pdo->rollBack();
             echo "Error: " . $e->getMessage();
         }
     }
-    
-    // Close connection
-    mysqli_close($conection_db);
+
+    // PDO connection will be closed automatically when script ends
 }
 ?>
     <!-- [ Header ] start -->
@@ -328,13 +331,14 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
                                                 WHERE sa.user_id = ? AND sa.tenant_id = ? AND sa.branch_id = ?
                                                 ORDER BY sa.created_at DESC";
 
-                                        if ($stmt = mysqli_prepare($conection_db, $sql)) {
-                                            mysqli_stmt_bind_param($stmt, "iii", $adjustment_user_id, $tenant_id, $branch_id);
-                                            
-                                            if (mysqli_stmt_execute($stmt)) {
-                                                $result = mysqli_stmt_get_result($stmt);
-                                                
-                                                while ($row = mysqli_fetch_array($result)) {
+                                        $stmt = $pdo->prepare($sql);
+                                        $stmt->bindParam(1, $adjustment_user_id, PDO::PARAM_INT);
+                                        $stmt->bindParam(2, $tenant_id, PDO::PARAM_INT);
+                                        $stmt->bindParam(3, $branch_id, PDO::PARAM_INT);
+                                        $stmt->execute();
+                                        $result = $stmt->fetchAll(PDO::FETCH_ASSOC);
+
+                                        foreach ($result as $row) {
                                                     echo "<tr>";
                                                     echo "<td>" . $row['id'] . "</td>";
                                                     echo "<td>" . ucfirst($row['adjustment_type']) . "</td>";
@@ -348,8 +352,6 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
                                                     echo "<td>" . date('Y-m-d', strtotime($row['created_at'])) . "</td>";
                                                     echo "</tr>";
                                                 }
-                                            }
-                                        }
                                         ?>
                                     </tbody>
                                 </table>

@@ -11,6 +11,13 @@ try {
     // Get the input data
     $data = json_decode(file_get_contents("php://input"), true);
 
+    // ✅ CSRF Token Validation
+    if (!verify_csrf_token($data['csrf_token'] ?? null)) {
+        http_response_code(403);
+        echo json_encode(['success' => false, 'message' => 'Security validation failed. Please try again.']);
+        exit;
+    }
+
     // Access tenant_id and branch_id from session
     $tenant_id = $_SESSION['tenant_id'] ?? null;
     $branch_id = $_SESSION['branch_id'] ?? null;

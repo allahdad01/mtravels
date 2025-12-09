@@ -432,7 +432,7 @@ $('#terminationForm').on('submit', function(e) {
 
 function showAddEmployeeModal() {
     // Redirect to add employee page
-    window.location.href = '../api/employee/add_employee.php';
+    window.location.href = 'add_employee.php';
 }
 
 // Add CSS to head

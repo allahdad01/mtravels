@@ -1,7 +1,6 @@
 <?php
 // Include necessary files
 require_once('../../includes/db.php');
-require_once('../../includes/conn.php');
 require_once('../../admin/security.php');
 require_once('../../vendor/autoload.php');
 $tenant_id = $_SESSION['tenant_id'];

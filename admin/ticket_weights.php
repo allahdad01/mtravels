@@ -20,7 +20,6 @@ if (!isset($_SESSION['user_id']) || $_SESSION['role'] !== 'admin') {
 
 // Database connection
 require_once('../includes/db.php');
-require_once '../includes/conn.php';
 
 // Get the user ID from the session
 $user_id = $_SESSION["user_id"];
@@ -28,7 +27,7 @@ $tenant_id = $_SESSION['tenant_id'];
 $branch_id = $_SESSION['branch_id'];
 // Query to fetch ticket weights with related information
 $weightsQuery = "
-    SELECT 
+    SELECT
         tw.*,
         t.passenger_name,
         t.pnr,
@@ -40,29 +39,31 @@ $weightsQuery = "
         t.currency,
         s.name AS supplier_name,
         c.name AS sold_to_name
-    FROM 
+    FROM
         ticket_weights tw
-    LEFT JOIN 
+    LEFT JOIN
         ticket_bookings t ON tw.ticket_id = t.id
-    LEFT JOIN 
+    LEFT JOIN
         suppliers s ON t.supplier = s.id
-    LEFT JOIN 
+    LEFT JOIN
         clients c ON t.sold_to = c.id
     WHERE
-        tw.tenant_id = $tenant_id AND tw.branch_id = $branch_id
-    ORDER BY 
+        tw.tenant_id = ? AND tw.branch_id = ?
+    ORDER BY
         tw.created_at DESC
 ";
 
-$weightsResult = $conn->query($weightsQuery);
+$stmt = $pdo->prepare($weightsQuery);
+$stmt->bindParam(1, $tenant_id, PDO::PARAM_INT);
+$stmt->bindParam(2, $branch_id, PDO::PARAM_INT);
+$stmt->execute();
 
 // Initialize the array to hold weight details
 $weights = [];
 
-if ($weightsResult && $weightsResult->num_rows > 0) {
-    while ($row = $weightsResult->fetch_assoc()) {
-        $weights[] = $row;
-    }
+$weightsResult = $stmt->fetchAll(PDO::FETCH_ASSOC);
+if ($weightsResult && count($weightsResult) > 0) {
+    $weights = $weightsResult;
 }
 
 ?>
@@ -201,9 +202,13 @@ if ($weightsResult && $weightsResult->num_rows > 0) {
                                                                 $isAgencyClient = false;
 
                                                                 // Check client type
-                                                                $clientQuery = $conn->query("SELECT client_type FROM clients WHERE tenant_id = $tenant_id AND branch_id = $branch_id AND name = '$soldTo'");
-                                                                if ($clientQuery && $clientQuery->num_rows > 0) {
-                                                                    $clientRow = $clientQuery->fetch_assoc();
+                                                                $clientStmt = $pdo->prepare("SELECT client_type FROM clients WHERE tenant_id = ? AND branch_id = ? AND name = ?");
+                                                                $clientStmt->bindParam(1, $tenant_id, PDO::PARAM_INT);
+                                                                $clientStmt->bindParam(2, $branch_id, PDO::PARAM_INT);
+                                                                $clientStmt->bindParam(3, $soldTo, PDO::PARAM_STR);
+                                                                $clientStmt->execute();
+                                                                $clientRow = $clientStmt->fetch(PDO::FETCH_ASSOC);
+                                                                if ($clientRow) {
                                                                     $isAgencyClient = ($clientRow['client_type'] === 'agency');
                                                                 }
 
@@ -215,13 +220,18 @@ if ($weightsResult && $weightsResult->num_rows > 0) {
                                                                     $weightId = $weight['id'];
 
                                                                     // Fetch transactions
-                                                                    $transactionQuery = $conn->query("SELECT * FROM main_account_transactions
+                                                                    $transactionStmt = $pdo->prepare("SELECT * FROM main_account_transactions
                                                                         WHERE transaction_of = 'weight'
-                                                                        AND reference_id = '$weightId'
-                                                                        AND tenant_id = $tenant_id AND branch_id = $branch_id");
+                                                                        AND reference_id = ?
+                                                                        AND tenant_id = ? AND branch_id = ?");
+                                                                    $transactionStmt->bindParam(1, $weightId, PDO::PARAM_INT);
+                                                                    $transactionStmt->bindParam(2, $tenant_id, PDO::PARAM_INT);
+                                                                    $transactionStmt->bindParam(3, $branch_id, PDO::PARAM_INT);
+                                                                    $transactionStmt->execute();
+                                                                    $transactions = $transactionStmt->fetchAll(PDO::FETCH_ASSOC);
 
-                                                                    if ($transactionQuery && $transactionQuery->num_rows > 0) {
-                                                                        while ($transaction = $transactionQuery->fetch_assoc()) {
+                                                                    if ($transactions && count($transactions) > 0) {
+                                                                        foreach ($transactions as $transaction) {
                                                                             $amount = floatval($transaction['amount']);
                                                                             $transCurrency = $transaction['currency'];
                                                                             $transExchangeRate = isset($transaction['exchange_rate']) && $transaction['exchange_rate'] > 0 

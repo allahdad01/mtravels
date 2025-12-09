@@ -33,6 +33,12 @@ $account_type = isset($_POST['account_type']) ? DbSecurity::validateInput($_POST
 $account_name = isset($_POST['account_name']) ? DbSecurity::validateInput($_POST['account_name'], 'string', ['maxlength' => 255]) : null;
 
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
+    // ✅ CSRF Token Validation
+    if (!verify_csrf_token()) {
+        http_response_code(403);
+        echo json_encode(['success' => false, 'message' => 'Security validation failed. Please try again.']);
+        exit;
+    }
 
     $accountName = $_POST['account_name'];
     $accountType = $_POST['account_type'];

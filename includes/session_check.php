@@ -133,6 +133,8 @@ function determineBasePath() {
 
 // Function to check tenant payment status and block access if suspended
 function checkTenantPaymentStatus() {
+    global $pdo; // Declare global to access PDO from outside function
+    
     // Skip check for super admin and public pages
     if (isset($_SESSION["role"]) && strtolower($_SESSION["role"]) === 'super_admin') {
         return;
@@ -152,9 +154,10 @@ function checkTenantPaymentStatus() {
 
     $tenant_id = $_SESSION["tenant_id"];
 
-    // Database connection
-    require_once 'conn.php';
-    global $pdo;
+    // Database connection - only require if not already initialized
+    if (!isset($pdo) || $pdo === null) {
+        require_once 'db.php';
+    }
 
     if (!isset($pdo) || !$pdo) {
         return; // Database not available, allow access

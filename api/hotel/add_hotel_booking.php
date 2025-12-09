@@ -9,6 +9,13 @@ $branch_id = $_SESSION['branch_id'];
 // Enforce authentication
 enforce_auth();
 
+// ✅ CSRF Token Validation
+if (!verify_csrf_token()) {
+    http_response_code(403);
+    echo json_encode(['success' => false, 'message' => 'Security validation failed. Please try again.']);
+    exit;
+}
+
 // Include WhatsApp Manager for notifications
 require_once '../api/whatsapp/WhatsAppManager.php';
 

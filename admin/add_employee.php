@@ -1,7 +1,7 @@
 <?php
-require_once '../../includes/language_helpers.php';
-require_once '../../includes/db.php';
-require_once '../../admin/security.php';
+require_once '../includes/language_helpers.php';
+require_once '../includes/db.php';
+require_once '../admin/security.php';
 
 // Start session if not already started
 if (session_status() === PHP_SESSION_NONE) {

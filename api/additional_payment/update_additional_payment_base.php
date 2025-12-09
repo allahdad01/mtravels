@@ -4,6 +4,20 @@ if (session_status() === PHP_SESSION_NONE) {
     session_start();
 }
 
+// Include security module
+require_once '../admin/security.php';
+
+// Enforce authentication
+enforce_auth();
+
+// ✅ CSRF Token Validation
+if (!verify_csrf_token()) {
+    http_response_code(403);
+    header('Content-Type: application/json');
+    echo json_encode(['success' => false, 'message' => 'Security validation failed. Please try again.']);
+    exit;
+}
+
 require_once '../includes/db.php';
 $tenant_id = $_SESSION['tenant_id'];
 $branch_id = $_SESSION['branch_id'];
@@ -21,29 +35,30 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             echo json_encode(['success' => false, 'message' => 'Unauthorized access']);
             exit();
         }
-        
-        // Debug: Check if CSRF token is present in the form data
-        if (isset($_POST['csrf_token'])) {
-            error_log("CSRF token found in POST data: " . $_POST['csrf_token']);
-            
-            // Check if session has a CSRF token
-            if (!isset($_SESSION['csrf_token'])) {
-                error_log("No CSRF token found in session");
-                // For now, just log this instead of exiting
-                // echo json_encode(['success' => false, 'message' => 'CSRF token missing in session']);
-                // exit();
-            } else if ($_POST['csrf_token'] !== $_SESSION['csrf_token']) {
-                error_log("CSRF token mismatch: POST=" . $_POST['csrf_token'] . ", SESSION=" . $_SESSION['csrf_token']);
-                // For now, just log this instead of exiting
-                // echo json_encode(['success' => false, 'message' => 'Invalid CSRF token']);
-                // exit();
-            } else {
-                error_log("CSRF token validated successfully");
-            }
-        } else {
-            // For now, allow requests without CSRF token for backward compatibility
-            error_log("No CSRF token found in POST data - continuing for backward compatibility");
+        // Verify CSRF token is present and valid
+        if (!isset($_POST['csrf_token'])) {
+            error_log("CSRF token missing in POST data for additional payment update - rejecting request");
+            http_response_code(403);
+            echo json_encode(['success' => false, 'message' => 'Security validation failed: CSRF token missing']);
+            exit();
         }
+        
+        if (!isset($_SESSION['csrf_token'])) {
+            error_log("No CSRF token found in session for user " . $_SESSION['user_id']);
+            http_response_code(403);
+            echo json_encode(['success' => false, 'message' => 'Security validation failed: Session invalid']);
+            exit();
+        }
+        
+        // Use hash_equals to prevent timing attacks
+        if (!hash_equals($_SESSION['csrf_token'], $_POST['csrf_token'])) {
+            error_log("CSRF token validation failed for user " . $_SESSION['user_id'] . " - tokens do not match");
+            http_response_code(403);
+            echo json_encode(['success' => false, 'message' => 'Security validation failed: Invalid CSRF token']);
+            exit();
+        }
+        
+        error_log("CSRF token validated successfully for user " . $_SESSION['user_id']);
         
         // Debug: Log that we're starting the process
         error_log("Starting payment update process");

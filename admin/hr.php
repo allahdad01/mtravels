@@ -92,7 +92,7 @@ include '../includes/header.php';
                                         <p><?php echo __('manage_employee_lifecycle_and_hr_operations'); ?></p>
                                     </div>
                                     <div class="page-header-actions">
-                                        <a href="../api/employee/add_employee.php" class="btn btn-primary">
+                                        <a href="add_employee.php" class="btn btn-primary">
                                             <i class="feather icon-user-plus mr-1"></i><?php echo __('add_employee'); ?>
                                         </a>
                                     </div>

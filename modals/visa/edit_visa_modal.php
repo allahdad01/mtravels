@@ -2,6 +2,8 @@
                                        <div class="modal fade" id="editVisaModal" tabindex="-1" role="dialog" aria-labelledby="editVisaModalLabel" aria-hidden="true">
                                             <div class="modal-dialog modal-lg" role="document">
                                                 <form id="editVisaForm">
+                    <!-- CSRF Protection -->
+                    <input type="hidden" name="csrf_token" value="<?php echo h($_SESSION['csrf_token'] ?? ''); ?>">
                                                     <input type="hidden" id="editVisaId" name="visa_id">
                                                     <div class="modal-content">
                                                         <div class="modal-header">

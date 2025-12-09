@@ -1,6 +1,6 @@
 <?php
 // Send test email for tenant admin SMTP configuration testing
-require_once '../includes/conn.php';
+require_once '../includes/db.php';
 require_once '../includes/functions.php';
 // Include security module
 require_once 'security.php';
@@ -69,15 +69,13 @@ try {
 
     // Get tenant name
     $tenantName = 'MTravels'; // Default fallback
-    $stmt = $conn->prepare("SELECT name FROM tenants WHERE id = ?");
-    $stmt->bind_param("i", $tenant_id);
+    $stmt = $pdo->prepare("SELECT name FROM tenants WHERE id = ?");
+    $stmt->bindParam(1, $tenant_id, PDO::PARAM_INT);
     $stmt->execute();
-    $result = $stmt->get_result();
-    $tenant = $result->fetch_assoc();
+    $tenant = $stmt->fetch(PDO::FETCH_ASSOC);
     if ($tenant) {
         $tenantName = $tenant['name'];
     }
-    $stmt->close();
 
     // Recipients
     $mail->setFrom(

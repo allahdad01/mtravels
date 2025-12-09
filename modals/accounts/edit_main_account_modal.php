@@ -11,6 +11,9 @@
                 </button>
             </div>
             <form id="editMainAccountForm">
+                <!-- CSRF Protection -->
+                <input type="hidden" name="csrf_token" value="<?php echo h($_SESSION['csrf_token'] ?? ''); ?>">
+                
                 <div class="modal-body">
                     <input type="hidden" id="edit_account_id" name="account_id">
                     

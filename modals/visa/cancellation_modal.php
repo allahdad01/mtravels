@@ -17,6 +17,8 @@
                                                 </div>
                                                 
                                                 <form id="cancelVisaForm">
+                    <!-- CSRF Protection -->
+                    <input type="hidden" name="csrf_token" value="<?php echo h($_SESSION['csrf_token'] ?? ''); ?>">
                                                     <input type="hidden" id="cancelVisaId" name="visa_id">
                                                     <input type="hidden" id="currentStatus" name="current_status">
                                                     

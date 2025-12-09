@@ -6,12 +6,7 @@ require_once 'security.php';
 enforce_auth();
 $tenant_id = $_SESSION['tenant_id'];
 $branch_id = $_SESSION['branch_id'];
-require_once '../includes/conn.php';
-
-// Check connection
-if ($conn->connect_error) {
-    die("Connection failed: " . $conn->connect_error);
-}
+require_once '../includes/db.php';
 
 $supplierId = $_GET['supplierId'];
 $startDate = isset($_GET['startDate']) ? $_GET['startDate'] : null;
@@ -53,22 +48,11 @@ if (!empty($conditions)) {
 }
 
 // Prepare the statement
-if ($stmt = $conn->prepare($query)) {
-    $stmt->bind_param(...array_merge($params, $values));
+$stmt = $pdo->prepare($query);
+$stmt->execute($values);
 
-    $stmt->execute();
-    $result = $stmt->get_result();
+$transactions = $stmt->fetchAll();
 
-    $transactions = [];
-    while ($row = $result->fetch_assoc()) {
-        $transactions[] = $row;
-    }
-
-    header('Content-Type: application/json');
-    echo json_encode($transactions);
-} else {
-    echo json_encode(["error" => "Failed to prepare statement."]);
-}
-
-$conn->close();
+header('Content-Type: application/json');
+echo json_encode($transactions);
 ?>

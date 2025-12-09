@@ -28,7 +28,6 @@ if (!isset($_SESSION['user_id']) || $_SESSION['role'] !== 'admin') {
 }
 
 require_once '../config.php';
-require_once '../includes/conn.php';
 require_once '../includes/db.php';
 
 if (!isset($pdo) || !$pdo) {

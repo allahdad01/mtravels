@@ -27,7 +27,6 @@ if (!isset($_SESSION['tenant_id'])) {
     exit();
 }
 
-require_once '../includes/conn.php';
 require_once '../includes/db.php';
 $tenant_id = $_SESSION['tenant_id'];
 $branch_id = $_SESSION['branch_id'];
@@ -55,56 +54,88 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['add_deposit'])) {
     $main_account_id = $_POST['main_account_id'];
     
     try {
-        $conn->begin_transaction();
-        
+        $pdo->beginTransaction();
+
         // Get customer name
-        $stmt = $conn->prepare("SELECT name FROM customers WHERE id = ? AND tenant_id = ? AND branch_id = ?");
-        $stmt->bind_param("iii", $customer_id, $tenant_id, $branch_id);
+        $stmt = $pdo->prepare("SELECT name FROM customers WHERE id = ? AND tenant_id = ? AND branch_id = ?");
+        $stmt->bindParam(1, $customer_id, PDO::PARAM_INT);
+        $stmt->bindParam(2, $tenant_id, PDO::PARAM_INT);
+        $stmt->bindParam(3, $branch_id, PDO::PARAM_INT);
         $stmt->execute();
-        $customer = $stmt->get_result()->fetch_assoc();
+        $customer = $stmt->fetch(PDO::FETCH_ASSOC);
 
         // Insert the deposit transaction
-        $stmt = $conn->prepare("INSERT INTO sarafi_transactions (customer_id, amount, currency, type, notes, reference_number, tenant_id, branch_id) VALUES (?, ?, ?, 'deposit', ?, ?, ?, ?)");
-        $stmt->bind_param("idsssii", $customer_id, $amount, $currency, $notes, $reference, $tenant_id, $branch_id);
+        $stmt = $pdo->prepare("INSERT INTO sarafi_transactions (customer_id, amount, currency, type, notes, reference_number, tenant_id, branch_id) VALUES (?, ?, ?, 'deposit', ?, ?, ?, ?)");
+        $stmt->bindParam(1, $customer_id, PDO::PARAM_INT);
+        $stmt->bindParam(2, $amount, PDO::PARAM_STR);
+        $stmt->bindParam(3, $currency, PDO::PARAM_STR);
+        $stmt->bindParam(4, $notes, PDO::PARAM_STR);
+        $stmt->bindParam(5, $reference, PDO::PARAM_STR);
+        $stmt->bindParam(6, $tenant_id, PDO::PARAM_INT);
+        $stmt->bindParam(7, $branch_id, PDO::PARAM_INT);
         $stmt->execute();
-        $transaction_id = $conn->insert_id;
+        $transaction_id = $pdo->lastInsertId();
         
         // First check if wallet exists
-        $stmt = $conn->prepare("SELECT id FROM customer_wallets WHERE customer_id = ? AND currency = ? AND tenant_id = ? AND branch_id = ?");
-        $stmt->bind_param("isii", $customer_id, $currency, $tenant_id, $branch_id);
+        $stmt = $pdo->prepare("SELECT id FROM customer_wallets WHERE customer_id = ? AND currency = ? AND tenant_id = ? AND branch_id = ?");
+        $stmt->bindParam(1, $customer_id, PDO::PARAM_INT);
+        $stmt->bindParam(2, $currency, PDO::PARAM_STR);
+        $stmt->bindParam(3, $tenant_id, PDO::PARAM_INT);
+        $stmt->bindParam(4, $branch_id, PDO::PARAM_INT);
         $stmt->execute();
-        $result = $stmt->get_result();
+        $result = $stmt->fetch(PDO::FETCH_ASSOC);
 
-        if ($result->num_rows > 0) {
+        if ($result) {
             // Update existing wallet
-            $stmt = $conn->prepare("UPDATE customer_wallets SET balance = balance + ? WHERE customer_id = ? AND currency = ? AND tenant_id = ? AND branch_id = ?");
-            $stmt->bind_param("disii", $amount, $customer_id, $currency, $tenant_id, $branch_id);
+            $stmt = $pdo->prepare("UPDATE customer_wallets SET balance = balance + ? WHERE customer_id = ? AND currency = ? AND tenant_id = ? AND branch_id = ?");
+            $stmt->bindParam(1, $amount, PDO::PARAM_STR);
+            $stmt->bindParam(2, $customer_id, PDO::PARAM_INT);
+            $stmt->bindParam(3, $currency, PDO::PARAM_STR);
+            $stmt->bindParam(4, $tenant_id, PDO::PARAM_INT);
+            $stmt->bindParam(5, $branch_id, PDO::PARAM_INT);
         } else {
             // Create new wallet
-            $stmt = $conn->prepare("INSERT INTO customer_wallets (customer_id, currency, balance, tenant_id, branch_id) VALUES (?, ?, ?, ?, ?)");
-            $stmt->bind_param("isdii", $customer_id, $currency, $amount, $tenant_id, $branch_id);
+            $stmt = $pdo->prepare("INSERT INTO customer_wallets (customer_id, currency, balance, tenant_id, branch_id) VALUES (?, ?, ?, ?, ?)");
+            $stmt->bindParam(1, $customer_id, PDO::PARAM_INT);
+            $stmt->bindParam(2, $currency, PDO::PARAM_STR);
+            $stmt->bindParam(3, $amount, PDO::PARAM_STR);
+            $stmt->bindParam(4, $tenant_id, PDO::PARAM_INT);
+            $stmt->bindParam(5, $branch_id, PDO::PARAM_INT);
         }
         $stmt->execute();
 
         // Get current main account balance
         $balanceField = $currency === 'USD' ? 'usd_balance' : ($currency === 'AFS' ? 'afs_balance' : ($currency === 'EUR' ? 'euro_balance' : 'darham_balance'));
-        $stmt = $conn->prepare("SELECT $balanceField as current_balance FROM main_account WHERE id = ? AND tenant_id = ? AND branch_id = ?");
-        $stmt->bind_param("iii", $main_account_id, $tenant_id, $branch_id);
+        $stmt = $pdo->prepare("SELECT $balanceField as current_balance FROM main_account WHERE id = ? AND tenant_id = ? AND branch_id = ?");
+        $stmt->bindParam(1, $main_account_id, PDO::PARAM_INT);
+        $stmt->bindParam(2, $tenant_id, PDO::PARAM_INT);
+        $stmt->bindParam(3, $branch_id, PDO::PARAM_INT);
         $stmt->execute();
-        $result = $stmt->get_result();
-        $balanceResult = $result->fetch_assoc();
+        $balanceResult = $stmt->fetch(PDO::FETCH_ASSOC);
         $newBalance = $balanceResult['current_balance'] + $amount;
 
         // Update main account balance
-        $stmt = $conn->prepare("UPDATE main_account SET $balanceField = ? WHERE id = ? AND tenant_id = ? AND branch_id = ?");
-        $stmt->bind_param("diii", $newBalance, $main_account_id, $tenant_id, $branch_id);
+        $stmt = $pdo->prepare("UPDATE main_account SET $balanceField = ? WHERE id = ? AND tenant_id = ? AND branch_id = ?");
+        $stmt->bindParam(1, $newBalance, PDO::PARAM_STR);
+        $stmt->bindParam(2, $main_account_id, PDO::PARAM_INT);
+        $stmt->bindParam(3, $tenant_id, PDO::PARAM_INT);
+        $stmt->bindParam(4, $branch_id, PDO::PARAM_INT);
         $stmt->execute();
         $transaction_of = 'deposit_sarafi';
         // Record main account transaction
-        $stmt = $conn->prepare("INSERT INTO main_account_transactions (main_account_id, type, amount, currency, description, transaction_of, reference_id, balance, receipt, tenant_id, branch_id) VALUES (?, 'credit', ?, ?, ?, ?, ?, ?, ?, ?, ?)");
-        $stmt->bind_param("idsssissii", $main_account_id, $amount, $currency, $notes, $transaction_of, $transaction_id, $newBalance, $reference, $tenant_id, $branch_id);
+        $stmt = $pdo->prepare("INSERT INTO main_account_transactions (main_account_id, type, amount, currency, description, transaction_of, reference_id, balance, receipt, tenant_id, branch_id) VALUES (?, 'credit', ?, ?, ?, ?, ?, ?, ?, ?, ?)");
+        $stmt->bindParam(1, $main_account_id, PDO::PARAM_INT);
+        $stmt->bindParam(2, $amount, PDO::PARAM_STR);
+        $stmt->bindParam(3, $currency, PDO::PARAM_STR);
+        $stmt->bindParam(4, $notes, PDO::PARAM_STR);
+        $stmt->bindParam(5, $transaction_of, PDO::PARAM_STR);
+        $stmt->bindParam(6, $transaction_id, PDO::PARAM_INT);
+        $stmt->bindParam(7, $newBalance, PDO::PARAM_STR);
+        $stmt->bindParam(8, $reference, PDO::PARAM_STR);
+        $stmt->bindParam(9, $tenant_id, PDO::PARAM_INT);
+        $stmt->bindParam(10, $branch_id, PDO::PARAM_INT);
         $stmt->execute();
-        $main_transaction_id = $conn->insert_id;
+        $main_transaction_id = $pdo->lastInsertId();
 
         // Create notification
         $notificationMessage = sprintf(
@@ -115,30 +146,37 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['add_deposit'])) {
             $reference
         );
 
-        $stmt = $conn->prepare("INSERT INTO notifications (transaction_id, transaction_type, message, status, created_at, tenant_id, branch_id) VALUES (?, ?, ?, 'Unread', NOW(), ?, ?)");
-        $stmt->bind_param("issii", $main_transaction_id, $transaction_of, $notificationMessage, $tenant_id, $branch_id);
+        $stmt = $pdo->prepare("INSERT INTO notifications (transaction_id, transaction_type, message, status, created_at, tenant_id, branch_id) VALUES (?, ?, ?, 'Unread', NOW(), ?, ?)");
+        $stmt->bindParam(1, $main_transaction_id, PDO::PARAM_INT);
+        $stmt->bindParam(2, $transaction_of, PDO::PARAM_STR);
+        $stmt->bindParam(3, $notificationMessage, PDO::PARAM_STR);
+        $stmt->bindParam(4, $tenant_id, PDO::PARAM_INT);
+        $stmt->bindParam(5, $branch_id, PDO::PARAM_INT);
         $stmt->execute();
-        
+
         // Handle receipt upload if provided
         if (isset($_FILES['receipt']) && $_FILES['receipt']['error'] === UPLOAD_ERR_OK) {
             $file_extension = pathinfo($_FILES['receipt']['name'], PATHINFO_EXTENSION);
             $new_filename = 'receipt_' . $transaction_id . '_' . time() . '.' . $file_extension;
             $upload_path = '../uploads/receipts/' . $new_filename;
-            
+
             if (move_uploaded_file($_FILES['receipt']['tmp_name'], $upload_path)) {
                 // Update transaction with receipt path
-                $stmt = $conn->prepare("UPDATE sarafi_transactions SET receipt_path = ? WHERE id = ? AND tenant_id = ? AND branch_id = ?");
-                $stmt->bind_param("sii", $new_filename, $transaction_id, $tenant_id, $branch_id);
+                $stmt = $pdo->prepare("UPDATE sarafi_transactions SET receipt_path = ? WHERE id = ? AND tenant_id = ? AND branch_id = ?");
+                $stmt->bindParam(1, $new_filename, PDO::PARAM_STR);
+                $stmt->bindParam(2, $transaction_id, PDO::PARAM_INT);
+                $stmt->bindParam(3, $tenant_id, PDO::PARAM_INT);
+                $stmt->bindParam(4, $branch_id, PDO::PARAM_INT);
                 $stmt->execute();
             }
         }
-        
-        $conn->commit();
+
+        $pdo->commit();
         $_SESSION['success_message'] = __('deposit_success');
         header('Location: ' . $redirect_url);
         exit();
     } catch (Exception $e) {
-        $conn->rollback();
+        $pdo->rollback();
         $_SESSION['error_message'] = sprintf(__('processing_error'), __('deposit'), $e->getMessage());
         header('Location: ' . $redirect_url);
         exit();
@@ -155,32 +193,37 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['add_withdrawal'])) {
     $main_account_id = $_POST['main_account_id'];
     
     try {
-        $conn->begin_transaction();
-        
+        $pdo->beginTransaction();
+
         // Get customer name
-        $stmt = $conn->prepare("SELECT name FROM customers WHERE id = ? AND tenant_id = ? AND branch_id = ?");
-        $stmt->bind_param("iii", $customer_id, $tenant_id, $branch_id);
+        $stmt = $pdo->prepare("SELECT name FROM customers WHERE id = ? AND tenant_id = ? AND branch_id = ?");
+        $stmt->bindParam(1, $customer_id, PDO::PARAM_INT);
+        $stmt->bindParam(2, $tenant_id, PDO::PARAM_INT);
+        $stmt->bindParam(3, $branch_id, PDO::PARAM_INT);
         $stmt->execute();
-        $customer = $stmt->get_result()->fetch_assoc();
+        $customer = $stmt->fetch(PDO::FETCH_ASSOC);
 
         // Check if customer has sufficient balance
-        $stmt = $conn->prepare("SELECT balance FROM customer_wallets WHERE customer_id = ? AND currency = ? AND tenant_id = ? AND branch_id = ?");
-        $stmt->bind_param("isii", $customer_id, $currency, $tenant_id, $branch_id);
+        $stmt = $pdo->prepare("SELECT balance FROM customer_wallets WHERE customer_id = ? AND currency = ? AND tenant_id = ? AND branch_id = ?");
+        $stmt->bindParam(1, $customer_id, PDO::PARAM_INT);
+        $stmt->bindParam(2, $currency, PDO::PARAM_STR);
+        $stmt->bindParam(3, $tenant_id, PDO::PARAM_INT);
+        $stmt->bindParam(4, $branch_id, PDO::PARAM_INT);
         $stmt->execute();
-        $result = $stmt->get_result();
-        $wallet = $result->fetch_assoc();
-        
+        $wallet = $stmt->fetch(PDO::FETCH_ASSOC);
+
         if (!$wallet || $wallet['balance'] < $amount) {
             throw new Exception(__('insufficient_balance'));
         }
 
         // Get current main account balance
         $balanceField = $currency === 'USD' ? 'usd_balance' : ($currency === 'AFS' ? 'afs_balance' : ($currency === 'EUR' ? 'euro_balance' : 'darham_balance'));
-        $stmt = $conn->prepare("SELECT $balanceField as current_balance FROM main_account WHERE id = ? AND tenant_id = ? AND branch_id = ?");
-        $stmt->bind_param("iii", $main_account_id, $tenant_id, $branch_id);
+        $stmt = $pdo->prepare("SELECT $balanceField as current_balance FROM main_account WHERE id = ? AND tenant_id = ? AND branch_id = ?");
+        $stmt->bindParam(1, $main_account_id, PDO::PARAM_INT);
+        $stmt->bindParam(2, $tenant_id, PDO::PARAM_INT);
+        $stmt->bindParam(3, $branch_id, PDO::PARAM_INT);
         $stmt->execute();
-        $result = $stmt->get_result();
-        $balanceResult = $result->fetch_assoc();
+        $balanceResult = $stmt->fetch(PDO::FETCH_ASSOC);
 
         if (!$balanceResult || $balanceResult['current_balance'] < $amount) {
             throw new Exception(__('insufficient_main_account_balance'));
@@ -189,26 +232,48 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['add_withdrawal'])) {
         $newBalance = $balanceResult['current_balance'] - $amount;
 
         // Insert the withdrawal transaction
-        $stmt = $conn->prepare("INSERT INTO sarafi_transactions (customer_id, amount, currency, type, notes, reference_number, tenant_id, branch_id) VALUES (?, ?, ?, 'withdrawal', ?, ?, ?, ?)");
-        $stmt->bind_param("idsssii", $customer_id, $amount, $currency, $notes, $reference, $tenant_id, $branch_id);
+        $stmt = $pdo->prepare("INSERT INTO sarafi_transactions (customer_id, amount, currency, type, notes, reference_number, tenant_id, branch_id) VALUES (?, ?, ?, 'withdrawal', ?, ?, ?, ?)");
+        $stmt->bindParam(1, $customer_id, PDO::PARAM_INT);
+        $stmt->bindParam(2, $amount, PDO::PARAM_STR);
+        $stmt->bindParam(3, $currency, PDO::PARAM_STR);
+        $stmt->bindParam(4, $notes, PDO::PARAM_STR);
+        $stmt->bindParam(5, $reference, PDO::PARAM_STR);
+        $stmt->bindParam(6, $tenant_id, PDO::PARAM_INT);
+        $stmt->bindParam(7, $branch_id, PDO::PARAM_INT);
         $stmt->execute();
-        $transaction_id = $conn->insert_id;
+        $transaction_id = $pdo->lastInsertId();
 
         // Update customer wallet balance
-        $stmt = $conn->prepare("UPDATE customer_wallets SET balance = balance - ? WHERE customer_id = ? AND currency = ? AND tenant_id = ? AND branch_id = ?");
-        $stmt->bind_param("disii", $amount, $customer_id, $currency, $tenant_id, $branch_id);
+        $stmt = $pdo->prepare("UPDATE customer_wallets SET balance = balance - ? WHERE customer_id = ? AND currency = ? AND tenant_id = ? AND branch_id = ?");
+        $stmt->bindParam(1, $amount, PDO::PARAM_STR);
+        $stmt->bindParam(2, $customer_id, PDO::PARAM_INT);
+        $stmt->bindParam(3, $currency, PDO::PARAM_STR);
+        $stmt->bindParam(4, $tenant_id, PDO::PARAM_INT);
+        $stmt->bindParam(5, $branch_id, PDO::PARAM_INT);
         $stmt->execute();
 
         // Update main account balance
-        $stmt = $conn->prepare("UPDATE main_account SET $balanceField = ? WHERE id = ? AND tenant_id = ? AND branch_id = ?");
-        $stmt->bind_param("diii", $newBalance, $main_account_id, $tenant_id, $branch_id);
+        $stmt = $pdo->prepare("UPDATE main_account SET $balanceField = ? WHERE id = ? AND tenant_id = ? AND branch_id = ?");
+        $stmt->bindParam(1, $newBalance, PDO::PARAM_STR);
+        $stmt->bindParam(2, $main_account_id, PDO::PARAM_INT);
+        $stmt->bindParam(3, $tenant_id, PDO::PARAM_INT);
+        $stmt->bindParam(4, $branch_id, PDO::PARAM_INT);
         $stmt->execute();
         $transaction_of = 'withdrawal_sarafi';
         // Record main account transaction
-        $stmt = $conn->prepare("INSERT INTO main_account_transactions (main_account_id, type, amount, currency, description, transaction_of, reference_id, balance, receipt, tenant_id, branch_id) VALUES (?, 'debit', ?, ?, ?, ?, ?, ?, ?, ?, ?)");
-        $stmt->bind_param("idsssissii", $main_account_id, $amount, $currency, $notes, $transaction_of, $transaction_id, $newBalance, $reference, $tenant_id, $branch_id);
+        $stmt = $pdo->prepare("INSERT INTO main_account_transactions (main_account_id, type, amount, currency, description, transaction_of, reference_id, balance, receipt, tenant_id, branch_id) VALUES (?, 'debit', ?, ?, ?, ?, ?, ?, ?, ?, ?)");
+        $stmt->bindParam(1, $main_account_id, PDO::PARAM_INT);
+        $stmt->bindParam(2, $amount, PDO::PARAM_STR);
+        $stmt->bindParam(3, $currency, PDO::PARAM_STR);
+        $stmt->bindParam(4, $notes, PDO::PARAM_STR);
+        $stmt->bindParam(5, $transaction_of, PDO::PARAM_STR);
+        $stmt->bindParam(6, $transaction_id, PDO::PARAM_INT);
+        $stmt->bindParam(7, $newBalance, PDO::PARAM_STR);
+        $stmt->bindParam(8, $reference, PDO::PARAM_STR);
+        $stmt->bindParam(9, $tenant_id, PDO::PARAM_INT);
+        $stmt->bindParam(10, $branch_id, PDO::PARAM_INT);
         $stmt->execute();
-        $main_transaction_id = $conn->insert_id;
+        $main_transaction_id = $pdo->lastInsertId();
 
         // Create notification
         $notificationMessage = sprintf(
@@ -219,30 +284,37 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['add_withdrawal'])) {
             $reference
         );
 
-        $stmt = $conn->prepare("INSERT INTO notifications (transaction_id, transaction_type, message, status, created_at, tenant_id, branch_id) VALUES (?, ?, ?, 'Unread', NOW(), ?, ?)");
-        $stmt->bind_param("issii", $main_transaction_id, $transaction_of, $notificationMessage, $tenant_id, $branch_id);
+        $stmt = $pdo->prepare("INSERT INTO notifications (transaction_id, transaction_type, message, status, created_at, tenant_id, branch_id) VALUES (?, ?, ?, 'Unread', NOW(), ?, ?)");
+        $stmt->bindParam(1, $main_transaction_id, PDO::PARAM_INT);
+        $stmt->bindParam(2, $transaction_of, PDO::PARAM_STR);
+        $stmt->bindParam(3, $notificationMessage, PDO::PARAM_STR);
+        $stmt->bindParam(4, $tenant_id, PDO::PARAM_INT);
+        $stmt->bindParam(5, $branch_id, PDO::PARAM_INT);
         $stmt->execute();
-        
+
         // Handle receipt upload if provided
         if (isset($_FILES['receipt']) && $_FILES['receipt']['error'] === UPLOAD_ERR_OK) {
             $file_extension = pathinfo($_FILES['receipt']['name'], PATHINFO_EXTENSION);
             $new_filename = 'receipt_' . $transaction_id . '_' . time() . '.' . $file_extension;
             $upload_path = '../uploads/receipts/' . $new_filename;
-            
+
             if (move_uploaded_file($_FILES['receipt']['tmp_name'], $upload_path)) {
                 // Update transaction with receipt path
-                $stmt = $conn->prepare("UPDATE sarafi_transactions SET receipt_path = ? WHERE id = ? AND tenant_id = ? AND branch_id = ?");
-                $stmt->bind_param("sii", $new_filename, $transaction_id, $tenant_id, $branch_id);
+                $stmt = $pdo->prepare("UPDATE sarafi_transactions SET receipt_path = ? WHERE id = ? AND tenant_id = ? AND branch_id = ?");
+                $stmt->bindParam(1, $new_filename, PDO::PARAM_STR);
+                $stmt->bindParam(2, $transaction_id, PDO::PARAM_INT);
+                $stmt->bindParam(3, $tenant_id, PDO::PARAM_INT);
+                $stmt->bindParam(4, $branch_id, PDO::PARAM_INT);
                 $stmt->execute();
             }
         }
-        
-        $conn->commit();
+
+        $pdo->commit();
         $_SESSION['success_message'] = __('withdrawal_success');
         header('Location: ' . $redirect_url);
         exit();
     } catch (Exception $e) {
-        $conn->rollback();
+        $pdo->rollback();
         $_SESSION['error_message'] = sprintf(__('processing_error'), __('withdrawal'), $e->getMessage());
         header('Location: ' . $redirect_url);
         exit();
@@ -268,29 +340,32 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['add_hawala'])) {
     ];
     
     try {
-        $conn->begin_transaction();
-        
+        $pdo->beginTransaction();
+
         // Get sender name
-        $stmt = $conn->prepare("SELECT name FROM customers WHERE id = ? AND tenant_id = ? AND branch_id = ?");
-        $stmt->bind_param("iii", $data['sender_id'], $tenant_id, $branch_id);
+        $stmt = $pdo->prepare("SELECT name FROM customers WHERE id = ? AND tenant_id = ? AND branch_id = ?");
+        $stmt->bindParam(1, $data['sender_id'], PDO::PARAM_INT);
+        $stmt->bindParam(2, $tenant_id, PDO::PARAM_INT);
+        $stmt->bindParam(3, $branch_id, PDO::PARAM_INT);
         $stmt->execute();
-        $sender = $stmt->get_result()->fetch_assoc();
-        
+        $sender = $stmt->fetch(PDO::FETCH_ASSOC);
+
         // Verify currencies match
         if ($data['send_currency'] !== $data['commission_currency']) {
             throw new Exception(__('commission_currency_mismatch'));
         }
-        
+
         // Calculate net amount to deduct from main account (transfer amount - commission)
         $net_amount = $data['send_amount'] - $data['commission_amount'];
-        
+
         // Get current main account balance
         $balanceField = $data['send_currency'] === 'USD' ? 'usd_balance' : ($data['send_currency'] === 'AFS' ? 'afs_balance' : ($data['send_currency'] === 'EUR' ? 'euro_balance' : 'darham_balance'));
-        $stmt = $conn->prepare("SELECT $balanceField as current_balance FROM main_account WHERE id = ? AND tenant_id = ? AND branch_id = ?");
-        $stmt->bind_param("iii", $data['main_account_id'], $tenant_id, $branch_id);
+        $stmt = $pdo->prepare("SELECT $balanceField as current_balance FROM main_account WHERE id = ? AND tenant_id = ? AND branch_id = ?");
+        $stmt->bindParam(1, $data['main_account_id'], PDO::PARAM_INT);
+        $stmt->bindParam(2, $tenant_id, PDO::PARAM_INT);
+        $stmt->bindParam(3, $branch_id, PDO::PARAM_INT);
         $stmt->execute();
-        $result = $stmt->get_result();
-        $balanceResult = $result->fetch_assoc();
+        $balanceResult = $stmt->fetch(PDO::FETCH_ASSOC);
 
         if (!$balanceResult || $balanceResult['current_balance'] < $net_amount) {
             throw new Exception(__('insufficient_main_account_balance_hawala'));
@@ -299,13 +374,16 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['add_hawala'])) {
         $newBalance = $balanceResult['current_balance'] - $net_amount;
 
         // Update main account balance with net amount
-        $stmt = $conn->prepare("UPDATE main_account SET $balanceField = ? WHERE id = ? AND tenant_id = ? AND branch_id = ?");
-        $stmt->bind_param("diii", $newBalance, $data['main_account_id'], $tenant_id, $branch_id);
+        $stmt = $pdo->prepare("UPDATE main_account SET $balanceField = ? WHERE id = ? AND tenant_id = ? AND branch_id = ?");
+        $stmt->bindParam(1, $newBalance, PDO::PARAM_STR);
+        $stmt->bindParam(2, $data['main_account_id'], PDO::PARAM_INT);
+        $stmt->bindParam(3, $tenant_id, PDO::PARAM_INT);
+        $stmt->bindParam(4, $branch_id, PDO::PARAM_INT);
         $stmt->execute();
-        
+
         // Process the hawala transfer
-        $result = processHawalaTransfer($conn, $data);
-        
+        $result = processHawalaTransfer($pdo, $data);
+
         if ($result['success']) {
             // Record main account transaction for net hawala transfer amount
             $description = sprintf(__('hawala_transfer_description'),
@@ -315,11 +393,20 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['add_hawala'])) {
                 number_format($net_amount, 2), $data['send_currency']
             );
             $transaction_of = 'hawala_sarafi';
-            $stmt = $conn->prepare("INSERT INTO main_account_transactions (main_account_id, type, amount, currency, description, transaction_of, reference_id, balance, receipt, tenant_id, branch_id)
+            $stmt = $pdo->prepare("INSERT INTO main_account_transactions (main_account_id, type, amount, currency, description, transaction_of, reference_id, balance, receipt, tenant_id, branch_id)
             VALUES (?, 'debit', ?, ?, ?, ?, ?, ?, ?, ?, ?)");
-            $stmt->bind_param("idsssissii", $data['main_account_id'], $net_amount, $data['send_currency'], $data['notes'], $transaction_of, $result['sender_transaction_id'], $newBalance, $data['reference'], $tenant_id, $branch_id);
+            $stmt->bindParam(1, $data['main_account_id'], PDO::PARAM_INT);
+            $stmt->bindParam(2, $net_amount, PDO::PARAM_STR);
+            $stmt->bindParam(3, $data['send_currency'], PDO::PARAM_STR);
+            $stmt->bindParam(4, $data['notes'], PDO::PARAM_STR);
+            $stmt->bindParam(5, $transaction_of, PDO::PARAM_STR);
+            $stmt->bindParam(6, $result['sender_transaction_id'], PDO::PARAM_INT);
+            $stmt->bindParam(7, $newBalance, PDO::PARAM_STR);
+            $stmt->bindParam(8, $data['reference'], PDO::PARAM_STR);
+            $stmt->bindParam(9, $tenant_id, PDO::PARAM_INT);
+            $stmt->bindParam(10, $branch_id, PDO::PARAM_INT);
             $stmt->execute();
-            $main_transaction_id = $conn->insert_id;
+            $main_transaction_id = $pdo->lastInsertId();
 
             // Create notification
             $notificationMessage = sprintf(
@@ -331,17 +418,21 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['add_hawala'])) {
                 $data['reference']
             );
 
-            $stmt = $conn->prepare("INSERT INTO notifications (transaction_id, transaction_type, message, status, created_at, tenant_id, branch_id) VALUES (?, ?, ?, 'Unread', NOW(), ?, ?)");
-            $stmt->bind_param("issii", $main_transaction_id, $transaction_of, $notificationMessage, $tenant_id, $branch_id);
+            $stmt = $pdo->prepare("INSERT INTO notifications (transaction_id, transaction_type, message, status, created_at, tenant_id, branch_id) VALUES (?, ?, ?, 'Unread', NOW(), ?, ?)");
+            $stmt->bindParam(1, $main_transaction_id, PDO::PARAM_INT);
+            $stmt->bindParam(2, $transaction_of, PDO::PARAM_STR);
+            $stmt->bindParam(3, $notificationMessage, PDO::PARAM_STR);
+            $stmt->bindParam(4, $tenant_id, PDO::PARAM_INT);
+            $stmt->bindParam(5, $branch_id, PDO::PARAM_INT);
             $stmt->execute();
-            
-            $conn->commit();
+
+            $pdo->commit();
             $_SESSION['success_message'] = $result['message'];
         } else {
             throw new Exception($result['message']);
         }
     } catch (Exception $e) {
-        $conn->rollback();
+        $pdo->rollback();
         $_SESSION['error_message'] = $e->getMessage();
     }
     header('Location: ' . $redirect_url);
@@ -359,9 +450,9 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['add_exchange'])) {
         'rate' => $_POST['rate'],
         'notes' => $_POST['notes']
     ];
-    
-    $result = processCurrencyExchange($conn, $data);
-    
+
+    $result = processCurrencyExchange($pdo, $data);
+
     if ($result['success']) {
         $_SESSION['success_message'] = $result['message'];
     } else {
@@ -372,19 +463,20 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['add_exchange'])) {
 }
 
 // Fetch customers
-$stmt = $conn->prepare("SELECT * FROM customers WHERE status = 'active' AND tenant_id = ? AND branch_id = ? ORDER BY created_at DESC");
-$stmt->bind_param("ii", $tenant_id, $branch_id);
+$stmt = $pdo->prepare("SELECT * FROM customers WHERE status = 'active' AND tenant_id = ? AND branch_id = ? ORDER BY created_at DESC");
+$stmt->bindParam(1, $tenant_id, PDO::PARAM_INT);
+$stmt->bindParam(2, $branch_id, PDO::PARAM_INT);
 $stmt->execute();
-$result = $stmt->get_result();
-$customers = $result->fetch_all(MYSQLI_ASSOC);
+$customers = $stmt->fetchAll(PDO::FETCH_ASSOC);
 
 // Calculate total balances by currency
 $currency_totals = [];
-$stmt = $conn->prepare("SELECT currency, SUM(balance) as total FROM customer_wallets WHERE tenant_id = ? AND branch_id = ? GROUP BY currency");
-$stmt->bind_param("ii", $tenant_id, $branch_id);
+$stmt = $pdo->prepare("SELECT currency, SUM(balance) as total FROM customer_wallets WHERE tenant_id = ? AND branch_id = ? GROUP BY currency");
+$stmt->bindParam(1, $tenant_id, PDO::PARAM_INT);
+$stmt->bindParam(2, $branch_id, PDO::PARAM_INT);
 $stmt->execute();
-$result = $stmt->get_result();
-while ($row = $result->fetch_assoc()) {
+$result = $stmt->fetchAll(PDO::FETCH_ASSOC);
+foreach ($result as $row) {
     $currency_totals[$row['currency']] = $row['total'];
 }
 
@@ -756,7 +848,7 @@ while ($row = $result->fetch_assoc()) {
                 <tbody>
                     <?php
                     // Fetch recent transactions
-                    $stmt = $conn->prepare("
+                    $stmt = $pdo->prepare("
                         SELECT t.*, c.name as customer_name
                         FROM sarafi_transactions t
                         JOIN customers c ON t.customer_id = c.id
@@ -764,11 +856,13 @@ while ($row = $result->fetch_assoc()) {
                         ORDER BY t.created_at DESC
                         LIMIT 50
                     ");
-                    $stmt->bind_param("iii", $tenant_id, $branch_id, $branch_id);
+                    $stmt->bindParam(1, $tenant_id, PDO::PARAM_INT);
+                    $stmt->bindParam(2, $branch_id, PDO::PARAM_INT);
+                    $stmt->bindParam(3, $branch_id, PDO::PARAM_INT);
                     $stmt->execute();
-                    $transactions = $stmt->get_result();
+                    $transactions = $stmt->fetchAll(PDO::FETCH_ASSOC);
 
-                    while ($transaction = $transactions->fetch_assoc()):
+                    foreach ($transactions as $transaction):
                         $type_class = '';
                         $type_icon = '';
                         switch ($transaction['type']) {
@@ -876,7 +970,7 @@ while ($row = $result->fetch_assoc()) {
                             </div>
                         </td>
                     </tr>
-                    <?php endwhile; ?>
+                    <?php endforeach; ?>
                 </tbody>
             </table>
         </div>

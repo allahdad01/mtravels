@@ -22,7 +22,6 @@ if (!isset($_SESSION['user_id'])  || $_SESSION['role'] !== 'admin') {
     header('Location: ../login.php');
     exit();
 }
-require_once '../includes/conn.php';
 require_once '../includes/db.php';
 
 // Initialize messages
@@ -78,8 +77,23 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['add_asset'])) {
     }
     
     try {
-        $stmt = $conn->prepare("INSERT INTO assets (name, category, purchase_date, purchase_value, current_value, currency, description, location, serial_number, warranty_expiry, status, assigned_to, condition_state, document, tenant_id, branch_id) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)");
-        $stmt->bind_param("sssddsssssssssii", $name, $category, $purchase_date, $purchase_value, $current_value, $currency, $description, $location, $serial_number, $warranty_expiry, $status, $assigned_to, $condition_state, $document, $tenant_id, $branch_id);
+        $stmt = $pdo->prepare("INSERT INTO assets (name, category, purchase_date, purchase_value, current_value, currency, description, location, serial_number, warranty_expiry, status, assigned_to, condition_state, document, tenant_id, branch_id) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)");
+        $stmt->bindParam(1, $name, PDO::PARAM_STR);
+        $stmt->bindParam(2, $category, PDO::PARAM_STR);
+        $stmt->bindParam(3, $purchase_date, PDO::PARAM_STR);
+        $stmt->bindParam(4, $purchase_value, PDO::PARAM_STR);
+        $stmt->bindParam(5, $current_value, PDO::PARAM_STR);
+        $stmt->bindParam(6, $currency, PDO::PARAM_STR);
+        $stmt->bindParam(7, $description, PDO::PARAM_STR);
+        $stmt->bindParam(8, $location, PDO::PARAM_STR);
+        $stmt->bindParam(9, $serial_number, PDO::PARAM_STR);
+        $stmt->bindParam(10, $warranty_expiry, PDO::PARAM_STR);
+        $stmt->bindParam(11, $status, PDO::PARAM_STR);
+        $stmt->bindParam(12, $assigned_to, PDO::PARAM_STR);
+        $stmt->bindParam(13, $condition_state, PDO::PARAM_STR);
+        $stmt->bindParam(14, $document, PDO::PARAM_STR);
+        $stmt->bindParam(15, $tenant_id, PDO::PARAM_INT);
+        $stmt->bindParam(16, $branch_id, PDO::PARAM_INT);
         $stmt->execute();
         $_SESSION['success_message'] = "Asset added successfully!";
         header('Location: ' . $redirect_url);
@@ -109,11 +123,12 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['edit_asset'])) {
     $condition_state = $_POST['condition_state'];
     
     // Get current document
-    $stmt = $conn->prepare("SELECT document FROM assets WHERE id = ? AND tenant_id = ?");
-    $stmt->bind_param("ii", $asset_id, $tenant_id);
+    $stmt = $pdo->prepare("SELECT document FROM assets WHERE id = ? AND tenant_id = ? AND branch_id = ?");
+    $stmt->bindParam(1, $asset_id, PDO::PARAM_INT);
+    $stmt->bindParam(2, $tenant_id, PDO::PARAM_INT);
+    $stmt->bindParam(3, $branch_id, PDO::PARAM_INT);
     $stmt->execute();
-    $result = $stmt->get_result();
-    $asset = $result->fetch_assoc();
+    $asset = $stmt->fetch();
     $current_document = $asset['document'];
     
     // Handle document upload
@@ -147,8 +162,24 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['edit_asset'])) {
     }
     
     try {
-        $stmt = $conn->prepare("UPDATE assets SET name = ?, category = ?, purchase_date = ?, purchase_value = ?, current_value = ?, currency = ?, description = ?, location = ?, serial_number = ?, warranty_expiry = ?, status = ?, assigned_to = ?, condition_state = ?, document = ? WHERE id = ? AND tenant_id = ?");
-        $stmt->bind_param("sssddsssssssssi", $name, $category, $purchase_date, $purchase_value, $current_value, $currency, $description, $location, $serial_number, $warranty_expiry, $status, $assigned_to, $condition_state, $document, $asset_id, $tenant_id);
+        $stmt = $pdo->prepare("UPDATE assets SET name = ?, category = ?, purchase_date = ?, purchase_value = ?, current_value = ?, currency = ?, description = ?, location = ?, serial_number = ?, warranty_expiry = ?, status = ?, assigned_to = ?, condition_state = ?, document = ? WHERE id = ? AND tenant_id = ? AND branch_id = ?");
+        $stmt->bindParam(1, $name, PDO::PARAM_STR);
+        $stmt->bindParam(2, $category, PDO::PARAM_STR);
+        $stmt->bindParam(3, $purchase_date, PDO::PARAM_STR);
+        $stmt->bindParam(4, $purchase_value, PDO::PARAM_STR);
+        $stmt->bindParam(5, $current_value, PDO::PARAM_STR);
+        $stmt->bindParam(6, $currency, PDO::PARAM_STR);
+        $stmt->bindParam(7, $description, PDO::PARAM_STR);
+        $stmt->bindParam(8, $location, PDO::PARAM_STR);
+        $stmt->bindParam(9, $serial_number, PDO::PARAM_STR);
+        $stmt->bindParam(10, $warranty_expiry, PDO::PARAM_STR);
+        $stmt->bindParam(11, $status, PDO::PARAM_STR);
+        $stmt->bindParam(12, $assigned_to, PDO::PARAM_STR);
+        $stmt->bindParam(13, $condition_state, PDO::PARAM_STR);
+        $stmt->bindParam(14, $document, PDO::PARAM_STR);
+        $stmt->bindParam(15, $asset_id, PDO::PARAM_INT);
+        $stmt->bindParam(16, $tenant_id, PDO::PARAM_INT);
+        $stmt->bindParam(17, $branch_id, PDO::PARAM_INT);
         $stmt->execute();
         $_SESSION['success_message'] = "Asset updated successfully!";
         header('Location: ' . $redirect_url);
@@ -165,8 +196,10 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['deactivate_asset'])) 
     $asset_id = $_POST['asset_id'];
     
     try {
-        $stmt = $conn->prepare("UPDATE assets SET status = 'inactive' WHERE id = ? AND tenant_id = ?");
-        $stmt->bind_param("ii", $asset_id, $tenant_id);
+        $stmt = $pdo->prepare("UPDATE assets SET status = 'inactive' WHERE id = ? AND tenant_id = ? AND branch_id = ?");
+        $stmt->bindParam(1, $asset_id, PDO::PARAM_INT);
+        $stmt->bindParam(2, $tenant_id, PDO::PARAM_INT);
+        $stmt->bindParam(3, $branch_id, PDO::PARAM_INT);
         $stmt->execute();
         $_SESSION['success_message'] = "Asset deactivated successfully!";
         header('Location: ' . $redirect_url);
@@ -183,8 +216,10 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['reactivate_asset'])) 
     $asset_id = $_POST['asset_id'];
     
     try {
-        $stmt = $conn->prepare("UPDATE assets SET status = 'active' WHERE id = ? AND tenant_id = ?");
-        $stmt->bind_param("ii", $asset_id, $tenant_id);
+        $stmt = $pdo->prepare("UPDATE assets SET status = 'active' WHERE id = ? AND tenant_id = ? AND branch_id = ?");
+        $stmt->bindParam(1, $asset_id, PDO::PARAM_INT);
+        $stmt->bindParam(2, $tenant_id, PDO::PARAM_INT);
+        $stmt->bindParam(3, $branch_id, PDO::PARAM_INT);
         $stmt->execute();
         $_SESSION['success_message'] = "Asset reactivated successfully!";
         header('Location: ' . $redirect_url);
@@ -210,10 +245,13 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['change_status'])) {
     }
     
     try {
-        $stmt = $conn->prepare("UPDATE assets SET status = ? WHERE id = ? AND tenant_id = ?");
-        $stmt->bind_param("sii", $new_status, $asset_id, $tenant_id);
+        $stmt = $pdo->prepare("UPDATE assets SET status = ? WHERE id = ? AND tenant_id = ? AND branch_id = ?");
+        $stmt->bindParam(1, $new_status, PDO::PARAM_STR);
+        $stmt->bindParam(2, $asset_id, PDO::PARAM_INT);
+        $stmt->bindParam(3, $tenant_id, PDO::PARAM_INT);
+        $stmt->bindParam(4, $branch_id, PDO::PARAM_INT);
         $stmt->execute();
-        
+
         $status_message = ucfirst($new_status);
         $_SESSION['success_message'] = "Asset marked as {$status_message} successfully!";
         header('Location: ' . $redirect_url);
@@ -231,17 +269,20 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['delete_asset'])) {
     
     try {
         // Get current document
-        $stmt = $conn->prepare("SELECT document FROM assets WHERE id = ? AND tenant_id = ?");
-        $stmt->bind_param("ii", $asset_id, $tenant_id);
+        $stmt = $pdo->prepare("SELECT document FROM assets WHERE id = ? AND tenant_id = ? AND branch_id = ?");
+        $stmt->bindParam(1, $asset_id, PDO::PARAM_INT);
+        $stmt->bindParam(2, $tenant_id, PDO::PARAM_INT);
+        $stmt->bindParam(3, $branch_id, PDO::PARAM_INT);
         $stmt->execute();
-        $result = $stmt->get_result();
-        $asset = $result->fetch_assoc();
-        
+        $asset = $stmt->fetch();
+
         // Delete the asset
-        $stmt = $conn->prepare("DELETE FROM assets WHERE id = ? AND tenant_id = ?");
-        $stmt->bind_param("ii", $asset_id, $tenant_id);
+        $stmt = $pdo->prepare("DELETE FROM assets WHERE id = ? AND tenant_id = ? AND branch_id = ?");
+        $stmt->bindParam(1, $asset_id, PDO::PARAM_INT);
+        $stmt->bindParam(2, $tenant_id, PDO::PARAM_INT);
+        $stmt->bindParam(3, $branch_id, PDO::PARAM_INT);
         $stmt->execute();
-        
+
         // Delete the document file if it exists
         if(!empty($asset['document'])) {
             $file_path = '../uploads/assets/' . $asset['document'];
@@ -249,7 +290,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['delete_asset'])) {
                 unlink($file_path);
             }
         }
-        
+
         $_SESSION['success_message'] = "Asset deleted successfully!";
         header('Location: ' . $redirect_url);
         exit();
@@ -264,7 +305,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['delete_asset'])) {
 $status_filter = isset($_GET['status']) ? $_GET['status'] : 'active';
 
 // Build the SQL query with status filter
-$sql = "SELECT * FROM assets WHERE 1=1 AND tenant_id = ?";
+$sql = "SELECT * FROM assets WHERE 1=1 AND tenant_id = ? AND branch_id = ?";
 
 if ($status_filter !== 'all') {
     $sql .= " AND status = ?";
@@ -274,16 +315,18 @@ $sql .= " ORDER BY created_at DESC";
 
 // Prepare and execute the query
 if ($status_filter !== 'all') {
-    $stmt = $conn->prepare($sql);
-    $stmt->bind_param("si", $status_filter, $tenant_id);
+    $stmt = $pdo->prepare($sql);
+    $stmt->bindParam(1, $tenant_id, PDO::PARAM_INT);
+    $stmt->bindParam(2, $branch_id, PDO::PARAM_INT);
+    $stmt->bindParam(3, $status_filter, PDO::PARAM_STR);
 } else {
-    $stmt = $conn->prepare($sql);
-    $stmt->bind_param("i", $tenant_id);
+    $stmt = $pdo->prepare($sql);
+    $stmt->bindParam(1, $tenant_id, PDO::PARAM_INT);
+    $stmt->bindParam(2, $branch_id, PDO::PARAM_INT);
 }
 
 $stmt->execute();
-$result = $stmt->get_result();
-$assets = $result->fetch_all(MYSQLI_ASSOC);
+$assets = $stmt->fetchAll();
 
 // Calculate total value by currency
 $currency_totals = [];

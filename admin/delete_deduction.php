@@ -12,28 +12,29 @@ if (isset($_GET["id"]) && !empty($_GET["id"])) {
     // Prepare a delete statement
     $sql = "DELETE FROM salary_deductions WHERE id = ? AND tenant_id = ? AND branch_id = ?";
 
-    if ($stmt = mysqli_prepare($conection_db, $sql)) {
-        // Bind variables to the prepared statement as parameters
-        mysqli_stmt_bind_param($stmt, "iii", $param_id, $tenant_id, $branch_id);
-        
+    try {
+        $stmt = $pdo->prepare($sql);
+
         // Set parameters
         $param_id = trim($_GET["id"]);
-        
+
+        // Bind parameters
+        $stmt->bindParam(1, $param_id, PDO::PARAM_INT);
+        $stmt->bindParam(2, $tenant_id, PDO::PARAM_INT);
+        $stmt->bindParam(3, $branch_id, PDO::PARAM_INT);
+
         // Attempt to execute the prepared statement
-        if (mysqli_stmt_execute($stmt)) {
+        if ($stmt->execute()) {
             // Records deleted successfully. Redirect to landing page
             header("location: manage_deductions.php?deleted=1");
             exit();
         } else {
             echo "Oops! Something went wrong. Please try again later.";
         }
+    } catch (PDOException $e) {
+        echo "Oops! Something went wrong. Please try again later.";
+        error_log("Delete deduction error: " . $e->getMessage());
     }
-     
-    // Close statement
-    mysqli_stmt_close($stmt);
-    
-    // Close connection
-    mysqli_close($conection_db);
 } else {
     // URL doesn't contain id parameter
     header("location: manage_deductions.php");

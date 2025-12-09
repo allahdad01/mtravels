@@ -10,6 +10,8 @@
                 </div>
                 <div class="modal-body">
                     <form id="tawseahForm" onsubmit="generateTawseah(event)">
+                    <!-- CSRF Protection -->
+                    <input type="hidden" name="csrf_token" value="<?php echo h($_SESSION['csrf_token'] ?? ''); ?>">
                     <div class="form-group">
                     <label for="job_title"><?php echo __('job_title'); ?></label>
                     <input type="text" class="form-control" id="job_title" placeholder="<?php echo __('job_title'); ?>">

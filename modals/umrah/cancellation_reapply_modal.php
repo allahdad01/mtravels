@@ -11,6 +11,8 @@
                 </button>
             </div>
             <form id="cancellationReapplyForm" onsubmit="return false;">
+                    <!-- CSRF Protection -->
+                    <input type="hidden" name="csrf_token" value="<?php echo h($_SESSION['csrf_token'] ?? ''); ?>">
                 <div class="modal-body">
                     <input type="hidden" id="cr_booking_id" name="booking_id">
                     <input type="hidden" id="cr_action" name="action">

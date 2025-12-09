@@ -22,6 +22,7 @@ if (!isset($_SESSION['user_id'])  || $_SESSION['role'] !== 'admin') {
 }
 $tenant_id = $_SESSION['tenant_id'];
 $branch_id = $_SESSION['branch_id'];
+require_once '../includes/db.php';
 include '../api/ticket_date_change/date_change_handler.php';
 ?>
 <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/sweetalert/1.1.3/sweetalert.css">
@@ -228,9 +229,14 @@ include '../includes/header.php';
                                                                 $isAgencyClient = false; // Default to not agency client
 
                                                                 // Fix: We need to query the clients table using the client name from sold_to
-                                                                $clientQuery = $conn->query("SELECT client_type FROM clients WHERE tenant_id = $tenant_id AND branch_id = $branch_id AND name = '$soldTo'");
-                                                                if ($clientQuery && $clientQuery->num_rows > 0) {
-                                                                    $clientRow = $clientQuery->fetch_assoc();
+                                                                $clientStmt = $pdo->prepare("SELECT client_type FROM clients WHERE tenant_id = ? AND branch_id = ? AND name = ?");
+                                                                $clientStmt->bindParam(1, $tenant_id, PDO::PARAM_INT);
+                                                                $clientStmt->bindParam(2, $branch_id, PDO::PARAM_INT);
+                                                                $clientStmt->bindParam(3, $soldTo, PDO::PARAM_STR);
+                                                                $clientStmt->execute();
+                                                                $clientResult = $clientStmt->fetchAll();
+                                                                if (count($clientResult) > 0) {
+                                                                    $clientRow = $clientResult[0];
                                                                     // Only show payment status for agency clients
                                                                     $isAgencyClient = ($clientRow['client_type'] === 'agency');
                                                                 }
@@ -246,11 +252,16 @@ include '../includes/header.php';
                                                                     $ticketId = $ticket['id'];
 
                                                                     // Query transactions from main_account_transactions table
-                                                                    $transactionQuery = $conn->query("SELECT * FROM main_account_transactions WHERE
+                                                                    $transactionStmt = $pdo->prepare("SELECT * FROM main_account_transactions WHERE
                                                                         transaction_of = 'date_change'
-                                                                        AND reference_id = '$ticketId'
-                                                                        AND tenant_id = $tenant_id
-                                                                        AND branch_id = $branch_id");
+                                                                        AND reference_id = ?
+                                                                        AND tenant_id = ?
+                                                                        AND branch_id = ?");
+                                                                    $transactionStmt->bindParam(1, $ticketId, PDO::PARAM_INT);
+                                                                    $transactionStmt->bindParam(2, $tenant_id, PDO::PARAM_INT);
+                                                                    $transactionStmt->bindParam(3, $branch_id, PDO::PARAM_INT);
+                                                                    $transactionStmt->execute();
+                                                                    $transactionResult = $transactionStmt->fetchAll();
 
                                                                     // Define base exchange rates (can be fetched from DB if dynamic)
                                                                     $exchangeRates = [
@@ -262,8 +273,8 @@ include '../includes/header.php';
 
                                                                     $totalPaidInBase = 0.0;
 
-                                                                    if ($transactionQuery && $transactionQuery->num_rows > 0) {
-                                                                        while ($transaction = $transactionQuery->fetch_assoc()) {
+                                                                    if (count($transactionResult) > 0) {
+                                                                        foreach ($transactionResult as $transaction) {
                                                                             $amount = floatval($transaction['amount']);
                                                                             $transCurrency = $transaction['currency'];
                                                                             

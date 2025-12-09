@@ -25,6 +25,8 @@
                 </div>
 
                 <form id="groupTicketForm" action="generate_group_ticket.php" method="post" target="_blank">
+                    <!-- CSRF Protection -->
+                    <input type="hidden" name="csrf_token" value="<?php echo h($_SESSION['csrf_token'] ?? ''); ?>">
                     <input type="hidden" name="selected_members" id="selectedGroupMembersInput">
 
                     <!-- Airline & PNR -->

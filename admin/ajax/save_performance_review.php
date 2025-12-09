@@ -119,6 +119,7 @@ try {
     }
 
 } catch (Exception $e) {
-    echo json_encode(['success' => false, 'message' => 'Database error: ' . $e->getMessage()]);
+    error_log('Database error in save_performance_review.php: ' . $e->getMessage());
+    echo json_encode(['success' => false, 'message' => 'An error occurred while saving the review. Please try again.']);
 }
 ?>

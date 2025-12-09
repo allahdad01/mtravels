@@ -1,11 +1,8 @@
 <?php
-// Database connection
-$host = "localhost";
-$username = "root";
-$password = "";
-$database = "travelagency";
+require_once '../config.php';
 
-$conn = new mysqli($host, $username, $password, $database);
+// Database connection using secure config
+$conn = new mysqli(DB_SERVER, DB_USERNAME, DB_PASSWORD, DB_NAME);
 
 // Check connection
 if ($conn->connect_error) {

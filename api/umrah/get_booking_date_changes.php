@@ -2,7 +2,6 @@
 // Include security and database connections
 require_once '../../admin/security.php';
 require_once '../../includes/db.php';
-require_once '../../includes/conn.php';
 
 // Enforce authentication
 enforce_auth();
@@ -21,26 +20,25 @@ if (!$booking_id) {
 
 try {
     // Get date change history for this booking
-    $stmt = $conn->prepare("
+    $stmt = $pdo->prepare("
         SELECT * FROM date_change_umrah
         WHERE umrah_booking_id = ? AND tenant_id = ? AND branch_id = ?
         ORDER BY created_at DESC
     ");
-    $stmt->bind_param("iii", $booking_id, $tenant_id, $branch_id);
+    $stmt->bindParam(1, $booking_id, PDO::PARAM_INT);
+    $stmt->bindParam(2, $tenant_id, PDO::PARAM_INT);
+    $stmt->bindParam(3, $branch_id, PDO::PARAM_INT);
     $stmt->execute();
-    $result = $stmt->get_result();
+    $result = $stmt->fetchAll(PDO::FETCH_ASSOC);
 
-    $history = [];
-    while ($row = $result->fetch_assoc()) {
-        $history[] = $row;
-    }
+    $history = $result;
 
     echo json_encode([
         'success' => true,
         'history' => $history
     ]);
 
-} catch (Exception $e) {
+} catch (PDOException $e) {
     error_log("Get booking date changes error: " . $e->getMessage());
     echo json_encode(['success' => false, 'message' => 'Failed to load date change history']);
 }

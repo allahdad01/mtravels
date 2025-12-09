@@ -5,19 +5,29 @@ require_once 'includes/db_security.php';
 // Include security module
 require_once 'security.php';
 
+// Include secure headers helper
+require_once 'includes/set_secure_headers.php';
+
 // Include language helper
 require_once '../includes/language_helpers.php';
 
 // Enforce authentication
 enforce_auth();
 
-$tenant_id = $_SESSION['tenant_id'];
-$branch_id = $_SESSION['branch_id'];
 // Check if user is logged in
 if (!isset($_SESSION['user_id'])  || $_SESSION['role'] !== 'admin') {
     header('Location: ../login.php');
     exit();
 }
+
+// Generate CSRF token if it doesn't exist
+if (!isset($_SESSION['csrf_token'])) {
+    $_SESSION['csrf_token'] = bin2hex(random_bytes(32));
+}
+
+$tenant_id = $_SESSION['tenant_id'];
+$branch_id = $_SESSION['branch_id'];
+require_once '../includes/db.php';
 include '../api/creditor/creditor_handler.php';
 ?>
 
@@ -792,13 +802,15 @@ include '../api/creditor/creditor_handler.php';
                             <tbody>
                                 <?php
                                 // Fetch transactions for this creditor
-                                $transStmt = $conn->prepare("SELECT * FROM creditor_transactions WHERE creditor_id = ? ORDER BY payment_date DESC");
-                                $transStmt->bind_param("i", $creditor['id']);
+                                $transStmt = $pdo->prepare("SELECT * FROM creditor_transactions WHERE creditor_id = ? AND tenant_id = ? AND branch_id = ? ORDER BY payment_date DESC");
+                                $transStmt->bindParam(1, $creditor['id'], PDO::PARAM_INT);
+                                $transStmt->bindParam(2, $tenant_id, PDO::PARAM_INT);
+                                $transStmt->bindParam(3, $branch_id, PDO::PARAM_INT);
                                 $transStmt->execute();
-                                $transResult = $transStmt->get_result();
+                                $transResult = $transStmt->fetchAll();
                                 
-                                if ($transResult->num_rows > 0) {
-                                    while ($transaction = $transResult->fetch_assoc()) {
+                                if (count($transResult) > 0) {
+                                    foreach ($transResult as $transaction) {
                                         echo '<tr>';
                                         // Ensure we display the exact date and time as stored in the database
                                         $dateTime = new DateTime($transaction['created_at']);
@@ -995,12 +1007,14 @@ $edit_creditor = isset($_POST['edit_creditor']) ? DbSecurity::validateInput($_PO
 // Add Edit Transaction Modals for each transaction
 foreach ($creditors as $creditor): 
     // Fetch transactions for this creditor
-    $transStmt = $conn->prepare("SELECT * FROM creditor_transactions WHERE creditor_id = ? AND tenant_id = ? AND branch_id = ? ORDER BY payment_date DESC");
-    $transStmt->bind_param("iii", $creditor['id'], $tenant_id, $branch_id);
+    $transStmt = $pdo->prepare("SELECT * FROM creditor_transactions WHERE creditor_id = ? AND tenant_id = ? AND branch_id = ? ORDER BY payment_date DESC");
+    $transStmt->bindParam(1, $creditor['id'], PDO::PARAM_INT);
+    $transStmt->bindParam(2, $tenant_id, PDO::PARAM_INT);
+    $transStmt->bindParam(3, $branch_id, PDO::PARAM_INT);
     $transStmt->execute();
-    $transResult = $transStmt->get_result();
+    $transResult = $transStmt->fetchAll();
     
-    while ($transaction = $transResult->fetch_assoc()):
+    foreach ($transResult as $transaction):
 ?>
     <!-- Edit Transaction Modal -->
     <div class="modal fade" id="editTransactionModal_<?php echo $transaction['id']; ?>" tabindex="-1" role="dialog" aria-hidden="true">
@@ -1069,9 +1083,9 @@ foreach ($creditors as $creditor):
             </div>
         </div>
     </div>
-<?php 
-    endwhile;
-endforeach; 
+<?php
+    endforeach;
+endforeach;
 ?>
 
 

@@ -17,7 +17,6 @@ if (!isset($_SESSION['user_id']) || $_SESSION['role'] !== 'admin') {
 
 // Database connection
 require_once('../includes/db.php');
-require_once('../includes/conn.php');
 // Pagination setup
 $page = isset($_GET['page']) ? (int)$_GET['page'] : 1;
 $recordsPerPage = 10;
@@ -25,7 +24,8 @@ $offset = ($page - 1) * $recordsPerPage;
 
 // Check if umrah_refunds table exists
 $tableCheckQuery = "SHOW TABLES LIKE 'umrah_refunds'";
-$tableExists = $conn->query($tableCheckQuery)->num_rows > 0;
+$tableCheckStmt = $pdo->query($tableCheckQuery);
+$tableExists = $tableCheckStmt->rowCount() > 0;
 
 // Fetch refunds if table exists with pagination
 $refunds = [];
@@ -38,11 +38,16 @@ if ($tableExists) {
         SELECT COUNT(*) as total
         FROM umrah_refunds r
         LEFT JOIN umrah_bookings um ON r.booking_id = um.booking_id
-        WHERE r.tenant_id = $tenant_id AND r.branch_id = $branch_id
-        AND um.tenant_id = $tenant_id AND um.branch_id = $branch_id
+        WHERE r.tenant_id = ? AND r.branch_id = ?
+        AND um.tenant_id = ? AND um.branch_id = ?
     ";
-    $countResult = $conn->query($countQuery);
-    $totalRefunds = $countResult ? $countResult->fetch_assoc()['total'] : 0;
+    $countStmt = $pdo->prepare($countQuery);
+    $countStmt->bindParam(1, $tenant_id, PDO::PARAM_INT);
+    $countStmt->bindParam(2, $branch_id, PDO::PARAM_INT);
+    $countStmt->bindParam(3, $tenant_id, PDO::PARAM_INT);
+    $countStmt->bindParam(4, $branch_id, PDO::PARAM_INT);
+    $countStmt->execute();
+    $totalRefunds = $countStmt->fetch(PDO::FETCH_ASSOC)['total'];
     $totalPages = ceil($totalRefunds / $recordsPerPage);
 
     // Then fetch paginated refunds
@@ -57,20 +62,22 @@ if ($tableExists) {
         LEFT JOIN users u ON r.processed_by = u.id
         LEFT JOIN main_account m ON um.paid_to = m.id
         LEFT JOIN clients c ON um.sold_to = c.id
-        WHERE r.tenant_id = $tenant_id AND r.branch_id = $branch_id
-        AND um.tenant_id = $tenant_id AND um.branch_id = $branch_id
+        WHERE r.tenant_id = ? AND r.branch_id = ?
+        AND um.tenant_id = ? AND um.branch_id = ?
         ORDER BY r.created_at DESC
         LIMIT ? OFFSET ?
     ";
-    
-    $stmt = $conn->prepare($refundsQuery);
-    $stmt->bind_param("ii", $recordsPerPage, $offset);
+
+    $stmt = $pdo->prepare($refundsQuery);
+    $stmt->bindParam(1, $tenant_id, PDO::PARAM_INT);
+    $stmt->bindParam(2, $branch_id, PDO::PARAM_INT);
+    $stmt->bindParam(3, $tenant_id, PDO::PARAM_INT);
+    $stmt->bindParam(4, $branch_id, PDO::PARAM_INT);
+    $stmt->bindParam(5, $recordsPerPage, PDO::PARAM_INT);
+    $stmt->bindParam(6, $offset, PDO::PARAM_INT);
     $stmt->execute();
-    $refundsResult = $stmt->get_result();
-    
-    if ($refundsResult) {
-        $refunds = $refundsResult->fetch_all(MYSQLI_ASSOC);
-    }
+
+    $refunds = $stmt->fetchAll(PDO::FETCH_ASSOC);
 }
 
 ?>

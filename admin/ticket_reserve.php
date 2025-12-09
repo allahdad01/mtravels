@@ -19,7 +19,6 @@ $branch_id = $_SESSION['branch_id'];
 
 // Database connection
 require_once('../includes/db.php');
-include '../includes/conn.php';
 
 // Get the user ID from the session
 $user_id = $_SESSION["user_id"];
@@ -98,10 +97,17 @@ $params[] = $offset;
 $types   .= "iis";
 
 // Prepare & execute
-$stmt = $conn->prepare($ticketsQuery);
-$stmt->bind_param($types, $tenant_id, $branch_id, ...$params);
+$stmt = $pdo->prepare($ticketsQuery);
+$stmt->bindParam(1, $tenant_id, PDO::PARAM_INT);
+$stmt->bindParam(2, $branch_id, PDO::PARAM_INT);
+
+// Bind search parameters if any
+$paramIndex = 3;
+foreach ($params as $param) {
+    $stmt->bindParam($paramIndex++, $param, is_int($param) ? PDO::PARAM_INT : PDO::PARAM_STR);
+}
 $stmt->execute();
-$ticketsResult = $stmt->get_result();
+$ticketsResult = $stmt->fetchAll(PDO::FETCH_ASSOC);
 
 // ---------------- Count Query ---------------- //
 $countQuery = "
@@ -113,16 +119,24 @@ $countQuery = "
     $searchCondition
 ";
 
-$stmtCount = $conn->prepare($countQuery);
-$stmtCount->bind_param(substr($types, 0, -2), $tenant_id, $branch_id, ...array_slice($params, 0, -2)); // exclude limit/offset
+$stmtCount = $pdo->prepare($countQuery);
+$stmtCount->bindParam(1, $tenant_id, PDO::PARAM_INT);
+$stmtCount->bindParam(2, $branch_id, PDO::PARAM_INT);
+
+// Bind search parameters for count query (excluding limit/offset)
+$countParamIndex = 3;
+$countParams = array_slice($params, 0, -2); // exclude limit/offset
+foreach ($countParams as $param) {
+    $stmtCount->bindParam($countParamIndex++, $param, is_int($param) ? PDO::PARAM_INT : PDO::PARAM_STR);
+}
 $stmtCount->execute();
-$totalRecords = $stmtCount->get_result()->fetch_assoc()['total'];
+$totalRecords = $stmtCount->fetch(PDO::FETCH_ASSOC)['total'];
 $totalPages = ceil($totalRecords / $recordsPerPage);
 
 // ---------------- Process Tickets ---------------- //
 $tickets = [];
 if ($ticketsResult) {
-    while ($row = $ticketsResult->fetch_assoc()) {
+    foreach ($ticketsResult as $row) {
         $ticket_id = $row['id'];
         if (!isset($tickets[$ticket_id])) {
             $tickets[$ticket_id] = [
@@ -157,16 +171,16 @@ if ($ticketsResult) {
         }
     }
 } else {
-    echo "Error: " . $conn->error;
+    echo "Error: No tickets found";
 }
 
 // ---------------- Suppliers ---------------- //
 $suppliersQuery = "SELECT id, name FROM suppliers WHERE status = 'active' AND tenant_id = ? AND branch_id = ?";
-$stmtSup = $conn->prepare($suppliersQuery);
-$stmtSup->bind_param("ii", $tenant_id, $branch_id);
+$stmtSup = $pdo->prepare($suppliersQuery);
+$stmtSup->bindParam(1, $tenant_id, PDO::PARAM_INT);
+$stmtSup->bindParam(2, $branch_id, PDO::PARAM_INT);
 $stmtSup->execute();
-$suppliersResult = $stmtSup->get_result();
-$suppliers = $suppliersResult->fetch_all(MYSQLI_ASSOC);
+$suppliers = $stmtSup->fetchAll(PDO::FETCH_ASSOC);
 
 // Create an associative array of supplier id to supplier name
 $supplier_names = [];
@@ -286,9 +300,13 @@ foreach ($suppliers as $supplier) {
                                                     foreach ($tickets as $ticket): ?>
                                                         <?php
                                                         $isAgencyClient = false;
-                                                        $clientQuery = $conn->query("SELECT client_type FROM clients WHERE name = '{$ticket['ticket']['sold_to']}' AND tenant_id = $tenant_id AND branch_id = $branch_id");
-                                                        if ($clientQuery && $clientQuery->num_rows > 0) {
-                                                            $clientRow = $clientQuery->fetch_assoc();
+                                                        $clientStmt = $pdo->prepare("SELECT client_type FROM clients WHERE name = ? AND tenant_id = ? AND branch_id = ?");
+                                                        $clientStmt->bindParam(1, $ticket['ticket']['sold_to'], PDO::PARAM_STR);
+                                                        $clientStmt->bindParam(2, $tenant_id, PDO::PARAM_INT);
+                                                        $clientStmt->bindParam(3, $branch_id, PDO::PARAM_INT);
+                                                        $clientStmt->execute();
+                                                        $clientRow = $clientStmt->fetch(PDO::FETCH_ASSOC);
+                                                        if ($clientRow) {
                                                             $isAgencyClient = ($clientRow['client_type'] === 'agency');
                                                         }
                                                         ?>
@@ -326,9 +344,13 @@ foreach ($suppliers as $supplier) {
                                                                 $isAgencyClient = false; // Default to not agency client
 
                                                                 // Fix: We need to query the clients table using the client name from sold_to
-                                                                $clientQuery = $conn->query("SELECT client_type FROM clients WHERE tenant_id = $tenant_id AND branch_id = $branch_id AND name = '".$ticket['ticket']['sold_to']."'");
-                                                                if ($clientQuery && $clientQuery->num_rows > 0) {
-                                                                    $clientRow = $clientQuery->fetch_assoc();
+                                                                $clientStmt = $pdo->prepare("SELECT client_type FROM clients WHERE tenant_id = ? AND branch_id = ? AND name = ?");
+                                                                $clientStmt->bindParam(1, $tenant_id, PDO::PARAM_INT);
+                                                                $clientStmt->bindParam(2, $branch_id, PDO::PARAM_INT);
+                                                                $clientStmt->bindParam(3, $ticket['ticket']['sold_to'], PDO::PARAM_STR);
+                                                                $clientStmt->execute();
+                                                                $clientRow = $clientStmt->fetch(PDO::FETCH_ASSOC);
+                                                                if ($clientRow) {
                                                                     // Only show payment status for agency clients
                                                                     $isAgencyClient = ($clientRow['client_type'] === 'agency');
                                                                 }
@@ -344,12 +366,15 @@ foreach ($suppliers as $supplier) {
                                                                     $ticketId = $ticket['ticket']['id'];
 
                                                                     // Query transactions from main_account_transactions table
-                                                                    $transactionQuery = $conn->query("SELECT * FROM main_account_transactions WHERE
+                                                                    $transactionStmt = $pdo->prepare("SELECT * FROM main_account_transactions WHERE
                                                                         transaction_of = 'ticket_reserve'
-                                                                        AND reference_id = '$ticketId'");
+                                                                        AND reference_id = ?");
+                                                                    $transactionStmt->bindParam(1, $ticketId, PDO::PARAM_INT);
+                                                                    $transactionStmt->execute();
+                                                                    $transactionQuery = $transactionStmt->fetchAll(PDO::FETCH_ASSOC);
 
-                                                                    if ($transactionQuery && $transactionQuery->num_rows > 0) {
-                                                                        while ($transaction = $transactionQuery->fetch_assoc()) {
+                                                                    if ($transactionQuery && count($transactionQuery) > 0) {
+                                                                        foreach ($transactionQuery as $transaction) {
                                                                             $amount = floatval($transaction['amount']);
                                                                             $transCurrency = $transaction['currency'];
                                                                             $transExchangeRate = isset($transaction['exchange_rate']) && $transaction['exchange_rate'] > 0 ? floatval($transaction['exchange_rate']) : 1.0;

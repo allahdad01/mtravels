@@ -12,6 +12,8 @@
                 </button>
             </div>
             <form id="editMessageForm" method="POST" action="update_message.php">
+                    <!-- CSRF Protection -->
+                    <input type="hidden" name="csrf_token" value="<?php echo h($_SESSION['csrf_token'] ?? ''); ?>">
                 <div class="modal-body">
                     <input type="hidden" id="edit_message_id" name="message_id">
                     <div class="form-group">

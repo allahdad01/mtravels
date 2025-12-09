@@ -9,6 +9,8 @@
                 <button type="button" class="close text-white" data-dismiss="modal">&times;</button>
             </div>
             <form id="editTransactionForm">
+                    <!-- CSRF Protection -->
+                    <input type="hidden" name="csrf_token" value="<?php echo h($_SESSION['csrf_token'] ?? ''); ?>">
                 <div class="modal-body">
                     <input type="hidden" id="editTransactionId" name="transaction_id">
                     <input type="hidden" id="editBookingId" name="booking_id">

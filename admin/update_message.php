@@ -14,7 +14,6 @@ $branch_id = $_SESSION['branch_id'];
 
 // Include database connection
 include '../includes/db.php';
-include '../includes/conn.php';
 
 // Verify that the request is POST
 if ($_SERVER['REQUEST_METHOD'] !== 'POST') {
@@ -25,9 +24,9 @@ if ($_SERVER['REQUEST_METHOD'] !== 'POST') {
 
 // Get form data
 $message_id = isset($_POST['message_id']) ? (int)$_POST['message_id'] : 0;
-$subject = isset($_POST['subject']) ? mysqli_real_escape_string($conn, $_POST['subject']) : '';
-$message = isset($_POST['message']) ? mysqli_real_escape_string($conn, $_POST['message']) : '';
-$recipient_type = isset($_POST['recipient_type']) ? mysqli_real_escape_string($conn, $_POST['recipient_type']) : '';
+$subject = isset($_POST['subject']) ? trim($_POST['subject']) : '';
+$message = isset($_POST['message']) ? trim($_POST['message']) : '';
+$recipient_type = isset($_POST['recipient_type']) ? trim($_POST['recipient_type']) : '';
 $recipient_id = isset($_POST['recipient_id']) ? (int)$_POST['recipient_id'] : null;
 
 // Validate message_id
@@ -47,13 +46,22 @@ if (empty($subject) || empty($message) || empty($recipient_type)) {
 // Prepare update data
 if ($recipient_type === 'individual' && $recipient_id) {
     // Check if recipient exists in either users or clients table
-    $user_check = mysqli_query($conn, "SELECT 1 FROM users WHERE id = $recipient_id AND tenant_id = $tenant_id AND branch_id = $branch_id");
-    $client_check = mysqli_query($conn, "SELECT 1 FROM clients WHERE id = $recipient_id AND tenant_id = $tenant_id AND branch_id = $branch_id");
-    
-    if (mysqli_num_rows($user_check) > 0) {
+    $user_check_stmt = $pdo->prepare("SELECT 1 FROM users WHERE id = ? AND tenant_id = ? AND branch_id = ?");
+    $user_check_stmt->bindParam(1, $recipient_id, PDO::PARAM_INT);
+    $user_check_stmt->bindParam(2, $tenant_id, PDO::PARAM_INT);
+    $user_check_stmt->bindParam(3, $branch_id, PDO::PARAM_INT);
+    $user_check_stmt->execute();
+
+    $client_check_stmt = $pdo->prepare("SELECT 1 FROM clients WHERE id = ? AND tenant_id = ? AND branch_id = ?");
+    $client_check_stmt->bindParam(1, $recipient_id, PDO::PARAM_INT);
+    $client_check_stmt->bindParam(2, $tenant_id, PDO::PARAM_INT);
+    $client_check_stmt->bindParam(3, $branch_id, PDO::PARAM_INT);
+    $client_check_stmt->execute();
+
+    if ($user_check_stmt->rowCount() > 0) {
         $recipient_table = 'users';
         $valid_recipient = true;
-    } else if (mysqli_num_rows($client_check) > 0) {
+    } else if ($client_check_stmt->rowCount() > 0) {
         $recipient_table = 'clients';
         $valid_recipient = true;
     } else {
@@ -67,38 +75,55 @@ if ($recipient_type === 'individual' && $recipient_id) {
     }
 
     // Update the message with individual recipient
-    $query = "UPDATE messages SET
-              subject = '$subject',
-              message = '$message',
-              recipient_type = '$recipient_type',
-              recipient_id = $recipient_id,
-              recipient_table = '$recipient_table'
-              WHERE id = $message_id AND tenant_id = $tenant_id AND branch_id = $branch_id";
+    $update_stmt = $pdo->prepare("UPDATE messages SET
+              subject = ?,
+              message = ?,
+              recipient_type = ?,
+              recipient_id = ?,
+              recipient_table = ?
+              WHERE id = ? AND tenant_id = ? AND branch_id = ?");
+    $update_stmt->bindParam(1, $subject, PDO::PARAM_STR);
+    $update_stmt->bindParam(2, $message, PDO::PARAM_STR);
+    $update_stmt->bindParam(3, $recipient_type, PDO::PARAM_STR);
+    $update_stmt->bindParam(4, $recipient_id, PDO::PARAM_INT);
+    $update_stmt->bindParam(5, $recipient_table, PDO::PARAM_STR);
+    $update_stmt->bindParam(6, $message_id, PDO::PARAM_INT);
+    $update_stmt->bindParam(7, $tenant_id, PDO::PARAM_INT);
+    $update_stmt->bindParam(8, $branch_id, PDO::PARAM_INT);
 } else {
     // Update the message with non-individual recipient
-    $query = "UPDATE messages SET
-              subject = '$subject',
-              message = '$message',
-              recipient_type = '$recipient_type',
+    $update_stmt = $pdo->prepare("UPDATE messages SET
+              subject = ?,
+              message = ?,
+              recipient_type = ?,
               recipient_id = NULL,
               recipient_table = NULL
-              WHERE id = $message_id AND tenant_id = $tenant_id AND branch_id = $branch_id";
+              WHERE id = ? AND tenant_id = ? AND branch_id = ?");
+    $update_stmt->bindParam(1, $subject, PDO::PARAM_STR);
+    $update_stmt->bindParam(2, $message, PDO::PARAM_STR);
+    $update_stmt->bindParam(3, $recipient_type, PDO::PARAM_STR);
+    $update_stmt->bindParam(4, $message_id, PDO::PARAM_INT);
+    $update_stmt->bindParam(5, $tenant_id, PDO::PARAM_INT);
+    $update_stmt->bindParam(6, $branch_id, PDO::PARAM_INT);
 }
 
 // Execute query
-if (mysqli_query($conn, $query)) {
+if ($update_stmt->execute()) {
     // Add activity logging
     $user_id = $_SESSION['user_id'] ?? 0;
     $ip_address = $_SERVER['REMOTE_ADDR'] ?? '';
     $user_agent = $_SERVER['HTTP_USER_AGENT'] ?? '';
-    
+
     // Get original message data if possible
     $old_values = [];
-    $get_original = "SELECT * FROM messages WHERE id = $message_id AND tenant_id = $tenant_id AND branch_id = $branch_id";
-    $original_result = mysqli_query($conn, $get_original);
-    
-    if ($original_result && mysqli_num_rows($original_result) > 0) {
-        $original_data = mysqli_fetch_assoc($original_result);
+    $get_original_stmt = $pdo->prepare("SELECT * FROM messages WHERE id = ? AND tenant_id = ? AND branch_id = ?");
+    $get_original_stmt->bindParam(1, $message_id, PDO::PARAM_INT);
+    $get_original_stmt->bindParam(2, $tenant_id, PDO::PARAM_INT);
+    $get_original_stmt->bindParam(3, $branch_id, PDO::PARAM_INT);
+    $get_original_stmt->execute();
+
+    if ($get_original_stmt->rowCount() > 0) {
+        $original_data = $get_original_stmt->fetch(PDO::FETCH_ASSOC);
         $old_values = [
             'subject' => $original_data['subject'],
             'message' => $original_data['message'],
@@ -136,7 +161,7 @@ if (mysqli_query($conn, $query)) {
     
     $_SESSION['success_message'] = "Message updated successfully!";
 } else {
-    $_SESSION['error_message'] = "Error updating message: " . mysqli_error($conn);
+    $_SESSION['error_message'] = "Error updating message: " . $update_stmt->errorInfo()[2];
 }
 
 // Redirect back to the messages page

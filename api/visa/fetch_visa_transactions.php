@@ -11,7 +11,7 @@ enforce_auth();
 
 
 // Include database connection
-require_once('../../includes/conn.php');
+require_once('../../includes/db.php');
 
 // Check if user is logged in
 if (!isset($_SESSION['user_id'])) {
@@ -30,41 +30,42 @@ $tenant_id = $_SESSION['tenant_id'];
 $branch_id = $_SESSION['branch_id'];
 try {
     // Prepare a query to fetch all transactions for the given visa ID
-    $query = "SELECT t.*, 
-                    DATE_FORMAT(t.created_at, '%Y-%m-%d') AS payment_date,
-                    TIME_FORMAT(t.created_at, '%H:%i:%s') AS payment_time,
-                    DATE_FORMAT(t.created_at, '%b %d, %Y %h:%i %p') AS formatted_date
-               FROM main_account_transactions t
-               WHERE t.reference_id = ? AND t.tenant_id = ? AND t.branch_id = ?
-               AND t.transaction_of = 'visa_sale'
-               ORDER BY t.created_at DESC";
+    $query = "SELECT t.*,
+                     DATE_FORMAT(t.created_at, '%Y-%m-%d') AS payment_date,
+                     TIME_FORMAT(t.created_at, '%H:%i:%s') AS payment_time,
+                     DATE_FORMAT(t.created_at, '%b %d, %Y %h:%i %p') AS formatted_date
+                FROM main_account_transactions t
+                WHERE t.reference_id = ? AND t.tenant_id = ? AND t.branch_id = ?
+                AND t.transaction_of = 'visa_sale'
+                ORDER BY t.created_at DESC";
 
-   $stmt = $conn->prepare($query);
-   $stmt->bind_param('iii', $visaId, $tenant_id, $branch_id);
-    $stmt->execute();
-    $result = $stmt->get_result();
-    
+   $stmt = $pdo->prepare($query);
+   $stmt->bindParam(1, $visaId, PDO::PARAM_INT);
+   $stmt->bindParam(2, $tenant_id, PDO::PARAM_INT);
+   $stmt->bindParam(3, $branch_id, PDO::PARAM_INT);
+   $stmt->execute();
+
     // Fetch all results
     $transactions = [];
-    while ($row = $result->fetch_assoc()) {
+    while ($row = $stmt->fetch(PDO::FETCH_ASSOC)) {
         // Convert amount to float for proper JSON encoding
         $row['amount'] = floatval($row['amount']);
-        
+
         // Ensure payment description exists for older records
         if (!isset($row['description']) && isset($row['remarks'])) {
             $row['description'] = $row['remarks'];
         }
-        
+
         $transactions[] = $row;
     }
-    
+
     // Return the transactions as JSON
     echo json_encode($transactions);
-    
-} catch (Exception $e) {
+
+} catch (PDOException $e) {
     // Log error
     error_log('Error fetching visa transactions: ' . $e->getMessage());
-    
+
     // Return empty array to avoid breaking the client-side code
     echo json_encode([]);
 }

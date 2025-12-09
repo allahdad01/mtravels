@@ -9,7 +9,6 @@ $branch_id = $_SESSION['branch_id'];
 
 // Database connection
 require_once('../../includes/db.php');
-require_once('../../includes/conn.php');
 
 if ($_SERVER['REQUEST_METHOD'] === 'GET' && isset($_GET['family_id'])) {
     $family_id = intval($_GET['family_id']);
@@ -28,12 +27,14 @@ if ($_SERVER['REQUEST_METHOD'] === 'GET' && isset($_GET['family_id'])) {
             GROUP BY f.family_id
         ";
 
-        $stmt = $conn->prepare($familyQuery);
-        $stmt->bind_param("iiiii", $tenant_id, $branch_id, $family_id, $tenant_id, $branch_id);
+        $stmt = $pdo->prepare($familyQuery);
+        $stmt->bindParam(1, $tenant_id, PDO::PARAM_INT);
+        $stmt->bindParam(2, $branch_id, PDO::PARAM_INT);
+        $stmt->bindParam(3, $family_id, PDO::PARAM_INT);
+        $stmt->bindParam(4, $tenant_id, PDO::PARAM_INT);
+        $stmt->bindParam(5, $branch_id, PDO::PARAM_INT);
         $stmt->execute();
-        $familyResult = $stmt->get_result();
-        $familyData = $familyResult->fetch_assoc();
-        $stmt->close();
+        $familyData = $stmt->fetch(PDO::FETCH_ASSOC);
 
         // Get family members with their payment details
         $membersQuery = "
@@ -49,13 +50,15 @@ if ($_SERVER['REQUEST_METHOD'] === 'GET' && isset($_GET['family_id'])) {
             ORDER BY ub.name
         ";
 
-        $stmt = $conn->prepare($membersQuery);
-        $stmt->bind_param("iii", $family_id, $tenant_id, $branch_id);
+        $stmt = $pdo->prepare($membersQuery);
+        $stmt->bindParam(1, $family_id, PDO::PARAM_INT);
+        $stmt->bindParam(2, $tenant_id, PDO::PARAM_INT);
+        $stmt->bindParam(3, $branch_id, PDO::PARAM_INT);
         $stmt->execute();
-        $membersResult = $stmt->get_result();
+        $membersResult = $stmt->fetchAll(PDO::FETCH_ASSOC);
 
         $members = [];
-        while ($member = $membersResult->fetch_assoc()) {
+        foreach ($membersResult as $member) {
             $members[] = [
                 'booking_id' => $member['booking_id'],
                 'name' => $member['name'],
@@ -65,7 +68,6 @@ if ($_SERVER['REQUEST_METHOD'] === 'GET' && isset($_GET['family_id'])) {
                 'currency' => $member['currency'] ?? 'USD'
             ];
         }
-        $stmt->close();
 
         // Prepare response data
         $response = [
@@ -81,7 +83,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'GET' && isset($_GET['family_id'])) {
 
         echo json_encode($response);
 
-    } catch (Exception $e) {
+    } catch (PDOException $e) {
         echo json_encode([
             'success' => false,
             'message' => 'Database error: ' . $e->getMessage()
@@ -93,6 +95,4 @@ if ($_SERVER['REQUEST_METHOD'] === 'GET' && isset($_GET['family_id'])) {
         'message' => 'Invalid request'
     ]);
 }
-
-$conn->close();
 ?>

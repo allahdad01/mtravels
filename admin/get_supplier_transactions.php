@@ -6,12 +6,7 @@ $branch_id = $_SESSION['branch_id'];
 // Enforce authentication
 enforce_auth();
 
-require_once '../includes/conn.php';
-
-// Check connection
-if ($conn->connect_error) {
-    die("Connection failed: " . $conn->connect_error);
-}
+require_once '../includes/db.php';
 
 // Retrieve supplier ID and date range from the GET parameters
 $supplierId = $_GET['supplierId'];
@@ -31,27 +26,21 @@ if ($startDate && $endDate) {
 }
 
 // Prepare and execute query
-if ($stmt = $conn->prepare($query)) {
-    if ($startDate && $endDate) {
-        $stmt->bind_param("iiiss", $supplierId, $tenant_id, $branch_id, $startDate, $endDate);
-    } elseif ($startDate) {
-        $stmt->bind_param("iiis", $supplierId, $tenant_id, $branch_id, $startDate);
-    } elseif ($endDate) {
-        $stmt->bind_param("iiis", $supplierId, $tenant_id, $branch_id, $endDate);
-    } else {
-        $stmt->bind_param("iii", $supplierId, $tenant_id, $branch_id);
-    }
+$stmt = $pdo->prepare($query);
+$params = [$supplierId, $tenant_id, $branch_id];
 
-    $stmt->execute();
-    $result = $stmt->get_result();
-    $transactions = [];
-
-    while ($row = $result->fetch_assoc()) {
-        $transactions[] = $row;
-    }
-
-    // Return as JSON
-    echo json_encode($transactions);
+if ($startDate && $endDate) {
+    $params[] = $startDate;
+    $params[] = $endDate;
+} elseif ($startDate) {
+    $params[] = $startDate;
+} elseif ($endDate) {
+    $params[] = $endDate;
 }
-$conn->close();
+
+$stmt->execute($params);
+$transactions = $stmt->fetchAll();
+
+// Return as JSON
+echo json_encode($transactions);
 ?>

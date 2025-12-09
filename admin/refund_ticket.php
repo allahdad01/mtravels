@@ -117,10 +117,14 @@ $version = '?v=' . time();
                                                         $soldTo = $ticket['sold_to_name'];
                                                         $isAgencyClient = false;
 
-                                                        $clientQuery = $conn->query("SELECT client_type FROM clients WHERE name = '$soldTo' AND tenant_id = $tenant_id AND branch_id = $branch_id");
-                                                        if ($clientQuery && $clientQuery->num_rows > 0) {
-                                                            $clientRow = $clientQuery->fetch_assoc();
-                                                            $isAgencyClient = ($clientRow['client_type'] === 'agency');
+                                                        $clientStmt = $pdo->prepare("SELECT client_type FROM clients WHERE name = ? AND tenant_id = ? AND branch_id = ?");
+                                                        $clientStmt->bindParam(1, $soldTo, PDO::PARAM_STR);
+                                                        $clientStmt->bindParam(2, $tenant_id, PDO::PARAM_INT);
+                                                        $clientStmt->bindParam(3, $branch_id, PDO::PARAM_INT);
+                                                        $clientStmt->execute();
+                                                        $clientResult = $clientStmt->fetchAll();
+                                                        if (count($clientResult) > 0) {
+                                                            $isAgencyClient = ($clientResult[0]['client_type'] === 'agency');
                                                         }
                                                         ?>
                                                     <tr>
@@ -193,10 +197,14 @@ $version = '?v=' . time();
                                                         $soldTo = $ticket['sold_to_name'];
                                                         $isAgencyClient = false;
 
-                                                        $clientQuery = $conn->query("SELECT client_type FROM clients WHERE name = '$soldTo' AND tenant_id = $tenant_id AND branch_id = $branch_id");
-                                                        if ($clientQuery && $clientQuery->num_rows > 0) {
-                                                            $clientRow = $clientQuery->fetch_assoc();
-                                                            $isAgencyClient = ($clientRow['client_type'] === 'agency');
+                                                        $clientStmt = $pdo->prepare("SELECT client_type FROM clients WHERE name = ? AND tenant_id = ? AND branch_id = ?");
+                                                        $clientStmt->bindParam(1, $soldTo, PDO::PARAM_STR);
+                                                        $clientStmt->bindParam(2, $tenant_id, PDO::PARAM_INT);
+                                                        $clientStmt->bindParam(3, $branch_id, PDO::PARAM_INT);
+                                                        $clientStmt->execute();
+                                                        $clientResult = $clientStmt->fetchAll();
+                                                        if (count($clientResult) > 0) {
+                                                            $isAgencyClient = ($clientResult[0]['client_type'] === 'agency');
                                                         }
 
                                                         if ($isAgencyClient) {
@@ -208,12 +216,17 @@ $version = '?v=' . time();
                                                             $ticketId = $ticket['id'];
 
                                                             // Query transactions from main_account_transactions table
-                                                            $transactionQuery = $conn->query("SELECT * FROM main_account_transactions WHERE
+                                                            $transactionStmt = $pdo->prepare("SELECT * FROM main_account_transactions WHERE
                                                                 transaction_of = 'ticket_refund'
-                                                                AND reference_id = '$ticketId' AND tenant_id = $tenant_id AND branch_id = $branch_id");
+                                                                AND reference_id = ? AND tenant_id = ? AND branch_id = ?");
+                                                            $transactionStmt->bindParam(1, $ticketId, PDO::PARAM_INT);
+                                                            $transactionStmt->bindParam(2, $tenant_id, PDO::PARAM_INT);
+                                                            $transactionStmt->bindParam(3, $branch_id, PDO::PARAM_INT);
+                                                            $transactionStmt->execute();
+                                                            $transactions = $transactionStmt->fetchAll();
 
-                                                            if ($transactionQuery && $transactionQuery->num_rows > 0) {
-                                                                while ($transaction = $transactionQuery->fetch_assoc()) {
+                                                            if (count($transactions) > 0) {
+                                                                foreach ($transactions as $transaction) {
                                                                     $amount = floatval($transaction['amount']);
                                                                     $transCurrency = $transaction['currency'];
                                                                     $transExchangeRate = isset($transaction['exchange_rate']) && $transaction['exchange_rate'] > 0
@@ -233,7 +246,7 @@ $version = '?v=' . time();
                                                                     }
 
                                                                     $totalPaidInBase += $convertedAmount;
-                                                                } // End of while loop
+                                                                } // End of foreach loop
                                                             }
 
                                                             // Status icon based on payment status

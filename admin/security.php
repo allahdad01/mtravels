@@ -27,12 +27,22 @@ if (session_status() === PHP_SESSION_NONE) {
     session_start();
 }
 
+// Generate nonce for inline scripts/styles (for CSP compliance)
+if (!isset($_SESSION['csp_nonce'])) {
+    $_SESSION['csp_nonce'] = bin2hex(random_bytes(16));
+}
+$nonce = $_SESSION['csp_nonce'];
+
 // Set secure HTTP headers
 header("X-XSS-Protection: 1; mode=block");
 header("X-Content-Type-Options: nosniff");
 header("X-Frame-Options: DENY");
-// Temporarily disabled CSP header
-// header("Content-Security-Policy: default-src 'self'; script-src 'self' 'unsafe-inline'; style-src 'self' 'unsafe-inline';");
+
+// Content Security Policy - prevents XSS and injection attacks
+// Allow inline styles for Bootstrap and other libraries, plus external CDNs
+header("Content-Security-Policy: default-src 'self'; script-src 'self' 'unsafe-inline' https://cdn.jsdelivr.net https://code.jquery.com; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com https://cdn.jsdelivr.net https://cdn.datatables.net https://maxcdn.bootstrapcdn.com; font-src 'self' https://fonts.gstatic.com; img-src 'self' data: https:; connect-src 'self' https:; frame-ancestors 'none'; base-uri 'self'; form-action 'self';");
+header("Content-Security-Policy-Report-Only: default-src 'self'; script-src 'self' 'unsafe-inline' https://cdn.jsdelivr.net https://code.jquery.com; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com https://cdn.jsdelivr.net https://cdn.datatables.net https://maxcdn.bootstrapcdn.com;");
+
 header("Referrer-Policy: strict-origin-when-cross-origin");
 
 // Only set HSTS header for HTTPS connections
@@ -107,17 +117,30 @@ function enforce_auth($allowed_roles = null) {
 /**
  * Verify CSRF token from POST request
  * 
+ * @param string $token Optional CSRF token to verify (defaults to $_POST['csrf_token'])
  * @return bool Whether the CSRF token is valid
  */
-function verify_csrf_token() {
-    if (!isset($_POST['csrf_token']) || !isset($_SESSION['csrf_token']) || 
-        $_POST['csrf_token'] !== $_SESSION['csrf_token']) {
+function verify_csrf_token($token = null) {
+    // Get token from parameter or POST data
+    $token = $token ?? ($_POST['csrf_token'] ?? null);
+    
+    if (!$token || !isset($_SESSION['csrf_token'])) {
         // Log potential CSRF attack
-        error_log("CSRF attack detected in " . $_SERVER['PHP_SELF'] . 
+        error_log("CSRF attack detected - missing token in " . $_SERVER['PHP_SELF'] . 
                  " - IP: " . $_SERVER['REMOTE_ADDR'] . 
                  ", User ID: " . ($_SESSION['user_id'] ?? 'unknown'));
         return false;
     }
+    
+    // Use hash_equals() to prevent timing attacks
+    if (!hash_equals($_SESSION['csrf_token'], $token)) {
+        // Log potential CSRF attack
+        error_log("CSRF attack detected - invalid token in " . $_SERVER['PHP_SELF'] . 
+                 " - IP: " . $_SERVER['REMOTE_ADDR'] . 
+                 ", User ID: " . ($_SESSION['user_id'] ?? 'unknown'));
+        return false;
+    }
+    
     return true;
 }
 
@@ -140,16 +163,6 @@ function enforce_csrf($redirect_url = null) {
             exit();
         }
     }
-}
-
-/**
- * Sanitize output to prevent XSS
- * 
- * @param string $string Input string to sanitize
- * @return string Sanitized string
- */
-function h($string) {
-    return htmlspecialchars($string, ENT_QUOTES, 'UTF-8');
 }
 
 /**

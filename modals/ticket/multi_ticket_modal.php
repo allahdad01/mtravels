@@ -16,21 +16,25 @@
                 </div>
                 
                 <form id="multiTicketInvoiceForm">
+                    <!-- CSRF Protection -->
+                    <input type="hidden" name="csrf_token" value="<?php echo h($_SESSION['csrf_token'] ?? ''); ?>">
                 <div class="form-group">
                         <label for="clientFilter"><?= __('filter_by_client') ?></label>
                         <select class="form-control" id="clientFilter" name="clientFilter">
                             <option value=""><?= __('all_clients') ?></option>
                             <?php
-                            // Fetch clients from database
+                            // Fetch clients from database using PDO
                             $clientQuery = "SELECT DISTINCT c.name FROM clients c
                                           INNER JOIN ticket_bookings t ON c.id = t.sold_to
-                                          WHERE t.tenant_id = $tenant_id AND t.branch_id = $branch_id
+                                          WHERE t.tenant_id = ? AND t.branch_id = ?
                                           ORDER BY c.name ASC";
-                            $clientResult = $conn->query($clientQuery);
-                            
-                            if ($clientResult && $clientResult->num_rows > 0) {
-                                while ($client = $clientResult->fetch_assoc()) {
-                                    echo '<option value="' . htmlspecialchars($client['name']) . '">' . 
+                            $stmt = $pdo->prepare($clientQuery);
+                            $stmt->execute([$tenant_id, $branch_id]);
+                            $clients = $stmt->fetchAll(PDO::FETCH_ASSOC);
+
+                            if ($clients) {
+                                foreach ($clients as $client) {
+                                    echo '<option value="' . htmlspecialchars($client['name']) . '">' .
                                          htmlspecialchars($client['name']) . '</option>';
                                 }
                             }

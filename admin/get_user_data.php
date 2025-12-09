@@ -15,18 +15,17 @@ include '../config.php';
 $userId = $_SESSION['user_id'];
 
 $sql = "SELECT name, email, profile_pic, role, phone, address, hire_date FROM users WHERE id = ? AND tenant_id = ? AND branch_id = ?";
-$stmt = $conection_db->prepare($sql);
-$stmt->bind_param("iii", $userId, $tenant_id, $branch_id);
+$stmt = $pdo->prepare($sql);
+$stmt->bindParam(1, $userId, PDO::PARAM_INT);
+$stmt->bindParam(2, $tenant_id, PDO::PARAM_INT);
+$stmt->bindParam(3, $branch_id, PDO::PARAM_INT);
 $stmt->execute();
-$result = $stmt->get_result();
+$result = $stmt->fetchAll();
 
-if ($result->num_rows === 1) {
-    echo json_encode($result->fetch_assoc());
+if (count($result) === 1) {
+    echo json_encode($result[0]);
 } else {
     http_response_code(404);
     echo json_encode(["error" => "User not found"]);
 }
-
-$stmt->close();
-$conection_db->close();
 ?>

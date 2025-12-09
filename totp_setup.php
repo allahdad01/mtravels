@@ -131,7 +131,8 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
 
 // Fetch settings data
 try {
-    $settingStmt = $pdo->query("SELECT * FROM settings WHERE tenant_id = $tenant_id");
+    $settingStmt = $pdo->prepare("SELECT * FROM settings WHERE tenant_id = ?");
+    $settingStmt->execute([$tenant_id]);
     $settings = $settingStmt->fetch(PDO::FETCH_ASSOC);
 } catch (PDOException $e) {
     error_log("Settings Error: " . $e->getMessage());

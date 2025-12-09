@@ -21,7 +21,6 @@ if (isset($_GET['lang'])) {
 
 // Database connection
 require_once('../includes/db.php');
-include '../includes/conn.php';
 
 // Fetch user data with proper error handling
 try {

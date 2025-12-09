@@ -40,57 +40,47 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action']) && $_POST['
 
 // Database connection
 require_once('../includes/db.php');
-require_once('../includes/conn.php');
 
 // Fetch main accounts for dropdown
 $mainAccountsQuery = "SELECT * FROM main_account WHERE status = 'active' AND tenant_id = ? AND branch_id = ?";
-$stmt = $conn->prepare($mainAccountsQuery);
-$stmt->bind_param("ii", $tenant_id, $branch_id);
+$stmt = $pdo->prepare($mainAccountsQuery);
+$stmt->bindParam(1, $tenant_id, PDO::PARAM_INT);
+$stmt->bindParam(2, $branch_id, PDO::PARAM_INT);
 $stmt->execute();
-$mainAccountsResult = $stmt->get_result();
-$mainAccounts = [];
-if ($mainAccountsResult && $mainAccountsResult->num_rows > 0) {
-    $mainAccounts = $mainAccountsResult->fetch_all(MYSQLI_ASSOC);
-}
+$mainAccounts = $stmt->fetchAll();
 
 // Fetch suppliers for dropdown
-$suppliersQuery = "SELECT * FROM suppliers WHERE status = 'active' AND supplier_type = 'external' AND tenant_id = ? AND branch_id = ?";
-$stmt = $conn->prepare($suppliersQuery);
-$stmt->bind_param("ii", $tenant_id, $branch_id);
-$stmt->execute();
-$suppliersResult = $stmt->get_result();
-$suppliers = [];
-if ($suppliersResult && $suppliersResult->num_rows > 0) {
-    $suppliers = $suppliersResult->fetch_all(MYSQLI_ASSOC);
-}
+ $suppliersQuery = "SELECT * FROM suppliers WHERE status = 'active' AND supplier_type = 'external' AND tenant_id = ? AND branch_id = ?";
+ $stmt = $pdo->prepare($suppliersQuery);
+ $stmt->bindParam(1, $tenant_id, PDO::PARAM_INT);
+ $stmt->bindParam(2, $branch_id, PDO::PARAM_INT);
+ $stmt->execute();
+ $suppliers = $stmt->fetchAll();
 
 // Fetch clients for dropdown
-$clientsQuery = "SELECT * FROM clients WHERE status = 'active' AND tenant_id = ? AND branch_id = ?";
-$stmt = $conn->prepare($clientsQuery);
-$stmt->bind_param("ii", $tenant_id, $branch_id);
-$stmt->execute();
-$clientsResult = $stmt->get_result();
-$clients = [];
-if ($clientsResult && $clientsResult->num_rows > 0) {
-    $clients = $clientsResult->fetch_all(MYSQLI_ASSOC);
-}
+ $clientsQuery = "SELECT * FROM clients WHERE status = 'active' AND tenant_id = ? AND branch_id = ?";
+ $stmt = $pdo->prepare($clientsQuery);
+ $stmt->bindParam(1, $tenant_id, PDO::PARAM_INT);
+ $stmt->bindParam(2, $branch_id, PDO::PARAM_INT);
+ $stmt->execute();
+ $clients = $stmt->fetchAll();
 
 // Get all additional payments
-$paymentsQuery = "SELECT ap.*, u.name as created_by_name, ma.name as main_account_name,
-                  s.name as supplier_name, s.id as supplier_id,
-                  c.name as client_name, c.id as client_id
-                  FROM additional_payments ap
-                  LEFT JOIN users u ON ap.created_by = u.id
-                  LEFT JOIN main_account ma ON ap.main_account_id = ma.id
-                  LEFT JOIN suppliers s ON ap.supplier_id = s.id
-                  LEFT JOIN clients c ON ap.client_id = c.id
-                  WHERE ap.tenant_id = ? AND ap.branch_id = ?
-                  ORDER BY ap.created_at DESC";
-$stmt = $conn->prepare($paymentsQuery);
-$stmt->bind_param("ii", $tenant_id, $branch_id);
-$stmt->execute();
-$paymentsResult = $stmt->get_result();
-$payments = $paymentsResult->fetch_all(MYSQLI_ASSOC);
+ $paymentsQuery = "SELECT ap.*, u.name as created_by_name, ma.name as main_account_name,
+                   s.name as supplier_name, s.id as supplier_id,
+                   c.name as client_name, c.id as client_id
+                   FROM additional_payments ap
+                   LEFT JOIN users u ON ap.created_by = u.id
+                   LEFT JOIN main_account ma ON ap.main_account_id = ma.id
+                   LEFT JOIN suppliers s ON ap.supplier_id = s.id
+                   LEFT JOIN clients c ON ap.client_id = c.id
+                   WHERE ap.tenant_id = ? AND ap.branch_id = ?
+                   ORDER BY ap.created_at DESC";
+ $stmt = $pdo->prepare($paymentsQuery);
+ $stmt->bindParam(1, $tenant_id, PDO::PARAM_INT);
+ $stmt->bindParam(2, $branch_id, PDO::PARAM_INT);
+ $stmt->execute();
+ $payments = $stmt->fetchAll();
 ?>
 
     <style>
@@ -406,9 +396,14 @@ $payments = $paymentsResult->fetch_all(MYSQLI_ASSOC);
                                                                    $paymentId = $payment['id'];
 
                                                                    // Query transactions from main_account_transactions table
-                                                                   $transactionQuery = $conn->query("SELECT * FROM main_account_transactions WHERE
+                                                                   $transactionStmt = $pdo->prepare("SELECT * FROM main_account_transactions WHERE
                                                                        transaction_of = 'additional_payment'
-                                                                       AND reference_id = '$paymentId' AND tenant_id = '$tenant_id' AND branch_id = '$branch_id'");
+                                                                       AND reference_id = ? AND tenant_id = ? AND branch_id = ?");
+                                                                   $transactionStmt->bindParam(1, $paymentId, PDO::PARAM_INT);
+                                                                   $transactionStmt->bindParam(2, $tenant_id, PDO::PARAM_INT);
+                                                                   $transactionStmt->bindParam(3, $branch_id, PDO::PARAM_INT);
+                                                                   $transactionStmt->execute();
+                                                                   $transactions = $transactionStmt->fetchAll();
 
                                                                    // Initialize default exchange rates (same as JavaScript)
                                                                    $usdToAfsRate = 70;
@@ -416,12 +411,8 @@ $payments = $paymentsResult->fetch_all(MYSQLI_ASSOC);
                                                                    $usdToDarhamRate = 3.61;
 
                                                                    // First pass: extract exchange rates from transactions
-                                                                   if ($transactionQuery && $transactionQuery->num_rows > 0) {
-                                                                       $transactions = [];
-                                                                       mysqli_data_seek($transactionQuery, 0); // Reset pointer
-                                                                       while ($transaction = $transactionQuery->fetch_assoc()) {
-                                                                           $transactions[] = $transaction;
-
+                                                                   if ($transactions && count($transactions) > 0) {
+                                                                       foreach ($transactions as $transaction) {
                                                                            // Update exchange rates if transaction has a rate
                                                                            $transExchangeRate = isset($transaction['exchange_rate']) && $transaction['exchange_rate'] > 0 ? floatval($transaction['exchange_rate']) : null;
                                                                            if ($transExchangeRate) {

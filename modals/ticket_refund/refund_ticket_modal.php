@@ -67,6 +67,8 @@
 
                 <!-- Refund Form -->
                 <form id="refundTicketForm" style="display: none;">
+                    <!-- CSRF Protection -->
+                    <input type="hidden" name="csrf_token" value="<?php echo h($_SESSION['csrf_token'] ?? ''); ?>">
                     <input type="hidden" id="ticketId" name="ticketId">
                     <input type="hidden" id="status" name="status" value="pending">
                     <input type="hidden" id="exchangeRate" name="exchange_rate" value="1">

@@ -3,6 +3,17 @@
 if (session_status() === PHP_SESSION_NONE) {
     session_start();
 }
+
+// Set JSON response header
+header('Content-Type: application/json');
+
+// Security: Check authentication
+if (!isset($_SESSION['user_id']) || !isset($_SESSION['tenant_id'])) {
+    http_response_code(401);
+    echo json_encode(['error' => 'Unauthorized']);
+    exit();
+}
+
 $tenant_id = $_SESSION['tenant_id'];
 $branch_id = $_SESSION['branch_id'];
 

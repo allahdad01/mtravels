@@ -10,6 +10,9 @@
             </div>
             <div class="modal-body">
                 <form id="withdrawSupplierForm">
+                    <!-- CSRF Protection -->
+                    <input type="hidden" name="csrf_token" value="<?php echo h($_SESSION['csrf_token'] ?? ''); ?>">
+                    
                     <!-- Select Main Account -->
                     <div class="mb-3">
                         <label for="withdrawMainAccount" class="form-label"><?= __('select_main_account') ?></label>

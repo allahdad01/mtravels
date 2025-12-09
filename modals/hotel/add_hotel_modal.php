@@ -14,6 +14,9 @@
                 </div>
                 <div class="modal-body">
                     <form id="addHotelBookingForm" class="needs-validation" novalidate>
+                        <!-- CSRF Protection -->
+                        <input type="hidden" name="csrf_token" value="<?php echo h($_SESSION['csrf_token'] ?? ''); ?>">
+                        
                         <!-- Form Sections -->
                         <div class="form-sections">
                             <!-- Guest Information Section -->

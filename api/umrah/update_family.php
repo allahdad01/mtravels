@@ -7,9 +7,17 @@ require_once '../../admin/security.php';
 
 // Enforce authentication
 enforce_auth();
+
+// ✅ CSRF Token Validation
+if (!verify_csrf_token()) {
+    http_response_code(403);
+    echo json_encode(['success' => false, 'message' => 'Security validation failed. Please try again.']);
+    exit;
+}
+
 $tenant_id = $_SESSION['tenant_id'];
 $branch_id = $_SESSION['branch_id'];
-require_once '../../includes/conn.php';
+require_once '../../includes/db.php';
 
 // Validate visa_status
 $visa_status = isset($_POST['visa_status']) ? DbSecurity::validateInput($_POST['visa_status'], 'string', ['maxlength' => 255]) : null;
@@ -55,62 +63,65 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 
     $sql = "UPDATE families SET head_of_family = ?, contact = ?, address = ?, package_type = ?, location = ?, tazmin = ?, visa_status = ?, province = ?, district = ? WHERE family_id = ? AND tenant_id = ? AND branch_id = ?";
 
-    if ($stmt = $conn->prepare($sql)) {
-        $stmt->bind_param("sssssssssiis", $head_of_family, $contact, $address, $package_type, $location, $tazmin, $visa, $province, $district, $family_id, $tenant_id, $branch_id);
+    $stmt = $pdo->prepare($sql);
+    $stmt->bindParam(1, $head_of_family, PDO::PARAM_STR);
+    $stmt->bindParam(2, $contact, PDO::PARAM_STR);
+    $stmt->bindParam(3, $address, PDO::PARAM_STR);
+    $stmt->bindParam(4, $package_type, PDO::PARAM_STR);
+    $stmt->bindParam(5, $location, PDO::PARAM_STR);
+    $stmt->bindParam(6, $tazmin, PDO::PARAM_STR);
+    $stmt->bindParam(7, $visa, PDO::PARAM_STR);
+    $stmt->bindParam(8, $province, PDO::PARAM_STR);
+    $stmt->bindParam(9, $district, PDO::PARAM_STR);
+    $stmt->bindParam(10, $family_id, PDO::PARAM_INT);
+    $stmt->bindParam(11, $tenant_id, PDO::PARAM_INT);
+    $stmt->bindParam(12, $branch_id, PDO::PARAM_INT);
 
-        if ($stmt->execute()) {
-           // Add activity logging
-           $user_id = $_SESSION['user_id'] ?? 0;
-           $ip_address = $_SERVER['REMOTE_ADDR'] ?? '';
-           $user_agent = $_SERVER['HTTP_USER_AGENT'] ?? '';
-           
-           // Get original family data (we might not have it, but at least log the updates)
-           $old_values = [];
-           
-           // Prepare new values
-           $new_values = [
-               'family_id' => $family_id,
-               'head_of_family' => $head_of_family,
-               'contact' => $contact,
-               'address' => $address,
-               'package_type' => $package_type,
-               'location' => $location,
-               'tazmin' => $tazmin,
-               'visa_status' => $visa
-           ];
-           $action = 'update';
-           $table_name = 'families';
-           $old_values = json_encode($old_values);
-           $new_values = json_encode($new_values);
-           // Insert activity log
-           $activity_log_stmt = $conn->prepare("INSERT INTO activity_log
-               (user_id, action, table_name, record_id, old_values, new_values, ip_address, user_agent, tenant_id, branch_id)
-               VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)");
-           $activity_log_stmt->bind_param("isisssssis",
-               $user_id,
-               $action,
-               $table_name,
-               $family_id,
-               $old_values,
-               $new_values,
-               $ip_address,
-               $user_agent,
-               $tenant_id,
-               $branch_id
-           );
-           $activity_log_stmt->execute();
-           
-           echo json_encode(["status" => "success", "message" => "Family updated successfully"]);
-        } else {
-            echo json_encode(["status" => "error", "message" => "SQL Error: " . $stmt->error]);
-        }
+    if ($stmt->execute()) {
+        // Add activity logging
+        $user_id = $_SESSION['user_id'] ?? 0;
+        $ip_address = $_SERVER['REMOTE_ADDR'] ?? '';
+        $user_agent = $_SERVER['HTTP_USER_AGENT'] ?? '';
 
-        $stmt->close();
+        // Get original family data (we might not have it, but at least log the updates)
+        $old_values = [];
+
+        // Prepare new values
+        $new_values = [
+            'family_id' => $family_id,
+            'head_of_family' => $head_of_family,
+            'contact' => $contact,
+            'address' => $address,
+            'package_type' => $package_type,
+            'location' => $location,
+            'tazmin' => $tazmin,
+            'visa_status' => $visa
+        ];
+        $action = 'update';
+        $table_name = 'families';
+        $old_values = json_encode($old_values);
+        $new_values = json_encode($new_values);
+        // Insert activity log
+        $activity_log_stmt = $pdo->prepare("INSERT INTO activity_log
+            (user_id, action, table_name, record_id, old_values, new_values, ip_address, user_agent, tenant_id, branch_id)
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)");
+        $activity_log_stmt->bindParam(1, $user_id, PDO::PARAM_INT);
+        $activity_log_stmt->bindParam(2, $action, PDO::PARAM_STR);
+        $activity_log_stmt->bindParam(3, $table_name, PDO::PARAM_STR);
+        $activity_log_stmt->bindParam(4, $family_id, PDO::PARAM_INT);
+        $activity_log_stmt->bindParam(5, $old_values, PDO::PARAM_STR);
+        $activity_log_stmt->bindParam(6, $new_values, PDO::PARAM_STR);
+        $activity_log_stmt->bindParam(7, $ip_address, PDO::PARAM_STR);
+        $activity_log_stmt->bindParam(8, $user_agent, PDO::PARAM_STR);
+        $activity_log_stmt->bindParam(9, $tenant_id, PDO::PARAM_INT);
+        $activity_log_stmt->bindParam(10, $branch_id, PDO::PARAM_INT);
+        $activity_log_stmt->execute();
+
+        echo json_encode(["status" => "success", "message" => "Family updated successfully"]);
     } else {
-        echo json_encode(["status" => "error", "message" => "Failed to prepare statement"]);
+        echo json_encode(["status" => "error", "message" => "SQL Error: " . $stmt->error]);
     }
 
-    $conn->close();
 } else {
     echo json_encode(["status" => "error", "message" => "Invalid request method"]);
 }

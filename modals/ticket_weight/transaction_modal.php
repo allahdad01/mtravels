@@ -142,6 +142,8 @@
                         </div>
                         <div class="card-body">
                             <form id="weightTransactionForm">
+                    <!-- CSRF Protection -->
+                    <input type="hidden" name="csrf_token" value="<?php echo h($_SESSION['csrf_token'] ?? ''); ?>">
                                 <input type="hidden" id="weightId" name="weight_id">
 
                                 <div class="row">

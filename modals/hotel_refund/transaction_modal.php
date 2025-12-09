@@ -85,6 +85,8 @@
                             </div>
                             <div class="card-body">
                                 <form id="hotelTransactionForm">
+                    <!-- CSRF Protection -->
+                    <input type="hidden" name="csrf_token" value="<?php echo h($_SESSION['csrf_token'] ?? ''); ?>">
                                     <input type="hidden" id="refund_id" name="refund_id">
                                     <div class="row">
                                         <div class="col-md-6">

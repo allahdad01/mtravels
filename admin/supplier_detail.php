@@ -19,7 +19,6 @@ if (!isset($_SESSION['user_id'])  || $_SESSION['role'] !== 'admin') {
 
 // Include database connection
 include '../includes/db.php';
-include '../includes/conn.php';
 
 // Initialize variables
 $supplierId = isset($_GET['id']) ? intval($_GET['id']) : 0;

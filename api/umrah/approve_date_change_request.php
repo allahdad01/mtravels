@@ -2,7 +2,6 @@
 // Include security and database connections
 require_once '../../admin/security.php';
 require_once '../../includes/db.php';
-require_once '../../includes/conn.php';
 
 // Enforce authentication
 enforce_auth();
@@ -30,23 +29,28 @@ if (!$id) {
 }
 
 try {
+    // Start transaction
+    $pdo->beginTransaction();
+
     // Get the request details
-    $stmt = $conn->prepare("
+    $stmt = $pdo->prepare("
         SELECT dc.*, ub.price as current_price
         FROM date_change_umrah dc
         LEFT JOIN umrah_bookings ub ON dc.umrah_booking_id = ub.booking_id AND ub.tenant_id = ? AND ub.branch_id = ?
         WHERE dc.id = ? AND dc.tenant_id = ? AND dc.branch_id = ? AND dc.status = 'Pending'
     ");
-    $stmt->bind_param("iiiii", $tenant_id, $branch_id, $id, $tenant_id, $branch_id);
+    $stmt->bindParam(1, $tenant_id, PDO::PARAM_INT);
+    $stmt->bindParam(2, $branch_id, PDO::PARAM_INT);
+    $stmt->bindParam(3, $id, PDO::PARAM_INT);
+    $stmt->bindParam(4, $tenant_id, PDO::PARAM_INT);
+    $stmt->bindParam(5, $branch_id, PDO::PARAM_INT);
     $stmt->execute();
-    $result = $stmt->get_result();
+    $request = $stmt->fetch(PDO::FETCH_ASSOC);
 
-    if ($result->num_rows === 0) {
+    if (!$request) {
         echo json_encode(['success' => false, 'message' => 'Pending date change request not found']);
         exit;
     }
-
-    $request = $result->fetch_assoc();
 
     // Use manually entered penalties
     $total_penalty = $supplier_penalty + $service_penalty;
@@ -62,7 +66,7 @@ try {
     }
 
     // Update the request with approval and penalties
-    $stmt = $conn->prepare("
+    $stmt = $pdo->prepare("
         UPDATE date_change_umrah
         SET status = 'Approved',
             approved_by = ?,
@@ -73,21 +77,33 @@ try {
             remarks = ?
         WHERE id = ? AND tenant_id = ? AND branch_id = ?
     ");
-    $stmt->bind_param("ddddsiii", $_SESSION['user_id'], $supplier_penalty, $service_penalty, $total_penalty, $updated_remarks, $id, $tenant_id, $branch_id);
+    $stmt->bindParam(1, $_SESSION['user_id'], PDO::PARAM_INT);
+    $stmt->bindParam(2, $supplier_penalty, PDO::PARAM_STR);
+    $stmt->bindParam(3, $service_penalty, PDO::PARAM_STR);
+    $stmt->bindParam(4, $total_penalty, PDO::PARAM_STR);
+    $stmt->bindParam(5, $updated_remarks, PDO::PARAM_STR);
+    $stmt->bindParam(6, $id, PDO::PARAM_INT);
+    $stmt->bindParam(7, $tenant_id, PDO::PARAM_INT);
+    $stmt->bindParam(8, $branch_id, PDO::PARAM_INT);
 
-    if ($stmt->execute()) {
-        // Log the approval
-        error_log("Date change request approved - ID: $id, Approved by: {$_SESSION['user_id']}");
-
-        echo json_encode([
-            'success' => true,
-            'message' => 'Date change request approved successfully. Total penalty: $' . number_format($total_penalty, 2)
-        ]);
-    } else {
-        throw new Exception('Failed to approve request');
+    if (!$stmt->execute()) {
+        throw new PDOException('Failed to approve request');
     }
 
-} catch (Exception $e) {
+    // Commit transaction
+    $pdo->commit();
+
+    // Log the approval
+    error_log("Date change request approved - ID: $id, Approved by: {$_SESSION['user_id']}");
+
+    echo json_encode([
+        'success' => true,
+        'message' => 'Date change request approved successfully. Total penalty: $' . number_format($total_penalty, 2)
+    ]);
+
+} catch (PDOException $e) {
+    // Rollback transaction on error
+    $pdo->rollBack();
     error_log("Approve date change request error: " . $e->getMessage());
     echo json_encode(['success' => false, 'message' => 'An error occurred while approving the request']);
 }

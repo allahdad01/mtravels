@@ -7,6 +7,8 @@
                 <button type="button" class="close" data-dismiss="modal">&times;</button>
             </div>
             <form id="categoryForm">
+                    <!-- CSRF Protection -->
+                    <input type="hidden" name="csrf_token" value="<?php echo h($_SESSION['csrf_token'] ?? ''); ?>">
                 <div class="modal-body">
                     <input type="hidden" id="categoryId" name="categoryId">
                     <div class="form-group">

@@ -8,6 +8,8 @@
                                             </div>
                                             <div class="modal-body">
                                                 <form id="receiptForm">
+                    <!-- CSRF Protection -->
+                    <input type="hidden" name="csrf_token" value="<?php echo h($_SESSION['csrf_token'] ?? ''); ?>">
                                                     <div class="mb-3">
                                                         <label for="receiptNumber" class="form-label"><?= __('receipt_number') ?></label>
                                                         <input type="text" class="form-control" id="receiptNumber" name="receipt_number" required>

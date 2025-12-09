@@ -6,21 +6,16 @@ $branch_id = $_SESSION['branch_id'];
 // Enforce authentication
 enforce_auth();
 
-require_once '../../includes/conn.php';
-
-if ($conn->connect_error) {
-    echo json_encode(['error' => 'Database connection failed.']);
-    exit;
-}
+require_once '../../includes/db.php';
 
 $id = isset($_GET['id']) ? intval($_GET['id']) : 0;
 
 if ($id > 0) {
     // Query to fetch visa details along with the supplier's name and sold_to name
     $query = "
-        SELECT 
-            v.*, 
-            s1.name AS supplier_name, 
+        SELECT
+            v.*,
+            s1.name AS supplier_name,
             s2.name AS sold_to_name
         FROM visa_applications v
         LEFT JOIN suppliers s1 ON v.supplier = s1.id
@@ -28,21 +23,20 @@ if ($id > 0) {
         WHERE v.id = ? AND v.tenant_id = ? AND v.branch_id = ?
     ";
 
-    $stmt = $conn->prepare($query);
-    $stmt->bind_param('iii', $id, $tenant_id, $branch_id);
+    $stmt = $pdo->prepare($query);
+    $stmt->bindParam(1, $id, PDO::PARAM_INT);
+    $stmt->bindParam(2, $tenant_id, PDO::PARAM_INT);
+    $stmt->bindParam(3, $branch_id, PDO::PARAM_INT);
     $stmt->execute();
-    $result = $stmt->get_result();
 
-    if ($result->num_rows > 0) {
-        $visa = $result->fetch_assoc();
+    $visa = $stmt->fetch(PDO::FETCH_ASSOC);
+
+    if ($visa) {
         echo json_encode($visa);
     } else {
         echo json_encode(['error' => 'Visa not found.']);
     }
-    $stmt->close();
 } else {
     echo json_encode(['error' => 'Invalid ID.']);
 }
-
-$conn->close();
 ?>

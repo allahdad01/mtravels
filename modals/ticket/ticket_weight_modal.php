@@ -11,6 +11,8 @@
                     </button>
                 </div>
                 <form id="addWeightForm">
+                    <!-- CSRF Protection -->
+                    <input type="hidden" name="csrf_token" value="<?php echo h($_SESSION['csrf_token'] ?? ''); ?>">
                     <div class="modal-body">
                         <!-- Passenger Information (Read-only) -->
                         <div class="card border-0 shadow-sm mb-3">

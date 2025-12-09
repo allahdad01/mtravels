@@ -17,6 +17,8 @@
             <div class="modal-footer">
                 <button type="button" class="btn btn-secondary" data-dismiss="modal"><?= __('cancel') ?></button>
                 <form id="deleteMaktobForm" method="POST" action="../../api/maktob/delete_maktob.php">
+                    <!-- CSRF Protection -->
+                    <input type="hidden" name="csrf_token" value="<?php echo h($_SESSION['csrf_token'] ?? ''); ?>">
                     <input type="hidden" id="delete_maktob_id" name="maktob_id">
                     <button type="submit" class="btn btn-danger"><?= __('delete') ?></button>
                 </form>

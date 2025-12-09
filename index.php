@@ -4,7 +4,6 @@ session_start();
 
 // Database connection and security
 require_once 'includes/db.php';
-require_once 'includes/conn.php';
 require_once 'includes/cache.php';
 
 // Default tenant ID for landing page (can be made configurable)

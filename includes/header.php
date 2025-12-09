@@ -20,8 +20,7 @@ if (isset($_GET['lang'])) {
 }
 
 // Database connection
-require_once('../includes/db.php');
-include '../includes/conn.php';
+require_once('db.php');
 $tenant_id = $_SESSION['tenant_id'];
 
 // Fetch user data with proper error handling
@@ -52,11 +51,10 @@ if ($tenant_id) {
             ORDER BY ts.start_date DESC
             LIMIT 1
         ";
-    $stmt = $conn->prepare($query);
-    $stmt->bind_param('i', $tenant_id);
-    $stmt->execute();
-    $result = $stmt->get_result();
-    if ($row = $result->fetch_assoc()) {
+    $stmt = $pdo->prepare($query);
+    $stmt->execute([$tenant_id]);
+    $row = $stmt->fetch(PDO::FETCH_ASSOC);
+    if ($row) {
         $allowed_features = json_decode($row['features'], true) ?? [];
         
         // Debug: Log the features for troubleshooting
@@ -84,7 +82,6 @@ if ($tenant_id) {
         }
         $debug_stmt->close();
     }
-    $stmt->close();
 } else {
     error_log("Tenant ID is empty or null");
 }

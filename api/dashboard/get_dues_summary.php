@@ -3,13 +3,21 @@
 ob_start();
 
 session_start();
+
+// CSRF Token Validation for API endpoints
+header('Content-Type: application/json');
+
+// Check if session has tenant/branch
+if (!isset($_SESSION['tenant_id']) || !isset($_SESSION['branch_id'])) {
+    http_response_code(401);
+    echo json_encode(['error' => 'Unauthorized - missing session']);
+    exit();
+}
+
 $tenant_id = $_SESSION['tenant_id'];
 $branch_id = $_SESSION['branch_id'];
 
 require_once('../../includes/db.php');
-
-// Set content type header
-header('Content-Type: application/json');
 
 try {
     $dues = [

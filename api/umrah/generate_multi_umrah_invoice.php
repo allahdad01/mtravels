@@ -9,7 +9,7 @@ $branch_id = $_SESSION['branch_id'];
 // Enforce authentication
 enforce_auth();
 
-include '../../includes/conn.php';
+require_once '../../includes/db.php';
 
 // Validate invoiceData
 $invoiceData = isset($_POST['invoiceData']) ? DbSecurity::validateInput($_POST['invoiceData'], 'string', ['maxlength' => 255]) : null;
@@ -32,16 +32,18 @@ if (!isset($invoiceData['tickets']) || !is_array($invoiceData['tickets']) || cou
     die('No tickets selected for invoice');
 }
 
+$ticketIds = $invoiceData['tickets'];
+
 
 
 // Get company/agency information from database
 $agencyInfoQuery = "SELECT * FROM settings WHERE tenant_id = ?";
-$agencyResult = $conn->prepare($agencyInfoQuery);
-$agencyResult->execute([$tenant_id]);
+$stmt = $pdo->prepare($agencyInfoQuery);
+$stmt->bindParam(1, $tenant_id, PDO::PARAM_INT);
+$stmt->execute();
+$agencyInfo = $stmt->fetch(PDO::FETCH_ASSOC);
 
-if ($agencyResult && $agencyResult->num_rows > 0) {
-    $agencyInfo = $agencyResult->fetch(PDO::FETCH_ASSOC);
-} else {
+if (!$agencyInfo) {
     // Default values if company settings are not found
     $agencyInfo = [
         'company_name' => 'Travel Agency',
@@ -64,18 +66,23 @@ $ticketsQuery = "SELECT um.booking_id, um.name, um.passport_number, f.package_ty
     $stmt = $pdo->prepare($ticketsQuery);
 
     // Bind tenant_id, branch_id, ticket IDs, tenant_id, branch_id
-    $stmt->execute([$tenant_id, $branch_id, ...$ticketIds, $tenant_id, $branch_id]);
+    $stmt->bindParam(1, $tenant_id, PDO::PARAM_INT);
+    $stmt->bindParam(2, $branch_id, PDO::PARAM_INT);
+    for ($i = 0; $i < count($ticketIds); $i++) {
+        $stmt->bindParam($i + 3, $ticketIds[$i], PDO::PARAM_INT);
+    }
+    $stmt->bindParam(count($ticketIds) + 3, $tenant_id, PDO::PARAM_INT);
+    $stmt->bindParam(count($ticketIds) + 4, $branch_id, PDO::PARAM_INT);
+
+    $stmt->execute();
 
     $tickets = $stmt->fetchAll(PDO::FETCH_ASSOC);
 
-$tickets = [];
 $totalAmount = 0;
-while ($row = $ticketsResult->fetch(PDO::FETCH_ASSOC)) {
-    $tickets[] = $row;
-    $totalAmount += floatval($row['refund_to_passenger']);
+foreach ($tickets as $ticket) {
+    $totalAmount += floatval($ticket['sold_price']);
 }
 
-// Define currency
 $currency = $invoiceData['currency'];
 $comments = $invoiceData['comment'];
 $clientName = $invoiceData['clientName'];
@@ -87,9 +94,11 @@ $invoiceDate = date('Y-m-d');
 try {
     $bankAccountsQuery = "SELECT name, bank_name, bank_account_number, bank_account_afs_number FROM main_account WHERE tenant_id = ? AND branch_id = ? AND status = 'active' AND account_type = 'bank' AND bank_account_number IS NOT NULL AND bank_account_number <> '' ORDER BY name";
     $stmt = $pdo->prepare($bankAccountsQuery);
-    $stmt->execute([$tenant_id, $branch_id]);
+    $stmt->bindParam(1, $tenant_id, PDO::PARAM_INT);
+    $stmt->bindParam(2, $branch_id, PDO::PARAM_INT);
+    $stmt->execute();
     $bankAccounts = $stmt->fetchAll(PDO::FETCH_ASSOC);
-} catch (Exception $e) {
+} catch (PDOException $e) {
     $bankAccounts = [];
 }
 // Now generate the HTML for the invoice
@@ -250,7 +259,7 @@ try {
         
         <div class="invoice-header">
             <div class="title-container">
-                <div class="logo-text"><?php echo htmlspecialchars($agencyInfo['title']); ?></div>
+                <div class="logo-text"><?php echo htmlspecialchars($agencyInfo['title'] ?? 'Travel Agency'); ?></div>
                 <div>Professional Travel Services</div>
             </div>
             
@@ -269,16 +278,17 @@ try {
         <div class="invoice-info">
             <div class="company-info">
                 <div class="info-title">From:</div>
-                <div><?php echo htmlspecialchars($agencyInfo['title']); ?></div>
+                <div><?php echo htmlspecialchars($agencyInfo['title'] ?? 'Travel Agency'); ?></div>
                 <?php 
                 // Split address into multiple lines if it contains commas
-                $addressLines = explode(',', $agencyInfo['address']);
+                $address = $agencyInfo['address'] ?? '';
+                $addressLines = explode(',', $address);
                 foreach ($addressLines as $line) {
                     echo '<div>' . htmlspecialchars(trim($line)) . '</div>';
                 }
                 ?>
-                <div>Phone: <?php echo htmlspecialchars($agencyInfo['phone']); ?></div>
-                <div>Email: <?php echo htmlspecialchars($agencyInfo['email']); ?></div>
+                <div>Phone: <?php echo htmlspecialchars($agencyInfo['phone'] ?? ''); ?></div>
+                <div>Email: <?php echo htmlspecialchars($agencyInfo['email'] ?? ''); ?></div>
             </div>
             
             <div class="client-info">
@@ -367,4 +377,4 @@ try {
         </div>
     </div>
 </body>
-</html> 
+</html>

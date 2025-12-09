@@ -31,6 +31,14 @@ if ($_SERVER['REQUEST_METHOD'] !== 'POST') {
     exit();
 }
 
+// ✅ CSRF Token Validation
+if (!verify_csrf_token()) {
+    header('Content-Type: application/json');
+    http_response_code(403);
+    echo json_encode(['success' => false, 'message' => 'Security validation failed. Please try again.']);
+    exit();
+}
+
 // Get the form data
 $accountId = isset($_POST['account_id']) ? intval($_POST['account_id']) : 0;
 $accountName = isset($_POST['account_name']) ? trim($_POST['account_name']) : '';

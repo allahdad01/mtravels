@@ -18,7 +18,6 @@ if (!isset($_SESSION['user_id'])  || $_SESSION['role'] !== 'admin') {
 
 // Database connection
 require_once('../includes/db.php');
-require_once('../includes/conn.php');
 
 ?>
 

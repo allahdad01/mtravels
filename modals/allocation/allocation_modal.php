@@ -7,6 +7,9 @@
                 <button type="button" class="close" data-dismiss="modal">&times;</button>
             </div>
             <form id="allocationForm">
+                <!-- CSRF Protection -->
+                <input type="hidden" name="csrf_token" value="<?php echo h($_SESSION['csrf_token'] ?? ''); ?>">
+                
                 <div class="modal-body">
                     <div class="form-group">
                         <label><?= __('expense_category') ?></label>

@@ -1,6 +1,6 @@
 <?php
 // Include database connection
-require_once '../includes/conn.php';
+require_once '../includes/db.php';
 $tenant_id = $_SESSION['tenant_id'];
 $branch_id = $_SESSION['branch_id'];
 // Enforce authentication
@@ -18,12 +18,15 @@ if (!isset($_GET['name']) || empty($_GET['name'])) {
 
 try {
     // Prepare and execute query to find main account ID by name
-    $stmt = $conn->prepare("SELECT id FROM main_account WHERE name = ? AND tenant_id = ? AND branch_id = ? LIMIT 1");
-    $stmt->bind_param("sii", $_GET['name'], $tenant_id, $branch_id);
+    $stmt = $pdo->prepare("SELECT id FROM main_account WHERE name = ? AND tenant_id = ? AND branch_id = ? LIMIT 1");
+    $stmt->bindParam(1, $_GET['name'], PDO::PARAM_STR);
+    $stmt->bindParam(2, $tenant_id, PDO::PARAM_INT);
+    $stmt->bindParam(3, $branch_id, PDO::PARAM_INT);
     $stmt->execute();
-    $result = $stmt->get_result();
+    $result = $stmt->fetchAll();
 
-    if ($row = $result->fetch_assoc()) {
+    if (count($result) > 0) {
+        $row = $result[0];
         // Main account found
         echo json_encode([
             'success' => true, 

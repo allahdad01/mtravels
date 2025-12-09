@@ -6,6 +6,8 @@
             </div>
 
             <form id="editTicketForm">
+                    <!-- CSRF Protection -->
+                    <input type="hidden" name="csrf_token" value="<?php echo h($_SESSION['csrf_token'] ?? ''); ?>">
                 <div class="modal-content">
                     <div class="modal-header">
                         <h5 class="modal-title"><?= __('edit_ticket') ?></h5>
@@ -42,13 +44,15 @@
                                                 data-live-search="true" data-style="btn-light">
                                             <option value=""><?= __('select_client') ?></option>
                                             <?php
-                                            if ($conn->connect_error) {
-                                                echo "<option value=''>Database connection failed</option>";
-                                            } else {
-                                                $result = $conn->query("SELECT id, name, usd_balance, afs_balance FROM clients where status = 'active' AND tenant_id = $tenant_id AND branch_id = $branch_id");
-                                                while ($row = $result->fetch_assoc()) {
+                                            try {
+                                                $stmt = $pdo->prepare("SELECT id, name, usd_balance, afs_balance FROM clients WHERE status = 'active' AND tenant_id = ? AND branch_id = ?");
+                                                $stmt->execute([$tenant_id, $branch_id]);
+                                                $clients = $stmt->fetchAll(PDO::FETCH_ASSOC);
+                                                foreach ($clients as $row) {
                                                     echo "<option value='{$row['id']}' data-tokens='{$row['name']}'>{$row['name']}</option>";
                                                 }
+                                            } catch (PDOException $e) {
+                                                echo "<option value=''>Database connection failed</option>";
                                             }
                                             ?>
                                         </select>
@@ -205,13 +209,15 @@
                                         <select class="form-control select2" id="editPaidTo" name="paidTo" required readonly>
                                             <option value=""><?= __('select_main_account') ?></option>
                                             <?php
-                                            if ($conn->connect_error) {
-                                                echo "<option value=''>Database connection failed</option>";
-                                            } else {
-                                                $result = $conn->query("SELECT id, name, usd_balance, afs_balance FROM main_account where status = 'active' AND tenant_id = $tenant_id AND branch_id = $branch_id");
-                                                while ($row = $result->fetch_assoc()) {
+                                            try {
+                                                $stmt = $pdo->prepare("SELECT id, name, usd_balance, afs_balance FROM main_account WHERE status = 'active' AND tenant_id = ? AND branch_id = ?");
+                                                $stmt->execute([$tenant_id, $branch_id]);
+                                                $accounts = $stmt->fetchAll(PDO::FETCH_ASSOC);
+                                                foreach ($accounts as $row) {
                                                     echo "<option value='{$row['id']}'>{$row['name']}</option>";
                                                 }
+                                            } catch (PDOException $e) {
+                                                echo "<option value=''>Database connection failed</option>";
                                             }
                                             ?>
                                         </select>

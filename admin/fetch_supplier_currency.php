@@ -7,24 +7,19 @@ $branch_id = $_SESSION['branch_id'];
 enforce_auth();
 
 // Database connection
-require_once '../includes/conn.php';
-
-// Check connection
-if ($conn->connect_error) {
-    echo json_encode(["success" => false, "message" => "Database connection failed."]);
-    exit();
-}
+require_once '../includes/db.php';
 
 // Fetch suppliers
 $sql = "SELECT id, name, currency FROM suppliers WHERE tenant_id = ? AND branch_id = ?";
-$stmt = $conn->prepare($sql);
-$stmt->bind_param('ii', $tenant_id, $branch_id);
+$stmt = $pdo->prepare($sql);
+$stmt->bindParam(1, $tenant_id, PDO::PARAM_INT);
+$stmt->bindParam(2, $branch_id, PDO::PARAM_INT);
 $stmt->execute();
-$result = $stmt->get_result();
+$result = $stmt->fetchAll();
 
-if ($result->num_rows > 0) {
+if (count($result) > 0) {
     $suppliers = [];
-    while ($row = $result->fetch_assoc()) {
+    foreach ($result as $row) {
         $suppliers[] = [
             "id" => $row["id"],
             "name" => $row["name"],
@@ -35,6 +30,4 @@ if ($result->num_rows > 0) {
 } else {
     echo json_encode(["success" => false, "message" => "No suppliers found."]);
 }
-
-$conn->close();
 ?>

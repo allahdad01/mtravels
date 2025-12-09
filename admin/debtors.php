@@ -5,6 +5,9 @@ require_once 'includes/db_security.php';
 // Include security module
 require_once 'security.php';
 
+// Include secure headers helper
+require_once 'includes/set_secure_headers.php';
+
 // Include language helper
 require_once '../includes/language_helpers.php';
 
@@ -21,9 +24,43 @@ if (!isset($_SESSION['user_id'])  || $_SESSION['role'] !== 'admin') {
     header('Location: ../login.php');
     exit();
 }
+
+// Generate CSRF token if it doesn't exist
+if (!isset($_SESSION['csrf_token'])) {
+    $_SESSION['csrf_token'] = bin2hex(random_bytes(32));
+}
+
 $tenant_id = $_SESSION['tenant_id'];
 $branch_id = $_SESSION['branch_id'];
+require_once '../includes/db.php';
 include '../api/debtor/debtors_handler.php';
+
+// Fetch debtors list
+$status_filter = isset($_GET['status']) && $_GET['status'] === 'inactive' ? 'inactive' : 'active';
+$status = $status_filter === 'inactive' ? 0 : 1;
+
+try {
+    // Get total count
+    $countStmt = $pdo->prepare("SELECT COUNT(*) as total FROM debtors WHERE status = ? AND tenant_id = ? AND branch_id = ?");
+    $countStmt->execute([$status, $tenant_id, $branch_id]);
+    $total_count = $countStmt->fetch(PDO::FETCH_ASSOC)['total'];
+    
+    // Pagination
+    $items_per_page = 10;
+    $current_page = isset($_GET['page']) ? max(1, intval($_GET['page'])) : 1;
+    $offset = ($current_page - 1) * $items_per_page;
+    $total_pages = ceil($total_count / $items_per_page);
+    
+    // Fetch debtors with pagination
+    $stmt = $pdo->prepare("SELECT * FROM debtors WHERE status = ? AND tenant_id = ? AND branch_id = ? ORDER BY name ASC LIMIT ? OFFSET ?");
+    $stmt->execute([$status, $tenant_id, $branch_id, $items_per_page, $offset]);
+    $debtors = $stmt->fetchAll(PDO::FETCH_ASSOC);
+} catch (PDOException $e) {
+    error_log("Error fetching debtors: " . $e->getMessage());
+    $debtors = [];
+    $total_count = 0;
+    $total_pages = 0;
+}
 ?>
 
 
@@ -616,7 +653,7 @@ include '../api/debtor/debtors_handler.php';
                                 <div class="card shadow-sm border-0">
                                     <div class="card-header bg-white border-bottom">
                                         <h5 class="mb-0 text-primary">
-                                            <i class="feather icon-users mr-2"></i><?= __(ucfirst($status_filter) . '_debtors') ?>
+                                            <i class="feather icon-users mr-2"></i><?= __(ucfirst($status_filter ?? 'active') . '_debtors') ?>
                                         </h5>
                                     </div>
                                     <div class="card-body p-3 p-md-4">
@@ -658,7 +695,7 @@ include '../api/debtor/debtors_handler.php';
                                                     </tr>
                                                 </thead>
                                                 <tbody>
-                                                    <?php if (count($debtors) > 0): ?>
+                                                    <?php if (!empty($debtors) && count($debtors) > 0): ?>
                                                         <?php foreach ($debtors as $debtor): ?>
                                                             <tr class="debtor-row">
                                                                 <td>
@@ -981,13 +1018,15 @@ include '../api/debtor/debtors_handler.php';
                                                             <tbody>
                                                                 <?php
                                                                 // Fetch transactions for this debtor
-                                                                $transStmt = $conn->prepare("SELECT * FROM debtor_transactions WHERE debtor_id = ? ORDER BY payment_date DESC");
-                                                                $transStmt->bind_param("i", $debtor['id']);
+                                                                $transStmt = $pdo->prepare("SELECT * FROM debtor_transactions WHERE debtor_id = ? AND tenant_id = ? AND branch_id = ? ORDER BY payment_date DESC");
+                                                                $transStmt->bindParam(1, $debtor['id'], PDO::PARAM_INT);
+                                                                $transStmt->bindParam(2, $tenant_id, PDO::PARAM_INT);
+                                                                $transStmt->bindParam(3, $branch_id, PDO::PARAM_INT);
                                                                 $transStmt->execute();
-                                                                $transResult = $transStmt->get_result();
-                                                                
-                                                                if ($transResult->num_rows > 0) {
-                                                                    while ($transaction = $transResult->fetch_assoc()) {
+                                                                $transResult = $transStmt->fetchAll();
+
+                                                                if (count($transResult) > 0) {
+                                                                    foreach ($transResult as $transaction) {
                                                                         echo '<tr>';
                                                                         echo '<td>' . date('M d, Y H:i:s', strtotime($transaction['created_at'])) . '</td>';
                                                                         echo '<td>' . number_format($transaction['amount'], 2) . ' ' . $transaction['currency'] . '</td>';

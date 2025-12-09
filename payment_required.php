@@ -15,7 +15,6 @@ if (isset($_GET['lang'])) {
 
 // Database connection
 require_once 'config.php';
-require_once 'includes/conn.php';
 require_once 'includes/db.php';
 
 // Get tenant information if available

@@ -119,6 +119,7 @@
                         </div>
                         <div class="card-body">
                             <form id="umrahTransactionForm">
+                                <input type="hidden" name="csrf_token" value="<?php echo h($_SESSION['csrf_token']); ?>">
                                 <input type="hidden" id="transactionUmrahIdInput" name="umrah_id">
                                 <div class="row">
                                     <div class="col-md-6">

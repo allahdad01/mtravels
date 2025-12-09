@@ -13,40 +13,40 @@ if (isset($_REQUEST['supplier_id']) && !empty($_REQUEST['supplier_id'])) {
     $supplierId = intval($_REQUEST['supplier_id']);
 
     // Connect to database
-    require_once '../../includes/conn.php';
+    require_once '../../includes/db.php';
 
-// Validate supplier_id
-$supplier_id = intval($_REQUEST['supplier_id']);
+    // Validate supplier_id
+    $supplier_id = intval($_REQUEST['supplier_id']);
 
-    
+
     // Check connection
-    if ($conn->connect_error) {
-        $response['error'] = 'Database connection failed: ' . $conn->connect_error;
+    if (!$pdo) {
+        $response['error'] = 'Database connection failed';
         echo json_encode($response);
         exit;
     }
-    
+
     // Prepare statement to prevent SQL injection
-    $stmt = $conn->prepare("SELECT currency FROM suppliers WHERE id = ? AND tenant_id = ? AND branch_id = ?");
-    $stmt->bind_param("iii", $supplier_id, $tenant_id, $branch_id);
-    
+    $stmt = $pdo->prepare("SELECT currency FROM suppliers WHERE id = ? AND tenant_id = ? AND branch_id = ?");
+    $stmt->bindParam(1, $supplier_id, PDO::PARAM_INT);
+    $stmt->bindParam(2, $tenant_id, PDO::PARAM_INT);
+    $stmt->bindParam(3, $branch_id, PDO::PARAM_INT);
+
     // Execute query
     $stmt->execute();
-    $result = $stmt->get_result();
-    
+    $result = $stmt->fetch(PDO::FETCH_ASSOC);
+
     // Check if supplier exists
-    if ($result->num_rows > 0) {
-        $row = $result->fetch_assoc();
+    if ($result) {
         $response['success'] = true;
-        $response['currency'] = $row['currency'];
+        $response['currency'] = $result['currency'];
     }
-    
+
     // Close connection
-    $stmt->close();
-    $conn->close();
+    $stmt->closeCursor();
 }
 
 // Return JSON response
 header('Content-Type: application/json');
 echo json_encode($response);
-?> 
+?>

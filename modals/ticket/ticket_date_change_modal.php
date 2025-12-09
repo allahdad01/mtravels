@@ -8,6 +8,8 @@
                         <button type="button" class="close" data-dismiss="modal">&times;</button>
                     </div>
                     <form id="dateChangeForm">
+                    <!-- CSRF Protection -->
+                    <input type="hidden" name="csrf_token" value="<?php echo h($_SESSION['csrf_token'] ?? ''); ?>">
                         <div class="modal-body">
                             <input type="hidden" id="dateChangeTicketId" name="ticketId">
                             <input type="hidden" name="status" value="Date Changed">

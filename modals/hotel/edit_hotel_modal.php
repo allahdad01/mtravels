@@ -12,6 +12,8 @@
             </div>
             <div class="modal-body">
                 <form id="editBookingForm">
+                    <!-- CSRF Protection -->
+                    <input type="hidden" name="csrf_token" value="<?php echo h($_SESSION['csrf_token'] ?? ''); ?>">
                     <input type="hidden" id="edit_booking_id" name="booking_id">
                     
                     <!-- Personal Information -->

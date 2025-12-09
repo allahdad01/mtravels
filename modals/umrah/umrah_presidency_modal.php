@@ -7,6 +7,8 @@
             </div>
             <div class="modal-body">
                 <form id="umrahPresidencyForm" onsubmit="generateUmrah(event)">
+                    <!-- CSRF Protection -->
+                    <input type="hidden" name="csrf_token" value="<?php echo h($_SESSION['csrf_token'] ?? ''); ?>">
                     
                     <!-- Family Head Info -->
                     <h6 class="mb-3 mt-2 text-primary"><?= __("family_information") ?></h6>

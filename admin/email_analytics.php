@@ -34,54 +34,42 @@ if (!empty($_GET)) {
 }
 
 // Get email analytics data
-function getEmailAnalytics($conn, $tenant_id, $branch_id, $startDate, $endDate, $emailType) {
+function getEmailAnalytics($pdo, $tenant_id, $branch_id, $startDate, $endDate, $emailType) {
    $whereClause = "WHERE et.tenant_id = ? AND et.branch_id = ? AND DATE(et.sent_at) BETWEEN ? AND ?";
    $params = [$tenant_id, $branch_id, $startDate, $endDate];
-   $types = "iiss";
 
     if ($emailType !== 'all') {
         $whereClause .= " AND et.email_type = ?";
         $params[] = $emailType;
-        $types .= "s";
     }
 
     // Total emails sent
-    $stmt = $conn->prepare("SELECT COUNT(*) as total_sent FROM email_tracking et $whereClause");
-    $stmt->bind_param($types, ...$params);
-    $stmt->execute();
-    $totalSent = $stmt->get_result()->fetch_assoc()['total_sent'];
-    $stmt->close();
+    $stmt = $pdo->prepare("SELECT COUNT(*) as total_sent FROM email_tracking et $whereClause");
+    $stmt->execute($params);
+    $totalSent = $stmt->fetch()['total_sent'];
 
     // Total emails opened
-    $stmt = $conn->prepare("SELECT COUNT(*) as total_opened FROM email_tracking et $whereClause AND et.opened = 1");
-    $stmt->bind_param($types, ...$params);
-    $stmt->execute();
-    $totalOpened = $stmt->get_result()->fetch_assoc()['total_opened'];
-    $stmt->close();
+    $stmt = $pdo->prepare("SELECT COUNT(*) as total_opened FROM email_tracking et $whereClause AND et.opened = 1");
+    $stmt->execute($params);
+    $totalOpened = $stmt->fetch()['total_opened'];
 
     // Open rate
     $openRate = $totalSent > 0 ? round(($totalOpened / $totalSent) * 100, 2) : 0;
 
     // Emails by type
-    $stmt = $conn->prepare("SELECT et.email_type, COUNT(*) as count, SUM(et.opened) as opened FROM email_tracking et $whereClause GROUP BY et.email_type ORDER BY count DESC");
-    $stmt->bind_param($types, ...$params);
-    $stmt->execute();
-    $emailsByType = $stmt->get_result()->fetch_all(MYSQLI_ASSOC);
-    $stmt->close();
+    $stmt = $pdo->prepare("SELECT et.email_type, COUNT(*) as count, SUM(et.opened) as opened FROM email_tracking et $whereClause GROUP BY et.email_type ORDER BY count DESC");
+    $stmt->execute($params);
+    $emailsByType = $stmt->fetchAll();
 
     // Daily email stats
-    $stmt = $conn->prepare("SELECT DATE(et.sent_at) as date, COUNT(*) as sent, SUM(et.opened) as opened FROM email_tracking et $whereClause GROUP BY DATE(et.sent_at) ORDER BY date DESC");
-    $stmt->bind_param($types, ...$params);
-    $stmt->execute();
-    $dailyStats = $stmt->get_result()->fetch_all(MYSQLI_ASSOC);
-    $stmt->close();
+    $stmt = $pdo->prepare("SELECT DATE(et.sent_at) as date, COUNT(*) as sent, SUM(et.opened) as opened FROM email_tracking et $whereClause GROUP BY DATE(et.sent_at) ORDER BY date DESC");
+    $stmt->execute($params);
+    $dailyStats = $stmt->fetchAll();
 
     // Recent emails
-    $stmt = $conn->prepare("SELECT et.*, DATE(et.sent_at) as sent_date FROM email_tracking et $whereClause ORDER BY et.sent_at DESC LIMIT 50");
-    $stmt->bind_param($types, ...$params);
-    $stmt->execute();
-    $recentEmails = $stmt->get_result()->fetch_all(MYSQLI_ASSOC);
-    $stmt->close();
+    $stmt = $pdo->prepare("SELECT et.*, DATE(et.sent_at) as sent_date FROM email_tracking et $whereClause ORDER BY et.sent_at DESC LIMIT 50");
+    $stmt->execute($params);
+    $recentEmails = $stmt->fetchAll();
 
     return [
         'total_sent' => $totalSent,
@@ -93,7 +81,7 @@ function getEmailAnalytics($conn, $tenant_id, $branch_id, $startDate, $endDate, 
     ];
 }
 
-$analytics = getEmailAnalytics($conn, $tenant_id, $branch_id, $startDate, $endDate, $emailType);
+$analytics = getEmailAnalytics($pdo, $tenant_id, $branch_id, $startDate, $endDate, $emailType);
 
 include '../includes/header.php';
 ?>

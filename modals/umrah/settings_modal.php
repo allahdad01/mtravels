@@ -2,6 +2,8 @@
  <div class="modal fade" id="settingsModal" tabindex="-1" role="dialog">
                                 <div class="modal-dialog modal-lg modal-dialog-centered" role="document">
                                     <form id="updateProfileForm" enctype="multipart/form-data">
+                    <!-- CSRF Protection -->
+                    <input type="hidden" name="csrf_token" value="<?php echo h($_SESSION['csrf_token'] ?? ''); ?>">
                                         <div class="modal-content shadow-lg border-0">
                                             <div class="modal-header bg-primary text-white border-0">
                                                 <h5 class="modal-title">

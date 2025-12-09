@@ -13,6 +13,8 @@
             <div class="modal-body">
                 <p>Please enter the penalty amounts for this date change:</p>
                 <form id="penaltyForm">
+                    <!-- CSRF Protection -->
+                    <input type="hidden" name="csrf_token" value="<?php echo h($_SESSION['csrf_token'] ?? ''); ?>">
                     <input type="hidden" id="penaltyRequestId" value="">
                     <div class="form-group">
                         <label for="modal_supplier_penalty">Supplier Penalty ($)</label>

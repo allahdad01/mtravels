@@ -14,7 +14,6 @@ enforce_auth();
 
 // Database connection
 require_once('../includes/db.php');
-require_once('../includes/conn.php');
 
 // Get JV payment ID from request
 $jvId = isset($_GET['id']) ? intval($_GET['id']) : 0;

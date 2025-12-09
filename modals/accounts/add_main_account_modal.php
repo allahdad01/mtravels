@@ -11,6 +11,9 @@
                 </button>
             </div>
             <form id="addMainAccountForm">
+                <!-- CSRF Protection -->
+                <input type="hidden" name="csrf_token" value="<?php echo h($_SESSION['csrf_token'] ?? ''); ?>">
+                
                 <div class="modal-body">
                     <div class="mb-3">
                         <label for="account_name" class="form-label"><?= __('account_name') ?></label>

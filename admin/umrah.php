@@ -18,7 +18,6 @@ if (!isset($_SESSION['user_id'])  || $_SESSION['role'] !== 'admin') {
 
 // Database connection
 require_once('../includes/db.php');
-require_once('../includes/conn.php');
 
 
 ?>
@@ -62,38 +61,47 @@ require_once('../includes/conn.php');
                                             // Search and Pagination setup
                                             $resultsPerPage = 10; // Number of families per page
                                             $page = isset($_GET['page']) ? (int)$_GET['page'] : 1;
-                                            $search = isset($_GET['search']) ? $conn->real_escape_string($_GET['search']) : '';
-                                            $visaStatus = isset($_GET['visa_status']) ? $conn->real_escape_string($_GET['visa_status']) : '';
+                                            $search = isset($_GET['search']) ? trim($_GET['search']) : '';
+                                            $visaStatus = isset($_GET['visa_status']) ? trim($_GET['visa_status']) : '';
                                             $offset = ($page - 1) * $resultsPerPage;
 
                                             // ---------- COUNT QUERY ----------
                                             $countSql = "SELECT COUNT(DISTINCT f.family_id) as total
                                                         FROM families f
                                                         LEFT JOIN users u ON f.created_by = u.id
-                                                        WHERE 1=1 AND f.tenant_id = $tenant_id AND f.branch_id = $branch_id";
+                                                        WHERE 1=1 AND f.tenant_id = ? AND f.branch_id = ?";
+
+                                            $countParams = [$tenant_id, $branch_id];
+                                            $countTypes = "ii";
 
                                             // Add filters for count
                                             if (!empty($visaStatus)) {
-                                                $countSql .= " AND f.visa_status = '$visaStatus'";
+                                                $countSql .= " AND f.visa_status = ?";
+                                                $countParams[] = $visaStatus;
+                                                $countTypes .= "s";
                                             }
 
                                             if (!empty($search)) {
                                                 $countSql .= " AND (
-                                                    f.head_of_family LIKE '%$search%' OR
-                                                    f.contact LIKE '%$search%' OR
-                                                    f.address LIKE '%$search%' OR
-                                                    f.package_type LIKE '%$search%' OR
-                                                    f.location LIKE '%$search%' OR
-                                                    u.name LIKE '%$search%' OR
-                                                    EXISTS (SELECT 1 FROM umrah_bookings ub WHERE ub.family_id = f.family_id AND ub.tenant_id = $tenant_id AND ub.branch_id = $branch_id AND (
-                                                        ub.name LIKE '%$search%' OR
-                                                        ub.passport_number LIKE '%$search%'
+                                                    f.head_of_family LIKE ? OR
+                                                    f.contact LIKE ? OR
+                                                    f.address LIKE ? OR
+                                                    f.package_type LIKE ? OR
+                                                    f.location LIKE ? OR
+                                                    u.name LIKE ? OR
+                                                    EXISTS (SELECT 1 FROM umrah_bookings ub WHERE ub.family_id = f.family_id AND ub.tenant_id = ? AND ub.branch_id = ? AND (
+                                                        ub.name LIKE ? OR
+                                                        ub.passport_number LIKE ?
                                                     ))
                                                 )";
+                                                $searchTerm = "%$search%";
+                                                $countParams = array_merge($countParams, [$searchTerm, $searchTerm, $searchTerm, $searchTerm, $searchTerm, $searchTerm, $tenant_id, $branch_id, $searchTerm, $searchTerm]);
+                                                $countTypes .= "ssssssiiiss";
                                             }
 
-                                            $countResult = $conn->query($countSql);
-                                            $totalFamilies = $countResult->fetch_assoc()['total'];
+                                            $countStmt = $pdo->prepare($countSql);
+                                            $countStmt->execute($countParams);
+                                            $totalFamilies = $countStmt->fetch(PDO::FETCH_ASSOC)['total'];
                                             $totalPages = ceil($totalFamilies / $resultsPerPage);
 
                                             // ---------- MAIN QUERY ----------
@@ -106,37 +114,53 @@ require_once('../includes/conn.php');
 
                                                             LEFT JOIN users u ON f.created_by = u.id
                                                             LEFT JOIN umrah_bookings ub ON f.family_id = ub.family_id
-                                                            WHERE 1=1 AND f.tenant_id = $tenant_id AND f.branch_id = $branch_id";
+                                                            WHERE 1=1 AND f.tenant_id = ? AND f.branch_id = ?";
+
+                                            $familiesParams = [$tenant_id, $branch_id];
+                                            $familiesTypes = "ii";
 
                                             // Add filters for main query
                                             if (!empty($visaStatus)) {
-                                                $sqlFamilies .= " AND f.visa_status = '$visaStatus'";
+                                                $sqlFamilies .= " AND f.visa_status = ?";
+                                                $familiesParams[] = $visaStatus;
+                                                $familiesTypes .= "s";
                                             }
 
                                             if (!empty($search)) {
                                                 $sqlFamilies .= " AND (
-                                                    f.head_of_family LIKE '%$search%' OR
-                                                    f.contact LIKE '%$search%' OR
-                                                    f.address LIKE '%$search%' OR
-                                                    f.package_type LIKE '%$search%' OR
-                                                    f.location LIKE '%$search%' OR
-                                                    u.name LIKE '%$search%' OR
-                                                    EXISTS (SELECT 1 FROM umrah_bookings ub WHERE ub.family_id = f.family_id AND ub.tenant_id = $tenant_id AND ub.branch_id = $branch_id AND (
-                                                        ub.name LIKE '%$search%' OR
-                                                        ub.passport_number LIKE '%$search%'
+                                                    f.head_of_family LIKE ? OR
+                                                    f.contact LIKE ? OR
+                                                    f.address LIKE ? OR
+                                                    f.package_type LIKE ? OR
+                                                    f.location LIKE ? OR
+                                                    u.name LIKE ? OR
+                                                    EXISTS (SELECT 1 FROM umrah_bookings ub WHERE ub.family_id = f.family_id AND ub.tenant_id = ? AND ub.branch_id = ? AND (
+                                                        ub.name LIKE ? OR
+                                                        ub.passport_number LIKE ?
                                                     ))
                                                 )";
+                                                $searchTerm = "%$search%";
+                                                $familiesParams = array_merge($familiesParams, [$searchTerm, $searchTerm, $searchTerm, $searchTerm, $searchTerm, $searchTerm, $tenant_id, $branch_id, $searchTerm, $searchTerm]);
+                                                $familiesTypes .= "ssssssiiiss";
                                             }
 
                                             // Group by family and order newest first
                                             $sqlFamilies .= " GROUP BY f.family_id
-                                            ORDER BY f.created_at DESC
-                                            LIMIT $resultsPerPage OFFSET $offset";
+                                            ORDER BY f.created_at DESC LIMIT ? OFFSET ?";
+                                            $familiesParams[] = $resultsPerPage;
+                                            $familiesParams[] = $offset;
+                                            $familiesTypes .= "ii";
 
-                                            $resultFamilies = $conn->query($sqlFamilies);
+                                            $familiesStmt = $pdo->prepare($sqlFamilies);
+                                            $familiesStmt->execute($familiesParams);
+                                            $resultFamilies = $familiesStmt->fetchAll(PDO::FETCH_ASSOC);
 
                                             // For dropdown
-                                            $resultFamiliesForDropdown = $conn->query("SELECT * FROM families WHERE tenant_id = $tenant_id AND branch_id = $branch_id");
+                                            $dropdownStmt = $pdo->prepare("SELECT * FROM families WHERE tenant_id = ? AND branch_id = ?");
+                                            $dropdownStmt->bindParam(1, $tenant_id, PDO::PARAM_INT);
+                                            $dropdownStmt->bindParam(2, $branch_id, PDO::PARAM_INT);
+                                            $dropdownStmt->execute();
+                                            $resultFamiliesForDropdown = $dropdownStmt->fetchAll(PDO::FETCH_ASSOC);
                                         ?>
                                 <!-- Display Families and Bookings -->
                                 <div class="container-fluid px-4">
@@ -248,8 +272,8 @@ require_once('../includes/conn.php');
                                                         </tr>
                                                     </thead>
                                                     <tbody>
-                                                        <?php if ($resultFamilies->num_rows > 0) {
-                                                            while ($row = $resultFamilies->fetch_assoc()) {
+                                                        <?php if (!empty($resultFamilies)) {
+                                                            foreach ($resultFamilies as $row) {
                                                                 $familyId = $row['family_id']; ?>
                                                                 <?php
                                                                     $isFullyRefunded = ($row['total_members'] > 0 && $row['total_members'] == $row['refunded_members']);
@@ -409,11 +433,16 @@ require_once('../includes/conn.php');
                                                                                             LEFT JOIN umrah_booking_services ubs ON um.booking_id = ubs.booking_id
                                                                                             LEFT JOIN suppliers s ON ubs.supplier_id = s.id
                                                                                             LEFT JOIN users u ON um.created_by = u.id
-                                                                                            WHERE um.family_id = $familyId AND um.tenant_id = $tenant_id AND um.branch_id = $branch_id
+                                                                                            WHERE um.family_id = ? AND um.tenant_id = ? AND um.branch_id = ?
                                                                                             GROUP BY um.booking_id";
-                                                                                            $resultMembers = $conn->query($sqlMembers);
-                                                                                            if ($resultMembers->num_rows > 0) {
-                                                                                                while ($member = $resultMembers->fetch_assoc()) { ?>
+                                                                                            $membersStmt = $pdo->prepare($sqlMembers);
+                                                                                            $membersStmt->bindParam(1, $familyId, PDO::PARAM_INT);
+                                                                                            $membersStmt->bindParam(2, $tenant_id, PDO::PARAM_INT);
+                                                                                            $membersStmt->bindParam(3, $branch_id, PDO::PARAM_INT);
+                                                                                            $membersStmt->execute();
+                                                                                            $resultMembers = $membersStmt->fetchAll(PDO::FETCH_ASSOC);
+                                                                                            if (!empty($resultMembers)) {
+                                                                                                foreach ($resultMembers as $member) { ?>
                                                                                                     <tr class="<?= isset($member['status']) && $member['status'] === 'refunded' ? 'table-danger' : '' ?>">
                                                                                                         <td>
                                                                                                             <input type="checkbox" class="member-checkbox" value="<?= $member['booking_id'] ?>"
@@ -461,18 +490,20 @@ require_once('../includes/conn.php');
                                                                                                             <div><?= __('sold') ?>: <?= htmlspecialchars($member['sold_price'] ?? '') ?></div>
                                                                                                             <div class="text-success"><?= __('paid') ?>: <?= htmlspecialchars($member['paid'] ?? '') ?></div>
                                                                                                             <?php
-                                                                                                                                                                             // Fetch main account transactions for this booking
-                                                                                                                                                                             $transactionSql = "SELECT SUM(payment_amount / COALESCE(exchange_rate, 1)) as main_account_total
-                                                                                                                                                                                             FROM umrah_transactions
-                                                                                                                                                                                             WHERE umrah_booking_id = {$member['booking_id']}
-                                                                                                                                                                                             AND transaction_to = 'Internal Account'
-                                                                                                                                                                                             AND tenant_id = $tenant_id AND branch_id = $branch_id";
-                                                                                                                                                                             $transResult = $conn->query($transactionSql);
-                                                                                                                                                                             $mainAccountTotal = 0;
-                                                                                                                                                                             if ($transResult && $transRow = $transResult->fetch_assoc()) {
-                                                                                                                                                                                 $mainAccountTotal = $transRow['main_account_total'] ?: 0;
-                                                                                                                                                                             }
-                                                                                                                                                                             ?>
+                                                                                                            // Fetch main account transactions for this booking
+                                                                                                            $transactionSql = "SELECT SUM(payment_amount / COALESCE(exchange_rate, 1)) as main_account_total
+                                                                                                                            FROM umrah_transactions
+                                                                                                                            WHERE umrah_booking_id = ?
+                                                                                                                            AND transaction_to = 'Internal Account'
+                                                                                                                            AND tenant_id = ? AND branch_id = ?";
+                                                                                                            $transStmt = $pdo->prepare($transactionSql);
+                                                                                                            $transStmt->bindParam(1, $member['booking_id'], PDO::PARAM_INT);
+                                                                                                            $transStmt->bindParam(2, $tenant_id, PDO::PARAM_INT);
+                                                                                                            $transStmt->bindParam(3, $branch_id, PDO::PARAM_INT);
+                                                                                                            $transStmt->execute();
+                                                                                                            $transResult = $transStmt->fetch(PDO::FETCH_ASSOC);
+                                                                                                            $mainAccountTotal = $transResult ? ($transResult['main_account_total'] ?: 0) : 0;
+                                                                                                            ?>
                                                                                                             <div class="text-primary"><?= __('internal_account') ?>: <?= htmlspecialchars($mainAccountTotal) ?></div>
                                                                                                             <div><?= __('bank') ?>: <?= htmlspecialchars($member['received_bank_payment'] ?? '') ?></div>
                                                                                                             <div><?= __('receipt') ?>: <?= htmlspecialchars($member['bank_receipt_number'] ?? '') ?></div>

@@ -8,6 +8,13 @@ require_once '../../admin/security.php';
 // Enforce authentication
 enforce_auth();
 
+// ✅ CSRF Token Validation
+if (!verify_csrf_token()) {
+    http_response_code(403);
+    echo json_encode(['success' => false, 'message' => 'Security validation failed. Please try again.']);
+    exit;
+}
+
 // Use environment variables or a secure method to store database credentials
 require_once '../../includes/db.php';
 $tenant_id = $_SESSION['tenant_id'];

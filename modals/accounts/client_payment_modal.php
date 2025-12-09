@@ -12,6 +12,9 @@
             </div>
             <div class="modal-body">
                 <form id="partialPaymentForm">
+                    <!-- CSRF Protection -->
+                    <input type="hidden" name="csrf_token" value="<?php echo h($_SESSION['csrf_token'] ?? ''); ?>">
+                    
                     <input type="hidden" id="clientId" name="client_id">
                     <input type="hidden" id="clientName" name="client_name">
                     

@@ -2,7 +2,6 @@
 // Include security and database connections
 require_once '../../admin/security.php';
 require_once '../../includes/db.php';
-require_once '../../includes/conn.php';
 
 // Enforce authentication
 enforce_auth();
@@ -58,38 +57,48 @@ if ($return_date_obj <= $flight_date_obj) {
 
 try {
     // Get current booking details
-    $stmt = $conn->prepare("
+    $stmt = $pdo->prepare("
         SELECT ub.*, f.family_id, f.head_of_family, ubs.supplier_id as supplier,
                s.name as supplier_name, c.name as client_name, ma.name as main_account_name
         FROM umrah_bookings ub
         LEFT JOIN families f ON ub.family_id = f.family_id
-        LEFT JOIN umrah_booking_services ubs ON ub.booking_id = ubs.booking_id AND ubs.service_type IN ('all', 'ticket') And tenant_id = ? And branch_id = ?
-        LEFT JOIN suppliers s ON ubs.supplier_id = s.id And tenant_id = ? And branch_id = ?
-        LEFT JOIN clients c ON ub.sold_to = c.id And tenant_id = ? And branch_id = ?
-        LEFT JOIN main_account ma ON ub.paid_to = ma.id And tenant_id = ? And branch_id = ?
-        WHERE ub.booking_id = ? AND ub.tenant_id = ? And branch_id = ?
+        LEFT JOIN umrah_booking_services ubs ON ub.booking_id = ubs.booking_id AND ubs.service_type IN ('all', 'ticket') AND ubs.tenant_id = ? AND ubs.branch_id = ?
+        LEFT JOIN suppliers s ON ubs.supplier_id = s.id AND s.tenant_id = ? AND s.branch_id = ?
+        LEFT JOIN clients c ON ub.sold_to = c.id AND c.tenant_id = ? AND c.branch_id = ?
+        LEFT JOIN main_account ma ON ub.paid_to = ma.id AND ma.tenant_id = ? AND ma.branch_id = ?
+        WHERE ub.booking_id = ? AND ub.tenant_id = ? AND ub.branch_id = ?
     ");
-    $stmt->bind_param("iii", $booking_id, $tenant_id, $branch_id);
+    $stmt->bindParam(1, $tenant_id, PDO::PARAM_INT);
+    $stmt->bindParam(2, $branch_id, PDO::PARAM_INT);
+    $stmt->bindParam(3, $tenant_id, PDO::PARAM_INT);
+    $stmt->bindParam(4, $branch_id, PDO::PARAM_INT);
+    $stmt->bindParam(5, $tenant_id, PDO::PARAM_INT);
+    $stmt->bindParam(6, $branch_id, PDO::PARAM_INT);
+    $stmt->bindParam(7, $tenant_id, PDO::PARAM_INT);
+    $stmt->bindParam(8, $branch_id, PDO::PARAM_INT);
+    $stmt->bindParam(9, $booking_id, PDO::PARAM_INT);
+    $stmt->bindParam(10, $tenant_id, PDO::PARAM_INT);
+    $stmt->bindParam(11, $branch_id, PDO::PARAM_INT);
     $stmt->execute();
-    $result = $stmt->get_result();
+    $booking = $stmt->fetch(PDO::FETCH_ASSOC);
 
-    if ($result->num_rows === 0) {
+    if (!$booking) {
         echo json_encode(['success' => false, 'message' => 'Booking not found']);
         exit;
     }
 
-    $booking = $result->fetch_assoc();
-
     // Check if there's already a pending date change request for this booking
-    $stmt = $conn->prepare("
+    $stmt = $pdo->prepare("
         SELECT id FROM date_change_umrah
-        WHERE umrah_booking_id = ? AND status = 'Pending' AND tenant_id = ? And branch_id = ?
+        WHERE umrah_booking_id = ? AND status = 'Pending' AND tenant_id = ? AND branch_id = ?
     ");
-    $stmt->bind_param("iii", $booking_id, $tenant_id, $branch_id);
+    $stmt->bindParam(1, $booking_id, PDO::PARAM_INT);
+    $stmt->bindParam(2, $tenant_id, PDO::PARAM_INT);
+    $stmt->bindParam(3, $branch_id, PDO::PARAM_INT);
     $stmt->execute();
-    $pending_result = $stmt->get_result();
+    $pending_result = $stmt->fetch(PDO::FETCH_ASSOC);
 
-    if ($pending_result->num_rows > 0) {
+    if ($pending_result) {
         echo json_encode(['success' => false, 'message' => 'A pending date change request already exists for this booking']);
         exit;
     }
@@ -101,7 +110,7 @@ try {
     }
 
     // Insert date change request
-    $stmt = $conn->prepare("
+    $stmt = $pdo->prepare("
         INSERT INTO date_change_umrah (
             umrah_booking_id, family_id, supplier, sold_to, paid_to,
             passenger_name, old_flight_date, new_flight_date,
@@ -121,32 +130,29 @@ try {
     $created_by = $_SESSION['user_id'];
     $currency = $booking['currency'] ?: 'USD';
 
-    $stmt->bind_param(
-        "iiiiissssssssddssiii",
-        $booking_id,
-        $booking['family_id'],
-        $booking['supplier'],
-        $booking['sold_to'],
-        $booking['paid_to'],
-        $booking['name'],
-        $booking['flight_date'],
-        $new_flight_date,
-        $booking['return_date'],
-        $new_return_date,
-        $booking['duration'],
-        $new_duration,
-        $booking['sold_price'],
-        $new_price,
-        $price_difference,
-        $currency,
-        $remarks,
-        $created_by,
-        $tenant_id,
-        $branch_id
-    );
+    $stmt->bindParam(1, $booking_id, PDO::PARAM_INT);
+    $stmt->bindParam(2, $booking['family_id'], PDO::PARAM_INT);
+    $stmt->bindParam(3, $booking['supplier'], PDO::PARAM_INT);
+    $stmt->bindParam(4, $booking['sold_to'], PDO::PARAM_INT);
+    $stmt->bindParam(5, $booking['paid_to'], PDO::PARAM_INT);
+    $stmt->bindParam(6, $booking['name'], PDO::PARAM_STR);
+    $stmt->bindParam(7, $booking['flight_date'], PDO::PARAM_STR);
+    $stmt->bindParam(8, $new_flight_date, PDO::PARAM_STR);
+    $stmt->bindParam(9, $booking['return_date'], PDO::PARAM_STR);
+    $stmt->bindParam(10, $new_return_date, PDO::PARAM_STR);
+    $stmt->bindParam(11, $booking['duration'], PDO::PARAM_STR);
+    $stmt->bindParam(12, $new_duration, PDO::PARAM_STR);
+    $stmt->bindParam(13, $booking['sold_price'], PDO::PARAM_STR);
+    $stmt->bindParam(14, $new_price, PDO::PARAM_STR);
+    $stmt->bindParam(15, $price_difference, PDO::PARAM_STR);
+    $stmt->bindParam(16, $currency, PDO::PARAM_STR);
+    $stmt->bindParam(17, $remarks, PDO::PARAM_STR);
+    $stmt->bindParam(18, $created_by, PDO::PARAM_INT);
+    $stmt->bindParam(19, $tenant_id, PDO::PARAM_INT);
+    $stmt->bindParam(20, $branch_id, PDO::PARAM_INT);
 
     if ($stmt->execute()) {
-        $request_id = $conn->insert_id;
+        $request_id = $pdo->lastInsertId();
 
         // Log the action
         error_log("Date change request submitted - ID: $request_id, Booking: $booking_id, User: {$_SESSION['user_id']}");
@@ -157,10 +163,10 @@ try {
             'request_id' => $request_id
         ]);
     } else {
-        throw new Exception('Failed to insert date change request');
+        throw new PDOException('Failed to insert date change request');
     }
 
-} catch (Exception $e) {
+} catch (PDOException $e) {
     error_log("Date change request error: " . $e->getMessage());
     echo json_encode(['success' => false, 'message' => 'An error occurred while processing the request']);
 }

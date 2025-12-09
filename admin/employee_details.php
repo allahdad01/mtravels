@@ -29,7 +29,7 @@ $stmt = $pdo->prepare("
     SELECT u.*, sm.base_salary, sm.currency as salary_currency, sm.status as salary_status
     FROM users u
     LEFT JOIN salary_management sm ON u.id = sm.user_id AND sm.tenant_id = u.tenant_id
-    WHERE u.id = ? AND u.tenant_id = ? AND branch_id = ? AND u.role != 'super_admin'
+    WHERE u.id = ? AND u.tenant_id = ? AND u.branch_id = ? AND u.role != 'super_admin'
 ");
 $stmt->execute([$employee_id, $tenant_id, $branch_id]);
 $employee = $stmt->fetch(PDO::FETCH_ASSOC);

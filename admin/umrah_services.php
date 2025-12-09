@@ -18,7 +18,6 @@ if (!isset($_SESSION['user_id'])  || $_SESSION['role'] !== 'admin') {
 
 // Database connection
 require_once('../includes/db.php');
-require_once('../includes/conn.php');
 
 ?>
 
@@ -61,8 +60,8 @@ require_once('../includes/conn.php');
                                     // Search and Pagination setup
                                     $resultsPerPage = 10; // Number of services per page
                                     $page = isset($_GET['page']) ? (int)$_GET['page'] : 1;
-                                    $search = isset($_GET['search']) ? $conn->real_escape_string($_GET['search']) : '';
-                                    $serviceType = isset($_GET['service_type']) ? $conn->real_escape_string($_GET['service_type']) : '';
+                                    $search = isset($_GET['search']) ? trim($_GET['search']) : '';
+                                    $serviceType = isset($_GET['service_type']) ? trim($_GET['service_type']) : '';
                                     $offset = ($page - 1) * $resultsPerPage;
 
                                     // ---------- COUNT QUERY ----------
@@ -71,25 +70,34 @@ require_once('../includes/conn.php');
                                                 LEFT JOIN umrah_bookings ub ON ubs.booking_id = ub.booking_id
                                                 LEFT JOIN families f ON ub.family_id = f.family_id
                                                 LEFT JOIN suppliers s ON ubs.supplier_id = s.id
-                                                WHERE f.tenant_id = $tenant_id AND f.branch_id = $branch_id
-                                                AND ub.tenant_id = $tenant_id AND ub.branch_id = $branch_id
-                                                AND ubs.tenant_id = $tenant_id AND ubs.branch_id = $branch_id";
+                                                WHERE f.tenant_id = ? AND f.branch_id = ?
+                                                AND ub.tenant_id = ? AND ub.branch_id = ?
+                                                AND ubs.tenant_id = ? AND ubs.branch_id = ?";
+
+                                    $countParams = [$tenant_id, $branch_id, $tenant_id, $branch_id, $tenant_id, $branch_id];
+                                    $countTypes = "iiiiii";
 
                                     // Add filters for count
                                     if (!empty($serviceType)) {
-                                        $countSql .= " AND ubs.service_type = '$serviceType'";
+                                        $countSql .= " AND ubs.service_type = ?";
+                                        $countParams[] = $serviceType;
+                                        $countTypes .= "s";
                                     }
 
                                     if (!empty($search)) {
                                         $countSql .= " AND (
-                                            ub.name LIKE '%$search%' OR
-                                            f.head_of_family LIKE '%$search%' OR
-                                            s.name LIKE '%$search%'
+                                            ub.name LIKE ? OR
+                                            f.head_of_family LIKE ? OR
+                                            s.name LIKE ?
                                         )";
+                                        $searchTerm = "%$search%";
+                                        $countParams = array_merge($countParams, [$searchTerm, $searchTerm, $searchTerm]);
+                                        $countTypes .= "sss";
                                     }
 
-                                    $countResult = $conn->query($countSql);
-                                    $totalServices = $countResult->fetch_assoc()['total'];
+                                    $countStmt = $pdo->prepare($countSql);
+                                    $countStmt->execute($countParams);
+                                    $totalServices = $countStmt->fetch(PDO::FETCH_ASSOC)['total'];
                                     $totalPages = ceil($totalServices / $resultsPerPage);
 
                                     // ---------- MAIN QUERY ----------
@@ -100,27 +108,39 @@ require_once('../includes/conn.php');
                                                 LEFT JOIN families f ON ub.family_id = f.family_id
                                                 LEFT JOIN suppliers s ON ubs.supplier_id = s.id
                                                 LEFT JOIN clients c ON ub.sold_to = c.id
-                                                WHERE f.tenant_id = $tenant_id AND f.branch_id = $branch_id
-                                                AND ub.tenant_id = $tenant_id AND ub.branch_id = $branch_id
-                                                AND ubs.tenant_id = $tenant_id AND ubs.branch_id = $branch_id";
+                                                WHERE f.tenant_id = ? AND f.branch_id = ?
+                                                AND ub.tenant_id = ? AND ub.branch_id = ?
+                                                AND ubs.tenant_id = ? AND ubs.branch_id = ?";
+
+                                    $servicesParams = [$tenant_id, $branch_id, $tenant_id, $branch_id, $tenant_id, $branch_id];
+                                    $servicesTypes = "iiiiii";
 
                                     // Add filters for main query
                                     if (!empty($serviceType)) {
-                                        $sqlServices .= " AND ubs.service_type = '$serviceType'";
+                                        $sqlServices .= " AND ubs.service_type = ?";
+                                        $servicesParams[] = $serviceType;
+                                        $servicesTypes .= "s";
                                     }
 
                                     if (!empty($search)) {
                                         $sqlServices .= " AND (
-                                            ub.name LIKE '%$search%' OR
-                                            f.head_of_family LIKE '%$search%' OR
-                                            s.name LIKE '%$search%'
+                                            ub.name LIKE ? OR
+                                            f.head_of_family LIKE ? OR
+                                            s.name LIKE ?
                                         )";
+                                        $searchTerm = "%$search%";
+                                        $servicesParams = array_merge($servicesParams, [$searchTerm, $searchTerm, $searchTerm]);
+                                        $servicesTypes .= "sss";
                                     }
 
-                                    $sqlServices .= " ORDER BY ubs.created_at DESC
-                                                    LIMIT $resultsPerPage OFFSET $offset";
+                                    $sqlServices .= " ORDER BY ubs.created_at DESC LIMIT ? OFFSET ?";
+                                    $servicesParams[] = $resultsPerPage;
+                                    $servicesParams[] = $offset;
+                                    $servicesTypes .= "ii";
 
-                                    $resultServices = $conn->query($sqlServices);
+                                    $servicesStmt = $pdo->prepare($sqlServices);
+                                    $servicesStmt->execute($servicesParams);
+                                    $resultServices = $servicesStmt->fetchAll(PDO::FETCH_ASSOC);
                                 ?>
                                 <!-- Display Services -->
                                 <div class="container-fluid px-4">
@@ -222,8 +242,8 @@ require_once('../includes/conn.php');
                                                         </tr>
                                                     </thead>
                                                     <tbody>
-                                                        <?php if ($resultServices->num_rows > 0) {
-                                                            while ($row = $resultServices->fetch_assoc()) { ?>
+                                                        <?php if (!empty($resultServices)) {
+                                                            foreach ($resultServices as $row) { ?>
                                                                 <tr>
                                                                     <td class="pl-4">
                                                                         <div class="d-flex align-items-center">

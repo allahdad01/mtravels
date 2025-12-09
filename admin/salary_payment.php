@@ -64,19 +64,21 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
     // Check input errors before inserting in database
     if (empty($user_id_err) && empty($main_account_id_err) && empty($amount_err) && empty($payment_for_month_err)) {
         // Start transaction
-        mysqli_begin_transaction($conection_db);
+        $pdo->beginTransaction();
         
         try {
             // Get current main account balance
-            $sql = "SELECT usd_balance, afs_balance FROM main_account WHERE id = ? AND tenant_id = ? AND branch_id = ?";
-            $stmt = mysqli_prepare($conection_db, $sql);
-            mysqli_stmt_bind_param($stmt, "iii", $main_account_id, $tenant_id, $branch_id);
-            mysqli_stmt_execute($stmt);
-            mysqli_stmt_store_result($stmt);
-            
-            if (mysqli_stmt_num_rows($stmt) == 1) {
-                mysqli_stmt_bind_result($stmt, $usd_balance, $afs_balance);
-                mysqli_stmt_fetch($stmt);
+             $sql = "SELECT usd_balance, afs_balance FROM main_account WHERE id = ? AND tenant_id = ? AND branch_id = ?";
+             $stmt = $pdo->prepare($sql);
+             $stmt->bindParam(1, $main_account_id, PDO::PARAM_INT);
+             $stmt->bindParam(2, $tenant_id, PDO::PARAM_INT);
+             $stmt->bindParam(3, $branch_id, PDO::PARAM_INT);
+             $stmt->execute();
+             $result = $stmt->fetch(PDO::FETCH_ASSOC);
+
+             if ($result) {
+                 $usd_balance = $result['usd_balance'];
+                 $afs_balance = $result['afs_balance'];
                 
                 // Calculate starting balance and total deduction
                 $starting_balance = ($currency == "USD") ? $usd_balance : $afs_balance;
@@ -92,26 +94,22 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
                                    payment_for_month, payment_type, description, receipt, tenant_id, branch_id)
                                    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)";
 
-                    $insert_stmt = mysqli_prepare($conection_db, $insert_sql);
-                    mysqli_stmt_bind_param(
-                        $insert_stmt,
-                        "iidsssssii",
-                        $user_id,
-                        $main_account_id,
-                        $amount,
-                        $currency,
-                        $payment_date,
-                        $this_month_for,
-                        $payment_type,
-                        $description,
-                        $this_receipt,
-                        $tenant_id,
-                        $branch_id
-                    );
-                    mysqli_stmt_execute($insert_stmt);
+                    $insert_stmt = $pdo->prepare($insert_sql);
+                    $insert_stmt->bindParam(1, $user_id, PDO::PARAM_INT);
+                    $insert_stmt->bindParam(2, $main_account_id, PDO::PARAM_INT);
+                    $insert_stmt->bindParam(3, $amount, PDO::PARAM_STR);
+                    $insert_stmt->bindParam(4, $currency, PDO::PARAM_STR);
+                    $insert_stmt->bindParam(5, $payment_date, PDO::PARAM_STR);
+                    $insert_stmt->bindParam(6, $this_month_for, PDO::PARAM_STR);
+                    $insert_stmt->bindParam(7, $payment_type, PDO::PARAM_STR);
+                    $insert_stmt->bindParam(8, $description, PDO::PARAM_STR);
+                    $insert_stmt->bindParam(9, $this_receipt, PDO::PARAM_STR);
+                    $insert_stmt->bindParam(10, $tenant_id, PDO::PARAM_INT);
+                    $insert_stmt->bindParam(11, $branch_id, PDO::PARAM_INT);
+                    $insert_stmt->execute();
 
                     // Get the inserted payment ID
-                    $payment_id = mysqli_insert_id($conection_db);
+                    $payment_id = $pdo->lastInsertId();
 
                     // Running balance after this month's payment
                     $running_balance = $starting_balance - ($amount * ($i + 1));
@@ -121,32 +119,31 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
                                        description, transaction_of, reference_id, receipt, tenant_id, branch_id)
                                        VALUES (?, 'debit', ?, ?, ?, ?, 'salary_payment', ?, ?, ?, ?)";
 
-                    $transaction_stmt = mysqli_prepare($conection_db, $transaction_sql);
-                    mysqli_stmt_bind_param(
-                        $transaction_stmt,
-                        "iddssisii",
-                        $main_account_id,
-                        $amount,
-                        $running_balance,
-                        $currency,
-                        $description,
-                        $payment_id,
-                        $this_receipt,
-                        $tenant_id,
-                        $branch_id
-                    );
-                    mysqli_stmt_execute($transaction_stmt);
+                    $transaction_stmt = $pdo->prepare($transaction_sql);
+                    $transaction_stmt->bindParam(1, $main_account_id, PDO::PARAM_INT);
+                    $transaction_stmt->bindParam(2, $amount, PDO::PARAM_STR);
+                    $transaction_stmt->bindParam(3, $running_balance, PDO::PARAM_STR);
+                    $transaction_stmt->bindParam(4, $currency, PDO::PARAM_STR);
+                    $transaction_stmt->bindParam(5, $description, PDO::PARAM_STR);
+                    $transaction_stmt->bindParam(6, $payment_id, PDO::PARAM_INT);
+                    $transaction_stmt->bindParam(7, $this_receipt, PDO::PARAM_STR);
+                    $transaction_stmt->bindParam(8, $tenant_id, PDO::PARAM_INT);
+                    $transaction_stmt->bindParam(9, $branch_id, PDO::PARAM_INT);
+                    $transaction_stmt->execute();
 
                     // If this is a regular payment, deduct advances per month
                     if ($payment_type == 'regular') {
                         $advance_sql = "SELECT id, amount, amount_paid FROM salary_advances
                                        WHERE user_id = ? AND currency = ? AND repayment_status != 'paid' AND tenant_id = ? AND branch_id = ?";
-                        $advance_stmt = mysqli_prepare($conection_db, $advance_sql);
-                        mysqli_stmt_bind_param($advance_stmt, "isii", $user_id, $currency, $tenant_id, $branch_id);
-                        mysqli_stmt_execute($advance_stmt);
-                        $advance_result = mysqli_stmt_get_result($advance_stmt);
+                        $advance_stmt = $pdo->prepare($advance_sql);
+                        $advance_stmt->bindParam(1, $user_id, PDO::PARAM_INT);
+                        $advance_stmt->bindParam(2, $currency, PDO::PARAM_STR);
+                        $advance_stmt->bindParam(3, $tenant_id, PDO::PARAM_INT);
+                        $advance_stmt->bindParam(4, $branch_id, PDO::PARAM_INT);
+                        $advance_stmt->execute();
+                        $advance_result = $advance_stmt->fetchAll();
 
-                        while ($advance_row = mysqli_fetch_array($advance_result)) {
+                        foreach ($advance_result as $advance_row) {
                             $advance_id = $advance_row['id'];
                             $advance_amount = $advance_row['amount'];
                             $amount_paid_adv = $advance_row['amount_paid'];
@@ -156,9 +153,13 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
                                 $new_paid = $amount_paid_adv + $deduction;
                                 $status = ($new_paid >= $advance_amount) ? 'paid' : 'partially_paid';
                                 $update_advance_sql = "UPDATE salary_advances SET amount_paid = ?, repayment_status = ? WHERE id = ? AND tenant_id = ? AND branch_id = ?";
-                                $update_advance_stmt = mysqli_prepare($conection_db, $update_advance_sql);
-                                mysqli_stmt_bind_param($update_advance_stmt, "dsiii", $new_paid, $status, $advance_id, $tenant_id, $branch_id);
-                                mysqli_stmt_execute($update_advance_stmt);
+                                $update_advance_stmt = $pdo->prepare($update_advance_sql);
+                                $update_advance_stmt->bindParam(1, $new_paid, PDO::PARAM_STR);
+                                $update_advance_stmt->bindParam(2, $status, PDO::PARAM_STR);
+                                $update_advance_stmt->bindParam(3, $advance_id, PDO::PARAM_INT);
+                                $update_advance_stmt->bindParam(4, $tenant_id, PDO::PARAM_INT);
+                                $update_advance_stmt->bindParam(5, $branch_id, PDO::PARAM_INT);
+                                $update_advance_stmt->execute();
                             }
                         }
                     }
@@ -168,26 +169,31 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
                 $update_sql = ($currency == "USD")
                     ? "UPDATE main_account SET usd_balance = usd_balance - ? WHERE id = ? AND tenant_id = ? AND branch_id = ?"
                     : "UPDATE main_account SET afs_balance = afs_balance - ? WHERE id = ? AND tenant_id = ? AND branch_id = ?";
-                $update_stmt = mysqli_prepare($conection_db, $update_sql);
-                mysqli_stmt_bind_param($update_stmt, "diii", $total_deduction, $main_account_id, $tenant_id, $branch_id);
-                mysqli_stmt_execute($update_stmt);
+                $update_stmt = $pdo->prepare($update_sql);
+                $update_stmt->bindParam(1, $total_deduction, PDO::PARAM_STR);
+                $update_stmt->bindParam(2, $main_account_id, PDO::PARAM_INT);
+                $update_stmt->bindParam(3, $tenant_id, PDO::PARAM_INT);
+                $update_stmt->bindParam(4, $branch_id, PDO::PARAM_INT);
+                $update_stmt->execute();
 
                 // Commit transaction
-                mysqli_commit($conection_db);
+                $pdo->commit();
                 
                 // Send email notification to employee
                 require_once '../includes/functions.php';
 
                 // Get employee email and name
                 $email_sql = "SELECT email, name FROM users WHERE id = ? AND tenant_id = ? AND branch_id = ?";
-                $email_stmt = mysqli_prepare($conection_db, $email_sql);
-                mysqli_stmt_bind_param($email_stmt, "iii", $user_id, $tenant_id, $branch_id);
-                mysqli_stmt_execute($email_stmt);
-                mysqli_stmt_store_result($email_stmt);
-                
-                if (mysqli_stmt_num_rows($email_stmt) == 1) {
-                    mysqli_stmt_bind_result($email_stmt, $employee_email, $employee_name);
-                    mysqli_stmt_fetch($email_stmt);
+                $email_stmt = $pdo->prepare($email_sql);
+                $email_stmt->bindParam(1, $user_id, PDO::PARAM_INT);
+                $email_stmt->bindParam(2, $tenant_id, PDO::PARAM_INT);
+                $email_stmt->bindParam(3, $branch_id, PDO::PARAM_INT);
+                $email_stmt->execute();
+                $email_result = $email_stmt->fetch(PDO::FETCH_ASSOC);
+
+                if ($email_result) {
+                    $employee_email = $email_result['email'];
+                    $employee_name = $email_result['name'];
                     
                     if (!empty($employee_email)) {
                         // For regular payments, we create notifications for each month
@@ -199,14 +205,17 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
                                 
                                 // Get the specific payment ID for this month
                                 $payment_id_sql = "SELECT id FROM salary_payments WHERE user_id = ? AND payment_for_month = ? AND receipt = ? AND tenant_id = ? AND branch_id = ?";
-                                $payment_id_stmt = mysqli_prepare($conection_db, $payment_id_sql);
-                                mysqli_stmt_bind_param($payment_id_stmt, "issii", $user_id, $this_month_for, $this_receipt, $tenant_id, $branch_id);
-                                mysqli_stmt_execute($payment_id_stmt);
-                                mysqli_stmt_store_result($payment_id_stmt);
-                                
-                                if (mysqli_stmt_num_rows($payment_id_stmt) == 1) {
-                                    mysqli_stmt_bind_result($payment_id_stmt, $payment_id);
-                                    mysqli_stmt_fetch($payment_id_stmt);
+                                $payment_id_stmt = $pdo->prepare($payment_id_sql);
+                                $payment_id_stmt->bindParam(1, $user_id, PDO::PARAM_INT);
+                                $payment_id_stmt->bindParam(2, $this_month_for, PDO::PARAM_STR);
+                                $payment_id_stmt->bindParam(3, $this_receipt, PDO::PARAM_STR);
+                                $payment_id_stmt->bindParam(4, $tenant_id, PDO::PARAM_INT);
+                                $payment_id_stmt->bindParam(5, $branch_id, PDO::PARAM_INT);
+                                $payment_id_stmt->execute();
+                                $payment_id_result = $payment_id_stmt->fetch(PDO::FETCH_ASSOC);
+
+                                if ($payment_id_result) {
+                                    $payment_id = $payment_id_result['id'];
                                     
                                     sendSalaryPaymentNotification(
                                         $employee_email,
@@ -221,11 +230,11 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
                                         $this_receipt
                                     );
                                 }
-                                mysqli_stmt_close($payment_id_stmt);
+                                // No need to close PDO statements explicitly
                             }
                         } else {
                             // For single payments (including advances, bonuses, other), use the last inserted payment ID
-                            $last_payment_id = mysqli_insert_id($conection_db);
+                            $last_payment_id = $pdo->lastInsertId();
                             
                             sendSalaryPaymentNotification(
                                 $employee_email,
@@ -242,7 +251,7 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
                         }
                     }
                 }
-                mysqli_stmt_close($email_stmt);
+                // No need to close PDO statements explicitly
                 
                 // Redirect to success page
                 header("location: salary_payment.php?success=1");
@@ -252,13 +261,12 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
             }
         } catch (Exception $e) {
             // Roll back transaction on error
-            mysqli_rollback($conection_db);
+            $pdo->rollBack();
             echo "Error: " . $e->getMessage();
         }
     }
     
-    // Close connection
-    mysqli_close($conection_db);
+    // PDO connection will be closed automatically when script ends
 }
 ?>
 
@@ -360,13 +368,13 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
                                                 <option value=""><?= __('select_employee') ?></option>
                                                 <?php
                                                 // Get all employees with salary records
-                                                $sql = "SELECT u.id, u.name, sm.base_salary, sm.currency 
-                                                        FROM users u 
-                                                        JOIN salary_management sm ON u.id = sm.user_id 
+                                                $sql = "SELECT u.id, u.name, sm.base_salary, sm.currency
+                                                        FROM users u
+                                                        JOIN salary_management sm ON u.id = sm.user_id
                                                         WHERE sm.status = 'active' and u.fired = 0
                                                         ORDER BY u.name";
-                                                $result = mysqli_query($conection_db, $sql);
-                                                while ($row = mysqli_fetch_array($result)) {
+                                                $result = $pdo->query($sql);
+                                                while ($row = $result->fetch(PDO::FETCH_ASSOC)) {
                                                     echo "<option value='" . $row['id'] . "' data-base-salary='" . $row['base_salary'] . "' data-currency='" . $row['currency'] . "'>" . $row['name'] . "</option>";
                                                 }
                                                 ?>
@@ -381,10 +389,13 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
                                                 <option value=""><?= __('select_account') ?></option>
                                                 <?php
                                                 // Get all main accounts
-                                                $sql = "SELECT id, name, usd_balance, afs_balance FROM main_account where status = 'active' and tenant_id = $tenant_id";
-                                                $result = mysqli_query($conection_db, $sql);
-                                                while ($row = mysqli_fetch_array($result)) {
-                                                    echo "<option value='" . $row['id'] . "'>" . $row['name'] . "</option>";
+                                                $sql = "SELECT id, name, usd_balance, afs_balance FROM main_account where status = 'active' and tenant_id = ?";
+                                                $stmt = $pdo->prepare($sql);
+                                                $stmt->bindParam(1, $tenant_id, PDO::PARAM_INT);
+                                                $stmt->execute();
+                                                $result = $stmt->fetchAll(PDO::FETCH_ASSOC);
+                                                foreach ($result as $row) {
+                                                    echo "<option value='" . $row['id'] . "' data-usd='" . $row['usd_balance'] . "' data-afs='" . $row['afs_balance'] . "'>" . $row['name'] . "</option>";
                                                 }
                                                 ?>
                                             </select>
@@ -506,13 +517,13 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
                                     <tbody>
                                         <?php
                                         // Get all salary payments
-                                        $sql = "SELECT sp.*, u.name as employee_name, ma.name as account_name 
-                                                FROM salary_payments sp 
-                                                JOIN users u ON sp.user_id = u.id 
+                                        $sql = "SELECT sp.*, u.name as employee_name, ma.name as account_name
+                                                FROM salary_payments sp
+                                                JOIN users u ON sp.user_id = u.id
                                                 JOIN main_account ma ON sp.main_account_id = ma.id
                                                 ORDER BY sp.created_at DESC";
-                                        $result = mysqli_query($conection_db, $sql);
-                                        while ($row = mysqli_fetch_array($result)) {
+                                        $result = $pdo->query($sql);
+                                        while ($row = $result->fetch(PDO::FETCH_ASSOC)) {
                                             echo "<tr>";
                                             echo "<td>" . $row['id'] . "</td>";
                                             echo "<td>" . $row['employee_name'] . "</td>";

@@ -7,6 +7,10 @@ require_once '../includes/language_helpers.php';
 
 // Enforce authentication
 enforce_auth();
+
+// Database connection
+require_once('../includes/db.php');
+
 $tenant_id = $_SESSION['tenant_id'];
 $branch_id = $_SESSION['branch_id'];
 
@@ -200,9 +204,13 @@ include '../includes/header.php';
                                                         foreach ($tickets as $ticket): 
                                                             $isAgencyClient = false;
                                                             $soldTo = $ticket['ticket']['sold_to'];
-                                                            $clientQuery = $conn->query("SELECT client_type FROM clients WHERE name = '$soldTo' AND tenant_id = $tenant_id AND branch_id = $branch_id");
-                                                            if ($clientQuery && $clientQuery->num_rows > 0) {
-                                                                $clientRow = $clientQuery->fetch_assoc();
+                                                            $clientStmt = $pdo->prepare("SELECT client_type FROM clients WHERE name = ? AND tenant_id = ? AND branch_id = ?");
+                                                            $clientStmt->bindParam(1, $soldTo, PDO::PARAM_STR);
+                                                            $clientStmt->bindParam(2, $tenant_id, PDO::PARAM_INT);
+                                                            $clientStmt->bindParam(3, $branch_id, PDO::PARAM_INT);
+                                                            $clientStmt->execute();
+                                                            $clientRow = $clientStmt->fetch(PDO::FETCH_ASSOC);
+                                                            if ($clientRow) {
                                                                 $isAgencyClient = ($clientRow['client_type'] === 'agency');
                                                             }
                                                         ?>
@@ -239,9 +247,13 @@ include '../includes/header.php';
                                                             $isAgencyClient = false;
 
                                                             // Check if client is an agency
-                                                            $clientQuery = $conn->query("SELECT client_type FROM clients WHERE name = '$soldTo' AND tenant_id = $tenant_id AND branch_id = $branch_id");
-                                                            if ($clientQuery && $clientQuery->num_rows > 0) {
-                                                                $clientRow = $clientQuery->fetch_assoc();
+                                                            $clientStmt = $pdo->prepare("SELECT client_type FROM clients WHERE name = ? AND tenant_id = ? AND branch_id = ?");
+                                                            $clientStmt->bindParam(1, $soldTo, PDO::PARAM_STR);
+                                                            $clientStmt->bindParam(2, $tenant_id, PDO::PARAM_INT);
+                                                            $clientStmt->bindParam(3, $branch_id, PDO::PARAM_INT);
+                                                            $clientStmt->execute();
+                                                            $clientRow = $clientStmt->fetch(PDO::FETCH_ASSOC);
+                                                            if ($clientRow) {
                                                                 $isAgencyClient = ($clientRow['client_type'] === 'agency');
                                                             }
 
@@ -255,12 +267,17 @@ include '../includes/header.php';
                                                                 $ticketId = $ticket['ticket']['id'];
 
                                                                 // Query transactions from main_account_transactions table
-                                                                $transactionQuery = $conn->query("SELECT * FROM main_account_transactions WHERE
+                                                                $transactionStmt = $pdo->prepare("SELECT * FROM main_account_transactions WHERE
                                                                     transaction_of = 'ticket_sale'
-                                                                    AND reference_id = '$ticketId' AND tenant_id = $tenant_id AND branch_id = $branch_id");
+                                                                    AND reference_id = ? AND tenant_id = ? AND branch_id = ?");
+                                                                $transactionStmt->bindParam(1, $ticketId, PDO::PARAM_INT);
+                                                                $transactionStmt->bindParam(2, $tenant_id, PDO::PARAM_INT);
+                                                                $transactionStmt->bindParam(3, $branch_id, PDO::PARAM_INT);
+                                                                $transactionStmt->execute();
+                                                                $transactions = $transactionStmt->fetchAll(PDO::FETCH_ASSOC);
 
-                                                                if ($transactionQuery && $transactionQuery->num_rows > 0) {
-                                                                    while ($transaction = $transactionQuery->fetch_assoc()) {
+                                                                if ($transactions && count($transactions) > 0) {
+                                                                    foreach ($transactions as $transaction) {
                                                                         $amount = floatval($transaction['amount']);
                                                                         $transCurrency = $transaction['currency'];
                                                                         $transExchangeRate = isset($transaction['exchange_rate']) && $transaction['exchange_rate'] > 0 ? floatval($transaction['exchange_rate']) : 1.0;

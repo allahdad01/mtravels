@@ -10,7 +10,7 @@ $branch_id = $_SESSION['branch_id'];
 // Enforce authentication
 enforce_auth();
 
-include '../../includes/conn.php';
+include '../../includes/db.php';
 
 // Check if the user is logged in
 if (!isset($_SESSION['name'])) {
@@ -25,26 +25,17 @@ try {
               WHERE ap.tenant_id = ? AND ap.branch_id = ?
               ORDER BY ap.id DESC
               LIMIT 100";
-    
-    $stmt = $conn->prepare($query);
-    $stmt->bind_param('ii', $tenant_id, $branch_id);
+
+    $stmt = $pdo->prepare($query);
+    $stmt->bindParam(1, $tenant_id, PDO::PARAM_INT);
+    $stmt->bindParam(2, $branch_id, PDO::PARAM_INT);
     $stmt->execute();
-    $result = $stmt->get_result();
-    
-    if (!$result) {
-        throw new Exception("Database query failed: " . $conn->error);
-    }
-    
-    $tickets = [];
-    while ($row = $result->fetch_assoc()) {
-        $tickets[] = $row;
-    }
-    
+
+    $tickets = $stmt->fetchAll(PDO::FETCH_ASSOC);
+
     echo json_encode(['status' => 'success', 'tickets' => $tickets]);
-    
-} catch (Exception $e) {
+
+} catch (PDOException $e) {
     echo json_encode(['status' => 'error', 'message' => $e->getMessage()]);
 }
-
-$conn->close();
-?> 
+?>

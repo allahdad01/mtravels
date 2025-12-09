@@ -61,29 +61,29 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
         $sql = "INSERT INTO salary_deductions (tenant_id, branch_id, user_id, amount, description, deduction_date, type, created_by)
                 VALUES (?, ?, ?, ?, ?, ?, ?, ?)";
 
-        if ($stmt = mysqli_prepare($conection_db, $sql)) {
-            // Get current user ID as created_by
-            $created_by = $_SESSION["user_id"];
+        $stmt = $pdo->prepare($sql);
+        // Get current user ID as created_by
+        $created_by = $_SESSION["user_id"];
 
-            // Bind variables to the prepared statement as parameters
-            mysqli_stmt_bind_param($stmt, "iiidsssi", $tenant_id, $branch_id, $user_id, $amount, $description, $deduction_date, $type, $created_by);
-            
-            // Attempt to execute the prepared statement
-            if (mysqli_stmt_execute($stmt)) {
-                // Records created successfully. Redirect to landing page
-                header("location: manage_deductions.php?success=1");
-                exit();
-            } else {
-                echo "Oops! Something went wrong. Please try again later.";
-            }
+        // Bind variables to the prepared statement as parameters
+        $stmt->bindParam(1, $tenant_id, PDO::PARAM_INT);
+        $stmt->bindParam(2, $branch_id, PDO::PARAM_INT);
+        $stmt->bindParam(3, $user_id, PDO::PARAM_INT);
+        $stmt->bindParam(4, $amount, PDO::PARAM_STR);
+        $stmt->bindParam(5, $description, PDO::PARAM_STR);
+        $stmt->bindParam(6, $deduction_date, PDO::PARAM_STR);
+        $stmt->bindParam(7, $type, PDO::PARAM_STR);
+        $stmt->bindParam(8, $created_by, PDO::PARAM_INT);
 
-            // Close statement
-            mysqli_stmt_close($stmt);
+        // Attempt to execute the prepared statement
+        if ($stmt->execute()) {
+            // Records created successfully. Redirect to landing page
+            header("location: manage_deductions.php?success=1");
+            exit();
+        } else {
+            echo "Oops! Something went wrong. Please try again later.";
         }
     }
-    
-    // Close connection
-    mysqli_close($conection_db);
 }
 
 ?>
@@ -181,8 +181,12 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
                                                         JOIN salary_management sm ON u.id = sm.user_id
                                                         WHERE sm.status = 'active' AND u.tenant_id = ? AND u.branch_id = ?
                                                         ORDER BY u.name ASC";
-                                                $result = mysqli_query($conection_db, $sql);
-                                                while ($row = mysqli_fetch_array($result)) {
+                                                $stmt = $pdo->prepare($sql);
+                                                $stmt->bindParam(1, $tenant_id, PDO::PARAM_INT);
+                                                $stmt->bindParam(2, $branch_id, PDO::PARAM_INT);
+                                                $stmt->execute();
+                                                $result = $stmt->fetchAll();
+                                                foreach ($result as $row) {
                                                     echo "<option value='" . $row['id'] . "'>" . $row['name'] . "</option>";
                                                 }
                                                 ?>
@@ -294,8 +298,12 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
                                                 JOIN users a ON sd.created_by = a.id
                                                 WHERE sd.tenant_id = ? AND sd.branch_id = ?
                                                 ORDER BY sd.deduction_date DESC";
-                                        $result = mysqli_query($conection_db, $sql);
-                                        while ($row = mysqli_fetch_array($result)) {
+                                        $stmt = $pdo->prepare($sql);
+                                        $stmt->bindParam(1, $tenant_id, PDO::PARAM_INT);
+                                        $stmt->bindParam(2, $branch_id, PDO::PARAM_INT);
+                                        $stmt->execute();
+                                        $result = $stmt->fetchAll();
+                                        foreach ($result as $row) {
                                             echo "<tr>";
                                             echo "<td>" . $row['id'] . "</td>";
                                             echo "<td>" . $row['employee_name'] . "</td>";
