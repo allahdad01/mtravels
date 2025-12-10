@@ -15,7 +15,7 @@ header("X-Content-Type-Options: nosniff");
 header("Content-Security-Policy: default-src 'self'; script-src 'self' 'unsafe-inline'; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src 'self' https://fonts.gstatic.com; img-src 'self' data:;");
 
 // Create TOTP helper
-$totpHelper = new TotpHelper($pdo, $conection_db);
+$totpHelper = new TotpHelper($pdo, $conection_db ?? null);
 
 // Initialize variables
 $success_msg = $error_msg = "";

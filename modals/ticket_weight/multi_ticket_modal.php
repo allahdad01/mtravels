@@ -30,15 +30,16 @@
                             <select class="form-control" id="clientFilterWeight" name="clientFilter">
                                 <option value=""><?= __('all_clients') ?></option>
                                 <?php
-                                // Fetch clients from database
-                                $clientQuery = "SELECT DISTINCT c.name FROM clients c
-                                               INNER JOIN ticket_bookings t ON c.id = t.sold_to
-                                               WHERE t.tenant_id = $tenant_id AND t.branch_id = $branch_id
-                                               ORDER BY c.name ASC";
-                                $clientResult = $conn->query($clientQuery);
+                                // Fetch clients from database using PDO
+                                $clientStmt = $pdo->prepare("SELECT DISTINCT c.name FROM clients c
+                                                INNER JOIN ticket_bookings t ON c.id = t.sold_to
+                                                WHERE t.tenant_id = ? AND t.branch_id = ?
+                                                ORDER BY c.name ASC");
+                                $clientStmt->execute([$tenant_id, $branch_id]);
+                                $clientResult = $clientStmt->fetchAll(PDO::FETCH_ASSOC);
 
-                                if ($clientResult && $clientResult->num_rows > 0) {
-                                    while ($client = $clientResult->fetch_assoc()) {
+                                if ($clientResult && count($clientResult) > 0) {
+                                    foreach ($clientResult as $client) {
                                         echo '<option value="' . htmlspecialchars($client['name']) . '">' .
                                              htmlspecialchars($client['name']) . '</option>';
                                     }

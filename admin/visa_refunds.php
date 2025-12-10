@@ -29,7 +29,7 @@ $refunds = [];
 $totalRefunds = 0;
 $totalPages = 0;
 
-if ($tableExists) {
+
     // COUNT query
     $countQuery = "
         SELECT COUNT(*) as total
@@ -73,7 +73,7 @@ if ($tableExists) {
     $stmt->bindParam(8, $offset, PDO::PARAM_INT);
     $stmt->execute();
     $refunds = $stmt->fetchAll(PDO::FETCH_ASSOC);
-}
+
 
 
 ?>
@@ -144,7 +144,7 @@ if ($tableExists) {
                                             <h5><i class="feather icon-refresh-cw mr-2"></i><?= __('visa_refund_records') ?></h5>
                                         </div>
                                         <div class="card-body">
-                                            <?php if (!$tableExists || empty($refunds)): ?>
+                                            <?php if (empty($refunds)): ?>
                                                 <div class="alert alert-info">
                                                     <i class="feather icon-info mr-2"></i><?= __('no_visa_refunds_have_been_processed_yet') ?>
                                                 </div>
@@ -207,7 +207,7 @@ if ($tableExists) {
                                                                         </small>
                                                                         <br>
                                                                         <small class="text-muted">
-                                                                            <?= __('created_by') ?>: <?= htmlspecialchars($refund['created_by']) ?>
+                                                                            <?= __('created_by') ?>: <?= !empty($refund['created_by']) ? htmlspecialchars($refund['created_by']) : 'N/A' ?>
                                                                         </small>
                                                                     </td>
                                                                    

@@ -1,0 +1,93 @@
+================================================================================
+QUICK FIX: MESSAGES DISAPPEARING AFTER REFRESH
+================================================================================
+
+PROBLEM:
+--------
+Send a message → see it appear → refresh page → message gone!
+Message NOT being saved to database.
+
+ROOT CAUSE:
+-----------
+Database is missing encryption columns that the code expects.
+
+SOLUTION (PICK ONE):
+====================
+
+OPTION 1: AUTOMATIC FIX (EASIEST)
+---------------------------------
+Visit this URL in your browser:
+    http://your-domain/apply_encryption_migration.php
+
+This will automatically add all required columns.
+
+Then verify:
+    http://your-domain/check_chat_status.php
+
+Should show all ✅ green checkmarks.
+
+
+OPTION 2: VIA PHPMYADMIN (EASY)
+-------------------------------
+1. Open phpMyAdmin
+2. Select your database from left sidebar
+3. Click on "chat_messages" table
+4. Click "SQL" tab at top
+5. Copy and paste this SQL:
+
+---START COPY HERE---
+ALTER TABLE `chat_messages` 
+ADD COLUMN `encrypted_content` LONGTEXT NULL AFTER `content`,
+ADD COLUMN `is_encrypted` TINYINT(1) DEFAULT 0 AFTER `encrypted_content`,
+ADD COLUMN `encryption_key_id` INT(11) NULL AFTER `is_encrypted`,
+ADD COLUMN `tenant_id_from` INT(11) NOT NULL DEFAULT 0 AFTER `to_user_id`;
+---END COPY HERE---
+
+6. Click "Go" button
+7. Wait for success message
+
+
+OPTION 3: VIA COMMAND LINE (ADVANCED)
+-------------------------------------
+mysql -u root -p your_database < migrations/simple_encryption_fix.sql
+
+Then restart Apache/PHP.
+
+
+VERIFY THE FIX:
+===============
+1. Open browser
+2. Go to: http://your-domain/check_chat_status.php
+3. Should see:
+   ✅ Column encrypted_content exists
+   ✅ Column is_encrypted exists
+   ✅ Column encryption_key_id exists
+   ✅ Column tenant_id_from exists
+
+
+TEST:
+=====
+1. Open chat.php
+2. Send a message
+3. REFRESH PAGE (F5 or Ctrl+R)
+4. Message should NOW PERSIST! ✅
+
+
+HELP:
+=====
+For detailed diagnosis:
+    http://your-domain/diagnose_chat_issue.php
+
+For complete guide:
+    Read FIX_MESSAGE_DISAPPEARING.md
+
+
+EMERGENCY:
+==========
+If pages show database errors, check:
+    error_log file (server logs)
+    MySQL error log
+
+Make sure user@host has ALTER TABLE permissions.
+
+================================================================================

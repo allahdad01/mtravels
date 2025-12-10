@@ -22,7 +22,7 @@ if (!isset($_SESSION['user_id']) || $_SESSION['role'] !== 'admin') {
     exit();
 }
 
-include 'handlers/sendMessages_handler.php';
+include '../api/send_message/sendMessages_handler.php';
 
 // Include the header
 include '../includes/header.php';
@@ -202,7 +202,8 @@ var errorMessage = <?= $error_message ? json_encode($error_message) : 'null' ?>;
                                     </tr>
                                 </thead>
                                 <tbody>
-                                    <?php while ($row = mysqli_fetch_assoc($recent_messages_result)): ?>
+                                    <?php if (!empty($recent_messages_result)): ?>
+                                    <?php foreach ($recent_messages_result as $row): ?>
                                     <tr>
                                         <td><?php echo date('Y-m-d H:i', strtotime($row['created_at'])); ?></td>
                                         <td><?php echo htmlspecialchars($row['subject']); ?></td>
@@ -259,7 +260,8 @@ var errorMessage = <?= $error_message ? json_encode($error_message) : 'null' ?>;
                                             </div>
                                         </td>
                                     </tr>
-                                    <?php endwhile; ?>
+                                    <?php endforeach; ?>
+                                    <?php endif; ?>
                                 </tbody>
                             </table>
                         </div>

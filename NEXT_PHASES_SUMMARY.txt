@@ -1,0 +1,329 @@
+================================================================================
+                     PHASE 2-5: NEXT FEATURES ROADMAP
+================================================================================
+
+PHASE 1 STATUS: ✅ COMPLETE (Critical Fixes)
+- Branch validation in messages API
+- Branch-level chat settings
+- Contact list filtering
+- Ready for deployment
+
+================================================================================
+PHASE 2: BRANCH-LEVEL PEERING (4-5 hours)
+================================================================================
+
+PROBLEM:
+  Currently: All branches inherit same peering (tenant-wide)
+  A.Branch1 and A.Branch2 both must peer same way with Tenant B
+  Cannot isolate communication between specific branches
+
+SOLUTION:
+  Each branch has independent peering relationships
+  A.Branch1 can approve B.Sales while A.Branch2 blocks it
+  True organizational structure isolation
+
+IMPLEMENTATION:
+  ✅ Database table already in migration (commented out)
+  ✅ Schema: branch_peering table
+  
+  Code changes needed:
+  - Update /api/messages.php peering check (lines 71-73)
+  - Update /api/contacts.php filtering logic
+  - Create new /admin/branch_peering.php page (150 lines)
+
+EFFORT: 4-5 hours
+  - Database: 30 min (uncomment, test)
+  - API updates: 1.5 hours
+  - Admin UI: 1.5 hours
+  - Testing: 1 hour
+
+PRIORITY: 🔴 HIGH
+  - Solves organizational structure issues
+  - High business value
+  - Medium complexity
+  - Ready to go (schema included)
+
+TIMELINE: 2-3 weeks
+
+TEST CASES:
+  ✓ A.Branch1 peers with B, A.Branch2 doesn't
+  ✓ Different branches have different peer lists
+  ✓ Backward compatible with tenant-level peering
+
+================================================================================
+PHASE 3: MESSAGE ENCRYPTION (6-8 hours)
+================================================================================
+
+PROBLEM:
+  Currently: Messages stored in plaintext
+  Database admin can read all messages
+  Non-compliant with HIPAA/GDPR for sensitive data
+
+SOLUTION:
+  Encrypt messages at rest in database
+  Decrypt only when retrieved by authorized users
+  Admin cannot read message content
+
+IMPLEMENTATION:
+  New table: encryption_keys (manage encryption keys)
+  Add to chat_messages: encrypted_content, encryption_key_id, is_encrypted
+  
+  New class: /includes/MessageEncryption.php
+  - encrypt() method
+  - decrypt() method
+  - key management
+  
+  Update /api/messages.php:
+  - Encrypt on INSERT (POST)
+  - Decrypt on SELECT (GET)
+  
+  Migration script: /includes/migrate_to_encrypted.php
+  - Encrypt existing messages
+  - Run in background
+
+ENCRYPTION OPTIONS:
+  Option 1: Database keys (simple, less secure)
+  Option 2: AWS KMS (production-grade, cost)
+  Option 3: HashiCorp Vault (enterprise, complex)
+
+EFFORT: 6-8 hours (depending on key management)
+  - Design: 1 hour
+  - Encryption class: 2 hours
+  - API updates: 1.5 hours
+  - Migration script: 1 hour
+  - Key management: 1.5 hours
+  - Testing: 1 hour
+
+PRIORITY: 🟠 MEDIUM
+  - Improves compliance
+  - Higher complexity
+  - Ongoing key management needed
+  - Significant performance impact
+
+TIMELINE: 4-6 weeks
+
+COMPLIANCE:
+  ✓ HIPAA compliant
+  ✓ GDPR compliant
+  ✓ SOC 2 compliant
+  ✓ Encryption at rest
+
+================================================================================
+PHASE 4: AUDIT LOGGING (2-3 hours)
+================================================================================
+
+PROBLEM:
+  Currently: Chat operations not logged
+  Cannot track who sent what message when
+  No audit trail for compliance
+
+SOLUTION:
+  Log all chat operations to activity_log
+  Who sent message, when, to whom
+  Block/mute actions logged
+  Settings changes logged
+  Complete audit trail
+
+IMPLEMENTATION:
+  Use existing activity_log table (already in DB)
+  
+  New class: /includes/ChatAudit.php
+  - logMessageSent()
+  - logMessageDeleted()
+  - logSettingChanged()
+  - logBlockAction()
+  
+  Update APIs:
+  - /api/messages.php: Log send/delete
+  - /api/chat_prefs.php: Log block/mute
+  - /admin/chat_settings.php: Log settings change
+
+AUDIT QUERIES PROVIDED:
+  ✓ Who messaged whom?
+  ✓ What blocks were created?
+  ✓ When were settings changed?
+  ✓ User communication history
+
+EFFORT: 2.5-3 hours
+  - Create ChatAudit class: 45 min
+  - Add logging to APIs: 1 hour
+  - Add to admin pages: 30 min
+  - Testing: 30 min
+
+PRIORITY: 🟡 MEDIUM
+  - Essential for compliance
+  - Quick to implement
+  - Low complexity
+  - Good ROI (effort/impact)
+
+TIMELINE: 1-2 weeks
+
+USE CASES:
+  ✓ Compliance reporting (GDPR, HIPAA)
+  ✓ Troubleshooting (trace what happened)
+  ✓ Security investigation
+  ✓ User accountability
+
+================================================================================
+PHASE 5: RATE LIMITING & SECURITY (3-4 hours)
+================================================================================
+
+PROBLEM:
+  Currently: No rate limiting on APIs
+  Users can spam messages
+  Attackers can brute-force room IDs
+  No DDoS protection
+
+SOLUTION:
+  Rate limits on message sending (100/min per user)
+  Rate limits on contact discovery (30/min per user)
+  IP blocking after repeated violations
+  Request throttling
+
+IMPLEMENTATION:
+  New tables:
+  - api_rate_limits (track request counts)
+  - api_blocked_ips (track blocked IPs)
+  
+  New class: /includes/RateLimiter.php
+  - checkLimit() method
+  - blockIP() method
+  - isIPBlocked() method
+  
+  Update all APIs:
+  - /api/messages.php: 100 requests/min
+  - /api/contacts.php: 30 requests/min
+  - /api/chat_prefs.php: 50 requests/min
+  
+  Response headers:
+  - X-RateLimit-Limit
+  - X-RateLimit-Remaining
+  - X-RateLimit-Reset
+
+RATE LIMIT RULES:
+  POST messages: 100/min (prevent spam)
+  GET contacts: 30/min (prevent scraping)
+  GET messages: 200/min (normal use)
+  POST prefs: 50/min (prevent abuse)
+  
+  IP blocking:
+  - 10 failed auth → block 1 hour
+  - 50 rate violations → block 6 hours
+
+EFFORT: 3-4 hours
+  - RateLimiter class: 1.5 hours
+  - API integration: 1 hour
+  - IP blocking: 45 min
+  - Testing: 30 min
+
+PRIORITY: 🟡 MEDIUM
+  - Security hardening
+  - Prevents spam/DDoS
+  - Medium complexity
+  - Ongoing tuning needed
+
+TIMELINE: 2-3 weeks
+
+PROTECTION:
+  ✓ Prevent message spam
+  ✓ Prevent contact enumeration
+  ✓ Prevent brute force attacks
+  ✓ DDoS mitigation
+  ✓ Resource protection
+
+================================================================================
+IMPLEMENTATION TIMELINE
+================================================================================
+
+Current (Week 1-2):
+  ✅ Phase 1: Critical Fixes (COMPLETE)
+  
+Next 4 Weeks:
+  Week 3-4: Phase 2: Branch Peering (4-5h) 🔴 HIGH
+  Week 5:   Phase 3: Encryption (6-8h) 🟠 MEDIUM
+  Week 6:   Phase 4: Audit Log (2-3h) 🟡 MEDIUM
+  Week 7:   Phase 5: Rate Limit (3-4h) 🟡 MEDIUM
+
+Total: ~18-24 hours of development (over 4 weeks)
+
+================================================================================
+QUICK RECOMMENDATION
+================================================================================
+
+START WITH PHASE 2 (Branch Peering):
+  ✓ High impact on users
+  ✓ Only 4-5 hours effort
+  ✓ Schema already ready in migration
+  ✓ Straightforward to implement
+  ✓ Builds on Phase 1 foundation
+
+SEQUENCE:
+  1. Phase 2: Branch Peering (HIGH priority)
+  2. Phase 3: Encryption (if compliance needed)
+  3. Phase 4: Audit Logging (quick, valuable)
+  4. Phase 5: Rate Limiting (security hardening)
+
+EFFORT BREAKDOWN:
+  Phase 2: 4-5h   (Peering)
+  Phase 3: 6-8h   (Encryption)
+  Phase 4: 2-3h   (Auditing)
+  Phase 5: 3-4h   (Rate Limiting)
+  ─────────────────────
+  Total: 18-24 hours over 4 weeks
+
+MONTHLY CAPACITY:
+  If 20h/week available: 1 phase complete + 50% of next
+  If 10h/week available: Phase 2 complete in 2-3 weeks
+
+================================================================================
+WHAT'S READY NOW
+================================================================================
+
+Phase 2 (Branch Peering):
+  ✅ Schema provided (uncomment from migration)
+  ✅ Code changes documented
+  ✅ Test cases provided
+  ✅ Ready to start immediately
+
+Phase 3-5:
+  ✅ Requirements documented
+  ✅ Implementation examples provided
+  ✅ Effort estimates included
+  ✅ Priority levels assigned
+  ✅ Timeline recommended
+
+================================================================================
+FOR MORE DETAILS
+================================================================================
+
+See: PHASE_2_5_ROADMAP.md
+
+Contains:
+  - Detailed implementation for each phase
+  - Complete code examples
+  - Database schemas
+  - Testing procedures
+  - SQL queries
+  - Effort breakdowns
+  - Priority matrix
+  - Timeline
+
+================================================================================
+NEXT ACTIONS
+================================================================================
+
+1. Read: PHASE_2_5_ROADMAP.md (30 minutes)
+2. Schedule: 1-hour design session for Phase 2
+3. Review: Code changes for Phase 2
+4. Plan: Sprint with team
+5. Estimate: Team velocity
+6. Start: Phase 2 implementation
+
+Expected Start: Next sprint
+Duration: 4-5 hours
+Delivery: 2-3 weeks
+
+================================================================================
+Generated: December 10, 2025
+Status: Ready for planning and execution
+================================================================================

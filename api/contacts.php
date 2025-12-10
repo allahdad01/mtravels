@@ -11,8 +11,8 @@ if (!isset($_SESSION['user_id'])) {
 
 $currentUserId = (int)$_SESSION['user_id'];
 
-// Load current user with tenant
-$stmt = secure_query($pdo, 'SELECT u.id, u.tenant_id, u.name, u.email, u.role, s.agency_name 
+// Load current user with tenant and branch
+$stmt = secure_query($pdo, 'SELECT u.id, u.tenant_id, u.branch_id, u.name, u.email, u.role, s.agency_name 
                            FROM users u 
                            JOIN tenants t ON u.tenant_id = t.id 
                            LEFT JOIN settings s ON t.id = s.tenant_id 
@@ -25,26 +25,79 @@ if (!$user) {
 }
 
 $tenantId = (int)$user['tenant_id'];
+$myBranch = (int)$user['branch_id'];
+$isTenantOwner = $user['role'] === 'super_tenant_admin';
 
-// Allowed tenants: self + approved peers (both directions)
+// Allowed tenants: self + approved peers (both directions) + tenants with approved branch peering
 $peerSql = 'SELECT peer_tenant_id AS peer FROM tenant_peering WHERE tenant_id = ? AND status = "approved" 
             UNION 
-            SELECT tenant_id AS peer FROM tenant_peering WHERE peer_tenant_id = ? AND status = "approved"';
-$peerStmt = secure_query($pdo, $peerSql, [$tenantId, $tenantId]);
+            SELECT tenant_id AS peer FROM tenant_peering WHERE peer_tenant_id = ? AND status = "approved"
+            UNION
+            SELECT DISTINCT peer_tenant_id AS peer FROM branch_peering WHERE tenant_id IN (SELECT id FROM branches WHERE tenant_id = ?) AND status = "approved"
+            UNION
+            SELECT DISTINCT tenant_id AS peer FROM branch_peering WHERE peer_tenant_id = ? AND status = "approved"';
+$peerStmt = secure_query($pdo, $peerSql, [$tenantId, $tenantId, $tenantId, $tenantId]);
 $peerTenantIds = $peerStmt ? array_map(function($r){ return (int)$r['peer']; }, $peerStmt->fetchAll()) : [];
 $allowedTenantIds = array_values(array_unique(array_merge([$tenantId], $peerTenantIds)));
 
 $rows = [];
 if (count($allowedTenantIds) > 0) {
     $in = implode(',', array_fill(0, count($allowedTenantIds), '?'));
-    $params = array_merge($allowedTenantIds, [$currentUserId]);
-    $sql = 'SELECT u.id, u.role, u.name, u.tenant_id, u.profile_pic, s.agency_name 
-            FROM users u 
-            JOIN tenants t ON u.tenant_id = t.id 
-            LEFT JOIN settings s ON t.id = s.tenant_id 
-            WHERE u.tenant_id IN (' . $in . ') AND u.id <> ? AND u.deleted_at IS NULL AND u.fired <> 1';
+    
+    if ($isTenantOwner) {
+        // Tenant owner sees all users in their tenant (no branch filtering)
+        $params = array_merge([$tenantId], [$currentUserId]);
+        $sql = 'SELECT u.id, u.role, u.name, u.tenant_id, u.branch_id, u.profile_pic, s.agency_name 
+                FROM users u 
+                JOIN tenants t ON u.tenant_id = t.id 
+                LEFT JOIN settings s ON t.id = s.tenant_id 
+                WHERE u.tenant_id = ? 
+                AND u.id <> ? 
+                AND u.deleted_at IS NULL 
+                AND u.fired <> 1';
+    } else {
+        // Regular users: show same branch in same tenant, or all users from different tenants (with branch peering check)
+        $params = array_merge($allowedTenantIds, [$currentUserId, $tenantId, $myBranch, $tenantId]);
+        $sql = 'SELECT u.id, u.role, u.name, u.tenant_id, u.branch_id, u.profile_pic, s.agency_name 
+                FROM users u 
+                JOIN tenants t ON u.tenant_id = t.id 
+                LEFT JOIN settings s ON t.id = s.tenant_id 
+                WHERE u.tenant_id IN (' . $in . ') 
+                AND u.id <> ? 
+                AND u.deleted_at IS NULL 
+                AND u.fired <> 1
+                AND (
+                    (u.tenant_id = ? AND u.branch_id = ?)
+                    OR u.tenant_id <> ?
+                )';
+    }
+    
     $stmt = secure_query($pdo, $sql, $params);
     $rows = $stmt ? $stmt->fetchAll(PDO::FETCH_ASSOC) : [];
+    
+    // Filter by branch peering for cross-tenant contacts
+    $rows = array_filter($rows, function($r) use ($pdo, $tenantId, $myBranch) {
+        $rTenantId = (int)$r['tenant_id'];
+        $rBranchId = (int)$r['branch_id'];
+        
+        // Same tenant: always allow
+        if ($rTenantId === $tenantId) {
+            return true;
+        }
+        
+        // Different tenant: check branch-level peering
+        // Check both directions: I initiated the peering OR they initiated it
+        $peeringCheck = secure_query($pdo, 
+            'SELECT 1 FROM branch_peering WHERE status = "approved" AND (
+                (tenant_id = ? AND branch_id = ? AND peer_tenant_id = ? AND peer_branch_id = ?)
+                OR
+                (tenant_id = ? AND branch_id = ? AND peer_tenant_id = ? AND peer_branch_id = ?)
+            ) LIMIT 1',
+            [$tenantId, $myBranch, $rTenantId, $rBranchId, $rTenantId, $rBranchId, $tenantId, $myBranch]
+        );
+        
+        return $peeringCheck && $peeringCheck->fetch();
+    });
 }
 
 // Exclude users I blocked and users who blocked me
@@ -72,20 +125,35 @@ if (count($allowedTenantIds) > 0) {
 }
 
 // Fetch last message for each contact
-$contacts = array_map(function($r) use ($currentUserId, $pdo) {
+$contacts = array_map(function($r) use ($currentUserId, $pdo, $tenantId) {
     $ids = [$currentUserId, (int)$r['id']]; 
     sort($ids, SORT_NUMERIC);
     $room = 'u-' . $ids[0] . '-' . $ids[1];
     
     // Get the most recent message between the current user and this contact
     $msgStmt = secure_query($pdo,
-        'SELECT content
+        'SELECT content, encrypted_content, is_encrypted, encryption_key_id, tenant_id_from
          FROM chat_messages
          WHERE room_id = ?
          ORDER BY created_at DESC LIMIT 1',
         [$room]
     );
-    $lastMessage = $msgStmt ? $msgStmt->fetchColumn() : '';
+    $lastMessage = '';
+    if ($msgStmt && ($msgRow = $msgStmt->fetch(PDO::FETCH_ASSOC))) {
+        if ($msgRow['is_encrypted'] && $msgRow['encrypted_content']) {
+            // Decrypt the message
+            try {
+                require_once __DIR__ . '/../includes/MessageEncryption.php';
+                $encryptor = new MessageEncryption($pdo);
+                $messageDecryptTenant = isset($msgRow['tenant_id_from']) ? (int)$msgRow['tenant_id_from'] : $tenantId;
+                $lastMessage = $encryptor->decrypt($msgRow['encrypted_content'], $messageDecryptTenant, (int)$msgRow['encryption_key_id']);
+            } catch (Exception $e) {
+                $lastMessage = '[Message]';
+            }
+        } else {
+            $lastMessage = $msgRow['content'] ?: '';
+        }
+    }
 
     // Get unread message count for this contact
     $unreadStmt = secure_query($pdo,

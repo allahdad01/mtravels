@@ -1,3 +1,4 @@
+
 <!-- Add a floating action button for launching the multi-ticket invoice modal -->
 <div id="floatingActionButton" class="position-fixed" style="bottom: 80px; right: 30px; z-index: 1050;">
     <button type="button" class="btn btn-primary btn-lg shadow" id="launchMultiTicketInvoice" title="<?= __('generate_multi_ticket_invoice') ?>">
@@ -22,7 +23,7 @@
                 <div class="alert alert-info mb-3">
                     <i class="feather icon-info mr-2"></i><?= __('select_multiple_tickets_to_generate_a_combined_invoice') ?>
                 </div>
-                
+
                 <form id="multiTicketInvoiceForm">
                     <!-- CSRF Protection -->
                     <input type="hidden" name="csrf_token" value="<?php echo h($_SESSION['csrf_token'] ?? ''); ?>">
@@ -30,22 +31,15 @@
                         <label for="clientForInvoice"><?= __('client') ?></label>
                         <input type="text" class="form-control" id="clientForInvoice" name="clientForInvoice" required>
                     </div>
-                    
+
                     <div class="form-group">
                         <label for="clientFilter"><?= __('filter_by_client') ?></label>
                         <select class="form-control" id="clientFilter" name="clientFilter">
                             <option value=""><?= __('all_clients') ?></option>
                             <?php
-                            // Fetch clients from database
-                            $clientQuery = "SELECT DISTINCT c.name FROM clients c
-                                                                      INNER JOIN date_change_tickets dct ON c.id = dct.sold_to
-                                                                      WHERE c.tenant_id = $tenant_id AND c.branch_id = $branch_id
-                                                                      ORDER BY c.name ASC";
-                            $clientResult = $conn->query($clientQuery);
-                            
-                            if ($clientResult && $clientResult->num_rows > 0) {
-                                while ($client = $clientResult->fetch_assoc()) {
-                                    echo '<option value="' . htmlspecialchars($client['name']) . '">' . 
+                            if ($clients) {
+                                foreach ($clients as $client) {
+                                    echo '<option value="' . htmlspecialchars($client['name']) . '">' .
                                          htmlspecialchars($client['name']) . '</option>';
                                 }
                             }

@@ -12,13 +12,13 @@ class TotpHelper {
     
     public function __construct($pdo, $mysqli) {
         $this->pdo = $pdo;
-        $this->mysqli = $mysqli;
+        $this->mysqli = $mysqli ?? null;
     }
     
     /**
      * Generate a new TOTP secret for a user
      */
-    public function generateSecret($userId, $userType, $username, $tenant_id = null) {
+    public function generateSecret($userId, $userType, $username, $tenant_id = null, $branch_id = null) {
         try {
             error_log("TOTP Debug: Starting generateSecret for user $userId ($userType)");
 
@@ -51,20 +51,21 @@ class TotpHelper {
             // Store the secret in the database
             try {
                 error_log("TOTP Debug: Preparing SQL statement");
-                $sql = "INSERT INTO totp_secrets (user_id, user_type, secret, tenant_id) 
-                       VALUES (:user_id, :user_type, :secret, :tenant_id)
+                $sql = "INSERT INTO totp_secrets (user_id, user_type, secret, tenant_id, branch_id)
+                       VALUES (:user_id, :user_type, :secret, :tenant_id, :branch_id)
                        ON DUPLICATE KEY UPDATE secret = :secret, is_enabled = 0";
-                
+
                 $stmt = $this->pdo->prepare($sql);
                 error_log("TOTP Debug: SQL statement prepared");
-                
+
                 $params = [
                     ':user_id' => $userId,
                     ':user_type' => $userType,
                     ':secret' => $secret,
-                    ':tenant_id' => $tenant_id
+                    ':tenant_id' => $tenant_id,
+                    ':branch_id' => $branch_id
                 ];
-                error_log("TOTP Debug: Parameters ready: user_id=$userId, user_type=$userType, tenant_id=$tenant_id");
+                error_log("TOTP Debug: Parameters ready: user_id=$userId, user_type=$userType, tenant_id=$tenant_id, branch_id=$branch_id");
                 
                 $result = $stmt->execute($params);
                 error_log("TOTP Debug: SQL executed, result: " . ($result ? "true" : "false"));
@@ -90,13 +91,13 @@ class TotpHelper {
                 try {
                     error_log("TOTP Debug: Trying simpler query");
                     // Delete existing record first
-                    $delete = $this->pdo->prepare("DELETE FROM totp_secrets WHERE user_id = ? AND user_type = ? AND tenant_id = ?");
-                    $delete->execute([$userId, $userType, $tenant_id]);
+                    $delete = $this->pdo->prepare("DELETE FROM totp_secrets WHERE user_id = ? AND user_type = ? AND tenant_id = ? AND branch_id = ?");
+                    $delete->execute([$userId, $userType, $tenant_id, $branch_id]);
                     error_log("TOTP Debug: Deleted existing records");
-                    
+
                     // Insert new record
-                    $stmt = $this->pdo->prepare("INSERT INTO totp_secrets (user_id, user_type, secret, tenant_id) VALUES (?, ?, ?, ?)");
-                    $result = $stmt->execute([$userId, $userType, $secret, $tenant_id]);
+                    $stmt = $this->pdo->prepare("INSERT INTO totp_secrets (user_id, user_type, secret, tenant_id, branch_id) VALUES (?, ?, ?, ?, ?)");
+                    $result = $stmt->execute([$userId, $userType, $secret, $tenant_id, $branch_id]);
                     error_log("TOTP Debug: Simple insert executed, result: " . ($result ? "true" : "false"));
                     
                     // Generate recovery codes
@@ -125,48 +126,50 @@ class TotpHelper {
     /**
      * Verify a TOTP code
      */
-    public function verifyCode($userId, $userType, $code, $tenant_id = null) {
+    public function verifyCode($userId, $userType, $code, $tenant_id = null, $branch_id = null) {
         try {
             $stmt = $this->pdo->prepare("
-                SELECT secret FROM totp_secrets 
-                WHERE user_id = :user_id AND user_type = :user_type AND tenant_id = :tenant_id
+                SELECT secret FROM totp_secrets
+                WHERE user_id = :user_id AND user_type = :user_type AND tenant_id = :tenant_id AND branch_id = :branch_id
             ");
-            
+
             $stmt->execute([
                 ':user_id' => $userId,
                 ':user_type' => $userType,
-                ':tenant_id' => $tenant_id
+                ':tenant_id' => $tenant_id,
+                ':branch_id' => $branch_id
             ]);
-            
+
             $result = $stmt->fetch(PDO::FETCH_ASSOC);
-            
+
             if (!$result) {
                 return false;
             }
-            
+
             $secret = $result['secret'];
-            
+
             // Create a TOTP instance with the stored secret
             $totp = TOTP::create($secret);
-            
+
             // Verify the code (allowing a 30-second window on either side)
             if ($totp->verify($code, null, 1)) {
                 // Update last used timestamp
                 $updateStmt = $this->pdo->prepare("
-                    UPDATE totp_secrets 
-                    SET last_used = NOW() 
-                    WHERE user_id = :user_id AND user_type = :user_type AND tenant_id = :tenant_id
+                    UPDATE totp_secrets
+                    SET last_used = NOW()
+                    WHERE user_id = :user_id AND user_type = :user_type AND tenant_id = :tenant_id AND branch_id = :branch_id
                 ");
-                
+
                 $updateStmt->execute([
                     ':user_id' => $userId,
                     ':user_type' => $userType,
-                    ':tenant_id' => $tenant_id
+                    ':tenant_id' => $tenant_id,
+                    ':branch_id' => $branch_id
                 ]);
-                
+
                 return true;
             }
-            
+
             return false;
         } catch (PDOException $e) {
             error_log("TOTP Verification Error: " . $e->getMessage());
@@ -177,33 +180,34 @@ class TotpHelper {
     /**
      * Enable TOTP for a user after successful verification
      */
-    public function enableTotp($userId, $userType, $tenant_id = null) {
+    public function enableTotp($userId, $userType, $tenant_id = null, $branch_id = null) {
         try {
             // Update the TOTP secrets table
             $stmt = $this->pdo->prepare("
-                UPDATE totp_secrets 
-                SET is_enabled = 1 
-                WHERE user_id = :user_id AND user_type = :user_type AND tenant_id = :tenant_id
+                UPDATE totp_secrets
+                SET is_enabled = 1
+                WHERE user_id = :user_id AND user_type = :user_type AND tenant_id = :tenant_id AND branch_id = :branch_id
             ");
-            
+
             $stmt->execute([
                 ':user_id' => $userId,
                 ':user_type' => $userType,
-                ':tenant_id' => $tenant_id
+                ':tenant_id' => $tenant_id,
+                ':branch_id' => $branch_id
             ]);
-            
+
             // Update the user table
             $table = ($userType == 'staff') ? 'users' : 'clients';
             $updateStmt = $this->pdo->prepare("
-                UPDATE {$table} 
-                SET totp_enabled = 1 
+                UPDATE {$table}
+                SET totp_enabled = 1
                 WHERE id = :user_id
             ");
-            
+
             $updateStmt->execute([
                 ':user_id' => $userId
             ]);
-            
+
             return true;
         } catch (PDOException $e) {
             error_log("TOTP Enable Error: " . $e->getMessage());
@@ -214,33 +218,34 @@ class TotpHelper {
     /**
      * Disable TOTP for a user
      */
-    public function disableTotp($userId, $userType, $tenant_id = null) {
+    public function disableTotp($userId, $userType, $tenant_id = null, $branch_id = null) {
         try {
             // Update the TOTP secrets table
             $stmt = $this->pdo->prepare("
-                UPDATE totp_secrets 
-                SET is_enabled = 0 
-                WHERE user_id = :user_id AND user_type = :user_type AND tenant_id = :tenant_id
+                UPDATE totp_secrets
+                SET is_enabled = 0
+                WHERE user_id = :user_id AND user_type = :user_type AND tenant_id = :tenant_id AND branch_id = :branch_id
             ");
-            
+
             $stmt->execute([
                 ':user_id' => $userId,
                 ':user_type' => $userType,
-                ':tenant_id' => $tenant_id
+                ':tenant_id' => $tenant_id,
+                ':branch_id' => $branch_id
             ]);
-            
+
             // Update the user table
             $table = ($userType == 'staff') ? 'users' : 'clients';
             $updateStmt = $this->pdo->prepare("
-                UPDATE {$table} 
-                SET totp_enabled = 0 
+                UPDATE {$table}
+                SET totp_enabled = 0
                 WHERE id = :user_id
             ");
-            
+
             $updateStmt->execute([
                 ':user_id' => $userId
             ]);
-            
+
             return true;
         } catch (PDOException $e) {
             error_log("TOTP Disable Error: " . $e->getMessage());
@@ -251,21 +256,22 @@ class TotpHelper {
     /**
      * Check if TOTP is enabled for a user
      */
-    public function isTotpEnabled($userId, $userType, $tenant_id = null) {
+    public function isTotpEnabled($userId, $userType, $tenant_id = null, $branch_id = null) {
         try {
             $stmt = $this->pdo->prepare("
-                SELECT is_enabled FROM totp_secrets 
-                WHERE user_id = :user_id AND user_type = :user_type AND tenant_id = :tenant_id
+                SELECT is_enabled FROM totp_secrets
+                WHERE user_id = :user_id AND user_type = :user_type AND tenant_id = :tenant_id AND branch_id = :branch_id
             ");
-            
+
             $stmt->execute([
                 ':user_id' => $userId,
                 ':user_type' => $userType,
-                ':tenant_id' => $tenant_id
+                ':tenant_id' => $tenant_id,
+                ':branch_id' => $branch_id
             ]);
-            
+
             $result = $stmt->fetch(PDO::FETCH_ASSOC);
-            
+
             return ($result && $result['is_enabled'] == 1);
         } catch (PDOException $e) {
             error_log("TOTP Status Check Error: " . $e->getMessage());
@@ -290,27 +296,28 @@ class TotpHelper {
     /**
      * Generate recovery codes for a user
      */
-    private function generateRecoveryCodes($userId, $userType, $tenant_id = null) {
+    private function generateRecoveryCodes($userId, $userType, $tenant_id = null, $branch_id = null) {
         try {
             error_log("TOTP Debug: Starting recovery code generation for user $userId ($userType)");
-            
+
             // Delete existing unused recovery codes
             $deleteStmt = $this->pdo->prepare("
-                DELETE FROM totp_recovery_codes 
-                WHERE user_id = :user_id AND user_type = :user_type AND is_used = 0 AND tenant_id = :tenant_id
+                DELETE FROM totp_recovery_codes
+                WHERE user_id = :user_id AND user_type = :user_type AND is_used = 0 AND tenant_id = :tenant_id AND branch_id = :branch_id
             ");
-            
+
             $deleteStmt->execute([
                 ':user_id' => $userId,
                 ':user_type' => $userType,
-                ':tenant_id' => $tenant_id
+                ':tenant_id' => $tenant_id,
+                ':branch_id' => $branch_id
             ]);
             error_log("TOTP Debug: Deleted existing recovery codes");
-            
+
             // Generate 8 new recovery codes
             $insertStmt = $this->pdo->prepare("
-                INSERT INTO totp_recovery_codes (user_id, user_type, recovery_code, tenant_id) 
-                VALUES (:user_id, :user_type, :code, :tenant_id)
+                INSERT INTO totp_recovery_codes (user_id, user_type, recovery_code, tenant_id, branch_id)
+                VALUES (:user_id, :user_type, :code, :tenant_id, :branch_id)
             ");
             
             $inserted = 0;
@@ -321,7 +328,8 @@ class TotpHelper {
                         ':user_id' => $userId,
                         ':user_type' => $userType,
                         ':code' => $code,
-                        ':tenant_id' => $tenant_id
+                        ':tenant_id' => $tenant_id,
+                        ':branch_id' => $branch_id
                     ]);
                     $inserted++;
                 } catch (Exception $e) {
@@ -338,17 +346,17 @@ class TotpHelper {
             try {
                 error_log("TOTP Debug: Trying simpler recovery code insert");
                 // Delete existing codes
-                $delete = $this->pdo->prepare("DELETE FROM totp_recovery_codes WHERE user_id = ? AND user_type = ? AND is_used = 0 AND tenant_id = ?");
-                $delete->execute([$userId, $userType, $tenant_id]);
-                
+                $delete = $this->pdo->prepare("DELETE FROM totp_recovery_codes WHERE user_id = ? AND user_type = ? AND is_used = 0 AND tenant_id = ? AND branch_id = ?");
+                $delete->execute([$userId, $userType, $tenant_id, $branch_id]);
+
                 // Use simpler insert
-                $insertStmt = $this->pdo->prepare("INSERT INTO totp_recovery_codes (user_id, user_type, recovery_code, tenant_id) VALUES (?, ?, ?, ?)");
-                
+                $insertStmt = $this->pdo->prepare("INSERT INTO totp_recovery_codes (user_id, user_type, recovery_code, tenant_id, branch_id) VALUES (?, ?, ?, ?, ?)");
+
                 $inserted = 0;
                 for ($i = 0; $i < 8; $i++) {
                     try {
                         $code = $this->generateRandomCode();
-                        $insertStmt->execute([$userId, $userType, $code, $tenant_id]);
+                        $insertStmt->execute([$userId, $userType, $code, $tenant_id, $branch_id]);
                         $inserted++;
                     } catch (Exception $e) {
                         error_log("TOTP Warning: Failed to insert recovery code #$i in fallback: " . $e->getMessage());
@@ -386,19 +394,20 @@ class TotpHelper {
     /**
      * Get recovery codes for a user
      */
-    public function getRecoveryCodes($userId, $userType, $tenant_id = null) {
+    public function getRecoveryCodes($userId, $userType, $tenant_id = null, $branch_id = null) {
         try {
             $stmt = $this->pdo->prepare("
-                SELECT recovery_code FROM totp_recovery_codes 
-                WHERE user_id = :user_id AND user_type = :user_type AND is_used = 0 AND tenant_id = :tenant_id
+                SELECT recovery_code FROM totp_recovery_codes
+                WHERE user_id = :user_id AND user_type = :user_type AND is_used = 0 AND tenant_id = :tenant_id AND branch_id = :branch_id
             ");
-            
+
             $stmt->execute([
                 ':user_id' => $userId,
                 ':user_type' => $userType,
-                ':tenant_id' => $tenant_id
+                ':tenant_id' => $tenant_id,
+                ':branch_id' => $branch_id
             ]);
-            
+
             return $stmt->fetchAll(PDO::FETCH_COLUMN);
         } catch (PDOException $e) {
             error_log("Recovery Code Retrieval Error: " . $e->getMessage());
@@ -409,41 +418,43 @@ class TotpHelper {
     /**
      * Verify a recovery code
      */
-    public function verifyRecoveryCode($userId, $userType, $code, $tenant_id = null) {
+    public function verifyRecoveryCode($userId, $userType, $code, $tenant_id = null, $branch_id = null) {
         try {
             $stmt = $this->pdo->prepare("
-                SELECT id FROM totp_recovery_codes 
-                WHERE user_id = :user_id 
-                AND user_type = :user_type 
-                AND recovery_code = :code 
+                SELECT id FROM totp_recovery_codes
+                WHERE user_id = :user_id
+                AND user_type = :user_type
+                AND recovery_code = :code
                 AND is_used = 0
                 AND tenant_id = :tenant_id
+                AND branch_id = :branch_id
             ");
-            
+
             $stmt->execute([
                 ':user_id' => $userId,
                 ':user_type' => $userType,
                 ':code' => $code,
-                ':tenant_id' => $tenant_id
+                ':tenant_id' => $tenant_id,
+                ':branch_id' => $branch_id
             ]);
-            
+
             $result = $stmt->fetch(PDO::FETCH_ASSOC);
-            
+
             if ($result) {
                 // Mark code as used
                 $updateStmt = $this->pdo->prepare("
-                    UPDATE totp_recovery_codes 
-                    SET is_used = 1, used_at = NOW() 
+                    UPDATE totp_recovery_codes
+                    SET is_used = 1, used_at = NOW()
                     WHERE id = :id
                 ");
-                
+
                 $updateStmt->execute([
                     ':id' => $result['id']
                 ]);
-                
+
                 return true;
             }
-            
+
             return false;
         } catch (PDOException $e) {
             error_log("Recovery Code Verification Error: " . $e->getMessage());

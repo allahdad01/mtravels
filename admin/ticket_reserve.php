@@ -171,7 +171,7 @@ if ($ticketsResult) {
         }
     }
 } else {
-    echo "Error: No tickets found";
+    $tickets = [];
 }
 
 // ---------------- Suppliers ---------------- //

@@ -40,7 +40,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         } else {
             // Check if email already exists
             $stmt = $pdo->prepare("SELECT id FROM users WHERE email = ? AND tenant_id = ? And branch_id = ?");
-            $stmt->execute([$email, $tenant_id]);
+            $stmt->execute([$email, $tenant_id, $branch_id]);
             if ($stmt->fetch()) {
                 $errors[] = __('email_already_exists');
             }

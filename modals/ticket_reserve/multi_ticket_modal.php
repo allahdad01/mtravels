@@ -26,13 +26,17 @@
                             // Fetch clients from database
                             $clientQuery = "SELECT DISTINCT c.name FROM clients c
                                           INNER JOIN ticket_reservations tr ON c.id = tr.sold_to
-                                          WHERE tr.tenant_id = $tenant_id AND tr.branch_id = $branch_id
+                                          WHERE tr.tenant_id = ? AND tr.branch_id = ?
                                           ORDER BY c.name ASC";
-                            $clientResult = $conn->query($clientQuery);
-                            
-                            if ($clientResult && $clientResult->num_rows > 0) {
-                                while ($client = $clientResult->fetch_assoc()) {
-                                    echo '<option value="' . htmlspecialchars($client['name']) . '">' . 
+                            $stmt = $pdo->prepare($clientQuery);
+                            $stmt->bindParam(1, $tenant_id, PDO::PARAM_INT);
+                            $stmt->bindParam(2, $branch_id, PDO::PARAM_INT);
+                            $stmt->execute();
+                            $clientResult = $stmt->fetchAll(PDO::FETCH_ASSOC);
+
+                            if ($clientResult && count($clientResult) > 0) {
+                                foreach ($clientResult as $client) {
+                                    echo '<option value="' . htmlspecialchars($client['name']) . '">' .
                                          htmlspecialchars($client['name']) . '</option>';
                                 }
                             }

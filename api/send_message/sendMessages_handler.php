@@ -5,7 +5,7 @@ if (session_status() === PHP_SESSION_NONE) {
 }
 
 // Include security module
-require_once dirname(__FILE__) . '/../security.php';
+require_once 'security.php';
 
 // Include language helper
 require_once '../includes/language_helpers.php';
@@ -190,4 +190,5 @@ $recent_messages_stmt->bindParam(4, $branch_id, PDO::PARAM_INT);
 $recent_messages_stmt->bindParam(5, $tenant_id, PDO::PARAM_INT);
 $recent_messages_stmt->bindParam(6, $branch_id, PDO::PARAM_INT);
 $recent_messages_stmt->execute();
+$recent_messages_result = $recent_messages_stmt->fetchAll(PDO::FETCH_ASSOC);
 ?>

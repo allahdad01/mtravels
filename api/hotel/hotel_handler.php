@@ -5,7 +5,6 @@ if (!defined('HOTEL_HANDLER_LOADED')) {
 }
 
 require_once('../includes/db.php');
-include '../includes/conn.php';
 
 $tenant_id   = $_SESSION['tenant_id'];
 $branch_id   = $_SESSION['branch_id'];
@@ -35,24 +34,16 @@ if ($search !== '') {
 
 // Count total records
 $totalQuery = "SELECT COUNT(*) as total FROM hotel_bookings hb WHERE hb.tenant_id = ? AND hb.branch_id = ? {$searchCondition}";
-$stmtTotal  = $conn->prepare($totalQuery);
+$stmtTotal  = $pdo->prepare($totalQuery);
 
 if ($searchCondition !== '') {
-    $types = 's' . 'i' . $searchTypes;
     $params = array_merge([$tenant_id, $branch_id], $searchParams);
-    $bindTotal = [$types];
-    foreach ($params as $key => $value) {
-        $bindTotal[] = &$params[$key];
-    }
-    call_user_func_array([$stmtTotal, 'bind_param'], $bindTotal);
 } else {
-    $stmtTotal->bind_param('si', $tenant_id, $branch_id);
+    $params = [$tenant_id, $branch_id];
 }
 
-$stmtTotal->execute();
-$totalResult   = $stmtTotal->get_result();
-$totalRecords  = (int) ($totalResult->fetch_assoc()['total'] ?? 0);
-$stmtTotal->close();
+$stmtTotal->execute($params);
+$totalRecords = (int) ($stmtTotal->fetch(PDO::FETCH_ASSOC)['total'] ?? 0);
 
 $totalPages = max(1, (int) ceil($totalRecords / $itemsPerPage));
 
@@ -98,24 +89,16 @@ $bookingsQuery = "
     LIMIT ?, ?
  ";
 
-$stmt = $conn->prepare($bookingsQuery);
+$stmt = $pdo->prepare($bookingsQuery);
 
 if ($searchCondition !== '') {
     $params = array_merge([$tenant_id, $branch_id, $tenant_id, $branch_id, $tenant_id, $branch_id, $tenant_id, $branch_id, $tenant_id, $branch_id], $searchParams, [$offset, $itemsPerPage]);
-    $types  = 's' . 'i' . 'iiiiiiii' . $searchTypes . 'ii';
-    $bindMain[] = $types;
-    foreach ($params as $key => $value) {
-        $bindMain[] = &$params[$key];
-    }
-    call_user_func_array([$stmt, 'bind_param'], $bindMain);
 } else {
-    $stmt->bind_param('siiiiiiiiiii', $tenant_id, $branch_id, $tenant_id, $branch_id, $tenant_id, $branch_id, $tenant_id, $branch_id, $tenant_id, $branch_id, $offset, $itemsPerPage);
+    $params = [$tenant_id, $branch_id, $tenant_id, $branch_id, $tenant_id, $branch_id, $tenant_id, $branch_id, $tenant_id, $branch_id, $offset, $itemsPerPage];
 }
 
-$stmt->execute();
-$result   = $stmt->get_result();
-$bookings = $result->fetch_all(MYSQLI_ASSOC);
-$stmt->close();
+$stmt->execute($params);
+$bookings = $stmt->fetchAll(PDO::FETCH_ASSOC);
 
 $startRecord = $totalRecords > 0 ? $offset + 1 : 0;
 $endRecord   = $totalRecords > 0 ? min($offset + count($bookings), $totalRecords) : 0;

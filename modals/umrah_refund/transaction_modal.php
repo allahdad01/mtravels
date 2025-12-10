@@ -199,12 +199,20 @@
                                         <select class="form-control" id="mainAccountId" name="main_account_id" required aria-describedby="accountHelp">
                                             <option value=""><?= __('select_main_account') ?></option>
                                             <?php
-                                            $accountsQuery = "SELECT id, name FROM main_account WHERE status = 'active' AND tenant_id = $tenant_id AND branch_id = $branch_id";
-                                            $accountsResult = $conn->query($accountsQuery);
-                                            if ($accountsResult) {
-                                                while ($account = $accountsResult->fetch_assoc()) {
+                                            try {
+                                                $accountsQuery = "SELECT id, name FROM main_account WHERE status = 'active' AND tenant_id = :tenant_id AND branch_id = :branch_id";
+                                                $stmt = $pdo->prepare($accountsQuery);
+                                                $stmt->bindParam(':tenant_id', $tenant_id, PDO::PARAM_INT);
+                                                $stmt->bindParam(':branch_id', $branch_id, PDO::PARAM_INT);
+                                                $stmt->execute();
+                                                $accounts = $stmt->fetchAll(PDO::FETCH_ASSOC);
+    
+                                                foreach ($accounts as $account) {
                                                     echo '<option value="' . $account['id'] . '">' . htmlspecialchars($account['name']) . '</option>';
                                                 }
+                                            } catch (PDOException $e) {
+                                                error_log("Error fetching main accounts: " . $e->getMessage());
+                                                echo '<option value="">' . __('error_loading_accounts') . '</option>';
                                             }
                                             ?>
                                         </select>

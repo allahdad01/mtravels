@@ -27,16 +27,21 @@
                                     <select class="form-control" id="soldTo" name="soldTo" required>
                                         <option value=""><?= __('select_client') ?></option>
                                         <?php
-                                        // Fetch clients from the database
-                                        if ($conn->connect_error) {
-                                            echo "<option value=''>Database connection failed</option>";
-                                        } else {
-                                            $result = $conn->query("SELECT id, name, usd_balance, afs_balance FROM clients where status = 'active' AND tenant_id = $tenant_id");
-                                            while ($row = $result->fetch_assoc()) {
+                                        // Fetch clients from the database using PDO
+                                        try {
+                                            $stmt = $pdo->prepare("SELECT id, name, usd_balance, afs_balance FROM clients WHERE status = 'active' AND tenant_id = :tenant_id");
+                                            $stmt->bindParam(':tenant_id', $tenant_id, PDO::PARAM_INT);
+                                            $stmt->execute();
+                                            $clients = $stmt->fetchAll(PDO::FETCH_ASSOC);
+
+                                            foreach ($clients as $row) {
                                                 echo "<option value='{$row['id']}'>
                                                         {$row['name']}
                                                       </option>";
                                             }
+                                        } catch (PDOException $e) {
+                                            error_log("Error fetching clients: " . $e->getMessage());
+                                            echo "<option value=''>" . __('error_loading_clients') . "</option>";
                                         }
                                         ?>
                                     </select>
@@ -46,16 +51,21 @@
                                     <select class="form-control" id="paidTo" name="paidTo" required>
                                         <option value=""><?= __('select_main_account') ?></option>
                                         <?php
-                                        // Fetch main accounts from the database
-                                        if ($conn->connect_error) {
-                                            echo "<option value=''>Database connection failed</option>";
-                                        } else {
-                                            $result = $conn->query("SELECT id, name, usd_balance, afs_balance FROM main_account where status = 'active' AND tenant_id = $tenant_id");
-                                            while ($row = $result->fetch_assoc()) {
+                                        // Fetch main accounts from the database using PDO
+                                        try {
+                                            $stmt = $pdo->prepare("SELECT id, name, usd_balance, afs_balance FROM main_account WHERE status = 'active' AND tenant_id = :tenant_id");
+                                            $stmt->bindParam(':tenant_id', $tenant_id, PDO::PARAM_INT);
+                                            $stmt->execute();
+                                            $accounts = $stmt->fetchAll(PDO::FETCH_ASSOC);
+
+                                            foreach ($accounts as $row) {
                                                 echo "<option value='{$row['id']}'>
                                                         {$row['name']}
                                                       </option>";
                                             }
+                                        } catch (PDOException $e) {
+                                            error_log("Error fetching main accounts: " . $e->getMessage());
+                                            echo "<option value=''>" . __('error_loading_accounts') . "</option>";
                                         }
                                         ?>
                                     </select>

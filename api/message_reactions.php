@@ -20,6 +20,23 @@
 	$tenantId = (int)$me['tenant_id'];
 
 	if ($method === 'GET') {
+		// Support checking if reactions table exists
+		if (isset($_GET['action']) && $_GET['action'] === 'check_table') {
+			try {
+				$result = $pdo->query("SHOW TABLES LIKE 'message_reactions'");
+				$exists = $result->rowCount() > 0;
+				if ($exists) {
+					$count = $pdo->query("SELECT COUNT(*) FROM message_reactions")->fetchColumn();
+					echo json_encode(['table_exists' => true, 'count' => (int)$count]);
+				} else {
+					echo json_encode(['table_exists' => false]);
+				}
+			} catch (Exception $e) {
+				echo json_encode(['table_exists' => false, 'error' => 'query_failed']);
+			}
+			exit;
+		}
+
 		$messageId = isset($_GET['message_id']) ? (int)$_GET['message_id'] : 0;
 		if ($messageId <= 0) { http_response_code(400); echo json_encode(['error' => 'invalid_message_id']); exit; }
 
@@ -51,6 +68,14 @@
 	}
 
 	if ($method === 'POST') {
+		// Validate CSRF token
+		$csrfToken = isset($_POST['csrf_token']) ? trim($_POST['csrf_token']) : '';
+		if (empty($csrfToken) || !hash_equals(($_SESSION['csrf_token'] ?? ''), $csrfToken)) {
+			http_response_code(403);
+			echo json_encode(['error' => 'csrf_token_invalid']);
+			exit;
+		}
+
 		$messageId = isset($_POST['message_id']) ? (int)$_POST['message_id'] : 0;
 		$emoji = isset($_POST['emoji']) ? trim($_POST['emoji']) : '';
 		$action = isset($_POST['action']) ? $_POST['action'] : 'add'; // 'add' or 'remove'

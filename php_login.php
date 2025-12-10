@@ -12,6 +12,7 @@ session_start();
 require_once "config.php";
 require_once "includes/db.php";
 require_once "includes/totp_helper.php";
+require_once "includes/RateLimiter.php";
 
 // Create TOTP helper
 $totpHelper = new TotpHelper($pdo, $conection_db);
@@ -51,6 +52,8 @@ function checkBruteForce($email, $conection_db) {
 
 // Record failed login attempt
 function recordFailedAttempt($email, $conection_db) {
+    global $pdo;
+    
     $time = date("Y-m-d H:i:s");
     if ($stmt = $conection_db->prepare("INSERT INTO login_attempts (email, time, ip_address) VALUES (?, ?, ?)")) {
         $ip_address = $_SERVER['REMOTE_ADDR'];
@@ -58,6 +61,9 @@ function recordFailedAttempt($email, $conection_db) {
         $stmt->execute();
         $stmt->close();
     }
+    
+    // Record in rate limiter
+    RateLimiter::recordAction($email, 'login_attempts_per_15min', 1, $ip_address, 'email');
 }
 
 if ($_SERVER["REQUEST_METHOD"] == "POST") {
@@ -134,9 +140,20 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
         }
 
         // Authenticate user if no errors
-        if (empty($email_err) && empty($password_err)) {
-            // First check users table
-            $sql = "SELECT id, tenant_id, branch_id, name, email, password, role, totp_enabled FROM users WHERE email = ?";
+         if (empty($email_err) && empty($password_err)) {
+             // Rate limit check: login attempts (using tenantId 1 as default for login page)
+             if (!RateLimiter::isAllowed($email, 'login_attempts_per_15min', 1, 'email')) {
+                 $email_err = "Too many login attempts. Please try again in 15 minutes.";
+             } else {
+                 // Check if IP is blocked
+                 if (RateLimiter::isIPBlocked($_SERVER['REMOTE_ADDR'])) {
+                     $email_err = "Your IP has been temporarily blocked. Please try again later.";
+                 }
+             }
+             
+             if (empty($email_err)) {
+                 // First check users table
+                 $sql = "SELECT id, tenant_id, branch_id, name, email, password, role, totp_enabled FROM users WHERE email = ?";
             
             if ($stmt = $conection_db->prepare($sql)) {
                 $stmt->bind_param("s", $email);
@@ -283,6 +300,7 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
                     echo "Oops! Something went wrong. Please try again later.";
                 }
             }
+             }
         }
     }
     $conection_db->close();

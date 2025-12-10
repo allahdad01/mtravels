@@ -19,6 +19,14 @@ if ($method !== 'POST') {
     exit;
 }
 
+// Validate CSRF token
+$csrfToken = isset($_POST['csrf_token']) ? trim($_POST['csrf_token']) : '';
+if (empty($csrfToken) || !hash_equals(($_SESSION['csrf_token'] ?? ''), $csrfToken)) {
+    http_response_code(403);
+    echo json_encode(['error' => 'csrf_token_invalid']);
+    exit;
+}
+
 // Get user's tenant and settings
 $stmt = secure_query($pdo, 'SELECT u.tenant_id, t.chat_max_file_bytes, t.chat_allowed_mime_prefixes 
                            FROM users u 
@@ -71,19 +79,38 @@ if (!in_array($mimeType, array_map('trim', $allowedMimePrefixes), true)) {
     }
 }
 
-// Verify peer and tenant peering
-$peerStmt = secure_query($pdo, 'SELECT tenant_id FROM users WHERE id = ?', [$toUserId]);
+// Verify peer and tenant/branch peering
+$peerStmt = secure_query($pdo, 'SELECT tenant_id, branch_id FROM users WHERE id = ?', [$toUserId]);
 $peer = $peerStmt ? $peerStmt->fetch(PDO::FETCH_ASSOC) : null;
 if (!$peer) {
     http_response_code(404);
     echo json_encode(['error' => 'peer_not_found']);
     exit;
 }
+
 $peerTenantId = (int)$peer['tenant_id'];
+$peerBranchId = isset($peer['branch_id']) ? (int)$peer['branch_id'] : 0;
+
+// Get current user's branch
+$myStmt = secure_query($pdo, 'SELECT branch_id FROM users WHERE id = ?', [$currentUserId]);
+$myUser = $myStmt ? $myStmt->fetch(PDO::FETCH_ASSOC) : null;
+$myBranch = isset($myUser['branch_id']) ? (int)$myUser['branch_id'] : 0;
+
 if ($peerTenantId !== $tenantId) {
-    $allow = secure_query($pdo, 'SELECT 1 FROM tenant_peering WHERE status = "approved" AND ((tenant_id = ? AND peer_tenant_id = ?) OR (tenant_id = ? AND peer_tenant_id = ?)) LIMIT 1', 
-                         [$tenantId, $peerTenantId, $peerTenantId, $tenantId]);
-    if (!$allow || !$allow->fetch()) {
+    // Cross-tenant: check both tenant and branch peering
+    $tenantPeeringAllow = secure_query($pdo, 'SELECT 1 FROM tenant_peering WHERE status = "approved" AND ((tenant_id = ? AND peer_tenant_id = ?) OR (tenant_id = ? AND peer_tenant_id = ?)) LIMIT 1', [$tenantId, $peerTenantId, $peerTenantId, $tenantId]);
+    $tenantPeeringExists = $tenantPeeringAllow && $tenantPeeringAllow->fetch();
+    
+    $branchPeeringAllow = secure_query($pdo, 
+        'SELECT 1 FROM branch_peering WHERE status = "approved" AND (
+            (tenant_id = ? AND branch_id = ? AND peer_tenant_id = ? AND peer_branch_id = ?)
+            OR
+            (tenant_id = ? AND branch_id = ? AND peer_tenant_id = ? AND peer_branch_id = ?)
+        ) LIMIT 1', 
+        [$tenantId, $myBranch, $peerTenantId, $peerBranchId, $peerTenantId, $peerBranchId, $tenantId, $myBranch]);
+    $branchPeeringExists = $branchPeeringAllow && $branchPeeringAllow->fetch();
+    
+    if (!$tenantPeeringExists && !$branchPeeringExists) {
         http_response_code(403);
         echo json_encode(['error' => 'peer_not_allowed']);
         exit;

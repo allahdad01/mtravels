@@ -2,6 +2,7 @@
 session_start();
 header('Content-Type: application/json');
 require_once __DIR__ . '/../includes/db.php';
+require_once __DIR__ . '/../includes/ChatAudit.php';
 
 if (!isset($_SESSION['user_id'])) {
     http_response_code(401);
@@ -14,8 +15,8 @@ $method = $_SERVER['REQUEST_METHOD'];
 $action = $_POST['action'] ?? $_GET['action'] ?? '';
 $targetId = (int)($_POST['target_id'] ?? $_GET['target_id'] ?? 0);
 
-// Resolve tenant
-$stmt = secure_query($pdo, 'SELECT id, tenant_id FROM users WHERE id = ?', [$currentUserId]);
+// Resolve tenant and branch
+$stmt = secure_query($pdo, 'SELECT id, tenant_id, branch_id FROM users WHERE id = ?', [$currentUserId]);
 $me = $stmt ? $stmt->fetch(PDO::FETCH_ASSOC) : null;
 
 if (!$me) {
@@ -24,6 +25,7 @@ if (!$me) {
     exit;
 }
 $tenantId = (int)$me['tenant_id'];
+$branchId = (int)$me['branch_id'];
 
 // Handle block/unblock/mute/unmute
 if ($method === 'POST' && in_array($action, ['block', 'unblock', 'mute', 'unmute'], true)) {
@@ -39,6 +41,7 @@ if ($method === 'POST' && in_array($action, ['block', 'unblock', 'mute', 'unmute
                 'INSERT IGNORE INTO user_blocks (tenant_id, user_id, blocked_user_id) VALUES (?, ?, ?)',
                 [$tenantId, $currentUserId, $targetId]
             );
+            ChatAudit::logBlock($tenantId, $branchId, $currentUserId, $targetId, 'block');
             break;
 
         case 'unblock':
@@ -46,6 +49,7 @@ if ($method === 'POST' && in_array($action, ['block', 'unblock', 'mute', 'unmute
                 'DELETE FROM user_blocks WHERE tenant_id = ? AND user_id = ? AND blocked_user_id = ?',
                 [$tenantId, $currentUserId, $targetId]
             );
+            ChatAudit::logBlock($tenantId, $branchId, $currentUserId, $targetId, 'unblock');
             break;
 
         case 'mute':
@@ -53,6 +57,7 @@ if ($method === 'POST' && in_array($action, ['block', 'unblock', 'mute', 'unmute
                 'INSERT IGNORE INTO user_mutes (tenant_id, user_id, muted_user_id) VALUES (?, ?, ?)',
                 [$tenantId, $currentUserId, $targetId]
             );
+            ChatAudit::logMute($tenantId, $branchId, $currentUserId, $targetId, 'mute');
             break;
 
         case 'unmute':
@@ -60,6 +65,7 @@ if ($method === 'POST' && in_array($action, ['block', 'unblock', 'mute', 'unmute
                 'DELETE FROM user_mutes WHERE tenant_id = ? AND user_id = ? AND muted_user_id = ?',
                 [$tenantId, $currentUserId, $targetId]
             );
+            ChatAudit::logMute($tenantId, $branchId, $currentUserId, $targetId, 'unmute');
             break;
     }
 

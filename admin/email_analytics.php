@@ -19,7 +19,6 @@ if (!isset($_SESSION['user_id']) || $_SESSION['role'] !== 'admin') {
     exit();
 }
 
-require_once '../includes/conn.php';
 require_once '../includes/db.php';
 
 // Get date range from URL parameters or set defaults

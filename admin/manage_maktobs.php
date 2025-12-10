@@ -250,7 +250,8 @@ include '../includes/header.php';
                                     </tr>
                                 </thead>
                                 <tbody>
-                                    <?php while ($row = mysqli_fetch_assoc($recent_maktobs_result)): ?>
+                                    <?php if ($recent_maktobs_result !== null): ?>
+                                        <?php while ($row = mysqli_fetch_assoc($recent_maktobs_result)): ?>
                                     <tr>
                                         <td><?php echo htmlspecialchars($row['maktob_number']); ?></td>
                                         <td><?php echo date('Y-m-d', strtotime($row['maktob_date'])); ?></td>
@@ -317,6 +318,11 @@ include '../includes/header.php';
                                         </td>
                                     </tr>
                                     <?php endwhile; ?>
+                                        <?php else: ?>
+                                            <tr>
+                                                <td colspan="9" class="text-center text-muted"><?= __('no_letters_found') ?></td>
+                                            </tr>
+                                        <?php endif; ?>
                                 </tbody>
                             </table>
                         </div>

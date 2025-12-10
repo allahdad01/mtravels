@@ -250,6 +250,62 @@ html, body {
     transition: background 0.3s ease;
 }
 
+/* Contact avatar wrapper with status indicator */
+.contact-avatar-wrapper {
+    position: relative;
+    flex-shrink: 0;
+}
+
+.contact-status-indicator {
+    position: absolute;
+    bottom: 0;
+    right: 0;
+    width: 12px;
+    height: 12px;
+    border-radius: 50%;
+    border: 2px solid var(--bg-primary);
+}
+
+.contact-status-indicator.online {
+    background: #10b981;
+    animation: pulse-online 2s infinite;
+}
+
+.contact-status-indicator.typing {
+    background: #3b82f6;
+    animation: pulse-typing 1.4s infinite;
+}
+
+@keyframes pulse-online {
+    0%, 100% {
+        opacity: 1;
+    }
+    50% {
+        opacity: 0.7;
+    }
+}
+
+@keyframes pulse-typing {
+    0%, 100% {
+        opacity: 1;
+        transform: scale(1);
+    }
+    50% {
+        opacity: 0.6;
+        transform: scale(1.1);
+    }
+}
+
+/* Agency and role information */
+.contact-agency-role {
+    font-size: 0.75rem;
+    color: var(--text-muted);
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    margin-bottom: 0.25rem;
+}
+
 /* Main Chat Area */
 .chat-main {
     flex: 1;

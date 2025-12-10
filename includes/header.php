@@ -1531,6 +1531,11 @@ MOBILE SIDEBAR - CLEAN LAYOUT FIX
                                 <i class="feather icon-users"></i> Tenant Peering
                             </a>
                         </li>
+                        <li class="<?php echo basename($_SERVER['PHP_SELF']) == 'branch_peering.php' ? 'active' : ''; ?>">
+                            <a href="branch_peering.php">
+                                <i class="feather icon-users"></i> Branch Peering
+                            </a>
+                        </li>
                     </ul>
                 </li>
                 <?php endif; ?> 
@@ -1788,19 +1793,6 @@ MOBILE SIDEBAR - CLEAN LAYOUT FIX
                         <span class="pcoded-mtext">Excel Import</span>
                     </a>
                 </li>
-
-                <li data-username="settings" class="nav-item <?php echo basename($_SERVER['PHP_SELF']) == 'settings.php' ? 'active' : ''; ?>">
-                    <a href="settings.php" class="nav-link">
-                        <span class="pcoded-micon"><i class="feather icon-settings"></i></span>
-                        <span class="pcoded-mtext"><?= __('settings') ?></span>
-                    </a>
-                </li>
-                <li data-username="whatsapp_settings" class="nav-item <?php echo basename($_SERVER['PHP_SELF']) == 'whatsapp_settings.php' ? 'active' : ''; ?>">
-                    <a href="whatsapp_settings.php" class="nav-link">
-                        <span class="pcoded-micon"><i class="feather icon-settings"></i></span>
-                        <span class="pcoded-mtext"><?= __('whatsapp_settings') ?></span>
-                    </a>
-                </li>
                 <li data-username="2fa" class="nav-item <?php echo basename($_SERVER['PHP_SELF']) == 'totp.php' ? 'active' : ''; ?>">
                     <a href="../totp_setup.php" class="nav-link">
                         <span class="pcoded-micon"><i class="feather icon-shield"></i></span>
@@ -1811,12 +1803,6 @@ MOBILE SIDEBAR - CLEAN LAYOUT FIX
                     <a href="search.php" class="nav-link">
                         <span class="pcoded-micon"><i class="feather icon-search"></i></span>
                         <span class="pcoded-mtext"><?= __('search') ?></span>
-                    </a>
-                </li>
-                <li data-username="tutorials" class="nav-item <?php echo basename($_SERVER['PHP_SELF']) == 'tutorials.php' ? 'active' : ''; ?>">
-                    <a href="tutorials.php" class="nav-link">
-                        <span class="pcoded-micon"><i class="fas fa-graduation-cap"></i></span>
-                        <span class="pcoded-mtext"><?= __('tutorials') ?></span>
                     </a>
                 </li>
 
