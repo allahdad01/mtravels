@@ -196,11 +196,11 @@ foreach ($suppliers as $supplier) {
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-select@1.13.14/dist/css/bootstrap-select.min.css">
     
     <!-- Existing CSS links -->
-    <link rel="stylesheet" href="css/ticket_styles.css">
-    <link rel="stylesheet" href="css/ticket-components.css">
-    <link rel="stylesheet" href="css/modal-styles.css">
-    <link rel="stylesheet" href="css/ticket-form.css">
-    <link rel="stylesheet" href="css/ticket_reserve_datatables.css">
+    <link rel="stylesheet" href="../css/ticket/ticket_styles.css">
+    <link rel="stylesheet" href="../css/ticket/ticket-components.css">
+    <link rel="stylesheet" href="../css/general/modal-styles.css">
+    <link rel="stylesheet" href="../css/ticket/ticket-form.css">
+    <link rel="stylesheet" href="../css/ticket/ticket_reserve_datatables.css">
 
     <style>
 /* Apply gradient background to card headers matching the sidebar */

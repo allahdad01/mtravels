@@ -55,9 +55,9 @@ if (!file_exists($imagePath)) {
     $imagePath = "../assets/images/user/avatar-1.jpg";
 }
 ?>
-<link rel="stylesheet" href="css/dashboard.css">
-<link href="css/dashboard-styles.css" rel="stylesheet">
-<link rel="stylesheet" href="css/modal-styles.css">
+<link rel="stylesheet" href="../css/dashboard/dashboard.css">
+<link href="../css/dashboard/css/dashboard-styles.css" rel="stylesheet">
+<link rel="stylesheet" href="../css/general/modal-styles.css">
 
 
     <!-- [ Main Content ] start -->

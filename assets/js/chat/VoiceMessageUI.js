@@ -91,7 +91,7 @@ class VoiceMessageUI {
             this.updateRecordingUI(false);
 
             const audioBlob = await this.voiceRecorder.stopRecording();
-            
+
             if (!audioBlob) {
                 console.warn('[VoiceMessageUI] No audio recorded');
                 return;
@@ -125,7 +125,7 @@ class VoiceMessageUI {
             }
 
             const duration = this.recordingDuration;
-            
+
             // Send to API
             const response = await this.chatAPI.sendVoiceMessage(
                 contactId,
@@ -135,7 +135,7 @@ class VoiceMessageUI {
 
             if (response.success || response.message_id) {
                 console.log('[VoiceMessageUI] Voice message sent successfully');
-                
+
                 // Dispatch event so the chat can update
                 window.dispatchEvent(new CustomEvent('voiceMessageSent', {
                     detail: {
@@ -177,7 +177,7 @@ class VoiceMessageUI {
      */
     updateTimer(seconds) {
         this.recordingDuration = seconds;
-        
+
         if (this.timerDisplay) {
             this.timerDisplay.textContent = VoiceRecorder.formatTime(seconds);
         }
@@ -197,7 +197,7 @@ class VoiceMessageUI {
         if (!this.voiceBtn) return;
 
         const level = event.detail.level || 0;
-        
+
         // Scale the icon size based on audio level
         const scale = 1 + (level * 0.2);
         this.voiceBtn.style.transform = `scale(${scale})`;
@@ -212,7 +212,7 @@ class VoiceMessageUI {
         if (isRecording) {
             this.voiceBtn.classList.add('recording');
             this.voiceBtn.title = 'Stop recording';
-            
+
             if (this.timerDisplay) {
                 this.timerDisplay.classList.remove('hidden');
             }
@@ -220,7 +220,7 @@ class VoiceMessageUI {
             this.voiceBtn.classList.remove('recording');
             this.voiceBtn.style.transform = 'scale(1)';
             this.voiceBtn.title = 'Voice message';
-            
+
             if (this.timerDisplay) {
                 this.timerDisplay.classList.add('hidden');
             }
@@ -290,38 +290,60 @@ class VoiceMessageUI {
      * Play voice message
      */
     playVoiceMessage(url, playBtn) {
-        if (!url) {
+        if (!url || url === '#') {
             alert('Voice message URL not available');
             return;
         }
 
         try {
-            const audio = new Audio(url);
             const icon = playBtn.querySelector('i');
 
-            audio.addEventListener('play', () => {
-                icon.className = 'fas fa-pause';
-                playBtn.classList.add('playing');
-            });
+            // Check if audio is already playing for this button
+            let audio = playBtn._voiceAudio;
 
-            audio.addEventListener('pause', () => {
-                icon.className = 'fas fa-play';
-                playBtn.classList.remove('playing');
-            });
+            if (!audio) {
+                // Create new audio element
+                audio = new Audio(url);
+                playBtn._voiceAudio = audio;
 
-            audio.addEventListener('ended', () => {
-                icon.className = 'fas fa-play';
-                playBtn.classList.remove('playing');
-            });
+                audio.addEventListener('play', () => {
+                    icon.className = 'fas fa-pause';
+                    playBtn.classList.add('playing');
+                }, { once: false });
 
+                audio.addEventListener('pause', () => {
+                    icon.className = 'fas fa-play';
+                    playBtn.classList.remove('playing');
+                }, { once: false });
+
+                audio.addEventListener('ended', () => {
+                    icon.className = 'fas fa-play';
+                    playBtn.classList.remove('playing');
+                }, { once: false });
+
+                audio.addEventListener('error', (e) => {
+                    console.error('[VoiceMessageUI] Audio playback error:', e);
+                    alert('Failed to play voice message');
+                    icon.className = 'fas fa-play';
+                    playBtn.classList.remove('playing');
+                });
+            }
+
+            // Toggle play/pause
             if (audio.paused) {
-                audio.play();
+                const playPromise = audio.play();
+                if (playPromise !== undefined) {
+                    playPromise.catch(error => {
+                        console.error('[VoiceMessageUI] Play failed:', error);
+                        alert('Failed to play voice message');
+                    });
+                }
             } else {
                 audio.pause();
             }
         } catch (error) {
             console.error('[VoiceMessageUI] Failed to play voice message:', error);
-            alert('Failed to play voice message');
+            alert('Failed to play voice message: ' + error.message);
         }
     }
 
@@ -336,7 +358,7 @@ class VoiceMessageUI {
         if (diff < 60000) return 'just now';
         if (diff < 3600000) return Math.floor(diff / 60000) + 'm ago';
         if (diff < 86400000) return Math.floor(diff / 3600000) + 'h ago';
-        
+
         return date.toLocaleDateString();
     }
 

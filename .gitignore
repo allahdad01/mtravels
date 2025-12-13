@@ -1,0 +1,59 @@
+# Environment Configuration Files
+.env
+.env.local
+.env.*.local
+*.local.php
+
+# IDE & Editor
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+.DS_Store
+Thumbs.db
+
+# System Files
+$RECYCLE.BIN/
+desktop.ini
+
+# Dependencies
+vendor/
+node_modules/
+
+# Logs & Caches
+logs/
+cache/
+temp/
+*.log
+
+# Uploads (optional, if sensitive)
+# uploads/
+
+# Temporary Files
+*.tmp
+*.bak
+*.backup
+
+# Database Backups (if stored locally)
+*.sql
+*.sql.gz
+!database_structure.sql
+
+# Configuration Files (if local overrides)
+config.local.php
+settings.local.php
+
+# OS-specific
+.AppleDouble
+.LSOverride
+
+# phpStorm
+.phpstorm.meta.php
+_ide_helper.php
+
+# Composer
+composer.phar
+
+# Testing
+.phpunit.result.cache

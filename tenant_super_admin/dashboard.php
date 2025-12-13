@@ -565,37 +565,49 @@ $userQuery = "
 
         <!-- Quick Actions -->
         <div class="row">
-            <div class="col-12">
-                <div class="card">
-                    <div class="card-header">
-                        <h5>Quick Actions</h5>
-                    </div>
-                    <div class="card-body">
-                        <div class="row">
-                            <div class="col-md-3">
-                                <a href="branches.php" class="btn btn-primary btn-block">
-                                    <i class="feather icon-git-branch"></i> Manage Branches
-                                </a>
-                            </div>
-                            <div class="col-md-3">
-                                <a href="users.php" class="btn btn-success btn-block">
-                                    <i class="feather icon-user-plus"></i> Manage Users
-                                </a>
-                            </div>
-                            <div class="col-md-3">
-                                <a href="reports.php" class="btn btn-info btn-block">
-                                    <i class="feather icon-file"></i> View Reports
-                                </a>
-                            </div>
-                            <div class="col-md-3">
-                                <a href="settings.php" class="btn btn-warning btn-block">
-                                    <i class="feather icon-settings"></i> Settings
-                                </a>
-                            </div>
-                        </div>
-                    </div>
-                </div>
+        <div class="col-12">
+        <div class="card">
+        <div class="card-header">
+        <h5>Quick Actions</h5>
+        </div>
+        <div class="card-body">
+        <div class="row">
+            <div class="col-md-3">
+                <a href="branches.php" class="btn btn-primary btn-block">
+                    <i class="feather icon-git-branch"></i> Manage Branches
+                </a>
             </div>
+            <div class="col-md-3">
+                <a href="users.php" class="btn btn-success btn-block">
+                    <i class="feather icon-user-plus"></i> Manage Users
+                </a>
+            </div>
+            <div class="col-md-3">
+                <a href="reports.php" class="btn btn-info btn-block">
+                    <i class="feather icon-file"></i> View Reports
+                </a>
+            </div>
+            <div class="col-md-3">
+                <a href="settings.php" class="btn btn-warning btn-block">
+                    <i class="feather icon-settings"></i> Settings
+                </a>
+            </div>
+        </div>
+        <div class="row mt-3">
+            <div class="col-md-3">
+                <a href="generate_report.php" class="btn btn-outline-success btn-block">
+                    <i class="feather icon-download"></i> Generate Report
+                </a>
+            </div>
+            <div class="col-md-3">
+                <a href="report_settings.php" class="btn btn-outline-info btn-block">
+                    <i class="feather icon-mail"></i> Report Settings
+                </a>
+            </div>
+        </div>
+        </div>
+        </div>
+        </div>
         </div>
     </div>
 </div>

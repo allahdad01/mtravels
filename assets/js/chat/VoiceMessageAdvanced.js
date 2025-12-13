@@ -80,7 +80,7 @@ class VoiceMessageAdvanced {
 
         if (!audio) {
             const url = button.dataset.url;
-            if (!url) {
+            if (!url || url === '#') {
                 alert('Voice message URL not available');
                 return;
             }
@@ -100,13 +100,31 @@ class VoiceMessageAdvanced {
             audio.addEventListener('timeupdate', () => {
                 this.updatePlaybackTime(messageId, audio);
             });
+
+            audio.addEventListener('error', (e) => {
+                console.error('[VoiceAdvanced] Audio playback error:', e);
+                alert('Failed to play voice message');
+                icon.className = 'fas fa-play';
+                button.classList.remove('playing');
+            });
         }
 
         if (audio.paused) {
-            audio.play();
-            icon.className = 'fas fa-pause';
-            button.classList.add('playing');
-            this.playingMessageId = messageId;
+            const playPromise = audio.play();
+            if (playPromise !== undefined) {
+                playPromise.then(() => {
+                    icon.className = 'fas fa-pause';
+                    button.classList.add('playing');
+                    this.playingMessageId = messageId;
+                }).catch(error => {
+                    console.error('[VoiceAdvanced] Play failed:', error);
+                    alert('Failed to play voice message');
+                });
+            } else {
+                icon.className = 'fas fa-pause';
+                button.classList.add('playing');
+                this.playingMessageId = messageId;
+            }
         } else {
             audio.pause();
             icon.className = 'fas fa-play';

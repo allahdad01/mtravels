@@ -64,33 +64,7 @@ if (!$debtorId) {
 // Include the header
 include '../includes/header.php';
 ?>
-<style>
-/* Apply gradient background to card headers matching the sidebar */
-.card-header {
-    background: linear-gradient(135deg, #4099ff 0%, #2ed8b6 100%) !important;
-    color: #ffffff !important;
-    border-bottom: none !important;
-}
-
-.card-header h5 {
-    color: #ffffff !important;
-    margin-bottom: 0 !important;
-}
-
-.card-header .card-header-right {
-    color: #ffffff !important;
-}
-
-.card-header .card-header-right .btn {
-    color: #ffffff !important;
-    border-color: rgba(255, 255, 255, 0.3) !important;
-}
-
-.card-header .card-header-right .btn:hover {
-    background: rgba(255, 255, 255, 0.1) !important;
-    border-color: rgba(255, 255, 255, 0.5) !important;
-}
-</style>
+<link rel="stylesheet" href="../css/debtors/styles.css">
 <div class="pcoded-main-container">
     <div class="pcoded-content">
         <div class="page-header">

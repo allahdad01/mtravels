@@ -23,7 +23,7 @@ require_once('../includes/db.php');
 
 
     <?php include '../includes/header.php'; ?>
-    <link rel="stylesheet" href="css/modal-styles.css">
+    <link rel="stylesheet" href="../css/general/modal-styles.css">
     <style>
 /* Apply gradient background to card headers matching the sidebar */
 .card-header {

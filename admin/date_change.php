@@ -29,108 +29,15 @@ include '../api/ticket_date_change/date_change_handler.php';
 <link rel="stylesheet" href="../assets/plugins/sweetalert2/sweetalert2.min.css">
 <script src="../assets/plugins/sweetalert2/sweetalert2.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/sweetalert/1.1.3/sweetalert.min.js"></script>
-<link rel="stylesheet" href="css/ticket_styles.css">
-<link rel="stylesheet" href="css/ticket-components.css">
-<link rel="stylesheet" href="css/modal-styles.css">
-<link rel="stylesheet" href="css/ticket-form.css">
-<link rel="stylesheet" href="css/date-change/datechange-css.css">
+<link rel="stylesheet" href="../css/ticket/ticket_styles.css">
+<link rel="stylesheet" href="../css/ticket/ticket-components.css">
+<link rel="stylesheet" href="../css/general/modal-styles.css">
+<link rel="stylesheet" href="../css/ticket/ticket-form.css">
+<link rel="stylesheet" href="../css/ticket/datechange-css.css">
         <?php 
 include '../includes/header.php';
 ?>
-<style>
-/* Apply gradient background to card headers matching the sidebar */
-.card-header {
-    background: linear-gradient(135deg, #4099ff 0%, #2ed8b6 100%) !important;
-    color: #ffffff !important;
-    border-bottom: none !important;
-}
 
-.card-header h5 {
-    color: #ffffff !important;
-    margin-bottom: 0 !important;
-}
-
-.card-header .card-header-right {
-    color: #ffffff !important;
-}
-
-.card-header .card-header-right .btn {
-    color: #ffffff !important;
-    border-color: rgba(255, 255, 255, 0.3) !important;
-}
-
-.card-header .card-header-right .btn:hover {
-    background: rgba(255, 255, 255, 0.1) !important;
-    border-color: rgba(255, 255, 255, 0.5) !important;
-}
-
-/* Transaction Modal Enhancements */
-#transactionsModal .modal-xl {
-    max-width: 95% !important;
-}
-
-#transactionsModal .card {
-    border: none;
-    box-shadow: 0 2px 10px rgba(0,0,0,0.1);
-}
-
-#transactionsModal .card-header {
-    border-radius: 8px 8px 0 0 !important;
-    border-bottom: 1px solid rgba(0,0,0,0.1);
-}
-
-#transactionsModal .form-control:focus {
-    border-color: #4099ff;
-    box-shadow: 0 0 0 0.2rem rgba(64, 153, 255, 0.25);
-}
-
-#transactionsModal .btn-group .btn {
-    margin-left: 5px;
-}
-
-#transactionsModal .table th {
-    font-weight: 600;
-    font-size: 0.875rem;
-    text-transform: uppercase;
-    letter-spacing: 0.5px;
-}
-
-#transactionsModal .table td {
-    vertical-align: middle;
-}
-
-#transactionsModal .border-bottom {
-    border-color: #e9ecef !important;
-}
-
-/* Loading animation */
-.fa-spin {
-    animation: fa-spin 1s infinite linear;
-}
-
-@keyframes fa-spin {
-    0% { transform: rotate(0deg); }
-    100% { transform: rotate(360deg); }
-}
-
-/* Responsive improvements */
-@media (max-width: 768px) {
-    #transactionsModal .modal-xl {
-        max-width: 100% !important;
-        margin: 10px;
-    }
-
-    #transactionsModal .btn-group {
-        flex-direction: column;
-        width: 100%;
-    }
-
-    #transactionsModal .btn-group .btn {
-        margin-left: 0;
-        margin-top: 5px;
-    }
-}
-</style>
     <!-- [ Main Content ] start -->
     <div class="pcoded-main-container">
         <div class="pcoded-wrapper">

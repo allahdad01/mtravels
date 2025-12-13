@@ -16,7 +16,7 @@ require_once('../../includes/db.php');
 header('Content-Type: application/json');
 
 // Check if PhpSpreadsheet is installed
-if (!file_exists('../vendor/autoload.php')) {
+if (!file_exists('../../vendor/autoload.php')) {
     echo json_encode([
         'success' => false,
         'message' => 'PhpSpreadsheet is not installed. Please run "composer require phpoffice/phpspreadsheet".'
@@ -25,7 +25,7 @@ if (!file_exists('../vendor/autoload.php')) {
 }
 
 // Include PhpSpreadsheet
-require_once '../vendor/autoload.php';
+require_once '../../vendor/autoload.php';
 
 use PhpOffice\PhpSpreadsheet\Spreadsheet;
 use PhpOffice\PhpSpreadsheet\Writer\Xlsx;
@@ -433,9 +433,9 @@ try {
     $totalIncomeQuery = "
         SELECT SUM(profit) as total, currency
         FROM (
-            SELECT profit, currency, created_at, tenant_id FROM ticket_bookings WHERE tenant_id = ?
+            SELECT profit, currency, created_at, tenant_id FROM ticket_bookings WHERE tenant_id = ? AND branch_id = ?
             UNION ALL
-            SELECT profit, currency, created_at, tenant_id FROM ticket_reservations WHERE tenant_id = ?
+            SELECT profit, currency, created_at, tenant_id FROM ticket_reservations WHERE tenant_id = ? AND branch_id = ?
             UNION ALL
             SELECT
                 CASE
@@ -522,7 +522,7 @@ try {
             }
             
             $stmt = $pdo->prepare($sourceQuery);
-            $stmt->execute([$startDate, $endDate, $tenant_id]);
+            $stmt->execute([$startDate, $endDate, $tenant_id, $branch_id]);
             $row = $stmt->fetch(PDO::FETCH_ASSOC);
             
             // Store USD amount directly
@@ -558,10 +558,10 @@ try {
 
                 while ($booking = $ticketStmt->fetch(PDO::FETCH_ASSOC)) {
                     $bookingDate = date('Y-m-d', strtotime($booking['created_at']));
-                    $dailyRate = getDailyAverageExchangeRate($pdo, $bookingDate, $tenant_id);
+                    $dailyRate = getDailyAverageExchangeRate($pdo, $bookingDate, $tenant_id, $branch_id);
 
                     if ($dailyRate === null) {
-                        $dailyRate = getPeriodAverageExchangeRate($pdo, $startDate, $endDate, $tenant_id);
+                        $dailyRate = getPeriodAverageExchangeRate($pdo, $startDate, $endDate, $tenant_id, $branch_id);
                     }
 
                     $ticketConverted += $booking['profit'] * $dailyRate;
@@ -672,7 +672,7 @@ try {
 
                 while ($weight = $weightsStmt->fetch(PDO::FETCH_ASSOC)) {
                     $weightDate = date('Y-m-d', strtotime($weight['created_at']));
-                    $dailyRate = getDailyAverageExchangeRate($pdo, $bookingDate, $tenant_id, $branch_id);
+                    $dailyRate = getDailyAverageExchangeRate($pdo, $weightDate, $tenant_id, $branch_id);
 
                     if ($dailyRate === null) {
                         $dailyRate = getPeriodAverageExchangeRate($pdo, $startDate, $endDate, $tenant_id, $branch_id);
@@ -1096,7 +1096,7 @@ try {
             $sourceQuery = getSourceQuery($source);
             if (!empty($sourceQuery)) {
                 $stmt = $pdo->prepare($sourceQuery);
-                $stmt->execute([$startDate, $endDate, $tenant_id]);
+                $stmt->execute([$startDate, $endDate, $tenant_id, $branch_id]);
                 $data = $stmt->fetch(PDO::FETCH_ASSOC);
                 $sourceUsdToAfs = floatval($data['afs_converted'] ?? 0);
 

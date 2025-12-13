@@ -63,35 +63,9 @@ $clientAccounts = $clientStmt->fetchAll(PDO::FETCH_ASSOC);
 
 
 ?>
-<style>
-/* Apply gradient background to card headers matching the sidebar */
-.card-header {
-    background: linear-gradient(135deg, #4099ff 0%, #2ed8b6 100%) !important;
-    color: #ffffff !important;
-    border-bottom: none !important;
-}
 
-.card-header h5 {
-    color: #ffffff !important;
-    margin-bottom: 0 !important;
-}
-
-.card-header .card-header-right {
-    color: #ffffff !important;
-}
-
-.card-header .card-header-right .btn {
-    color: #ffffff !important;
-    border-color: rgba(255, 255, 255, 0.3) !important;
-}
-
-.card-header .card-header-right .btn:hover {
-    background: rgba(255, 255, 255, 0.1) !important;
-    border-color: rgba(255, 255, 255, 0.5) !important;
-}
-</style>
 <?php include '../includes/header.php'; ?>
-<link href="css/account-styles.css" rel="stylesheet">
+<link href="../css/account/styles.css" rel="stylesheet">
 <!-- Date Range Picker -->
 <link rel="stylesheet" type="text/css" href="../assets/plugins/daterangepicker/daterangepicker.css" />
 
@@ -306,22 +280,22 @@ $clientAccounts = $clientStmt->fetchAll(PDO::FETCH_ASSOC);
                                             </div>
                                         </div>
                                         <?php
-                                                        $totalSupplierUSD = 0;
-                                                        $totalSupplierAFS = 0;
-                                                        $totalSupplierDueUSD = 0;
-                                                        $totalSupplierDueAFS = 0;
-                                                        foreach ($supplier as $sup) {
-                                                            if ($sup['currency'] === 'USD' && $sup['balance'] > 0) {
-                                                                $totalSupplierUSD += $sup['balance'];
-                                                            } else if ($sup['currency'] === 'AFS' && $sup['balance'] > 0) {
-                                                                $totalSupplierAFS += $sup['balance'];
-                                                            } else if ($sup['currency'] === 'USD' && $sup['balance'] < 0) {
-                                                                $totalSupplierDueUSD += $sup['balance'];
-                                                            } else if ($sup['currency'] === 'AFS' && $sup['balance'] < 0) {
-                                                                $totalSupplierDueAFS += $sup['balance'];
-                                                            }
-                                                        }
-                                                        ?>
+                                        $totalSupplierUSD = 0;
+                                        $totalSupplierAFS = 0;
+                                        $totalSupplierDueUSD = 0;
+                                        $totalSupplierDueAFS = 0;
+                                        foreach ($supplier as $sup) {
+                                            if ($sup['currency'] === 'USD' && $sup['balance'] > 0) {
+                                                $totalSupplierUSD += $sup['balance'];
+                                            } else if ($sup['currency'] === 'AFS' && $sup['balance'] > 0) {
+                                                $totalSupplierAFS += $sup['balance'];
+                                            } else if ($sup['currency'] === 'USD' && $sup['balance'] < 0) {
+                                                $totalSupplierDueUSD += $sup['balance'];
+                                            } else if ($sup['currency'] === 'AFS' && $sup['balance'] < 0) {
+                                                $totalSupplierDueAFS += $sup['balance'];
+                                            }
+                                        }
+                                        ?>
                                         <!-- Totals -->
                                         <div class="card-body">
                                             <div class="row">

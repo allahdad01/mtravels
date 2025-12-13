@@ -5297,6 +5297,14 @@ return [
 'i_confirm_that_i_want_to_re_apply_this_visa_application' => 'I confirm that I want to re-apply this visa application',
 'cancelling_a_visa_will_change_its_status_and_prevent_further_processing' => 'Cancelling a visa will change its status and prevent further processing',
 
+// PDF Ticket Extraction (Auto-Fill Feature)
+'quick_ticket_import' => 'Quick Ticket Import',
+'saves_90_percent_data_entry' => 'Saves 90% data entry time',
+'drop_airline_ticket_here' => 'Drop your airline ticket PDF here',
+'or_click_to_browse' => 'or click to browse',
+'supports' => 'Supports',
+'and_all_airlines' => 'and all airlines',
+'auto_fill_notice' => 'Your PDF will be securely processed to extract passenger names, flight details, and fares automatically.',
 
 
 ];

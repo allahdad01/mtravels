@@ -80,7 +80,7 @@ $totalPages = 0;
 
 
     <?php include '../includes/header.php'; ?>
-    <link rel="stylesheet" href="css/modal-styles.css">
+    <link rel="stylesheet" href="../css/general/modal-styles.css">
     <link rel="stylesheet" href="https://cdn.datatables.net/1.11.5/css/dataTables.bootstrap4.min.css">
     <link rel="stylesheet" href="https://cdn.datatables.net/buttons/2.2.2/css/buttons.bootstrap4.min.css">
 

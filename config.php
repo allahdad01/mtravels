@@ -1,10 +1,13 @@
 <?php
+/* Load environment variables from .env file */
+require_once dirname(__FILE__) . '/includes/env_loader.php';
+
 /* Database credentials. Using environment variables for security */
-define('DB_SERVER', getenv('DB_SERVER') ?: 'localhost');
-define('DB_USERNAME', getenv('DB_USERNAME') ?: 'root');
+define('DB_SERVER', EnvLoader::get('DB_SERVER', 'localhost'));
+define('DB_USERNAME', EnvLoader::get('DB_USERNAME', 'root'));
 
 // Validate DB_PASSWORD is configured (cannot be empty for security)
-$db_password = getenv('DB_PASSWORD');
+$db_password = EnvLoader::get('DB_PASSWORD');
 if ($db_password === false) {
     // In development (localhost/XAMPP), allow empty password
     // In production (non-localhost), require environment variable
@@ -22,12 +25,13 @@ if ($db_password === false) {
     define('DB_PASSWORD', $db_password);
 }
 
-define('DB_NAME', getenv('DB_NAME') ?: 'travelagency_saas');
+define('DB_NAME', EnvLoader::get('DB_NAME', 'travelagency_saas'));
+define('APP_ENV', EnvLoader::get('APP_ENV', 'development'));
 
 // Hesabpay API Configuration - Using environment variables for security
-define('HESABPAY_MERCHANT_ID', getenv('HESABPAY_MERCHANT_ID') ?: ''); // Set in environment variables
-define('HESABPAY_API_KEY', getenv('HESABPAY_API_KEY') ?: ''); // Set in environment variables
-define('HESABPAY_BASE_URL', getenv('HESABPAY_BASE_URL') ?: 'https://api-sandbox.hesab.com/api/v1');
+define('HESABPAY_MERCHANT_ID', EnvLoader::get('HESABPAY_MERCHANT_ID', ''));
+define('HESABPAY_API_KEY', EnvLoader::get('HESABPAY_API_KEY', ''));
+define('HESABPAY_BASE_URL', EnvLoader::get('HESABPAY_BASE_URL', 'https://api-sandbox.hesab.com/api/v1'));
 
 // Platform Configuration
 define('PLATFORM_NAME', 'MTravels');

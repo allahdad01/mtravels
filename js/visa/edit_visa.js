@@ -10,15 +10,8 @@ function editVisa(id) {
                 document.getElementById('editVisaId').value = visa.id;
 
                 // Set supplier and sold-to dropdowns
-                const editSupplier = document.getElementById('editSupplier');
-                if (editSupplier) {
-                    editSupplier.value = visa.supplier; // Match supplier ID
-                }
-
-                const editSoldTo = document.getElementById('editSoldTo');
-                if (editSoldTo) {
-                    editSoldTo.value = visa.sold_to; // Match client ID
-                }
+                $('#editSupplier').selectpicker('val', visa.supplier);
+                $('#editSoldTo').selectpicker('val', visa.sold_to);
 
                 // Populate other fields
                 document.getElementById('editPhone').value = visa.phone;
@@ -27,32 +20,9 @@ function editVisa(id) {
                 document.getElementById('editApplicantName').value = visa.applicant_name;
                 document.getElementById('editPassportNumber').value = visa.passport_number;
                 
-                // Set country dropdown - make sure the option exists
-                const editCountry = document.getElementById('editCountry');
-                if (editCountry) {
-                    // Check if the country exists in the dropdown
-                    let countryExists = false;
-                    for (let i = 0; i < editCountry.options.length; i++) {
-                        if (editCountry.options[i].value === visa.country) {
-                            countryExists = true;
-                            break;
-                        }
-                    }
-                    
-                    // If country exists in dropdown, set it
-                    if (countryExists) {
-                        editCountry.value = visa.country;
-                    } else {
-                        // If country doesn't exist in dropdown, add it
-                        const newOption = document.createElement('option');
-                        newOption.value = visa.country;
-                        newOption.text = visa.country;
-                        editCountry.add(newOption);
-                        editCountry.value = visa.country;
-                    }
-                }
-                
-                document.getElementById('editVisaType').value = visa.visa_type;
+                // Set country and visa type dropdowns
+                $('#editCountry').selectpicker('val', visa.country);
+                $('#editVisaType').selectpicker('val', visa.visa_type);
                 document.getElementById('editReceiveDate').value = visa.receive_date;
                 document.getElementById('editAppliedDate').value = visa.applied_date;
                 document.getElementById('editIssuedDate').value = visa.issued_date || ''; // Handle nullable field
@@ -64,14 +34,11 @@ function editVisa(id) {
                 document.getElementById('editRemarks').value = visa.remarks;
                 
                 // Set the paid_to/main account dropdown
-                const editPaidTo = document.getElementById('editPaidTo');
-                if (editPaidTo) {
-                    editPaidTo.value = visa.paid_to;
-                }
+                $('#editPaidTo').selectpicker('val', visa.paid_to);
                 
                 // Log for debugging
                 console.log('Country from database:', visa.country);
-                console.log('Country dropdown value after setting:', document.getElementById('editCountry').value);
+                console.log('Country dropdown value after setting:', $('#editCountry').selectpicker('val'));
                 console.log('Paid To value:', visa.paid_to);
             } else {
                 console.error('Visa not found');

@@ -1,0 +1,357 @@
+
+    /* Modern Dashboard Styling */
+    :root {
+        --primary-color: #4099ff;
+        --secondary-color: #2ed8b6;
+        --danger-color: #ff5370;
+        --warning-color: #ffb64d;
+        --success-color: #2ed8b6;
+        --dark-color: #222;
+        --light-color: #f8f9fa;
+        --border-radius: 8px;
+        --box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+        --transition: all 0.3s ease;
+    }
+
+    /* General Layout Improvements */
+    .pcoded-main-container {
+        background-color: #f8f9fa;
+        padding: 20px;
+    }
+
+    .page-wrapper {
+        margin-top: 20px;
+    }
+
+    /* Card Enhancements */
+    .card {
+        border: none;
+        border-radius: var(--border-radius);
+        box-shadow: var(--box-shadow);
+        transition: var(--transition);
+        margin-bottom: 24px;
+    }
+
+    .card:hover {
+        transform: translateY(-2px);
+        box-shadow: 0 4px 12px rgba(0,0,0,0.15);
+    }
+
+    .card-header {
+        border-bottom: 1px solid rgba(0,0,0,0.05);
+        padding: 1.25rem;
+        background: white;
+        border-radius: var(--border-radius) var(--border-radius) 0 0;
+    }
+
+    /* Summary Cards */
+    .summary-card {
+        padding: 1.5rem;
+        border-radius: var(--border-radius);
+        background: linear-gradient(45deg, var(--primary-color), #73b4ff);
+        color: white;
+        margin-bottom: 20px;
+    }
+
+    .summary-card h3 {
+        font-size: 1.75rem;
+        margin-bottom: 0.5rem;
+    }
+
+    /* Table Enhancements */
+    .table {
+        margin-bottom: 0;
+    }
+
+    .table thead th {
+        border-top: none;
+        background-color: #f8f9fa;
+        color: #495057;
+        font-weight: 600;
+        text-transform: uppercase;
+        font-size: 0.75rem;
+        letter-spacing: 0.5px;
+    }
+
+    .table td {
+        vertical-align: middle;
+        padding: 1rem;
+    }
+
+    /* Button Styling */
+    .btn {
+        border-radius: 50px;
+        padding: 0.5rem 1.25rem;
+        font-weight: 500;
+        transition: var(--transition);
+    }
+
+    .btn-icon {
+        width: 32px;
+        height: 32px;
+        padding: 0;
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        border-radius: 50%;
+        margin: 0 2px;
+    }
+
+    .btn-primary {
+        background: var(--primary-color);
+        border-color: var(--primary-color);
+    }
+
+    .btn-success {
+        background: var(--success-color);
+        border-color: var(--success-color);
+    }
+
+    /* Status Badge Styling */
+    .badge {
+        padding: 0.5em 1em;
+        border-radius: 50px;
+        font-weight: 500;
+    }
+
+    .badge-light-primary {
+        background-color: rgba(64, 153, 255, 0.1);
+        color: var(--primary-color);
+    }
+
+    /* Search and Filter Styling */
+    .dataTables_wrapper .dataTables_filter input {
+        border: 1px solid #dee2e6;
+        border-radius: 50px;
+        padding: 8px 16px;
+        padding-left: 40px;
+        background: url('data:image/svg+xml,<svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="%236c757d" class="bi bi-search" viewBox="0 0 16 16"><path d="M11.742 10.344a6.5 6.5 0 1 0-1.397 1.398h-.001c.03.04.062.078.098.115l3.85 3.85a1 1 0 0 0 1.415-1.414l-3.85-3.85a1.007 1.007 0 0 0-.115-.1zM12 6.5a5.5 5.5 0 1 1-11 0 5.5 5.5 0 0 1 11 0z"/></svg>') no-repeat 16px center;
+    }
+
+    /* Avatar Styling */
+    .avatar {
+        width: 40px;
+        height: 40px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-weight: 600;
+        font-size: 1rem;
+    }
+
+    /* Modal Enhancements */
+    .modal-content {
+        border: none;
+        border-radius: var(--border-radius);
+    }
+
+    .modal-header {
+        border-bottom: 1px solid rgba(0,0,0,0.05);
+        padding: 1.5rem;
+    }
+
+    .modal-footer {
+        border-top: 1px solid rgba(0,0,0,0.05);
+        padding: 1.5rem;
+    }
+
+    /* Form Styling */
+    .form-control {
+        border-radius: var(--border-radius);
+        padding: 0.75rem 1rem;
+        border: 1px solid #dee2e6;
+        transition: var(--transition);
+    }
+
+    .form-control:focus {
+        border-color: var(--primary-color);
+        box-shadow: 0 0 0 0.2rem rgba(64, 153, 255, 0.25);
+    }
+
+    /* Navigation Tabs */
+    .nav-tabs {
+        border-bottom: none;
+        margin-bottom: 1.5rem;
+    }
+
+    .nav-tabs .nav-link {
+        border: none;
+        padding: 0.75rem 1.5rem;
+        border-radius: var(--border-radius);
+        color: #6c757d;
+        transition: var(--transition);
+    }
+
+    .nav-tabs .nav-link.active {
+        background-color: var(--primary-color);
+        color: white;
+    }
+
+    /* Empty State Styling */
+    .empty-state {
+        padding: 3rem;
+        text-align: center;
+    }
+
+    .empty-state i {
+        font-size: 3rem;
+        color: #dee2e6;
+        margin-bottom: 1rem;
+    }
+
+    /* Animation Effects */
+    @keyframes fadeIn {
+        from { opacity: 0; transform: translateY(10px); }
+        to { opacity: 1; transform: translateY(0); }
+    }
+
+    .card {
+        animation: fadeIn 0.3s ease-out;
+    }
+
+    /* Custom Scrollbar */
+    ::-webkit-scrollbar {
+        width: 8px;
+        height: 8px;
+    }
+
+    ::-webkit-scrollbar-track {
+        background: #f1f1f1;
+    }
+
+    ::-webkit-scrollbar-thumb {
+        background: #888;
+        border-radius: 4px;
+    }
+
+    ::-webkit-scrollbar-thumb:hover {
+        background: #555;
+    }
+
+    /* Toast Notifications */
+    .toast-container {
+        position: fixed;
+        top: 20px;
+        right: 20px;
+        z-index: 9999;
+    }
+
+    .toast {
+        background: white;
+        border-radius: 8px;
+        padding: 15px 20px;
+        margin-bottom: 10px;
+        min-width: 300px;
+        box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        animation: slideIn 0.3s ease-out;
+        transition: all 0.3s ease;
+    }
+
+    .toast.success {
+        border-left: 4px solid var(--success-color);
+    }
+
+    .toast.error {
+        border-left: 4px solid var(--danger-color);
+    }
+
+    .toast.warning {
+        border-left: 4px solid var(--warning-color);
+    }
+
+    .toast-content {
+        display: flex;
+        align-items: center;
+    }
+
+    .toast-icon {
+        margin-right: 12px;
+        font-size: 20px;
+    }
+
+    .toast.success .toast-icon {
+        color: var(--success-color);
+    }
+
+    .toast.error .toast-icon {
+        color: var(--danger-color);
+    }
+
+    .toast.warning .toast-icon {
+        color: var(--warning-color);
+    }
+
+    .toast-message {
+        color: var(--dark-color);
+        font-size: 14px;
+        margin: 0;
+    }
+
+    .toast-close {
+        color: #6c757d;
+        background: none;
+        border: none;
+        padding: 0;
+        margin-left: 15px;
+        cursor: pointer;
+        font-size: 18px;
+        opacity: 0.7;
+        transition: opacity 0.3s ease;
+    }
+
+    .toast-close:hover {
+        opacity: 1;
+    }
+
+    @keyframes slideIn {
+        from {
+            transform: translateX(100%);
+            opacity: 0;
+        }
+        to {
+            transform: translateX(0);
+            opacity: 1;
+        }
+    }
+
+    @keyframes slideOut {
+        from {
+            transform: translateX(0);
+            opacity: 1;
+        }
+        to {
+            transform: translateX(100%);
+            opacity: 0;
+        }
+    }
+
+    /* ... existing styles ... */
+
+    /* Apply gradient background to card headers matching the sidebar */
+    .card-header {
+        background: linear-gradient(135deg, #4099ff 0%, #2ed8b6 100%) !important;
+        color: #ffffff !important;
+        border-bottom: none !important;
+    }
+
+    .card-header h5 {
+        color: #ffffff !important;
+        margin-bottom: 0 !important;
+    }
+
+    .card-header .card-header-right {
+        color: #ffffff !important;
+    }
+
+    .card-header .card-header-right .btn {
+        color: #ffffff !important;
+        border-color: rgba(255, 255, 255, 0.3) !important;
+    }
+
+    .card-header .card-header-right .btn:hover {
+        background: rgba(255, 255, 255, 0.1) !important;
+        border-color: rgba(255, 255, 255, 0.5) !important;
+    }

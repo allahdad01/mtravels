@@ -1,0 +1,750 @@
+/* ===================================
+   MODERN UI COMPONENTS
+   Advanced Tables, Filters & Dashboards
+   =================================== */
+
+/* ===================================
+   ADVANCED TABLE FILTERING
+   =================================== */
+
+.table-container {
+    background: white;
+    border-radius: 0.75rem;
+    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+    overflow: hidden;
+    display: flex;
+    flex-direction: column;
+}
+
+.table-toolbar {
+    padding: 1rem 1.5rem;
+    border-bottom: 1px solid #e9ecef;
+    background-color: #f8f9fa;
+    display: flex;
+    gap: 1rem;
+    align-items: center;
+    flex-wrap: wrap;
+    justify-content: space-between;
+}
+
+.table-toolbar-left {
+    display: flex;
+    gap: 1rem;
+    align-items: center;
+    flex-wrap: wrap;
+    flex: 1;
+}
+
+.table-toolbar-right {
+    display: flex;
+    gap: 0.5rem;
+    align-items: center;
+}
+
+/* Search Input in Toolbar */
+.search-box {
+    position: relative;
+    flex: 1;
+    min-width: 200px;
+    max-width: 300px;
+}
+
+.search-box input {
+    padding-left: 2.5rem;
+    padding-right: 1rem;
+}
+
+.search-box i {
+    position: absolute;
+    left: 0.75rem;
+    top: 50%;
+    transform: translateY(-50%);
+    color: #6c757d;
+    pointer-events: none;
+}
+
+.search-box input::placeholder {
+    color: #adb5bd;
+}
+
+/* Filter Dropdown */
+.filter-dropdown {
+    position: relative;
+}
+
+.filter-dropdown-btn {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    padding: 0.625rem 1rem;
+    background: white;
+    border: 1px solid #dee2e6;
+    border-radius: 0.5rem;
+    cursor: pointer;
+    transition: all 0.2s ease;
+    font-size: 0.875rem;
+    font-weight: 500;
+    color: #495057;
+}
+
+.filter-dropdown-btn:hover {
+    border-color: #4099ff;
+    color: #4099ff;
+}
+
+.filter-dropdown-menu {
+    position: absolute;
+    top: 100%;
+    right: 0;
+    background: white;
+    border: 1px solid #dee2e6;
+    border-radius: 0.5rem;
+    box-shadow: 0 10px 15px rgba(0, 0, 0, 0.1);
+    min-width: 250px;
+    margin-top: 0.5rem;
+    z-index: 1000;
+    display: none;
+}
+
+.filter-dropdown-menu.show {
+    display: block;
+}
+
+.filter-dropdown-item {
+    padding: 0.75rem 1rem;
+    border-bottom: 1px solid #f1f3f5;
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+    cursor: pointer;
+    transition: background-color 0.2s ease;
+}
+
+.filter-dropdown-item:last-child {
+    border-bottom: none;
+}
+
+.filter-dropdown-item:hover {
+    background-color: #f8f9fa;
+}
+
+.filter-dropdown-item input[type="checkbox"] {
+    margin: 0;
+}
+
+.filter-dropdown-item label {
+    margin: 0;
+    flex: 1;
+    cursor: pointer;
+    font-size: 0.875rem;
+}
+
+/* Column Visibility Toggle */
+.column-visibility {
+    position: relative;
+}
+
+.column-visibility-menu {
+    position: absolute;
+    top: 100%;
+    right: 0;
+    background: white;
+    border: 1px solid #dee2e6;
+    border-radius: 0.5rem;
+    box-shadow: 0 10px 15px rgba(0, 0, 0, 0.1);
+    min-width: 200px;
+    margin-top: 0.5rem;
+    z-index: 1000;
+    max-height: 300px;
+    overflow-y: auto;
+    display: none;
+}
+
+.column-visibility-menu.show {
+    display: block;
+}
+
+.column-visibility-item {
+    padding: 0.5rem 1rem;
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    cursor: pointer;
+}
+
+.column-visibility-item:hover {
+    background-color: #f8f9fa;
+}
+
+.column-visibility-item input[type="checkbox"] {
+    margin: 0;
+}
+
+.column-visibility-item label {
+    margin: 0;
+    flex: 1;
+    cursor: pointer;
+    font-size: 0.875rem;
+}
+
+/* Table Pagination */
+.table-pagination {
+    padding: 1rem 1.5rem;
+    border-top: 1px solid #e9ecef;
+    background-color: #f8f9fa;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    flex-wrap: wrap;
+    gap: 1rem;
+}
+
+.pagination-info {
+    font-size: 0.875rem;
+    color: #6c757d;
+}
+
+.pagination-controls {
+    display: flex;
+    gap: 0.5rem;
+    align-items: center;
+}
+
+.pagination-btn {
+    padding: 0.5rem 0.75rem;
+    border: 1px solid #dee2e6;
+    background: white;
+    border-radius: 0.375rem;
+    cursor: pointer;
+    transition: all 0.2s ease;
+    font-size: 0.875rem;
+}
+
+.pagination-btn:hover:not(:disabled) {
+    border-color: #4099ff;
+    color: #4099ff;
+}
+
+.pagination-btn:disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
+}
+
+.pagination-btn.active {
+    background: #4099ff;
+    color: white;
+    border-color: #4099ff;
+}
+
+.rows-per-page {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    font-size: 0.875rem;
+}
+
+.rows-per-page select {
+    padding: 0.375rem 0.75rem;
+    border: 1px solid #dee2e6;
+    border-radius: 0.375rem;
+    background: white;
+    cursor: pointer;
+}
+
+/* Sortable Table Headers */
+.sortable-header {
+    cursor: pointer;
+    user-select: none;
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    white-space: nowrap;
+}
+
+.sortable-header:hover {
+    color: #4099ff;
+}
+
+.sort-indicator {
+    display: inline-block;
+    font-size: 0.75rem;
+    opacity: 0.5;
+    transition: opacity 0.2s ease;
+}
+
+.sortable-header.sorted .sort-indicator {
+    opacity: 1;
+}
+
+/* ===================================
+   MODERN DASHBOARD CARDS
+   =================================== */
+
+.dashboard-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+    gap: 1.5rem;
+    margin-bottom: 2rem;
+}
+
+.stat-card {
+    background: white;
+    border-radius: 0.75rem;
+    padding: 1.5rem;
+    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+    transition: all 0.3s ease;
+    border-left: 4px solid #4099ff;
+    position: relative;
+    overflow: hidden;
+}
+
+.stat-card:hover {
+    box-shadow: 0 10px 15px rgba(0, 0, 0, 0.1);
+    transform: translateY(-2px);
+}
+
+.stat-card.variant-success {
+    border-left-color: #28a745;
+}
+
+.stat-card.variant-danger {
+    border-left-color: #dc3545;
+}
+
+.stat-card.variant-warning {
+    border-left-color: #ffc107;
+}
+
+.stat-card.variant-info {
+    border-left-color: #17a2b8;
+}
+
+.stat-card-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-start;
+    margin-bottom: 1rem;
+}
+
+.stat-card-icon {
+    width: 48px;
+    height: 48px;
+    border-radius: 0.75rem;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 1.5rem;
+    background: rgba(64, 153, 255, 0.1);
+    color: #4099ff;
+}
+
+.stat-card.variant-success .stat-card-icon {
+    background: rgba(40, 167, 69, 0.1);
+    color: #28a745;
+}
+
+.stat-card.variant-danger .stat-card-icon {
+    background: rgba(220, 53, 69, 0.1);
+    color: #dc3545;
+}
+
+.stat-card.variant-warning .stat-card-icon {
+    background: rgba(255, 193, 7, 0.1);
+    color: #ffc107;
+}
+
+.stat-card-label {
+    font-size: 0.875rem;
+    color: #6c757d;
+    font-weight: 500;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+    margin-bottom: 0.5rem;
+}
+
+.stat-card-value {
+    font-size: 2rem;
+    font-weight: 700;
+    color: #1a1a1a;
+    margin-bottom: 0.5rem;
+}
+
+.stat-card-footer {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    font-size: 0.875rem;
+}
+
+.stat-card-change {
+    padding: 0.25rem 0.5rem;
+    border-radius: 0.25rem;
+    font-weight: 600;
+}
+
+.stat-card-change.positive {
+    background: rgba(40, 167, 69, 0.1);
+    color: #28a745;
+}
+
+.stat-card-change.negative {
+    background: rgba(220, 53, 69, 0.1);
+    color: #dc3545;
+}
+
+/* ===================================
+   MODERN FORM LAYOUTS
+   =================================== */
+
+.form-section {
+    background: white;
+    border-radius: 0.75rem;
+    padding: 1.5rem;
+    margin-bottom: 1.5rem;
+    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+}
+
+.form-section-title {
+    font-size: 1.125rem;
+    font-weight: 600;
+    margin-bottom: 1.5rem;
+    padding-bottom: 1rem;
+    border-bottom: 2px solid #f1f3f5;
+    color: #1a1a1a;
+}
+
+.form-group-compact {
+    margin-bottom: 1rem;
+}
+
+.form-group-compact label {
+    font-size: 0.875rem;
+    font-weight: 500;
+    margin-bottom: 0.25rem;
+}
+
+.form-group-row {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+    gap: 1rem;
+}
+
+.form-group-row .form-group {
+    margin-bottom: 0;
+}
+
+/* Inline Form */
+.form-inline {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 1rem;
+    align-items: flex-end;
+}
+
+.form-inline .form-group {
+    margin-bottom: 0;
+    flex: 1;
+    min-width: 150px;
+}
+
+/* ===================================
+   LIST & MENU STYLES
+   =================================== */
+
+.list-group {
+    display: flex;
+    flex-direction: column;
+    gap: 0;
+    border-radius: 0.75rem;
+    overflow: hidden;
+    border: 1px solid #e9ecef;
+}
+
+.list-group-item {
+    padding: 1rem 1.25rem;
+    background: white;
+    border-bottom: 1px solid #e9ecef;
+    cursor: pointer;
+    transition: all 0.2s ease;
+}
+
+.list-group-item:last-child {
+    border-bottom: none;
+}
+
+.list-group-item:hover {
+    background: #f8f9fa;
+}
+
+.list-group-item.active {
+    background: #4099ff;
+    color: white;
+    border-color: #4099ff;
+}
+
+.list-group-item-text {
+    font-size: 0.875rem;
+    color: #6c757d;
+    margin-top: 0.25rem;
+}
+
+/* ===================================
+   TABS & NAVIGATION
+   =================================== */
+
+.nav-tabs {
+    display: flex;
+    gap: 0;
+    border-bottom: 2px solid #e9ecef;
+    margin-bottom: 1.5rem;
+}
+
+.nav-tab {
+    padding: 0.75rem 1.5rem;
+    background: transparent;
+    border: none;
+    border-bottom: 3px solid transparent;
+    color: #6c757d;
+    font-weight: 500;
+    cursor: pointer;
+    transition: all 0.2s ease;
+    white-space: nowrap;
+    font-size: 0.875rem;
+}
+
+.nav-tab:hover {
+    color: #1a1a1a;
+}
+
+.nav-tab.active {
+    color: #4099ff;
+    border-bottom-color: #4099ff;
+}
+
+/* Vertical Tabs */
+.nav-tabs-vertical {
+    display: flex;
+    flex-direction: column;
+    gap: 0;
+    border: 1px solid #e9ecef;
+    border-radius: 0.75rem;
+    overflow: hidden;
+}
+
+.nav-tabs-vertical .nav-tab {
+    border-bottom: 1px solid #e9ecef;
+    border-right: 3px solid transparent;
+    padding: 0.75rem 1rem;
+    text-align: left;
+    margin-bottom: 0;
+}
+
+.nav-tabs-vertical .nav-tab.active {
+    border-right-color: #4099ff;
+    border-bottom-color: #e9ecef;
+    background: #f8f9fa;
+}
+
+/* ===================================
+   MODERN BREADCRUMBS
+   =================================== */
+
+.breadcrumb {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.5rem;
+    padding: 0.75rem 0;
+    margin-bottom: 1.5rem;
+    background: transparent;
+    border-radius: 0;
+}
+
+.breadcrumb-item {
+    font-size: 0.875rem;
+    color: #6c757d;
+}
+
+.breadcrumb-item + .breadcrumb-item::before {
+    display: inline-block;
+    padding: 0 0.5rem;
+    content: "/";
+    color: #adb5bd;
+}
+
+.breadcrumb-item a {
+    color: #4099ff;
+    text-decoration: none;
+}
+
+.breadcrumb-item a:hover {
+    text-decoration: underline;
+}
+
+.breadcrumb-item.active {
+    color: #1a1a1a;
+    font-weight: 500;
+}
+
+/* ===================================
+   PROGRESS BARS
+   =================================== */
+
+.progress {
+    height: 6px;
+    background: #e9ecef;
+    border-radius: 3px;
+    overflow: hidden;
+    margin-bottom: 1rem;
+}
+
+.progress-bar {
+    height: 100%;
+    background: linear-gradient(90deg, #4099ff, #2ed8b6);
+    border-radius: 3px;
+    transition: width 0.3s ease;
+}
+
+.progress-bar.success {
+    background: linear-gradient(90deg, #28a745, #20c997);
+}
+
+.progress-bar.danger {
+    background: linear-gradient(90deg, #dc3545, #fd7e14);
+}
+
+.progress-bar.warning {
+    background: linear-gradient(90deg, #ffc107, #ff9800);
+}
+
+/* ===================================
+   TOOLTIPS
+   =================================== */
+
+[data-tooltip] {
+    position: relative;
+}
+
+[data-tooltip]:hover::after {
+    content: attr(data-tooltip);
+    position: absolute;
+    bottom: calc(100% + 0.5rem);
+    left: 50%;
+    transform: translateX(-50%);
+    padding: 0.5rem 0.75rem;
+    background: #1a1a1a;
+    color: white;
+    border-radius: 0.375rem;
+    font-size: 0.75rem;
+    white-space: nowrap;
+    z-index: 1000;
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+}
+
+/* ===================================
+   EMPTY STATES
+   =================================== */
+
+.empty-state {
+    padding: 3rem 1.5rem;
+    text-align: center;
+    background: #f8f9fa;
+    border-radius: 0.75rem;
+    border: 2px dashed #dee2e6;
+}
+
+.empty-state-icon {
+    font-size: 3rem;
+    color: #adb5bd;
+    margin-bottom: 1rem;
+}
+
+.empty-state-title {
+    font-size: 1.125rem;
+    font-weight: 600;
+    color: #1a1a1a;
+    margin-bottom: 0.5rem;
+}
+
+.empty-state-text {
+    font-size: 0.875rem;
+    color: #6c757d;
+    margin-bottom: 1.5rem;
+}
+
+/* ===================================
+   LOADING STATES
+   =================================== */
+
+.skeleton {
+    background: linear-gradient(90deg, #f0f0f0 25%, #e0e0e0 50%, #f0f0f0 75%);
+    background-size: 200% 100%;
+    animation: loading 1.5s infinite;
+    border-radius: 0.375rem;
+}
+
+@keyframes loading {
+    0% {
+        background-position: 200% 0;
+    }
+    100% {
+        background-position: -200% 0;
+    }
+}
+
+.skeleton-text {
+    height: 1rem;
+    margin-bottom: 0.5rem;
+    border-radius: 0.25rem;
+}
+
+.skeleton-title {
+    height: 1.5rem;
+    width: 60%;
+    margin-bottom: 1rem;
+}
+
+.skeleton-card {
+    padding: 1rem;
+    border-radius: 0.75rem;
+}
+
+/* ===================================
+   RESPONSIVE ADJUSTMENTS
+   =================================== */
+
+@media (max-width: 768px) {
+    .table-toolbar {
+        flex-direction: column;
+        align-items: stretch;
+        gap: 0.75rem;
+    }
+
+    .table-toolbar-left {
+        flex-direction: column;
+    }
+
+    .search-box {
+        max-width: 100%;
+    }
+
+    .dashboard-grid {
+        grid-template-columns: 1fr;
+    }
+
+    .form-group-row {
+        grid-template-columns: 1fr;
+    }
+
+    .nav-tabs {
+        flex-wrap: wrap;
+    }
+
+    .table-pagination {
+        flex-direction: column;
+        align-items: stretch;
+    }
+
+    .pagination-controls {
+        justify-content: center;
+    }
+}

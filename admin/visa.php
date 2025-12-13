@@ -171,13 +171,14 @@ foreach ($visas as $key => $visa) {
 
 ?>
 
-    <link href="https://cdn.jsdelivr.net/npm/select2@4.1.0-rc.0/dist/css/select2.min.css" rel="stylesheet" />
-    <link href="https://cdn.jsdelivr.net/npm/select2-bootstrap-5-theme@1.3.0/dist/select2-bootstrap-5-theme.min.css" rel="stylesheet" />
-    <link rel="stylesheet" href="css/ticket_styles.css">
-    <link rel="stylesheet" href="css/ticket-components.css">
-    <link rel="stylesheet" href="css/ticket-form.css">
-    <link rel="stylesheet" href="css/modal-styles.css">
-    <link rel="stylesheet" href="css/visa.css">
+    <link rel="stylesheet" href="../css/ticket/ticket_styles.css">
+    <link rel="stylesheet" href="../css/ticket/ticket-components.css">
+    <link rel="stylesheet" href="../css/ticket/ticket-form.css">
+    <link rel="stylesheet" href="../css/general/modal-styles.css">
+    <link rel="stylesheet" href="../css/visa/visa.css">
+    <!-- Add Bootstrap-select CSS -->
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-select@1.13.14/dist/css/bootstrap-select.min.css">
+ 
 
     <?php include '../includes/header.php'; ?>
     <style>
@@ -542,12 +543,12 @@ foreach ($visas as $key => $visa) {
         </div>
     </div>
 
+    <?php include '../modals/visa/add_visa_modal.php'; ?>
+    <?php include '../modals/visa/edit_visa_modal.php'; ?>
     <?php include '../modals/visa/transaction_modal.php'; ?>
     <?php include '../modals/visa/edit_transaction_modal.php'; ?>
     <?php include '../modals/visa/refund_modal.php'; ?>
     <?php include '../modals/visa/details_modal.php'; ?>
-    <?php include '../modals/visa/add_visa_modal.php'; ?>
-    <?php include '../modals/visa/edit_visa_modal.php'; ?>
     <?php include '../modals/visa/cancellation_modal.php'; ?>
     <?php include '../modals/visa/reapply_modal.php'; ?>
     <?php include '../modals/visa/multi_visa_modal.php'; ?>
@@ -656,7 +657,8 @@ foreach ($visas as $key => $visa) {
     <script src="../assets/plugins/bootstrap/js/bootstrap.min.js"></script>
     <script src="../assets/js/pcoded.min.js"></script>
 
-         <script src="https://cdn.jsdelivr.net/npm/select2@4.1.0-rc.0/dist/js/select2.min.js"></script>
+         <!-- Add Bootstrap-select JavaScript -->
+         <script src="https://cdn.jsdelivr.net/npm/bootstrap-select@1.13.14/dist/js/bootstrap-select.min.js"></script>
          <script src="../js/visa/select2.js"></script>
          <script src="../js/visa/visa_details.js"></script>       
          <script src="../js/visa/supplier_currency.js"></script>

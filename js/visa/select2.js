@@ -1,13 +1,11 @@
 $(document).ready(function() {
-    $('#supplier').select2({
-        theme: 'bootstrap-5',
+    $('#supplier').selectpicker({
         width: '100%',
-        dropdownParent: $('#supplier').closest('.modal-body'),
-        placeholder: 'select_supplier',
-        allowClear: true
+        noneSelectedText: 'Select Supplier',
+        liveSearch: true
     });
     // Fetch supplier currency when supplier changes
-                                  $('#supplier').on('select2:select change', function() {
+                                  $('#supplier').on('changed.bs.select change', function() {
                                       const supplierId = $(this).val();
                                       console.log('Selected Supplier ID:', supplierId);
 
@@ -42,12 +40,47 @@ $(document).ready(function() {
                                   if (initialSupplierId) {
                                       $('#supplier').trigger('change');
                                   }
-    $('#soldTo').select2({
-        theme: 'bootstrap-5',
+    $('#soldTo').selectpicker({
         width: '100%',
-        dropdownParent: $('#soldTo').closest('.modal-body'),
-        placeholder: 'select_client',
-        allowClear: true
+        noneSelectedText: 'select_client',
+        liveSearch: true
+    });
+
+    // Initialize country and visa type selects
+    $('#country').selectpicker({
+        width: '100%',
+        noneSelectedText: 'select_country',
+        liveSearch: true
+    });
+
+    $('#visaType').selectpicker({
+        width: '100%',
+        noneSelectedText: 'select_visa_type',
+        liveSearch: true
+    });
+
+    $('#editCountry').selectpicker({
+        width: '100%',
+        noneSelectedText: 'select_country',
+        liveSearch: true
+    });
+
+    $('#editVisaType').selectpicker({
+        width: '100%',
+        noneSelectedText: 'select_visa_type',
+        liveSearch: true
+    });
+
+    $('#paidto').selectpicker({
+        width: '100%',
+        noneSelectedText: 'select_main_account',
+        liveSearch: true
+    });
+
+    $('#editPaidTo').selectpicker({
+        width: '100%',
+        noneSelectedText: 'select_main_account',
+        liveSearch: true
     });
 });
 

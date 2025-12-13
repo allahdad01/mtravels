@@ -157,6 +157,9 @@ function setupListeners(manager, ui, api, voiceUI) {
                         type: isOutgoing ? 'outgoing' : 'incoming',
                         status: status,
                         replyContext: replyContext,
+                        messageType: m.message_type || 'text',
+                        duration: m.duration || 0,
+                        url: m.url,
                         time: new Date(m.created_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
                     };
                 });
@@ -241,6 +244,9 @@ function setupListeners(manager, ui, api, voiceUI) {
                                 text: m.content,
                                 type: isOutgoing ? 'outgoing' : 'incoming',
                                 status: status,
+                                messageType: m.message_type || 'text',
+                                duration: m.duration || 0,
+                                url: m.url,
                                 time: new Date(m.created_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
                             };
                         });

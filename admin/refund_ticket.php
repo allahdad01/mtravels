@@ -28,10 +28,10 @@ $version = '?v=' . time();
 ?>
 
 <?php include '../includes/header.php'; ?>
-<link rel="stylesheet" href="css/ticket_styles.css">
-<link rel="stylesheet" href="css/ticket-components.css">
-<link rel="stylesheet" href="css/modal-styles.css">
-<link rel="stylesheet" href="css/ticket-form.css">
+<link rel="stylesheet" href="../css/ticket/ticket_styles.css">
+<link rel="stylesheet" href="../css/ticket/ticket-components.css">
+<link rel="stylesheet" href="../css/general/modal-styles.css">
+<link rel="stylesheet" href="../css/ticket/ticket-form.css">
 
 <style>
 /* Apply gradient background to card headers matching the sidebar */

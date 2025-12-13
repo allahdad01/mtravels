@@ -52,8 +52,8 @@ var unreadText = "<?= __('unread') ?>";
 var successMessage = <?= $success_message ? json_encode($success_message) : 'null' ?>;
 var errorMessage = <?= $error_message ? json_encode($error_message) : 'null' ?>;
 </script>
-<link rel="stylesheet" href="css/send-messages.css">
-<link rel="stylesheet" href="css/modal-styles.css">
+<link rel="stylesheet" href="../css/send_message/send-messages.css">
+<link rel="stylesheet" href="../css/general/modal-styles.css">
 <!-- Animation CSS -->
 <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/animate.css/4.1.1/animate.min.css">
 

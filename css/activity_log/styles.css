@@ -1,0 +1,67 @@
+
+    /* Fix for modal content overflow */
+    .modal-body pre {
+        white-space: pre-wrap;       /* CSS3 */
+        word-wrap: break-word;       /* Internet Explorer 5.5+ */
+        max-height: 300px;
+        overflow-y: auto;
+    }
+    
+    .json-content {
+        max-width: 100%;
+        overflow-x: auto;
+    }
+    
+    /* Enhanced fix for modal content */
+    .modal-body {
+        word-break: break-word;
+        overflow-wrap: break-word;
+    }
+    
+    .modal-body p {
+        word-break: break-word;
+        max-width: 100%;
+    }
+    
+    /* Fix for long user agent strings */
+    .user-agent-wrapper {
+        width: 100%;
+        overflow-x: visible;
+    }
+    
+    .user-agent-info {
+        word-break: break-all;
+        word-wrap: break-word;
+        overflow-wrap: break-word;
+        max-width: 100%;
+        display: inline-block;
+        font-size: 0.9rem;
+        font-family: monospace;
+        white-space: normal;
+    }
+
+/* Apply gradient background to card headers matching the sidebar */
+.card-header {
+background: linear-gradient(135deg, #4099ff 0%, #2ed8b6 100%) !important;
+color: #ffffff !important;
+border-bottom: none !important;
+}
+
+.card-header h5 {
+color: #ffffff !important;
+margin-bottom: 0 !important;
+}
+
+.card-header .card-header-right {
+color: #ffffff !important;
+}
+
+.card-header .card-header-right .btn {
+color: #ffffff !important;
+border-color: rgba(255, 255, 255, 0.3) !important;
+}
+
+.card-header .card-header-right .btn:hover {
+background: rgba(255, 255, 255, 0.1) !important;
+border-color: rgba(255, 255, 255, 0.5) !important;
+}

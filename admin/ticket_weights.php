@@ -72,11 +72,11 @@ if ($weightsResult && count($weightsResult) > 0) {
     <?php include '../includes/header.php'; ?>
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/sweetalert2@11/dist/sweetalert2.min.css">
     <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11/dist/sweetalert2.all.min.js"></script>
-    <link rel="stylesheet" href="css/ticket_styles.css">
-    <link rel="stylesheet" href="css/ticket-components.css">
-    <link rel="stylesheet" href="css/modal-styles.css">
-    <link rel="stylesheet" href="css/ticket-form.css">
-    <link rel="stylesheet" href="css/ticket_weight.css">
+    <link rel="stylesheet" href="../css/ticket/ticket_styles.css">
+    <link rel="stylesheet" href="../css/ticket/ticket-components.css">
+    <link rel="stylesheet" href="../css/general/modal-styles.css">
+    <link rel="stylesheet" href="../css/ticket/ticket-form.css">
+    <link rel="stylesheet" href="../css/ticket/ticket_weight.css">
 
     <!-- [ Main Content ] start -->
     <div class="pcoded-main-container">

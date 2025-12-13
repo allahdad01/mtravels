@@ -196,20 +196,6 @@ class Drawing extends BaseDrawing
     }
 
     /**
-     * Set isURL.
-     *
-     * @return $this
-     *
-     * @deprecated 3.7.0 not needed, property is set by setPath
-     */
-    public function setIsURL(bool $isUrl): self
-    {
-        $this->isUrl = $isUrl;
-
-        return $this;
-    }
-
-    /**
      * Get hash code.
      *
      * @return string Hash code
@@ -236,7 +222,7 @@ class Drawing extends BaseDrawing
     }
 
     /**
-     * Get Image file extention for Save.
+     * Get Image file extension for Save.
      */
     public function getImageFileExtensionForSave(bool $includeDot = true): string
     {

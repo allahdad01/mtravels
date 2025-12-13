@@ -87,13 +87,13 @@
 		$params = [$room];
 		$where = 'room_id = ?';
 		if ($beforeId > 0) { $where .= ' AND id < ?'; $params[] = $beforeId; }
-		$sql = 'SELECT id, room_id, from_user_id, to_user_id, content, encrypted_content, is_encrypted, encryption_key_id, tenant_id_from,
+		$sql = 'SELECT id, room_id, from_user_id, to_user_id, content, encrypted_content, is_encrypted, encryption_key_id, tenant_id_from, message_type, duration,
 		        DATE_FORMAT(created_at, "%Y-%m-%dT%H:%i:%sZ") AS created_at, 
                 DATE_FORMAT(seen_at, "%Y-%m-%dT%H:%i:%sZ") AS seen_at FROM chat_messages WHERE ' . $where . ' ORDER BY id DESC LIMIT ' . $limit;
 		$stmt = secure_query($pdo, $sql, $params);
 		$rowsDesc = $stmt ? $stmt->fetchAll() : [];
 		
-		// Decrypt encrypted messages
+		// Decrypt encrypted messages and extract voice message metadata
 		foreach ($rowsDesc as &$row) {
 			// Check if message is encrypted (is_encrypted can be 0, 1, or NULL)
 			if (!empty($row['is_encrypted']) && !empty($row['encrypted_content'])) {
@@ -123,6 +123,19 @@
 			if (empty($row['content'])) {
 				$row['content'] = '[Message content missing or corrupted]';
 			}
+			
+			// Extract voice message metadata if voice message
+			if ($row['message_type'] === 'voice' && !empty($row['content'])) {
+				try {
+					$contentData = json_decode($row['content'], true);
+					if (is_array($contentData) && isset($contentData['url'])) {
+						$row['url'] = $contentData['url'];
+					}
+				} catch (Exception $e) {
+					// Silently ignore JSON parsing errors for voice content
+				}
+			}
+			
 			// Remove sensitive fields from response
 			unset($row['encrypted_content']);
 			unset($row['encryption_key_id']);

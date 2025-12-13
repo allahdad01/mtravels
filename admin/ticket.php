@@ -26,10 +26,10 @@ include '../api/ticket/ticket_handler.php';
 <?php 
 include '../includes/header.php';
 ?>
-<link rel="stylesheet" href="css/ticket_styles.css">
-<link rel="stylesheet" href="css/ticket-components.css">
-<link rel="stylesheet" href="css/modal-styles.css">
-<link rel="stylesheet" href="css/ticket-form.css">
+<link rel="stylesheet" href="../css/ticket/ticket_styles.css">
+<link rel="stylesheet" href="../css/ticket/ticket-components.css">
+<link rel="stylesheet" href="../css/general/modal-styles.css">
+<link rel="stylesheet" href="../css/ticket/ticket-form.css">
 <!-- Add Bootstrap-select CSS -->
 <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-select@1.13.14/dist/css/bootstrap-select.min.css">
    
@@ -528,8 +528,10 @@ include '../includes/header.php';
                                     <script src="../js/ticket/data/airlines.js"></script>
                                     <script src="../js/ticket/airline-select.js"></script>
                                     <script src="../js/ticket/multi-ticket-invoice.js"></script>
+                                    <script src="../js/ticket/pdf-upload-handler.js"></script>
                                     <script src="../js/ticket/passenger_info.js"></script>
                                     <script src="../js/ticket/toast.js"></script>
+                                    <script src="../js/ticket/pdf-ticket-extract.js"></script>
 
 
 </body>

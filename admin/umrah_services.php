@@ -22,9 +22,9 @@ require_once('../includes/db.php');
 ?>
 
 <?php include '../includes/header.php'; ?>
-<link rel="stylesheet" href="css/modal-styles.css">
-<link rel="stylesheet" href="css/ticket-form.css">
-<link rel="stylesheet" href="css/umrah-management.css">
+<link rel="stylesheet" href="../css/general/modal-styles.css">
+<link rel="stylesheet" href="../css/ticket/ticket-form.css">
+<link rel="stylesheet" href="../css/umrah/umrah-management.css">
 <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/sweetalert2@11.7.32/dist/sweetalert2.min.css">
 <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
 

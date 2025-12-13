@@ -238,7 +238,7 @@ if ($_SERVER["REQUEST_METHOD"] == "POST" && isset($_GET["advance_user_id"])) {
 
     <!-- [ Header ] start -->
     <?php include("../includes/header.php"); ?>
-    <link rel="stylesheet" href="css/modal-styles.css">
+    <link rel="stylesheet" href="../css/general/modal-styles.css">
     <!-- [ Header ] end -->
 
     <style>

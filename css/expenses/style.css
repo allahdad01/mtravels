@@ -1,0 +1,596 @@
+
+    /* Consistent Typography */
+    body {
+        font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
+        font-size: 0.95rem;
+        line-height: 1.6;
+        color: #2c3e50;
+    }
+
+    h1, h2, h3, h4, h5, h6 {
+        font-weight: 600;
+        letter-spacing: -0.3px;
+    }
+
+    .card-body {
+        min-height: 300px;
+        padding: 28px;
+    }
+    canvas {
+        min-height: 250px;
+    }
+    .expense-list {
+        display: none;
+    }
+    .category-header {
+        cursor: pointer;
+        transition: all 0.2s ease;
+    }
+    .card {
+        box-shadow: 0 4px 6px rgba(0, 0, 0, 0.08);
+        border: 1px solid #e8ecf1;
+        border-radius: 12px;
+    }
+    .card:hover {
+        box-shadow: 0 8px 16px rgba(0, 0, 0, 0.12);
+    }
+    .spinner {
+        display: inline-block;
+        animation: spinner 1s linear infinite;
+    }
+    @keyframes spinner {
+        0% { transform: rotate(0deg); }
+        100% { transform: rotate(360deg); }
+    }
+
+    .card-header {
+        border-radius: 12px 12px 0 0;
+    }
+
+    .input-group-text {
+        background-color: #f8fafb;
+        border: 1px solid #dfe3e9;
+        border-right: none;
+        color: #6c757d;
+    }
+
+    .form-control {
+        border: 1px solid #dfe3e9;
+        border-left: none;
+        border-radius: 6px;
+        padding: 10px 12px;
+        font-size: 0.95rem;
+        transition: border-color 0.2s ease, box-shadow 0.2s ease;
+    }
+
+    .form-control:focus {
+        box-shadow: 0 0 0 3px rgba(64, 153, 255, 0.1);
+        border-color: #4099ff;
+    }
+
+    .btn-group {
+        width: 100%;
+        justify-content: center;
+        gap: 8px;
+    }
+
+    .btn-group .btn {
+        flex: 1;
+        max-width: 150px;
+    }
+
+    .btn-outline-primary:hover {
+        background-color: #4099ff;
+        border-color: #4099ff;
+    }
+
+    .btn-outline-primary.active {
+        background-color: #4099ff;
+        border-color: #4099ff;
+    }
+
+    .text-muted {
+        font-size: 0.875rem;
+        color: #8b92a3;
+    }
+
+    .mt-4 {
+        margin-top: 2rem !important;
+    }
+
+    /* Dashboard Container */
+    .totals-container {
+        display: flex;
+        justify-content: space-between;
+        margin-bottom: 40px;
+        gap: 24px;
+        width: 100%;
+        margin-top: 20px;
+    }
+
+    .modern-ui {
+        display: flex;
+        justify-content: space-between;
+        margin-bottom: 40px;
+        gap: 24px;
+        width: 100%;
+    }
+
+    /* Total Card - Modern & Clean */
+    .total-card {
+        background: linear-gradient(135deg, #ffffff 0%, #f8f9fa 100%);
+        border-radius: 12px;
+        box-shadow: 0 4px 12px rgba(0, 0, 0, 0.08);
+        padding: 24px;
+        text-align: center;
+        transition: all 0.3s ease;
+        position: relative;
+        overflow: hidden;
+        border: 1px solid #e8ecf1;
+        flex: 1;
+        min-width: 0;
+    }
+
+    .total-card:hover {
+        transform: translateY(-4px);
+        box-shadow: 0 12px 24px rgba(0, 0, 0, 0.12);
+    }
+
+    .total-card.income-card {
+        background: linear-gradient(135deg, #ffffff 0%, #e8f5e8 100%);
+        border-left: 4px solid #28a745;
+    }
+
+    .total-card.expense-card {
+        background: linear-gradient(135deg, #ffffff 0%, #ffeaea 100%);
+        border-left: 4px solid #dc3545;
+    }
+
+    .total-card.profit-loss-card {
+        background: linear-gradient(135deg, #ffffff 0%, #fff3cd 100%);
+        border-left: 4px solid #ffc107;
+        transition: all 0.4s ease;
+    }
+
+    .total-card.profit-loss-card.profit {
+        background: linear-gradient(135deg, #ffffff 0%, #e8f5e8 100%);
+        border-left: 4px solid #28a745;
+    }
+
+    .total-card.profit-loss-card.loss {
+        background: linear-gradient(135deg, #ffffff 0%, #ffeaea 100%);
+        border-left: 4px solid #dc3545;
+    }
+
+    .card-icon {
+        width: 60px;
+        height: 60px;
+        border-radius: 50%;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        margin: 0 auto 16px;
+        font-size: 24px;
+        position: relative;
+        z-index: 2;
+    }
+
+    .income-card .card-icon {
+        background: linear-gradient(135deg, #28a745, #20c997);
+        color: white;
+        box-shadow: 0 8px 24px rgba(40, 167, 69, 0.3);
+    }
+
+    .expense-card .card-icon {
+        background: linear-gradient(135deg, #dc3545, #fd7e14);
+        color: white;
+        box-shadow: 0 8px 24px rgba(220, 53, 69, 0.3);
+    }
+
+    .profit-loss-card .card-icon {
+        background: linear-gradient(135deg, #ffc107, #fd7e14);
+        color: white;
+        box-shadow: 0 8px 24px rgba(255, 193, 7, 0.3);
+        transition: all 0.4s ease;
+    }
+
+    .profit-loss-card.profit .card-icon {
+        background: linear-gradient(135deg, #28a745, #20c997);
+        box-shadow: 0 8px 24px rgba(40, 167, 69, 0.3);
+    }
+
+    .profit-loss-card.loss .card-icon {
+        background: linear-gradient(135deg, #dc3545, #fd7e14);
+        box-shadow: 0 8px 24px rgba(220, 53, 69, 0.3);
+    }
+
+    .card-content {
+        position: relative;
+        z-index: 2;
+    }
+
+    .card-title {
+        font-size: 1.1rem;
+        font-weight: 600;
+        margin-bottom: 16px;
+        color: #2c3e50;
+        text-transform: uppercase;
+        letter-spacing: 0.5px;
+        position: relative;
+    }
+
+    .amount-display {
+        display: flex;
+        justify-content: center;
+        gap: 20px;
+        flex-wrap: wrap;
+    }
+
+    .amount-item {
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        min-width: 80px;
+    }
+
+    .currency-label {
+        font-size: 0.75rem;
+        font-weight: 500;
+        color: #6c757d;
+        text-transform: uppercase;
+        letter-spacing: 0.5px;
+        margin-bottom: 4px;
+    }
+
+    .amount-value {
+        font-size: 1.5rem;
+        font-weight: 700;
+        color: #2c3e50;
+        transition: all 0.3s ease;
+        position: relative;
+    }
+
+    .income-card .amount-value {
+        color: #28a745;
+    }
+
+    .expense-card .amount-value {
+        color: #dc3545;
+    }
+
+    .profit-loss-card .amount-value {
+        color: #ffc107;
+    }
+
+    .profit-loss-card.profit .amount-value {
+        color: #28a745;
+    }
+
+    .profit-loss-card.loss .amount-value {
+        color: #dc3545;
+    }
+
+    .card-accent {
+        position: absolute;
+        top: 0;
+        right: 0;
+        width: 100px;
+        height: 100px;
+        background: linear-gradient(135deg, rgba(255, 255, 255, 0.1) 0%, rgba(255, 255, 255, 0.05) 100%);
+        border-radius: 0 16px 0 100px;
+        z-index: 1;
+    }
+
+    /* Animation for number updates */
+    @keyframes numberPulse {
+        0% { transform: scale(1); }
+        50% { transform: scale(1.1); }
+        100% { transform: scale(1); }
+    }
+
+    .amount-value.updating {
+        animation: numberPulse 0.6s ease-in-out;
+    }
+
+    /* Buttons - Clear & Consistent */
+    .btn {
+        padding: 10px 16px;
+        border-radius: 6px;
+        font-weight: 500;
+        font-size: 0.95rem;
+        transition: all 0.2s ease;
+        white-space: nowrap;
+    }
+
+    .btn-primary, .btn-success, .btn-info, .btn-danger {
+        border: none;
+        box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+    }
+
+    .btn-primary:hover, .btn-success:hover, .btn-info:hover {
+        box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+        transform: translateY(-2px);
+    }
+
+    .btn-sm {
+        padding: 6px 10px;
+        font-size: 0.85rem;
+    }
+
+    /* Export Button */
+    .export-section {
+        display: flex;
+        justify-content: center;
+        margin-top: 40px;
+        margin-bottom: 40px;
+    }
+
+    .export-button-container {
+        position: relative;
+        display: inline-block;
+    }
+
+    #exportComprehensiveReport {
+        background: linear-gradient(135deg, #4099ff 0%, #2ed8b6 100%);
+        border: none;
+        border-radius: 8px;
+        padding: 12px 32px;
+        font-size: 1rem;
+        font-weight: 600;
+        color: white;
+        letter-spacing: 0.3px;
+        box-shadow: 0 4px 12px rgba(64, 153, 255, 0.3);
+        transition: all 0.3s ease;
+        cursor: pointer;
+        display: inline-flex;
+        align-items: center;
+        gap: 8px;
+    }
+
+    #exportComprehensiveReport:hover {
+        transform: translateY(-2px);
+        box-shadow: 0 8px 20px rgba(64, 153, 255, 0.4);
+    }
+
+    #exportComprehensiveReport:active {
+        transform: translateY(0);
+        box-shadow: 0 2px 8px rgba(64, 153, 255, 0.3);
+    }
+
+    #exportComprehensiveReport i {
+        font-size: 1.1rem;
+    }
+
+    /* Expense Filter - Better Spacing */
+    .expense-filter {
+        margin-bottom: 24px;
+    }
+
+    .expense-filter .card {
+        border-radius: 12px;
+    }
+
+    .expense-filter .card-header {
+        background-color: #f8fafb !important;
+        border-bottom: 1px solid #e8ecf1;
+        padding: 16px 20px;
+    }
+
+    .expense-filter .card-header h6 {
+        font-size: 1rem;
+        font-weight: 600;
+        margin: 0;
+        color: #2c3e50;
+    }
+
+    .expense-filter .card-body {
+        padding: 24px;
+    }
+
+    .expense-filter .form-group {
+        margin-bottom: 16px;
+    }
+
+    .expense-filter label {
+        font-weight: 500;
+        font-size: 0.95rem;
+        margin-bottom: 8px;
+        color: #2c3e50;
+    }
+
+    /* Category Section */
+    .category-section {
+        margin-bottom: 24px;
+        border-radius: 12px;
+        overflow: hidden;
+    }
+
+    .category-header {
+        background: linear-gradient(135deg, #f8fafb 0%, #f2f5f9 100%);
+        border: 1px solid #e8ecf1;
+        border-radius: 12px 12px 0 0;
+        padding: 16px 20px;
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+    }
+
+    .category-header h6 {
+        font-size: 1.05rem;
+        font-weight: 600;
+        margin: 0;
+        color: #2c3e50;
+    }
+
+    .category-actions {
+        display: flex;
+        gap: 8px;
+        align-items: center;
+    }
+
+    /* Table Improvements */
+    .table {
+        margin-bottom: 0;
+        border-collapse: separate;
+        border-spacing: 0;
+    }
+
+    .table thead th {
+        background-color: #f8fafb;
+        border-bottom: 2px solid #e8ecf1;
+        font-weight: 600;
+        font-size: 0.95rem;
+        color: #2c3e50;
+        padding: 12px 16px;
+        text-align: left;
+    }
+
+    .table tbody tr {
+        transition: background-color 0.2s ease;
+    }
+
+    .table tbody tr:hover {
+        background-color: #f8fafb;
+    }
+
+    .table tbody td {
+        padding: 12px 16px;
+        border-bottom: 1px solid #e8ecf1;
+        vertical-align: middle;
+    }
+
+    .table-responsive {
+        border-radius: 8px;
+        border: 1px solid #e8ecf1;
+    }
+
+    /* Responsive design */
+    @media (max-width: 768px) {
+        .totals-container {
+            flex-direction: column;
+            gap: 16px;
+            margin-top: 16px;
+        }
+
+        .total-card {
+            min-width: auto;
+            max-width: none;
+            padding: 20px;
+        }
+
+        .amount-display {
+            gap: 12px;
+        }
+
+        .amount-item {
+            min-width: 70px;
+        }
+
+        .amount-value {
+            font-size: 1.3rem;
+        }
+
+        .export-section {
+            margin-top: 24px;
+            margin-bottom: 24px;
+        }
+
+        #exportComprehensiveReport {
+            padding: 10px 24px;
+            font-size: 0.95rem;
+        }
+
+        .category-actions {
+            gap: 4px;
+        }
+
+        .btn-sm {
+            padding: 4px 8px;
+            font-size: 0.8rem;
+        }
+    }
+
+    @media (max-width: 480px) {
+        .total-card {
+            padding: 16px;
+        }
+
+        .card-body {
+            padding: 16px;
+        }
+
+        .card-icon {
+            width: 48px;
+            height: 48px;
+            font-size: 18px;
+            margin-bottom: 12px;
+        }
+
+        .amount-display {
+            flex-direction: column;
+            gap: 8px;
+        }
+
+        .amount-item {
+            flex-direction: row;
+            justify-content: center;
+            gap: 8px;
+        }
+
+        .currency-label {
+            margin-bottom: 0;
+        }
+
+        #exportComprehensiveReport {
+            padding: 10px 20px;
+            font-size: 0.9rem;
+            width: 100%;
+        }
+
+        .btn {
+            padding: 8px 12px;
+        }
+
+        .table thead th,
+        .table tbody td {
+            padding: 10px 12px;
+            font-size: 0.85rem;
+        }
+
+        .category-header {
+            flex-direction: column;
+            align-items: flex-start;
+            gap: 12px;
+        }
+
+        .category-actions {
+            width: 100%;
+            justify-content: flex-start;
+        }
+    }
+
+    /* Apply gradient background to card headers matching the sidebar */
+    .card-header {
+        background: linear-gradient(135deg, #4099ff 0%, #2ed8b6 100%) !important;
+        color: #ffffff !important;
+        border-bottom: none !important;
+    }
+    
+    .card-header h5 {
+        color: #ffffff !important;
+        margin-bottom: 0 !important;
+    }
+    
+    .card-header .card-header-right {
+        color: #ffffff !important;
+    }
+    
+    .card-header .card-header-right .btn {
+        color: #ffffff !important;
+        border-color: rgba(255, 255, 255, 0.3) !important;
+    }
+    
+    .card-header .card-header-right .btn:hover {
+        background: rgba(255, 255, 255, 0.1) !important;
+        border-color: rgba(255, 255, 255, 0.5) !important;
+    }

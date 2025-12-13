@@ -13,8 +13,8 @@ $branch_id = $_SESSION['branch_id'];
 // Set JSON content type
 header('Content-Type: application/json');
 
-// Check if user is logged in and is admin
-if (!isset($_SESSION['user_id']) || $_SESSION['role'] !== 'admin') {
+// Check if user is logged in
+if (!isset($_SESSION['user_id'])) {
     die(json_encode(['success' => false, 'message' => __('unauthorized_access')]));
 }
 

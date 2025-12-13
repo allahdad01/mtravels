@@ -205,9 +205,9 @@ if (isset($_GET['debug'])) {
     <!-- vendor css -->
     <link rel="stylesheet" href="../assets/css/style.css">
         <!-- DataTables CSS -->
-        <link rel="stylesheet" type="text/css" href="https://cdn.datatables.net/1.11.5/css/dataTables.bootstrap4.min.css">
+    <link rel="stylesheet" type="text/css" href="https://cdn.datatables.net/1.11.5/css/dataTables.bootstrap4.min.css">
     <link rel="stylesheet" type="text/css" href="https://cdn.datatables.net/responsive/2.2.9/css/responsive.bootstrap4.min.css">
-
+    
 
 <style>
     /* Enhanced Sidebar Styles */

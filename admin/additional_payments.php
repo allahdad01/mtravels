@@ -303,7 +303,7 @@ $mainAccounts = $stmt->fetchAll();
         }
     </style>
     <?php include '../includes/header.php'; ?>
-    <link rel="stylesheet" href="css/modal-styles.css">
+    <link rel="stylesheet" href="../css/general/modal-styles.css">
 
     <div class="pcoded-main-container">
         <div class="pcoded-wrapper">

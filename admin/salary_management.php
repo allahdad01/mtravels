@@ -171,7 +171,7 @@ try {
 
 <!-- [ Header ] start -->
 <?php include '../includes/header.php'; ?>
-<link rel="stylesheet" href="css/modal-styles.css">
+<link rel="stylesheet" href="../css/general/modal-styles.css">
 <!-- [ Header ] end -->
 <style>
 /* Apply gradient background to card headers matching the sidebar */
