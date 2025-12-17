@@ -17,18 +17,18 @@ $branch_id = $_SESSION['branch_id'];
 $user_id = $_SESSION['user_id'];
 // Language handling
 $lang = isset($_GET['lang']) && in_array($_GET['lang'], ['en', 'ps', 'fa']) ? $_GET['lang'] : 'en';
-$lang_file = __DIR__ . '/../includes/languages/' . $lang . '/family_agreement.php';
+$lang_file = '../../includes/languages/' . $lang . '/family_agreement.php';
 
 if (file_exists($lang_file)) {
     $l = require($lang_file);
 } else {
     // Fallback to English
-    $l = require(__DIR__ . '/../includes/languages/en/umrah_agreement.php');
+    $l = require('../../includes/languages/en/umrah_agreement.php');
 }
 $isRtl = ($lang === 'ps' || $lang === 'fa');
 
 // Create directory if it doesn't exist
-$uploadsDir = '../uploads/umrah/family_agreements';
+$uploadsDir = '../../uploads/umrah/family_agreements';
 if (!is_dir($uploadsDir)) {
     mkdir($uploadsDir, 0755, true);
 }
@@ -75,11 +75,33 @@ try {
     $membersStmt->execute([$familyId, $tenant_id, $branch_id]);
     $members = $membersStmt->fetchAll(PDO::FETCH_ASSOC);
 
-    // Get settings for company info
-    $settingsQuery = "SELECT * FROM settings WHERE tenant_id = ?";
-    $settingsStmt = $pdo->prepare($settingsQuery);
-    $settingsStmt->execute([$tenant_id]);
-    $settings = $settingsStmt->fetch(PDO::FETCH_ASSOC);
+// Fetch settings data (using PDO connection)
+try {
+    $settingStmt = $pdo->prepare("SELECT * FROM settings WHERE tenant_id = ?");
+    $settingStmt->bindParam(1, $tenant_id, PDO::PARAM_INT);
+    $settingStmt->execute();
+    $settings = $settingStmt->fetch(PDO::FETCH_ASSOC);
+
+    if (!$settings) {
+        // Fallback defaults if no settings row found
+        $settings = ['agency_name' => 'Travel Agency'];
+    }
+} catch (Exception $e) {
+    error_log("Settings Error: " . $e->getMessage());
+    $settings = ['agency_name' => 'Travel Agency'];
+}
+
+// Fetch branch data (from branches table)
+try {
+    $branchStmt = $pdo->prepare("SELECT name, code, phone, address, email FROM branches WHERE id = ? AND tenant_id = ?");
+    $branchStmt->bindParam(1, $branch_id, PDO::PARAM_INT);
+    $branchStmt->bindParam(2, $tenant_id, PDO::PARAM_INT);
+    $branchStmt->execute();
+    $branch = $branchStmt->fetch(PDO::FETCH_ASSOC);
+} catch (Exception $e) {
+    error_log("Branch Error: " . $e->getMessage());
+    $branch = null;
+}
     
 
     // Get the HTML and CSS content by capturing the output buffer

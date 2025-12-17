@@ -1,4 +1,11 @@
 $(document).ready(function() {
+    // Set issue date to today by default
+    const today = new Date().toISOString().split('T')[0];
+    const issueDate = document.getElementById('issueDate');
+    if (issueDate && !issueDate.value) {
+        issueDate.value = today;
+    }
+    
     // Function to calculate totals
     function calculateTotals() {
         let totalBase = 0;
@@ -55,14 +62,10 @@ $(document).ready(function() {
                             <option value="Female">Female</option>
                         </select>
                     </div>
-                    <div class="form-group col-md-5 mb-0">
-                        <label for="passengerName_${index}">Passenger Name</label>
-                        <input type="text" class="form-control" id="passengerName_${index}" name="passengers[${index}][name]" required>
-                    </div>
-                    <div class="form-group col-md-3 mb-0">
-                        <label for="phone_${index}">Phone</label>
-                        <input type="text" class="form-control" id="phone_${index}" name="passengers[${index}][phone]" required>
-                    </div>
+                    <div class="form-group col-md-8 mb-0">
+                         <label for="passengerName_${index}">Passenger Name</label>
+                         <input type="text" class="form-control" id="passengerName_${index}" name="passengers[${index}][name]" required>
+                     </div>
                 </div>
                 <div class="form-row">
                     <div class="form-group col-md-3 mb-0">

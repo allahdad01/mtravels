@@ -23,6 +23,8 @@ if (!isset($_SESSION['user_id'])  || $_SESSION['role'] !== 'admin') {
 // Database connection
 require_once('../includes/db.php');
 
+
+
 // Note: Client accounts are fetched later with a more detailed query
 
 // Fetch main account balances
@@ -61,7 +63,8 @@ $clientStmt->bindParam(2, $branch_id, PDO::PARAM_INT);
 $clientStmt->execute();
 $clientAccounts = $clientStmt->fetchAll(PDO::FETCH_ASSOC);
 
-
+// Include dashboard handler for low balance alerts
+require_once '../api/dashboard/supplier_notification.php';
 ?>
 
 <?php include '../includes/header.php'; ?>
@@ -121,8 +124,44 @@ $clientAccounts = $clientStmt->fetchAll(PDO::FETCH_ASSOC);
                     <!-- [ Search & Filter Section ] end -->
 
                     <div class="main-body">
-                        <div class="page-wrapper">
-                            <!-- Main Accounts Section -->
+                         <div class="page-wrapper">
+
+                             <!-- Low Supplier Balance Alert -->
+                             <?php if (!empty($suppliersWithLowBalance)): ?>
+                             <div class="row mb-4">
+                                 <div class="col-md-12">
+                                     <div class="alert alert-warning alert-dismissible fade show border-left-warning" role="alert">
+                                         <div class="d-flex align-items-start">
+                                             <i class="feather icon-alert-triangle mr-3" style="font-size: 20px; margin-top: 2px;"></i>
+                                             <div class="flex-grow-1">
+                                                 <h5 class="alert-heading mb-2">Low Supplier Balance Alert</h5>
+                                                 <p class="mb-2">The following suppliers have low account balances:</p>
+                                                 <div class="supplier-alerts">
+                                                     <?php foreach ($suppliersWithLowBalance as $lowBalanceSupplier): ?>
+                                                         <div class="alert alert-sm mb-2" style="background-color: rgba(255,193,7,0.1); border-left: 3px solid #ffc107; padding: 8px 12px;">
+                                                             <strong><?= htmlspecialchars($lowBalanceSupplier['name']) ?></strong><br>
+                                                             <small class="text-muted">
+                                                                 <?php
+                                                                 $currency_symbol = ($lowBalanceSupplier['currency'] === 'USD') ? '$' : '؋';
+                                                                 $threshold = ($lowBalanceSupplier['currency'] === 'USD') ? 500 : 20000;
+                                                                 $threshold_display = ($lowBalanceSupplier['currency'] === 'USD') ? '$500' : '؋20,000';
+                                                                 echo $lowBalanceSupplier['currency'] . ": " . $currency_symbol . number_format($lowBalanceSupplier['balance'], 2) . " (Threshold: " . $threshold_display . ")";
+                                                                 ?>
+                                                             </small>
+                                                         </div>
+                                                     <?php endforeach; ?>
+                                                 </div>
+                                             </div>
+                                         </div>
+                                         <button type="button" class="close" data-dismiss="alert" aria-label="Close">
+                                             <span aria-hidden="true">&times;</span>
+                                         </button>
+                                     </div>
+                                 </div>
+                             </div>
+                             <?php endif; ?>
+
+                             <!-- Main Accounts Section -->
                             <div class="row">
                                 <div class="col-md-12 mb-4">
                                     <div class="card shadow-lg border-0">

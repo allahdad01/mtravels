@@ -1,12 +1,8 @@
 function generateTazminAgreement(bookingId) {
-    if (!bookingId) {
-        Swal.fire({
-            icon: 'error',
-            title: '<?= __("error") ?>',
-            text: '<?= __("invalid_booking") ?>'
-        });
-        return;
-    }
+     if (!bookingId) {
+         showToast('error', '<?= __("invalid_booking") ?>');
+         return;
+     }
 
     // Prompt for guarantor name
     Swal.fire({
@@ -29,15 +25,11 @@ function generateTazminAgreement(bookingId) {
 }
 
 // Function to generate Tazmin for an entire family
-function generateFamilyTazmin(familyId) {
-    if (!familyId) {
-        Swal.fire({
-            icon: 'error',
-            title: 'Error',
-            text: 'Invalid family'
-        });
-        return;
-    }
+ function generateFamilyTazmin(familyId) {
+     if (!familyId) {
+         showToast('error', 'Invalid family');
+         return;
+     }
 
     // First get all booking IDs for this family
     fetch('../api/umrah/get_family_bookings.php?family_id=' + familyId)
@@ -64,19 +56,11 @@ function generateFamilyTazmin(familyId) {
                     }
                 });
             } else {
-                Swal.fire({
-                    icon: 'warning',
-                    title: 'No members',
-                    text: 'No family members found'
-                });
+                showToast('warning', 'No family members found');
             }
         })
         .catch(error => {
             console.error('Error:', error);
-            Swal.fire({
-                icon: 'error',
-                title: 'Error',
-                text: 'Failed to fetch family members'
-            });
+            showToast('error', 'Failed to fetch family members');
         });
 }

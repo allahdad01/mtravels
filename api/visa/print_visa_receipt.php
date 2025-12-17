@@ -55,7 +55,7 @@ $transaction = $stmt->fetch(PDO::FETCH_ASSOC);
 if (!$transaction) {
     die(__('transaction_not_found'));
 }
-// Fetch settings data
+// Fetch settings data (using PDO connection)
 try {
     $settingStmt = $pdo->prepare("SELECT * FROM settings WHERE tenant_id = ?");
     $settingStmt->bindParam(1, $tenant_id, PDO::PARAM_INT);
@@ -66,9 +66,21 @@ try {
         // Fallback defaults if no settings row found
         $settings = ['agency_name' => 'Travel Agency'];
     }
-} catch (PDOException $e) {
+} catch (Exception $e) {
     error_log("Settings Error: " . $e->getMessage());
     $settings = ['agency_name' => 'Travel Agency'];
+}
+
+// Fetch branch data (from branches table)
+try {
+    $branchStmt = $pdo->prepare("SELECT name, code, phone, address FROM branches WHERE id = ? AND tenant_id = ?");
+    $branchStmt->bindParam(1, $branch_id, PDO::PARAM_INT);
+    $branchStmt->bindParam(2, $tenant_id, PDO::PARAM_INT);
+    $branchStmt->execute();
+    $branch = $branchStmt->fetch(PDO::FETCH_ASSOC);
+} catch (Exception $e) {
+    error_log("Branch Error: " . $e->getMessage());
+    $branch = null;
 }
 ?>
 
@@ -292,10 +304,13 @@ try {
                 <div class="header-row">
                     <div class="agency-name">
                         <?php echo htmlspecialchars($settings['agency_name'] ?? 'Travel Agency'); ?>
+                        <?php if (!empty($branch['name'])): ?>
+                            <br><small><?php echo htmlspecialchars($branch['name']); ?></small>
+                        <?php endif; ?>
                     </div>
                     <div class="receipt-title">Payment Receipt</div>
                     <div class="company-logo">
-                        <img src="../../uploads/logo/<?= htmlspecialchars($settings['logo']); ?>" alt="Company Logo">
+                        <img src="../../uploads/logo/<?= htmlspecialchars($settings['logo'] ?? ''); ?>" alt="Company Logo">
                     </div>
                 </div>
             </div>
@@ -388,7 +403,17 @@ try {
             <!-- Footer Note -->
             <div class="footer-note">
                 Thank you for your business<br>
-                <?php echo htmlspecialchars($settings['address'] ?? ''); ?> | <?php echo htmlspecialchars($settings['phone'] ?? ''); ?>
+                <?php if (!empty($branch)): ?>
+                    <?php echo htmlspecialchars($branch['phone'] ?? ''); ?>
+                    <?php if (!empty($branch['address'])): ?>
+                        (<?php echo htmlspecialchars($branch['address']); ?>)
+                    <?php endif; ?>
+                <?php else: ?>
+                    <?php echo htmlspecialchars($settings['address'] ?? ''); ?>
+                    <?php if (!empty($settings['phone'])): ?>
+                        | <?php echo htmlspecialchars($settings['phone']); ?>
+                    <?php endif; ?>
+                <?php endif; ?>
             </div>
         </div>
     </div>

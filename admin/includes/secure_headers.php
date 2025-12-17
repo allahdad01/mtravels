@@ -15,11 +15,12 @@ header("X-XSS-Protection: 1; mode=block");
 // Content Security Policy
 // Adjust based on your site's specific needs
 $csp = "default-src 'self'; ";
-$csp .= "script-src 'self' 'unsafe-inline'; ";
+$csp .= "script-src 'self' 'unsafe-inline' https://cdn.jsdelivr.net; ";
 $csp .= "style-src 'self' 'unsafe-inline'; ";
-$csp .= "img-src 'self' data:; ";
+$csp .= "img-src 'self' data: blob:; ";
 $csp .= "font-src 'self'; ";
-$csp .= "connect-src 'self'; ";
+$csp .= "connect-src 'self' https://cdn.jsdelivr.net blob:; ";
+$csp .= "worker-src 'self' blob:; ";
 $csp .= "frame-src 'none'; ";
 $csp .= "object-src 'none'; ";
 $csp .= "base-uri 'self';";

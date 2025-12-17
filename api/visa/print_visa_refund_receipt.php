@@ -54,7 +54,7 @@ $transaction = $stmt->fetch(PDO::FETCH_ASSOC);
 if (!$transaction) {
     die(__('transaction_not_found'));
 }
-// Fetch settings data
+// Fetch settings data (using PDO connection)
 try {
     $settingStmt = $pdo->prepare("SELECT * FROM settings WHERE tenant_id = ?");
     $settingStmt->bindParam(1, $tenant_id, PDO::PARAM_INT);
@@ -65,9 +65,21 @@ try {
         // Fallback defaults if no settings row found
         $settings = ['agency_name' => 'Travel Agency'];
     }
-} catch (PDOException $e) {
+} catch (Exception $e) {
     error_log("Settings Error: " . $e->getMessage());
     $settings = ['agency_name' => 'Travel Agency'];
+}
+
+// Fetch branch data (from branches table)
+try {
+    $branchStmt = $pdo->prepare("SELECT name, code FROM branches WHERE id = ? AND tenant_id = ?");
+    $branchStmt->bindParam(1, $branch_id, PDO::PARAM_INT);
+    $branchStmt->bindParam(2, $tenant_id, PDO::PARAM_INT);
+    $branchStmt->execute();
+    $branch = $branchStmt->fetch(PDO::FETCH_ASSOC);
+} catch (Exception $e) {
+    error_log("Branch Error: " . $e->getMessage());
+    $branch = null;
 }
 ?>
 

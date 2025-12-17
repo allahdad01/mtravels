@@ -12,6 +12,55 @@
  * - Auto-form population
  */
 
+/**
+ * Clean airline value by removing extra whitespace and newlines
+ * Extracts the actual airline name from text like "Stop Baggage\nFLY DUBAI"
+ * But preserves valid airline names like "Ariana Afghan Airlines"
+ */
+function cleanAirlineValue(value) {
+    if (!value) return value;
+    
+    // Remove newlines and extra whitespace
+    let cleaned = value.replace(/\n/g, ' ').replace(/\s+/g, ' ').trim();
+    
+    // Check if the cleaned value might be a valid airline name already
+    // Known airline name patterns: 1-4 words, starting with capital letter
+    const words = cleaned.split(' ');
+    
+    // If it's a reasonable length (2-4 words, typical airline name), return it as-is
+    if (words.length >= 2 && words.length <= 4) {
+        // Check if it looks like a real airline name (no suspicious words before it)
+        const suspiciousWords = ['STOP', 'BAGGAGE', 'TICKET', 'BOOKING', 'RESERVATION', 'FLIGHT', 'DATE', 'TIME', 'DEPART', 'ARRIVE'];
+        const hasSuspiciousWord = suspiciousWords.some(word => cleaned.toUpperCase().includes(word));
+        
+        if (!hasSuspiciousWord) {
+            return cleaned; // Likely a valid airline name
+        }
+    }
+    
+    // Only try to extract if there are suspicious words or too many words
+    if (words.length > 4) {
+        // Look for airline keywords (usually in uppercase)
+        const airlineKeywords = ['DUBAI', 'EMIRATES', 'AIRWAYS', 'AIR', 'AIRLINES', 'QATAR', 'TURKISH', 'KAM', 'ARIANA', 'ARABIA'];
+        
+        // Find the first substantial airline keyword (not just "AIR" or "AIRLINES" alone)
+        for (let i = 0; i < words.length; i++) {
+            const word = words[i].toUpperCase();
+            // Look for multi-letter keywords or combinations
+            if (airlineKeywords.some(keyword => word.includes(keyword) && keyword.length > 3)) {
+                // Found a good keyword, take from this position
+                cleaned = words.slice(Math.max(0, i - 1)).join(' ');
+                return cleaned;
+            }
+        }
+        
+        // Fallback: just take the last few words
+        cleaned = words.slice(-3).join(' ');
+    }
+    
+    return cleaned;
+}
+
 document.addEventListener('DOMContentLoaded', function() {
     setupPdfUploadZone();
     setupPdfFileInput();
@@ -175,7 +224,7 @@ function fillTicketForm(data) {
     // Must match IDs in modals/ticket/book_ticket_modal.php
     const flightFields = {
         'pnr': flightData.pnr,
-        'airline': flightData.airline,
+        'airline': cleanAirlineValue(flightData.airline),
         'origin': flightData.origin,
         'destination': flightData.destination,
         'departureDate': flightData.departure_date,
@@ -197,9 +246,101 @@ function fillTicketForm(data) {
                 formattedValue = value; // Already in correct format
             }
             
-            field.value = formattedValue;
+            // Handle select elements (like airline dropdown)
+            if (field.tagName === 'SELECT') {
+                // Try to find option by exact value match
+                let option = Array.from(field.options).find(opt => opt.value === value || opt.text === value);
+                if (option) {
+                    field.value = option.value;
+                    console.log(`Selected ${fieldId}: ${option.text} (value: ${option.value})`);
+                } else {
+                    // Try fuzzy matching for airline names
+                    if (fieldId === 'airline') {
+                        // Try to match against airline database
+                        let matchedAirline = null;
+                        
+                        if (typeof AIRLINES !== 'undefined') {
+                            const searchTerm = value.toLowerCase().trim();
+                            const words = searchTerm.split(' ');
+                            
+                            // Step 1: Try exact match (full name or base name)
+                            matchedAirline = AIRLINES.find(airline => 
+                                airline.name === value || 
+                                airline.name.split(' (')[0] === value ||
+                                value.toLowerCase() === airline.name.toLowerCase() ||
+                                value.toLowerCase() === airline.name.split(' (')[0].toLowerCase()
+                            );
+                            if (matchedAirline) {
+                                console.log(`Exact match found for "${value}": ${matchedAirline.name}`);
+                            }
+                            
+                            // Step 2: Try matching by first 2-3 words (e.g., "Ariana Afghan" or "Ariana Afghan Airlines")
+                            if (!matchedAirline && words.length >= 2) {
+                                // Try progressively longer matches
+                                for (let wordCount = Math.min(words.length, 3); wordCount >= 2; wordCount--) {
+                                    const partialTerm = words.slice(0, wordCount).join(' ').toLowerCase();
+                                    matchedAirline = AIRLINES.find(airline => 
+                                        airline.name.split(' (')[0].toLowerCase().startsWith(partialTerm) ||
+                                        partialTerm.startsWith(airline.name.split(' (')[0].toLowerCase().split(' ')[0])
+                                    );
+                                    if (matchedAirline) {
+                                        console.log(`Multi-word match found for "${value}" using "${partialTerm}": ${matchedAirline.name}`);
+                                        break;
+                                    }
+                                }
+                            }
+                            
+                            // Step 3: Try matching by first word + contains second word
+                            if (!matchedAirline && words.length >= 2) {
+                                matchedAirline = AIRLINES.find(airline => {
+                                    const airlineName = airline.name.split(' (')[0].toLowerCase();
+                                    return airlineName.startsWith(words[0]) && airlineName.includes(words[1]);
+                                });
+                                if (matchedAirline) {
+                                    console.log(`Combined match found for "${value}": ${matchedAirline.name}`);
+                                }
+                            }
+                            
+                            // Step 4: Last resort - find airline containing most words from search term
+                            if (!matchedAirline) {
+                                let bestMatch = null;
+                                let bestMatchCount = 0;
+                                AIRLINES.forEach(airline => {
+                                    const airlineName = airline.name.toLowerCase();
+                                    const matchCount = words.filter(word => airlineName.includes(word)).length;
+                                    if (matchCount > bestMatchCount) {
+                                        bestMatchCount = matchCount;
+                                        bestMatch = airline;
+                                    }
+                                });
+                                if (bestMatch && bestMatchCount >= Math.ceil(words.length / 2)) {
+                                    matchedAirline = bestMatch;
+                                    console.log(`Best match (${bestMatchCount}/${words.length} words) found for "${value}": ${matchedAirline.name}`);
+                                }
+                            }
+                        }
+                        
+                        // If found in database, use the airline code to set the select value
+                        if (matchedAirline) {
+                            field.value = matchedAirline.code;
+                            option = Array.from(field.options).find(opt => opt.value === matchedAirline.code);
+                            if (option) {
+                                console.log(`✓ Selected ${fieldId}: ${option.text} (value: ${option.value})`);
+                            }
+                        } else {
+                            console.warn(`✗ No matching airline option found for: "${value}"`);
+                        }
+                    } else {
+                        console.warn(`No matching option found for ${fieldId}: ${value}`);
+                    }
+                }
+            } else {
+                // Regular input field
+                field.value = formattedValue;
+                console.log(`Filled ${fieldId}: ${formattedValue}`);
+            }
+            
             triggerFieldChange(field);
-            console.log(`Filled ${fieldId}: ${formattedValue}`);
         } else if (!field) {
             console.warn(`Field not found: ${fieldId}`);
         }

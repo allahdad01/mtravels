@@ -1,13 +1,6 @@
 function viewMemberDetails(bookingId) {
-    // Show loading state
-    Swal.fire({
-        title: '<?= __("loading") ?>',
-        text: '<?= __("please_wait") ?>',
-        allowOutsideClick: false,
-        didOpen: () => {
-            Swal.showLoading();
-        }
-    });
+     // Show loading state
+     showToast('info', '<?= __("loading") ?>... <?= __("please_wait") ?>');
 
     // Fetch member details
     fetch(`../api/umrah/get_member_details.php?booking_id=${bookingId}`)
@@ -44,22 +37,13 @@ function viewMemberDetails(bookingId) {
                 loadDateChangeHistory(bookingId);
 
                 // Close loading and show modal
-                Swal.close();
                 $('#memberDetailsModal').modal('show');
-            } else {
-                Swal.fire({
-                    icon: 'error',
-                    title: '<?= __("error") ?>',
-                    text: data.message || '<?= __("failed_to_load_member_details") ?>'
-                });
-            }
+                } else {
+                showToast('error', data.message || '<?= __("failed_to_load_member_details") ?>');
+                }
         })
         .catch(error => {
             console.error('Error:', error);
-            Swal.fire({
-                icon: 'error',
-                title: '<?= __("error") ?>',
-                text: '<?= __("failed_to_load_member_details") ?>'
-            });
+            showToast('error', '<?= __("failed_to_load_member_details") ?>');
         });
 }

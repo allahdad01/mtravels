@@ -171,17 +171,10 @@ $(document).on('submit', '#editMemberForm', function(event) {
 // This is handled by openEditMemberModal function for editing existing members
 
 function openEditMemberModal(bookingId) {
-    console.log('Opening edit modal for booking:', bookingId);
+     console.log('Opening edit modal for booking:', bookingId);
 
-    // Show loading state
-    Swal.fire({
-        title: 'Loading',
-        text: 'Please wait',
-        allowOutsideClick: false,
-        didOpen: () => {
-            Swal.showLoading();
-        }
-    });
+     // Show loading state
+     showToast('info', 'Loading... Please wait');
 
     // Fetch member details
     fetch(`../api/umrah/get_member_details.php?booking_id=${bookingId}`)
@@ -240,22 +233,13 @@ function openEditMemberModal(bookingId) {
                 loadData();
 
                 // Close loading and show modal
-                Swal.close();
                 $('#editMemberModal').modal('show');
-            } else {
-                Swal.fire({
-                    icon: 'error',
-                    title: 'Error',
-                    text: data.message || 'Failed to load member details'
-                });
-            }
+                } else {
+                showToast('error', data.message || 'Failed to load member details');
+                }
         })
         .catch(error => {
             console.error('Error:', error);
-            Swal.fire({
-                icon: 'error',
-                title: 'Error',
-                text: 'Failed to load member details'
-            });
+            showToast('error', 'Failed to load member details');
         });
 }

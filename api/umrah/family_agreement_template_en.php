@@ -166,7 +166,7 @@ body {
                 <div class="agreement-info">Date: <?= date('M d, Y') ?><br>Agreement No: FAMILY-<?= $family['family_id'] ?>-<?= date('Ymd') ?></div>
             </div>
             <div class="header-center">
-                <div class="company-name"><?= $settings['agency_name'] ?></div>
+                <div class="company-name"><?= $settings['agency_name'] ?> - <?php echo htmlspecialchars($branch['name']); ?></div>
                 <div class="title">Family Umrah Agreement</div>
             </div>
             <div class="header-right">
@@ -290,7 +290,7 @@ body {
                     <td width="45%">
                         <div class="signature-line">
                             Authorized Signature<br>
-                            <?= htmlspecialchars($settings['agency_name']) ?>
+                            <?= htmlspecialchars($settings['agency_name']) ?> - <?php echo htmlspecialchars($branch['name']); ?>
                         </div>
                     </td>
                 </tr>
@@ -298,14 +298,14 @@ body {
         </div>
         
         <div class="footer">
-            <?php if (!empty($settings['address'])): ?>
-                <?= htmlspecialchars($settings['address']) ?> |
+            <?php if (!empty($branch['address'])): ?>
+                <?= htmlspecialchars($branch['address']) ?> |
             <?php endif; ?>
-            <?php if (!empty($settings['phone'])): ?>
-                Tel: <?= htmlspecialchars($settings['phone']) ?> |
+            <?php if (!empty($branch['phone'])): ?>
+                Tel: <?= htmlspecialchars($branch['phone']) ?> |
             <?php endif; ?>
-            <?php if (!empty($settings['email'])): ?>
-                Email: <?= htmlspecialchars($settings['email']) ?>
+            <?php if (!empty($branch['email'])): ?>
+                Email: <?= htmlspecialchars($branch['email']) ?>
             <?php endif; ?>
             <br>
             Generated on <?= date('F d, Y') ?> | Agreement No: FAMILY-<?= $family['family_id'] ?>-<?= date('Ymd') ?>

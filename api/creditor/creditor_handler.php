@@ -283,11 +283,11 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['pay'])) {
 
             $notifStmt = $pdo->prepare("
                 INSERT INTO notifications
-                (transaction_id, transaction_type, message, status, created_at, tenant_id)
-                VALUES (?, 'creditor', ?, 'Unread', NOW(), ?)
+                (transaction_id, transaction_type, message, status, created_at, tenant_id, branch_id)
+                VALUES (?, 'creditor', ?, 'Unread', NOW(), ?, ?)
             ");
 
-            if (!$notifStmt->execute([$main_transaction_id, $notificationMessage, $tenant_id])) {
+            if (!$notifStmt->execute([$main_transaction_id, $notificationMessage, $tenant_id, $branch_id])) {
                 throw new Exception("Failed to create notification");
             }
             

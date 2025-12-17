@@ -5305,6 +5305,15 @@ return [
 'supports' => 'Supports',
 'and_all_airlines' => 'and all airlines',
 'auto_fill_notice' => 'Your PDF will be securely processed to extract passenger names, flight details, and fares automatically.',
-
+'hawala_transfers' => 'Hawala Transfers',
+'exchanges' => 'Exchanges',
+'enter_name' => 'Enter Name',
+'enter_email' => 'Enter Email',
+'enter_phone' => 'Enter Phone',
+'enter_address' => 'Enter Address',
+'these_terms_will_appear_on_the_printed_agreement' => 'These terms will appear on the printed agreement',
+'edit_employee_information' => 'Edit Employee Information',
+'employee_status' => 'Employee Status',
+'changes_will_be_logged' => 'Changes will be logged',
 
 ];

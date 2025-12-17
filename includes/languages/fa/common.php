@@ -4990,6 +4990,15 @@ return [
 'i_confirm_that_i_want_to_cancel_this_visa_application' => 'تأیید می‌کنم که می‌خواهم این درخواست ویزا را لغو کنم',
 'i_confirm_that_i_want_to_re_apply_this_visa_application' => 'تأیید می‌کنم که می‌خواهم این درخواست ویزا را دوباره ثبت کنم',
 'cancelling_a_visa_will_change_its_status_and_prevent_further_processing' => 'لغو ویزا وضعیت آن را تغییر می‌دهد و از ادامهٔ پروسس جلوگیری می‌کند',
-
+'hawala_transfers' => 'انتقالات حواله',
+'exchanges' => 'تبادلات',
+'enter_name' => 'نام را وارد کنید',
+'enter_email' => 'ایمیل را وارد کنید',
+'enter_phone' => 'شماره تلفن را وارد کنید',
+'enter_address' => 'آدرس را وارد کنید',
+'these_terms_will_appear_on_the_printed_agreement' => 'این شرایط در قرارداد چاپ‌شده درج خواهد شد',
+'edit_employee_information' => 'ویرایش اطلاعات کارمند',
+'employee_status' => 'وضعیت کارمند',
+'changes_will_be_logged' => 'تغییرات ثبت خواهد شد',
 
 ];

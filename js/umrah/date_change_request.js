@@ -36,12 +36,7 @@ $(document).on('click', '#submitDateChangeRequest', function() {
 
     // Check confirmation
     if (!document.getElementById('dateChangeConfirmation').checked) {
-        Swal.fire({
-            icon: 'warning',
-            title: 'Confirmation Required',
-            text: 'Please confirm that the date change request details are correct.',
-            confirmButtonColor: '#17a2b8'
-        });
+        showToast('warning', 'Please confirm that the date change request details are correct.');
         return;
     }
 
@@ -64,33 +59,19 @@ $(document).on('click', '#submitDateChangeRequest', function() {
             console.log('Date change request response:', response);
 
             if (response.success) {
-                Swal.fire({
-                    icon: 'success',
-                    title: 'Request Submitted',
-                    text: response.message || 'Date change request has been submitted successfully.',
-                    confirmButtonColor: '#28a745'
-                }).then(() => {
-                    $('#dateChangeModal').modal('hide');
-                    // Refresh the page to show updated data
-                    location.reload();
-                });
-            } else {
-                Swal.fire({
-                    icon: 'error',
-                    title: 'Submission Failed',
-                    text: response.message || 'Failed to submit date change request.',
-                    confirmButtonColor: '#dc3545'
-                });
-            }
+                 showToast('success', response.message || 'Date change request has been submitted successfully.');
+                 setTimeout(() => {
+                     $('#dateChangeModal').modal('hide');
+                     // Refresh the page to show updated data
+                     location.reload();
+                 }, 1500);
+             } else {
+                 showToast('error', response.message || 'Failed to submit date change request.');
+             }
         },
         error: function(xhr, status, error) {
             console.error('Date change request error:', error);
-            Swal.fire({
-                icon: 'error',
-                title: 'Request Error',
-                text: 'An error occurred while submitting the request. Please try again.',
-                confirmButtonColor: '#dc3545'
-            });
+            showToast('error', 'An error occurred while submitting the request. Please try again.');
         },
         complete: function() {
             // Reset button state

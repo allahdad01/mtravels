@@ -164,49 +164,26 @@
 
                 const finalUrl = `${url}&document_details=${documentDetailsParam}`;
 
-                Swal.fire({
-                    title: formTitle,
-                    text: 'please_wait...',
-                    allowOutsideClick: false,
-                    didOpen: () => {
-                        Swal.showLoading();
-                    }
-                });
+                 showToast('info', 'please_wait...');
 
-                fetch(finalUrl, {
+                 fetch(finalUrl, {
                     method: 'GET',
                     headers: { 'X-Requested-With': 'XMLHttpRequest' }
                 })
                 .then(response => response.json())
                 .then(data => {
                     if (data.success) {
-                        Swal.fire({
-                            icon: 'success',
-                            title: 'success',
-                            text: data.message,
-                            confirmButtonText: 'view_document',
-                            showCancelButton: true,
-                            cancelButtonText: 'close'
-                        }).then((result) => {
-                            if (result.isConfirmed) {
-                                window.open('../' + data.file_url, '_blank');
-                            }
-                        });
-                    } else {
-                        Swal.fire({
-                            icon: 'error',
-                            title: 'error',
-                            text: data.message || 'failed_to_generate_document'
-                        });
-                    }
+                         showToast('success', data.message || 'Document generated successfully');
+                         setTimeout(() => {
+                             window.open('../' + data.file_url, '_blank');
+                         }, 1500);
+                     } else {
+                         showToast('error', data.message || 'failed_to_generate_document');
+                     }
                 })
                 .catch(error => {
                     console.error('Error:', error);
-                    Swal.fire({
-                        icon: 'error',
-                        title: 'error',
-                        text: 'an_error_occurred'
-                    });
+                    showToast('error', 'an_error_occurred');
                 });
             });
         });

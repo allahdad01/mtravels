@@ -1,10 +1,21 @@
 var suppliersData = [];
 
 function loadSuppliers() {
-    return $.getJSON('../api/umrah/get_suppliers.php').then(data => {
-        suppliersData = data.success ? data.suppliers : [];
-        console.log('Suppliers loaded:', suppliersData.length);
-    }).catch(() => { suppliersData = []; });
+    return $.ajax({
+        url: '../api/umrah/get_suppliers.php',
+        type: 'GET',
+        dataType: 'json'
+    }).then(data => {
+        // The API returns { suppliers: [...], main_account: {...} }
+        suppliersData = data.suppliers || [];
+        console.log('Suppliers loaded:', suppliersData);
+        if (suppliersData.length === 0) {
+            console.warn('No active suppliers found');
+        }
+    }).catch(error => { 
+        console.error('Error loading suppliers:', error);
+        suppliersData = [];
+    });
 }
 
 let serviceRowCounter = 0;
@@ -101,6 +112,15 @@ $(document).on('input', '.service-base-price, .service-sold-price, #discount', u
 // Ensure at least one service row when modal opens
 $('#umrahModal').on('shown.bs.modal', function() {
     if ($('.services-grid-body .service-row-grid').length === 0) {
-        loadSuppliers().then(() => addServiceRow());
+        loadSuppliers().then(() => {
+            addServiceRow();
+            if (suppliersData.length === 0) {
+                // Show warning if no suppliers available
+                console.warn('Warning: No suppliers are available. Please ensure suppliers are created and set to active status.');
+            }
+        }).catch(error => {
+            console.error('Failed to load suppliers:', error);
+            addServiceRow(); // Still add row even if suppliers fail to load
+        });
     }
 });

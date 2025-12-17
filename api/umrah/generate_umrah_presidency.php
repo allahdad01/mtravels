@@ -1,72 +1,90 @@
 <?php
-
+// ============ CONFIGURATION & SESSION ============
 require_once '../../includes/db.php';
 require_once '../../includes/language_helpers.php';
 
-if (session_status() === PHP_SESSION_NONE) {
-    session_start();
-}
+if (session_status() === PHP_SESSION_NONE) session_start();
+
 $tenant_id = $_SESSION['tenant_id'];
 $branch_id = $_SESSION['branch_id'];
 
+// ============ REQUEST PARAMETERS ============
+// Family & Personal Info
 $family_id = $_GET['family_id'];
 $language = $_GET['language'] ?? 'fa';
 $familyHeadFatherName = $_GET['family_head_father_name'];
 $familyHeadIdNumber = $_GET['family_head_id_number'];
-$umrahVisaAmount = $_GET['umrah_visa_amount'];
-$ticketAmount = $_GET['ticket_amount'];
-$airlineName = $_GET['airline_name'];
 
+// Umrah Package Details
 $makkahDayNumber = $_GET['makkah_day_number'];
 $makkahNightNumber = $_GET['makkah_night_number'];
 $madinaDayNumber = $_GET['madina_day_number'];
 $madinaNightNumber = $_GET['madina_night_number'];
-$amountAirportHotel = $_GET['amount_airport_hotel'];
-$amountHotelAirport = $_GET['amount_hotel_airport'];
-$visitingZiaratsAmount = $_GET['visiting_ziarats_amount'];
-$halaqatDarsiAmount = $_GET['halaqat_darsi_amount'];
-$totalAmount = $_GET['total_amount'];
+
+// Hotel Information
 $makkahHotelName = $_GET['makkah_hotel_name'];
 $makkahHotelDegree = $_GET['makkah_hotel_degree'];
 $makkahHotelDistance = $_GET['makkah_hotel_distance'];
-
 $makkahHotelAmount = $_GET['makkah_hotel_amount'];
 $madinaHotelName = $_GET['madina_hotel_name'];
 $madinaHotelDegree = $_GET['madina_hotel_degree'];
 $madinaHotelDistance = $_GET['madina_hotel_distance'];
 $madinaHotelAmount = $_GET['madina_hotel_amount'];
+
+// Costs
+$umrahVisaAmount = $_GET['umrah_visa_amount'];
+$ticketAmount = $_GET['ticket_amount'];
+$airlineName = $_GET['airline_name'];
+$amountAirportHotel = $_GET['amount_airport_hotel'];
+$amountHotelAirport = $_GET['amount_hotel_airport'];
+$visitingZiaratsAmount = $_GET['visiting_ziarats_amount'];
+$halaqatDarsiAmount = $_GET['halaqat_darsi_amount'];
+$totalAmount = $_GET['total_amount'];
 $commissionAmount = $_GET['commission_amount'];
 $childServicesAmount = $_GET['child_services_amount'];
 $childCommissionAmount = $_GET['child_commission_amount'];
 
-if (!$family_id) {
-    die('شناسه خانواده نامعتبر است.');
-}
+if (!$family_id) die('شناسه خانواده نامعتبر است.');
 
+// ============ DATABASE QUERIES ============
 try {
-    $settingsQuery = "SELECT * FROM settings WHERE tenant_id = ?";
-    $settingsStmt = $pdo->prepare($settingsQuery);
-    $settingsStmt->execute([$tenant_id]);
-    $settings = $settingsStmt->fetch(PDO::FETCH_ASSOC);
-
-    $logoPath = __DIR__ . '/../../uploads/logo/' . $settings['logo'];
-    if (!empty($settings['logo']) && file_exists('../uploads/logo/' . $settings['logo'])) {
-        $logoPath = '../uploads/logo/' . $settings['logo'];
+    // Settings
+    try {
+        $settingStmt = $pdo->prepare("SELECT * FROM settings WHERE tenant_id = ?");
+        $settingStmt->execute([$tenant_id]);
+        $settings = $settingStmt->fetch(PDO::FETCH_ASSOC) ?: ['agency_name' => 'Travel Agency'];
+    } catch (Exception $e) {
+        error_log("Settings Error: " . $e->getMessage());
+        $settings = ['agency_name' => 'Travel Agency'];
     }
 
-    $stmt = $pdo->prepare("SELECT umrah_bookings.*, families.head_of_family, families.contact, families.province, families.district FROM umrah_bookings left join families on umrah_bookings.family_id = families.family_id AND families.tenant_id = ? AND families.branch_id = ? WHERE umrah_bookings.family_id = ? AND umrah_bookings.tenant_id = ? AND umrah_bookings.branch_id = ?");
+    // Branch Data
+    try {
+        $branchStmt = $pdo->prepare("SELECT name, code, phone, address, email FROM branches WHERE id = ? AND tenant_id = ?");
+        $branchStmt->execute([$branch_id, $tenant_id]);
+        $branch = $branchStmt->fetch(PDO::FETCH_ASSOC);
+    } catch (Exception $e) {
+        error_log("Branch Error: " . $e->getMessage());
+        $branch = null;
+    }
+
+    // Logo Path
+    $logoPath = '../../uploads/logo/' . ($settings['logo'] ?? 'default.png');
+
+    // Family Members
+    $stmt = $pdo->prepare("SELECT umrah_bookings.*, families.head_of_family, families.contact, families.province, families.district 
+        FROM umrah_bookings 
+        LEFT JOIN families ON umrah_bookings.family_id = families.family_id AND families.tenant_id = ? AND families.branch_id = ? 
+        WHERE umrah_bookings.family_id = ? AND umrah_bookings.tenant_id = ? AND umrah_bookings.branch_id = ?");
     $stmt->execute([$tenant_id, $branch_id, $family_id, $tenant_id, $branch_id]);
     $members = $stmt->fetchAll(PDO::FETCH_ASSOC);
 
-    if (!$members) {
-        die('هیچ عضوی برای این خانواده یافت نشد.');
-    }
+    if (!$members) die('هیچ عضوی برای این خانواده یافت نشد.');
 } catch (PDOException $e) {
     error_log("Database error: " . $e->getMessage());
-    die("خطا در دریافت معلومات رسید بانکی.");
+    die("خطا در دریافت معلومات.");
 }
 ?>
-
 <!DOCTYPE html>
 <html lang="<?= $language ?>" dir="rtl">
 <head>
@@ -74,179 +92,190 @@ try {
     <title>قرارداد عمره - <?= htmlspecialchars($settings['agency_name']) ?></title>
     <link href="https://fonts.googleapis.com/css2?family=Amiri&family=Tajawal&display=swap" rel="stylesheet">
     <style>
-        body {
-            font-family: 'Tajawal', 'Amiri', serif;
-            background-color: #f7f7fa;
-            color: #222;
-            direction: rtl;
-            padding: 0 0 0 0;
-            margin: 0 0 0 0;
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body { 
+            font-family: 'Tajawal', 'Amiri', serif; 
+            background: #f7f7fa; 
+            color: #222; 
+            direction: rtl; 
+            line-height: 1.3;
         }
-        .container {
-            max-width: 950px;
-            margin: 0px auto;
-            background: #fff;
-
-
-        }
-        .header {
-            text-align: center;
-            border-bottom: 2px solid #e0e0e0;
-            margin-bottom: 2.55px;
-            position: relative;
-            padding-bottom: 2.5px;
-        }
-        .header img {
-            position: absolute;
-            left: 0;
-            top: 0;
-            width: 70px;
-            height: 70px;
-            border-radius: 50%;
-            object-fit: cover;
-            border: 2px solid #e0e0e0;
-            background: #fff;
-            box-shadow: 0 2px 8px rgba(0,0,0,0.07);
-        }
-        .header h1 {
-            font-family: 'Tajawal', 'Amiri', serif;
-            font-size: 20pt;
-            margin-bottom: 2.5px;
-            color: #2d3a4a;
-            font-weight: 700;
-            letter-spacing: 0.5px;
-        }
-        .date {
-            position: absolute;
-            right: 0;
-            top: 0;
-            font-size: 11pt;
-            color: #888;
-        }
-        .contract {
-            font-size: 10pt;
-            line-height: 1;
-            color: #222;
-        }
-        .table {
-            width: 100%;
-            border-collapse: separate;
-            border-spacing: 0;
-            margin-bottom: 10px;
-            background: #fafbfc;
-            border-radius: 10px;
+        .container { 
+            max-width: 210mm; 
+            height: 297mm;
+            margin: 0 auto; 
+            background: #fff; 
+            padding: 8mm;
+            box-shadow: 0 0 10px rgba(0,0,0,0.1);
             overflow: hidden;
-            box-shadow: 0 1px 4px rgba(0,0,0,0.04);
+            position: relative;
         }
-        .table th, .table td {
-            border: none;
-            padding: 5px 5px;
+        .header { 
+            display: flex; 
+            justify-content: space-between; 
+            align-items: center;
+            border-bottom: 2px solid #2d3a4a; 
+            margin-bottom: 4mm; 
+            padding-bottom: 3mm;
+            gap: 8px;
+        }
+        .header img { 
+            width: 50px; 
+            height: 50px; 
+            border-radius: 50%; 
+            object-fit: cover;
+            flex-shrink: 0;
+        }
+        .header-title { flex: 1; text-align: center; }
+        .header h1 { 
+            font-size: 14pt; 
+            color: #2d3a4a; 
+            font-weight: 700; 
+            margin-bottom: 2px;
+            line-height: 1.2;
+        }
+        .header-date { 
+            font-size: 9pt; 
+            color: #666; 
+            min-width: 60px;
+            text-align: left;
+        }
+        .section-title { 
+            font-size: 10pt; 
+            font-weight: 700; 
+            color: #2d3a4a; 
+            margin-top: 3mm; 
+            margin-bottom: 2mm;
+            background: #e9f0f7;
+            padding: 2mm 3mm;
+            border-right: 3px solid #2d3a4a;
+        }
+        .article { font-size: 9pt; margin-bottom: 3mm; line-height: 1.4; }
+        .article strong { color: #2d3a4a; }
+        .table { 
+            width: 100%; 
+            border-collapse: collapse; 
+            margin: 3mm 0;
+            font-size: 8pt;
+            background: #fafbfc;
+        }
+        .table th, .table td { 
+            border: 1px solid #d1e0ee; 
+            padding: 2mm 2mm; 
             text-align: center;
         }
-        .table th {
-            background: #e9f0f7;
-            color: #2d3a4a;
-            font-size: 13pt;
+        .table th { 
+            background: #e9f0f7; 
+            color: #2d3a4a; 
             font-weight: 700;
-            border-bottom: 2px solid #d1e0ee;
         }
-        .table tr:nth-child(even) td {
-            background: #f3f6fa;
-        }
-        .table tr:hover td {
-            background: #e0f7fa;
-            transition: background 0.2s;
-        }
-        .table td {
-            font-size: 12pt;
-            color: #333;
-        }
-        .signature {
-            display: flex;
+        .table tr:nth-child(even) td { background: #f3f6fa; }
+        .signature { 
+            display: flex; 
             justify-content: space-between;
-            margin-top: 10px;
-            font-size: 13pt;
-            color: #2d3a4a;
+            margin-top: 4mm;
+            font-size: 9pt;
+            padding-top: 3mm;
+            border-top: 1px solid #ccc;
+        }
+        .sig-line { 
+            flex: 1; 
+            text-align: center; 
+            border-top: 1px solid #000;
+            padding-top: 8mm;
         }
         @media print {
-            body, .container {
-                background: #fff !important;
-                box-shadow: none !important;
-                color: #000;
-            }
-            .header img {
-                box-shadow: none !important;
-                border: 1px solid #ccc !important;
-            }
-            .container {
-                border: 1px solid #ccc !important;
+            body { background: #fff !important; }
+            .container { 
+                max-width: 100%; 
+                box-shadow: none !important; 
+                margin: 0; 
+                padding: 10mm;
+                height: 277mm;
             }
         }
     </style>
 </head>
 <body>
 <div class="container">
+    <!-- HEADER -->
     <div class="header">
-        <img src="<?= htmlspecialchars($logoPath) ?>" alt="لوگو">
-        <h1><?= htmlspecialchars($settings['agency_name']) ?><br>قرارداد خدمات عمره</h1>
-        <div class="date">تاریخ: <?= date('Y-m-d') ?></div>
+        <img src="<?= htmlspecialchars($logoPath) ?>" alt="Logo">
+        <div class="header-title">
+            <h1><?= htmlspecialchars($settings['agency_name'] ?? '') ?> - <?= htmlspecialchars($branch['name'] ?? '') ?></h1>
+            <div style="font-size: 9pt; color: #666;">قرارداد خدمات عمره</div>
+        </div>
+        <div class="header-date"><?= date('Y-m-d') ?></div>
     </div>
 
-<div class="contract" style="white-space: pre-line; line-height: 1.2;">
-    قرارداد عمره بین شرکت و معتمر شرکت سياحتي المقدس آدرس : آخر جاده میوند، څمکنی مارکیت، منزل اول، دفتر شماره سه، کابل <?php echo $settings['phone']; ?>
-    <table class="table table-bordered" style="width: 100%;">
+    <!-- MEMBERS TABLE -->
+    <table class="table">
         <tr>
-            <th>شماره</th>
-            <th>اسم</th>
-            <th>ولد</th>
-            <th>ولدیت</th>
-            <th>نوعه قرابت</th>
-            <th>نمبر پاسپورت</th>
-            <th>ولايت</th>  
-            <th>ولسوالي</th>
+            <th>#</th><th>اسم</th><th>ولد</th><th>ولدیت</th><th>رابطه</th><th>پاسپورت</th><th>ولایت</th><th>ولسوالی</th>
         </tr>
-        <?php foreach ($members as $index => $member) { ?>
-            <tr>
-                <td><?= $index + 1 ?></td>
-                <td><?= $member['name'] ?></td>
-                <td><?= $member['fname'] ?></td>
-                <td><?= $member['gfname'] ?></td>
-                <td><?= $member['relation'] ?></td>
-                <td><?= $member['passport_number'] ?></td>
-                <td><?= $member['province'] ?></td>
-                <td><?= $member['district'] ?></td>
-            </tr>
-        <?php } ?>
-    </table>    
-         این قرارداد بین شرکت (سیاحتی المقدس) واقع در (آخر جاده میوند څمکنی مارکیت) دارنده اجازه‌نامه شماره (<?php echo $settings['umrah_id']; ?>) وزارت ارشاد حج و اوقاف و شماره تماس (<?php echo $settings['phone']; ?>) که در این قرارداد بنام شرکت سیاحتی المقدس یاد می‌گردد و بین محترم (         <?= $members[0]['head_of_family'] ?>) فرزند (         <?= $familyHeadFatherName ?>) دارنده تذکره تابعیت (         <?= $familyHeadIdNumber ?>) و شماره تماس (         <?= $members[0]['contact'] ?>) اصالتاً و به نمایندگی از اعضای فامیل مندرج جدول ذیل که در این قرارداد بنام معتمر یاد می‌شود، با موارد و شرایط ذیل منعقد و واجب‌الاجرا می‌باشد.
-        <strong>مبنی و ضرورت قرارداد</strong>  
-        ماده اول  
-        این قرارداد بر اساس اصول مربوط جهت احقاق حق معتمر، حصول توافق جانبین و جلوگیری از ضیاع حقوق بین طرفین عقد می‌گردد.
-        <strong>موضوع قرارداد</strong>  
-        ماده دوم  
-        موضوع این قرارداد عبارت است از پذیرش، اخذ ویزه، تکت طیاره، اعزام و عرضه خدمات عمره.
-        <strong>تعهدات شرکت</strong>  
-        ماده سوم  
-        ارایه خدمات طبق مندرجات ماده پنجم این قرارداد. پذیرش و ثبت‌نام معتمر طبق مقررات ذی‌ربط. دریافت اسناد و مدارک لازم از معتمر. صدور تعرفه جهت پرداخت مصارف عمره به حساب بانکی شرکت. اخذ ویزه و اطمینان از صحت آن. رزرو تکت طیاره دوطرفه. ارایه خدمات ارشادی و تدویر حلقات درسی. تهیه و توزیع کتابچه و بروشورهای مرتبط. تهیه و توزیع کارت شناسایی. ارایه شماره تماس نمایندگان در افغانستان و عربستان.
-        <strong>تعهدات معتمر</strong>  
-        ماده چهارم  
-        مطالعه و پذیرش مفاد قرارداد. تحویل پاسپورت معتبر با کاپی تذکره و مدارک لازم. رعایت اصول و مقررات وضع شده. پرداخت مصارف عمره به حساب بانکی شرکت. تسلیم رسید بانکی. حضور به‌موقع در میدان هوایی.
-        <strong>شرح خدمات و قیمت آن</strong>  
-        ماده پنجم  
-        اخذ ویزه عمره: مبلغ (<?= $umrahVisaAmount ?>) دالر. تکت طیاره دوطرفه از شرکت هوایی (<?= $airlineName ?>): مبلغ (<?= $ticketAmount ?>) دالر. در صورت اخذ تکت توسط معتمر، شرکت مسئولیتی ندارد. هوتل مکه: (<?= $makkahDayNumber ?>) شب، (<?= $makkahNightNumber ?>) روز، درجه (<?= $makkahHotelDegree ?>)، بنام (<?= $makkahHotelName ?>)، فاصله (<?= $makkahHotelDistance ?>) متر، اتاق (<?= $member['room_type'] ?>) نفره: مبلغ (<?= $makkahHotelAmount ?>) دالر. هوتل مدینه: (<?= $madinaDayNumber ?>) شب، (<?= $madinaNightNumber ?>) روز، درجه (<?= $madinaHotelDegree ?>)، بنام (<?= $madinaHotelName ?>)، فاصله (<?= $madinaHotelDistance ?>) متر، اتاق (<?= $member['room_type'] ?>) نفره: مبلغ (<?= $madinaHotelAmount ?>) دالر. ترانسپورت جده تا هوتل: مبلغ (<?= $amountAirportHotel ?>) دالر. ترانسپورت برگشت: مبلغ (<?= $amountHotelAirport ?>) دالر. بازدید از مشاعر مقدسه: مبلغ (<?= $visitingZiaratsAmount ?>) دالر. خدمات ارشادی و حلقات درسی: مبلغ (<?= $halaqatDarsiAmount ?>) دالر. سایر خدمات: به توافق طرفین. مجموع خدمات: مبلغ (<?= $totalAmount ?>) دالر. کمیشن شرکت: مبلغ (<?= $commissionAmount ?>) دالر. خدمات برای طفل: مبلغ (<?= $childServicesAmount ?>) دالر. کمیشن شرکت برای طفل: مبلغ (<?= $childCommissionAmount ?>) دالر.
+        <?php foreach ($members as $i => $m): ?>
+        <tr>
+            <td><?= $i + 1 ?></td>
+            <td><?= htmlspecialchars($m['name'] ?? '') ?></td>
+            <td><?= htmlspecialchars($m['fname'] ?? '') ?></td>
+            <td><?= htmlspecialchars($m['gfname'] ?? '') ?></td>
+            <td><?= htmlspecialchars($m['relation'] ?? '') ?></td>
+            <td><?= htmlspecialchars($m['passport_number'] ?? '') ?></td>
+            <td><?= htmlspecialchars($m['province'] ?? '') ?></td>
+            <td><?= htmlspecialchars($m['district'] ?? '') ?></td>
+        </tr>
+        <?php endforeach; ?>
+    </table>
 
-        <strong>تاریخ رفت و برگشت و مدت اقامت</strong>  
-        ماده ششم  
-        خدمات برای مدت (<?= $members[0]['duration'] ?>) روز معتبر است  
-        تاریخ رفت: <?= $members[0]['flight_date'] ?>  
-        تاریخ برگشت: <?= $members[0]['return_date'] ?>
+    <!-- CONTRACT INTRO -->
+    <div class="article">
+        <strong>قرارداد عمره</strong>: این قرارداد بین شرکت <?= htmlspecialchars($settings['agency_name']) ?> (شماره مجوز: <?= htmlspecialchars($settings['umrah_id'] ?? '') ?>, تماس: <?= htmlspecialchars($settings['phone'] ?? '') ?>) و <?= htmlspecialchars($members[0]['head_of_family'] ?? '') ?> (تذکره: <?= htmlspecialchars($familyHeadIdNumber ?? '') ?>) منعقد می‌باشد.
+    </div>
 
-        <div class="signature">
-            <p>امضا و شصت معتمر (.........................)  </p>
-            <p>امضا و مهر شرکت (..........................)  </p>
-        </div>
+    <!-- ARTICLES -->
+    <div class="section-title">ماده اول: مبنی و ضرورت</div>
+    <div class="article">این قرارداد جهت احقاق حقوق معتمر و جلوگیری از ضیاع حقوق میان طرفین عقد می‌گردد.</div>
+
+    <div class="section-title">ماده دوم: موضوع</div>
+    <div class="article">موضوع: پذیرش، اخذ ویزه، تکت، و ارایه خدمات عمره.</div>
+
+    <div class="section-title">ماده سوم: تعهدات شرکت</div>
+    <div class="article">ارایه خدمات؛ اخذ مدارک؛ صدور تعرفه؛ رزرو تکت؛ ارایه خدمات ارشادی؛ تهیه کارت شناسایی؛ ارایه شماره تماس نمایندگان.</div>
+
+    <div class="section-title">ماده چهارم: تعهدات معتمر</div>
+    <div class="article">مطالعه قرارداد؛ تحویل پاسپورت معتبر؛ رعایت مقررات؛ پرداخت هزینه‌ها؛ حضور به‌موقع میدان هوایی.</div>
+
+    <div class="section-title">ماده پنجم: خدمات و هزینه‌ها</div>
+    <table class="table" style="font-size: 7.5pt; margin: 2mm 0;">
+        <tr>
+            <th style="width: 50%">خدمت</th><th>مبلغ ($)</th>
+        </tr>
+        <tr><td>ویزه عمره</td><td><?= htmlspecialchars($umrahVisaAmount ?? '') ?></td></tr>
+        <tr><td>تکت (<?= htmlspecialchars($airlineName ?? '') ?>)</td><td><?= htmlspecialchars($ticketAmount ?? '') ?></td></tr>
+        <tr><td>هوتل مکه (<?= $makkahDayNumber ?> شب / <?= $makkahNightNumber ?> روز)</td><td><?= htmlspecialchars($makkahHotelAmount ?? '') ?></td></tr>
+        <tr><td>هوتل مدینه (<?= $madinaDayNumber ?> شب / <?= $madinaNightNumber ?> روز)</td><td><?= htmlspecialchars($madinaHotelAmount ?? '') ?></td></tr>
+        <tr><td>ترانسپورت (جده - هوتل)</td><td><?= htmlspecialchars($amountAirportHotel ?? '') ?></td></tr>
+        <tr><td>ترانسپورت (برگشت)</td><td><?= htmlspecialchars($amountHotelAirport ?? '') ?></td></tr>
+        <tr><td>بازدید مشاعر</td><td><?= htmlspecialchars($visitingZiaratsAmount ?? '') ?></td></tr>
+        <tr><td>خدمات ارشادی</td><td><?= htmlspecialchars($halaqatDarsiAmount ?? '') ?></td></tr>
+        <tr style="background: #e9f0f7; font-weight: bold;"><td>کل خدمات</td><td><?= htmlspecialchars($totalAmount ?? '') ?></td></tr>
+        <tr><td>کمیشن شرکت</td><td><?= htmlspecialchars($commissionAmount ?? '') ?></td></tr>
+        <tr><td>خدمات طفل</td><td><?= htmlspecialchars($childServicesAmount ?? '') ?></td></tr>
+        <tr><td>کمیشن طفل</td><td><?= htmlspecialchars($childCommissionAmount ?? '') ?></td></tr>
+    </table>
+
+    <div class="section-title">ماده ششم: تاریخ سفر</div>
+    <div class="article" style="margin-bottom: 2mm;">
+        مدت: <?= htmlspecialchars($members[0]['duration'] ?? '') ?> روز | 
+        رفت: <?= htmlspecialchars($members[0]['flight_date'] ?? '') ?> | 
+        برگشت: <?= htmlspecialchars($members[0]['return_date'] ?? '') ?>
+    </div>
+
+    <!-- SIGNATURE -->
+    <div class="signature">
+        <div class="sig-line">معتمر</div>
+        <div class="sig-line">شرکت</div>
     </div>
 </div>
-
 </body>
 </html>

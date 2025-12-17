@@ -79,16 +79,10 @@ function submitGroupTicketForm() {
     form.submit();
 
     // Reset
-    selectedGroupMembers = [];
-    updateGroupTicketSelection();
-    $('#groupTicketModal').modal('hide');
-    Swal.fire({
-        icon: 'success',
-        title: 'Group Ticket Generated',
-        text: 'Your group ticket has been generated successfully!',
-        timer: 3000,
-        showConfirmButton: false
-    });
+     selectedGroupMembers = [];
+     updateGroupTicketSelection();
+     $('#groupTicketModal').modal('hide');
+     showToast('success', 'Your group ticket has been generated successfully!');
 }
 
 // Event listeners
@@ -99,7 +93,7 @@ document.addEventListener('DOMContentLoaded', function () {
 
     document.getElementById('generateGroupTicketBtn')?.addEventListener('click', () => {
         if (selectedGroupMembers.length === 0) {
-            Swal.fire({ icon: 'warning', title: 'No Members', text: 'Please select members first.' });
+            showToast('warning', 'Please select members first.');
             return;
         }
         submitGroupTicketForm();

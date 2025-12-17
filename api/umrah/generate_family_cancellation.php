@@ -16,13 +16,13 @@ $branch_id = $_SESSION['branch_id'];
 
 // Language handling
 $lang = isset($_GET['lang']) && in_array($_GET['lang'], ['en', 'ps', 'fa']) ? $_GET['lang'] : 'en';
-$lang_file = __DIR__ . '/../includes/languages/' . $lang . '/umrah_cancellation.php';
+$lang_file = '../../includes/languages/' . $lang . '/umrah_cancellation.php';
 
 if (file_exists($lang_file)) {
     $l = require($lang_file);
 } else {
     // Fallback to English
-    $l = require(__DIR__ . '/../includes/languages/en/umrah_cancellation.php');
+    $l = require('../../includes/languages/en/umrah_cancellation.php');
 }
 $isRtl = ($lang === 'ps' || $lang === 'fa');
 
@@ -31,7 +31,7 @@ $isAjaxRequest = !empty($_SERVER['HTTP_X_REQUESTED_WITH']) &&
                strtolower($_SERVER['HTTP_X_REQUESTED_WITH']) == 'xmlhttprequest';
 
 // Create directory if it doesn't exist
-$uploadsBaseDir = '../uploads';
+$uploadsBaseDir = '../../uploads';
 $uploadsSubDir = 'umrah/umrah_cancellations';
 $uploadsDir = $uploadsBaseDir . '/' . $uploadsSubDir;
 
@@ -59,7 +59,7 @@ if (!is_writable($absoluteUploadsDir)) {
 
 // Check if family ID is provided (prioritize family_id over booking_id)
 $familyId = null;
-$bookingIds = [];
+$selectedBookingIds = [];
 
 if (isset($_GET['family_id'])) {
     $familyId = intval($_GET['family_id']);
@@ -78,6 +78,15 @@ if (isset($_GET['family_id'])) {
     }
 } else {
     die('Family ID or Booking ID is required');
+}
+
+// Get selected booking IDs if provided
+if (isset($_GET['booking_ids'])) {
+    $bookingIdsParam = $_GET['booking_ids'];
+    if (!is_array($bookingIdsParam)) {
+        $bookingIdsParam = [$bookingIdsParam];
+    }
+    $selectedBookingIds = array_map(function($id) { return intval($id); }, $bookingIdsParam);
 }
 
 try {
@@ -104,12 +113,20 @@ try {
         LEFT JOIN suppliers s ON ubs.supplier_id = s.id
         LEFT JOIN clients c ON um.sold_to = c.id
         WHERE um.family_id = ? AND um.tenant_id = ? AND um.branch_id = ?
-        GROUP BY um.booking_id
-        ORDER BY um.booking_id ASC
     ";
+    
+    // Filter by selected booking IDs if provided
+    $params = [$_SESSION['user_id'], $familyId, $tenant_id, $branch_id];
+    if (!empty($selectedBookingIds)) {
+        $placeholders = implode(',', array_fill(0, count($selectedBookingIds), '?'));
+        $query .= " AND um.booking_id IN ($placeholders)";
+        $params = array_merge($params, $selectedBookingIds);
+    }
+    
+    $query .= " GROUP BY um.booking_id ORDER BY um.booking_id ASC";
 
     $stmt = $pdo->prepare($query);
-    $stmt->execute([$_SESSION['user_id'], $familyId, $tenant_id, $branch_id]);
+    $stmt->execute($params);
     $bookings = $stmt->fetchAll(PDO::FETCH_ASSOC);
 
     if (!$bookings) {
@@ -122,11 +139,33 @@ try {
     // Use family name for filename, or first member's name as fallback
     $family_name = $family['head_of_family'] ?: $bookings[0]['name'];
 
-    // Get settings for company info
-    $settingsQuery = "SELECT * FROM settings WHERE tenant_id = ?";
-    $settingsStmt = $pdo->prepare($settingsQuery);
-    $settingsStmt->execute([$tenant_id]);
-    $settings = $settingsStmt->fetch(PDO::FETCH_ASSOC);
+// Fetch settings data (using PDO connection)
+try {
+    $settingStmt = $pdo->prepare("SELECT * FROM settings WHERE tenant_id = ?");
+    $settingStmt->bindParam(1, $tenant_id, PDO::PARAM_INT);
+    $settingStmt->execute();
+    $settings = $settingStmt->fetch(PDO::FETCH_ASSOC);
+
+    if (!$settings) {
+        // Fallback defaults if no settings row found
+        $settings = ['agency_name' => 'Travel Agency'];
+    }
+} catch (Exception $e) {
+    error_log("Settings Error: " . $e->getMessage());
+    $settings = ['agency_name' => 'Travel Agency'];
+}
+
+// Fetch branch data (from branches table)
+try {
+    $branchStmt = $pdo->prepare("SELECT name, code, phone, address, email FROM branches WHERE id = ? AND tenant_id = ?");
+    $branchStmt->bindParam(1, $branch_id, PDO::PARAM_INT);
+    $branchStmt->bindParam(2, $tenant_id, PDO::PARAM_INT);
+    $branchStmt->execute();
+    $branch = $branchStmt->fetch(PDO::FETCH_ASSOC);
+} catch (Exception $e) {
+    error_log("Branch Error: " . $e->getMessage());
+    $branch = null;
+}
 
 
     // Prepare cancellation details

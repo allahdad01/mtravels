@@ -3,6 +3,7 @@ const AIRLINES = [
     // Middle East & Central Asia (Expanded)
     { code: 'RQ', name: 'KamAir (RQ)' },
     { code: 'IR', name: 'Iran Air (IR)' },
+    { code: 'MRJ', name: 'Meraj Air (IR)' },
     { code: 'W5', name: 'Mahan Airlines (W5)' },
     { code: 'EP', name: 'Iran Aseman Airlines (EP)' },
     { code: 'QB', name: 'Qeshm Airlines (QB)' },

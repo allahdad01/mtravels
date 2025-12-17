@@ -17,18 +17,18 @@ $branch_id = $_SESSION['branch_id'];
 $user_id = $_SESSION['user_id'];
 // Language handling
 $lang = isset($_GET['lang']) && in_array($_GET['lang'], ['en', 'ps', 'fa']) ? $_GET['lang'] : 'en';
-$lang_file = __DIR__ . '/../includes/languages/' . $lang . '/family_completion.php';
+$lang_file = '../../includes/languages/' . $lang . '/family_completion.php';
 
 if (file_exists($lang_file)) {
     $l = require($lang_file);
 } else {
     // Fallback to English
-    $l = require(__DIR__ . '/../includes/languages/en/umrah_completion.php');
+    $l = require('..//../includes/languages/en/umrah_completion.php');
 }
 $isRtl = ($lang === 'ps' || $lang === 'fa');
 
 // Create directory if it doesn't exist
-$uploadsDir = '../uploads/umrah/family_completions';
+$uploadsDir = '../../uploads/umrah/family_completions';
 if (!is_dir($uploadsDir)) {
     mkdir($uploadsDir, 0755, true);
 }
@@ -40,42 +40,85 @@ if (!isset($_GET['family_id'])) {
 
 $familyId = intval($_GET['family_id']);
 
-try {
-    // Get family details with related information
-    $query = "
-        SELECT f.*, u.name as processed_by_name
-        FROM families f
-        LEFT JOIN users u ON u.id = ?
-        WHERE f.family_id = ? AND f.tenant_id = ? AND f.branch_id = ?
-    ";
-
-    $stmt = $pdo->prepare($query);
-    $stmt->execute([$user_id, $familyId, $tenant_id, $branch_id]);
-    $family = $stmt->fetch(PDO::FETCH_ASSOC);
-    
-    if (!$family) {
-        die('Family not found');
+// Get selected member IDs if provided
+$selectedMemberIds = [];
+if (isset($_GET['member_ids'])) {
+    $memberIds = $_GET['member_ids'];
+    if (!is_array($memberIds)) {
+        $memberIds = [$memberIds];
     }
+    $selectedMemberIds = array_map(function($id) { return intval($id); }, $memberIds);
+}
 
-    // Get family members
-    $membersQuery = "
-        SELECT ub.*, c.name as client_name, GROUP_CONCAT(DISTINCT s.name) as supplier_name
-        FROM umrah_bookings ub
-        LEFT JOIN clients c ON ub.sold_to = c.id
-        LEFT JOIN umrah_booking_services ubs ON ub.booking_id = ubs.booking_id
-        LEFT JOIN suppliers s ON ubs.supplier_id = s.id
-        WHERE ub.family_id = ? AND ub.tenant_id = ? AND ub.branch_id = ?
-        GROUP BY ub.booking_id
-    ";
-    $membersStmt = $pdo->prepare($membersQuery);
-    $membersStmt->execute([$familyId, $tenant_id, $branch_id]);
-    $members = $membersStmt->fetchAll(PDO::FETCH_ASSOC);
+try {
+     // Get family details with related information
+     $query = "
+         SELECT f.*, u.name as processed_by_name
+         FROM families f
+         LEFT JOIN users u ON u.id = ?
+         WHERE f.family_id = ? AND f.tenant_id = ? AND f.branch_id = ?
+     ";
 
-    // Get settings for company info
-    $settingsQuery = "SELECT * FROM settings WHERE tenant_id = ?";
-    $settingsStmt = $pdo->prepare($settingsQuery);
-    $settingsStmt->execute([$tenant_id]);
-    $settings = $settingsStmt->fetch(PDO::FETCH_ASSOC);
+     $stmt = $pdo->prepare($query);
+     $stmt->execute([$user_id, $familyId, $tenant_id, $branch_id]);
+     $family = $stmt->fetch(PDO::FETCH_ASSOC);
+     
+     if (!$family) {
+         die('Family not found');
+     }
+
+     // Get family members
+     $membersQuery = "
+         SELECT ub.*, c.name as client_name, GROUP_CONCAT(DISTINCT s.name) as supplier_name
+         FROM umrah_bookings ub
+         LEFT JOIN clients c ON ub.sold_to = c.id
+         LEFT JOIN umrah_booking_services ubs ON ub.booking_id = ubs.booking_id
+         LEFT JOIN suppliers s ON ubs.supplier_id = s.id
+         WHERE ub.family_id = ? AND ub.tenant_id = ? AND ub.branch_id = ?
+     ";
+     
+     // Filter by selected member IDs if provided
+     if (!empty($selectedMemberIds)) {
+         $placeholders = implode(',', array_fill(0, count($selectedMemberIds), '?'));
+         $membersQuery .= " AND ub.booking_id IN ($placeholders)";
+         $params = array_merge([$familyId, $tenant_id, $branch_id], $selectedMemberIds);
+     } else {
+         $params = [$familyId, $tenant_id, $branch_id];
+     }
+     
+     $membersQuery .= " GROUP BY ub.booking_id";
+     
+     $membersStmt = $pdo->prepare($membersQuery);
+     $membersStmt->execute($params);
+     $members = $membersStmt->fetchAll(PDO::FETCH_ASSOC);
+
+// Fetch settings data (using PDO connection)
+try {
+    $settingStmt = $pdo->prepare("SELECT * FROM settings WHERE tenant_id = ?");
+    $settingStmt->bindParam(1, $tenant_id, PDO::PARAM_INT);
+    $settingStmt->execute();
+    $settings = $settingStmt->fetch(PDO::FETCH_ASSOC);
+
+    if (!$settings) {
+        // Fallback defaults if no settings row found
+        $settings = ['agency_name' => 'Travel Agency'];
+    }
+} catch (Exception $e) {
+    error_log("Settings Error: " . $e->getMessage());
+    $settings = ['agency_name' => 'Travel Agency'];
+}
+
+// Fetch branch data (from branches table)
+try {
+    $branchStmt = $pdo->prepare("SELECT name, code, phone, address, email FROM branches WHERE id = ? AND tenant_id = ?");
+    $branchStmt->bindParam(1, $branch_id, PDO::PARAM_INT);
+    $branchStmt->bindParam(2, $tenant_id, PDO::PARAM_INT);
+    $branchStmt->execute();
+    $branch = $branchStmt->fetch(PDO::FETCH_ASSOC);
+} catch (Exception $e) {
+    error_log("Branch Error: " . $e->getMessage());
+    $branch = null;
+}
     
 
     // Get completion details from POST data

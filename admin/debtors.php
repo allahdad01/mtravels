@@ -37,30 +37,45 @@ include '../api/debtor/debtors_handler.php';
 
 // Fetch debtors list
 $status_filter = isset($_GET['status']) && $_GET['status'] === 'inactive' ? 'inactive' : 'active';
-$status = $status_filter === 'inactive' ? 0 : 1;
 
 try {
-    // Get total count
-    $countStmt = $pdo->prepare("SELECT COUNT(*) as total FROM debtors WHERE status = ? AND tenant_id = ? AND branch_id = ?");
-    $countStmt->execute([$status, $tenant_id, $branch_id]);
-    $total_count = $countStmt->fetch(PDO::FETCH_ASSOC)['total'];
-    
-    // Pagination
-    $items_per_page = 10;
-    $current_page = isset($_GET['page']) ? max(1, intval($_GET['page'])) : 1;
-    $offset = ($current_page - 1) * $items_per_page;
-    $total_pages = ceil($total_count / $items_per_page);
-    
-    // Fetch debtors with pagination
-    $stmt = $pdo->prepare("SELECT * FROM debtors WHERE status = ? AND tenant_id = ? AND branch_id = ? ORDER BY name ASC LIMIT ? OFFSET ?");
-    $stmt->execute([$status, $tenant_id, $branch_id, $items_per_page, $offset]);
-    $debtors = $stmt->fetchAll(PDO::FETCH_ASSOC);
-} catch (PDOException $e) {
-    error_log("Error fetching debtors: " . $e->getMessage());
-    $debtors = [];
-    $total_count = 0;
-    $total_pages = 0;
-}
+     // Get total count
+     $countStmt = $pdo->prepare("SELECT COUNT(*) as total FROM debtors WHERE status = ? AND tenant_id = ? AND branch_id = ?");
+     $countStmt->execute([$status_filter, $tenant_id, $branch_id]);
+     $total_count = $countStmt->fetch(PDO::FETCH_ASSOC)['total'];
+     
+     // Pagination
+     $items_per_page = 10;
+     $current_page = isset($_GET['page']) ? max(1, intval($_GET['page'])) : 1;
+     $offset = ($current_page - 1) * $items_per_page;
+     $total_pages = ceil($total_count / $items_per_page);
+     
+     // Fetch debtors with pagination
+     $stmt = $pdo->prepare("SELECT * FROM debtors WHERE status = ? AND tenant_id = ? AND branch_id = ? ORDER BY name ASC LIMIT ? OFFSET ?");
+     $stmt->execute([$status_filter, $tenant_id, $branch_id, $items_per_page, $offset]);
+     $debtors = $stmt->fetchAll(PDO::FETCH_ASSOC);
+     
+     // Fetch total debts by currency
+     $currencyStmt = $pdo->prepare("SELECT currency, SUM(balance) as total FROM debtors WHERE status = ? AND tenant_id = ? AND branch_id = ? GROUP BY currency");
+     $currencyStmt->execute([$status_filter, $tenant_id, $branch_id]);
+     $currency_results = $currencyStmt->fetchAll(PDO::FETCH_ASSOC);
+     $currency_totals = [];
+     foreach ($currency_results as $row) {
+         $currency_totals[$row['currency']] = $row['total'];
+     }
+     
+     // Fetch main accounts for the dropdown
+     $mainAcctStmt = $pdo->prepare("SELECT id, name FROM main_account WHERE tenant_id = ? AND branch_id = ? ORDER BY name ASC");
+     $mainAcctStmt->execute([$tenant_id, $branch_id]);
+     $main_accounts = $mainAcctStmt->fetchAll(PDO::FETCH_ASSOC);
+ } catch (PDOException $e) {
+     error_log("Error fetching debtors: " . $e->getMessage());
+     $debtors = [];
+     $total_count = 0;
+     $total_pages = 0;
+     $main_accounts = [];
+     $currency_totals = [];
+ }
 ?>
 
 
@@ -158,7 +173,265 @@ try {
                                         </div>
                                     </div>
                                 </div>
-    
+
+                        
+                                <div class="card shadow-sm border-0">
+                                    <div class="card-header bg-white border-bottom">
+                                        <h5 class="mb-0 text-primary">
+                                            <i class="feather icon-users mr-2"></i><?= __(ucfirst($status_filter ?? 'active') . '_debtors') ?>
+                                        </h5>
+                                    </div>
+                                    <div class="card-body p-3 p-md-4">
+                                        <div class="table-responsive">
+                                            <table class="table table-hover table-striped" id="debtorsTable" width="100%">
+                                                <thead class="thead-light">
+                                                    <tr>
+                                                        <th>
+                                                            <div class="d-flex align-items-center">
+                                                                <i class="feather icon-user mr-2 text-muted"></i><?= __('name') ?>
+                                                            </div>
+                                                        </th>
+                                                        <th class="d-none d-md-table-cell">
+                                                            <div class="d-flex align-items-center">
+                                                                <i class="feather icon-mail mr-2 text-muted"></i><?= __('email') ?>
+                                                            </div>
+                                                        </th>
+                                                        <th class="d-none d-lg-table-cell">
+                                                            <div class="d-flex align-items-center">
+                                                                <i class="feather icon-phone mr-2 text-muted"></i><?= __('phone') ?>
+                                                            </div>
+                                                        </th>
+                                                        <th class="d-none d-xl-table-cell">
+                                                            <div class="d-flex align-items-center">
+                                                                <i class="feather icon-map-pin mr-2 text-muted"></i><?= __('address') ?>
+                                                            </div>
+                                                        </th>
+                                                        <th>
+                                                            <div class="d-flex align-items-center">
+                                                                <i class="feather icon-credit-card mr-2 text-muted"></i><?= __('balance') ?>
+                                                            </div>
+                                                        </th>
+                                                        <th>
+                                                            <div class="d-flex align-items-center">
+                                                                <i class="feather icon-dollar-sign mr-2 text-muted"></i><?= __('currency') ?>
+                                                            </div>
+                                                        </th>
+                                                        <th class="text-center"><?= __('actions') ?></th>
+                                                    </tr>
+                                                </thead>
+                                                <tbody>
+                                                    <?php if (!empty($debtors) && count($debtors) > 0): ?>
+                                                        <?php foreach ($debtors as $debtor): ?>
+                                                            <tr class="debtor-row">
+                                                                <td>
+                                                                    <div class="d-flex align-items-center">
+                                                                        <div>
+                                                                            <h6 class="mb-0"><?php echo htmlspecialchars($debtor['name']); ?></h6>
+                                                                        </div>
+                                                                    </div>
+                                                                </td>
+                                                                <td class="d-none d-md-table-cell">
+                                                                    <?php if (!empty($debtor['email'])): ?>
+                                                                        <a href="mailto:<?php echo htmlspecialchars($debtor['email']); ?>" class="text-body">
+                                                                            <?php echo htmlspecialchars($debtor['email']); ?>
+                                                                        </a>
+                                                                    <?php else: ?>
+                                                                        <span class="text-muted"><?= __('not_provided') ?></span>
+                                                                    <?php endif; ?>
+                                                                </td>
+                                                                <td class="d-none d-lg-table-cell">
+                                                                    <?php if (!empty($debtor['phone'])): ?>
+                                                                        <a href="tel:<?php echo htmlspecialchars($debtor['phone']); ?>" class="text-body">
+                                                                            <?php echo htmlspecialchars($debtor['phone']); ?>
+                                                                        </a>
+                                                                    <?php else: ?>
+                                                                        <span class="text-muted"><?= __('not_provided') ?></span>
+                                                                    <?php endif; ?>
+                                                                </td>
+                                                                <td class="d-none d-xl-table-cell">
+                                                                    <?php if (!empty($debtor['address'])): ?>
+                                                                        <span class="text-truncate d-inline-block" style="max-width: 150px;" title="<?php echo htmlspecialchars($debtor['address']); ?>">
+                                                                            <?php echo htmlspecialchars($debtor['address']); ?>
+                                                                        </span>
+                                                                    <?php else: ?>
+                                                                        <span class="text-muted"><?= __('not_provided') ?></span>
+                                                                    <?php endif; ?>
+                                                                </td>
+                                                                <td>
+                                                                    <div class="d-flex align-items-center">
+                                                                        <?php if ($debtor['balance'] <= 0): ?>
+                                                                            <span class="badge badge-success mr-2"><?= __('paid') ?></span>
+                                                                        <?php elseif ($debtor['balance'] > 0): ?>
+                                                                            <span class="badge badge-warning mr-2"><?= __('pending') ?></span>
+                                                                        <?php endif; ?>
+                                                                        <span class="font-weight-medium">
+                                                                            <?php echo number_format($debtor['balance'], 2); ?>
+                                                                        </span>
+                                                                    </div>
+                                                                </td>
+                                                                <td>
+                                                                    <span class="badge badge-light-primary">
+                                                                        <?php echo htmlspecialchars($debtor['currency']); ?>
+                                                                    </span>
+                                                                </td>
+                                                                <td>
+                                                                    <div class="d-flex justify-content-center">
+                                                                        <div class="dropdown">
+                                                                            <button class="btn btn-primary btn-sm dropdown-toggle" type="button" id="debtorDropdown<?php echo h($debtor['id']); ?>" data-toggle="dropdown" aria-haspopup="true" aria-expanded="false">
+                                                                                <i class="feather icon-more-vertical"></i> <?= __('actions') ?>
+                                                                            </button>
+                                                                            <div class="dropdown-menu dropdown-menu-right" aria-labelledby="debtorDropdown<?php echo h($debtor['id']); ?>">
+                                                                                <?php if ($status_filter === 'active'): ?>
+                                                                                    <button type="button" class="dropdown-item" data-toggle="modal" data-target="#paymentModal<?php echo h($debtor['id']); ?>">
+                                                                                        <i class="feather icon-credit-card mr-2"></i><?= __('process_payment') ?>
+                                                                                    </button>
+                                                                                    <button type="button" class="dropdown-item" data-toggle="modal" data-target="#transactionsModal<?php echo h($debtor['id']); ?>">
+                                                                                        <i class="feather icon-list mr-2"></i><?= __('view_transactions') ?>
+                                                                                    </button>
+                                                                                    <button type="button" class="dropdown-item" data-toggle="modal" data-target="#editDebtorModal<?php echo h($debtor['id']); ?>">
+                                                                                        <i class="feather icon-edit-2 mr-2"></i><?= __('edit_debtor') ?>
+                                                                                    </button>
+                                                                                    <a href="../api/debtor/print_debtor_statement.php?id=<?php echo h($debtor['id']); ?>" class="dropdown-item" target="_blank">
+                                                                                        <i class="feather icon-printer mr-2"></i><?= __('print_statement') ?>
+                                                                                    </a>
+                                                                                    <a href="../api/debtor/print_agreement.php?id=<?php echo h($debtor['id']); ?>" class="dropdown-item" target="_blank">
+                                                                                        <i class="feather icon-file-text mr-2"></i><?= __('print_agreement') ?>
+                                                                                    </a>
+                                                                                    <div class="dropdown-divider"></div>
+                                                                                    <?php if ($debtor['balance'] <= 0): ?>
+                                                                                        <form method="POST" class="d-inline deactivate-form" onsubmit="return confirm('<?= __('confirm_deactivate_debtor') ?>');">
+                                                                                            <input type="hidden" name="csrf_token" value="<?php echo h($_SESSION['csrf_token']); ?>">
+                                                                                            <input type="hidden" name="deactivate_debtor" value="1">
+                                                                                            <input type="hidden" name="debtor_id" value="<?php echo h($debtor['id']); ?>">
+                                                                                            <button type="submit" class="dropdown-item text-warning">
+                                                                                                <i class="feather icon-user-x mr-2"></i><?= __('deactivate_debtor') ?>
+                                                                                            </button>
+                                                                                        </form>
+                                                                                    <?php endif; ?>
+                                                                                    <button type="button" class="dropdown-item text-danger delete-debtor-btn" data-debtor-id="<?php echo h($debtor['id']); ?>" data-debtor-name="<?php echo htmlspecialchars($debtor['name']); ?>">
+                                                                                        <i class="feather icon-trash-2 mr-2"></i><?= __('delete_debtor') ?>
+                                                                                    </button>
+                                                                                <?php else: ?>
+                                                                                    <button type="button" class="dropdown-item" data-toggle="modal" data-target="#transactionsModal<?php echo h($debtor['id']); ?>">
+                                                                                        <i class="feather icon-list mr-2"></i><?= __('view_transactions') ?>
+                                                                                    </button>
+                                                                                    <a href="print_debtor_statement.php?id=<?php echo h($debtor['id']); ?>" class="dropdown-item" target="_blank">
+                                                                                        <i class="feather icon-printer mr-2"></i><?= __('print_statement') ?>
+                                                                                    </a>
+                                                                                    <div class="dropdown-divider"></div>
+                                                                                    <form method="POST" class="d-inline reactivate-form" onsubmit="return confirm('<?= __('confirm_reactivate_debtor') ?>');">
+                                                                                        <input type="hidden" name="csrf_token" value="<?php echo h($_SESSION['csrf_token']); ?>">
+                                                                                        <input type="hidden" name="reactivate_debtor" value="1">
+                                                                                        <input type="hidden" name="debtor_id" value="<?php echo h($debtor['id']); ?>">
+                                                                                        <button type="submit" class="dropdown-item text-success">
+                                                                                            <i class="feather icon-user-check mr-2"></i><?= __('reactivate_debtor') ?>
+                                                                                        </button>
+                                                                                    </form>
+                                                                                <?php endif; ?>
+                                                                            </div>
+                                                                        </div>
+                                                                    </div>
+                                                                </td>
+                                                            </tr>
+                                                        <?php endforeach; ?>
+                                                    <?php else: ?>
+                                                        <tr>
+                                                            <td colspan="7" class="text-center py-5">
+                                                                <div class="empty-state">
+                                                                    <i class="feather icon-users text-muted" style="font-size: 48px;"></i>
+                                                                    <h5 class="mt-3"><?= __('no_debtors_found', ['status' => h($status_filter)]) ?></h5>
+                                                                    <p class="text-muted">
+                                                                        <?php if ($status_filter === 'active'): ?>
+                                                                            <?= __('add_debtors_to_start') ?>
+                                                                        <?php else: ?>
+                                                                            <?= __('deactivated_debtors_appear_here') ?>
+                                                                        <?php endif; ?>
+                                                                    </p>
+                                                                </div>
+                                                            </td>
+                                                        </tr>
+                                                    <?php endif; ?>
+                                                </tbody>
+                                            </table>
+                                        </div>
+                                        
+                                        <!-- Pagination -->
+                                        <div class="mt-3 mt-md-4">
+                                            <nav aria-label="Page navigation">
+                                                <ul class="pagination pagination-sm justify-content-center flex-wrap">
+                                                    <?php
+                                                    // Previous button
+                                                    if ($current_page > 1): ?>
+                                                        <li class="page-item">
+                                                            <a class="page-link" href="?page=<?= $current_page - 1 ?><?= $status_filter === 'inactive' ? '&status=inactive' : '' ?>" aria-label="Previous">
+                                                                <span aria-hidden="true">&laquo;</span>
+                                                            </a>
+                                                        </li>
+                                                    <?php else: ?>
+                                                        <li class="page-item disabled">
+                                                            <a class="page-link" href="#" aria-label="Previous">
+                                                                <span aria-hidden="true">&laquo;</span>
+                                                            </a>
+                                                        </li>
+                                                    <?php endif;
+                                                    
+                                                    // Page numbers
+                                                    $start_page = max(1, $current_page - 2);
+                                                    $end_page = min($total_pages, $current_page + 2);
+                                                    
+                                                    if ($start_page > 1): ?>
+                                                        <li class="page-item">
+                                                            <a class="page-link" href="?page=1<?= $status_filter === 'inactive' ? '&status=inactive' : '' ?>">1</a>
+                                                        </li>
+                                                        <?php if ($start_page > 2): ?>
+                                                            <li class="page-item disabled">
+                                                                <a class="page-link" href="#">...</a>
+                                                            </li>
+                                                        <?php endif;
+                                                    endif;
+                                                    
+                                                    for ($i = $start_page; $i <= $end_page; $i++): ?>
+                                                        <li class="page-item <?= $i === $current_page ? 'active' : '' ?>">
+                                                            <a class="page-link" href="?page=<?= $i ?><?= $status_filter === 'inactive' ? '&status=inactive' : '' ?>"><?= $i ?></a>
+                                                        </li>
+                                                    <?php endfor;
+                                                    
+                                                    if ($end_page < $total_pages): 
+                                                        if ($end_page < $total_pages - 1): ?>
+                                                            <li class="page-item disabled">
+                                                                <a class="page-link" href="#">...</a>
+                                                            </li>
+                                                        <?php endif; ?>
+                                                        <li class="page-item">
+                                                            <a class="page-link" href="?page=<?= $total_pages ?><?= $status_filter === 'inactive' ? '&status=inactive' : '' ?>"><?= $total_pages ?></a>
+                                                        </li>
+                                                    <?php endif;
+                                                    
+                                                    // Next button
+                                                    if ($current_page < $total_pages): ?>
+                                                        <li class="page-item">
+                                                            <a class="page-link" href="?page=<?= $current_page + 1 ?><?= $status_filter === 'inactive' ? '&status=inactive' : '' ?>" aria-label="Next">
+                                                                <span aria-hidden="true">&raquo;</span>
+                                                            </a>
+                                                        </li>
+                                                    <?php else: ?>
+                                                        <li class="page-item disabled">
+                                                            <a class="page-link" href="#" aria-label="Next">
+                                                                <span aria-hidden="true">&raquo;</span>
+                                                            </a>
+                                                        </li>
+                                                    <?php endif; ?>
+                                                </ul>
+                                            </nav>
+                                            <div class="text-center mt-2">
+                                                <small class="text-muted">
+                                                    <?= __('showing') ?> <?= count($debtors) ?> <?= __('of') ?> <?= $total_count ?> <?= __('debtors') ?> |
+                                                    <?= __('page') ?> <?= $current_page ?> <?= __('of') ?> <?= $total_pages ?>
+                                                </small>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
                                 <!-- Add Debtor Modal -->
                                 <div class="modal fade" id="addDebtorModal" tabindex="-1" role="dialog" aria-hidden="true">
                                     <div class="modal-dialog modal-dialog-centered" role="document">
@@ -293,261 +566,6 @@ try {
                                     </div>
                                 </div>
 
-                        
-                                <div class="card shadow-sm border-0">
-                                    <div class="card-header bg-white border-bottom">
-                                        <h5 class="mb-0 text-primary">
-                                            <i class="feather icon-users mr-2"></i><?= __(ucfirst($status_filter ?? 'active') . '_debtors') ?>
-                                        </h5>
-                                    </div>
-                                    <div class="card-body p-3 p-md-4">
-                                        <div class="table-responsive">
-                                            <table class="table table-hover table-striped" id="debtorsTable" width="100%">
-                                                <thead class="thead-light">
-                                                    <tr>
-                                                        <th>
-                                                            <div class="d-flex align-items-center">
-                                                                <i class="feather icon-user mr-2 text-muted"></i><?= __('name') ?>
-                                                            </div>
-                                                        </th>
-                                                        <th class="d-none d-md-table-cell">
-                                                            <div class="d-flex align-items-center">
-                                                                <i class="feather icon-mail mr-2 text-muted"></i><?= __('email') ?>
-                                                            </div>
-                                                        </th>
-                                                        <th class="d-none d-lg-table-cell">
-                                                            <div class="d-flex align-items-center">
-                                                                <i class="feather icon-phone mr-2 text-muted"></i><?= __('phone') ?>
-                                                            </div>
-                                                        </th>
-                                                        <th class="d-none d-xl-table-cell">
-                                                            <div class="d-flex align-items-center">
-                                                                <i class="feather icon-map-pin mr-2 text-muted"></i><?= __('address') ?>
-                                                            </div>
-                                                        </th>
-                                                        <th>
-                                                            <div class="d-flex align-items-center">
-                                                                <i class="feather icon-credit-card mr-2 text-muted"></i><?= __('balance') ?>
-                                                            </div>
-                                                        </th>
-                                                        <th>
-                                                            <div class="d-flex align-items-center">
-                                                                <i class="feather icon-dollar-sign mr-2 text-muted"></i><?= __('currency') ?>
-                                                            </div>
-                                                        </th>
-                                                        <th class="text-center"><?= __('actions') ?></th>
-                                                    </tr>
-                                                </thead>
-                                                <tbody>
-                                                    <?php if (!empty($debtors) && count($debtors) > 0): ?>
-                                                        <?php foreach ($debtors as $debtor): ?>
-                                                            <tr class="debtor-row">
-                                                                <td>
-                                                                    <div class="d-flex align-items-center">
-                                                                        <div class="avatar avatar-sm bg-light-primary rounded-circle text-primary mr-2">
-                                                                            <?php echo strtoupper(substr($debtor['name'], 0, 1)); ?>
-                                                                        </div>
-                                                                        <div>
-                                                                            <h6 class="mb-0"><?php echo htmlspecialchars($debtor['name']); ?></h6>
-                                                                        </div>
-                                                                    </div>
-                                                                </td>
-                                                                <td class="d-none d-md-table-cell">
-                                                                    <?php if (!empty($debtor['email'])): ?>
-                                                                        <a href="mailto:<?php echo htmlspecialchars($debtor['email']); ?>" class="text-body">
-                                                                            <?php echo htmlspecialchars($debtor['email']); ?>
-                                                                        </a>
-                                                                    <?php else: ?>
-                                                                        <span class="text-muted"><?= __('not_provided') ?></span>
-                                                                    <?php endif; ?>
-                                                                </td>
-                                                                <td class="d-none d-lg-table-cell">
-                                                                    <?php if (!empty($debtor['phone'])): ?>
-                                                                        <a href="tel:<?php echo htmlspecialchars($debtor['phone']); ?>" class="text-body">
-                                                                            <?php echo htmlspecialchars($debtor['phone']); ?>
-                                                                        </a>
-                                                                    <?php else: ?>
-                                                                        <span class="text-muted"><?= __('not_provided') ?></span>
-                                                                    <?php endif; ?>
-                                                                </td>
-                                                                <td class="d-none d-xl-table-cell">
-                                                                    <?php if (!empty($debtor['address'])): ?>
-                                                                        <span class="text-truncate d-inline-block" style="max-width: 150px;" title="<?php echo htmlspecialchars($debtor['address']); ?>">
-                                                                            <?php echo htmlspecialchars($debtor['address']); ?>
-                                                                        </span>
-                                                                    <?php else: ?>
-                                                                        <span class="text-muted"><?= __('not_provided') ?></span>
-                                                                    <?php endif; ?>
-                                                                </td>
-                                                                <td>
-                                                                    <div class="d-flex align-items-center">
-                                                                        <?php if ($debtor['balance'] <= 0): ?>
-                                                                            <span class="badge badge-success mr-2"><?= __('paid') ?></span>
-                                                                        <?php elseif ($debtor['balance'] > 0): ?>
-                                                                            <span class="badge badge-warning mr-2"><?= __('pending') ?></span>
-                                                                        <?php endif; ?>
-                                                                        <span class="font-weight-medium">
-                                                                            <?php echo number_format($debtor['balance'], 2); ?>
-                                                                        </span>
-                                                                    </div>
-                                                                </td>
-                                                                <td>
-                                                                    <span class="badge badge-light-primary">
-                                                                        <?php echo htmlspecialchars($debtor['currency']); ?>
-                                                                    </span>
-                                                                </td>
-                                                                <td>
-                                                                    <div class="d-flex flex-column flex-sm-row justify-content-center align-items-center">
-                                                                        <?php if ($status_filter === 'active'): ?>
-                                                                            <button type="button" class="btn btn-icon btn-primary btn-sm mr-1 mb-1 mb-sm-0" data-toggle="modal" data-target="#paymentModal<?php echo h($debtor['id']); ?>" title="<?= __('process_payment') ?>">
-                                                                                <i class="feather icon-credit-card"></i>
-                                                                            </button>
-                                                                            <button type="button" class="btn btn-icon btn-info btn-sm mr-1 mb-1 mb-sm-0" data-toggle="modal" data-target="#transactionsModal<?php echo h($debtor['id']); ?>" title="<?= __('view_transactions') ?>">
-                                                                                <i class="feather icon-list"></i>
-                                                                            </button>
-                                                                            <button type="button" class="btn btn-icon btn-warning btn-sm mr-1 mb-1 mb-sm-0" data-toggle="modal" data-target="#editDebtorModal<?php echo h($debtor['id']); ?>" title="<?= __('edit_debtor') ?>">
-                                                                                <i class="feather icon-edit-2"></i>
-                                                                            </button>
-                                                                            <a href="print_debtor_statement.php?id=<?php echo h($debtor['id']); ?>" class="btn btn-icon btn-secondary btn-sm mr-1 mb-1 mb-sm-0" target="_blank" title="<?= __('print_statement') ?>">
-                                                                                <i class="feather icon-printer"></i>
-                                                                            </a>
-                                                                            <a href="print_agreement.php?id=<?php echo h($debtor['id']); ?>" class="btn btn-icon btn-dark btn-sm mr-1 mb-1 mb-sm-0" target="_blank" title="<?= __('print_agreement') ?>">
-                                                                                <i class="feather icon-printer"></i>
-                                                                            </a>
-
-                                                                            <button type="button" class="btn btn-icon btn-danger btn-sm mr-1 mb-1 mb-sm-0 delete-debtor-btn" data-debtor-id="<?php echo h($debtor['id']); ?>" data-debtor-name="<?php echo htmlspecialchars($debtor['name']); ?>" title="<?= __('delete_debtor') ?>">
-                                                                                <i class="feather icon-trash-2"></i>
-                                                                            </button>
-
-                                                                            <?php if ($debtor['balance'] <= 0): ?>
-                                                                                <form method="POST" class="d-inline" name="debtor_status_form" onsubmit="return confirm('<?= __('confirm_deactivate_debtor') ?>');">
-                                                                                        <input type="hidden" name="deactivate_debtor" value="1">
-                                                                                        <input type="hidden" name="debtor_id" value="<?php echo h($debtor['id']); ?>">
-                                                                                        <button type="submit" name="deactivate_debtor" class="btn btn-icon btn-danger btn-sm mb-1 mb-sm-0" title="<?= __('deactivate_debtor') ?>">
-                                                                                        <i class="feather icon-user-x"></i>
-                                                                                    </button>
-                                                                                </form>
-                                                                            <?php endif; ?>
-                                                                        <?php else: ?>
-                                                                            <!-- Actions for inactive debtors -->
-                                                                            <button type="button" class="btn btn-icon btn-info btn-sm mr-1 mb-1 mb-sm-0" data-toggle="modal" data-target="#transactionsModal<?php echo h($debtor['id']); ?>" title="<?= __('view_transactions') ?>">
-                                                                                <i class="feather icon-list"></i>
-                                                                            </button>
-                                                                            <form method="POST" class="d-inline" name="debtor_status_form" onsubmit="return confirm('<?= __('confirm_reactivate_debtor') ?>');">
-                                                                                <input type="hidden" name="reactivate_debtor" value="1">
-                                                                                <input type="hidden" name="debtor_id" value="<?php echo h($debtor['id']); ?>">
-                                                                                <button type="submit" name="reactivate_debtor" class="btn btn-icon btn-success btn-sm mr-1 mb-1 mb-sm-0" title="<?= __('reactivate_debtor') ?>">
-                                                                                    <i class="feather icon-user-check"></i>
-                                                                                </button>
-                                                                                <a href="print_debtor_statement.php?id=<?php echo h($debtor['id']); ?>" class="btn btn-icon btn-secondary btn-sm mb-1 mb-sm-0" target="_blank" title="<?= __('print_statement') ?>">
-                                                                                <i class="feather icon-printer"></i>
-                                                                            </a>
-                                                                            </form>
-                                                                        <?php endif; ?>
-                                                                    </div>
-                                                                </td>
-                                                            </tr>
-                                                        <?php endforeach; ?>
-                                                    <?php else: ?>
-                                                        <tr>
-                                                            <td colspan="7" class="text-center py-5">
-                                                                <div class="empty-state">
-                                                                    <i class="feather icon-users text-muted" style="font-size: 48px;"></i>
-                                                                    <h5 class="mt-3"><?= __('no_debtors_found', ['status' => h($status_filter)]) ?></h5>
-                                                                    <p class="text-muted">
-                                                                        <?php if ($status_filter === 'active'): ?>
-                                                                            <?= __('add_debtors_to_start') ?>
-                                                                        <?php else: ?>
-                                                                            <?= __('deactivated_debtors_appear_here') ?>
-                                                                        <?php endif; ?>
-                                                                    </p>
-                                                                </div>
-                                                            </td>
-                                                        </tr>
-                                                    <?php endif; ?>
-                                                </tbody>
-                                            </table>
-                                        </div>
-                                        
-                                        <!-- Pagination -->
-                                        <div class="mt-3 mt-md-4">
-                                            <nav aria-label="Page navigation">
-                                                <ul class="pagination pagination-sm justify-content-center flex-wrap">
-                                                    <?php
-                                                    // Previous button
-                                                    if ($current_page > 1): ?>
-                                                        <li class="page-item">
-                                                            <a class="page-link" href="?page=<?= $current_page - 1 ?><?= $status_filter === 'inactive' ? '&status=inactive' : '' ?>" aria-label="Previous">
-                                                                <span aria-hidden="true">&laquo;</span>
-                                                            </a>
-                                                        </li>
-                                                    <?php else: ?>
-                                                        <li class="page-item disabled">
-                                                            <a class="page-link" href="#" aria-label="Previous">
-                                                                <span aria-hidden="true">&laquo;</span>
-                                                            </a>
-                                                        </li>
-                                                    <?php endif;
-                                                    
-                                                    // Page numbers
-                                                    $start_page = max(1, $current_page - 2);
-                                                    $end_page = min($total_pages, $current_page + 2);
-                                                    
-                                                    if ($start_page > 1): ?>
-                                                        <li class="page-item">
-                                                            <a class="page-link" href="?page=1<?= $status_filter === 'inactive' ? '&status=inactive' : '' ?>">1</a>
-                                                        </li>
-                                                        <?php if ($start_page > 2): ?>
-                                                            <li class="page-item disabled">
-                                                                <a class="page-link" href="#">...</a>
-                                                            </li>
-                                                        <?php endif;
-                                                    endif;
-                                                    
-                                                    for ($i = $start_page; $i <= $end_page; $i++): ?>
-                                                        <li class="page-item <?= $i === $current_page ? 'active' : '' ?>">
-                                                            <a class="page-link" href="?page=<?= $i ?><?= $status_filter === 'inactive' ? '&status=inactive' : '' ?>"><?= $i ?></a>
-                                                        </li>
-                                                    <?php endfor;
-                                                    
-                                                    if ($end_page < $total_pages): 
-                                                        if ($end_page < $total_pages - 1): ?>
-                                                            <li class="page-item disabled">
-                                                                <a class="page-link" href="#">...</a>
-                                                            </li>
-                                                        <?php endif; ?>
-                                                        <li class="page-item">
-                                                            <a class="page-link" href="?page=<?= $total_pages ?><?= $status_filter === 'inactive' ? '&status=inactive' : '' ?>"><?= $total_pages ?></a>
-                                                        </li>
-                                                    <?php endif;
-                                                    
-                                                    // Next button
-                                                    if ($current_page < $total_pages): ?>
-                                                        <li class="page-item">
-                                                            <a class="page-link" href="?page=<?= $current_page + 1 ?><?= $status_filter === 'inactive' ? '&status=inactive' : '' ?>" aria-label="Next">
-                                                                <span aria-hidden="true">&raquo;</span>
-                                                            </a>
-                                                        </li>
-                                                    <?php else: ?>
-                                                        <li class="page-item disabled">
-                                                            <a class="page-link" href="#" aria-label="Next">
-                                                                <span aria-hidden="true">&raquo;</span>
-                                                            </a>
-                                                        </li>
-                                                    <?php endif; ?>
-                                                </ul>
-                                            </nav>
-                                            <div class="text-center mt-2">
-                                                <small class="text-muted">
-                                                    <?= __('showing') ?> <?= count($debtors) ?> <?= __('of') ?> <?= $total_count ?> <?= __('debtors') ?> |
-                                                    <?= __('page') ?> <?= $current_page ?> <?= __('of') ?> <?= $total_pages ?>
-                                                </small>
-                                            </div>
-                                        </div>
-                                    </div>
-                                </div>
-
-
                                 <?php foreach ($debtors as $debtor): ?>
                                     <!-- Payment Modal -->
                                     <div class="modal fade" id="paymentModal<?php echo h($debtor['id']); ?>" tabindex="-1" role="dialog" aria-labelledby="paymentModalLabel<?php echo h($debtor['id']); ?>" aria-hidden="true">
@@ -560,10 +578,13 @@ try {
                                                     </button>
                                                 </div>
                                                 <form method="POST">
-                                                    <div class="modal-body">
-                                                        <input type="hidden" name="pay" value="1">
-                                                        <input type="hidden" name="debtor_id" value="<?php echo h($debtor['id']); ?>">
-                                                        <input type="hidden" name="debtor_currency" value="<?php echo h($debtor['currency']); ?>">
+                                                     <!-- CSRF Protection -->
+                                                     <input type="hidden" name="csrf_token" value="<?php echo h($_SESSION['csrf_token']); ?>">
+                                                     
+                                                     <div class="modal-body">
+                                                         <input type="hidden" name="pay" value="1">
+                                                         <input type="hidden" name="debtor_id" value="<?php echo h($debtor['id']); ?>">
+                                                         <input type="hidden" name="debtor_currency" value="<?php echo h($debtor['currency']); ?>">
                                                         
                                                         <div class="form-group">
                                                             <label class="form-label"><?= __('debtor_name') ?></label>
@@ -619,12 +640,6 @@ try {
                                                                     <option value="<?php echo h($account['id']); ?>"><?php echo h($account['name']); ?></option>
                                                                 <?php endforeach; ?>
                                                             </select>
-                                                        </div>
-                                                        
-                                                        <!-- Receipt -->
-                                                        <div class="form-group">
-                                                            <label class="form-label"><?= __('receipt') ?></label>
-                                                            <input type="text" class="form-control" name="receipt">
                                                         </div>
                                                     </div>
                                                     <div class="modal-footer">
@@ -732,9 +747,12 @@ try {
                                                     </button>
                                                 </div>
                                                 <form method="POST">
-                                                    <div class="modal-body">
-                                                        <input type="hidden" name="edit_debtor" value="1">
-                                                        <input type="hidden" name="debtor_id" value="<?php echo h($debtor['id']); ?>">
+                                                     <!-- CSRF Protection -->
+                                                     <input type="hidden" name="csrf_token" value="<?php echo h($_SESSION['csrf_token']); ?>">
+                                                     
+                                                     <div class="modal-body">
+                                                         <input type="hidden" name="edit_debtor" value="1">
+                                                         <input type="hidden" name="debtor_id" value="<?php echo h($debtor['id']); ?>">
                                                         
                                                         <div class="form-group">
                                                             <label class="form-label"><?= __('name') ?> *</label>

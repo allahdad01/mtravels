@@ -189,7 +189,7 @@ body {
                         <?php endif; ?>
                     </td>
                     <td width="70%" style="text-align: center; vertical-align: middle;">
-                        <div class="company-name"><?= $settings['agency_name'] ?></div>
+                        <div class="company-name"><?= $settings['agency_name'] ?> - <?php echo htmlspecialchars($branch['name']); ?></div>
                         <div class="title">د کورنۍ عمرې د منسوخولو فورمه</div>
                     </td>
                     <td width="15%" style="text-align: left; vertical-align: middle; font-size: 7pt;">
@@ -225,69 +225,59 @@ body {
         </table>
 
         <div class="section-header">د کورنۍ غړي</div>
-        <table class="members-table">
-            <thead>
-                <tr>
-                    <th>نوم</th>
-                    <th>د پاسپورټ شمیره</th>
-                    <th>بیرته راستنیدلي اسناد</th>
-                    <th>یادونې</th>
-                </tr>
-            </thead>
-            <tbody>
-                <?php 
-                // Use $bookings instead of $members to ensure we have the correct data
-                foreach ($bookings as $member): 
-                    $memberId = $member['booking_id'];
-                ?>
-                <tr>
-                    <td><?= htmlspecialchars($member['name']) ?></td>
-                    <td><?= htmlspecialchars($member['passport_number']) ?></td>
-                    <td>
-                        <?php 
-                        $docTypes = ['passport', 'id_card', 'photos'];
-                        foreach ($docTypes as $docType): 
-                            $memberPrefix = 'member_' . $memberId . '_';
-                            $returnKey = $memberPrefix . $docType;
-                            $isReturned = isset($returnedItems[$returnKey]) && $returnedItems[$returnKey] === '1';
-                            
-                            // Pashto labels for document types
-                            $docLabels = [
-                                'passport' => 'پاسپورټ',
-                                'id_card' => 'د پیژندنې کارت', 
-                                'photos' => 'عکسونه'
-                            ];
-                        ?>
-                            <div class="checkbox <?= $isReturned ? 'checked' : '' ?>"></div> 
-                            <?= $docLabels[$docType] . ($isReturned ? ' (بیرته ورکړل شوی)' : '') ?><br>
-                        <?php endforeach; ?>
-                    </td>
-                    <td>
-                        <?php 
-                        // Collect notes for this member
-                        $memberNotes = [];
-                        $docLabels = [
-                            'passport' => 'پاسپورټ',
-                            'id_card' => 'د پیژندنې کارت', 
-                            'photos' => 'عکسونه'
-                        ];
-                        
-                        foreach ($docTypes as $docType) {
-                            $memberPrefix = 'member_' . $memberId . '_';
-                            $notesKey = $memberPrefix . $docType;
-                            
-                            if (isset($itemNotes[$notesKey]) && !empty($itemNotes[$notesKey])) {
-                                $memberNotes[] = $docLabels[$docType] . ': ' . $itemNotes[$notesKey];
-                            }
-                        }
-                        
-                        echo htmlspecialchars(implode("\n", $memberNotes));
-                        ?>
-                    </td>
-                </tr>
-                <?php endforeach; ?>
-            </tbody>
-        </table>
+         <table class="members-table">
+             <thead>
+                 <tr>
+                     <th>نوم</th>
+                     <th>د پاسپورټ شمیره</th>
+                     <th>حالت</th>
+                 </tr>
+             </thead>
+             <tbody>
+                 <?php 
+                 // Use $bookings instead of $members to ensure we have the correct data
+                 foreach ($bookings as $member): 
+                     $memberId = $member['booking_id'];
+                 ?>
+                 <tr>
+                     <td><?= htmlspecialchars($member['name']) ?></td>
+                     <td><?= htmlspecialchars($member['passport_number']) ?></td>
+                     <td>
+                         <div class="checkbox checked"></div> 
+                         منسوخ شوی
+                     </td>
+                 </tr>
+                 <?php endforeach; ?>
+             </tbody>
+         </table>
+
+        <div class="section-header">بیرته راستنیدلي اسناد</div>
+         <table class="checklist-table">
+             <tr>
+                 <th width="70%">د اسناد ډول</th>
+                 <th width="30%">بیرته راستنیدل</th>
+             </tr>
+             <?php
+             $docLabels = [
+                 'passport' => 'پاسپورټ',
+                 'id_card' => 'د پیژندنې کارت', 
+                 'photos' => 'عکسونه',
+                 'other_docs' => 'نور اسناد'
+             ];
+
+             foreach ($docLabels as $key => $label) {
+                 ?>
+                 <tr>
+                     <td><?= htmlspecialchars($label) ?></td>
+                     <td class="text-center">
+                         <div class="checkbox checked"></div>
+                         هو
+                     </td>
+                 </tr>
+                 <?php
+             }
+             ?>
+         </table>
 
         <?php
         // Unpack template variables
@@ -325,14 +315,14 @@ body {
         </div>
         
         <div class="footer">
-            <?php if (!empty($settings['address'])): ?>
-                <?= htmlspecialchars($settings['address']) ?> |
+            <?php if (!empty($branch['address'])): ?>
+                <?= htmlspecialchars($branch['address']) ?> |
             <?php endif; ?>
-            <?php if (!empty($settings['phone'])): ?>
-                تیلیفون: <?= htmlspecialchars($settings['phone']) ?> |
+            <?php if (!empty($branch['phone'])): ?>
+                تیلیفون: <?= htmlspecialchars($branch['phone']) ?> |
             <?php endif; ?>
-            <?php if (!empty($settings['email'])): ?>
-                بریښنالیک: <?= htmlspecialchars($settings['email']) ?>
+            <?php if (!empty($branch['email'])): ?>
+                بریښنالیک: <?= htmlspecialchars($branch['email']) ?>
             <?php endif; ?>
             <br>
             د تولید نیټه <?= date('F d, Y') ?> | حواله: FAM-CANC-<?= $family['family_id'] ?>-<?= date('Ymd') ?>

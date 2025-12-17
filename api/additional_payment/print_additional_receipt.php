@@ -67,7 +67,7 @@ try {
 
 // Fetch branch data (from branches table)
 try {
-    $branchStmt = $pdo->prepare("SELECT name, code FROM branches WHERE id = ? AND tenant_id = ?");
+    $branchStmt = $pdo->prepare("SELECT name, code, phone, address FROM branches WHERE id = ? AND tenant_id = ?");
     $branchStmt->bindParam(1, $branch_id, PDO::PARAM_INT);
     $branchStmt->bindParam(2, $tenant_id, PDO::PARAM_INT);
     $branchStmt->execute();

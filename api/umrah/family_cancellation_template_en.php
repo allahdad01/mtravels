@@ -314,7 +314,7 @@ ob_start();
                     </tr>
                     <tr>
                         <td><?= $l['flight_date'] ?></td>
-                        <td><?= date('M d, Y', strtotime($bookings[0]['flight_date'])) ?></td>
+                        <td><?= !empty($bookings[0]['flight_date']) ? date('M d, Y', strtotime($bookings[0]['flight_date'])) : 'N/A' ?></td>
                     </tr>
                 </table>
             </div>
@@ -343,59 +343,34 @@ ob_start();
             <?php endforeach; ?>
         </table>
 
-        <!-- Document Return Section for Each Member -->
-        <?php foreach ($bookings as $index => $booking): ?>
-        <div class="member-section">
-            <div class="member-header">
-                <?= sprintf($l['member_documents'] ?? 'Member %d - %s (ID: %s)', 
-                    $index + 1, 
-                    htmlspecialchars($booking['name']), 
-                    $booking['booking_id']) ?>
-            </div>
-            
-            <table class="checklist-table">
+        <!-- Collective Document Return Section -->
+        <div class="section-header"><?= $l['documents_returned'] ?? 'Documents Returned' ?></div>
+        <table class="checklist-table">
+            <tr>
+                <th width="70%"><?= $l['document_item'] ?></th>
+                <th width="30%"><?= $l['returned'] ?></th>
+            </tr>
+            <?php
+            $documentItems = [
+                'passport' => $l['passport'],
+                'id_card' => $l['id_card'],
+                'photos' => $l['photos'],
+                'other_docs' => $l['other_documents']
+            ];
+
+            foreach ($documentItems as $key => $label) {
+                ?>
                 <tr>
-                    <th width="30%"><?= $l['document_item'] ?></th>
-                    <th width="20%"><?= $l['returned'] ?></th>
-                    <th width="20%"><?= $l['condition'] ?></th>
-                    <th width="30%"><?= $l['notes'] ?></th>
+                    <td><?= htmlspecialchars($label) ?></td>
+                    <td class="text-center">
+                        <div class="checkbox checked"></div>
+                        <?= $l['yes'] ?>
+                    </td>
                 </tr>
                 <?php
-                // Get returned items from the form data for this specific member
-                parse_str($_SERVER['QUERY_STRING'], $queryParams);
-                $memberPrefix = 'member_' . $booking['booking_id'] . '_';
-                $returnedItems = isset($queryParams['returned_items']) ? $queryParams['returned_items'] : [];
-                $itemConditions = isset($queryParams['item_condition']) ? $queryParams['item_condition'] : [];
-                $itemNotes = isset($queryParams['item_notes']) ? $queryParams['item_notes'] : [];
-
-                $documentItems = [
-                    'passport' => $l['passport'],
-                    'id_card' => $l['id_card'],
-                    'photos' => $l['photos'],
-                    'other_docs' => $l['other_documents']
-                ];
-
-                foreach ($documentItems as $key => $label) {
-                    $memberItemKey = $memberPrefix . $key;
-                    $isReturned = isset($returnedItems[$memberItemKey]) && $returnedItems[$memberItemKey] == '1';
-                    $condition = isset($itemConditions[$memberItemKey]) ? $itemConditions[$memberItemKey] : '';
-                    $note = isset($itemNotes[$memberItemKey]) ? $itemNotes[$memberItemKey] : '';
-                    ?>
-                    <tr>
-                        <td><?= htmlspecialchars($label) ?></td>
-                        <td class="text-center">
-                            <div class="checkbox <?= $isReturned ? 'checked' : '' ?>"></div>
-                            <?= $isReturned ? $l['yes'] : $l['no'] ?>
-                        </td>
-                        <td><?= htmlspecialchars($l[$condition] ?? $condition) ?></td>
-                        <td><?= htmlspecialchars($note) ?></td>
-                    </tr>
-                    <?php
-                }
-                ?>
-            </table>
-        </div>
-        <?php endforeach; ?>
+            }
+            ?>
+        </table>
 
         <?php if (!empty($_GET['cancellation_reason'])): ?>
         <div class="section-header"><?= $l['cancellation_reason_header'] ?></div>
@@ -439,14 +414,14 @@ ob_start();
         </div>
         
         <div class="footer">
-            <?php if (!empty($settings['address'])): ?>
-                <?= htmlspecialchars($settings['address']) ?> |
+            <?php if (!empty($branch['address'])): ?>
+                <?= htmlspecialchars($branch['address']) ?> |
             <?php endif; ?>
-            <?php if (!empty($settings['phone'])): ?>
-                Tel: <?= htmlspecialchars($settings['phone']) ?> |
+            <?php if (!empty($branch['phone'])): ?>
+                Tel: <?= htmlspecialchars($branch['phone']) ?> |
             <?php endif; ?>
-            <?php if (!empty($settings['email'])): ?>
-                Email: <?= htmlspecialchars($settings['email']) ?>
+            <?php if (!empty($branch['email'])): ?>
+                Email: <?= htmlspecialchars($branch['email']) ?>
             <?php endif; ?>
             <br>
             <?= $l['generated_on'] ?> <?= date('F d, Y') ?> | 

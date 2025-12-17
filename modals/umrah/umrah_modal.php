@@ -14,6 +14,35 @@
                     <input type="hidden" name="csrf_token" value="<?php echo h($_SESSION['csrf_token']); ?>">
 
                     <input type="hidden" name="family_id" id="familyId">
+                    <input type="file" id="passportDocumentFile" accept=".pdf,.jpg,.jpeg,.png" style="display:none;" />
+                    
+                    <!-- Document Upload Section -->
+                    <div class="card mb-3" style="background: linear-gradient(135deg, #f0f9ff 0%, #f5f3ff 100%); border: none;">
+                        <div class="card-header" style="background: linear-gradient(135deg, #4099ff 0%, #2ed8b6 100%); color: white; border-radius: 8px 8px 0 0;">
+                            <div class="d-flex align-items-center justify-content-between">
+                                <h6 class="mb-0">
+                                    <i class="feather icon-upload-cloud mr-2"></i>Quick Document Import
+                                </h6>
+                                <small style="opacity: 0.9;">Auto-fill form from Passport using MRZ</small>
+                            </div>
+                        </div>
+                        <div class="card-body" style="padding: 15px;">
+                            <div class="row">
+                                <div class="col-md-12">
+                                    <label style="font-weight: 600; margin-bottom: 10px; display: block;">
+                                        <i class="feather icon-file-text mr-1"></i>Passport
+                                    </label>
+                                    <div id="passportUploadZone" style="min-height: 100px; display: flex; align-items: center; justify-content: center; border: 2px dashed #ddd; border-radius: 5px; cursor: pointer; background-color: #fafafa;">
+                                        <div style="text-align: center; padding: 20px;">
+                                            <i class="feather icon-upload-cloud" style="font-size: 32px; color: #999; margin-bottom: 10px;"></i>
+                                            <p style="margin: 5px 0; font-size: 12px;">Drag & drop or click to extract passport info</p>
+                                            <small style="color: #ccc;">PDF or Image (Max 10MB) - Uses MRZ parsing</small>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
 
                     <!-- Common Fields: Sold To, Paid To -->
                     <div class="card mb-4">

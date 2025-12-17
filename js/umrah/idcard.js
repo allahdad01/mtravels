@@ -16,14 +16,10 @@ function selectForIdCard(bookingId, pilgrName) {
         showToast('Pilgrim removed from ID card selection', 'info');
     } else {
         // Add if not selected and under limit
-        if (selectedPilgrims.length >= 8) {
-            Swal.fire({
-                icon: 'warning',
-                title: 'Selection Limit Reached',
-                text: 'You can only select up to 8 pilgrims for ID cards.'
-            });
-            return;
-        }
+         if (selectedPilgrims.length >= 8) {
+             showToast('warning', 'You can only select up to 8 pilgrims for ID cards.');
+             return;
+         }
         
         selectedPilgrims.push({
             id: bookingId,
@@ -189,11 +185,7 @@ document.addEventListener('DOMContentLoaded', function() {
             
             // Check if pilgrims are selected
             if (!selectedPilgrims || selectedPilgrims.length === 0) {
-                Swal.fire({
-                    icon: 'warning',
-                    title: 'No Pilgrims Selected',
-                    text: 'Please select at least one pilgrim for ID cards.'
-                });
+                showToast('warning', 'Please select at least one pilgrim for ID cards.');
                 return;
             }
             
@@ -204,11 +196,7 @@ document.addEventListener('DOMContentLoaded', function() {
                 console.log('Updated hidden input:', selectedPilgrimsInput.value);
             } else {
                 console.error('selectedPilgrimsInput element not found');
-                Swal.fire({
-                    icon: 'error',
-                    title: 'Error',
-                    text: 'Form element not found. Please refresh the page.'
-                });
+                showToast('error', 'Form element not found. Please refresh the page.');
                 return;
             }
             
@@ -217,20 +205,12 @@ document.addEventListener('DOMContentLoaded', function() {
             const validityDays = document.getElementById('idCardValidityDays').value;
             
             if (!title) {
-                Swal.fire({
-                    icon: 'warning',
-                    title: 'Missing Information',
-                    text: 'Please enter ID card title.'
-                });
+                showToast('warning', 'Please enter ID card title.');
                 return;
             }
             
             if (!validityDays || validityDays < 1 || validityDays > 90) {
-                Swal.fire({
-                    icon: 'warning',
-                    title: 'Invalid Validity Period',
-                    text: 'Please enter a valid number of days (1-90).'
-                });
+                showToast('warning', 'Please enter a valid number of days (1-90).');
                 return;
             }
             
@@ -269,36 +249,21 @@ function submitIdCardForm() {
     const form = document.getElementById('idCardForm');
     if (!form) {
         console.error('ID Card form not found');
-        Swal.fire({
-            icon: 'error',
-            title: 'Error',
-            text: 'Form not found. Please refresh the page and try again.'
-        });
+        showToast('error', 'Form not found. Please refresh the page and try again.');
         return;
     }
     
     try {
         // Show loading indicator
-        Swal.fire({
-            title: 'Generating ID Cards...',
-            text: 'Please wait while we generate the ID cards.',
-            icon: 'info',
-            allowOutsideClick: false,
-            showConfirmButton: false,
-            willOpen: () => {
-                Swal.showLoading();
-            }
-        });
+        showToast('info', 'Generating ID Cards... Please wait.');
         
         console.log('Submitting form...');
         
         // Submit the form
         form.submit();
         
-        // Close the loading after a short delay
+        // Close the modal and show success after a short delay
         setTimeout(() => {
-            Swal.close();
-            
             // Close the modal
             $('#idCardModal').modal('hide');
             
@@ -307,23 +272,12 @@ function submitIdCardForm() {
             updateIdCardSelection();
             
             // Show success message
-            Swal.fire({
-                icon: 'success',
-                title: 'ID Cards Generated',
-                text: 'ID cards have been generated successfully!',
-                timer: 3000,
-                showConfirmButton: false
-            });
+            showToast('success', 'ID cards have been generated successfully!');
         }, 2000);
         
     } catch (error) {
         console.error('Error submitting form:', error);
-        Swal.close();
-        Swal.fire({
-            icon: 'error',
-            title: 'Error',
-            text: 'An error occurred while generating ID cards. Please try again.'
-        });
+        showToast('error', 'An error occurred while generating ID cards. Please try again.');
     }
 }
 

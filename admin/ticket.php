@@ -532,6 +532,7 @@ include '../includes/header.php';
                                     <script src="../js/ticket/passenger_info.js"></script>
                                     <script src="../js/ticket/toast.js"></script>
                                     <script src="../js/ticket/pdf-ticket-extract.js"></script>
+                                    <script src="../js/ticket/client-phone-autofill.js"></script>
 
 
 </body>

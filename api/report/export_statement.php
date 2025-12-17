@@ -166,17 +166,17 @@ try {
                     COALESCE(
                         (CASE 
                             WHEN ct.transaction_of = 'fund' THEN ct.description
-                            WHEN ct.transaction_of = 'ticket_sale' THEN tb.description
-                            WHEN ct.transaction_of = 'weight_sale' THEN CONCAT('Base Price: ', tw.base_price, ' - Sold: ', tw.sold_price, ' - Profit: ', tw.profit, ' - Rate: ', tw.exchange_rate, ' - Market: ', tw.market_exchange_rate, ' - ', tw.remarks)
-                            WHEN ct.transaction_of = 'ticket_reserve' THEN tr.description
-                            WHEN ct.transaction_of = 'ticket_refund' THEN rt.remarks
-                            WHEN ct.transaction_of = 'date_change' THEN dc.remarks
-                            WHEN ct.transaction_of = 'visa_sale' THEN vs.remarks
-                            WHEN ct.transaction_of = 'visa_refund' THEN vr.reason
-                            WHEN ct.transaction_of = 'umrah' THEN ''
-                            WHEN ct.transaction_of = 'umrah_refund' THEN ur.reason
-                            WHEN ct.transaction_of = 'hotel' THEN hb.remarks
-                            WHEN ct.transaction_of = 'hotel_refund' THEN hr.reason
+                            WHEN ct.transaction_of = 'ticket_sale' THEN ct.description
+                            WHEN ct.transaction_of = 'weight_sale' THEN ct.description
+                            WHEN ct.transaction_of = 'ticket_reserve' THEN ct.description
+                            WHEN ct.transaction_of = 'ticket_refund' THEN ct.description
+                            WHEN ct.transaction_of = 'date_change' THEN ct.description
+                            WHEN ct.transaction_of = 'visa_sale' THEN ct.description
+                            WHEN ct.transaction_of = 'visa_refund' THEN ct.description
+                            WHEN ct.transaction_of = 'umrah' THEN ct.description
+                            WHEN ct.transaction_of = 'umrah_refund' THEN ct.description
+                            WHEN ct.transaction_of = 'hotel' THEN ct.description
+                            WHEN ct.transaction_of = 'hotel_refund' THEN ct.description
                             ELSE ''
                         END), 'N/A'
                     ) AS remark
@@ -424,14 +424,14 @@ try {
                     COALESCE(
                         (CASE 
                             WHEN st.transaction_of = 'fund' THEN st.remarks
-                            WHEN st.transaction_of = 'ticket_sale' THEN tb.description
-                            WHEN st.transaction_of = 'weight_sale' THEN CONCAT('Base Price: ', tw.base_price, ' - Sold: ', tw.sold_price, ' - Profit: ', tw.profit, ' - Rate: ', tw.exchange_rate, ' - Market: ', tw.market_exchange_rate, ' - ', tw.remarks)
-                            WHEN st.transaction_of = 'ticket_reserve' THEN tr.description
-                            WHEN st.transaction_of = 'ticket_refund' THEN rt.remarks
-                            WHEN st.transaction_of = 'date_change' THEN dc.remarks
-                            WHEN st.transaction_of = 'visa_sale' THEN vs.remarks
-                            WHEN st.transaction_of = 'visa_refund' THEN vr.reason
-                            WHEN st.transaction_of = 'hotel' THEN hb.remarks
+                            WHEN st.transaction_of = 'ticket_sale' THEN st.remarks
+                            WHEN st.transaction_of = 'weight_sale' THEN st.remarks
+                            WHEN st.transaction_of = 'ticket_reserve' THEN st.remarks
+                            WHEN st.transaction_of = 'ticket_refund' THEN st.remarks
+                            WHEN st.transaction_of = 'date_change' THEN st.remarks
+                            WHEN st.transaction_of = 'visa_sale' THEN st.remarks
+                            WHEN st.transaction_of = 'visa_refund' THEN st.remarks
+                            WHEN st.transaction_of = 'hotel' THEN st.remarks
                             ELSE ''
                         END), 'N/A'
                     ) AS remark
@@ -490,20 +490,6 @@ try {
                     END as transaction_date,
                     mt.type,
                     mt.amount,
-                    COALESCE(
-                        (CASE 
-                            WHEN mt.transaction_of = 'fund' THEN CONCAT(mt.description)
-                            WHEN mt.transaction_of = 'ticket_sale' THEN CONCAT(tb.description)
-                            WHEN mt.transaction_of = 'weight_sale' THEN CONCAT('Weight: ', tw.weight, 'kg - Base Price: ', tw.base_price, ' - Sold Price: ', tw.sold_price, ' - Profit: ', tw.profit, ' - Exchange Rate: ', tw.exchange_rate, ' - Market Rate: ', tw.market_exchange_rate, ' - ', tw.remarks)
-                            WHEN mt.transaction_of = 'ticket_reserve' THEN CONCAT(tr.description)
-                            WHEN mt.transaction_of = 'ticket_refund' THEN CONCAT(rt.remarks)
-                            WHEN mt.transaction_of = 'date_change' THEN CONCAT(dc.remarks)
-                            WHEN mt.transaction_of = 'visa_sale' THEN CONCAT(vs.remarks)
-                            WHEN mt.transaction_of = 'visa_refund' THEN CONCAT(vr.reason)
-                            WHEN mt.transaction_of = 'hotel' THEN CONCAT(hb.remarks)
-                            ELSE ''
-                        END), 'N/A'
-                    ) AS remark,
                     mt.transaction_of,
                     mt.reference_id,
                     mt.balance,
@@ -610,7 +596,7 @@ try {
                             ELSE ''
                         END), 'N/A'
                     ) AS sector,
-                    mt.description as remark
+                    mt.description as remarks
                 FROM main_account_transactions mt
                 LEFT JOIN ticket_bookings tb ON tb.id = mt.reference_id AND mt.transaction_of = 'ticket_sale'
                 LEFT JOIN ticket_weights tw ON tw.id = mt.reference_id AND mt.transaction_of = 'weight_sale'

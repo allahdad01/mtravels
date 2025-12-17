@@ -1,6 +1,6 @@
 // Print debtor receipt function
 function printDebtorReceipt(transactionId) {
-    window.open(`../../api/debtor/print_debtor_receipt.php?id=${transactionId}`, '_blank');
+    window.open(`../api/debtor/print_debtor_receipt.php?id=${transactionId}`, '_blank');
 }
 
 // This script will ensure the edit transaction button works

@@ -30,10 +30,33 @@ try {
         die('User not found');
     }
 
-    // Fetch company settings
-  $settingStmt = $pdo->prepare("SELECT * FROM settings WHERE tenant_id = ?");
-$settingStmt->execute([$tenant_id]);
-$settings = $settingStmt->fetch(PDO::FETCH_ASSOC);
+// Fetch settings data (using PDO connection)
+try {
+    $settingStmt = $pdo->prepare("SELECT * FROM settings WHERE tenant_id = ?");
+    $settingStmt->bindParam(1, $tenant_id, PDO::PARAM_INT);
+    $settingStmt->execute();
+    $settings = $settingStmt->fetch(PDO::FETCH_ASSOC);
+
+    if (!$settings) {
+        // Fallback defaults if no settings row found
+        $settings = ['agency_name' => 'Travel Agency'];
+    }
+} catch (Exception $e) {
+    error_log("Settings Error: " . $e->getMessage());
+    $settings = ['agency_name' => 'Travel Agency'];
+}
+
+// Fetch branch data (from branches table)
+try {
+    $branchStmt = $pdo->prepare("SELECT name, code, phone, address FROM branches WHERE id = ? AND tenant_id = ?");
+    $branchStmt->bindParam(1, $branch_id, PDO::PARAM_INT);
+    $branchStmt->bindParam(2, $tenant_id, PDO::PARAM_INT);
+    $branchStmt->execute();
+    $branch = $branchStmt->fetch(PDO::FETCH_ASSOC);
+} catch (Exception $e) {
+    error_log("Branch Error: " . $e->getMessage());
+    $branch = null;
+}
 
 
     // Check if the logo exists and set the path
@@ -56,7 +79,7 @@ $settings = $settingStmt->fetch(PDO::FETCH_ASSOC);
     <head>
     <meta charset="UTF-8">
     <title>Employment Agreement - <?php echo htmlspecialchars($settings['agency_name']); ?></title>
-        <style>
+     <style>
         @media print {
             @page {
                 size: A4;
@@ -213,7 +236,7 @@ $settings = $settingStmt->fetch(PDO::FETCH_ASSOC);
                 <img src="<?php echo htmlspecialchars($logoPath); ?>" alt="Company Logo">
             </div>
             <div class="title-container">
-                <h1><?php echo htmlspecialchars($settings['agency_name']); ?><br>EMPLOYMENT AGREEMENT</h1>
+                <h1><?php echo htmlspecialchars($settings['agency_name']); ?> - <?php echo htmlspecialchars($branch['name']); ?><br>EMPLOYMENT AGREEMENT</h1>
             </div>
             <div class="date">
                 Date: <?php echo date('F j, Y'); ?>
@@ -231,7 +254,7 @@ $settings = $settingStmt->fetch(PDO::FETCH_ASSOC);
                 a resident of _________________________ Province, _________________________ District,
                 currently residing in _________________________ Province, _________________________ District,
                 ID Card Number: _________________________</p>
-                <p>hereby agree to work with <?php echo htmlspecialchars($settings['agency_name']); ?> under the following terms and conditions:</p>
+                <p>hereby agree to work with <?php echo htmlspecialchars($settings['agency_name']); ?> - <?php echo htmlspecialchars($branch['name']); ?> under the following terms and conditions:</p>
             </div>
 
             <div class="clause">

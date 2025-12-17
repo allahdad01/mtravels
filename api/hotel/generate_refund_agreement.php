@@ -21,14 +21,32 @@ if (!file_exists($uploadsDir)) {
 // Set header for HTML response
 header('Content-Type: text/html; charset=UTF-8');
 
-// Fetch settings data
+// Fetch settings data (using PDO connection)
 try {
     $settingStmt = $pdo->prepare("SELECT * FROM settings WHERE tenant_id = ?");
-    $settingStmt->execute([$tenant_id]);
-    $settings = $settingStmt->fetch(PDO::FETCH_ASSOC) ?: ['agency_name' => 'Default Name'];
-} catch (PDOException $e) {
+    $settingStmt->bindParam(1, $tenant_id, PDO::PARAM_INT);
+    $settingStmt->execute();
+    $settings = $settingStmt->fetch(PDO::FETCH_ASSOC);
+
+    if (!$settings) {
+        // Fallback defaults if no settings row found
+        $settings = ['agency_name' => 'Travel Agency'];
+    }
+} catch (Exception $e) {
     error_log("Settings Error: " . $e->getMessage());
-    $settings = ['agency_name' => 'Default Name'];
+    $settings = ['agency_name' => 'Travel Agency'];
+}
+
+// Fetch branch data (from branches table)
+try {
+    $branchStmt = $pdo->prepare("SELECT name, code, phone, address FROM branches WHERE id = ? AND tenant_id = ?");
+    $branchStmt->bindParam(1, $branch_id, PDO::PARAM_INT);
+    $branchStmt->bindParam(2, $tenant_id, PDO::PARAM_INT);
+    $branchStmt->execute();
+    $branch = $branchStmt->fetch(PDO::FETCH_ASSOC);
+} catch (Exception $e) {
+    error_log("Branch Error: " . $e->getMessage());
+    $branch = null;
 }
 
 // Get refund_id from GET or JSON payload

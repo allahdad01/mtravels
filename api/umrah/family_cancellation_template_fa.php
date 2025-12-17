@@ -189,7 +189,7 @@ body {
                         <?php endif; ?>
                     </td>
                     <td width="70%" style="text-align: center; vertical-align: middle;">
-                        <div class="company-name"><?= $settings['agency_name'] ?></div>
+                        <div class="company-name"><?= $settings['agency_name'] ?> - <?php echo htmlspecialchars($branch['name']); ?></div>
                         <div class="title">فورم لغو عمرۀ خانوادگی</div>
                     </td>
                     <td width="15%" style="text-align: left; vertical-align: middle; font-size: 7pt;">
@@ -230,8 +230,7 @@ body {
                 <tr>
                     <th>نام</th>
                     <th>شماره پاسپورت</th>
-                    <th>اسناد مسترد شده</th>
-                    <th>یادداشت</th>
+                    <th>وضعیت</th>
                 </tr>
             </thead>
             <tbody>
@@ -244,49 +243,40 @@ body {
                     <td><?= htmlspecialchars($member['name']) ?></td>
                     <td><?= htmlspecialchars($member['passport_number']) ?></td>
                     <td>
-                        <?php 
-                        $docTypes = ['passport', 'id_card', 'photos'];
-                        foreach ($docTypes as $docType): 
-                            $memberPrefix = 'member_' . $memberId . '_';
-                            $returnKey = $memberPrefix . $docType;
-                            $isReturned = isset($returnedItems[$returnKey]) && $returnedItems[$returnKey] === '1';
-                            
-                            // Pashto labels for document types
-                            $docLabels = [
-                                'passport' => 'پاسپورت',
-                                'id_card' => 'کارت شناسایی', 
-                                'photos' => 'عکسها'
-                            ];
-                        ?>
-                            <div class="checkbox <?= $isReturned ? 'checked' : '' ?>"></div> 
-                            <?= $docLabels[$docType] . ($isReturned ? ' (مسترد شده)' : '') ?><br>
-                        <?php endforeach; ?>
-                    </td>
-                    <td>
-                        <?php 
-                        // Collect notes for this member
-                        $memberNotes = [];
-                        $docLabels = [
-                            'passport' => 'پاسپورت',
-                            'id_card' => 'کارت شناسایی', 
-                            'photos' => 'عکسها'
-                        ];
-                        
-                        foreach ($docTypes as $docType) {
-                            $memberPrefix = 'member_' . $memberId . '_';
-                            $notesKey = $memberPrefix . $docType;
-                            
-                            if (isset($itemNotes[$notesKey]) && !empty($itemNotes[$notesKey])) {
-                                $memberNotes[] = $docLabels[$docType] . ': ' . $itemNotes[$notesKey];
-                            }
-                        }
-                        
-                        echo htmlspecialchars(implode("\n", $memberNotes));
-                        ?>
+                        <div class="checkbox checked"></div> 
+                        منسوخ شده
                     </td>
                 </tr>
                 <?php endforeach; ?>
             </tbody>
+        </table>
+
+        <div class="section-header">اسناد مسترد شده</div>
+        <table class="checklist-table">
+            <tr>
+                <th width="70%">نوع اسناد</th>
+                <th width="30%">مسترد شده</th>
+            </tr>
+            <?php
+            $docLabels = [
+                'passport' => 'پاسپورت',
+                'id_card' => 'کارت شناسایی', 
+                'photos' => 'عکسها',
+                'other_docs' => 'اسناد دیگر'
+            ];
+
+            foreach ($docLabels as $key => $label) {
+                ?>
+                <tr>
+                    <td><?= htmlspecialchars($label) ?></td>
+                    <td class="text-center">
+                        <div class="checkbox checked"></div>
+                        بلی
+                    </td>
+                </tr>
+                <?php
+            }
+            ?>
         </table>
 
         <?php
@@ -325,14 +315,14 @@ body {
         </div>
         
         <div class="footer">
-            <?php if (!empty($settings['address'])): ?>
-                <?= htmlspecialchars($settings['address']) ?> |
+            <?php if (!empty($branch['address'])): ?>
+                <?= htmlspecialchars($branch['address']) ?> |
             <?php endif; ?>
-            <?php if (!empty($settings['phone'])): ?>
-                تیلیفون: <?= htmlspecialchars($settings['phone']) ?> |
+            <?php if (!empty($branch['phone'])): ?>
+                تیلیفون: <?= htmlspecialchars($branch['phone']) ?> |
             <?php endif; ?>
-            <?php if (!empty($settings['email'])): ?>
-                بریښنالیک: <?= htmlspecialchars($settings['email']) ?>
+            <?php if (!empty($branch['email'])): ?>
+                بریښنالیک: <?= htmlspecialchars($branch['email']) ?>
             <?php endif; ?>
             <br>
             تاریخ تولید: <?= date('F d, Y') ?> | مرجع: FAM-CANC-<?= $family['family_id'] ?>-<?= date('Ymd') ?>

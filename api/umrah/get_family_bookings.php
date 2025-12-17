@@ -1,6 +1,5 @@
 <?php
 require_once '../../includes/db.php';
-require_once '../../includes/conn.php';
 require_once '../../admin/security.php';
 
 // Enforce authentication
@@ -19,15 +18,10 @@ if (!$family_id) {
 try {
     // Get all bookings for this family
     $sql = "SELECT booking_id, name, passport_number FROM umrah_bookings WHERE family_id = ? AND tenant_id = ? AND branch_id = ?";
-    $stmt = $conn->prepare($sql);
-    $stmt->bind_param('iii', $family_id, $tenant_id, $branch_id);
-    $stmt->execute();
-    $result = $stmt->get_result();
-    
-    $bookings = [];
-    while ($row = $result->fetch_assoc()) {
-        $bookings[] = $row;
-    }
+    $stmt = $pdo->prepare($sql);
+    $stmt->execute([$family_id, $tenant_id, $branch_id]);
+
+    $bookings = $stmt->fetchAll(PDO::FETCH_ASSOC);
     
     echo json_encode(['success' => true, 'bookings' => $bookings]);
 } catch (Exception $e) {

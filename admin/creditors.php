@@ -210,7 +210,7 @@ include '../api/creditor/creditor_handler.php';
                                                                                 title="<?= __("view_transactions") ?>">
                                                                             <i class="feather icon-list"></i>
                                                                         </button>
-                                                                        <a href="print_creditor_statement.php?id=<?php echo h($creditor['id']); ?>" 
+                                                                        <a href="../api/creditor/print_creditor_statement.php?id=<?php echo h($creditor['id']); ?>" 
                                                                            class="btn btn-icon btn-secondary"
                                                                            target="_blank"
                                                                            title="<?= __("print_statement") ?>">
@@ -486,6 +486,9 @@ include '../api/creditor/creditor_handler.php';
                     </button>
                 </div>
                 <form method="POST">
+                    <!-- CSRF Protection -->
+                    <input type="hidden" name="csrf_token" value="<?php echo h($_SESSION['csrf_token']); ?>">
+                    
                     <div class="modal-body">
                         <input type="hidden" name="creditor_id" value="<?php echo h($creditor['id']); ?>">
                         <input type="hidden" name="creditor_currency" value="<?php echo h($creditor['currency']); ?>">
@@ -511,10 +514,6 @@ include '../api/creditor/creditor_handler.php';
                         <div class="form-group">
                             <label><?= __("payment_date") ?> *</label>
                             <input type="date" class="form-control" name="payment_date" value="<?php echo date('Y-m-d'); ?>" required>
-                        </div>
-                        <div class="form-group">
-                            <label><?= __("receipt_number") ?></label>
-                            <input type="text" class="form-control" name="receipt">
                         </div>
                         <div class="form-group">
                             <label><?= __("description") ?></label>
@@ -549,6 +548,9 @@ include '../api/creditor/creditor_handler.php';
                     </button>
                 </div>
                 <form method="POST">
+                    <!-- CSRF Protection -->
+                    <input type="hidden" name="csrf_token" value="<?php echo h($_SESSION['csrf_token']); ?>">
+                    
                     <div class="modal-body">
                         <input type="hidden" name="creditor_id" value="<?php echo h($creditor['id']); ?>">
                         <div class="form-group">
@@ -603,6 +605,9 @@ include '../api/creditor/creditor_handler.php';
                     </button>
                 </div>
                 <form method="POST" onsubmit="return confirm('<?= __("are_you_sure_you_want_to_delete_this_creditor_this_action_cannot_be_undone") ?>');">
+                    <!-- CSRF Protection -->
+                    <input type="hidden" name="csrf_token" value="<?php echo h($_SESSION['csrf_token']); ?>">
+                    
                     <div class="modal-body">
                         <input type="hidden" name="creditor_id" value="<?php echo h($creditor['id']); ?>">
                         <input type="hidden" name="creditor_balance" value="<?php echo h($creditor['balance']); ?>">

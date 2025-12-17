@@ -96,8 +96,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['add_debtor'])) {
         $pdo->beginTransaction();
 
         // Insert the debtor
-        $stmt = $pdo->prepare("INSERT INTO debtors (name, email, phone, address, balance, currency, main_account_id, agreement_terms, tenant_id, branch_id) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)");
-        $stmt->execute([$name, $email, $phone, $address, $balance, $currency, $main_account_id, $agreement_terms, $tenant_id, $branch_id]);
+         $stmt = $pdo->prepare("INSERT INTO debtors (name, email, phone, address, balance, currency, main_account_id, agreement_terms, tenant_id, branch_id) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)");
+         $stmt->execute([$name, $email, $phone, $address, $balance, $currency, $main_account_id, $agreement_terms, $tenant_id, $branch_id]);
         $debtor_id = $pdo->lastInsertId();
 
         // Only process main account transactions if skip_deduction is false
@@ -163,6 +163,99 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['add_debtor'])) {
     } catch (Exception $e) {
         $pdo->rollBack();
         $_SESSION['error_message'] = "Error adding debtor: " . $e->getMessage();
+        header('Location: ' . $redirect_url);
+        exit();
+    }
+}
+
+// Handle payment submission
+if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['pay'])) {
+    $debtor_id = $_POST['debtor_id'];
+    $amount = $_POST['amount'];
+    $currency = $_POST['currency'];
+    $payment_date = $_POST['payment_date'];
+    $description = $_POST['description'];
+    $paid_to = $_POST['paid_to'];
+    $exchange_rate = isset($_POST['exchange_rate']) && !empty($_POST['exchange_rate']) ? $_POST['exchange_rate'] : 1;
+
+    try {
+        $pdo->beginTransaction();
+
+        // Get debtor info
+        $debtorStmt = $pdo->prepare("SELECT * FROM debtors WHERE id = ? AND tenant_id = ? AND branch_id = ?");
+        $debtorStmt->execute([$debtor_id, $tenant_id, $branch_id]);
+        $debtor = $debtorStmt->fetch(PDO::FETCH_ASSOC);
+
+        if (!$debtor) {
+            throw new Exception("Debtor not found");
+        }
+
+        // Calculate amount in debtor's currency if different
+        $amount_in_debtor_currency = $amount;
+        if ($currency !== $debtor['currency']) {
+            $amount_in_debtor_currency = $amount * $exchange_rate;
+        }
+
+        // Update debtor balance
+        $new_balance = $debtor['balance'] - $amount_in_debtor_currency;
+        $updateStmt = $pdo->prepare("UPDATE debtors SET balance = ? WHERE id = ? AND tenant_id = ? AND branch_id = ?");
+        $updateStmt->execute([$new_balance, $debtor_id, $tenant_id, $branch_id]);
+
+        // Create transaction record
+        $reference_number = 'PAY-' . date('YmdHis') . '-' . $debtor_id;
+        $transStmt = $pdo->prepare("INSERT INTO debtor_transactions (debtor_id, amount, currency, transaction_type, description, payment_date, reference_number, tenant_id, branch_id) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)");
+        $transStmt->execute([$debtor_id, $amount_in_debtor_currency, $debtor['currency'], 'credit', $description, $payment_date, $reference_number, $tenant_id, $branch_id]);
+        $transaction_id = $pdo->lastInsertId();
+
+        // Update main account balance
+        $balance_column = strtolower($debtor['currency']) . '_balance';
+        if ($debtor['currency'] == 'DARHAM') {
+            $balance_column = 'darham_balance';
+        } elseif ($debtor['currency'] == 'EUR') {
+            $balance_column = 'euro_balance';
+        } elseif ($debtor['currency'] == 'USD') {
+            $balance_column = 'usd_balance';
+        } elseif ($debtor['currency'] == 'AFS') {
+            $balance_column = 'afs_balance';
+        }
+
+        $mainAcctStmt = $pdo->prepare("SELECT $balance_column FROM main_account WHERE id = ? AND tenant_id = ? AND branch_id = ?");
+        $mainAcctStmt->execute([$paid_to, $tenant_id, $branch_id]);
+        $main_account = $mainAcctStmt->fetch(PDO::FETCH_ASSOC);
+
+        if (!$main_account) {
+            throw new Exception("Main account not found");
+        }
+
+        $new_main_balance = $main_account[$balance_column] + $amount_in_debtor_currency;
+        $updateMainStmt = $pdo->prepare("UPDATE main_account SET $balance_column = ? WHERE id = ? AND tenant_id = ? AND branch_id = ?");
+        $updateMainStmt->execute([$new_main_balance, $paid_to, $tenant_id, $branch_id]);
+
+        // Create main account transaction
+         $mainTransStmt = $pdo->prepare("INSERT INTO main_account_transactions (main_account_id, amount, balance, currency, type, description, transaction_of, reference_id, receipt, tenant_id, branch_id) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)");
+         $mainTransStmt->execute([$paid_to, $amount_in_debtor_currency, $new_main_balance, $debtor['currency'], 'credit', $description, 'debtor', $transaction_id, $reference_number, $tenant_id, $branch_id]);
+         $main_transaction_id = $pdo->lastInsertId();
+
+         // Create notification
+         $notificationMessage = sprintf(
+             "Payment of %s %s received from debtor %s. Remaining balance: %s %s",
+             number_format($amount_in_debtor_currency, 2),
+             $debtor['currency'],
+             $debtor['name'],
+             number_format($new_balance, 2),
+             $debtor['currency']
+         );
+
+         $notifStmt = $pdo->prepare("INSERT INTO notifications (transaction_id, transaction_type, message, status, created_at, tenant_id, branch_id) VALUES (?, 'debtor', ?, 'Unread', NOW(), ?, ?)");
+         $notifStmt->execute([$main_transaction_id, $notificationMessage, $tenant_id, $branch_id]);
+
+        $pdo->commit();
+        $_SESSION['success_message'] = "Payment processed successfully!";
+        header('Location: ' . $redirect_url);
+        exit();
+    } catch (Exception $e) {
+        $pdo->rollBack();
+        $_SESSION['error_message'] = "Error processing payment: " . $e->getMessage();
         header('Location: ' . $redirect_url);
         exit();
     }

@@ -30,10 +30,33 @@ try {
         die('User not found');
     }
 
-    // Fetch company settings
+// Fetch settings data (using PDO connection)
+try {
     $settingStmt = $pdo->prepare("SELECT * FROM settings WHERE tenant_id = ?");
-    $settingStmt->execute([$tenant_id]);
+    $settingStmt->bindParam(1, $tenant_id, PDO::PARAM_INT);
+    $settingStmt->execute();
     $settings = $settingStmt->fetch(PDO::FETCH_ASSOC);
+
+    if (!$settings) {
+        // Fallback defaults if no settings row found
+        $settings = ['agency_name' => 'Travel Agency'];
+    }
+} catch (Exception $e) {
+    error_log("Settings Error: " . $e->getMessage());
+    $settings = ['agency_name' => 'Travel Agency'];
+}
+
+// Fetch branch data (from branches table)
+try {
+    $branchStmt = $pdo->prepare("SELECT name, code, phone, address FROM branches WHERE id = ? AND tenant_id = ?");
+    $branchStmt->bindParam(1, $branch_id, PDO::PARAM_INT);
+    $branchStmt->bindParam(2, $tenant_id, PDO::PARAM_INT);
+    $branchStmt->execute();
+    $branch = $branchStmt->fetch(PDO::FETCH_ASSOC);
+} catch (Exception $e) {
+    error_log("Branch Error: " . $e->getMessage());
+    $branch = null;
+}
 
     // Check if the logo exists and set the path
     $logoPath = __DIR__ . '../../uploads/logo/' . $settings['logo'];
@@ -198,7 +221,7 @@ try {
 
         <!-- Letter Body -->
         <div class="letter-body">
-            <p>به: محترم مدیریت / مسئول منابع بشری شرکت / اداره <span class="field-line"><?php echo htmlspecialchars($settings['agency_name']); ?></span></p>
+            <p>به: محترم مدیریت / مسئول منابع بشری شرکت / اداره <span class="field-line"><?php echo htmlspecialchars($settings['agency_name']); ?> - <?php echo htmlspecialchars($branch['name']); ?></span></p>
 
             <p>اینجانب <span class="field-line"></span> فرزند <span class="field-line"></span> 
             دارای تذکره شماره <span class="field-line"></span> صادره از ناحیه / ولسوالی <span class="field-line"></span> 

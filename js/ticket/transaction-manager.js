@@ -127,7 +127,8 @@ const transactionManager = {
             payment_date: paymentDateTime,
             payment_amount: formData.payment_amount,
             payment_currency: formData.payment_currency,
-            payment_description: formData.payment_description
+            payment_description: formData.payment_description,
+            csrf_token: $('input[name="csrf_token"]').val()
         };
 
         if (formData.payment_exchange_rate) {

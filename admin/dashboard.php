@@ -36,7 +36,7 @@ if (!isset($_SESSION['csrf_token'])) {
 }
 
 require_once '../api/dashboard/dashboard_handler.php';
-
+require_once '../api/dashboard/supplier_notification.php';
 ?>
 
 
@@ -82,27 +82,65 @@ if (!file_exists($imagePath)) {
                                         </div>
                                         <div class="d-flex flex-wrap">
                                            
-                                            <div class="dropdown">
-                                                <button class="btn btn-light dropdown-toggle mb-2 mb-md-0" type="button" id="quickActionsDropdown" data-toggle="dropdown" aria-haspopup="true" aria-expanded="false">
-                                                    <i class="feather icon-zap mr-1"></i><?= __('quick_actions') ?>
-                                                </button>
-                                                <div class="dropdown-menu dropdown-menu-right" aria-labelledby="quickActionsDropdown">
-                                                    <a class="dropdown-item" href="ticket.php">
-                                                        <i class="feather icon-plus-circle mr-2 text-primary"></i><?= __('add_ticket') ?>
-                                                    </a>
-                                                    <a class="dropdown-item" href="client.php">
-                                                        <i class="feather icon-user-plus mr-2 text-success"></i><?= __('add_client') ?>
-                                                    </a>
-                                                    <a class="dropdown-item" href="supplier.php">
-                                                        <i class="feather icon-truck mr-2 text-warning"></i><?= __('add_supplier') ?>
-                                                    </a>
-                                                    
+                                             <div class="dropdown">
+                                                 <button class="btn btn-light dropdown-toggle mb-2 mb-md-0" type="button" id="quickActionsDropdown" data-toggle="dropdown" aria-haspopup="true" aria-expanded="false">
+                                                     <i class="feather icon-zap mr-1"></i><?= __('quick_actions') ?>
+                                                 </button>
+                                                 <div class="dropdown-menu dropdown-menu-right" aria-labelledby="quickActionsDropdown">
+                                                     <a class="dropdown-item" href="ticket.php">
+                                                         <i class="feather icon-plus-circle mr-2 text-primary"></i><?= __('add_ticket') ?>
+                                                     </a>
+                                                     <a class="dropdown-item" href="client.php">
+                                                         <i class="feather icon-user-plus mr-2 text-success"></i><?= __('add_client') ?>
+                                                     </a>
+                                                     <a class="dropdown-item" href="supplier.php">
+                                                         <i class="feather icon-truck mr-2 text-warning"></i><?= __('add_supplier') ?>
+                                                     </a>
+                                                     
+                                                 </div>
+                                             </div>
+                                         </div>
+                                     </div>
+                                 </div>
+                            </div>
+                            
+                            <!-- Low Supplier Balance Alert -->
+                            <?php if (!empty($suppliersWithLowBalance)): ?>
+                            <div class="row mb-4">
+                                <div class="col-md-12">
+                                    <div class="alert alert-warning alert-dismissible fade show border-left-warning" role="alert">
+                                        <div class="d-flex align-items-start">
+                                            <i class="feather icon-alert-triangle mr-3" style="font-size: 20px; margin-top: 2px;"></i>
+                                            <div class="flex-grow-1">
+                                                <h5 class="alert-heading mb-2">Low Supplier Balance Alert</h5>
+                                                <p class="mb-2">The following suppliers have low account balances:</p>
+                                                <div class="supplier-alerts">
+                                                    <?php foreach ($suppliersWithLowBalance as $supplier): ?>
+                                                        <div class="alert alert-sm mb-2" style="background-color: rgba(255,193,7,0.1); border-left: 3px solid #ffc107; padding: 8px 12px;">
+                                                            <strong><?= htmlspecialchars($supplier['name']) ?></strong><br>
+                                                            <small class="text-muted">
+                                                                <?php
+                                                                $currency_symbol = ($supplier['currency'] === 'USD') ? '$' : '؋';
+                                                                $threshold = ($supplier['currency'] === 'USD') ? 500 : 20000;
+                                                                $threshold_display = ($supplier['currency'] === 'USD') ? '$500' : '؋20,000';
+                                                                echo $supplier['currency'] . ": " . $currency_symbol . number_format($supplier['balance'], 2) . " (Threshold: " . $threshold_display . ")";
+                                                                ?>
+                                                            </small>
+                                                        </div>
+                                                    <?php endforeach; ?>
                                                 </div>
+                                                <small class="d-block mt-2">
+                                                    <a href="accounts.php" class="text-warning font-weight-bold">View All Suppliers</a>
+                                                </small>
                                             </div>
                                         </div>
+                                        <button type="button" class="close" data-dismiss="alert" aria-label="Close">
+                                            <span aria-hidden="true">&times;</span>
+                                        </button>
                                     </div>
                                 </div>
                             </div>
+                            <?php endif; ?>
                             
                             
                             <!-- Financial Wealth Distribution Chart -->

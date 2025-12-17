@@ -169,7 +169,7 @@ body {
                 <div class="agreement-info"><?= $l['date'] ?>: <?= date('Y/m/d') ?><br><?= $l['agreement_no'] ?>: FAMILY-<?= $family['family_id'] ?>-<?= date('Ymd') ?></div>
             </div>
             <div class="header-center">
-                <div class="company-name"><?= $settings['agency_name'] ?></div>
+                <div class="company-name"><?= $settings['agency_name'] ?> - <?php echo htmlspecialchars($branch['name']); ?>branch</div>
                 <div class="title"><?= $l['form_title'] ?></div>
             </div>
             <div class="header-right">
@@ -300,14 +300,14 @@ body {
         </div>
         
         <div class="footer">
-            <?php if (!empty($settings['address'])): ?>
-                <?= htmlspecialchars($settings['address']) ?> |
+            <?php if (!empty($branch['address'])): ?>
+                <?= htmlspecialchars($branch['address']) ?> |
             <?php endif; ?>
-            <?php if (!empty($settings['phone'])): ?>
-                <?= $l['tel'] ?>: <?= htmlspecialchars($settings['phone']) ?> |
+            <?php if (!empty($branch['phone'])): ?>
+                <?= $l['tel'] ?>: <?= htmlspecialchars($branch['phone']) ?> |
             <?php endif; ?>
-            <?php if (!empty($settings['email'])): ?>
-                <?= $l['email'] ?>: <?= htmlspecialchars($settings['email']) ?>
+            <?php if (!empty($branch['email'])): ?>
+                <?= $l['email'] ?>: <?= htmlspecialchars($branch['email']) ?>
             <?php endif; ?>
             <br>
             <?= $l['generated_on'] ?> <?= date('Y/m/d') ?> | <?= $l['agreement_no'] ?>: FAMILY-<?= $family['family_id'] ?>-<?= date('Ymd') ?>

@@ -1,9 +1,10 @@
 <?php
 // Include database security module for input validation
-require_once 'includes/db_security.php';
+require_once '../../admin/includes/db_security.php';
 
 // Include security module
-require_once 'security.php';
+require_once '../../admin/security.php';
+
 $tenant_id = $_SESSION['tenant_id'];
 $branch_id = $_SESSION['branch_id'];
 // Enforce authentication
@@ -14,7 +15,7 @@ if (session_status() === PHP_SESSION_NONE) {
     session_start();
 }
 
-require_once '../includes/db.php';
+require_once '../../includes/db.php';
 
 // Validate and sanitize debtor ID
 if (!isset($_GET['id']) || !is_numeric($_GET['id'])) {
@@ -36,10 +37,33 @@ if (!$debtor) {
     die('Debtor not found');
 }
 
-// Fetch company settings
+// Fetch settings data (using PDO connection)
+try {
     $settingStmt = $pdo->prepare("SELECT * FROM settings WHERE tenant_id = ?");
-    $settingStmt->execute([$tenant_id]);
+    $settingStmt->bindParam(1, $tenant_id, PDO::PARAM_INT);
+    $settingStmt->execute();
     $settings = $settingStmt->fetch(PDO::FETCH_ASSOC);
+
+    if (!$settings) {
+        // Fallback defaults if no settings row found
+        $settings = ['agency_name' => 'Travel Agency'];
+    }
+} catch (Exception $e) {
+    error_log("Settings Error: " . $e->getMessage());
+    $settings = ['agency_name' => 'Travel Agency'];
+}
+
+// Fetch branch data (from branches table)
+try {
+    $branchStmt = $pdo->prepare("SELECT name, code, phone, address FROM branches WHERE id = ? AND tenant_id = ?");
+    $branchStmt->bindParam(1, $branch_id, PDO::PARAM_INT);
+    $branchStmt->bindParam(2, $tenant_id, PDO::PARAM_INT);
+    $branchStmt->execute();
+    $branch = $branchStmt->fetch(PDO::FETCH_ASSOC);
+} catch (Exception $e) {
+    error_log("Branch Error: " . $e->getMessage());
+    $branch = null;
+}
 
 // Format the agreement date
 $agreement_date = date('F j, Y');
@@ -231,16 +255,17 @@ $user = $stmt->fetch(PDO::FETCH_ASSOC);
             <div class="header-row">
                 <div class="logo-section">
                     <?php if (!empty($settings['logo'])): ?>
-                        <img src="../uploads/logo/<?php echo htmlspecialchars($settings['logo']); ?>" alt="Company Logo" class="logo">
+                        <img src="../../uploads/logo/<?php echo htmlspecialchars($settings['logo']); ?>" alt="Company Logo" class="logo">
                     <?php endif; ?>
                 </div>
                 <div class="company-section">
-                    <h1><?php echo htmlspecialchars($settings['agency_name']); ?></h1>
-                    <div class="company-info">
-                        <?php echo !empty($settings['address']) ? htmlspecialchars($settings['address']) : ''; ?><br>
-                        <?php echo !empty($settings['phone']) ? 'Tel: ' . htmlspecialchars($settings['phone']) : ''; ?>
-                        <?php echo !empty($settings['email']) ? ' | Email: ' . htmlspecialchars($settings['email']) : ''; ?>
+                        <div class="company-name">
+                        <?= htmlspecialchars($settings['agency_name']) ?>
+                        <?php if (!empty($branch['name'])): ?>
+                            <br><small><?= htmlspecialchars($branch['name']) ?></small>
+                        <?php endif; ?>
                     </div>
+                    
                 </div>
                 <div class="date-section">
                     <div>Date: <?php echo $agreement_date; ?></div>
@@ -316,6 +341,10 @@ $user = $stmt->fetch(PDO::FETCH_ASSOC);
         </div>
         
         <div class="footer">
+        <div class="company-info">
+                        <?php echo !empty($branch['address']) ? htmlspecialchars($branch['address']) : ''; ?> - 
+                        <?php echo !empty($branch['phone']) ? 'Tel: ' . htmlspecialchars($branch['phone']) : ''; ?>
+                    </div>
             <p>This agreement is legally binding upon both parties. Any disputes shall be resolved according to applicable laws. Document generated on <?php echo $agreement_date; ?> | Ref: DEBT-<?php echo $debtor['id'] . '-' . date('Ymd'); ?></p>
         </div>
     </div>

@@ -140,14 +140,31 @@
                         </div>
 
                         <!-- Passenger Information Section -->
-                        <div class="card">
-                            <div class="card-header bg-light">
-                                <h6 class="mb-0"><?= __('passenger_information') ?></h6>
-                            </div>
-                            <div class="card-body" id="passengersContainer">
-                                <!-- Passenger details will be dynamically added here -->
-                            </div>
-                        </div>
+                         <div class="card">
+                             <div class="card-header bg-light">
+                                 <h6 class="mb-0"><?= __('passenger_information') ?></h6>
+                             </div>
+                             <div class="card-body" id="passengersContainer">
+                                 <!-- Passenger details will be dynamically added here -->
+                             </div>
+                         </div>
+
+                         <!-- Contact Information -->
+                         <div class="card">
+                             <div class="card-header bg-light">
+                                 <h6 class="mb-0"><?= __('contact_information') ?></h6>
+                             </div>
+                             <div class="card-body">
+                                 <div class="form-row">
+                                     <div class="form-group col-md-6">
+                                         <label for="phone">
+                                             <i class="feather icon-phone mr-1"></i><?= __('phone_number') ?>
+                                         </label>
+                                         <input type="text" class="form-control" id="phone" name="phone" required>
+                                     </div>
+                                 </div>
+                             </div>
+                         </div>
 
                         <!-- Flight Details -->
                         <div class="card">

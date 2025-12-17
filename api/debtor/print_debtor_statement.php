@@ -1,12 +1,13 @@
 <?php
 // Include database security module for input validation
-require_once 'includes/db_security.php';
+require_once '../../admin/includes/db_security.php';
 
 // Include security module
-require_once 'security.php';
+require_once '../../admin/security.php';
+
 
 // Include language helper
-require_once '../includes/language_helpers.php';
+require_once '../../includes/language_helpers.php';
 
 // Enforce authentication
 enforce_auth();
@@ -18,21 +19,34 @@ if (session_status() === PHP_SESSION_NONE) {
 $tenant_id = $_SESSION['tenant_id'];
 $branch_id = $_SESSION['branch_id'];
 
-require_once '../includes/db.php';
+require_once '../../includes/db.php';
 
-// Fetch settings data
+// Fetch settings data (using PDO connection)
 try {
-    $settingStmt = $pdo->query("SELECT * FROM settings WHERE tenant_id = ?");
-    $settingStmt->execute([$tenant_id]);
+    $settingStmt = $pdo->prepare("SELECT * FROM settings WHERE tenant_id = ?");
+    $settingStmt->bindParam(1, $tenant_id, PDO::PARAM_INT);
+    $settingStmt->execute();
     $settings = $settingStmt->fetch(PDO::FETCH_ASSOC);
-} catch (PDOException $e) {
+
+    if (!$settings) {
+        // Fallback defaults if no settings row found
+        $settings = ['agency_name' => 'Travel Agency'];
+    }
+} catch (Exception $e) {
     error_log("Settings Error: " . $e->getMessage());
-    $settings = ['agency_name' => 'Default Name'];
+    $settings = ['agency_name' => 'Travel Agency'];
 }
 
-// Validate the debtor ID
-if (!isset($_GET['id']) || !is_numeric($_GET['id'])) {
-    die("Invalid debtor ID");
+// Fetch branch data (from branches table)
+try {
+    $branchStmt = $pdo->prepare("SELECT name, code, phone, address FROM branches WHERE id = ? AND tenant_id = ?");
+    $branchStmt->bindParam(1, $branch_id, PDO::PARAM_INT);
+    $branchStmt->bindParam(2, $tenant_id, PDO::PARAM_INT);
+    $branchStmt->execute();
+    $branch = $branchStmt->fetch(PDO::FETCH_ASSOC);
+} catch (Exception $e) {
+    error_log("Branch Error: " . $e->getMessage());
+    $branch = null;
 }
 
 $debtor_id = intval($_GET['id']);
@@ -302,7 +316,12 @@ $is_fully_paid = ($debtor['balance'] == 0);
         <?php endif; ?>
         
         <div class="header">
-            <div class="company-name"><?= htmlspecialchars($settings['agency_name']) ?></div>
+        <div class="company-name">
+                <?= htmlspecialchars($settings['agency_name']) ?>
+                <?php if (!empty($branch['name'])): ?>
+                    <br><small><?= htmlspecialchars($branch['name']) ?></small>
+                <?php endif; ?>
+            </div>
             <div class="document-title">Debtor Statement</div>
             <div>Statement Date: <?= date('F d, Y') ?></div>
         </div>
@@ -401,7 +420,7 @@ $is_fully_paid = ($debtor['balance'] == 0);
         
         <div class="footer">
             <p>This statement was generated automatically. For any questions, please contact us.</p>
-            <p><?= htmlspecialchars($settings['agency_name']) ?> - <?= htmlspecialchars($settings['phone'] ?? '') ?></p>
+            <p><?= htmlspecialchars($branch['address']) ?> - <?= htmlspecialchars($branch['phone'] ?? '') ?></p>
         </div>
     </div>
     

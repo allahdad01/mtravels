@@ -64,14 +64,32 @@ if (isset($_GET['id'])) {
     $errorMessage = "Expense ID is required.";
 }
 
-// Fetch settings data
+// Fetch settings data (using PDO connection)
 try {
-    $settingStmt = $pdo->query("SELECT * FROM settings WHERE tenant_id = ?");
-    $settingStmt->execute([$tenant_id]);
+    $settingStmt = $pdo->prepare("SELECT * FROM settings WHERE tenant_id = ?");
+    $settingStmt->bindParam(1, $tenant_id, PDO::PARAM_INT);
+    $settingStmt->execute();
     $settings = $settingStmt->fetch(PDO::FETCH_ASSOC);
-} catch (PDOException $e) {
+
+    if (!$settings) {
+        // Fallback defaults if no settings row found
+        $settings = ['agency_name' => 'Travel Agency'];
+    }
+} catch (Exception $e) {
     error_log("Settings Error: " . $e->getMessage());
-    $settings = ['agency_name' => 'Default Name'];
+    $settings = ['agency_name' => 'Travel Agency'];
+}
+
+// Fetch branch data (from branches table)
+try {
+    $branchStmt = $pdo->prepare("SELECT name, code, phone, address FROM branches WHERE id = ? AND tenant_id = ?");
+    $branchStmt->bindParam(1, $branch_id, PDO::PARAM_INT);
+    $branchStmt->bindParam(2, $tenant_id, PDO::PARAM_INT);
+    $branchStmt->execute();
+    $branch = $branchStmt->fetch(PDO::FETCH_ASSOC);
+} catch (Exception $e) {
+    error_log("Branch Error: " . $e->getMessage());
+    $branch = null;
 }
 ?>
 <!DOCTYPE html>
@@ -190,12 +208,12 @@ try {
         <div class="alert alert-danger"><?php echo h($errorMessage); ?></div>
     <?php else: ?>
         <div class="print-header">
-            <?php if (!empty($agency['logo'])): ?>
-                <img src="../uploads/logo/<?php echo h($agency['logo']); ?>" alt="<?php echo h($agency['agency_name']); ?> Logo">
+            <?php if (!empty($settings['logo'])): ?>
+                <img src="../../uploads/logo/<?php echo h($settings['logo']); ?>" alt="<?php echo h($settings['agency_name']); ?> Logo">
             <?php endif; ?>
-            <h1><?php echo h($agency['agency_name']); ?></h1>
-            <p><?php echo h($agency['address']); ?></p>
-            <p>Phone: <?php echo h($agency['phone']); ?> | Email: <?php echo h($agency['email']); ?></p>
+            <h1><?php echo h($settings['agency_name']); ?> - <?php echo htmlspecialchars($branch['name']); ?></h1>
+            <p><?php echo h($branch['address']); ?></p>
+            <p>Phone: <?php echo h($branch['phone']); ?> | Email: <?php echo h($branch['email']); ?></p>
         </div>
 
         <h2 class="print-title">Expense Receipt #<?php echo h($expense['id']); ?></h2>
@@ -239,7 +257,7 @@ try {
                 <tr>
                     <th>Receipt File</th>
                     <td>
-                        <img src="../uploads/expense_receipt/<?php echo h($expense['receipt_file']); ?>" alt="Receipt" style="max-width: 200px; max-height: 200px;">
+                        <img src="../../uploads/expense_receipt/<?php echo h($expense['receipt_file']); ?>" alt="Receipt" style="max-width: 200px; max-height: 200px;">
                         <br><small><?php echo h($expense['receipt_file']); ?></small>
                     </td>
                 </tr>

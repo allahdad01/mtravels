@@ -99,11 +99,7 @@ jQuery(document).ready(function($) {
 
         // Validate required fields
         if (!bookingId || !action || !reason) {
-            Swal.fire({
-                icon: 'error',
-                title: 'Missing Information',
-                text: 'Please select an action and provide a reason'
-            });
+            showToast('error', 'Please select an action and provide a reason');
             return;
         }
         
@@ -133,31 +129,17 @@ jQuery(document).ready(function($) {
 
                     // Check for success
                     if (result && (result.status === 'success' || result.success === true || result.success === 'true')) {
-                        Swal.fire({
-                            icon: 'success',
-                            title: 'Success',
-                            text: result.message || 'Action processed successfully',
-                            confirmButtonText: 'OK'
-                        }).then((result) => {
-                            if (result.isConfirmed) {
-                                $('#cancellationReapplyModal').modal('hide');
-                                location.reload();
-                            }
-                        });
+                        showToast('success', result.message || 'Action processed successfully');
+                        setTimeout(() => {
+                            $('#cancellationReapplyModal').modal('hide');
+                            location.reload();
+                        }, 1500);
                     } else {
-                        Swal.fire({
-                            icon: 'error',
-                            title: 'Error',
-                            text: result.message || 'Failed to process action'
-                        });
+                        showToast('error', result.message || 'Failed to process action');
                     }
                 } catch (e) {
                     console.error('Error parsing response:', e);
-                    Swal.fire({
-                        icon: 'error',
-                        title: 'Error',
-                        html: 'Error processing the request: ' + e.message
-                    });
+                    showToast('error', 'Error processing the request: ' + e.message);
                 }
             },
             error: function(xhr, status, error) {
@@ -185,7 +167,6 @@ jQuery(document).ready(function($) {
 if (typeof window !== 'undefined') {
     window.openCancellationReapplyModal = openCancellationReapplyModal;
     window.selectAction = selectAction;
-    window.testAjax = testAjax;
     window.toggleAllMembers = toggleAllMembers;
     window.bulkCancelSelected = bulkCancelSelected;
     window.bulkReapplySelected = bulkReapplySelected;
@@ -258,31 +239,15 @@ function bulkCancelSelected() {
     );
     
     if (alreadyCancelled.length > 0) {
-        Swal.fire({
-            icon: 'warning',
-            title: 'Invalid Selection',
-            text: 'Some selected members are already cancelled. Please select only active members.'
-        });
+        showToast('warning', 'Some selected members are already cancelled. Please select only active members.');
         return;
     }
     
     // Get sample member data for display
     const sampleData = getMemberData(selectedMembers[0]);
     
-    Swal.fire({
-        title: `Cancel ${selectedMembers.length} Member${selectedMembers.length > 1 ? 's' : ''}?`,
-        text: `This will set profit to 0 for all selected members. This action cannot be undone.`,
-        icon: 'warning',
-        showCancelButton: true,
-        confirmButtonColor: '#f39c12',
-        cancelButtonColor: '#3085d6',
-        confirmButtonText: 'Yes, Cancel Them',
-        cancelButtonText: 'Cancel'
-    }).then((result) => {
-        if (result.isConfirmed) {
-            processBulkAction(selectedMembers, 'cancel', 'cancelled');
-        }
-    });
+    // Process cancel for selected members
+    processBulkAction(selectedMembers, 'cancel', 'cancelled');
 }
 
 // Bulk reapply selected members
@@ -290,11 +255,7 @@ function bulkReapplySelected() {
     const selectedMembers = getSelectedMembers();
     
     if (selectedMembers.length === 0) {
-        Swal.fire({
-            icon: 'warning',
-            title: 'No Selection',
-            text: 'Please select at least one member to re-apply.'
-        });
+        showToast('warning', 'Please select at least one member to re-apply.');
         return;
     }
     
@@ -304,28 +265,12 @@ function bulkReapplySelected() {
     );
     
     if (notCancelled.length > 0) {
-        Swal.fire({
-            icon: 'warning',
-            title: 'Invalid Selection',
-            text: 'Some selected members are already active. Please select only cancelled members.'
-        });
+        showToast('warning', 'Some selected members are already active. Please select only cancelled members.');
         return;
     }
     
-    Swal.fire({
-        title: `Re-apply ${selectedMembers.length} Member${selectedMembers.length > 1 ? 's' : ''}?`,
-        text: `This will recalculate profit (sold - base) for all selected cancelled members.`,
-        icon: 'question',
-        showCancelButton: true,
-        confirmButtonColor: '#27ae60',
-        cancelButtonColor: '#3085d6',
-        confirmButtonText: 'Yes, Re-apply Them',
-        cancelButtonText: 'Cancel'
-    }).then((result) => {
-        if (result.isConfirmed) {
-            processBulkAction(selectedMembers, 'reapply', 'active');
-        }
-    });
+    // Process re-apply for selected members
+    processBulkAction(selectedMembers, 'reapply', 'active');
 }
 
 // Process bulk action
@@ -334,14 +279,7 @@ function processBulkAction(selectedMembers, action, newStatus) {
     const bulkData = selectedMembers.map(checkbox => getMemberData(checkbox));
     
     // Show loading state
-    Swal.fire({
-        title: 'Processing...',
-        text: `Processing ${selectedMembers.length} member${selectedMembers.length > 1 ? 's' : ''}. Please wait.`,
-        allowOutsideClick: false,
-        didOpen: () => {
-            Swal.showLoading();
-        }
-    });
+    showToast('info', `Processing ${selectedMembers.length} member${selectedMembers.length > 1 ? 's' : ''}. Please wait.`);
     
     // Send bulk AJAX request
     jQuery.ajax({
@@ -367,29 +305,17 @@ function processBulkAction(selectedMembers, action, newStatus) {
                         location.reload();
                     });
                 } else {
-                    Swal.fire({
-                        icon: 'error',
-                        title: 'Error',
-                        text: result.message || `Failed to process bulk ${action}`
-                    });
-                }
-            } catch (e) {
-                console.error('Error parsing response:', e);
-                Swal.fire({
-                    icon: 'error',
-                    title: 'Error',
-                    html: 'Error processing the request: ' + e.message
-                });
-            }
-        },
-        error: function(xhr, status, error) {
-            console.error('Bulk AJAX Error:', error);
-            Swal.fire({
-                icon: 'error',
-                title: 'Error',
-                text: `Error processing bulk ${action}: ` + error
-            });
-        }
+                    showToast('error', result.message || `Failed to process bulk ${action}`);
+                    }
+                    } catch (e) {
+                    console.error('Error parsing response:', e);
+                    showToast('error', 'Error processing the request: ' + e.message);
+                    }
+                    },
+                    error: function(xhr, status, error) {
+                    console.error('Bulk AJAX Error:', error);
+                    showToast('error', `Error processing bulk ${action}: ` + error);
+                    }
     });
 }
 

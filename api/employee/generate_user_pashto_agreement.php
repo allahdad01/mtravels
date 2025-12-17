@@ -26,9 +26,33 @@ try {
         die('کاروونکی ونه موندل شو');
     }
 
+// Fetch settings data (using PDO connection)
+try {
     $settingStmt = $pdo->prepare("SELECT * FROM settings WHERE tenant_id = ?");
-    $settingStmt->execute([$tenant_id]);
+    $settingStmt->bindParam(1, $tenant_id, PDO::PARAM_INT);
+    $settingStmt->execute();
     $settings = $settingStmt->fetch(PDO::FETCH_ASSOC);
+
+    if (!$settings) {
+        // Fallback defaults if no settings row found
+        $settings = ['agency_name' => 'Travel Agency'];
+    }
+} catch (Exception $e) {
+    error_log("Settings Error: " . $e->getMessage());
+    $settings = ['agency_name' => 'Travel Agency'];
+}
+
+// Fetch branch data (from branches table)
+try {
+    $branchStmt = $pdo->prepare("SELECT name, code, phone, address FROM branches WHERE id = ? AND tenant_id = ?");
+    $branchStmt->bindParam(1, $branch_id, PDO::PARAM_INT);
+    $branchStmt->bindParam(2, $tenant_id, PDO::PARAM_INT);
+    $branchStmt->execute();
+    $branch = $branchStmt->fetch(PDO::FETCH_ASSOC);
+} catch (Exception $e) {
+    error_log("Branch Error: " . $e->getMessage());
+    $branch = null;
+}
 
     $logoPath = '../uploads/logo.png';
     if (isset($settings['logo']) && !empty($settings['logo']) && file_exists('../uploads/' . $settings['logo'])) {
@@ -218,7 +242,7 @@ $rule = filter_input(INPUT_GET, 'rule', FILTER_DEFAULT);
 
     <div class="header">
         <img src="<?php echo htmlspecialchars($logoPath); ?>" alt="لوگو">
-        <h1><?php echo htmlspecialchars($settings['agency_name']); ?><br>د استخدام تړون</h1>
+        <h1><?php echo htmlspecialchars($settings['agency_name']); ?> - <?php echo htmlspecialchars($branch['name']); ?><br>د استخدام تړون</h1>
         <div class="date">نېټه: <?php echo date('Y-m-d'); ?></div>
     </div>
 
@@ -226,13 +250,13 @@ $rule = filter_input(INPUT_GET, 'rule', FILTER_DEFAULT);
 <div class="agreement-body">
     <div class="personal-info">
         <p>دا د استخدام تړون ("تړون") د لاندې لوریو ترمنځ شوی دی:</p>
-        <p><?php echo htmlspecialchars($settings['agency_name']); ?> (له دې وروسته ورته "شرکت" ویل کېږي)</p>
+        <p><?php echo htmlspecialchars($settings['agency_name']); ?> - <?php echo htmlspecialchars($branch['name']); ?> (له دې وروسته ورته "شرکت" ویل کېږي)</p>
         <p>او</p>
         <p>زه، _________________________، د _________________________ زوی/لور، 
         د _________________________ ولایت، د _________________________ ولسوالۍ اوسېدونکی، 
         دا مهال د _________________________ ولایت، د _________________________ ولسوالۍ اوسېدونکی، 
         د تذکرې/پېژندپاڼې شمېره: _________________________</p>
-        <p>په دا ډول زه د لاندې شرایطو سره د <?php echo htmlspecialchars($settings['agency_name']); ?> سره د کار کولو موافقه کوم:</p>
+        <p>په دا ډول زه د لاندې شرایطو سره د <?php echo htmlspecialchars($settings['agency_name']); ?> - <?php echo htmlspecialchars($branch['name']); ?> سره د کار کولو موافقه کوم:</p>
     </div>
 
     <div class="clause">

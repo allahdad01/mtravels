@@ -179,7 +179,7 @@ body {
                         <?php endif; ?>
                     </td>
                     <td width="70%" style="text-align: center; vertical-align: middle;">
-                        <div class="company-name"><?= $settings['agency_name'] ?></div>
+                        <div class="company-name"><?= $settings['agency_name'] ?> - <?php echo htmlspecialchars($branch['name']); ?></div>
                         <div class="title">Family Umrah Service Completion Form</div>
                     </td>
                     <td width="15%" style="text-align: right; vertical-align: middle; font-size: 7pt;">
@@ -214,13 +214,13 @@ body {
             </tr>
         </table>
 
-        <div class="section-header">Family Members</div>
+        <div class="section-header">Family Members Service Completion</div>
         <table class="members-table">
             <thead>
                 <tr>
-                    <th>Name</th>
+                    <th>Member Name</th>
                     <th>Passport Number</th>
-                    <th>Documents Returned</th>
+                    <th>Service Status</th>
                 </tr>
             </thead>
             <tbody>
@@ -229,12 +229,38 @@ body {
                     <td><?= htmlspecialchars($member['name']) ?></td>
                     <td><?= htmlspecialchars($member['passport_number']) ?></td>
                     <td>
-                        <div class="checkbox <?= isset($completionDetails['returned_passports']) && $completionDetails['returned_passports'] === '1' ? 'checked' : '' ?>"></div> Passports
-                        <div class="checkbox <?= isset($completionDetails['returned_id_cards']) && $completionDetails['returned_id_cards'] === '1' ? 'checked' : '' ?>"></div> ID Cards
-                        <div class="checkbox <?= isset($completionDetails['returned_other_items']) && $completionDetails['returned_other_items'] === '1' ? 'checked' : '' ?>"></div> Other Items
+                        <div class="checkbox checked"></div> Service Completed
                     </td>
                 </tr>
                 <?php endforeach; ?>
+            </tbody>
+        </table>
+
+        <div class="section-header">Documents Returned</div>
+        <table class="completion-table">
+            <thead>
+                <tr>
+                    <th>Document/Item</th>
+                    <th style="text-align: center; width: 80px;">Returned</th>
+                </tr>
+            </thead>
+            <tbody>
+                <tr>
+                    <td>Passport(s)</td>
+                    <td style="text-align: center;"><div class="checkbox checked"></div></td>
+                </tr>
+                <tr>
+                    <td>Identity Card(s)</td>
+                    <td style="text-align: center;"><div class="checkbox checked"></div></td>
+                </tr>
+                <tr>
+                    <td>Photos</td>
+                    <td style="text-align: center;"><div class="checkbox checked"></div></td>
+                </tr>
+                <tr>
+                    <td>Other Documents</td>
+                    <td style="text-align: center;"><div class="checkbox checked"></div></td>
+                </tr>
             </tbody>
         </table>
 
@@ -272,14 +298,14 @@ body {
         </div>
         
         <div class="footer">
-            <?php if (!empty($settings['address'])): ?>
-                <?= htmlspecialchars($settings['address']) ?> |
+            <?php if (!empty($branch['address'])): ?>
+                <?= htmlspecialchars($branch['address']) ?> |
             <?php endif; ?>
-            <?php if (!empty($settings['phone'])): ?>
-                Tel: <?= htmlspecialchars($settings['phone']) ?> |
+            <?php if (!empty($branch['phone'])): ?>
+                Tel: <?= htmlspecialchars($branch['phone']) ?> |
             <?php endif; ?>
-            <?php if (!empty($settings['email'])): ?>
-                Email: <?= htmlspecialchars($settings['email']) ?>
+            <?php if (!empty($branch['email'])): ?>
+                Email: <?= htmlspecialchars($branch['email']) ?>
             <?php endif; ?>
             <br>
             Generated on <?= date('F d, Y') ?> | Reference: FAM-COMP-<?= $family['family_id'] ?>-<?= date('Ymd') ?>

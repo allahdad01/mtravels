@@ -32,32 +32,39 @@ if (!isset($invoiceData['tickets']) || !is_array($invoiceData['tickets']) || cou
     die('No tickets selected for invoice');
 }
 
-// Get company/agency information from database (PDO)
+// Fetch settings data (using PDO connection)
 try {
-    $agencyInfoQuery = "SELECT * FROM settings WHERE tenant_id = ?";
-    $stmt = $pdo->prepare($agencyInfoQuery);
-    $stmt->execute([$tenant_id]);
-    $agencyInfo = $stmt->fetch(PDO::FETCH_ASSOC);
+    $settingStmt = $pdo->prepare("SELECT * FROM settings WHERE tenant_id = ?");
+    $settingStmt->bindParam(1, $tenant_id, PDO::PARAM_INT);
+    $settingStmt->execute();
+    $settings = $settingStmt->fetch(PDO::FETCH_ASSOC);
+
+    if (!$settings) {
+        // Fallback defaults if no settings row found
+        $settings = ['agency_name' => 'Travel Agency'];
+    }
 } catch (Exception $e) {
-    $agencyInfo = false;
+    error_log("Settings Error: " . $e->getMessage());
+    $settings = ['agency_name' => 'Travel Agency'];
 }
 
-if (!$agencyInfo) {
-    // Default values if company settings are not found
-    $agencyInfo = [
-        'company_name' => 'Travel Agency',
-        'company_address' => '123 Travel Street, Kabul, Afghanistan',
-        'company_phone' => '+93 XXXXXXXXX',
-        'company_email' => 'info@travelagency.com',
-        'company_logo' => ''
-    ];
+// Fetch branch data (from branches table)
+try {
+    $branchStmt = $pdo->prepare("SELECT name, code, phone, address, email FROM branches WHERE id = ? AND tenant_id = ?");
+    $branchStmt->bindParam(1, $branch_id, PDO::PARAM_INT);
+    $branchStmt->bindParam(2, $tenant_id, PDO::PARAM_INT);
+    $branchStmt->execute();
+    $branch = $branchStmt->fetch(PDO::FETCH_ASSOC);
+} catch (Exception $e) {
+    error_log("Branch Error: " . $e->getMessage());
+    $branch = null;
 }
 
 // Get client information (PDO)
 $clientId = $invoiceData['clientId'];
-$clientQuery = "SELECT * FROM clients WHERE id = ? AND tenant_id = ?";
+$clientQuery = "SELECT * FROM clients WHERE id = ? AND tenant_id = ? And branch_id = ?";
 $stmt = $pdo->prepare($clientQuery);
-$stmt->execute([$clientId, $tenant_id]);
+$stmt->execute([$clientId, $tenant_id, $branch_id]);
 $clientInfo = $stmt->fetch(PDO::FETCH_ASSOC);
 
 if (!$clientInfo) {
@@ -297,13 +304,13 @@ try {
         
         <div class="invoice-header">
             <div class="title-container">
-                <div class="logo-text"><?php echo htmlspecialchars($agencyInfo['title']); ?></div>
+                <div class="logo-text"><?php echo htmlspecialchars($settings['title']); ?></div>
                 <div>Professional Travel Services</div>
             </div>
             
             <div class="logo-container">
-                <?php if (!empty($agencyInfo['logo'])): ?>
-                <img src="<?php echo htmlspecialchars('../../uploads/logo/' . $agencyInfo['logo']); ?>" alt="Company Logo" class="logo-image">
+                <?php if (!empty($settings['logo'])): ?>
+                <img src="<?php echo htmlspecialchars('../../uploads/logo/' . $settings['logo']); ?>" alt="Company Logo" class="logo-image">
                 <?php endif; ?>
             </div>
             
@@ -316,16 +323,16 @@ try {
         <div class="invoice-info">
             <div class="company-info">
                 <div class="info-title">From:</div>
-                <div><?php echo htmlspecialchars($agencyInfo['title']); ?></div>
+                <div><?php echo htmlspecialchars($settings['title']); ?></div>
                 <?php 
                 // Split address into multiple lines if it contains commas
-                $addressLines = explode(',', $agencyInfo['address']);
+                $addressLines = explode(',', $branch['address']);
                 foreach ($addressLines as $line) {
                     echo '<div>' . htmlspecialchars(trim($line)) . '</div>';
                 }
                 ?>
-                <div>Phone: <?php echo htmlspecialchars($agencyInfo['phone']); ?></div>
-                <div>Email: <?php echo htmlspecialchars($agencyInfo['email']); ?></div>
+                <div>Phone: <?php echo htmlspecialchars($branch['phone']); ?></div>
+                <div>Email: <?php echo htmlspecialchars($branch['email']); ?></div>
             </div>
             
             <div class="client-info">

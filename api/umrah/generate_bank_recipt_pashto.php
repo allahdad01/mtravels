@@ -1,7 +1,7 @@
 <?php
 
-require_once '../includes/db.php';
-require_once '../includes/language_helpers.php';
+require_once '../../includes/db.php';
+require_once '../../includes/language_helpers.php';
 
 if (session_status() === PHP_SESSION_NONE) {
     session_start();
@@ -11,10 +11,10 @@ $branch_id = $_SESSION['branch_id'];
 
 $family_id = filter_input(INPUT_GET, 'family_id', FILTER_VALIDATE_INT);
 $member_ids_raw = $_GET['member_ids'] ?? '';
-$bank_name = filter_input(INPUT_GET, 'bank_name', FILTER_SANITIZE_STRING);
-$bank_account_number = filter_input(INPUT_GET, 'bank_account_number', FILTER_SANITIZE_STRING);
-$account_name = filter_input(INPUT_GET, 'account_name', FILTER_SANITIZE_STRING);
-$payment = filter_input(INPUT_GET, 'payment', FILTER_SANITIZE_STRING);
+$bank_name = filter_input(INPUT_GET, 'bank_name', FILTER_SANITIZE_FULL_SPECIAL_CHARS);
+$bank_account_number = filter_input(INPUT_GET, 'bank_account_number', FILTER_SANITIZE_FULL_SPECIAL_CHARS);
+$account_name = filter_input(INPUT_GET, 'account_name', FILTER_SANITIZE_FULL_SPECIAL_CHARS);
+$payment = filter_input(INPUT_GET, 'payment', FILTER_SANITIZE_FULL_SPECIAL_CHARS);
 $language = $_GET['language'] ?? 'fa';
 
 if (!$family_id) {
@@ -22,11 +22,33 @@ if (!$family_id) {
 }
 
 try {
-    // Load agency settings
-    $settingsQuery = "SELECT * FROM settings WHERE tenant_id = ?";
-    $settingsStmt = $pdo->prepare($settingsQuery);
-    $settingsStmt->execute([$tenant_id]);
-    $settings = $settingsStmt->fetch(PDO::FETCH_ASSOC);
+// Fetch settings data (using PDO connection)
+try {
+    $settingStmt = $pdo->prepare("SELECT * FROM settings WHERE tenant_id = ?");
+    $settingStmt->bindParam(1, $tenant_id, PDO::PARAM_INT);
+    $settingStmt->execute();
+    $settings = $settingStmt->fetch(PDO::FETCH_ASSOC);
+
+    if (!$settings) {
+        // Fallback defaults if no settings row found
+        $settings = ['agency_name' => 'Travel Agency'];
+    }
+} catch (Exception $e) {
+    error_log("Settings Error: " . $e->getMessage());
+    $settings = ['agency_name' => 'Travel Agency'];
+}
+
+// Fetch branch data (from branches table)
+try {
+    $branchStmt = $pdo->prepare("SELECT name, code, phone, address, email FROM branches WHERE id = ? AND tenant_id = ?");
+    $branchStmt->bindParam(1, $branch_id, PDO::PARAM_INT);
+    $branchStmt->bindParam(2, $tenant_id, PDO::PARAM_INT);
+    $branchStmt->execute();
+    $branch = $branchStmt->fetch(PDO::FETCH_ASSOC);
+} catch (Exception $e) {
+    error_log("Branch Error: " . $e->getMessage());
+    $branch = null;
+}
 
     $logoPath = __DIR__ . '../../uploads/logo/' . $settings['logo'];
     if (!empty($settings['logo']) && file_exists('../../uploads/logo/' . $settings['logo'])) {
@@ -150,7 +172,7 @@ try {
 <div class="container">
     <div class="header">
         <img src="<?= htmlspecialchars($logoPath) ?>" alt="لوګو">
-        <h1><?= $settings['agency_name'] ?><br>د بانک د پیسو رسید</h1>
+        <h1><?= $settings['agency_name'] ?> - <?php echo htmlspecialchars($branch['name']); ?><br>د بانک د پیسو رسید</h1>
         <div class="date">نیټه: <?= date('Y-m-d') ?></div>
     </div>
 

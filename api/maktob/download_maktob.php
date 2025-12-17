@@ -5,14 +5,14 @@ if (session_status() === PHP_SESSION_NONE) {
 }
 
 // Include security module
-require_once 'security.php';
+require_once '../../admin/security.php';
 
 // Enforce authentication
 enforce_auth();
 $tenant_id = $_SESSION['tenant_id'];
 $branch_id = $_SESSION['branch_id'];
 // Include database connection
-require_once('../includes/db.php');
+require_once('../../includes/db.php');
 
 // Get maktob ID from URL
 $maktob_id = isset($_GET['id']) ? (int)$_GET['id'] : 0;
@@ -37,12 +37,33 @@ if (!$maktob) {
     die("Maktob not found");
 }
 
-// Get company information from settings table
-$settings_query = "SELECT * FROM settings WHERE tenant_id = ?";
-$settings_stmt = $pdo->prepare($settings_query);
-$settings_stmt->bindParam(1, $tenant_id, PDO::PARAM_INT);
-$settings_stmt->execute();
-$settings = $settings_stmt->fetch(PDO::FETCH_ASSOC);
+// Fetch settings data (using PDO connection)
+try {
+    $settingStmt = $pdo->prepare("SELECT * FROM settings WHERE tenant_id = ?");
+    $settingStmt->bindParam(1, $tenant_id, PDO::PARAM_INT);
+    $settingStmt->execute();
+    $settings = $settingStmt->fetch(PDO::FETCH_ASSOC);
+
+    if (!$settings) {
+        // Fallback defaults if no settings row found
+        $settings = ['agency_name' => 'Travel Agency'];
+    }
+} catch (Exception $e) {
+    error_log("Settings Error: " . $e->getMessage());
+    $settings = ['agency_name' => 'Travel Agency'];
+}
+
+// Fetch branch data (from branches table)
+try {
+    $branchStmt = $pdo->prepare("SELECT name, code, phone, address FROM branches WHERE id = ? AND tenant_id = ?");
+    $branchStmt->bindParam(1, $branch_id, PDO::PARAM_INT);
+    $branchStmt->bindParam(2, $tenant_id, PDO::PARAM_INT);
+    $branchStmt->execute();
+    $branch = $branchStmt->fetch(PDO::FETCH_ASSOC);
+} catch (Exception $e) {
+    error_log("Branch Error: " . $e->getMessage());
+    $branch = null;
+}
 
 if (!$settings) {
     // Default values if settings not found
@@ -56,7 +77,7 @@ if (!$settings) {
 }
 
 // Include Composer autoloader (adjust path as needed)
-require_once '../vendor/autoload.php';
+require_once '../../vendor/autoload.php';
 
 // Set language from maktob data
 $lang = isset($maktob['language']) ? strtolower($maktob['language']) : 'english';
@@ -272,7 +293,7 @@ $html = '
 // Define the footer HTML
 $footerHTML = '
 <div class="footer">
-    <p>' . htmlspecialchars($settings['agency_name']) . ' | ' . htmlspecialchars($settings['address']) . ' | Tel: ' . htmlspecialchars($settings['phone']) . ' | Email: ' . htmlspecialchars($settings['email']) . '</p>
+    <p>' . htmlspecialchars($branch['name']) . ' | ' . htmlspecialchars($branch['address']) . ' | Tel: ' . htmlspecialchars($branch['phone']) . ' | Email: ' . htmlspecialchars($branch['email']) . '</p>
     <p>This document is officially issued on ' . date('M j, Y', strtotime($maktob['maktob_date'])) . ' | Ref: LETTER-' . htmlspecialchars($maktob['maktob_number']) . '</p>
 </div>
 ';

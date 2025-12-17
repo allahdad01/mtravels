@@ -15,56 +15,11 @@
         }).replace(/\//g, '/');
     }
 
-    // Define the document types and items to be returned
-    const completionItems = [
-        { key: 'passport', label: 'Passport', defaultNote: '' },
-        { key: 'id_card', label: 'ID Card', defaultNote: '' },
-        { key: 'other_docs', label: 'Other Documents', defaultNote: '' }
-    ];
-
     // Modify the generateCompletionForm function to show the details modal first
     function generateCompletionForm(bookingId) {
         // Set the booking ID in the hidden input
         $('#completionBookingId').val(bookingId);
         
-        // Clear and populate the completion details table
-        const tableBody = $('#completionDetailsTableBody');
-        tableBody.empty();
-
-        completionItems.forEach(item => {
-            const row = `
-                <tr>
-                    <td>${item.label}</td>
-                    <td class="text-center">
-                        <div class="custom-control custom-checkbox">
-                            <input type="checkbox" class="custom-control-input"
-                                   id="completion_${item.key}" name="returned_items[${item.key}]" value="1">
-                            <label class="custom-control-label" for="completion_${item.key}"></label>
-                        </div>
-                    </td>
-                </tr>
-            `;
-            tableBody.append(row);
-        });
-
-        // Fetch existing booking data to pre-fill some fields
-        fetch(`../api/umrah/get_umrah_member.php?booking_id=${bookingId}`)
-            .then(response => response.json())
-            .then(data => {
-                if (data.success && data.member) {
-                    const member = data.member;
-                    // Pre-fill some fields based on member data
-                    if (member.id_type === 'Original') {
-                        $('#completion_passport').prop('checked', true).trigger('change');
-                        $('#condition_passport').val('good');
-                    }
-                    // Add any other pre-fill logic here
-                }
-            })
-            .catch(error => {
-                console.error('Error fetching member data:', error);
-            });
-
         // Show the completion details modal
         $('#completionDetailsModal').modal('show');
     }
@@ -90,14 +45,8 @@
             const formData = new FormData(form[0]);
             const bookingId = $('#completionBookingId').val();
             
-            // Collect form data for each item
+            // Collect form data
             const params = new URLSearchParams();
-            
-            completionItems.forEach(item => {
-                const isReturned = $(`#completion_${item.key}`).is(':checked');
-                // Always include the item, with 1 for checked and 0 for unchecked
-                params.append(`returned_items[${item.key}]`, isReturned ? '1' : '0');
-            });
 
             // Add additional notes
             const additionalNotes = $('#completionAdditionalNotes').val();

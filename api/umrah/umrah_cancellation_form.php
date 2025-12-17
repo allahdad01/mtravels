@@ -223,7 +223,7 @@ ob_start();
                         <?php endif; ?>
                     </td>
                     <td width="70%" style="text-align: center; vertical-align: middle;">
-                        <div class="company-name"><?= $settings['agency_name'] ?></div>
+                        <div class="company-name"><?= $settings['agency_name'] ?> - <?php echo htmlspecialchars($branch['name']); ?></div>
                         <div class="title"><?= $l['form_title'] ?></div>
                     </td>
                     <td width="15%" style="text-align: right; vertical-align: middle; font-size: 7pt;">
@@ -294,7 +294,8 @@ ob_start();
             ];
 
             foreach ($documentItems as $key => $label) {
-                $isReturned = isset($returnedItems[$key]) && $returnedItems[$key] == '1';
+                // Default all items as returned (checked) if not explicitly set
+                $isReturned = !isset($returnedItems[$key]) || $returnedItems[$key] == '1';
                 $condition = isset($itemConditions[$key]) ? $itemConditions[$key] : '';
                 $note = isset($itemNotes[$key]) ? $itemNotes[$key] : '';
                 ?>
@@ -349,14 +350,14 @@ ob_start();
         </div>
         
         <div class="footer">
-            <?php if (!empty($settings['address'])): ?>
-                <?= htmlspecialchars($settings['address']) ?> |
+            <?php if (!empty($branch['address'])): ?>
+                <?= htmlspecialchars($branch['address']) ?> |
             <?php endif; ?>
-            <?php if (!empty($settings['phone'])): ?>
-                Tel: <?= htmlspecialchars($settings['phone']) ?> |
+            <?php if (!empty($branch['phone'])): ?>
+                Tel: <?= htmlspecialchars($branch['phone']) ?> |
             <?php endif; ?>
-            <?php if (!empty($settings['email'])): ?>
-                Email: <?= htmlspecialchars($settings['email']) ?>
+            <?php if (!empty($branch['email'])): ?>
+                Email: <?= htmlspecialchars($branch['email']) ?>
             <?php endif; ?>
             <br>
             <?= $l['generated_on'] ?> <?= date('F d, Y') ?> | Ref: CANC-<?= $booking['booking_id'] ?>-<?= date('Ymd') ?>

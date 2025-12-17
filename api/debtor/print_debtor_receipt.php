@@ -1,17 +1,14 @@
 <?php
-// Include security module
-require_once 'security.php';
+session_start();
 
 // Include language helper
-require_once '../includes/language_helpers.php';
+require_once '../../includes/language_helpers.php';
 
-// Enforce authentication
-enforce_auth();
 $tenant_id = $_SESSION['tenant_id'];
 $branch_id = $_SESSION['branch_id'];
 
 // Database connection
-require_once('../includes/db.php');
+require_once('../../includes/db.php');
 
 // Get transaction ID from URL
 $transaction_id = isset($_GET['id']) ? (int)$_GET['id'] : 0;
@@ -50,14 +47,32 @@ if (!$transaction) {
     die(__('transaction_not_found'));
 }
 
-// Fetch settings data
+// Fetch settings data (using PDO connection)
 try {
-    $settingStmt = $pdo->query("SELECT * FROM settings WHERE tenant_id = ?");
-    $settingStmt->execute([$tenant_id]);
+    $settingStmt = $pdo->prepare("SELECT * FROM settings WHERE tenant_id = ?");
+    $settingStmt->bindParam(1, $tenant_id, PDO::PARAM_INT);
+    $settingStmt->execute();
     $settings = $settingStmt->fetch(PDO::FETCH_ASSOC);
-} catch (PDOException $e) {
+
+    if (!$settings) {
+        // Fallback defaults if no settings row found
+        $settings = ['agency_name' => 'Travel Agency'];
+    }
+} catch (Exception $e) {
     error_log("Settings Error: " . $e->getMessage());
-    $settings = ['agency_name' => 'Default Name'];
+    $settings = ['agency_name' => 'Travel Agency'];
+}
+
+// Fetch branch data (from branches table)
+try {
+    $branchStmt = $pdo->prepare("SELECT name, code, phone, address FROM branches WHERE id = ? AND tenant_id = ?");
+    $branchStmt->bindParam(1, $branch_id, PDO::PARAM_INT);
+    $branchStmt->bindParam(2, $tenant_id, PDO::PARAM_INT);
+    $branchStmt->execute();
+    $branch = $branchStmt->fetch(PDO::FETCH_ASSOC);
+} catch (Exception $e) {
+    error_log("Branch Error: " . $e->getMessage());
+    $branch = null;
 }
 ?>
 
@@ -97,7 +112,7 @@ try {
         }
 
         .receipt-header {
-            border-bottom: 2px solid #17a2b8;
+            border-bottom: 2px solid #4099ff;
             padding-bottom: 20px;
             margin-bottom: 10px;
         }
@@ -119,7 +134,7 @@ try {
         .receipt-title {
             font-size: 24px;
             font-weight: bold;
-            color: #17a2b8;
+            color: #4099ff;
             text-align: center;
             flex: 2;
         }
@@ -191,9 +206,9 @@ try {
         .amount-value {
             font-size: 28px;
             font-weight: bold;
-            color: #17a2b8;
+            color: #4099ff;
             margin-bottom: 40px;
-            background: #17a2b8;
+            background: #4099ff;
             color: white;
             padding: 10px 20px;
             border-radius: 5px;
@@ -280,10 +295,13 @@ try {
                 <div class="header-row">
                     <div class="agency-name">
                         <?php echo htmlspecialchars($settings['agency_name'] ?? 'Travel Agency'); ?>
+                        <?php if (!empty($branch['name'])): ?>
+                            <br><small><?php echo htmlspecialchars($branch['name']); ?></small>
+                        <?php endif; ?>
                     </div>
-                    <div class="receipt-title">Debtor Payment Receipt</div>
+                    <div class="receipt-title">Payment Receipt</div>
                     <div class="company-logo">
-                        <img src="../uploads/logo/<?= htmlspecialchars($settings['logo']); ?>" alt="Company Logo">
+                        <img src="../../uploads/logo/<?= htmlspecialchars($settings['logo'] ?? ''); ?>" alt="Company Logo">
                     </div>
                 </div>
             </div>
@@ -353,7 +371,7 @@ try {
                 <!-- Signature Section -->
                 <div class="signature-section">
                     <div class="signature-box">
-                        <div class="signature-label">Debtor Sign</div>
+                        <div class="signature-label">Receiver Sign</div>
                         <div class="signature-line"></div>
                     </div>
                     <div class="signature-box">
@@ -365,8 +383,18 @@ try {
 
             <!-- Footer Note -->
             <div class="footer-note">
-                Thank you for your payment<br>
-                <?php echo htmlspecialchars($settings['address'] ?? ''); ?> | <?php echo htmlspecialchars($settings['phone'] ?? ''); ?>
+                Thank you for your business<br>
+                <?php if (!empty($branch)): ?>
+                    <?php echo htmlspecialchars($branch['phone'] ?? ''); ?>
+                    <?php if (!empty($branch['address'])): ?>
+                        (<?php echo htmlspecialchars($branch['address']); ?>)
+                    <?php endif; ?>
+                <?php else: ?>
+                    <?php echo htmlspecialchars($settings['address'] ?? ''); ?>
+                    <?php if (!empty($settings['phone'])): ?>
+                        | <?php echo htmlspecialchars($settings['phone']); ?>
+                    <?php endif; ?>
+                <?php endif; ?>
             </div>
         </div>
     </div>

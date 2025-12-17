@@ -4863,6 +4863,15 @@ return [
 'i_confirm_that_i_want_to_cancel_this_visa_application' => 'زه تأییدوم چې زه غواړم دا د ویزې غوښتنلیک لغوه کړم',
 'i_confirm_that_i_want_to_re_apply_this_visa_application' => 'زه تأییدوم چې زه غواړم دا د ویزې غوښتنلیک بیا تطبیق کړم',
 'cancelling_a_visa_will_change_its_status_and_prevent_further_processing' => 'د ویزې لغوه کول به یې حالت بدل کړي او نور پروسس به ودروي',
-
+'hawala_transfers' => 'حواله لېږدونه',
+'exchanges' => 'تبادلې',
+'enter_name' => 'نوم وليکئ',
+'enter_email' => 'برېښنالیک وليکئ',
+'enter_phone' => 'د ټليفون شمېره وليکئ',
+'enter_address' => 'پته وليکئ',
+'these_terms_will_appear_on_the_printed_agreement' => 'دا شرطونه به په چاپ شوي قرارداد کې ښکاره شي',
+'edit_employee_information' => 'د کارکوونکي معلومات سمول',
+'employee_status' => 'د کارکوونکي حالت',
+'changes_will_be_logged' => 'بدلونونه به ثبت شي',
 
 ];

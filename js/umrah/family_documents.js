@@ -21,12 +21,59 @@ function generateFamilyReceipt(familyId) {
 }
 
 function generateFamilyCompletion(familyId) {
+    // Ensure familyId is a valid number
+    familyId = parseInt(familyId, 10);
+    
+    if (isNaN(familyId) || familyId <= 0) {
+        console.error('Invalid family ID:', familyId);
+        showToast('error', 'Please provide a valid family ID.');
+        return;
+    }
+    
     // Show completion details modal
     $('#familyCompletionDetailsModal').modal('show');
     $('#familyCompletionBookingId').val('family_' + familyId);
     
-    // Initialize completion details table for family
-    initializeCompletionDetailsTableForFamily();
+    // Load and display family members
+    initializeCompletionMembersForFamily(familyId);
+}
+
+function initializeCompletionMembersForFamily(familyId) {
+    // Get family members
+    $.ajax({
+        url: '../api/umrah/get_family_members.php',
+        type: 'GET',
+        data: { family_id: familyId },
+        dataType: 'json',
+        success: function(members) {
+            let membersHtml = '';
+            
+            if (members && members.length > 0) {
+                members.forEach(function(member, index) {
+                    const memberId = member.booking_id;
+                    const memberName = member.name || 'Unknown';
+                    
+                    membersHtml += `
+                        <div class="form-check mb-2">
+                            <input class="form-check-input completion-member-checkbox" type="checkbox" 
+                                   id="completion_member_${memberId}" name="member_ids[]" value="${memberId}">
+                            <label class="form-check-label" for="completion_member_${memberId}">
+                                ${memberName}
+                            </label>
+                        </div>
+                    `;
+                });
+            } else {
+                membersHtml = '<p class="text-muted">No members found for this family.</p>';
+            }
+            
+            $('#familyCompletionMembersContainer').html(membersHtml);
+        },
+        error: function(error) {
+            console.error('Error loading family members:', error);
+            $('#familyCompletionMembersContainer').html('<p class="text-danger">Error loading members</p>');
+        }
+    });
 }
 
 function generateFamilyCancellation(familyId) {
@@ -35,11 +82,7 @@ function generateFamilyCancellation(familyId) {
     
     if (isNaN(familyId) || familyId <= 0) {
         console.error('Invalid family ID:', familyId);
-        Swal.fire({
-            icon: 'error',
-            title: 'Invalid Family ID',
-            text: 'Please provide a valid family ID.'
-        });
+        showToast('error', 'Please provide a valid family ID.');
         return;
     }
     
@@ -51,7 +94,7 @@ function generateDocumentWithLanguage(language) {
     const context = window.currentDocumentContext;
     if (!context) return;
 
-    const { familyId, type, formData } = context;
+    const { familyId, type, formData, cancellationReason, returnedItems, bookingId, selectedMembers } = context;
     
     // Close language selection modal
     $('#familyLanguageModal').modal('hide');
@@ -69,7 +112,39 @@ function generateDocumentWithLanguage(language) {
             window.open(url, '_blank');
             break;
         case 'completion':
-            url = `../api/umrah/generate_family_completion.php?family_id=${familyId}&lang=${language}`;
+            // Build URL with member IDs if available
+            const params = new URLSearchParams();
+            params.append('family_id', familyId);
+            params.append('lang', language);
+            if (formData && formData.member_ids && Array.isArray(formData.member_ids) && formData.member_ids.length > 0) {
+                formData.member_ids.forEach(id => {
+                    params.append('member_ids[]', id);
+                });
+            }
+            if (formData && formData.additional_notes) {
+                params.append('additional_notes', formData.additional_notes);
+            }
+            url = `../api/umrah/generate_family_completion.php?${params.toString()}`;
+            window.open(url, '_blank');
+            break;
+        case 'cancellation':
+            // Build URL with cancellation details
+            const cancelParams = new URLSearchParams();
+            cancelParams.append('family_id', familyId);
+            cancelParams.append('booking_id', bookingId);
+            cancelParams.append('lang', language);
+            if (cancellationReason) {
+                cancelParams.append('cancellation_reason', cancellationReason);
+            }
+            if (returnedItems) {
+                cancelParams.append('returned_items', JSON.stringify(returnedItems));
+            }
+            if (selectedMembers && Array.isArray(selectedMembers) && selectedMembers.length > 0) {
+                selectedMembers.forEach(id => {
+                    cancelParams.append('booking_ids[]', id);
+                });
+            }
+            url = `../api/umrah/generate_family_cancellation.php?${cancelParams.toString()}`;
             window.open(url, '_blank');
             break;
         
@@ -252,22 +327,29 @@ $(document).ready(function() {
         if (bookingId.startsWith('family_')) {
             const familyId = bookingId.replace('family_', '');
             
-            // Collect form data
-            const formData = {};
-            const form = $('#familyCompletionDetailsForm');
-
-            form.find('input[type="checkbox"]').each(function() {
-                const input = $(this);
-                const name = input.attr('name');
-                if (name) {
-                    formData[name] = input.is(':checked') ? '1' : '0';
-                }
+            // Collect selected member IDs
+            const selectedMembers = [];
+            $('#familyCompletionMembersContainer').find('.completion-member-checkbox:checked').each(function() {
+                selectedMembers.push($(this).val());
             });
+
+            // Validate that at least one member is selected
+            if (selectedMembers.length === 0) {
+                showToast('warning', 'Please select at least one member whose service is complete.');
+                return;
+            }
+
+            // Collect form data
+            const formData = {
+                member_ids: selectedMembers,
+                additional_notes: $('#familyCompletionAdditionalNotes').val() || ''
+            };
 
             window.currentDocumentContext = {
                 familyId: familyId,
                 type: 'completion',
-                formData: formData
+                formData: formData,
+                memberIds: selectedMembers
             };
 
             $('#familyCompletionDetailsModal').modal('hide');

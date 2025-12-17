@@ -8,11 +8,33 @@ if (!isset($_GET['pilgrim_ids']) || empty($_GET['pilgrim_ids'])) {
 }
 $tenant_id = $_SESSION['tenant_id'];
 $branch_id = $_SESSION['branch_id'];
-// Fetch settings
-$stmt = $pdo->prepare("SELECT * FROM settings WHERE tenant_id = ?");
-$stmt->bindParam(1, $tenant_id, PDO::PARAM_INT);
-$stmt->execute();
-$settings = $stmt->fetch(PDO::FETCH_ASSOC);
+// Fetch settings data (using PDO connection)
+try {
+    $settingStmt = $pdo->prepare("SELECT * FROM settings WHERE tenant_id = ?");
+    $settingStmt->bindParam(1, $tenant_id, PDO::PARAM_INT);
+    $settingStmt->execute();
+    $settings = $settingStmt->fetch(PDO::FETCH_ASSOC);
+
+    if (!$settings) {
+        // Fallback defaults if no settings row found
+        $settings = ['agency_name' => 'Travel Agency'];
+    }
+} catch (Exception $e) {
+    error_log("Settings Error: " . $e->getMessage());
+    $settings = ['agency_name' => 'Travel Agency'];
+}
+
+// Fetch branch data (from branches table)
+try {
+    $branchStmt = $pdo->prepare("SELECT name, code, phone, address, email FROM branches WHERE id = ? AND tenant_id = ?");
+    $branchStmt->bindParam(1, $branch_id, PDO::PARAM_INT);
+    $branchStmt->bindParam(2, $tenant_id, PDO::PARAM_INT);
+    $branchStmt->execute();
+    $branch = $branchStmt->fetch(PDO::FETCH_ASSOC);
+} catch (Exception $e) {
+    error_log("Branch Error: " . $e->getMessage());
+    $branch = null;
+}
 
 $pilgrim_ids = explode(',', $_GET['pilgrim_ids']);
 $pilgrims_info = [];
@@ -42,7 +64,7 @@ if (!empty($pilgrims_info) && isset($pilgrims_info[0]['duration'])) {
 <html lang="ps" dir="rtl">
 <head>
     <meta charset="UTF-8">
-    <title>د ضمانت لیک - <?php echo htmlspecialchars($settings['agency_name']); ?> شرکت</title>
+    <title>د ضمانت لیک - <?php echo htmlspecialchars($settings['agency_name']); ?> - <?php echo htmlspecialchars($branch['name']); ?> شرکت</title>
     <style>
         @page {
             size: A4;
@@ -154,7 +176,7 @@ if (!empty($pilgrims_info) && isset($pilgrims_info[0]['duration'])) {
 <body>
     <div class="header">
         <img src="../../uploads/logo/<?= htmlspecialchars($settings['logo']) ?>" alt="Al-Moqadas Logo" style="width: 100px; height: auto;">
-        <h2>د <?php echo htmlspecialchars($settings['agency_name']); ?> سیاحتی او توریستی شرکت سره د محترم <?php echo htmlspecialchars($guarantor_name); ?> ضمانت لیک</h2>
+        <h2>د <?php echo htmlspecialchars($settings['agency_name']); ?> - <?php echo htmlspecialchars($branch['name']); ?> سیاحتی او توریستی شرکت سره د محترم <?php echo htmlspecialchars($guarantor_name); ?> ضمانت لیک</h2>
         <p>د معتمرینو د لیږد په اړه لاندی مسؤلیتونو ته پاملرنه</p>
         <p>تاریخ: <?php echo $date; ?></p>
     </div>

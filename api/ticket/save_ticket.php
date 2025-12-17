@@ -98,6 +98,9 @@ $soldTo = isset($_POST['soldTo']) ? DbSecurity::validateInput($_POST['soldTo'], 
 // Validate supplier
 $supplier = isset($_POST['supplier']) ? DbSecurity::validateInput($_POST['supplier'], 'int', ['min' => 0]) : null;
 
+// Validate phone
+$phone = isset($_POST['phone']) ? DbSecurity::validateInput($_POST['phone'], 'string', ['maxlength' => 255]) : null;
+
 // Check if the request method is POST
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     // Get and sanitize input data from the POST request
@@ -117,6 +120,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     $tripType = $_POST['tripType'];
     $returnDestination = $_POST['returnDestination'];
     $returnDate = $_POST['returnDate'];
+    $phone = htmlspecialchars($_POST['phone'], ENT_QUOTES, 'UTF-8');
     $passengers = isset($_POST['passengers']) ? $_POST['passengers'] : [];
 
     // Calculate totals
@@ -204,12 +208,11 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         $main_booking_id = 0;
 
         // Process each passenger
-        foreach ($passengers as $index => $passenger) {
-            // Get passenger details
-            $passengerName = htmlspecialchars($passenger['name'], ENT_QUOTES, 'UTF-8');
-            $phone = htmlspecialchars($passenger['phone'], ENT_QUOTES, 'UTF-8');
-            $gender = htmlspecialchars($passenger['gender'], ENT_QUOTES, 'UTF-8');
-            $title = htmlspecialchars($passenger['title'], ENT_QUOTES, 'UTF-8');
+         foreach ($passengers as $index => $passenger) {
+             // Get passenger details
+             $passengerName = htmlspecialchars($passenger['name'], ENT_QUOTES, 'UTF-8');
+             $gender = htmlspecialchars($passenger['gender'], ENT_QUOTES, 'UTF-8');
+             $title = htmlspecialchars($passenger['title'], ENT_QUOTES, 'UTF-8');
             
             // Get passenger pricing
             $base = floatval($passenger['base']);

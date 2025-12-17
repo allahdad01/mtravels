@@ -207,7 +207,7 @@
                 <?php endif; ?>
             </div>
             <div class="header-center">
-                <div class="agency_name"><?= htmlspecialchars($settings['agency_name'] ?? 'Agency Name') ?></div>
+                <div class="agency_name"><?= htmlspecialchars($settings['agency_name'] ?? 'Agency Name') ?> - <?php echo htmlspecialchars($branch['name']); ?></div>
                 <div class="title">Hotel Refund Agreement</div>
             </div>
             <div class="header-right">
@@ -296,7 +296,7 @@
             <div class="signature-box">
                 <div class="signature-line">
                     Agency Representative<br>
-                    <?= htmlspecialchars($settings['agency_name']) ?>
+                    <?= htmlspecialchars($settings['agency_name']) ?> - <?php echo htmlspecialchars($branch['name']); ?>
                 </div>
             </div>
         </div>

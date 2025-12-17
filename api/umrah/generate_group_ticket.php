@@ -107,16 +107,38 @@ if ($flightType === 'direct') {
     ];
 }
 
-// Fetch agency info
-$settingsQuery = "SELECT * FROM settings WHERE tenant_id = ?";
-$settingsStmt = $pdo->prepare($settingsQuery);
-$settingsStmt->execute([$tenant_id]);
-$settings = $settingsStmt->fetch(PDO::FETCH_ASSOC);
+// Fetch settings data (using PDO connection)
+try {
+    $settingStmt = $pdo->prepare("SELECT * FROM settings WHERE tenant_id = ?");
+    $settingStmt->bindParam(1, $tenant_id, PDO::PARAM_INT);
+    $settingStmt->execute();
+    $settings = $settingStmt->fetch(PDO::FETCH_ASSOC);
+
+    if (!$settings) {
+        // Fallback defaults if no settings row found
+        $settings = ['agency_name' => 'Travel Agency'];
+    }
+} catch (Exception $e) {
+    error_log("Settings Error: " . $e->getMessage());
+    $settings = ['agency_name' => 'Travel Agency'];
+}
+
+// Fetch branch data (from branches table)
+try {
+    $branchStmt = $pdo->prepare("SELECT name, code, phone, address, email FROM branches WHERE id = ? AND tenant_id = ?");
+    $branchStmt->bindParam(1, $branch_id, PDO::PARAM_INT);
+    $branchStmt->bindParam(2, $tenant_id, PDO::PARAM_INT);
+    $branchStmt->execute();
+    $branch = $branchStmt->fetch(PDO::FETCH_ASSOC);
+} catch (Exception $e) {
+    error_log("Branch Error: " . $e->getMessage());
+    $branch = null;
+}
 
 $agencyName = $settings['agency_name'] ?? 'Travel Agency';
-$agencyEmail = $settings['email'] ?? 'info@travelagency.com';
-$agencyPhone = $settings['phone'] ?? '+1 (555) 123-4567';
-$agencyAddress = $settings['address'] ?? '123 Travel Street';
+$agencyEmail = $branch['email'] ?? 'info@travelagency.com';
+$agencyPhone = $branch['phone'] ?? '+1 (555) 123-4567';
+$agencyAddress = $branch['address'] ?? '123 Travel Street';
 $agencyLogoPath = '../../uploads/logo/' . ($settings['logo'] ?? 'assets/images/logo.png');
 $logoBase64 = '';
 if (file_exists($agencyLogoPath)) {
@@ -476,7 +498,7 @@ function calculateStopover($arrivalTime, $departureTime) {
                 <?php endif; ?>
             </div>
             <div class="header-center">
-                <div class="company-name"><?php echo htmlspecialchars($agencyName); ?></div>
+                <div class="company-name"><?php echo htmlspecialchars($agencyName); ?> - <?php echo htmlspecialchars($branch['name']); ?></div>
             </div>
             <div class="header-right">
                 <div class="contact-info">

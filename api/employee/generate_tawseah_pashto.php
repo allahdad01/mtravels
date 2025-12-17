@@ -25,10 +25,33 @@ try {
     if (!$user) {
         die('کاربر یافت نشد');
     }
-
+// Fetch settings data (using PDO connection)
+try {
     $settingStmt = $pdo->prepare("SELECT * FROM settings WHERE tenant_id = ?");
-    $settingStmt->execute([$tenant_id]);
+    $settingStmt->bindParam(1, $tenant_id, PDO::PARAM_INT);
+    $settingStmt->execute();
     $settings = $settingStmt->fetch(PDO::FETCH_ASSOC);
+
+    if (!$settings) {
+        // Fallback defaults if no settings row found
+        $settings = ['agency_name' => 'Travel Agency'];
+    }
+} catch (Exception $e) {
+    error_log("Settings Error: " . $e->getMessage());
+    $settings = ['agency_name' => 'Travel Agency'];
+}
+
+// Fetch branch data (from branches table)
+try {
+    $branchStmt = $pdo->prepare("SELECT name, code, phone, address FROM branches WHERE id = ? AND tenant_id = ?");
+    $branchStmt->bindParam(1, $branch_id, PDO::PARAM_INT);
+    $branchStmt->bindParam(2, $tenant_id, PDO::PARAM_INT);
+    $branchStmt->execute();
+    $branch = $branchStmt->fetch(PDO::FETCH_ASSOC);
+} catch (Exception $e) {
+    error_log("Branch Error: " . $e->getMessage());
+    $branch = null;
+}
 
     $logoPath = __DIR__ . '../../uploads/logo/' . $settings['logo'];
     if (isset($settings['logo']) && !empty($settings['logo']) && file_exists('../../uploads/logo/' . $settings['logo'])) {
@@ -226,7 +249,7 @@ if (!$job_title) {
 
     <div class="header">
     <img src="<?php echo htmlspecialchars($logoPath); ?>" alt="لوګو">
-    <h1>د <?php echo $settings['agency_name']; ?> شرکت<br>توسعه‌خط</h1>
+    <h1>د <?php echo $settings['agency_name']; ?> - <?php echo htmlspecialchars($branch['name']); ?> شرکت<br>توسعه‌خط</h1>
     <div class="date">نېټه: <?php echo date('Y-m-d'); ?></div>
 </div>
 
@@ -235,7 +258,7 @@ if (!$job_title) {
     <div class="personal-info">
         ته: <?php echo $user['name']; ?><br>
         دنده: <?php echo $job_title; ?><br>
-        اداره/شرکت: <?php echo $settings['agency_name']; ?>
+        اداره/شرکت: <?php echo $settings['agency_name']; ?> - <?php echo htmlspecialchars($branch['name']); ?>
     </div>
 
     <div class="clause">
@@ -260,7 +283,7 @@ if (!$job_title) {
         </div>
         <div class="signature-box">
             <div class="signature-line">
-                د <?php echo $settings['agency_name']; ?> شرکت رئیس<br>
+                د <?php echo $settings['agency_name']; ?> - <?php echo htmlspecialchars($branch['name']); ?> شرکت رئیس<br>
                 نېټه: _________________________</p>
             </div>
         </div>

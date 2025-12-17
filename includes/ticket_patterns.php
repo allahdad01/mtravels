@@ -289,6 +289,74 @@ function normalizePassengerName($name) {
 // ============================================
 
 /**
+ * Normalize ticket extraction result to standard grouped format
+ */
+function normalizeTicketResponse($result, $format = 'unknown') {
+    // If already in grouped format with passengers array, return as-is
+    if (isset($result['is_group_booking']) && isset($result['passengers']) && is_array($result['passengers'])) {
+        return [
+            'success' => true,
+            'message' => 'Ticket extracted successfully',
+            'data' => $result,
+            'format_detected' => $result['format_detected'] ?? $format,
+            'extracted_text_preview' => null, // Will be set by API
+            'confidence' => null, // Will be calculated by API
+        ];
+    }
+    
+    // If it's a single passenger result, convert to grouped format
+    if (!empty($result) && !isset($result['is_group_booking'])) {
+        // Check if it has passenger data
+        if (isset($result['passenger_name']) || isset($result['pnr']) || isset($result['ticket_number'])) {
+            $grouped = [
+                'is_group_booking' => false,
+                'booking_reference' => $result['pnr'] ?? $result['booking_reference'] ?? null,
+                'total_passengers' => 1,
+                'passengers' => [$result],
+                'flight_info' => extractCommonFlightInfo([$result]),
+            ];
+            
+            return [
+                'success' => true,
+                'message' => 'Ticket extracted successfully',
+                'data' => $grouped,
+                'format_detected' => $result['format_detected'] ?? $format,
+                'extracted_text_preview' => null,
+                'confidence' => null,
+            ];
+        }
+    }
+    
+    // Multi-segment or special format
+    if (isset($result['is_multi_segment'])) {
+        return [
+            'success' => true,
+            'message' => 'Ticket extracted successfully',
+            'data' => $result,
+            'format_detected' => $result['format_detected'] ?? $format,
+            'extracted_text_preview' => null,
+            'confidence' => null,
+        ];
+    }
+    
+    // Fallback: return empty grouped structure
+    return [
+        'success' => true,
+        'message' => 'Ticket extracted successfully',
+        'data' => [
+            'is_group_booking' => false,
+            'booking_reference' => null,
+            'total_passengers' => 0,
+            'passengers' => [],
+            'flight_info' => [],
+        ],
+        'format_detected' => $format,
+        'extracted_text_preview' => null,
+        'confidence' => 0,
+    ];
+}
+
+/**
  * Main extraction function with format detection
  */
 function extractTicketData($text) {
@@ -298,49 +366,118 @@ function extractTicketData($text) {
     $format = detectTicketFormat($text);
     
     // Extract based on format
+    $result = null;
     switch ($format) {
         case 'tolotripportal':
-            return extractTolotripportalTicket($text);
+            $result = extractTolotripportalTicket($text);
+            break;
         case 'salaamportal':
-            return extractSalaamPortalTicket($text);
+            $result = extractSalaamPortalTicket($text);
+            break;
         case 'merajair':
-            return extractMerajAirTicket($text);
+            $result = extractMerajAirTicket($text);
+            break;
         case 'haditaportal':
-            return extractHaditaportalTicket($text);
+            $result = extractHaditaportalTicket($text);
+            break;
         case 'flydubai':
-            return extractFlydubaiTicket($text);
+            $result = extractFlydubaiTicket($text);
+            break;
         case 'kamair':
-            return extractKamAirTicket($text);
+            $result = extractKamAirTicket($text);
+            break;
         case 'ariana':
-            return extractArianaTicket($text);
+            $result = extractArianaTicket($text);
+            break;
         case 'airarabia':
-            return extractAirArabiaTicket($text);
+            $result = extractAirArabiaTicket($text);
+            break;
         case 'skyportal':
-            return extractSkyportalTicket($text);
+            $result = extractSkyportalTicket($text);
+            break;
         case 'nsstportal':
-            return extractNSSPortalTicket($text);
+            $result = extractNSSPortalTicket($text);
+            break;
         default:
-            return extractStandardTicket($text);
+            $result = extractStandardTicket($text);
+            break;
     }
+    
+    // Ensure result is in grouped format
+    if (!isset($result['is_group_booking'])) {
+        // Single passenger or needs conversion
+        if (!empty($result) && is_array($result)) {
+            if (isset($result['passenger_name']) || isset($result['pnr']) || isset($result['ticket_number'])) {
+                // Single passenger object - convert to grouped format
+                $result = [
+                    'is_group_booking' => false,
+                    'booking_reference' => $result['pnr'] ?? $result['booking_reference'] ?? null,
+                    'total_passengers' => 1,
+                    'passengers' => [$result],
+                    'flight_info' => extractCommonFlightInfo([$result]),
+                    'format_detected' => $result['format_detected'] ?? $format,
+                ];
+            } elseif (!isset($result['is_multi_segment']) && !isset($result['passengers'])) {
+                // Unknown format - wrap as empty
+                $result = [
+                    'is_group_booking' => false,
+                    'booking_reference' => null,
+                    'total_passengers' => 0,
+                    'passengers' => [],
+                    'flight_info' => [],
+                    'format_detected' => $format,
+                ];
+            }
+        } else {
+            // Null or invalid - return empty structure
+            $result = [
+                'is_group_booking' => false,
+                'booking_reference' => null,
+                'total_passengers' => 0,
+                'passengers' => [],
+                'flight_info' => [],
+                'format_detected' => $format,
+            ];
+        }
+    }
+    
+    // Ensure format_detected is present
+    if (!isset($result['format_detected'])) {
+        $result['format_detected'] = $format;
+    }
+    
+    return $result;
 }
 
 /**
  * Detect ticket format
  */
 function detectTicketFormat($text) {
-    // Tolotripportal e-ticket indicators
-    if (preg_match('/ELECTRONIC\s+TICKET\s+PASSENGER\s+ITINERARY\s+RECEIPT|Order\s+no\s*:|Accounting\s+No/i', $text)) {
-        return 'tolotripportal';
+    // Hadita Portal e-ticket indicators (check first - most specific)
+    if (preg_match('/voucherID|Counterman\s+Software|haditatrip\.com/i', $text)) {
+        return 'haditaportal';
     }
     
-    // Salaam Portal e-ticket indicators
-    if (preg_match('/Electronic\s+Ticket|Traveler:|E-Ticket\s+Number|Airline\s+PNR/i', $text)) {
+    // Air Arabia e-ticket indicators (check before salaamportal - more specific)
+    if (preg_match('/AirRewards|Sky\s+Cafe|All\s+rights\s+reserved.*Air\s+Arabia|airarabia\.com|© \d{4}\s+Air\s+Arabia/i', $text)) {
+        return 'airarabia';
+    }
+    
+    // NSSTravel Portal e-ticket indicators (check before salaamportal - has overlapping patterns)
+    // Unique NST markers: "Super PNR no", "Agent Reference", "Passenger Information"
+    if (preg_match('/Super\s+PNR\s+no|Agent\s+Reference.*\(FZ\)|Passenger\s+Information.*Segment\s+Baggage/i', $text)) {
+        return 'nsstportal';
+    }
+    
+    // Salaam Portal e-ticket indicators (check before tolotripportal)
+    // Unique patterns: "Traveler: MR", "E-Ticket Number:", specific "Airline PNR:" format
+    if (preg_match('/Traveler:\s+MR\s+[A-Z]|E-Ticket\s+Number:\d|(?:Airline\s+PNR:\s*[A-Z0-9]+\s*$)(?!.*Agent\s+Reference)/im', $text)) {
         return 'salaamportal';
     }
     
-    // Hadita Portal e-ticket indicators (check first - more specific)
-    if (preg_match('/voucherID|Counterman\s+Software|ISSUING\s+AIRLINE.*ISSUING\s+DATE/i', $text)) {
-        return 'haditaportal';
+    // Tolotripportal e-ticket indicators (more specific pattern to avoid false matches)
+    if (preg_match('/Order\s+no\s*:|Accounting\s+No|ELECTRONIC\s+TICKET\s+PASSENGER\s+ITINERARY\s+RECEIPT(?!.*voucherID|.*haditatrip)/is', $text)) {
+        return 'tolotripportal';
     }
     
     // Meraj Air e-ticket indicators (check after Hadita)
@@ -352,11 +489,6 @@ function detectTicketFormat($text) {
     // Flydubai e-ticket indicators
     if (preg_match('/flydubai\s+booking\s+reference|© flydubai|FZ\s+\d+\/FZ\s+\d+|Your\s+booking\s+is\s+confirmed/i', $text)) {
         return 'flydubai';
-    }
-    
-    // Air Arabia e-ticket indicators
-    if (preg_match('/e-ticket\s+number\s+\d+|airarabia\.com|reservation\s+number|confirmed\s+reservation/i', $text)) {
-        return 'airarabia';
     }
     
     // Kam Air specific indicators
@@ -372,11 +504,6 @@ function detectTicketFormat($text) {
     // Skyportal e-ticket indicators
     if (preg_match('/warsaw\s+convention|itinerary.*receipt|passenger\s+ticket|article\s+3|conditions\s+of\s+carriage|iatatravelcentre/i', $text)) {
         return 'skyportal';
-    }
-    
-    // NSSTravel Portal e-ticket indicators
-    if (preg_match('/Electronic\s+ticket|Airline\s+PNR|Agent\s+Reference|Super\s+PNR\s+no|Passenger\s+Information/i', $text)) {
-        return 'nsstportal';
     }
     
     return 'standard';
@@ -522,7 +649,7 @@ function extractTolotripportalTicket($text) {
     }
     
     // Always return grouped format for consistency
-    if (count($passengers) >= 1) {
+    if (!empty($passengers)) {
         return [
             'is_group_booking' => count($passengers) > 1,
             'booking_reference' => $passengers[0]['pnr'] ?? null,
@@ -532,7 +659,14 @@ function extractTolotripportalTicket($text) {
         ];
     }
     
-    return ['passengers' => []];
+    // No passengers found - return empty structure
+    return [
+        'is_group_booking' => false,
+        'booking_reference' => null,
+        'total_passengers' => 0,
+        'passengers' => [],
+        'flight_info' => [],
+    ];
 }
 
 /**
@@ -541,101 +675,184 @@ function extractTolotripportalTicket($text) {
 function extractSalaamPortalTicket($text) {
     $passengers = [];
     
-    // Extract passenger name - pattern: "Traveler: MR IBRAHIM NAZARI"
-    $passengerName = null;
-    if (preg_match('/Traveler:\s*(.+?)(?:\n|$)/i', $text, $match)) {
-        $passengerName = normalizePassengerName($match[1]);
-    }
-    
-    // Extract e-ticket number - pattern: "E-Ticket Number: 7J56OV"
-    $ticketNumber = null;
+    // Extract E-Ticket Number as booking reference - pattern: "E-Ticket Number:7J56OV"
+    $bookingRef = null;
     if (preg_match('/E-Ticket\s+Number:\s*([A-Z0-9]+)/i', $text, $match)) {
-        $ticketNumber = $match[1];
+        $bookingRef = $match[1];
     }
     
-    // Extract PNR - pattern: "Airline PNR: 7J56OV"
+    // Extract PNR - pattern: "Airline PNR:7J56OV"
     $pnr = null;
     if (preg_match('/Airline\s+PNR:\s*([A-Z0-9]+)/i', $text, $match)) {
         $pnr = $match[1];
+    } elseif (preg_match('/GDS\s+PNR\s*:\s*([A-Z0-9]+)/i', $text, $match)) {
+        $pnr = $match[1];
     }
     
-    // Extract issue date - pattern: "Date Of issue: 09 Nov 2025"
-    $issueDate = null;
+    // Extract booking date - pattern: "Date Of issue:09 Nov 2025"
+    $bookingDate = null;
     if (preg_match('/Date\s+Of\s+issue:\s*(\d{1,2})\s+([A-Za-z]+)\s+(\d{4})/i', $text, $match)) {
-        $issueDate = parseTicketDate($match[1], substr($match[2], 0, 3), $match[3]);
+        $bookingDate = parseTicketDate($match[1], substr($match[2], 0, 3), $match[3]);
+    } elseif (preg_match('/Booking\s+Date\s*:\s*\w+,\s+(\w+)\s+(\d{1,2}),\s+(\d{4})/i', $text, $match)) {
+        $bookingDate = parseTicketDate($match[2], substr($match[1], 0, 3), $match[3]);
     }
     
-    // Extract airline - pattern: "FLY DUBAI (FZ)"
-    $airline = null;
-    $airlineCode = null;
-    if (preg_match('/([A-Z\s]+)\s*\(([A-Z]{2})\)/i', $text, $match)) {
-        $airline = trim($match[1]);
-        $airlineCode = $match[2];
+    // Extract trip type - pattern: "Trip Type : OneWay"
+    $tripType = null;
+    if (preg_match('/Trip\s+Type\s*:\s*([A-Za-z\s]+?)(?:\n|$)/i', $text, $match)) {
+        $tripType = trim($match[1]);
     }
     
-    // Extract flight number - pattern: "FLY DUBAI (FZ) 1304"
-    $flightNumber = null;
-    if (preg_match('/\([A-Z]{2}\)\s+(\d{3,5})/i', $text, $match)) {
-        $flightNumber = $match[1];
-    }
-    
-    // Extract aircraft type - pattern: "73D"
-    $aircraftType = null;
-    if (preg_match('/\/\s*([A-Z0-9]{3})\s+/i', $text, $match)) {
-        $aircraftType = $match[1];
-    }
-    
-    // Extract cabin class - pattern: "Economy"
-    $cabinClass = null;
-    if (preg_match('/(Economy|Business|First|Premium)/i', $text, $match)) {
-        $cabinClass = trim($match[1]);
-    }
-    
-    // Extract baggage - pattern: "0 KG" or similar
-    $baggage = null;
-    if (preg_match('/(\d+)\s*KG/i', $text, $match)) {
-        $baggage = $match[1] . ' KG';
-    }
-    
-    // Extract route - pattern: "NQZ To DXB on 10 Dec 2025"
+    // Extract route from format like "NQZ To DXB on 10 Dec 2025"
     $origin = null;
     $destination = null;
     $originCity = null;
     $destinationCity = null;
-    $departureDate = null;
-    
-    if (preg_match('/([A-Z]{3})\s+To\s+([A-Z]{3})\s+on\s+(\d{1,2})\s+([A-Za-z]+)\s+(\d{4})/i', $text, $match)) {
+    if (preg_match('/([A-Z]{3})\s+To\s+([A-Z]{3})\s+on/i', $text, $match)) {
         $origin = strtoupper($match[1]);
         $destination = strtoupper($match[2]);
         $originCity = getAirportName($origin);
         $destinationCity = getAirportName($destination);
-        $departureDate = parseTicketDate($match[3], substr($match[4], 0, 3), $match[5]);
+    } elseif (preg_match('/Trip\s+Name\s*:\s*([A-Za-z\s]+?)\(([A-Z]{3})\)\s+to\s+([A-Za-z\s]+?)\(([A-Z]{3})\)/i', $text, $match)) {
+        $origin = strtoupper($match[2]);
+        $originCity = trim($match[1]);
+        $destination = strtoupper($match[4]);
+        $destinationCity = trim($match[3]);
     }
     
-    // Extract departure time - pattern: "Time: 04:10"
+    // Extract agency/issued by - pattern: "Staff Name :Abdul Qadar Sabawoon" or "Office" section
+    $issuedBy = null;
+    if (preg_match('/Staff\s+Name\s*:\s*([^\n]+)/i', $text, $match)) {
+        $issuedBy = trim($match[1]);
+    } elseif (preg_match('/Office\s+.*?\n\s*([^\n]+?)\n.*?Kabul/i', $text, $match)) {
+        $issuedBy = trim($match[1]);
+    }
+    
+    // Extract status - pattern: "Status : confirmed"
+    $status = null;
+    if (preg_match('/Status\s*:\s*(\w+)/i', $text, $match)) {
+        $status = $match[1];
+    }
+    
+    // Extract currency - pattern: "USD" at top
+    $currency = null;
+    if (preg_match('/^(USD|AFN|EUR|GBP)/m', $text, $match)) {
+        $currency = $match[1];
+    }
+    
+    // Extract pricing
+    $baseFare = null;
+    $taxes = null;
+    $totalFare = null;
+    
+    if (preg_match('/Grand\s+Total\s*:\s*(\d+(?:\.\d{2})?)/i', $text, $match)) {
+        $totalFare = $match[1];
+    }
+    if (preg_match('/Other\s+Taxes:\s*(\d+(?:\.\d{2})?)/i', $text, $match)) {
+        $taxes = $match[1];
+    }
+    
+    // Extract airline - look for airline name pattern in flight details
+    // Pattern: "AirlineName (CODE)" on same line, avoiding multi-line matches
+    $airline = null;
+    $airlineCode = null;
+    
+    // First try: Look for airline in format "NAME (CODE)" at start of line (flight details section)
+    if (preg_match('/^\s*([A-Z][A-Za-z\s]{2,25}?)\s+\(([A-Z]{2})\)\s+[-–]?\s*(Economy|Business|First|Premium)/m', $text, $match)) {
+        $airline = trim($match[1]);
+        $airlineCode = $match[2];
+    }
+    
+    // Fallback: Look for known airline patterns like "FLY DUBAI (FZ)"
+    if (!$airline && preg_match('/(FLY\s+DUBAI|EMIRATES|QATAR\s+AIRWAYS|TURKISH\s+AIRLINES|KAM\s+AIR|ARIANA|AIR\s+ARABIA)\s*\(([A-Z]{2})\)/i', $text, $match)) {
+        $airline = strtoupper($match[1]);
+        $airlineCode = $match[2];
+        // Normalize the airline name
+        $airline = ucwords(strtolower($airline));
+    }
+    
+    // Extract flight details from Flight Details section
+    $flightNumber = null;
     $departureTime = null;
-    if (preg_match('/Time:\s*(\d{2}):(\d{2})/i', $text, $match)) {
-        $departureTime = sprintf('%02d:%02d', $match[1], $match[2]);
-    }
-    
-    // Extract departure terminal - pattern: "Departure Terminal: 1" or similar
+    $departureDate = null;
     $departureTerminal = null;
-    if (preg_match('/Departure\s+Terminal:\s*([A-Z0-9]*)/i', $text, $match)) {
-        $departureTerminal = trim($match[1]) ?: null;
+    $arrivalTime = null;
+    $arrivalDate = null;
+    $arrivalTerminal = null;
+    $cabinClass = null;
+    $duration = null;
+    
+    // Extract flight number from format like "FLY DUBAI (FZ) 1304"
+    if (preg_match('/\(([A-Z]{2})\)\s+(\d{3,4})/i', $text, $match)) {
+        $flightNumber = $match[2];
+    } elseif (preg_match('/Flight\s+No.*?(\d{3,4})/i', $text, $match)) {
+        $flightNumber = $match[1];
     }
     
-    // Build passenger record
-    if (!empty($ticketNumber) || !empty($flightNumber)) {
+    // Extract departure details from "Depart:" section
+    // Pattern: Depart: CITY\nDate: DD MMM YYYY\nTime: HH:MM
+    if (preg_match('/Depart:.*?Date:\s*(\d{1,2})\s+([A-Za-z]+)\s+(\d{4}).*?Time:\s*(\d{2}):(\d{2})/is', $text, $match)) {
+        $departureDate = parseTicketDate($match[1], substr($match[2], 0, 3), $match[3]);
+        $departureTime = sprintf('%02d:%02d', $match[4], $match[5]);
+        
+        // Extract departure terminal if available
+        $depSection = substr($text, strpos($text, 'Depart:'), 300);
+        if (preg_match('/Terminal:\s*([^\n]+)/i', $depSection, $termMatch)) {
+            $departureTerminal = trim($termMatch[1]);
+        }
+    }
+    
+    // Extract arrival details from "Arrive:" section
+    // Pattern: Arrive: CITY\nDate: DD MMM YYYY\nTime: HH:MM
+    if (preg_match('/Arrive:.*?Date:\s*(\d{1,2})\s+([A-Za-z]+)\s+(\d{4}).*?Time:\s*(\d{2}):(\d{2})/is', $text, $match)) {
+        $arrivalDate = parseTicketDate($match[1], substr($match[2], 0, 3), $match[3]);
+        $arrivalTime = sprintf('%02d:%02d', $match[4], $match[5]);
+        
+        // Extract arrival terminal if available
+        $arrSection = substr($text, strpos($text, 'Arrive:'), 300);
+        if (preg_match('/Terminal:\s*([^\n]+)/i', $arrSection, $termMatch)) {
+            $arrivalTerminal = trim($termMatch[1]);
+        }
+    }
+    
+    // Extract duration - pattern: "3h10m"
+    if (preg_match('/Duration.*?(\d+)h(\d+)m/i', $text, $match)) {
+        $duration = $match[1] . 'h' . $match[2] . 'm';
+    }
+    
+    // Extract cabin class - pattern: "Economy (H)"
+    if (preg_match('/Economy\s*\([A-Z]\)|\(([A-Z])\).*?Economy/i', $text, $match)) {
+        $cabinClass = 'Economy';
+    } elseif (preg_match('/(Business|First|Premium)/i', $text, $match)) {
+        $cabinClass = $match[1];
+    }
+    
+    // Extract passenger info - pattern: "Traveler: MR IBRAHIM NAZARI"
+    $passengerExtracted = false;
+    
+    // Try first to extract from simple format "Traveler: MR NAME"
+    if (preg_match('/Traveler:\s+(MR|MS|MRS|DR)\s+([A-Z\s]+)/i', $text, $match)) {
         $passenger = [];
+        
+        // Passenger info
+        $passengerName = normalizePassengerName(trim($match[2]));
         $passenger['passenger_name'] = $passengerName;
         $passenger['pnr'] = $pnr;
-        $passenger['ticket_number'] = $ticketNumber;
+        $passenger['ticket_number'] = $bookingRef;
+        $passenger['passenger_type'] = 'ADT'; // Default to Adult
         
-        // Flight details
+        // Flight details - extract airline from format like "FLY DUBAI (FZ)"
+        if (preg_match('/([A-Za-z\s]+?)\s*\(([A-Z]{2})\)(?:\s+(\d{3,4}))?/i', $text, $airlineMatch)) {
+            $airline = trim($airlineMatch[1]);
+            $airlineCode = $airlineMatch[2];
+            if (!empty($airlineMatch[3])) {
+                $flightNumber = $airlineMatch[3];
+            }
+        }
+        
         $passenger['airline'] = $airline;
         $passenger['airline_code'] = $airlineCode;
         $passenger['flight_number'] = $flightNumber;
-        $passenger['aircraft_type'] = $aircraftType;
         $passenger['cabin_class'] = $cabinClass ?? 'Economy';
         
         // Route
@@ -648,34 +865,183 @@ function extractSalaamPortalTicket($text) {
         $passenger['departure_date'] = $departureDate;
         $passenger['departure_time'] = $departureTime;
         $passenger['departure_terminal'] = $departureTerminal;
+        $passenger['arrival_date'] = $arrivalDate;
+        $passenger['arrival_time'] = $arrivalTime;
+        $passenger['arrival_terminal'] = $arrivalTerminal;
+        
+        // Baggage - look for pattern like "0 KG"
+        if (preg_match('/Baggage[:\s]+(\d+\s*KG)/i', $text, $bagMatch)) {
+            $passenger['baggage_allowance'] = trim($bagMatch[1]);
+        }
         
         // Additional info
-        $passenger['baggage_allowance'] = $baggage;
-        $passenger['issue_date'] = $issueDate;
-        $passenger['ticket_status'] = 'Confirmed';
-        $passenger['is_confirmed'] = true;
-        $passenger['trip_type'] = 'One Way';
+        $passenger['issue_date'] = $bookingDate;
+        $passenger['issued_by'] = $issuedBy;
+        $passenger['ticket_status'] = ucfirst(strtolower($status ?? 'Confirmed'));
+        $passenger['is_confirmed'] = strtolower($status ?? 'confirmed') === 'confirmed';
+        $passenger['currency'] = $currency ?? 'USD';
+        $passenger['price'] = $totalFare;
+        $passenger['trip_type'] = $tripType ?? 'One Way';
+        $passenger['duration'] = $duration;
         
         $passenger['extraction_confidence'] = calculateConfidenceScore($passenger);
         $passenger['format_detected'] = 'salaamportal';
         
-        if (!empty($passenger) && (isset($passenger['pnr']) || isset($passenger['ticket_number']))) {
+        $passengers[] = $passenger;
+        $passengerExtracted = true;
+    }
+    
+    // Alternative extraction if main method fails - look for passenger rows with simpler approach
+    if (!$passengerExtracted && preg_match('/Traveller\s+Details/i', $text)) {
+        // Get text after "Traveller Details" header, specifically after the column headers
+        // Extract everything after the "Pax Name" header line until "Flight Details" or end
+        if (preg_match('/Traveller\s+Details\s+.*?(?:Pax\s+Name.*?(?:Status|Bag)\s*\n)(.*?)(?:Flight\s+Details|$)/is', $text, $section)) {
+            $travellersSection = trim($section[1]);
+            // Look for lines with passenger name pattern (all caps with spaces) followed by ADT/CHD/INF
+            // This should match passenger data lines only, not header lines
+            if (preg_match_all('/^([A-Z][A-Z\s]+?)\s+(ADT|CHD|INF)\s+(.+)$/m', $travellersSection, $matches, PREG_SET_ORDER)) {
+                foreach ($matches as $match) {
+                    $passengerName = normalizePassengerName(trim($match[1]));
+                    $passengerType = $match[2];
+                    $dataLine = $match[3]; // Rest of the line with route, ticket, etc.
+                    
+                    // Parse the data line to extract route, ticket number, PNR, baggage
+                    // Typical format: "KBL : DXB    3842407616589 18PE7P 50KGconfirmed"
+                    preg_match('/([A-Z]{3}\s*:\s*[A-Z]{3})\s+(\d{10,15})\s+([A-Z0-9]+)\s+(\d+KG)/', $dataLine, $dataParts);
+                    
+                    if (!empty($dataParts)) {
+                        $passenger = [];
+                        $passenger['passenger_name'] = $passengerName;
+                        $passenger['passenger_type'] = $passengerType;
+                        $passenger['pnr'] = $pnr ?? $dataParts[3];
+                        $passenger['ticket_number'] = $dataParts[2];
+                        
+                        // Flight details
+                        $passenger['airline'] = $airline;
+                        $passenger['airline_code'] = $airlineCode;
+                        $passenger['flight_number'] = $flightNumber;
+                        $passenger['cabin_class'] = $cabinClass ?? 'Economy';
+                        
+                        // Route
+                        $passenger['origin'] = $origin;
+                        $passenger['origin_city'] = $originCity;
+                        $passenger['destination'] = $destination;
+                        $passenger['destination_city'] = $destinationCity;
+                        
+                        // Times
+                        $passenger['departure_date'] = $departureDate;
+                        $passenger['departure_time'] = $departureTime;
+                        $passenger['departure_terminal'] = $departureTerminal;
+                        $passenger['arrival_date'] = $arrivalDate;
+                        $passenger['arrival_time'] = $arrivalTime;
+                        $passenger['arrival_terminal'] = $arrivalTerminal;
+                        
+                        // Baggage
+                        if (preg_match('/(\d+)KG/i', $dataParts[4], $bagMatch)) {
+                            $passenger['baggage_allowance'] = $bagMatch[0];
+                        }
+                        
+                        // Additional info
+                        $passenger['issue_date'] = $bookingDate;
+                        $passenger['issued_by'] = $issuedBy;
+                        $passenger['ticket_status'] = ucfirst(strtolower($status ?? 'Confirmed'));
+                        $passenger['is_confirmed'] = strtolower($status ?? 'confirmed') === 'confirmed';
+                        $passenger['currency'] = $currency ?? 'USD';
+                        $passenger['price'] = $totalFare;
+                        $passenger['trip_type'] = $tripType ?? 'One Way';
+                        $passenger['duration'] = $duration;
+                        
+                        $passenger['extraction_confidence'] = calculateConfidenceScore($passenger);
+                        $passenger['format_detected'] = 'salaamportal';
+                        
+                        $passengers[] = $passenger;
+                        $passengerExtracted = true;
+                    }
+                }
+            }
+        }
+    }
+    
+    // Fallback: if main extraction didn't find passengers
+    if (!$passengerExtracted) {
+        // Try to extract passenger name and ticket from traveller details header or basic fields
+        $passengerName = null;
+        $ticketNumber = null;
+        
+        // Try to find passenger name - look for line with all caps name followed by ADT/CHD/INF
+        // Must find a line that starts with a name (uppercase letters and spaces) followed by passenger type
+        if (preg_match('/\n\s*([A-Z][A-Z\s]{5,}?)\s+(ADT|CHD|INF)\s+[A-Z]{3}\s*:\s*[A-Z]{3}/i', $text, $match)) {
+            $passengerName = normalizePassengerName(trim($match[1]));
+        } elseif (preg_match('/Traveler:\s*(.+?)(?:\n|$)/i', $text, $match)) {
+            $passengerName = normalizePassengerName($match[1]);
+        }
+        
+        // Try to find ticket number
+        if (preg_match('/Ticket\s*(?:Number)?\s*:\s*(\d{10,15})|E-Ticket\s+Number:\s*([A-Z0-9]+)/i', $text, $match)) {
+            $ticketNumber = $match[1] ?? $match[2];
+        }
+        
+        // Create a passenger record if we have essential info
+        if ((!empty($ticketNumber) || !empty($flightNumber) || !empty($pnr)) && (!empty($origin) && !empty($destination))) {
+            $passenger = [];
+            $passenger['passenger_name'] = $passengerName;
+            $passenger['pnr'] = $pnr ?? $bookingRef;
+            $passenger['ticket_number'] = $ticketNumber;
+            
+            $passenger['airline'] = $airline;
+            $passenger['airline_code'] = $airlineCode;
+            $passenger['flight_number'] = $flightNumber;
+            $passenger['cabin_class'] = $cabinClass ?? 'Economy';
+            
+            $passenger['origin'] = $origin;
+            $passenger['origin_city'] = $originCity;
+            $passenger['destination'] = $destination;
+            $passenger['destination_city'] = $destinationCity;
+            
+            $passenger['departure_date'] = $departureDate;
+            $passenger['departure_time'] = $departureTime;
+            $passenger['departure_terminal'] = $departureTerminal;
+            $passenger['arrival_date'] = $arrivalDate;
+            $passenger['arrival_time'] = $arrivalTime;
+            $passenger['arrival_terminal'] = $arrivalTerminal;
+            
+            $passenger['issue_date'] = $bookingDate;
+            $passenger['issued_by'] = $issuedBy;
+            $passenger['ticket_status'] = ucfirst(strtolower($status ?? 'Confirmed'));
+            $passenger['is_confirmed'] = strtolower($status ?? 'confirmed') === 'confirmed';
+            $passenger['currency'] = $currency ?? 'USD';
+            $passenger['price'] = $totalFare;
+            $passenger['trip_type'] = $tripType ?? 'One Way';
+            $passenger['duration'] = $duration;
+            
+            $passenger['extraction_confidence'] = calculateConfidenceScore($passenger);
+            $passenger['format_detected'] = 'salaamportal';
+            
             $passengers[] = $passenger;
         }
     }
     
     // Always return grouped format for consistency
-    if (count($passengers) >= 1) {
+    if (!empty($passengers)) {
         return [
             'is_group_booking' => count($passengers) > 1,
-            'booking_reference' => $passengers[0]['pnr'] ?? null,
+            'booking_reference' => $pnr ?? $bookingRef,
             'total_passengers' => count($passengers),
             'passengers' => $passengers,
             'flight_info' => extractCommonFlightInfo($passengers),
+            'format_detected' => 'salaamportal',
         ];
     }
     
-    return ['passengers' => []];
+    // No passengers found - return empty structure
+    return [
+        'is_group_booking' => false,
+        'booking_reference' => $pnr ?? $bookingRef,
+        'total_passengers' => 0,
+        'passengers' => [],
+        'flight_info' => [],
+        'format_detected' => 'salaamportal',
+    ];
 }
 
 /**
@@ -852,7 +1218,7 @@ function extractMerajAirTicket($text) {
     }
     
     // Always return grouped format for consistency
-    if (count($passengers) >= 1) {
+    if (!empty($passengers)) {
         return [
             'is_group_booking' => count($passengers) > 1,
             'booking_reference' => $passengers[0]['pnr'] ?? null,
@@ -862,7 +1228,14 @@ function extractMerajAirTicket($text) {
         ];
     }
     
-    return ['passengers' => []];
+    // No passengers found - return empty structure
+    return [
+        'is_group_booking' => false,
+        'booking_reference' => null,
+        'total_passengers' => 0,
+        'passengers' => [],
+        'flight_info' => [],
+    ];
 }
 
 /**
@@ -916,14 +1289,18 @@ function extractHaditaportalTicket($text) {
     }
     
     // Extract passenger name - pattern: "ADT - MR - SAFI / WALI AGHA"
+    // Also handles: "ADT - MR - NAME" format
     $passengerName = null;
     if (preg_match('/ADT\s*-\s*(?:MR|MRS|MS|MISS)\s*-\s*([^\n]+)/i', $text, $match)) {
+        $passengerName = normalizePassengerName($match[1]);
+    } elseif (preg_match('/^ADT\s*-\s*([^\n]+)/im', $text, $match)) {
+        // Alternative: just "ADT - NAME" format
         $passengerName = normalizePassengerName($match[1]);
     }
     
     // Extract flight information from structured section
-    // Look for flight details: "Imam Khomeini Intl4848ECONOMY15OCT 05:45 15OCT 10:1530 1piece KGCONFIRMED"
-    // Format: ORIGIN FLIGHTNO CABIN DEPDATE DEPTIME ARRDATE ARRTIME BAG STATUSROUTE
+    // Format: "Imam Khomeini Intl4848ECONOMY15OCT 05:45 15OCT 10:1530 1piece KGCONFIRMED"
+    // No spaces between flight number and cabin class, all concatenated
     
     $flightNumber = null;
     $cabinClass = null;
@@ -938,14 +1315,22 @@ function extractHaditaportalTicket($text) {
     $originCity = null;
     $destinationCity = null;
     
-    // Extract flight number - pattern: "4848" (4-5 digits)
-    if (preg_match('/(\d{4,5})\s*(ECONOMY|BUSINESS|FIRST)/i', $text, $flightMatch)) {
+    // Extract flight number and cabin class - pattern: "4848ECONOMY"
+    // Flight number is 4-5 digits directly followed by cabin class
+    if (preg_match('/(\d{4,5})(ECONOMY|BUSINESS|FIRST|PREMIUM)/i', $text, $flightMatch)) {
         $flightNumber = $flightMatch[1];
         $cabinClass = trim($flightMatch[2]);
     }
     
-    // Extract departure date and time - pattern: "15OCT 05:45"
-    if (preg_match('/(\d{2})([A-Z]{3})\s+(\d{2}):(\d{2})/i', $text, $dateMatch)) {
+    // Extract all date/time patterns: "15OCT 05:45"
+    $allDateTimes = [];
+    if (preg_match_all('/(\d{2})([A-Z]{3})\s+(\d{2}):(\d{2})/i', $text, $matches, PREG_SET_ORDER)) {
+        $allDateTimes = $matches;
+    }
+    
+    // Use first date/time as departure
+    if (!empty($allDateTimes[0])) {
+        $dateMatch = $allDateTimes[0];
         $day = $dateMatch[1];
         $month = substr($dateMatch[2], 0, 3);
         $year = date('Y'); // Use current year
@@ -958,27 +1343,26 @@ function extractHaditaportalTicket($text) {
         $departureTime = sprintf('%02d:%02d', $dateMatch[3], $dateMatch[4]);
     }
     
-    // Extract arrival date and time - look for second date/time pattern
-    $dateMatches = [];
-    if (preg_match_all('/(\d{2})([A-Z]{3})\s+(\d{2}):(\d{2})/i', $text, $allDateMatches, PREG_SET_ORDER)) {
-        if (count($allDateMatches) >= 2) {
-            $arrMatch = $allDateMatches[1];
-            $day = $arrMatch[1];
-            $month = substr($arrMatch[2], 0, 3);
-            $year = date('Y');
-            if ($issuingDate) {
-                preg_match('/(\d{4})/', $issuingDate, $yearMatch);
-                if (!empty($yearMatch)) $year = $yearMatch[1];
-            }
-            $arrivalDate = parseTicketDate($day, $month, $year);
-            $arrivalTime = sprintf('%02d:%02d', $arrMatch[3], $arrMatch[4]);
+    // Use second date/time as arrival
+    if (count($allDateTimes) >= 2) {
+        $arrMatch = $allDateTimes[1];
+        $day = $arrMatch[1];
+        $month = substr($arrMatch[2], 0, 3);
+        $year = date('Y');
+        if ($issuingDate) {
+            preg_match('/(\d{4})/', $issuingDate, $yearMatch);
+            if (!empty($yearMatch)) $year = $yearMatch[1];
         }
+        $arrivalDate = parseTicketDate($day, $month, $year);
+        $arrivalTime = sprintf('%02d:%02d', $arrMatch[3], $arrMatch[4]);
     }
     
-    // Extract baggage - pattern: "30 1piece KG" (look between time and status)
-    // The pattern is: "15OCT 10:15[30 1piece KG]CONFIRMED"
-    if (preg_match('/\d{2}:\d{2}(\d{2})\s+\d+\s*piece\s+([A-Z]{2})/i', $text, $bagMatch)) {
-        $baggageAllowance = $bagMatch[1] . ' ' . $bagMatch[2];
+    // Extract baggage - pattern: "30 1piece KG" or "30 piece KG" 
+    // Look for number followed by "piece" and "KG"
+    if (preg_match('/(\d+)\s+\d*\s*piece\s+([A-Z]{2})/i', $text, $bagMatch)) {
+        $baggageAllowance = $bagMatch[1] . $bagMatch[2];
+    } elseif (preg_match('/(\d+)KG/i', $text, $bagMatch)) {
+        $baggageAllowance = $bagMatch[0];
     }
     
     // Extract status - pattern: "CONFIRMED", "PENDING", "CANCELLED"
@@ -986,15 +1370,38 @@ function extractHaditaportalTicket($text) {
         $ticketStatus = ucfirst(strtolower($statusMatch[1]));
     }
     
-    // Extract route: look for "Imam Khomeini Intl" and "KABUL" separately
-    if (preg_match('/Imam\s+Khomeini/i', $text)) {
-        $origin = 'IKA';
-        $originCity = 'Imam Khomeini International';
+    // Extract route from FLIGHT INFORMATION section
+    // Look for airport names/codes in the flight info line
+    // Pattern: "Imam Khomeini Intl4848..." and destination on next line "KABUL"
+    if (preg_match('/FROM\/TO[^\n]*\n\s*([A-Za-z\s]+?)(\d{4,5})/i', $text, $originMatch)) {
+        $originName = trim($originMatch[1]);
+        
+        // Map known airport names to codes
+        if (stripos($originName, 'Imam Khomeini') !== false) {
+            $origin = 'IKA';
+            $originCity = 'Imam Khomeini International';
+        } elseif (stripos($originName, 'Kabul') !== false) {
+            $origin = 'KBL';
+            $originCity = getAirportName('KBL');
+        } else {
+            // Try to extract city name
+            $originCity = $originName;
+        }
     }
     
-    if (preg_match('/KABUL/i', $text)) {
-        $destination = 'KBL';
-        $destinationCity = getAirportName('KBL');
+    // Destination is usually on the next line after the flight info
+    if (preg_match('/(?:ECONOMY|BUSINESS|FIRST|PREMIUM)[^\n]*\n\s*([A-Z][A-Za-z\s]+)/i', $text, $destMatch)) {
+        $destName = trim($destMatch[1]);
+        
+        if (stripos($destName, 'KABUL') !== false || stripos($destName, 'Kabul') !== false) {
+            $destination = 'KBL';
+            $destinationCity = getAirportName('KBL');
+        } elseif (stripos($destName, 'Imam Khomeini') !== false) {
+            $destination = 'IKA';
+            $destinationCity = 'Imam Khomeini International';
+        } else {
+            $destinationCity = $destName;
+        }
     }
     
     // If we have basic info, build passenger record
@@ -1040,7 +1447,7 @@ function extractHaditaportalTicket($text) {
     }
     
     // Always return grouped format for consistency
-    if (count($passengers) >= 1) {
+    if (!empty($passengers)) {
         return [
             'is_group_booking' => count($passengers) > 1,
             'booking_reference' => $passengers[0]['pnr'] ?? null,
@@ -1050,7 +1457,14 @@ function extractHaditaportalTicket($text) {
         ];
     }
     
-    return ['passengers' => []];
+    // No passengers found - return empty structure
+    return [
+        'is_group_booking' => false,
+        'booking_reference' => null,
+        'total_passengers' => 0,
+        'passengers' => [],
+        'flight_info' => [],
+    ];
 }
 
 /**
@@ -1266,10 +1680,31 @@ function extractFlydubaiTicket($text) {
             'airline' => 'Fly Dubai',
             'cabin_class' => $cabinClass,
             'payment_reference' => $paymentRef,
+            'format_detected' => 'flydubai',
         ];
     }
     
-    return count($passengers) === 1 ? $passengers[0] : ['passengers' => $passengers, 'pnr' => $bookingRef];
+    // Single segment - return in grouped format
+    if (count($passengers) === 1) {
+        return [
+            'is_group_booking' => false,
+            'booking_reference' => $bookingRef,
+            'total_passengers' => 1,
+            'passengers' => $passengers,
+            'flight_info' => extractCommonFlightInfo($passengers),
+            'format_detected' => 'flydubai',
+        ];
+    }
+    
+    // No passengers - return empty structure
+    return [
+        'is_group_booking' => false,
+        'booking_reference' => $bookingRef,
+        'total_passengers' => 0,
+        'passengers' => [],
+        'flight_info' => [],
+        'format_detected' => 'flydubai',
+    ];
 }
 
 /**
@@ -1863,6 +2298,7 @@ function extractAirArabiaTicket($text) {
             'total_passengers' => count($passengers),
             'passengers' => $passengers,
             'flight_info' => extractCommonFlightInfo($passengers),
+            'format_detected' => 'airarabia',
         ];
     }
     
@@ -1873,6 +2309,7 @@ function extractAirArabiaTicket($text) {
             'total_passengers' => 1,
             'passengers' => $passengers,
             'flight_info' => extractCommonFlightInfo($passengers),
+            'format_detected' => 'airarabia',
         ];
     }
     
@@ -1883,6 +2320,7 @@ function extractAirArabiaTicket($text) {
         'total_passengers' => 0,
         'passengers' => [],
         'flight_info' => [],
+        'format_detected' => 'airarabia',
     ];
 }
 
@@ -2190,6 +2628,7 @@ function extractSkyportalTicket($text) {
             'total_passengers' => count($passengers),
             'passengers' => $passengers,
             'flight_info' => extractCommonFlightInfo($passengers),
+            'format_detected' => 'skyportal',
         ];
     }
     
@@ -2201,6 +2640,7 @@ function extractSkyportalTicket($text) {
             'total_passengers' => 1,
             'passengers' => $passengers,
             'flight_info' => extractCommonFlightInfo($passengers),
+            'format_detected' => 'skyportal',
         ];
     }
     
@@ -2211,6 +2651,7 @@ function extractSkyportalTicket($text) {
         'total_passengers' => 0,
         'passengers' => [],
         'flight_info' => [],
+        'format_detected' => 'skyportal',
     ];
 }
 
@@ -2224,12 +2665,15 @@ function extractNSSPortalTicket($text) {
     $superPnr = null;
     if (preg_match('/Super\s+PNR\s+no[.\s]*(\d+)/i', $text, $match)) {
         $superPnr = $match[1];
+    } elseif (preg_match('/PNR\s*:\s*([A-Z0-9]{4,6})/i', $text, $match)) {
+        // Fallback: look for any PNR pattern
+        $superPnr = $match[1];
     }
     
     // Extract individual airline PNRs and passenger info
     // Look for patterns like: Airline PNR: QEAW4E
     $pnrMatches = [];
-    if (preg_match_all('/Airline\s+PNR\s*:\s*([A-Z0-9]+)/i', $text, $matches)) {
+    if (preg_match_all('/(?:Airline\s+PNR|PNR)\s*:\s*([A-Z0-9]+)/i', $text, $matches)) {
         $pnrMatches = $matches[1];
     }
     
@@ -2262,44 +2706,50 @@ function extractNSSPortalTicket($text) {
         }
     }
     
-    // Extract passenger name from greeting or name section
+    // Extract passenger name from greeting, name section, or email
     $passengerName = null;
-    if (preg_match('/Hi\s+([A-Z\s]+?)(?:\s+thank\s+you|,|Passenger)/i', $text, $match)) {
+    if (preg_match('/(?:Hi|Dear|Hello)\s+([A-Z][A-Za-z\s]+?)(?:\s+(?:thank\s+you|,))/i', $text, $match)) {
         $passengerName = trim($match[1]);
-    } elseif (preg_match('/SAIFULLAH\s+AMIRULLAH\s+MR/i', $text, $match)) {
-        $passengerName = 'SAIFULLAH AMIRULLAH MR';
+    } elseif (preg_match('/Passenger\s+Name.*?:\s*([A-Z][A-Za-z\s]+?)(?:\n|$)/i', $text, $match)) {
+        $passengerName = trim($match[1]);
     }
     
     // Extract cabin class information
     $cabinClass = null;
     if (preg_match('/Economy\s+Lite/i', $text)) {
         $cabinClass = 'Economy Lite';
-    } elseif (preg_match('/(Business|First|Premium\s+Economy)/i', $text, $match)) {
+    } elseif (preg_match('/(Business|First|Premium\s+Economy|Economy)/i', $text, $match)) {
         $cabinClass = trim($match[1]);
     }
     
     // Extract contact details (travel agency)
     $agencyName = null;
-    if (preg_match('/Company\s+Name\s*\n\s*([^\n]+)/i', $text, $match)) {
+    if (preg_match('/Company\s+Name\s*\n?\s*:\s*([^\n]+)/i', $text, $match)) {
         $agencyName = trim($match[1]);
     }
     
     // Extract ticket numbers from electronic ticket section
     $ticketNumbers = [];
-    if (preg_match_all('/([A-Z0-9]+-\d+)\s*(?:KBL|DXB|RUH)/i', $text, $matches)) {
+    if (preg_match_all('/([A-Z0-9]+-\d+)\s*(?:KBL|DXB|RUH|DOH|JED|RYD)?/i', $text, $matches)) {
         $ticketNumbers = array_unique($matches[1]);
     }
     
-    // Extract route information - look for specific airport codes only
+    // Extract route information - look for specific airport codes
     $validAirports = array_keys(AIRPORTS);
+    // Blacklist of invalid codes that might appear in text
+    $invalidCodes = ['DES', 'ORG', 'GIN', 'NAM', 'DAT', 'TYP', 'CAB', 'STA', 'CLS'];
     $routes = [];
     if (preg_match_all('/([A-Z]{3})\s*[\-–]\s*([A-Z]{3})/i', $text, $matches, PREG_SET_ORDER)) {
         foreach ($matches as $match) {
             $origin = strtoupper($match[1]);
             $dest = strtoupper($match[2]);
-            // Only add if both are valid airports or match known pattern
-            if ((in_array($origin, $validAirports) || in_array($dest, $validAirports)) &&
-                $origin !== 'GIN' && $dest !== 'DES') {
+            // Only add if both are valid airports or at least known codes
+            if ($origin !== $dest && 
+                strlen($origin) === 3 && 
+                strlen($dest) === 3 &&
+                !in_array($origin, $invalidCodes) &&
+                !in_array($dest, $invalidCodes) &&
+                (in_array($origin, $validAirports) || in_array($dest, $validAirports))) {
                 $routes[] = ['origin' => $origin, 'destination' => $dest];
             }
         }
@@ -2317,57 +2767,79 @@ function extractNSSPortalTicket($text) {
     }
     $routes = $uniqueRoutes;
     
-    // If we have routes and basic info, build passenger records
+    // Build single passenger record for multi-segment or single segment
     if (!empty($routes)) {
-        foreach ($routes as $idx => $route) {
-            $passenger = [];
-            $passenger['passenger_name'] = $passengerName;
-            $passenger['pnr'] = $pnrMatches[$idx] ?? ($pnrMatches[0] ?? $superPnr);
-            $passenger['super_pnr'] = $superPnr;
-            $passenger['ticket_number'] = $ticketNumbers[$idx] ?? null;
-            
-            // Flight details
-            $passenger['origin'] = $route['origin'];
-            $passenger['origin_city'] = getAirportName($route['origin']);
-            $passenger['destination'] = $route['destination'];
-            $passenger['destination_city'] = getAirportName($route['destination']);
-            
-            // Parse departure date and time if available
-            if (!empty($flightBlocks) && isset($flightBlocks[$idx])) {
-                $flight = $flightBlocks[$idx];
-                if ($flight['date']) {
-                    $passenger['departure_date'] = parseTicketDate($flight['date']['day'], $flight['date']['month'], $flight['date']['year']);
-                }
-                $passenger['departure_time'] = sprintf('%02d:%02d', (int)$flight['dep_hour'], (int)$flight['dep_min']);
-                $passenger['arrival_time'] = sprintf('%02d:%02d', (int)$flight['arr_hour'], (int)$flight['arr_min']);
+        $passenger = [];
+        $passenger['passenger_name'] = $passengerName;
+        $passenger['pnr'] = $pnrMatches[0] ?? $superPnr;
+        $passenger['super_pnr'] = $superPnr;
+        
+        // Combine all ticket numbers
+        $passenger['ticket_number'] = !empty($ticketNumbers) ? implode(', ', $ticketNumbers) : null;
+        
+        // For multi-segment: origin = first route, destination = last route
+        if (count($routes) > 1) {
+            $passenger['origin'] = $routes[0]['origin'];
+            $passenger['origin_city'] = getAirportName($routes[0]['origin']);
+            $passenger['destination'] = $routes[count($routes) - 1]['destination'];
+            $passenger['destination_city'] = getAirportName($routes[count($routes) - 1]['destination']);
+            $passenger['trip_type'] = 'Multi Segment';
+            // Store all segments for reference
+            $passenger['segments'] = $routes;
+        } else {
+            // Single segment: use the only route
+            $passenger['origin'] = $routes[0]['origin'];
+            $passenger['origin_city'] = getAirportName($routes[0]['origin']);
+            $passenger['destination'] = $routes[0]['destination'];
+            $passenger['destination_city'] = getAirportName($routes[0]['destination']);
+            $passenger['trip_type'] = 'One Way';
+        }
+        
+        // Parse departure date and time from first flight block
+        if (!empty($flightBlocks) && isset($flightBlocks[0])) {
+            $flight = $flightBlocks[0];
+            if ($flight['date']) {
+                $passenger['departure_date'] = parseTicketDate($flight['date']['day'], $flight['date']['month'], $flight['date']['year']);
             }
-            
-            // Airline information
-            $passenger['airline'] = 'Fly Dubai';
-            $passenger['airline_code'] = 'FZ';
-            
-            // Extract flight number for this segment
-            if (preg_match('/FZ\s+(\d+)/i', $text, $flightMatch)) {
-                $passenger['flight_number'] = 'FZ' . $flightMatch[1];
+            $passenger['departure_time'] = sprintf('%02d:%02d', (int)$flight['dep_hour'], (int)$flight['dep_min']);
+        }
+        
+        // Parse arrival time from last flight block
+        if (!empty($flightBlocks) && isset($flightBlocks[count($flightBlocks) - 1])) {
+            $lastFlight = $flightBlocks[count($flightBlocks) - 1];
+            $passenger['arrival_time'] = sprintf('%02d:%02d', (int)$lastFlight['arr_hour'], (int)$lastFlight['arr_min']);
+            // For multi-segment, arrival date = last segment date
+            if ($lastFlight['date']) {
+                $passenger['arrival_date'] = parseTicketDate($lastFlight['date']['day'], $lastFlight['date']['month'], $lastFlight['date']['year']);
             }
-            
-            $passenger['cabin_class'] = $cabinClass ?? 'Economy';
-            $passenger['ticket_status'] = 'Confirm';
-            $passenger['is_confirmed'] = true;
-            $passenger['baggage_allowance'] = 'None';
-            $passenger['meal_service'] = 'Standard meal';
-            
-            // Agency and booking info
-            $passenger['issued_by'] = $agencyName;
-            $passenger['trip_type'] = count($routes) > 1 ? 'Round Trip' : 'One Way';
-            
-            // Metadata
-            $passenger['extraction_confidence'] = calculateConfidenceScore($passenger);
-            $passenger['format_detected'] = 'nsstportal';
-            
-            if (!empty($passenger) && (isset($passenger['pnr']) || isset($passenger['ticket_number']))) {
-                $passengers[] = $passenger;
-            }
+        }
+        
+        // Airline information
+        $passenger['airline'] = 'Fly Dubai';
+        $passenger['airline_code'] = 'FZ';
+        
+        // Extract all flight numbers
+        $flightNumbers = [];
+        if (preg_match_all('/FZ\s+(\d+)/i', $text, $flightMatches)) {
+            $flightNumbers = array_map(function($num) { return 'FZ' . $num; }, $flightMatches[1]);
+        }
+        $passenger['flight_number'] = !empty($flightNumbers) ? implode(', ', $flightNumbers) : null;
+        
+        $passenger['cabin_class'] = $cabinClass ?? 'Economy';
+        $passenger['ticket_status'] = 'Confirm';
+        $passenger['is_confirmed'] = true;
+        $passenger['baggage_allowance'] = 'None';
+        $passenger['meal_service'] = 'Standard meal';
+        
+        // Agency and booking info
+        $passenger['issued_by'] = $agencyName;
+        
+        // Metadata
+        $passenger['extraction_confidence'] = calculateConfidenceScore($passenger);
+        $passenger['format_detected'] = 'nsstportal';
+        
+        if (!empty($passenger) && (isset($passenger['pnr']) || isset($passenger['ticket_number']))) {
+            $passengers[] = $passenger;
         }
     } else {
         // Fallback: create single record with basic info
@@ -2387,25 +2859,35 @@ function extractNSSPortalTicket($text) {
         }
     }
     
-    // If multiple passengers/segments, group them
-    if (count($passengers) > 1) {
+    // Always return single passenger, never multiple
+    if (count($passengers) >= 1) {
         return [
             'is_group_booking' => false,
-            'is_multi_segment' => true,
-            'booking_reference' => $superPnr,
-            'total_segments' => count($passengers),
-            'passengers' => $passengers,
+            'booking_reference' => $superPnr ?? $pnrMatches[0] ?? 'Unknown',
+            'total_passengers' => 1,
+            'passengers' => [$passengers[0]], // Always single passenger
+            'flight_info' => extractCommonFlightInfo([$passengers[0]]),
             'agency' => $agencyName,
+            'format_detected' => 'nsstportal',
         ];
     }
     
-    return count($passengers) === 1 ? $passengers[0] : ['passengers' => $passengers, 'pnr' => $superPnr];
+    // No passengers found - create minimal valid structure
+    return [
+        'is_group_booking' => false,
+        'booking_reference' => $superPnr ?? $pnrMatches[0] ?? 'Unknown',
+        'total_passengers' => 0,
+        'passengers' => [],
+        'flight_info' => [],
+        'format_detected' => 'nsstportal',
+    ];
 }
 
 /**
  * Extract standard IATA format tickets (fallback)
  */
 function extractStandardTicket($text) {
+    $passengers = [];
     $data = [];
     
     // Basic PNR extraction
@@ -2434,7 +2916,32 @@ function extractStandardTicket($text) {
     $data['extraction_confidence'] = calculateConfidenceScore($data);
     $data['format_detected'] = 'standard';
     
-    return $data;
+    // Only add if we have some meaningful data
+    if (!empty($data['pnr']) || !empty($data['ticket_number']) || !empty($data['passenger_name'])) {
+        $passengers[] = $data;
+    }
+    
+    // Return in grouped format
+    if (!empty($passengers)) {
+        return [
+            'is_group_booking' => count($passengers) > 1,
+            'booking_reference' => $passengers[0]['pnr'] ?? null,
+            'total_passengers' => count($passengers),
+            'passengers' => $passengers,
+            'flight_info' => extractCommonFlightInfo($passengers),
+            'format_detected' => 'standard',
+        ];
+    }
+    
+    // Return empty structure
+    return [
+        'is_group_booking' => false,
+        'booking_reference' => null,
+        'total_passengers' => 0,
+        'passengers' => [],
+        'flight_info' => [],
+        'format_detected' => 'standard',
+    ];
 }
 
 /**
@@ -2513,11 +3020,13 @@ function extractCommonFlightInfo($passengers) {
  * Clean ticket text
  */
 function cleanTicketText($text) {
-    // Remove excessive whitespace but preserve structure
-    $text = preg_replace('/[ \t]+/', ' ', $text);
-    
-    // Remove control characters
+    // Remove control characters but preserve spaces and newlines
     $text = preg_replace('/[\x00-\x08\x0B\x0C\x0E-\x1F]/', '', $text);
+    
+    // Remove excessive spaces but preserve newlines and at least one space between words
+    // This prevents the aggressive space removal that was breaking the traveller details regex
+    // Only collapse 3+ consecutive spaces to 2 spaces (preserves some spacing for data alignment)
+    $text = preg_replace('/[ \t]{3,}/', '  ', $text);
     
     return trim($text);
 }

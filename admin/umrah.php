@@ -755,7 +755,6 @@ require_once('../includes/db.php');
 
     <script src="../js/umrah/transaction_manager.js"></script>
     <script src="../js/umrah/bookings.js"></script>
-    <script src="../js/umrah/edit_bookings.js"></script>
     <script src="../js/umrah/refund.js?v=1"></script>
     <script src="../js/umrah/cancellation_reapply.js"></script>
     <script src="../js/umrah/idcard.js"></script>
@@ -765,7 +764,6 @@ require_once('../includes/db.php');
     <script src="../js/umrah/generations_received_form.js"></script>
     <script src="../js/umrah/generate_completion.js"></script>
     <script src="../js/umrah/generate_cancelation.js"></script>
-    <script src="../js/umrah-forms.js"></script>
     <script src="../js/umrah/family_documents.js"></script>
     <script src="../js/umrah/generate_bankandumrah.js"></script>
     <script src="../js/umrah/date_change_request.js"></script>
@@ -787,20 +785,25 @@ require_once('../includes/db.php');
                 row.style.display = 'table-row';
             });
         }
-    </script>
-    
 
-<script>
-document.getElementById('editSupplier').addEventListener('change', function() {
-    const selectedOption = this.options[this.selectedIndex];
-    const currencyMatch = selectedOption.text.match(/\((.*?)\s*(USD|AFS)\)/);
-    if (currencyMatch) {
-        document.getElementById('editSupplierCurrency').value = currencyMatch[2];
-    } else {
-        document.getElementById('editSupplierCurrency').value = '';
-    }
-});
-</script>
+
+        // Edit supplier currency handler
+        var editSupplierElement = document.getElementById('editSupplier');
+        if (editSupplierElement) {
+            editSupplierElement.addEventListener('change', function() {
+                const selectedOption = this.options[this.selectedIndex];
+                const currencyMatch = selectedOption.text.match(/\((.*?)\s*(USD|AFS)\)/);
+                if (currencyMatch) {
+                    document.getElementById('editSupplierCurrency').value = currencyMatch[2];
+                } else {
+                    document.getElementById('editSupplierCurrency').value = '';
+                }
+            });
+        }
+    </script>
+     
+
+    
 
 
 
@@ -808,8 +811,11 @@ document.getElementById('editSupplier').addEventListener('change', function() {
 <!-- Include Admin Footer -->
 <?php include '../includes/admin_footer.php'; ?>
 
-<!-- Add this before </body> tag -->
-<script src="https://cdn.jsdelivr.net/npm/tesseract.js@4.1.1/dist/tesseract.min.js"></script>
+<!-- Tesseract.js v5 with proper worker setup -->
+<script src="https://cdn.jsdelivr.net/npm/tesseract.js@5.1.0/dist/tesseract.min.js"></script>
+
+<!-- Document Upload Handler for Umrah -->
+<script src="../js/umrah/document-upload-handler.js"></script>
 
 <!-- Floating action button for ID card generation -->
 <div id="idCardFloatingButton" class="position-fixed" style="bottom: 80px; right: 30px; z-index: 1050; display: none;">

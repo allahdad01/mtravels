@@ -62,23 +62,15 @@ $(document).ready(function() {
         
         
         // Validate required fields
-        if (!bookingId || !refundType || !reason) {
-            Swal.fire({
-                icon: 'error',
-                title: 'Missing Information',
-                text: 'Please fill in all required fields'
-            });
-            return;
-        }
+         if (!bookingId || !refundType || !reason) {
+             showToast('error', 'Please fill in all required fields');
+             return;
+         }
         
         // Validate refund amount for partial refunds
         if (refundType === 'partial') {
             if (!refundAmount || refundAmount <= 0 || refundAmount > originalAmount) {
-                Swal.fire({
-                    icon: 'error',
-                    title: 'Invalid Amount',
-                    text: 'Please enter a valid refund amount (between 0 and ' + originalAmount + ')'
-                });
+                showToast('error', 'Please enter a valid refund amount (between 0 and ' + originalAmount + ')');
                 return;
             }
         }
@@ -110,41 +102,23 @@ $(document).ready(function() {
                     const result = typeof response === 'string' ? JSON.parse(response) : response;
                     
                     if (result.status === 'success' || result.success) {
-                        Swal.fire({
-                            icon: 'success',
-                            title: 'Success',
-                            text: result.message || 'Refund processed successfully',
-                            confirmButtonText: 'OK'
-                        }).then((result) => {
-                            if (result.isConfirmed) {
-                                $('#refundModal').modal('hide');
-                                location.reload();
-                            }
-                        });
-                    } else {
-                        Swal.fire({
-                            icon: 'error',
-                            title: 'Error',
-                            text: result.message || 'Failed to process refund'
-                        });
-                    }
+                         showToast('success', result.message || 'Refund processed successfully');
+                         setTimeout(() => {
+                             $('#refundModal').modal('hide');
+                             location.reload();
+                         }, 1500);
+                     } else {
+                         showToast('error', result.message || 'Failed to process refund');
+                     }
                 } catch (e) {
-                    console.error('Error parsing response:', e);
-                    // If response is HTML or plain text, show it directly
-                    if (typeof response === 'string') {
-                        Swal.fire({
-                            icon: 'error',
-                            title: 'Error',
-                            html: response // Use html instead of text to properly render HTML content
-                        });
-                    } else {
-                        Swal.fire({
-                            icon: 'error',
-                            title: 'Error',
-                            text: 'Error processing the refund request'
-                        });
-                    }
-                }
+                     console.error('Error parsing response:', e);
+                     // If response is HTML or plain text, show it directly
+                     if (typeof response === 'string') {
+                         showToast('error', 'Error processing refund');
+                     } else {
+                         showToast('error', 'Error processing the refund request');
+                     }
+                 }
             },
             error: function(xhr, status, error) {
                 console.error('AJAX Error:', error);
@@ -160,11 +134,7 @@ $(document).ready(function() {
                     errorMessage = xhr.responseText || errorMessage;
                 }
                 
-                Swal.fire({
-                    icon: 'error',
-                    title: 'Error',
-                    html: errorMessage // Use html to properly render any HTML in the error message
-                });
+                showToast('error', errorMessage);
             },
             complete: function() {
                 // Reset button state

@@ -54,14 +54,36 @@ $colorMap = [
 ];
 $borderColor = $colorMap[$cardColor] ?? $colorMap['primary'];
 
-// Fetch agency settings
-$settingsQuery = "SELECT * FROM settings WHERE tenant_id = ?";
-$settingsStmt = $pdo->prepare($settingsQuery);
-$settingsStmt->execute([$tenant_id]);
-$settings = $settingsStmt->fetch(PDO::FETCH_ASSOC);
+// Fetch settings data (using PDO connection)
+try {
+    $settingStmt = $pdo->prepare("SELECT * FROM settings WHERE tenant_id = ?");
+    $settingStmt->bindParam(1, $tenant_id, PDO::PARAM_INT);
+    $settingStmt->execute();
+    $settings = $settingStmt->fetch(PDO::FETCH_ASSOC);
+
+    if (!$settings) {
+        // Fallback defaults if no settings row found
+        $settings = ['agency_name' => 'Travel Agency'];
+    }
+} catch (Exception $e) {
+    error_log("Settings Error: " . $e->getMessage());
+    $settings = ['agency_name' => 'Travel Agency'];
+}
+
+// Fetch branch data (from branches table)
+try {
+    $branchStmt = $pdo->prepare("SELECT name, code, phone, address, email FROM branches WHERE id = ? AND tenant_id = ?");
+    $branchStmt->bindParam(1, $branch_id, PDO::PARAM_INT);
+    $branchStmt->bindParam(2, $tenant_id, PDO::PARAM_INT);
+    $branchStmt->execute();
+    $branch = $branchStmt->fetch(PDO::FETCH_ASSOC);
+} catch (Exception $e) {
+    error_log("Branch Error: " . $e->getMessage());
+    $branch = null;
+}
 $agencyName = $settings['agency_name'] ?? 'Travel Agency';
 $agencyLogo = '../../uploads/logo/' . ($settings['logo'] ?? 'assets/images/logo.png');
-$agencyContact = $settings['phone'] ?? '';
+$agencyContact = $branch['phone'] ?? '';
 
 // Fetch pilgrim details
 $pilgrimIds = array_map(function($pilgrim) {
@@ -385,7 +407,7 @@ foreach ($pilgrims as $index => $pilgrim) {
         if ($imageInfo !== false) {
             // Create a unique filename
             $photoFilename = 'pilgrim_' . $pilgrimId . '_' . time() . '.jpg';
-            $uploadDir = '../uploads/pilgrim_photos/';
+            $uploadDir = '../../uploads/pilgrim_photos/';
             
             // Create directory if it doesn't exist
             if (!is_dir($uploadDir)) {
@@ -565,14 +587,13 @@ foreach ($pilgrims as $index => $pilgrim) {
                         </div>
                     </div>
                     <div class="agency-contact">
-                        <div>Phone: ' . htmlspecialchars($settings['phone'] ?? '') . '</div>
-                        <div>Email: ' . htmlspecialchars($settings['email'] ?? '') . '</div>
-                        <div>' . htmlspecialchars($settings['address'] ?? '') . '</div>
+                        <div>Phone: ' . htmlspecialchars($branch['phone'] ?? '') . '</div>
+                        <div>Email: ' . htmlspecialchars($branch['email'] ?? '') . '</div>
+                        <div>' . htmlspecialchars($branch['address'] ?? '') . '</div>
                     </div>
                     <div class="id-card-footer">
                         <div class="agency-info">
-                            Valid: ' . date('d M Y', strtotime($validFrom)) . ' to ' . date('d M Y', strtotime($validUntil)) . ' <br>
-                            Website: www.almoqadas.com
+                            Valid: ' . date('d M Y', strtotime($validFrom)) . ' to ' . date('d M Y', strtotime($validUntil)) . '
                         </div>
                     </div>
                 </div>

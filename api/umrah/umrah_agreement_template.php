@@ -202,7 +202,7 @@ title{
             <?php if (!empty($logoData)): ?>
                 <img src="<?= $logoBase64 ?>" alt="Company Logo" class="logo">
             <?php endif; ?>
-            <div class="company-name"><?= $settings['agency_name'] ?></div>
+            <div class="company-name"><?= $settings['agency_name'] ?> - <?php echo htmlspecialchars($branch['name']); ?></div>
             <div class="title"><?= $l['umrah_agreement'] ?></div>
             <div class="agreement-info"><?= $l['date'] ?>: <?= date('M d, Y') ?> | <?= $l['agreement_no'] ?> UMRAH-<?= $booking['booking_id'] ?>-<?= date('Ymd') ?></div>
         </div>
@@ -300,7 +300,7 @@ title{
                     <td width="45%">
                         <div class="signature-line">
                             <?= $l['authorized_signature'] ?><br>
-                            <?= htmlspecialchars($settings['agency_name']) ?>
+                            <?= htmlspecialchars($settings['agency_name']) ?> - <?php echo htmlspecialchars($branch['name']); ?>
                         </div>
                     </td>
                 </tr>
@@ -308,14 +308,14 @@ title{
         </div>
         
         <div class="footer">
-            <?php if (!empty($settings['address'])): ?>
-                <?= htmlspecialchars($settings['address']) ?> |
+            <?php if (!empty($branch['address'])): ?>
+                <?= htmlspecialchars($branch['address']) ?> |
             <?php endif; ?>
-            <?php if (!empty($settings['phone'])): ?>
-                <?= $l['tel'] ?> <?= htmlspecialchars($settings['phone']) ?> |
+            <?php if (!empty($branch['phone'])): ?>
+                <?= $l['tel'] ?> <?= htmlspecialchars($branch['phone']) ?> |
             <?php endif; ?>
-            <?php if (!empty($settings['email'])): ?>
-                <?= $l['email'] ?> <?= htmlspecialchars($settings['email']) ?>
+            <?php if (!empty($branch['email'])): ?>
+                <?= $l['email'] ?> <?= htmlspecialchars($branch['email']) ?>
             <?php endif; ?>
             <br>
             <?= $l['generated_on'] ?> <?= date('F d, Y') ?> | <?= $l['agreement_no'] ?> UMRAH-<?= $booking['booking_id'] ?>-<?= date('Ymd') ?>
