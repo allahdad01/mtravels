@@ -42,9 +42,10 @@ body {
     box-shadow: var(--shadow-light);
     transition: var(--transition);
     margin-bottom: 24px;
-    overflow: hidden;
+    overflow: visible;
     background: rgba(255, 255, 255, 0.95);
     backdrop-filter: blur(10px);
+    position: relative;
 }
 
 .card:hover {
@@ -83,6 +84,12 @@ body {
 
 .card-body {
     padding: 2rem;
+    position: relative;
+}
+
+.card-body.p-0 {
+    padding: 0;
+    overflow: visible;
 }
 
 /* Modern Form Elements */
@@ -166,21 +173,30 @@ body {
 /* Modern Table Design */
 .table-responsive {
     border-radius: var(--border-radius);
-    overflow: hidden;
+    overflow: visible;
+    position: relative;
     box-shadow: var(--shadow-light);
     background: white;
+}
+
+.table-responsive > table {
+    overflow-y: auto;
+    overflow-x: auto;
 }
 
 .table {
     margin-bottom: 0;
     background: transparent;
+    table-layout: fixed;
+    width: 100%;
+    position: relative;
 }
 
 .table thead th {
     background: var(--primary-gradient);
     color: white;
     border: none;
-    padding: 1rem;
+    padding: 1.25rem 0.75rem;
     font-weight: 600;
     text-transform: uppercase;
     font-size: 12px;
@@ -188,7 +204,19 @@ body {
     position: sticky;
     top: 0;
     z-index: 10;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
 }
+
+.table thead th:nth-child(1) { width: 12%; }  /* Date */
+.table thead th:nth-child(2) { width: 14%; }  /* JV Name */
+.table thead th:nth-child(3) { width: 14%; }  /* Client */
+.table thead th:nth-child(4) { width: 14%; }  /* Supplier */
+.table thead th:nth-child(5) { width: 12%; }  /* Amount */
+.table thead th:nth-child(6) { width: 10%; }  /* Currency */
+.table thead th:nth-child(7) { width: 13%; }  /* Receipt */
+.table thead th:nth-child(8) { width: 11%; }  /* Actions */
 
 .table tbody tr {
     transition: var(--transition);
@@ -197,14 +225,18 @@ body {
 
 .table tbody tr:hover {
     background: linear-gradient(135deg, #f8fafc 0%, #e2e8f0 100%);
-    transform: scale(1.01);
     box-shadow: 0 2px 8px rgba(0,0,0,0.1);
 }
 
 .table tbody td {
-    padding: 1rem;
+    padding: 1rem 0.75rem;
     vertical-align: middle;
     border: none;
+    position: relative;
+}
+
+.table tbody td:last-child {
+    overflow: visible;
 }
 
 /* Action Buttons Styling */
@@ -329,40 +361,75 @@ body {
 
 /* Enhanced Table Cell Styles */
 .date-cell {
-    line-height: 1.4;
+    line-height: 1.5;
+    font-size: 14px;
+}
+
+.date-cell strong {
+    display: block;
+    margin-bottom: 2px;
 }
 
 .jv-name-cell {
-    line-height: 1.4;
+    line-height: 1.5;
+    font-size: 14px;
+}
+
+.jv-name-cell .badge {
+    display: inline-block;
+    margin-right: 4px;
+    font-size: 11px;
+}
+
+.jv-name-cell strong {
+    display: block;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
 }
 
 .client-cell, .supplier-cell {
     font-weight: 500;
+    font-size: 14px;
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
 }
 
 .client-cell i {
     color: var(--primary-color);
+    flex-shrink: 0;
 }
 
 .supplier-cell i {
     color: var(--success-color);
+    flex-shrink: 0;
 }
 
 .amount-cell {
-    font-size: 16px;
+    font-size: 15px;
+    text-align: right;
 }
 
 .amount-cell strong {
     color: var(--success-color);
+    font-weight: 700;
+    display: block;
 }
 
 .receipt-code {
     background: linear-gradient(135deg, #f8f9fa 0%, #e2e8f0 100%);
-    padding: 2px 6px;
+    padding: 4px 8px;
     border-radius: 4px;
     font-size: 12px;
     color: var(--primary-color);
     border: 1px solid #dee2e6;
+    display: inline-block;
+    word-break: break-word;
+    max-width: 100%;
 }
 
 .action-buttons {
@@ -380,7 +447,140 @@ body {
     gap: 0.5rem;
 }
 
+/* Dropdown and Action Button Styles */
+.dropdown {
+    position: relative;
+    display: inline-block;
+}
+
+.btn-icon {
+    padding: 0.5rem 0.625rem;
+    border-radius: 6px;
+    border: 1px solid #e1e5e9;
+    background: white;
+    color: var(--primary-color);
+    transition: var(--transition);
+    min-width: 32px;
+    min-height: 32px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    cursor: pointer;
+    z-index: 100;
+}
+
+.btn-icon:hover {
+    background: #f0f4f8;
+    border-color: var(--primary-color);
+    box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+}
+
+.btn-icon:focus {
+    outline: none;
+    box-shadow: 0 0 0 3px rgba(64, 153, 255, 0.1);
+}
+
+.btn-icon i {
+    font-size: 16px;
+}
+
+.dropdown-menu {
+    min-width: 200px;
+    border-radius: 8px;
+    border: 1px solid #e5e7eb;
+    box-shadow: 0 10px 30px rgba(0,0,0,0.25);
+    background: white;
+    position: fixed;
+    z-index: 9999;
+    display: none;
+    padding: 0.5rem 0;
+}
+
+.dropdown-menu.show {
+    display: block;
+}
+
+.dropdown-toggle::after {
+    display: none;
+}
+
+.dropdown-item {
+    padding: 0.75rem 1rem;
+    color: #374151;
+    transition: var(--transition);
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    cursor: pointer;
+    white-space: nowrap;
+}
+
+.dropdown-item:hover {
+    background: #f8fafc;
+    color: var(--primary-color);
+}
+
+.dropdown-item.text-danger {
+    color: var(--danger-color);
+}
+
+.dropdown-item.text-danger:hover {
+    background: #fee2e2;
+    color: #dc2626;
+}
+
+.dropdown-item i {
+    width: 16px;
+    height: 16px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 14px;
+}
+
+.dropdown-divider {
+    margin: 0.25rem 0;
+    border-top: 1px solid #e5e7eb;
+}
+
 /* Responsive Design */
+@media (max-width: 1200px) {
+    .table thead th:nth-child(7) { width: 12%; }  /* Receipt */
+    .table thead th:nth-child(8) { width: 12%; }  /* Actions */
+    
+    .table tbody td {
+        padding: 0.85rem 0.6rem;
+    }
+}
+
+@media (max-width: 992px) {
+    .table {
+        font-size: 13px;
+    }
+    
+    .table thead th {
+        font-size: 11px;
+        padding: 1rem 0.5rem;
+    }
+    
+    .table tbody td {
+        padding: 0.75rem 0.5rem;
+    }
+    
+    .date-cell, .jv-name-cell, .client-cell, .supplier-cell {
+        font-size: 13px;
+    }
+    
+    .amount-cell {
+        font-size: 13px;
+    }
+    
+    .receipt-code {
+        font-size: 11px;
+        padding: 3px 6px;
+    }
+}
+
 @media (max-width: 768px) {
     .header-content {
         flex-direction: column;
@@ -413,22 +613,57 @@ body {
         justify-content: center;
     }
 
-    .table thead th {
-        font-size: 11px;
-        padding: 0.5rem;
-    }
-
-    .table tbody td {
-        padding: 0.5rem;
-        font-size: 13px;
-    }
-
-    .date-cell strong {
+    .table {
         font-size: 12px;
     }
 
-    .date-cell small {
+    .table thead th {
+        font-size: 10px;
+        padding: 0.75rem 0.4rem;
+    }
+
+    .table tbody td {
+        padding: 0.65rem 0.4rem;
+    }
+
+    .date-cell {
+        font-size: 12px;
+    }
+
+    .date-cell strong {
         font-size: 11px;
+        margin-bottom: 1px;
+    }
+
+    .date-cell small {
+        font-size: 10px;
+    }
+
+    .jv-name-cell {
+        font-size: 12px;
+    }
+
+    .jv-name-cell .badge {
+        font-size: 10px;
+        margin-right: 3px;
+    }
+
+    .jv-name-cell strong {
+        font-size: 12px;
+    }
+
+    .client-cell, .supplier-cell {
+        font-size: 12px;
+        gap: 4px;
+    }
+
+    .amount-cell {
+        font-size: 12px;
+    }
+
+    .receipt-code {
+        font-size: 10px;
+        padding: 2px 5px;
     }
 }
 
@@ -442,12 +677,74 @@ body {
     }
 
     .table-responsive {
-        font-size: 14px;
+        font-size: 11px;
+        overflow-x: auto;
+        -webkit-overflow-scrolling: touch;
     }
 
-    .table thead th,
+    .table {
+        min-width: 600px;
+    }
+
+    .table thead th {
+        font-size: 9px;
+        padding: 0.6rem 0.35rem;
+    }
+
     .table tbody td {
-        padding: 0.75rem 0.5rem;
+        padding: 0.55rem 0.35rem;
+    }
+
+    .date-cell {
+        font-size: 11px;
+    }
+
+    .date-cell strong {
+        font-size: 10px;
+        margin-bottom: 1px;
+    }
+
+    .date-cell small {
+        font-size: 9px;
+    }
+
+    .jv-name-cell {
+        font-size: 11px;
+    }
+
+    .jv-name-cell .badge {
+        display: inline-block;
+        font-size: 9px;
+        padding: 2px 4px;
+        margin-right: 2px;
+        margin-bottom: 2px;
+    }
+
+    .jv-name-cell strong {
+        font-size: 11px;
+    }
+
+    .client-cell, .supplier-cell {
+        font-size: 11px;
+        gap: 3px;
+    }
+
+    .client-cell i, .supplier-cell i {
+        font-size: 12px;
+    }
+
+    .amount-cell {
+        font-size: 11px;
+        text-align: center;
+    }
+
+    .amount-cell strong {
+        font-size: 11px;
+    }
+
+    .receipt-code {
+        font-size: 9px;
+        padding: 2px 4px;
     }
 
     .action-buttons {
@@ -460,17 +757,18 @@ body {
         width: 100%;
     }
 
-    .jv-name-cell .badge {
-        display: block;
-        margin-bottom: 0.25rem;
-    }
-
-    .client-cell, .supplier-cell {
+    .dropdown-menu {
+        min-width: 150px;
         font-size: 12px;
     }
 
-    .amount-cell strong {
-        font-size: 14px;
+    .dropdown-item {
+        padding: 0.5rem 0.75rem;
+    }
+
+    .dropdown-menu {
+        min-width: 180px;
+        max-width: 90vw;
     }
 }
 

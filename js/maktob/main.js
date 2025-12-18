@@ -4,7 +4,8 @@ jQuery(document).ready(function($) {
     $('[data-toggle="tooltip"]').tooltip();
     
     // View maktob button click
-    $('.view-maktob').on('click', function() {
+    $(document).on('click', '.view-maktob', function(e) {
+        e.preventDefault();
         var button = $(this);
         var subject = button.data('subject');
         var content = button.data('content');
@@ -59,7 +60,8 @@ jQuery(document).ready(function($) {
     });
     
     // Edit maktob button click
-    $('.edit-maktob').on('click', function() {
+    $(document).on('click', '.edit-maktob', function(e) {
+        e.preventDefault();
         var button = $(this);
         var id = button.data('id');
         var subject = button.data('subject');
@@ -83,7 +85,8 @@ jQuery(document).ready(function($) {
     });
     
     // Delete maktob button click
-    $('.delete-maktob').on('click', function() {
+    $(document).on('click', '.delete-maktob', function(e) {
+        e.preventDefault();
         var id = $(this).data('id');
         $('#delete_maktob_id').val(id);
         $('#deleteMaktobModal').modal('show');

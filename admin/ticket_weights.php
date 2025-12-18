@@ -25,6 +25,43 @@ require_once('../includes/db.php');
 $user_id = $_SESSION["user_id"];
 $tenant_id = $_SESSION['tenant_id'];
 $branch_id = $_SESSION['branch_id'];
+
+// Pagination settings
+$items_per_page = 10;
+$current_page = isset($_GET['page']) ? max(1, intval($_GET['page'])) : 1;
+$offset = ($current_page - 1) * $items_per_page;
+
+// Search functionality
+$search_query = isset($_GET['search']) ? trim($_GET['search']) : '';
+$search_condition = '';
+
+if (!empty($search_query)) {
+    $search_condition = " AND (
+        t.passenger_name LIKE ? OR
+        t.pnr LIKE ? OR
+        t.phone LIKE ? OR
+        c.name LIKE ? OR
+        t.airline LIKE ? OR
+        t.origin LIKE ? OR
+        t.destination LIKE ?
+    )";
+}
+
+// Get total count
+$countQuery = "SELECT COUNT(*) as total FROM ticket_weights tw 
+              LEFT JOIN ticket_bookings t ON tw.ticket_id = t.id
+              LEFT JOIN clients c ON t.sold_to = c.id
+              WHERE tw.tenant_id = ? AND tw.branch_id = ?" . $search_condition;
+$countParams = [$tenant_id, $branch_id];
+if (!empty($search_query)) {
+    $search_param = '%' . $search_query . '%';
+    $countParams = array_merge($countParams, array_fill(0, 7, $search_param));
+}
+$stmt = $pdo->prepare($countQuery);
+$stmt->execute($countParams);
+$total_records = $stmt->fetch(PDO::FETCH_ASSOC)['total'];
+$total_pages = ceil($total_records / $items_per_page);
+
 // Query to fetch ticket weights with related information
 $weightsQuery = "
     SELECT
@@ -48,15 +85,21 @@ $weightsQuery = "
     LEFT JOIN
         clients c ON t.sold_to = c.id
     WHERE
-        tw.tenant_id = ? AND tw.branch_id = ?
+        tw.tenant_id = ? AND tw.branch_id = ?" . $search_condition . "
     ORDER BY
         tw.created_at DESC
+    LIMIT ? OFFSET ?
 ";
 
 $stmt = $pdo->prepare($weightsQuery);
-$stmt->bindParam(1, $tenant_id, PDO::PARAM_INT);
-$stmt->bindParam(2, $branch_id, PDO::PARAM_INT);
-$stmt->execute();
+$params = [$tenant_id, $branch_id];
+if (!empty($search_query)) {
+    $search_param = '%' . $search_query . '%';
+    $params = array_merge($params, array_fill(0, 7, $search_param));
+}
+$params[] = $items_per_page;
+$params[] = $offset;
+$stmt->execute($params);
 
 // Initialize the array to hold weight details
 $weights = [];
@@ -70,6 +113,9 @@ if ($weightsResult && count($weightsResult) > 0) {
 
 
     <?php include '../includes/header.php'; ?>
+    <!-- DataTables CSS -->
+    <link rel="stylesheet" href="https://cdn.datatables.net/1.11.5/css/dataTables.bootstrap4.min.css">
+    <link rel="stylesheet" href="https://cdn.datatables.net/responsive/2.2.9/css/responsive.bootstrap4.min.css">
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/sweetalert2@11/dist/sweetalert2.min.css">
     <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11/dist/sweetalert2.all.min.js"></script>
     <link rel="stylesheet" href="../css/ticket/ticket_styles.css">
@@ -90,23 +136,55 @@ if ($weightsResult && count($weightsResult) > 0) {
                                 <!-- [ Table ] start -->
                                 <div class="col-sm-12">
                                     <div class="card">
-                                        <div class="card-header">
-                                            <div class="row align-items-center">
-                                                <div class="col">
-                                                    <h5><?= __('ticket_weights_management') ?></h5>
-                                                </div>
-                                                <div class="col text-right">
-                                                     <button type="button" class="btn btn-success" id="generateInvoiceBtn" style="display: none;">
-                                                         <i class="feather icon-file-text mr-2"></i>Generate Invoice
-                                                     </button>
-                                                     <button type="button" class="btn btn-primary" data-toggle="modal" data-target="#addTransactionModal">
-                                                         <i class="feather icon-plus mr-2"></i><?= __('add_weight') ?>
-                                                     </button>
+                                         <div class="card-header">
+                                             <div class="row align-items-center">
+                                                 <div class="col">
+                                                     <h5><?= __('ticket_weights_management') ?></h5>
                                                  </div>
-                                            </div>
-                                        </div>
-                                        <div class="card-body p-0">
-                                            <div class="table-responsive">
+                                                 <div class="col text-right">
+                                                      <button type="button" class="btn btn-success" id="generateInvoiceBtn" style="display: none;">
+                                                          <i class="feather icon-file-text mr-2"></i>Generate Invoice
+                                                      </button>
+                                                      <button type="button" class="btn btn-primary" data-toggle="modal" data-target="#addTransactionModal">
+                                                          <i class="feather icon-plus mr-2"></i><?= __('add_weight') ?>
+                                                      </button>
+                                                  </div>
+                                             </div>
+                                         </div>
+
+                                         <!-- Search Bar -->
+                                         <div class="card-body border-bottom pb-3">
+                                             <form method="GET" class="form-inline">
+                                                 <div class="form-group mb-0 flex-grow-1">
+                                                     <input 
+                                                         type="text" 
+                                                         name="search" 
+                                                         class="form-control w-100" 
+                                                         placeholder="Search by passenger name, PNR, phone, airline, city..." 
+                                                         value="<?= htmlspecialchars($search_query) ?>"
+                                                     >
+                                                 </div>
+                                                 <button type="submit" class="btn btn-info ml-2">
+                                                     <i class="feather icon-search"></i> Search
+                                                 </button>
+                                                 <?php if (!empty($search_query)): ?>
+                                                     <a href="ticket_weights.php" class="btn btn-secondary ml-2">
+                                                         <i class="feather icon-x"></i> Clear
+                                                     </a>
+                                                 <?php endif; ?>
+                                             </form>
+                                         </div>
+
+                                         <div class="card-body p-0">
+                                             <!-- Pagination Info -->
+                                             <div class="row mb-3 p-3">
+                                                 <div class="col-md-6">
+                                                     <small class="text-muted">
+                                                         Showing <?= $offset + 1 ?> to <?= min($offset + $items_per_page, $total_records) ?> of <?= $total_records ?> entries
+                                                     </small>
+                                                 </div>
+                                             </div>
+                                             <div class="table-responsive">
                                                 <table class="table table-hover mb-0" id="weightsTable">
                                                     <thead>
                                                         <tr>
@@ -274,27 +352,101 @@ if ($weightsResult && count($weightsResult) > 0) {
                                                             </td>
 
                                                             <td class="text-right">
-                                                                <?php if ($isAgencyClient): ?>
-                                                                <button class="btn btn-icon btn-sm btn-primary" onclick="manageTransactions(<?= $weight['id'] ?>)" title="<?= __('manage_transactions') ?>">
-                                                                    <i class="feather icon-credit-card"></i>
-                                                                </button>
-                                                                <?php endif; ?>
-                                                                <button class="btn btn-icon btn-sm btn-info" onclick="editWeight(<?= $weight['id'] ?>)" title="<?= __('edit_weight') ?>">
-                                                                    <i class="feather icon-edit"></i>
-                                                                </button>
-                                                                <button class="btn btn-icon btn-sm btn-danger" onclick="deleteWeight(<?= $weight['id'] ?>)" title="<?= __('delete_weight') ?>">
-                                                                    <i class="feather icon-trash-2"></i>
-                                                                </button>
-                                                            </td>
+                                                                 <div class="dropdown">
+                                                                     <button class="btn btn-icon btn-outline-primary dropdown-toggle" type="button" data-toggle="dropdown">
+                                                                         <i class="feather icon-more-horizontal"></i>
+                                                                     </button>
+                                                                     <div class="dropdown-menu dropdown-menu-right">
+                                                                         <?php if ($isAgencyClient): ?>
+                                                                         <a class="dropdown-item" href="javascript:void(0)" onclick="manageTransactions(<?= $weight['id'] ?>)">
+                                                                             <i class="fa fa-credit-card mr-2"></i><?= __('manage_transactions') ?>
+                                                                         </a>
+                                                                         <?php endif; ?>
+                                                                         <a class="dropdown-item" href="javascript:void(0)" onclick="editWeight(<?= $weight['id'] ?>)">
+                                                                             <i class="feather icon-edit mr-2"></i><?= __('edit_weight') ?>
+                                                                         </a>
+                                                                         <div class="dropdown-divider"></div>
+                                                                         <a class="dropdown-item text-danger" href="javascript:void(0)" onclick="deleteWeight(<?= $weight['id'] ?>)">
+                                                                             <i class="feather icon-trash-2 mr-2"></i><?= __('delete_weight') ?>
+                                                                         </a>
+                                                                     </div>
+                                                                 </div>
+                                                             </td>
                                                         </tr>
                                                         <?php endforeach; ?>
                                                     </tbody>
                                                 </table>
-                                            </div>
-                                        </div>
-                                    </div>
-                                </div>
-                                <!-- [ Table ] end -->
+                                                </div>
+                                                <!-- Pagination Controls -->
+                                                <div class="row mt-4 p-3">
+                                                 <div class="col-md-12">
+                                                     <nav aria-label="Page navigation">
+                                                         <ul class="pagination justify-content-center">
+                                                             <?php
+                                                             // Helper function to build pagination links with search parameter
+                                                             $search_param = !empty($search_query) ? '&search=' . urlencode($search_query) : '';
+                                                             ?>
+                                                             <?php if ($current_page > 1): ?>
+                                                                 <li class="page-item">
+                                                                     <a class="page-link" href="?page=1<?= $search_param ?>">First</a>
+                                                                 </li>
+                                                                 <li class="page-item">
+                                                                     <a class="page-link" href="?page=<?= $current_page - 1 ?><?= $search_param ?>">Previous</a>
+                                                                 </li>
+                                                             <?php else: ?>
+                                                                 <li class="page-item disabled">
+                                                                     <span class="page-link">First</span>
+                                                                 </li>
+                                                                 <li class="page-item disabled">
+                                                                     <span class="page-link">Previous</span>
+                                                                 </li>
+                                                             <?php endif; ?>
+
+                                                             <?php
+                                                             // Show page numbers
+                                                             $start_page = max(1, $current_page - 2);
+                                                             $end_page = min($total_pages, $current_page + 2);
+
+                                                             if ($start_page > 1):
+                                                             ?>
+                                                                 <li class="page-item disabled"><span class="page-link">...</span></li>
+                                                             <?php endif; ?>
+
+                                                             <?php for ($i = $start_page; $i <= $end_page; $i++): ?>
+                                                                 <?php if ($i == $current_page): ?>
+                                                                     <li class="page-item active"><span class="page-link"><?= $i ?></span></li>
+                                                                 <?php else: ?>
+                                                                     <li class="page-item"><a class="page-link" href="?page=<?= $i ?><?= $search_param ?>"><?= $i ?></a></li>
+                                                                 <?php endif; ?>
+                                                             <?php endfor; ?>
+
+                                                             <?php if ($end_page < $total_pages): ?>
+                                                                 <li class="page-item disabled"><span class="page-link">...</span></li>
+                                                             <?php endif; ?>
+
+                                                             <?php if ($current_page < $total_pages): ?>
+                                                                 <li class="page-item">
+                                                                     <a class="page-link" href="?page=<?= $current_page + 1 ?><?= $search_param ?>">Next</a>
+                                                                 </li>
+                                                                 <li class="page-item">
+                                                                     <a class="page-link" href="?page=<?= $total_pages ?><?= $search_param ?>">Last</a>
+                                                                 </li>
+                                                             <?php else: ?>
+                                                                 <li class="page-item disabled">
+                                                                     <span class="page-link">Next</span>
+                                                                 </li>
+                                                                 <li class="page-item disabled">
+                                                                     <span class="page-link">Last</span>
+                                                                 </li>
+                                                             <?php endif; ?>
+                                                         </ul>
+                                                     </nav>
+                                                 </div>
+                                                </div>
+                                                </div>
+                                                </div>
+                                                </div>
+                                                <!-- [ Table ] end -->
                             </div>
                         </div>
                     </div>

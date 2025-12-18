@@ -65,7 +65,43 @@ $mainAccounts = $stmt->fetchAll();
  $stmt->execute();
  $clients = $stmt->fetchAll();
 
-// Get all additional payments
+// Pagination settings
+$items_per_page = 10;
+$current_page = isset($_GET['page']) ? max(1, intval($_GET['page'])) : 1;
+$offset = ($current_page - 1) * $items_per_page;
+
+// Search functionality
+$search_query = isset($_GET['search']) ? trim($_GET['search']) : '';
+$search_condition = '';
+
+if (!empty($search_query)) {
+    $search_condition = " AND (
+        ap.payment_type LIKE ? OR
+        ap.description LIKE ? OR
+        ma.name LIKE ? OR
+        s.name LIKE ? OR
+        c.name LIKE ?
+    )";
+}
+
+// Get total count
+$countQuery = "SELECT COUNT(*) as total FROM additional_payments ap
+              LEFT JOIN users u ON ap.created_by = u.id
+              LEFT JOIN main_account ma ON ap.main_account_id = ma.id
+              LEFT JOIN suppliers s ON ap.supplier_id = s.id
+              LEFT JOIN clients c ON ap.client_id = c.id
+              WHERE ap.tenant_id = ? AND ap.branch_id = ?" . $search_condition;
+$countParams = [$tenant_id, $branch_id];
+if (!empty($search_query)) {
+    $search_param = '%' . $search_query . '%';
+    $countParams = array_merge($countParams, array_fill(0, 5, $search_param));
+}
+$stmt = $pdo->prepare($countQuery);
+$stmt->execute($countParams);
+$total_records = $stmt->fetch(PDO::FETCH_ASSOC)['total'];
+$total_pages = ceil($total_records / $items_per_page);
+
+// Get all additional payments with pagination
  $paymentsQuery = "SELECT ap.*, u.name as created_by_name, ma.name as main_account_name,
                    s.name as supplier_name, s.id as supplier_id,
                    c.name as client_name, c.id as client_id
@@ -74,12 +110,18 @@ $mainAccounts = $stmt->fetchAll();
                    LEFT JOIN main_account ma ON ap.main_account_id = ma.id
                    LEFT JOIN suppliers s ON ap.supplier_id = s.id
                    LEFT JOIN clients c ON ap.client_id = c.id
-                   WHERE ap.tenant_id = ? AND ap.branch_id = ?
-                   ORDER BY ap.created_at DESC";
+                   WHERE ap.tenant_id = ? AND ap.branch_id = ?" . $search_condition . "
+                   ORDER BY ap.created_at DESC
+                   LIMIT ? OFFSET ?";
  $stmt = $pdo->prepare($paymentsQuery);
- $stmt->bindParam(1, $tenant_id, PDO::PARAM_INT);
- $stmt->bindParam(2, $branch_id, PDO::PARAM_INT);
- $stmt->execute();
+ $params = [$tenant_id, $branch_id];
+ if (!empty($search_query)) {
+     $search_param = '%' . $search_query . '%';
+     $params = array_merge($params, array_fill(0, 5, $search_param));
+ }
+ $params[] = $items_per_page;
+ $params[] = $offset;
+ $stmt->execute($params);
  $payments = $stmt->fetchAll();
 ?>
 
@@ -315,13 +357,37 @@ $mainAccounts = $stmt->fetchAll();
                             <div class="row">
                                 <div class="col-md-12">
                                     <div class="card">
-                                        <div class="card-header">
-                                            <h5><?= __('additional_payments') ?></h5>
-                                            <button type="button" class="btn btn-primary" data-toggle="modal" data-target="#addPaymentModal">
-                                                <i class="feather icon-plus"></i> <?= __('add_new_payment') ?>
-                                            </button>
-                                        </div>
-                                        <div class="card-body">
+                                         <div class="card-header">
+                                             <h5><?= __('additional_payments') ?></h5>
+                                             <button type="button" class="btn btn-primary" data-toggle="modal" data-target="#addPaymentModal">
+                                                 <i class="feather icon-plus"></i> <?= __('add_new_payment') ?>
+                                             </button>
+                                         </div>
+
+                                         <!-- Search Bar -->
+                                         <div class="card-body border-bottom pb-3">
+                                             <form method="GET" class="form-inline">
+                                                 <div class="form-group mb-0 flex-grow-1">
+                                                     <input 
+                                                         type="text" 
+                                                         name="search" 
+                                                         class="form-control w-100" 
+                                                         placeholder="Search by payment type, description, account name..." 
+                                                         value="<?= htmlspecialchars($search_query) ?>"
+                                                     >
+                                                 </div>
+                                                 <button type="submit" class="btn btn-info ml-2">
+                                                     <i class="feather icon-search"></i> Search
+                                                 </button>
+                                                 <?php if (!empty($search_query)): ?>
+                                                     <a href="additional_payments.php" class="btn btn-secondary ml-2">
+                                                         <i class="feather icon-x"></i> Clear
+                                                     </a>
+                                                 <?php endif; ?>
+                                             </form>
+                                         </div>
+
+                                         <div class="card-body">
                                             <?php if (isset($_SESSION['success'])): ?>
                                                 <div class="alert alert-success"><?php echo h($_SESSION['success']); unset($_SESSION['success']); ?></div>
                                             <?php endif; ?>
@@ -330,12 +396,21 @@ $mainAccounts = $stmt->fetchAll();
                                                 <div class="alert alert-danger"><?php echo h($_SESSION['error']); unset($_SESSION['error']); ?></div>
                                             <?php endif; ?>
 
+                                            <!-- Pagination Info -->
+                                            <div class="row mb-3">
+                                                <div class="col-md-6">
+                                                    <small class="text-muted">
+                                                        Showing <?= $offset + 1 ?> to <?= min($offset + $items_per_page, $total_records) ?> of <?= $total_records ?> entries
+                                                    </small>
+                                                </div>
+                                            </div>
+
                                             <!-- Payment Table -->
                                             <div class="table-responsive">
                                                 <table class="table table-striped">
                                                     <thead>
                                                         <tr>
-                                                            <th><?= __('actions') ?></th>   
+                                                            <th><?= __('actions') ?></th>
                                                             <th><?= __('payment_type') ?></th>
                                                             <th><?= __('description') ?></th>
                                                             <th><?= __('financial_details') ?></th>   
@@ -346,44 +421,80 @@ $mainAccounts = $stmt->fetchAll();
                                                     <tbody>
                                                         <?php foreach ($payments as $payment): ?>
                                                             <tr>
-                                                            <td>
-                                                                    <div class="action-buttons">
-                                                                        
-                                                                    <button class="btn btn-sm btn-success add-transaction" 
-                                                                                data-id="<?= $payment['id'] ?>"
-                                                                                data-payment-type="<?= htmlspecialchars($payment['payment_type']) ?>"
-                                                                                data-currency="<?= htmlspecialchars($payment['currency']) ?>"
-                                                                                data-main-account="<?= $payment['main_account_id'] ?>"
-                                                                                data-supplier="<?= $payment['supplier_id'] ?>"
-                                                                                data-client="<?= $payment['client_id'] ?>"
-                                                                                data-receipt="<?= htmlspecialchars($payment['receipt']) ?>"
-                                                                                data-description="<?= htmlspecialchars($payment['description']) ?>"
-                                                                                data-sold-amount="<?= $payment['sold_amount'] ?>"
-                                                                                title="Add Transaction">
-                                                                            <i class="feather icon-plus"></i>
-                                                                        </button>
-                                                                        <button class="btn btn-sm btn-primary edit-payment" 
-                                                                                data-id="<?= $payment['id'] ?>"
-                                                                                data-payment-type="<?= htmlspecialchars($payment['payment_type']) ?>"
-                                                                                data-description="<?= htmlspecialchars($payment['description']) ?>"
-                                                                                data-base-amount="<?= $payment['base_amount'] ?>"
-                                                                                data-profit="<?= $payment['profit'] ?>"
-                                                                                data-sold-amount="<?= $payment['sold_amount'] ?>"
-                                                                                data-currency="<?= htmlspecialchars($payment['currency']) ?>"
-                                                                                data-main-account="<?= $payment['main_account_id'] ?>"
-                                                                                data-supplier="<?= $payment['supplier_id'] ?>"
-                                                                                data-client="<?= $payment['client_id'] ?>"
-                                                                                data-receipt="<?= htmlspecialchars($payment['receipt']) ?>"
-                                                                                title="Edit Payment">
-                                                                            <i class="feather icon-edit"></i>
-                                                                        </button>
-                                                                        <button class="btn btn-sm btn-danger delete-payment" 
-                                                                                data-id="<?= $payment['id'] ?>"
-                                                                                title="Delete Payment">
-                                                                            <i class="feather icon-trash"></i>
-                                                                        </button>
-                                                                    </div>
-                                                                </td>
+                                                             <td>
+                                                                 <div class="dropdown">
+                                                                     <button class="btn btn-icon btn-outline-primary dropdown-toggle" type="button" data-toggle="dropdown">
+                                                                         <i class="feather icon-more-horizontal"></i>
+                                                                     </button>
+                                                                     <div class="dropdown-menu dropdown-menu-right">
+                                                                         <a class="dropdown-item" href="javascript:void(0)" 
+                                                                            data-id="<?= $payment['id'] ?>"
+                                                                            data-payment-type="<?= htmlspecialchars($payment['payment_type']) ?>"
+                                                                            data-currency="<?= htmlspecialchars($payment['currency']) ?>"
+                                                                            data-main-account="<?= $payment['main_account_id'] ?>"
+                                                                            data-supplier="<?= $payment['supplier_id'] ?>"
+                                                                            data-client="<?= $payment['client_id'] ?>"
+                                                                            data-receipt="<?= htmlspecialchars($payment['receipt']) ?>"
+                                                                            data-description="<?= htmlspecialchars($payment['description']) ?>"
+                                                                            data-sold-amount="<?= $payment['sold_amount'] ?>"
+                                                                            onclick="this.dispatchEvent(new CustomEvent('click', {bubbles: true})); document.querySelector('.add-transaction[data-id=\'' + this.dataset.id + '\']')?.click();">
+                                                                             <i class="feather icon-plus mr-2"></i><?= __('add_transaction') ?>
+                                                                         </a>
+                                                                         <a class="dropdown-item" href="javascript:void(0)" 
+                                                                            data-id="<?= $payment['id'] ?>"
+                                                                            data-payment-type="<?= htmlspecialchars($payment['payment_type']) ?>"
+                                                                            data-description="<?= htmlspecialchars($payment['description']) ?>"
+                                                                            data-base-amount="<?= $payment['base_amount'] ?>"
+                                                                            data-profit="<?= $payment['profit'] ?>"
+                                                                            data-sold-amount="<?= $payment['sold_amount'] ?>"
+                                                                            data-currency="<?= htmlspecialchars($payment['currency']) ?>"
+                                                                            data-main-account="<?= $payment['main_account_id'] ?>"
+                                                                            data-supplier="<?= $payment['supplier_id'] ?>"
+                                                                            data-client="<?= $payment['client_id'] ?>"
+                                                                            data-receipt="<?= htmlspecialchars($payment['receipt']) ?>"
+                                                                            onclick="document.querySelector('.edit-payment[data-id=\'' + this.dataset.id + '\']')?.dispatchEvent(new Event('click', {bubbles: true}));">
+                                                                             <i class="feather icon-edit mr-2"></i><?= __('edit') ?>
+                                                                         </a>
+                                                                         <div class="dropdown-divider"></div>
+                                                                         <a class="dropdown-item text-danger" href="javascript:void(0)" 
+                                                                            data-id="<?= $payment['id'] ?>"
+                                                                            onclick="document.querySelector('.delete-payment[data-id=\'' + this.dataset.id + '\']')?.dispatchEvent(new Event('click', {bubbles: true}));">
+                                                                             <i class="feather icon-trash mr-2"></i><?= __('delete') ?>
+                                                                         </a>
+                                                                     </div>
+                                                                 </div>
+                                                                 <!-- Hidden buttons to maintain existing functionality -->
+                                                                 <button style="display:none;" class="btn btn-sm btn-success add-transaction" 
+                                                                             data-id="<?= $payment['id'] ?>"
+                                                                             data-payment-type="<?= htmlspecialchars($payment['payment_type']) ?>"
+                                                                             data-currency="<?= htmlspecialchars($payment['currency']) ?>"
+                                                                             data-main-account="<?= $payment['main_account_id'] ?>"
+                                                                             data-supplier="<?= $payment['supplier_id'] ?>"
+                                                                             data-client="<?= $payment['client_id'] ?>"
+                                                                             data-receipt="<?= htmlspecialchars($payment['receipt']) ?>"
+                                                                             data-description="<?= htmlspecialchars($payment['description']) ?>"
+                                                                             data-sold-amount="<?= $payment['sold_amount'] ?>">
+                                                                     <i class="feather icon-plus"></i>
+                                                                 </button>
+                                                                 <button style="display:none;" class="btn btn-sm btn-primary edit-payment" 
+                                                                             data-id="<?= $payment['id'] ?>"
+                                                                             data-payment-type="<?= htmlspecialchars($payment['payment_type']) ?>"
+                                                                             data-description="<?= htmlspecialchars($payment['description']) ?>"
+                                                                             data-base-amount="<?= $payment['base_amount'] ?>"
+                                                                             data-profit="<?= $payment['profit'] ?>"
+                                                                             data-sold-amount="<?= $payment['sold_amount'] ?>"
+                                                                             data-currency="<?= htmlspecialchars($payment['currency']) ?>"
+                                                                             data-main-account="<?= $payment['main_account_id'] ?>"
+                                                                             data-supplier="<?= $payment['supplier_id'] ?>"
+                                                                             data-client="<?= $payment['client_id'] ?>"
+                                                                             data-receipt="<?= htmlspecialchars($payment['receipt']) ?>">
+                                                                     <i class="feather icon-edit"></i>
+                                                                 </button>
+                                                                 <button style="display:none;" class="btn btn-sm btn-danger delete-payment" 
+                                                                             data-id="<?= $payment['id'] ?>">
+                                                                     <i class="feather icon-trash"></i>
+                                                                 </button>
+                                                                 </td>
                                                                 <td><?= htmlspecialchars($payment['payment_type']) ?></br>
 
                                                                <?php
@@ -536,11 +647,77 @@ $mainAccounts = $stmt->fetchAll();
                                                         <?php endforeach; ?>
                                                     </tbody>
                                                 </table>
-                                            </div>
-                                        </div>
-                                    </div>
-                                </div>
-                            </div>
+                                                </div>
+                                                <!-- Pagination Controls -->
+                                                <div class="row mt-4 p-3">
+                                                 <div class="col-md-12">
+                                                     <nav aria-label="Page navigation">
+                                                         <ul class="pagination justify-content-center">
+                                                             <?php
+                                                             // Helper function to build pagination links with search parameter
+                                                             $search_param = !empty($search_query) ? '&search=' . urlencode($search_query) : '';
+                                                             ?>
+                                                             <?php if ($current_page > 1): ?>
+                                                                 <li class="page-item">
+                                                                     <a class="page-link" href="?page=1<?= $search_param ?>">First</a>
+                                                                 </li>
+                                                                 <li class="page-item">
+                                                                     <a class="page-link" href="?page=<?= $current_page - 1 ?><?= $search_param ?>">Previous</a>
+                                                                 </li>
+                                                             <?php else: ?>
+                                                                 <li class="page-item disabled">
+                                                                     <span class="page-link">First</span>
+                                                                 </li>
+                                                                 <li class="page-item disabled">
+                                                                     <span class="page-link">Previous</span>
+                                                                 </li>
+                                                             <?php endif; ?>
+
+                                                             <?php
+                                                             // Show page numbers
+                                                             $start_page = max(1, $current_page - 2);
+                                                             $end_page = min($total_pages, $current_page + 2);
+
+                                                             if ($start_page > 1):
+                                                             ?>
+                                                                 <li class="page-item disabled"><span class="page-link">...</span></li>
+                                                             <?php endif; ?>
+
+                                                             <?php for ($i = $start_page; $i <= $end_page; $i++): ?>
+                                                                 <?php if ($i == $current_page): ?>
+                                                                     <li class="page-item active"><span class="page-link"><?= $i ?></span></li>
+                                                                 <?php else: ?>
+                                                                     <li class="page-item"><a class="page-link" href="?page=<?= $i ?><?= $search_param ?>"><?= $i ?></a></li>
+                                                                 <?php endif; ?>
+                                                             <?php endfor; ?>
+
+                                                             <?php if ($end_page < $total_pages): ?>
+                                                                 <li class="page-item disabled"><span class="page-link">...</span></li>
+                                                             <?php endif; ?>
+
+                                                             <?php if ($current_page < $total_pages): ?>
+                                                                 <li class="page-item">
+                                                                     <a class="page-link" href="?page=<?= $current_page + 1 ?><?= $search_param ?>">Next</a>
+                                                                 </li>
+                                                                 <li class="page-item">
+                                                                     <a class="page-link" href="?page=<?= $total_pages ?><?= $search_param ?>">Last</a>
+                                                                 </li>
+                                                             <?php else: ?>
+                                                                 <li class="page-item disabled">
+                                                                     <span class="page-link">Next</span>
+                                                                 </li>
+                                                                 <li class="page-item disabled">
+                                                                     <span class="page-link">Last</span>
+                                                                 </li>
+                                                             <?php endif; ?>
+                                                         </ul>
+                                                     </nav>
+                                                 </div>
+                                                </div>
+                                                </div>
+                                                </div>
+                                                </div>
+                                                </div>
                         </div>
                     </div>
                 </div>

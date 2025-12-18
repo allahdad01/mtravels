@@ -143,72 +143,100 @@ require_once('../includes/db.php');
 </style>
                             <div class="row">
                                 <div class="col-sm-12">
-                                    <div class="mb-3 text-right">
+                                    <div class="mb-3 d-flex justify-content-between align-items-center">
                                          <!-- Add Supplier Button -->
-                                        <button class="btn btn-primary mb-3" data-toggle="modal" data-target="#addSupplierModal"><?= __('add_new_supplier') ?></button>
+                                        <button class="btn btn-primary" data-toggle="modal" data-target="#addSupplierModal"><?= __('add_new_supplier') ?></button>
                                     </div>
+
+                                    <!-- Search Bar -->
+                                    <div class="card mb-3">
+                                        <div class="card-body pb-3">
+                                            <form class="form-inline" onsubmit="return false;">
+                                                <div class="form-group mb-0 flex-grow-1">
+                                                    <input 
+                                                        type="text" 
+                                                        id="searchSupplier"
+                                                        name="search"
+                                                        class="form-control w-100" 
+                                                        placeholder="Search by supplier name or ID..." 
+                                                    >
+                                                </div>
+                                                <button type="button" class="btn btn-info ml-2" onclick="SupplierManagement.handleSearch()">
+                                                    <i class="feather icon-search"></i> <?= __('search') ?>
+                                                </button>
+                                                <button type="button" class="btn btn-secondary ml-2" onclick="document.getElementById('searchSupplier').value = ''; SupplierManagement.loadSuppliers();">
+                                                    <i class="feather icon-x"></i> <?= __('clear') ?>
+                                                </button>
+                                            </form>
+                                        </div>
+                                    </div>
+
                                     <!-- Supplier Tabs -->
                                     <ul class="nav nav-tabs mb-3" id="supplierTabs" role="tablist">
                                         <li class="nav-item" role="presentation">
                                             <a class="nav-link active" id="activeSuppliers-tab" data-toggle="tab" href="#activeSuppliers" role="tab">
-                                                <?= __('active_suppliers') ?>
+                                                <?= __('active_suppliers') ?> <span id="activeCount" class="ml-2">0</span>
                                             </a>
                                         </li>
                                         <li class="nav-item" role="presentation">
                                             <a class="nav-link" id="inactiveSuppliers-tab" data-toggle="tab" href="#inactiveSuppliers" role="tab">
-                                                <?= __('inactive_suppliers') ?>
+                                                <?= __('inactive_suppliers') ?> <span id="inactiveCount" class="ml-2">0</span>
                                             </a>
                                         </li>
                                     </ul>
                                     <div class="tab-content" id="supplierTabContent">
                                         <div class="tab-pane fade show active" id="activeSuppliers" role="tabpanel">
-                                            <div class="card">
-                                                <!-- body -->
-                                                <div class="table-responsive">
-                                                    <!-- Active Suppliers Table -->
-                                                    <table class="table table-hover" id="activeSuppliersTable" width="100%">
-                                                        <thead>
-                                                            <tr>
-                                                                <th>#</th>
-                                                                <th><?= __('supplier_info') ?></th>
-                                                                <th><?= __('supplier_type') ?></th>
-                                                                <th><?= __('balance') ?></th>
-                                                                <th><?= __('currency') ?></th>
-                                                                <th><?= __('address') ?></th>
-                                                                <th><?= __('actions') ?></th>
-                                                            </tr>
-                                                        </thead>
-                                                        <tbody id="activeSupplierTableBody">
-                                                            <!-- Active Supplier Rows will be populated dynamically -->
-                                                        </tbody>
-                                                    </table>
-                                                </div>
-                                            </div>
-                                        </div>
+                                             <div class="card">
+                                                 <!-- body -->
+                                                 <div class="table-responsive">
+                                                     <!-- Active Suppliers Table -->
+                                                     <table class="table table-hover" id="activeSuppliersTable" width="100%">
+                                                         <thead>
+                                                             <tr>
+                                                                 <th>#</th>
+                                                                 <th><?= __('supplier_info') ?></th>
+                                                                 <th><?= __('supplier_type') ?></th>
+                                                                 <th><?= __('balance') ?></th>
+                                                                 <th><?= __('currency') ?></th>
+                                                                 <th><?= __('address') ?></th>
+                                                                 <th><?= __('actions') ?></th>
+                                                             </tr>
+                                                         </thead>
+                                                         <tbody id="activeSupplierTableBody">
+                                                             <!-- Active Supplier Rows will be populated dynamically -->
+                                                         </tbody>
+                                                     </table>
+                                                 </div>
+                                                 <!-- Pagination for Active Suppliers -->
+                                                 <div id="activePaginationContainer"></div>
+                                             </div>
+                                         </div>
                                         <div class="tab-pane fade" id="inactiveSuppliers" role="tabpanel">
-                                            <div class="card">
-                                                <!-- body -->
-                                                <div class="table-responsive">
-                                                    <!-- Inactive Suppliers Table -->
-                                                    <table class="table table-hover" id="inactiveSuppliersTable" width="100%">
-                                                        <thead>
-                                                            <tr>
-                                                                <th>#</th>
-                                                                <th><?= __('supplier_info') ?></th>
-                                                                <th><?= __('supplier_type') ?></th>
-                                                                <th><?= __('balance') ?></th>
-                                                                <th><?= __('currency') ?></th>
-                                                                <th><?= __('address') ?></th>
-                                                                <th><?= __('actions') ?></th>
-                                                            </tr>
-                                                        </thead>
-                                                        <tbody id="inactiveSupplierTableBody">
-                                                            <!-- Inactive Supplier Rows will be populated dynamically -->
-                                                        </tbody>
-                                                    </table>
-                                                </div>
-                                            </div>
-                                        </div>
+                                             <div class="card">
+                                                 <!-- body -->
+                                                 <div class="table-responsive">
+                                                     <!-- Inactive Suppliers Table -->
+                                                     <table class="table table-hover" id="inactiveSuppliersTable" width="100%">
+                                                         <thead>
+                                                             <tr>
+                                                                 <th>#</th>
+                                                                 <th><?= __('supplier_info') ?></th>
+                                                                 <th><?= __('supplier_type') ?></th>
+                                                                 <th><?= __('balance') ?></th>
+                                                                 <th><?= __('currency') ?></th>
+                                                                 <th><?= __('address') ?></th>
+                                                                 <th><?= __('actions') ?></th>
+                                                             </tr>
+                                                         </thead>
+                                                         <tbody id="inactiveSupplierTableBody">
+                                                             <!-- Inactive Supplier Rows will be populated dynamically -->
+                                                         </tbody>
+                                                     </table>
+                                                 </div>
+                                                 <!-- Pagination for Inactive Suppliers -->
+                                                 <div id="inactivePaginationContainer"></div>
+                                             </div>
+                                         </div>
                                     </div>
                                 </div>
                             </div>

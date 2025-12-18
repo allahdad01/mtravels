@@ -6,6 +6,50 @@ require_once('../includes/db.php');
 $user_id = $_SESSION["user_id"];
 $tenant_id = $_SESSION['tenant_id'];
 $branch_id = $_SESSION['branch_id'];
+
+// Pagination settings
+$items_per_page = 10;
+$current_page = isset($_GET['page']) ? max(1, intval($_GET['page'])) : 1;
+$offset = ($current_page - 1) * $items_per_page;
+
+// Search functionality
+$search_query = isset($_GET['search']) ? trim($_GET['search']) : '';
+$search_condition = '';
+$search_params = [$tenant_id, $branch_id];
+
+if (!empty($search_query)) {
+    $search_condition = " AND (
+        rt.passenger_name LIKE ? OR
+        rt.pnr LIKE ? OR
+        rt.phone LIKE ? OR
+        c.name LIKE ? OR
+        rt.airline LIKE ? OR
+        rt.origin LIKE ? OR
+        rt.destination LIKE ?
+    )";
+    $search_param = '%' . $search_query . '%';
+    $search_params = [
+        $tenant_id, 
+        $branch_id, 
+        $search_param, 
+        $search_param, 
+        $search_param, 
+        $search_param, 
+        $search_param, 
+        $search_param, 
+        $search_param
+    ];
+}
+
+// Get total count
+$countQuery = "SELECT COUNT(*) as total FROM refunded_tickets rt 
+              LEFT JOIN clients c ON rt.sold_to = c.id 
+              WHERE rt.tenant_id = ? AND rt.branch_id = ?" . $search_condition;
+$stmt = $pdo->prepare($countQuery);
+$stmt->execute($search_params);
+$total_records = $stmt->fetch(PDO::FETCH_ASSOC)['total'];
+$total_pages = ceil($total_records / $items_per_page);
+
 $ticketsQuery = "
     SELECT
        rt.*,
@@ -29,12 +73,17 @@ $ticketsQuery = "
        main_account ma ON rt.paid_to = ma.id AND ma.tenant_id = rt.tenant_id AND ma.branch_id = rt.branch_id
     LEFT JOIN
        users u ON rt.created_by = u.id AND u.tenant_id = rt.tenant_id AND u.branch_id = rt.branch_id
-    WHERE rt.tenant_id = ? AND rt.branch_id = ?
+    WHERE rt.tenant_id = ? AND rt.branch_id = ?" . $search_condition . "
     ORDER BY
        rt.id DESC
+    LIMIT ? OFFSET ?
 ";
 $stmt = $pdo->prepare($ticketsQuery);
-$stmt->execute([$tenant_id, $branch_id]);
+// Add search params if exists, then add pagination params
+$params = $search_params;
+$params[] = $items_per_page;
+$params[] = $offset;
+$stmt->execute($params);
 $tickets = $stmt->fetchAll(PDO::FETCH_ASSOC);
 
 // Fetch Suppliers

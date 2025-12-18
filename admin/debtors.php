@@ -260,9 +260,9 @@ try {
                                                                 <td>
                                                                     <div class="d-flex align-items-center">
                                                                         <?php if ($debtor['balance'] <= 0): ?>
-                                                                            <span class="badge badge-success mr-2"><?= __('paid') ?></span>
+                                                                            <span class="mr-2"><?= __('paid') ?></span>
                                                                         <?php elseif ($debtor['balance'] > 0): ?>
-                                                                            <span class="badge badge-warning mr-2"><?= __('pending') ?></span>
+                                                                            <span class="mr-2"><?= __('pending') ?></span>
                                                                         <?php endif; ?>
                                                                         <span class="font-weight-medium">
                                                                             <?php echo number_format($debtor['balance'], 2); ?>
@@ -270,7 +270,7 @@ try {
                                                                     </div>
                                                                 </td>
                                                                 <td>
-                                                                    <span class="badge badge-light-primary">
+                                                                    <span class="">
                                                                         <?php echo htmlspecialchars($debtor['currency']); ?>
                                                                     </span>
                                                                 </td>

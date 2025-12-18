@@ -35,41 +35,78 @@ include '../api/ticket_date_change/date_change_handler.php';
 <link rel="stylesheet" href="../css/ticket/ticket-form.css">
 <link rel="stylesheet" href="../css/ticket/datechange-css.css">
         <?php 
-include '../includes/header.php';
-?>
+        include '../includes/header.php';
+        // Add DataTables CSS
+        ?>
+        <!-- DataTables CSS -->
+        <link rel="stylesheet" href="https://cdn.datatables.net/1.11.5/css/dataTables.bootstrap4.min.css">
+        <link rel="stylesheet" href="https://cdn.datatables.net/responsive/2.2.9/css/responsive.bootstrap4.min.css">
 
-    <!-- [ Main Content ] start -->
-    <div class="pcoded-main-container">
-        <div class="pcoded-wrapper">
-            <div class="pcoded-content">
-                <div class="pcoded-inner-content">
-                    <div class="main-body">
-                        <div class="page-wrapper">
-                            <!-- [ Main Content ] start -->
-                            <div class="row">
-                                <div class="col-sm-12">
-                                    <!-- Search and Actions Section -->
-                                    <div class="card-header mb-3">
-                                        <div class="card-body">
-                                            <div class="row align-items-center">
-                                                <div class="col-md-8">
-                                                    <h3><?= __('date_change_management') ?></h3>
-                                                </div>
-                                                <div class="col-md-4 text-right">
-                                                    <button type="button" class="btn btn-primary" data-toggle="modal" data-target="#addDateChangeModal">
-                                                        <i class="feather icon-plus mr-2"></i><?= __('add_date_change') ?>
-                                                    </button>
-                                                </div>
-                                            </div>
-                                        </div>
-                                    </div>
+            <!-- [ Main Content ] start -->
+            <div class="pcoded-main-container">
+                <div class="pcoded-wrapper">
+                    <div class="pcoded-content">
+                        <div class="pcoded-inner-content">
+                            <div class="main-body">
+                                <div class="page-wrapper">
+                                    <!-- [ Main Content ] start -->
+                                    <div class="row">
+                                        <div class="col-sm-12">
+                                             <!-- Search and Actions Section -->
+                                             <div class="card-header mb-3">
+                                                 <div class="card-body">
+                                                     <div class="row align-items-center">
+                                                         <div class="col-md-8">
+                                                             <h3><?= __('date_change_management') ?></h3>
+                                                         </div>
+                                                         <div class="col-md-4 text-right">
+                                                             <button type="button" class="btn btn-primary" data-toggle="modal" data-target="#addDateChangeModal">
+                                                                 <i class="feather icon-plus mr-2"></i><?= __('add_date_change') ?>
+                                                             </button>
+                                                         </div>
+                                                     </div>
+                                                 </div>
+                                             </div>
+
+                                             <!-- Search Bar -->
+                                             <div class="card mb-3">
+                                                 <div class="card-body">
+                                                     <form method="GET" class="form-inline">
+                                                         <div class="form-group mb-0 flex-grow-1">
+                                                             <input 
+                                                                 type="text" 
+                                                                 name="search" 
+                                                                 class="form-control w-100" 
+                                                                 placeholder="Search by passenger name, PNR, phone, airline, city..." 
+                                                                 value="<?= htmlspecialchars($search_query) ?>"
+                                                             >
+                                                         </div>
+                                                         <button type="submit" class="btn btn-info ml-2">
+                                                             <i class="feather icon-search"></i> Search
+                                                         </button>
+                                                         <?php if (!empty($search_query)): ?>
+                                                             <a href="date_change.php" class="btn btn-secondary ml-2">
+                                                                 <i class="feather icon-x"></i> Clear
+                                                             </a>
+                                                         <?php endif; ?>
+                                                     </form>
+                                                 </div>
+                                             </div>
 
                                     <!-- [ Table ] start -->
                                     <div class="card">                              
-                                        <div class="card-body p-0">        
-                                            <div class="table-responsive">
-                                                <table class="table table-hover" id="dateChangeTable">
-                                                    <thead>
+                                         <div class="card-body p-0">
+                                             <!-- Pagination Info -->
+                                             <div class="row mb-3 p-3">
+                                                 <div class="col-md-6">
+                                                     <small class="text-muted">
+                                                         Showing <?= $offset + 1 ?> to <?= min($offset + $items_per_page, $total_records) ?> of <?= $total_records ?> entries
+                                                     </small>
+                                                 </div>
+                                             </div>
+                                             <div class="table-responsive">
+                                                 <table class="table table-hover" id="dateChangeTable">
+                                                     <thead>
                                                         <tr>
                                                             <th><?= __('passenger') ?></th>
                                                             <th><?= __('flight_details') ?></th>
@@ -246,29 +283,101 @@ include '../includes/header.php';
                                                             </td>
                                                             
                                                             <td class="text-center">
-                                                                <div class="btn-group" role="group">
-                                                                    <?php if ($isAgencyClient): ?>
-                                                                    <button type="button" class="btn btn-sm btn-primary" onclick="manageTransactions(<?= $ticket['id'] ?>)" title="<?= __('manage_transactions') ?>">
-                                                                        <i class="fa fa-credit-card"></i>
-                                                                    </button>
-                                                                    <?php endif; ?>
-                                                                    <button type="button" class="btn btn-sm btn-warning" onclick="printAgreement(<?= $ticket['id'] ?>)" title="<?= __('print_agreement') ?>">
-                                                                        <i class="feather icon-printer"></i>
-                                                                    </button>
-                                                                    <button type="button" class="btn btn-sm btn-danger" onclick="deleteTicket(<?= $ticket['id'] ?>)" title="<?= __('delete_ticket') ?>">
-                                                                        <i class="feather icon-trash-2"></i>
-                                                                    </button>
-                                                                </div>
-                                                            </td>
+                                                                 <div class="dropdown">
+                                                                     <button class="btn btn-icon btn-outline-primary dropdown-toggle" type="button" data-toggle="dropdown">
+                                                                         <i class="feather icon-more-horizontal"></i>
+                                                                     </button>
+                                                                     <div class="dropdown-menu dropdown-menu-right">
+                                                                         <?php if ($isAgencyClient): ?>
+                                                                         <a class="dropdown-item" href="javascript:void(0)" onclick="manageTransactions(<?= $ticket['id'] ?>)">
+                                                                             <i class="fa fa-credit-card mr-2"></i><?= __('manage_transactions') ?>
+                                                                         </a>
+                                                                         <?php endif; ?>
+                                                                         <a class="dropdown-item" href="javascript:void(0)" onclick="printAgreement(<?= $ticket['id'] ?>)">
+                                                                             <i class="feather icon-printer mr-2"></i><?= __('print_agreement') ?>
+                                                                         </a>
+                                                                         <div class="dropdown-divider"></div>
+                                                                         <a class="dropdown-item text-danger" href="javascript:void(0)" onclick="deleteTicket(<?= $ticket['id'] ?>)">
+                                                                             <i class="feather icon-trash-2 mr-2"></i><?= __('delete_ticket') ?>
+                                                                         </a>
+                                                                     </div>
+                                                                 </div>
+                                                             </td>
                                                         </tr>
                                                         <?php endforeach; ?>
                                                     </tbody>
                                                 </table>
-                                            </div>
-                                        </div>
-                                    </div>
-                                </div>
-                                <!-- [ Table ] end -->
+                                                </div>
+                                                <!-- Pagination Controls -->
+                                                <div class="row mt-4 p-3">
+                                                 <div class="col-md-12">
+                                                     <nav aria-label="Page navigation">
+                                                         <ul class="pagination justify-content-center">
+                                                             <?php
+                                                             // Helper function to build pagination links with search parameter
+                                                             $search_param = !empty($search_query) ? '&search=' . urlencode($search_query) : '';
+                                                             ?>
+                                                             <?php if ($current_page > 1): ?>
+                                                                 <li class="page-item">
+                                                                     <a class="page-link" href="?page=1<?= $search_param ?>">First</a>
+                                                                 </li>
+                                                                 <li class="page-item">
+                                                                     <a class="page-link" href="?page=<?= $current_page - 1 ?><?= $search_param ?>">Previous</a>
+                                                                 </li>
+                                                             <?php else: ?>
+                                                                 <li class="page-item disabled">
+                                                                     <span class="page-link">First</span>
+                                                                 </li>
+                                                                 <li class="page-item disabled">
+                                                                     <span class="page-link">Previous</span>
+                                                                 </li>
+                                                             <?php endif; ?>
+
+                                                             <?php
+                                                             // Show page numbers
+                                                             $start_page = max(1, $current_page - 2);
+                                                             $end_page = min($total_pages, $current_page + 2);
+
+                                                             if ($start_page > 1):
+                                                             ?>
+                                                                 <li class="page-item disabled"><span class="page-link">...</span></li>
+                                                             <?php endif; ?>
+
+                                                             <?php for ($i = $start_page; $i <= $end_page; $i++): ?>
+                                                                 <?php if ($i == $current_page): ?>
+                                                                     <li class="page-item active"><span class="page-link"><?= $i ?></span></li>
+                                                                 <?php else: ?>
+                                                                     <li class="page-item"><a class="page-link" href="?page=<?= $i ?><?= $search_param ?>"><?= $i ?></a></li>
+                                                                 <?php endif; ?>
+                                                             <?php endfor; ?>
+
+                                                             <?php if ($end_page < $total_pages): ?>
+                                                                 <li class="page-item disabled"><span class="page-link">...</span></li>
+                                                             <?php endif; ?>
+
+                                                             <?php if ($current_page < $total_pages): ?>
+                                                                 <li class="page-item">
+                                                                     <a class="page-link" href="?page=<?= $current_page + 1 ?><?= $search_param ?>">Next</a>
+                                                                 </li>
+                                                                 <li class="page-item">
+                                                                     <a class="page-link" href="?page=<?= $total_pages ?><?= $search_param ?>">Last</a>
+                                                                 </li>
+                                                             <?php else: ?>
+                                                                 <li class="page-item disabled">
+                                                                     <span class="page-link">Next</span>
+                                                                 </li>
+                                                                 <li class="page-item disabled">
+                                                                     <span class="page-link">Last</span>
+                                                                 </li>
+                                                             <?php endif; ?>
+                                                         </ul>
+                                                     </nav>
+                                                 </div>
+                                                </div>
+                                                </div>
+                                                </div>
+                                                </div>
+                                                <!-- [ Table ] end -->
                             </div>
                         </div>
                     </div>

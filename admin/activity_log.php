@@ -345,8 +345,8 @@ try {
                                         <div class="col">
                                             <h5 class="mb-0 text-primary">
                                                 <i class="feather icon-activity mr-2"></i><?= __('activity_logs') ?>
-                                                <span class="badge badge-pill badge-primary ml-2"><?php echo $total_records; ?> <?= __('entries') ?></span>
-                                                <span class="badge badge-pill badge-secondary ml-2"><?= __('page') ?> <?php echo $page; ?> <?= __('of') ?> <?php echo $total_pages; ?></span>
+                                                <span class="ml-2"><?php echo $total_records; ?> <?= __('entries') ?></span>
+                                                <span class="ml-2"><?= __('page') ?> <?php echo $page; ?> <?= __('of') ?> <?php echo $total_pages; ?></span>
                                             </h5>
                                         </div>
                                         <div class="col-auto">
@@ -419,7 +419,7 @@ try {
                                                                 if ($log['action'] == 'delete') $badge_class = 'badge-danger';
                                                                 if ($log['action'] == 'insert') $badge_class = 'badge-primary';
                                                                 ?>
-                                                                <span class="badge <?php echo $badge_class; ?>">
+                                                                <span class="badge<?php echo $badge_class; ?>">
                                                                     <?php echo h(ucfirst($log['action'])); ?>
                                                                 </span>
                                                             </td>

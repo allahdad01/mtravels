@@ -1,21 +1,23 @@
 <?php
-// Include security module
-require_once '../includes/session_check.php';
+// Include security module only if not skipped
+if (!defined('SKIP_SESSION_CHECK')) {
+    require_once '../includes/session_check.php';
 
-// Enforce authentication
-if (!isset($_SESSION['user_id'])) {
-    header('Location: ../login.php');
-    exit();
-}
+    // Enforce authentication
+    if (!isset($_SESSION['user_id'])) {
+        header('Location: ../login.php');
+        exit();
+    }
 
-// Get tenant ID from session
-$tenant_id = $_SESSION['tenant_id'];
+    // Get tenant ID from session
+    $tenant_id = $_SESSION['tenant_id'];
 
-// Database connection
-require_once('../includes/db.php');
+    // Database connection
+    require_once('../includes/db.php');
 
-// Set content type to JSON
-header('Content-Type: application/json');
+    // Set content type to JSON
+    header('Content-Type: application/json');
+
 
 // Check if PhpSpreadsheet is installed
 if (!file_exists('../vendor/autoload.php')) {
@@ -28,7 +30,7 @@ if (!file_exists('../vendor/autoload.php')) {
 
 // Include PhpSpreadsheet
 require_once '../vendor/autoload.php';
-
+}
 use PhpOffice\PhpSpreadsheet\Spreadsheet;
 use PhpOffice\PhpSpreadsheet\Writer\Xlsx;
 use PhpOffice\PhpSpreadsheet\Style\Alignment;

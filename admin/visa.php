@@ -439,15 +439,13 @@ foreach ($visas as $key => $visa) {
                                                                 ?>
                                                                 </td>
                                                                 <td class="text-center">
-                                                                    <span class="badge badge-<?= getStatusBadgeClass($visa['status']) ?>">
+                                                                    <span class="<?= getStatusBadgeClass($visa['status']) ?>">
                                                                         <?= htmlspecialchars($visa['status']) ?>
                                                                     </span>
                                                                 </td>
                                                                 <td>
                                                                     <div class="passenger-info">
-                                                                        <div class="passenger-info__avatar">
-                                                                            <?= strtoupper(substr($visa['applicant_name'], 0, 2)) ?>
-                                                                        </div>
+
                                                                         <div class="passenger-info__details">
                                                                             <div class="passenger-info__name">
                                                                                 <?= htmlspecialchars($visa['title']) ?> <?= htmlspecialchars($visa['applicant_name']) ?>

@@ -278,7 +278,7 @@ require_once('../includes/db.php');
                                                                         </div>
                                                                     </td>
                                                                     <td>
-                                                                        <span class="badge badge-soft-info mb-2"><?= htmlspecialchars($row['supplier_name']) ?></span>
+                                                                        <span class="mb-2"><?= htmlspecialchars($row['supplier_name']) ?></span>
                                                                     </td>
                                                                     <td>
                                                                         <div class="financial-summary">

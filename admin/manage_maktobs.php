@@ -70,8 +70,27 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     exit();
 }
 
-// Fetch recent maktobs via API
+// Pagination settings
+$items_per_page = 10;
+$current_page = isset($_GET['page']) ? max(1, intval($_GET['page'])) : 1;
+$offset = ($current_page - 1) * $items_per_page;
+
+// Search functionality
+$search_query = isset($_GET['search']) ? trim($_GET['search']) : '';
+$search_condition = '';
+$search_params = [];
+
+if (!empty($search_query)) {
+    $search_condition = "AND (maktob_number LIKE ? OR subject LIKE ? OR company_name LIKE ?)";
+    $search_param = '%' . $search_query . '%';
+    $search_params = array_fill(0, 3, $search_param);
+}
+
+// Fetch maktobs with pagination and search via API
 $recent_maktobs_result = null;
+$total_records = 0;
+$total_pages = 1;
+
 try {
     $ch = curl_init();
     curl_setopt($ch, CURLOPT_URL, '../api/maktob/manage.php');
@@ -87,8 +106,32 @@ try {
     if ($httpCode === 200) {
         $responseData = json_decode($response, true);
         if (isset($responseData['success']) && $responseData['success'] && isset($responseData['data'])) {
-            // Convert API response to a format similar to the original mysqli result
-            $maktobsData = $responseData['data'];
+            $allMaktobs = $responseData['data'];
+            
+            // Apply search filter if needed
+            if (!empty($search_query)) {
+                $search_lower = strtolower($search_query);
+                $allMaktobs = array_filter($allMaktobs, function($maktob) use ($search_lower) {
+                    return (
+                        stripos($maktob['maktob_number'] ?? '', $search_query) !== false ||
+                        stripos($maktob['subject'] ?? '', $search_query) !== false ||
+                        stripos($maktob['company_name'] ?? '', $search_query) !== false
+                    );
+                });
+                $allMaktobs = array_values($allMaktobs); // Re-index array
+            }
+            
+            // Calculate pagination
+            $total_records = count($allMaktobs);
+            $total_pages = ceil($total_records / $items_per_page);
+            
+            // Ensure current page is valid
+            if ($current_page > $total_pages && $total_pages > 0) {
+                $current_page = $total_pages;
+            }
+            
+            // Get page data
+            $paged_maktobs = array_slice($allMaktobs, $offset, $items_per_page);
 
             // Create a mock result object that mimics mysqli_result
             class MockMysqliResult {
@@ -109,7 +152,7 @@ try {
                 }
             }
 
-            $recent_maktobs_result = new MockMysqliResult($maktobsData);
+            $recent_maktobs_result = new MockMysqliResult($paged_maktobs);
         }
     }
 } catch (Exception $e) {
@@ -232,9 +275,51 @@ include '../includes/header.php';
                 <!-- Recent Maktobs Card -->
                 <div class="card">
                     <div class="card-header">
-                        <h5><i class="feather icon-clock mr-2"></i><?= __('recent_letters') ?></h5>
+                        <div class="d-flex justify-content-between align-items-center">
+                            <div>
+                                <h5 class="mb-0"><i class="feather icon-clock mr-2"></i><?= __('recent_letters') ?></h5>
+                                <small class="text-muted">Manage and view all your letters</small>
+                            </div>
+                        </div>
                     </div>
-                    <div class="card-body">
+
+                    <!-- Search Bar -->
+                    <div class="card-body border-bottom pb-3">
+                        <form method="GET" class="form-inline">
+                            <div class="form-group mb-0 flex-grow-1">
+                                <input 
+                                    type="text" 
+                                    name="search" 
+                                    class="form-control w-100" 
+                                    placeholder="Search by letter number, subject, company..." 
+                                    value="<?= htmlspecialchars($search_query) ?>"
+                                >
+                            </div>
+                            <button type="submit" class="btn btn-info ml-2">
+                                <i class="feather icon-search"></i> <?= __('search') ?>
+                            </button>
+                            <?php if (!empty($search_query)): ?>
+                                <a href="manage_maktobs.php" class="btn btn-secondary ml-2">
+                                    <i class="feather icon-x"></i> <?= __('clear') ?>
+                                </a>
+                            <?php endif; ?>
+                        </form>
+                    </div>
+
+                    <div class="card-body p-0">
+                        <!-- Pagination Info -->
+                        <div class="row mb-3 p-3">
+                            <div class="col-md-6">
+                                <small class="text-muted">
+                                    <?php if ($total_records > 0): ?>
+                                        Showing <?= $offset + 1 ?> to <?= min($offset + $items_per_page, $total_records) ?> of <?= $total_records ?> entries
+                                    <?php else: ?>
+                                        <?= __('no_letters_found') ?>
+                                    <?php endif; ?>
+                                </small>
+                            </div>
+                        </div>
+
                         <div class="table-responsive">
                             <table class="table table-hover">
                                 <thead>
@@ -250,8 +335,8 @@ include '../includes/header.php';
                                     </tr>
                                 </thead>
                                 <tbody>
-                                    <?php if ($recent_maktobs_result !== null): ?>
-                                        <?php while ($row = mysqli_fetch_assoc($recent_maktobs_result)): ?>
+                                    <?php if ($recent_maktobs_result !== null && $total_records > 0): ?>
+                                        <?php while ($row = $recent_maktobs_result->fetch_assoc()): ?>
                                     <tr>
                                         <td><?php echo htmlspecialchars($row['maktob_number']); ?></td>
                                         <td><?php echo date('Y-m-d', strtotime($row['maktob_date'])); ?></td>
@@ -280,40 +365,43 @@ include '../includes/header.php';
                                         </td>
                                         <td><?php echo htmlspecialchars($row['sender_name']); ?></td>
                                         <td>
-                                            <div class="btn-group">
-                                                <button type="button" class="btn btn-icon btn-sm btn-primary view-maktob" 
-                                                    data-id="<?php echo $row['id']; ?>"
-                                                    data-subject="<?php echo htmlspecialchars($row['subject']); ?>"
-                                                    data-content="<?php echo htmlspecialchars($row['content']); ?>"
-                                                    data-company="<?php echo htmlspecialchars($row['company_name']); ?>"
-                                                    data-number="<?php echo htmlspecialchars($row['maktob_number']); ?>"
-                                                    data-date="<?php echo date('F j, Y', strtotime($row['maktob_date'])); ?>"
-                                                    data-status="<?php echo $row['status']; ?>"
-                                                    data-language="<?php echo htmlspecialchars($row['language'] ?? 'english'); ?>"
-                                                    data-file-path="<?php echo htmlspecialchars($row['file_path'] ?? ''); ?>"
-                                                    data-pdf-path="<?php echo htmlspecialchars($row['pdf_path'] ?? ''); ?>"
-                                                    data-toggle="tooltip" title="<?= __('view') ?>">
-                                                    <i class="feather icon-eye"></i>
+                                            <div class="dropdown">
+                                                <button class="btn btn-sm btn-outline-primary dropdown-toggle" type="button" id="dropdownMaktob<?php echo $row['id']; ?>" data-toggle="dropdown" aria-haspopup="true" aria-expanded="false">
+                                                    <i class="feather icon-more-vertical"></i> Actions
                                                 </button>
-                                                <button type="button" class="btn btn-icon btn-sm btn-warning edit-maktob" 
-                                                    data-id="<?php echo $row['id']; ?>"
-                                                    data-subject="<?php echo htmlspecialchars($row['subject']); ?>"
-                                                    data-content="<?php echo htmlspecialchars($row['content']); ?>"
-                                                    data-company="<?php echo htmlspecialchars($row['company_name']); ?>"
-                                                    data-number="<?php echo htmlspecialchars($row['maktob_number']); ?>"
-                                                    data-date="<?php echo $row['maktob_date']; ?>"
-                                                    data-language="<?php echo htmlspecialchars($row['language'] ?? 'english'); ?>"
-                                                    data-toggle="tooltip" title="<?= __('edit') ?>">
-                                                    <i class="feather icon-edit-2"></i>
-                                                </button>
-                                                <button type="button" class="btn btn-icon btn-sm btn-danger delete-maktob" 
-                                                    data-id="<?php echo $row['id']; ?>"
-                                                    data-toggle="tooltip" title="<?= __('delete') ?>">
-                                                    <i class="feather icon-trash-2"></i>
-                                                </button>
-                                                <a href="../api/maktob/download_maktob.php?id=<?php echo $row['id']; ?>" class="btn btn-icon btn-sm btn-success" data-toggle="tooltip" title="<?= __('download_pdf') ?>" target="_blank">
-                                                    <i class="feather icon-download"></i>
-                                                </a>
+                                                <div class="dropdown-menu" aria-labelledby="dropdownMaktob<?php echo $row['id']; ?>">
+                                                    <a class="dropdown-item view-maktob" href="#"
+                                                        data-id="<?php echo $row['id']; ?>"
+                                                        data-subject="<?php echo htmlspecialchars($row['subject']); ?>"
+                                                        data-content="<?php echo htmlspecialchars($row['content']); ?>"
+                                                        data-company="<?php echo htmlspecialchars($row['company_name']); ?>"
+                                                        data-number="<?php echo htmlspecialchars($row['maktob_number']); ?>"
+                                                        data-date="<?php echo date('F j, Y', strtotime($row['maktob_date'])); ?>"
+                                                        data-status="<?php echo $row['status']; ?>"
+                                                        data-language="<?php echo htmlspecialchars($row['language'] ?? 'english'); ?>"
+                                                        data-file-path="<?php echo htmlspecialchars($row['file_path'] ?? ''); ?>"
+                                                        data-pdf-path="<?php echo htmlspecialchars($row['pdf_path'] ?? ''); ?>">
+                                                        <i class="feather icon-eye mr-2"></i><?= __('view') ?>
+                                                    </a>
+                                                    <a class="dropdown-item edit-maktob" href="#"
+                                                        data-id="<?php echo $row['id']; ?>"
+                                                        data-subject="<?php echo htmlspecialchars($row['subject']); ?>"
+                                                        data-content="<?php echo htmlspecialchars($row['content']); ?>"
+                                                        data-company="<?php echo htmlspecialchars($row['company_name']); ?>"
+                                                        data-number="<?php echo htmlspecialchars($row['maktob_number']); ?>"
+                                                        data-date="<?php echo $row['maktob_date']; ?>"
+                                                        data-language="<?php echo htmlspecialchars($row['language'] ?? 'english'); ?>">
+                                                        <i class="feather icon-edit-2 mr-2"></i><?= __('edit') ?>
+                                                    </a>
+                                                    <a class="dropdown-item" href="../api/maktob/download_maktob.php?id=<?php echo $row['id']; ?>" target="_blank">
+                                                        <i class="feather icon-download mr-2"></i><?= __('download_pdf') ?>
+                                                    </a>
+                                                    <div class="dropdown-divider"></div>
+                                                    <a class="dropdown-item delete-maktob" href="#"
+                                                        data-id="<?php echo $row['id']; ?>">
+                                                        <i class="feather icon-trash-2 mr-2"></i><?= __('delete') ?>
+                                                    </a>
+                                                </div>
                                             </div>
                                         </td>
                                     </tr>
@@ -326,6 +414,57 @@ include '../includes/header.php';
                                 </tbody>
                             </table>
                         </div>
+
+                        <!-- Pagination Controls -->
+                        <?php if ($total_pages > 1): ?>
+                        <div class="card-footer d-flex justify-content-between align-items-center">
+                            <div>
+                                <small class="text-muted">Page <?= $current_page ?> of <?= $total_pages ?></small>
+                            </div>
+                            <nav aria-label="Page navigation">
+                                <ul class="pagination pagination-sm mb-0">
+                                    <?php if ($current_page > 1): ?>
+                                        <li class="page-item">
+                                            <a class="page-link" href="manage_maktobs.php?page=1<?= !empty($search_query) ? '&search=' . urlencode($search_query) : '' ?>">
+                                                <i class="feather icon-chevrons-left"></i> <?= __('first') ?>
+                                            </a>
+                                        </li>
+                                        <li class="page-item">
+                                            <a class="page-link" href="manage_maktobs.php?page=<?= $current_page - 1 ?><?= !empty($search_query) ? '&search=' . urlencode($search_query) : '' ?>">
+                                                <i class="feather icon-chevron-left"></i> <?= __('previous') ?>
+                                            </a>
+                                        </li>
+                                    <?php endif; ?>
+
+                                    <?php 
+                                    $start = max(1, $current_page - 2);
+                                    $end = min($total_pages, $current_page + 2);
+                                    
+                                    for ($i = $start; $i <= $end; $i++): 
+                                    ?>
+                                        <li class="page-item <?= $i === $current_page ? 'active' : '' ?>">
+                                            <a class="page-link" href="manage_maktobs.php?page=<?= $i ?><?= !empty($search_query) ? '&search=' . urlencode($search_query) : '' ?>">
+                                                <?= $i ?>
+                                            </a>
+                                        </li>
+                                    <?php endfor; ?>
+
+                                    <?php if ($current_page < $total_pages): ?>
+                                        <li class="page-item">
+                                            <a class="page-link" href="manage_maktobs.php?page=<?= $current_page + 1 ?><?= !empty($search_query) ? '&search=' . urlencode($search_query) : '' ?>">
+                                                <?= __('next') ?> <i class="feather icon-chevron-right"></i>
+                                            </a>
+                                        </li>
+                                        <li class="page-item">
+                                            <a class="page-link" href="manage_maktobs.php?page=<?= $total_pages ?><?= !empty($search_query) ? '&search=' . urlencode($search_query) : '' ?>">
+                                                <?= __('last') ?> <i class="feather icon-chevrons-right"></i>
+                                            </a>
+                                        </li>
+                                    <?php endif; ?>
+                                </ul>
+                            </nav>
+                        </div>
+                        <?php endif; ?>
                     </div>
                 </div>
             </div>

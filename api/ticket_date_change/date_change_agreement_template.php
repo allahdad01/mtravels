@@ -24,6 +24,7 @@
             border: 1px solid #3498db;
             border-radius: 5px;
             background: #fff;
+            position: relative;
         }
         .header {
             display: flex;
@@ -162,7 +163,7 @@
             top: 50%;
             left: 50%;
             transform: translate(-50%, -50%) rotate(-45deg);
-            font-size: 48px;
+            font-size: 40px;
             color: rgba(52, 152, 219, 0.2);
             border: 8px solid rgba(52, 152, 219, 0.3);
             padding: 10px;
@@ -198,7 +199,7 @@
                 <?php endif; ?>
             </div>
             <div class="header-center">
-                <div class="agency_name"><?= htmlspecialchars($settings['agency_name'] ?? 'Agency Name') ?></div>
+                <div class="agency_name"><?= htmlspecialchars($settings['agency_name'] ?? 'Agency Name') ?> - <?php echo htmlspecialchars($branch['name']); ?></div>
                 <div class="title">Flight Date Change Agreement</div>
             </div>
             <div class="header-right">

@@ -212,7 +212,7 @@ include '../includes/header.php';
                                         <tr>
                                             <td><?php echo date('Y-m-d', strtotime($transaction['transaction_date'])); ?></td>
                                             <td>
-                                                <span class="badge badge-<?php 
+                                                <span class="badge-<?php 
                                                     echo (isset($transaction['transaction_type']) && strtolower($transaction['transaction_type']) == 'credit') ? 'success' : 'info'; 
                                                 ?>">
                                                     <?php echo isset($transaction['transaction_type']) ? ucfirst(strtolower($transaction['transaction_type'])) : '—'; ?>

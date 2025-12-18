@@ -48,7 +48,46 @@ $suppliersStmt = $pdo->prepare($suppliersQuery);
 $suppliersStmt->execute([$tenant_id, $branch_id]);
 $suppliers = $suppliersStmt->fetchAll(PDO::FETCH_ASSOC);
 
-// Get all JV payments
+// Pagination settings
+$items_per_page = 10;
+$current_page = isset($_GET['page']) ? max(1, intval($_GET['page'])) : 1;
+$offset = ($current_page - 1) * $items_per_page;
+
+// Search functionality
+$search_query = isset($_GET['search']) ? trim($_GET['search']) : '';
+$search_condition = '';
+
+if (!empty($search_query)) {
+    $search_condition = " AND (
+        jp.jv_name LIKE ? OR
+        c.name LIKE ? OR
+        s.name LIKE ? OR
+        jp.receipt LIKE ?
+    )";
+}
+
+// Get total count
+$countQuery = "SELECT COUNT(*) as total FROM jv_payments jp
+              LEFT JOIN clients c ON jp.client_id = c.id
+              LEFT JOIN suppliers s ON jp.supplier_id = s.id
+              WHERE jp.tenant_id = ? AND jp.branch_id = ?" . $search_condition;
+$countParams = [$tenant_id, $branch_id];
+if (!empty($search_query)) {
+    $search_param = '%' . $search_query . '%';
+    $countParams = array_merge($countParams, array_fill(0, 4, $search_param));
+}
+try {
+    $countStmt = $pdo->prepare($countQuery);
+    $countStmt->execute($countParams);
+    $total_records = $countStmt->fetch(PDO::FETCH_ASSOC)['total'];
+    $total_pages = ceil($total_records / $items_per_page);
+} catch (PDOException $e) {
+    error_log("Error counting JV payments: " . $e->getMessage());
+    $total_records = 0;
+    $total_pages = 1;
+}
+
+// Get all JV payments with pagination
 $jvPaymentsQuery = "SELECT jp.*, u.name as created_by_name
                     FROM jv_payments jp
                     LEFT JOIN users u ON jp.created_by = u.id
@@ -179,24 +218,56 @@ try {
                                             </div>
 
                                             <!-- Modern Payment History Table -->
-                                            <div class="card">
-                                                <div class="card-header">
-                                                    <div class="d-flex justify-content-between align-items-center">
-                                                        <div>
-                                                            <h5 class="mb-0">
-                                                                <i class="feather icon-list mr-2"></i>
-                                                                <?= __('payment_history') ?>
-                                                            </h5>
-                                                            <small class="text-muted">View and manage all client-supplier payments</small>
-                                                        </div>
-                                                        <div class="table-actions">
-                                                            <button class="btn btn-outline-primary btn-sm" onclick="window.location.reload()">
-                                                                <i class="feather icon-refresh-cw mr-1"></i> Refresh
-                                                            </button>
-                                                        </div>
-                                                    </div>
-                                                </div>
-                                                <div class="card-body p-0">
+                                             <div class="card">
+                                                 <div class="card-header">
+                                                     <div class="d-flex justify-content-between align-items-center">
+                                                         <div>
+                                                             <h5 class="mb-0">
+                                                                 <i class="feather icon-list mr-2"></i>
+                                                                 <?= __('payment_history') ?>
+                                                             </h5>
+                                                             <small class="text-muted">View and manage all client-supplier payments</small>
+                                                         </div>
+                                                         <div class="table-actions">
+                                                             <button class="btn btn-outline-primary btn-sm" onclick="window.location.reload()">
+                                                                 <i class="feather icon-refresh-cw mr-1"></i> Refresh
+                                                             </button>
+                                                         </div>
+                                                     </div>
+                                                 </div>
+
+                                                 <!-- Search Bar -->
+                                                 <div class="card-body border-bottom pb-3">
+                                                     <form method="GET" class="form-inline">
+                                                         <div class="form-group mb-0 flex-grow-1">
+                                                             <input 
+                                                                 type="text" 
+                                                                 name="search" 
+                                                                 class="form-control w-100" 
+                                                                 placeholder="Search by JV name, client, supplier, receipt..." 
+                                                                 value="<?= htmlspecialchars($search_query) ?>"
+                                                             >
+                                                         </div>
+                                                         <button type="submit" class="btn btn-info ml-2">
+                                                             <i class="feather icon-search"></i> Search
+                                                         </button>
+                                                         <?php if (!empty($search_query)): ?>
+                                                             <a href="jv_payments.php" class="btn btn-secondary ml-2">
+                                                                 <i class="feather icon-x"></i> Clear
+                                                             </a>
+                                                         <?php endif; ?>
+                                                     </form>
+                                                 </div>
+
+                                                 <div class="card-body p-0">
+                                                     <!-- Pagination Info -->
+                                                     <div class="row mb-3 p-3">
+                                                         <div class="col-md-6">
+                                                             <small class="text-muted">
+                                                                 Showing <?= $offset + 1 ?> to <?= min($offset + $items_per_page, $total_records) ?> of <?= $total_records ?> entries
+                                                             </small>
+                                                         </div>
+                                                     </div>
                                                     <div class="table-responsive">
                                                         <table class="table table-hover" id="clientSupplierTable">
                                                             <thead>
@@ -237,16 +308,29 @@ try {
                                                             </thead>
                                                             <tbody>
                                                                 <?php
-                                                                // Get client-supplier JV payments
-                                                                $csQuery = "SELECT jp.*, c.name as client_name, s.name as supplier_name
-                                                                            FROM jv_payments jp
-                                                                            LEFT JOIN clients c ON jp.client_id = c.id
-                                                                            LEFT JOIN suppliers s ON jp.supplier_id = s.id
-                                                                            WHERE jp.tenant_id = ? AND jp.branch_id = ?
-                                                                            ORDER BY jp.created_at DESC";
-                                                                $csStmt = $pdo->prepare($csQuery);
-                                                                $csStmt->execute([$tenant_id, $branch_id]);
-                                                                $csPayments = $csStmt->fetchAll(PDO::FETCH_ASSOC);
+                                                                 // Get client-supplier JV payments with pagination and search
+                                                                 $csQuery = "SELECT jp.*, c.name as client_name, s.name as supplier_name
+                                                                             FROM jv_payments jp
+                                                                             LEFT JOIN clients c ON jp.client_id = c.id
+                                                                             LEFT JOIN suppliers s ON jp.supplier_id = s.id
+                                                                             WHERE jp.tenant_id = ? AND jp.branch_id = ?" . $search_condition . "
+                                                                             ORDER BY jp.created_at DESC
+                                                                             LIMIT ? OFFSET ?";
+                                                                 try {
+                                                                     $csStmt = $pdo->prepare($csQuery);
+                                                                     $params = [$tenant_id, $branch_id];
+                                                                     if (!empty($search_query)) {
+                                                                         $search_param = '%' . $search_query . '%';
+                                                                         $params = array_merge($params, array_fill(0, 4, $search_param));
+                                                                     }
+                                                                     $params[] = $items_per_page;
+                                                                     $params[] = $offset;
+                                                                     $csStmt->execute($params);
+                                                                     $csPayments = $csStmt->fetchAll(PDO::FETCH_ASSOC);
+                                                                 } catch (PDOException $e) {
+                                                                     error_log("Error fetching client-supplier payments: " . $e->getMessage());
+                                                                     $csPayments = [];
+                                                                 }
 
                                                                 if (empty($csPayments)): ?>
                                                                     <tr>
@@ -270,7 +354,7 @@ try {
                                                                         </td>
                                                                         <td>
                                                                             <div class="jv-name-cell">
-                                                                                <span class="badge badge-primary mb-1">JV</span>
+                                                                                <span class="mb-1">JV</span>
                                                                                 <br>
                                                                                 <strong><?= htmlspecialchars($payment['jv_name']) ?></strong>
                                                                             </div>
@@ -295,7 +379,7 @@ try {
                                                                             </div>
                                                                         </td>
                                                                         <td>
-                                                                            <span class="badge badge-<?= $payment['currency'] === 'USD' ? 'info' : 'warning' ?>">
+                                                                            <span class="<?= $payment['currency'] === 'USD' ? 'info' : 'warning' ?>">
                                                                                 <?= htmlspecialchars($payment['currency']) ?>
                                                                             </span>
                                                                         </td>
@@ -305,36 +389,115 @@ try {
                                                                             </code>
                                                                         </td>
                                                                         <td>
-                                                                            <div class="action-buttons">
-                                                                                <button type="button" class="btn btn-info btn-sm view-cs-btn"
-                                                                                        data-id="<?= htmlspecialchars($payment['id']) ?>"
-                                                                                        title="View Details">
-                                                                                    <i class="feather icon-eye"></i>
-                                                                                </button>
-                                                                                <button type="button" class="btn btn-warning btn-sm edit-cs-btn"
-                                                                                        data-id="<?= htmlspecialchars($payment['id']) ?>"
-                                                                                        title="Edit Payment">
-                                                                                    <i class="feather icon-edit-2"></i>
-                                                                                </button>
-                                                                                <button type="button" class="btn btn-danger btn-sm delete-cs-btn"
-                                                                                        data-id="<?= htmlspecialchars($payment['id']) ?>"
-                                                                                        title="Delete Payment">
-                                                                                    <i class="feather icon-trash-2"></i>
-                                                                                </button>
-                                                                            </div>
-                                                                        </td>
+                                                                             <div class="dropdown">
+                                                                                 <button class="btn btn-icon btn-outline-primary dropdown-toggle" type="button" data-toggle="dropdown">
+                                                                                     <i class="feather icon-more-horizontal"></i>
+                                                                                 </button>
+                                                                                 <div class="dropdown-menu dropdown-menu-right">
+                                                                                     <a class="dropdown-item" href="javascript:void(0)" onclick="document.querySelector('.view-cs-btn[data-id=\'' + '<?= htmlspecialchars($payment['id']) ?>' + '\']')?.click();">
+                                                                                         <i class="feather icon-eye mr-2"></i>View Details
+                                                                                     </a>
+                                                                                     <a class="dropdown-item" href="javascript:void(0)" onclick="document.querySelector('.edit-cs-btn[data-id=\'' + '<?= htmlspecialchars($payment['id']) ?>' + '\']')?.click();">
+                                                                                         <i class="feather icon-edit-2 mr-2"></i>Edit
+                                                                                     </a>
+                                                                                     <div class="dropdown-divider"></div>
+                                                                                     <a class="dropdown-item text-danger" href="javascript:void(0)" onclick="document.querySelector('.delete-cs-btn[data-id=\'' + '<?= htmlspecialchars($payment['id']) ?>' + '\']')?.click();">
+                                                                                         <i class="feather icon-trash-2 mr-2"></i>Delete
+                                                                                     </a>
+                                                                                 </div>
+                                                                             </div>
+                                                                             <!-- Hidden buttons to maintain existing functionality -->
+                                                                             <button style="display:none;" type="button" class="btn btn-info btn-sm view-cs-btn"
+                                                                                     data-id="<?= htmlspecialchars($payment['id']) ?>">
+                                                                                 <i class="feather icon-eye"></i>
+                                                                             </button>
+                                                                             <button style="display:none;" type="button" class="btn btn-warning btn-sm edit-cs-btn"
+                                                                                     data-id="<?= htmlspecialchars($payment['id']) ?>">
+                                                                                 <i class="feather icon-edit-2"></i>
+                                                                             </button>
+                                                                             <button style="display:none;" type="button" class="btn btn-danger btn-sm delete-cs-btn"
+                                                                                     data-id="<?= htmlspecialchars($payment['id']) ?>">
+                                                                                 <i class="feather icon-trash-2"></i>
+                                                                             </button>
+                                                                         </td>
                                                                     </tr>
                                                                 <?php endforeach;
                                                                 endif; ?>
                                                             </tbody>
                                                         </table>
-                                                    </div>
-                                                </div>
-                                            </div>
-                                        </div>
-                                    </div>
-                                </div>
-                            </div>
+                                                        </div>
+                                                        <!-- Pagination Controls -->
+                                                        <div class="row mt-4 p-3">
+                                                        <div class="col-md-12">
+                                                            <nav aria-label="Page navigation">
+                                                                <ul class="pagination justify-content-center">
+                                                                    <?php
+                                                                    // Helper function to build pagination links with search parameter
+                                                                    $search_param = !empty($search_query) ? '&search=' . urlencode($search_query) : '';
+                                                                    ?>
+                                                                    <?php if ($current_page > 1): ?>
+                                                                        <li class="page-item">
+                                                                            <a class="page-link" href="?page=1<?= $search_param ?>">First</a>
+                                                                        </li>
+                                                                        <li class="page-item">
+                                                                            <a class="page-link" href="?page=<?= $current_page - 1 ?><?= $search_param ?>">Previous</a>
+                                                                        </li>
+                                                                    <?php else: ?>
+                                                                        <li class="page-item disabled">
+                                                                            <span class="page-link">First</span>
+                                                                        </li>
+                                                                        <li class="page-item disabled">
+                                                                            <span class="page-link">Previous</span>
+                                                                        </li>
+                                                                    <?php endif; ?>
+
+                                                                    <?php
+                                                                    // Show page numbers
+                                                                    $start_page = max(1, $current_page - 2);
+                                                                    $end_page = min($total_pages, $current_page + 2);
+
+                                                                    if ($start_page > 1):
+                                                                    ?>
+                                                                        <li class="page-item disabled"><span class="page-link">...</span></li>
+                                                                    <?php endif; ?>
+
+                                                                    <?php for ($i = $start_page; $i <= $end_page; $i++): ?>
+                                                                        <?php if ($i == $current_page): ?>
+                                                                            <li class="page-item active"><span class="page-link"><?= $i ?></span></li>
+                                                                        <?php else: ?>
+                                                                            <li class="page-item"><a class="page-link" href="?page=<?= $i ?><?= $search_param ?>"><?= $i ?></a></li>
+                                                                        <?php endif; ?>
+                                                                    <?php endfor; ?>
+
+                                                                    <?php if ($end_page < $total_pages): ?>
+                                                                        <li class="page-item disabled"><span class="page-link">...</span></li>
+                                                                    <?php endif; ?>
+
+                                                                    <?php if ($current_page < $total_pages): ?>
+                                                                        <li class="page-item">
+                                                                            <a class="page-link" href="?page=<?= $current_page + 1 ?><?= $search_param ?>">Next</a>
+                                                                        </li>
+                                                                        <li class="page-item">
+                                                                            <a class="page-link" href="?page=<?= $total_pages ?><?= $search_param ?>">Last</a>
+                                                                        </li>
+                                                                    <?php else: ?>
+                                                                        <li class="page-item disabled">
+                                                                            <span class="page-link">Next</span>
+                                                                        </li>
+                                                                        <li class="page-item disabled">
+                                                                            <span class="page-link">Last</span>
+                                                                        </li>
+                                                                    <?php endif; ?>
+                                                                </ul>
+                                                            </nav>
+                                                        </div>
+                                                        </div>
+                                                        </div>
+                                                        </div>
+                                                        </div>
+                                                        </div>
+                                                        </div>
+                                                        </div>
                         </div>
                     </div>
                 </div>
@@ -763,11 +926,11 @@ try {
                         <div class="payment-header bg-light p-4">
                             <div class="row align-items-center">
                                 <div class="col-md-7">
-                                    <span class="badge badge-primary mb-2">ID: ${p.id}</span>
+                                    <span class="mb-2">ID: ${p.id}</span>
                                     <h4 class="mb-1">${$('<div>').text(p.jv_name).html()}</h4>
                                     <div class="text-muted">
                                         <i class="feather icon-calendar mr-1"></i> ${formattedDate}
-                                        <span class="badge badge-light ml-2">${timeElapsed}</span>
+                                        <span class="ml-2">${timeElapsed}</span>
                                     </div>
                                 </div>
                                 <div class="col-md-5 text-md-right mt-3 mt-md-0">
@@ -1248,6 +1411,34 @@ try {
         </div>
     </div>
     
-</body>
-    </html>     
+    <script>
+    // Custom dropdown positioning to avoid table overflow issues
+    document.addEventListener('show.bs.dropdown', function(e) {
+        const toggle = e.relatedTarget;
+        const menu = toggle.nextElementSibling;
+        
+        if (menu && menu.classList.contains('dropdown-menu')) {
+            const rect = toggle.getBoundingClientRect();
+            
+            menu.style.position = 'fixed';
+            menu.style.top = (rect.bottom + 5) + 'px';
+            menu.style.left = (rect.right - 200) + 'px';
+            menu.style.right = 'auto';
+            
+            // Adjust if goes off-screen
+            setTimeout(() => {
+                const menuRect = menu.getBoundingClientRect();
+                if (menuRect.right > window.innerWidth) {
+                    menu.style.left = (window.innerWidth - 210) + 'px';
+                }
+                if (menuRect.bottom > window.innerHeight) {
+                    menu.style.top = (rect.top - menuRect.height - 5) + 'px';
+                }
+            }, 0);
+        }
+    });
+    </script>
+    
+    </body>
+    </html>
     <!-- Delete Client-Supplier Payment Modal -->

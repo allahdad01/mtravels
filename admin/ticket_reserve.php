@@ -476,13 +476,13 @@ foreach ($suppliers as $supplier) {
                                         
                                         <!-- Pagination Controls -->
                                         <div class="d-flex justify-content-between align-items-center mt-3 px-3">
-                                            <div class="pagination-info">
-                                                <?php 
-                                                $startRecord = ($page - 1) * $recordsPerPage + 1;
-                                                $endRecord = min($startRecord + $recordsPerPage - 1, $totalRecords);
-                                                echo sprintf(__('showing_records'), $startRecord, $endRecord, $totalRecords); 
-                                                ?>
-                                            </div>
+                                             <div class="pagination-info">
+                                                 <?php 
+                                                 $startRecord = ($page - 1) * $recordsPerPage + 1;
+                                                 $endRecord = min($startRecord + $recordsPerPage - 1, $totalRecords);
+                                                 echo "Showing " . $startRecord . " to " . $endRecord . " of " . $totalRecords . " entries"; 
+                                                 ?>
+                                             </div>
                                             <nav aria-label="Ticket reservations pagination">
                                                 <ul class="pagination mb-0">
                                                     <?php 

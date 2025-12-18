@@ -28,6 +28,9 @@ $version = '?v=' . time();
 ?>
 
 <?php include '../includes/header.php'; ?>
+<!-- DataTables CSS -->
+<link rel="stylesheet" href="https://cdn.datatables.net/1.10.24/css/dataTables.bootstrap4.min.css">
+<link rel="stylesheet" href="https://cdn.datatables.net/responsive/2.2.7/css/responsive.bootstrap4.min.css">
 <link rel="stylesheet" href="../css/ticket/ticket_styles.css">
 <link rel="stylesheet" href="../css/ticket/ticket-components.css">
 <link rel="stylesheet" href="../css/general/modal-styles.css">
@@ -90,14 +93,44 @@ $version = '?v=' . time();
                                 <!-- [ Ticket Table ] start -->
                                 <div class="card" style="width: 100%;">
                                     <div class="card-header d-flex justify-content-between align-items-center">
-                                        <h4 class="mb-0">Refunded Tickets</h4>
-                                        <button type="button" class="btn btn-primary" data-toggle="modal" data-target="#addRefundTicketModal">
-                                            <i class="feather icon-plus mr-2"></i><?= __('add_refund_ticket') ?>
-                                        </button>
-                                    </div>
+                                         <h4 class="mb-0">Refunded Tickets</h4>
+                                         <button type="button" class="btn btn-primary" data-toggle="modal" data-target="#addRefundTicketModal">
+                                             <i class="feather icon-plus mr-2"></i><?= __('add_refund_ticket') ?>
+                                         </button>
+                                     </div>
+                                     <!-- Search Bar -->
+                                     <div class="card-body border-bottom pb-3">
+                                         <form method="GET" class="form-inline">
+                                             <div class="form-group mb-0 flex-grow-1">
+                                                 <input 
+                                                     type="text" 
+                                                     name="search" 
+                                                     class="form-control w-100" 
+                                                     placeholder="Search by passenger name, PNR, phone, airline, city..." 
+                                                     value="<?= htmlspecialchars($search_query) ?>"
+                                                 >
+                                             </div>
+                                             <button type="submit" class="btn btn-info ml-2">
+                                                 <i class="feather icon-search"></i> Search
+                                             </button>
+                                             <?php if (!empty($search_query)): ?>
+                                                 <a href="refund_ticket.php" class="btn btn-secondary ml-2">
+                                                     <i class="feather icon-x"></i> Clear
+                                                 </a>
+                                             <?php endif; ?>
+                                         </form>
+                                     </div>
                                     <div class="card-body p-4">
-                                        <div class="table-responsive">
-                                            <table id="refundTicketTable" class="table table-hover">
+                                        <!-- Pagination Info -->
+                                        <div class="row mb-3">
+                                            <div class="col-md-6">
+                                                <small class="text-muted">
+                                                    Showing <?= $offset + 1 ?> to <?= min($offset + $items_per_page, $total_records) ?> of <?= $total_records ?> entries
+                                                </small>
+                                            </div>
+                                        </div>
+                                         <div class="table-responsive">
+                                             <table id="refundTicketTable" class="table table-hover">
                                                 <thead>
                                                     <tr>
                                                         <th class="text-center">#</th>
@@ -293,6 +326,72 @@ $version = '?v=' . time();
                                                     <?php endforeach; ?>
                                                 </tbody>
                                             </table>
+                                        </div>
+                                        <!-- Pagination Controls -->
+                                        <div class="row mt-4">
+                                            <div class="col-md-12">
+                                                <nav aria-label="Page navigation">
+                                                    <ul class="pagination justify-content-center">
+                                                        <?php
+                                                        // Helper function to build pagination links with search parameter
+                                                        $search_param = !empty($search_query) ? '&search=' . urlencode($search_query) : '';
+                                                        ?>
+                                                        <?php if ($current_page > 1): ?>
+                                                            <li class="page-item">
+                                                                <a class="page-link" href="?page=1<?= $search_param ?>">First</a>
+                                                            </li>
+                                                            <li class="page-item">
+                                                                <a class="page-link" href="?page=<?= $current_page - 1 ?><?= $search_param ?>">Previous</a>
+                                                            </li>
+                                                        <?php else: ?>
+                                                            <li class="page-item disabled">
+                                                                <span class="page-link">First</span>
+                                                            </li>
+                                                            <li class="page-item disabled">
+                                                                <span class="page-link">Previous</span>
+                                                            </li>
+                                                        <?php endif; ?>
+
+                                                        <?php
+                                                        // Show page numbers
+                                                        $start_page = max(1, $current_page - 2);
+                                                        $end_page = min($total_pages, $current_page + 2);
+
+                                                        if ($start_page > 1):
+                                                        ?>
+                                                            <li class="page-item disabled"><span class="page-link">...</span></li>
+                                                        <?php endif; ?>
+
+                                                        <?php for ($i = $start_page; $i <= $end_page; $i++): ?>
+                                                            <?php if ($i == $current_page): ?>
+                                                                <li class="page-item active"><span class="page-link"><?= $i ?></span></li>
+                                                            <?php else: ?>
+                                                                <li class="page-item"><a class="page-link" href="?page=<?= $i ?><?= $search_param ?>"><?= $i ?></a></li>
+                                                            <?php endif; ?>
+                                                        <?php endfor; ?>
+
+                                                        <?php if ($end_page < $total_pages): ?>
+                                                            <li class="page-item disabled"><span class="page-link">...</span></li>
+                                                        <?php endif; ?>
+
+                                                        <?php if ($current_page < $total_pages): ?>
+                                                            <li class="page-item">
+                                                                <a class="page-link" href="?page=<?= $current_page + 1 ?><?= $search_param ?>">Next</a>
+                                                            </li>
+                                                            <li class="page-item">
+                                                                <a class="page-link" href="?page=<?= $total_pages ?><?= $search_param ?>">Last</a>
+                                                            </li>
+                                                        <?php else: ?>
+                                                            <li class="page-item disabled">
+                                                                <span class="page-link">Next</span>
+                                                            </li>
+                                                            <li class="page-item disabled">
+                                                                <span class="page-link">Last</span>
+                                                            </li>
+                                                        <?php endif; ?>
+                                                    </ul>
+                                                </nav>
+                                            </div>
                                         </div>
                                     </div>
                                 </div>

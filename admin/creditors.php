@@ -51,6 +51,10 @@ include '../api/creditor/creditor_handler.php';
     <?php endif; ?>
 </script>
 
+    <!-- DataTables CSS -->
+    <link rel="stylesheet" href="https://cdn.datatables.net/1.11.5/css/dataTables.bootstrap4.min.css">
+    <link rel="stylesheet" href="https://cdn.datatables.net/responsive/2.2.9/css/responsive.bootstrap4.min.css">
+
     <!-- [ Main Content ] start -->
     <div class="pcoded-main-container">
         <div class="pcoded-wrapper">
@@ -145,9 +149,7 @@ include '../api/creditor/creditor_handler.php';
                                                             <tr>
                                                                 <td>
                                                                     <div class="d-flex align-items-center">
-                                                                        <div class="avatar bg-light-primary text-primary rounded-circle">
-                                                                            <?php echo strtoupper(substr($creditor['name'], 0, 1)); ?>
-                                                                        </div>
+
                                                                         <div class="ml-3">
                                                                             <h6 class="mb-0"><?php echo htmlspecialchars($creditor['name']); ?></h6>
                                                                             <small class="text-muted">ID: <?php echo h($creditor['id']); ?></small>
@@ -192,42 +194,52 @@ include '../api/creditor/creditor_handler.php';
                                                                     </div>
                                                                 </td>
                                                                 <td>
-                                                                    <span class="badge badge-light-primary">
+                                                                    <span class="">
                                                                         <?php echo htmlspecialchars($creditor['currency']); ?>
                                                                     </span>
                                                                 </td>
                                                                 <td>
                                                                     <div class="d-flex justify-content-center">
-                                                                        <button type="button" class="btn btn-icon btn-primary" 
-                                                                                data-toggle="modal" 
-                                                                                data-target="#paymentModal_<?php echo h($creditor['id']); ?>" 
-                                                                                title="<?= __("process_payment") ?>">
-                                                                            <i class="feather icon-credit-card"></i>
-                                                                        </button>
-                                                                        <button type="button" class="btn btn-icon btn-info" 
-                                                                                data-toggle="modal" 
-                                                                                data-target="#transactionsModal_<?php echo h($creditor['id']); ?>" 
-                                                                                title="<?= __("view_transactions") ?>">
-                                                                            <i class="feather icon-list"></i>
-                                                                        </button>
-                                                                        <a href="../api/creditor/print_creditor_statement.php?id=<?php echo h($creditor['id']); ?>" 
-                                                                           class="btn btn-icon btn-secondary"
-                                                                           target="_blank"
-                                                                           title="<?= __("print_statement") ?>">
-                                                                            <i class="feather icon-printer"></i>
-                                                                        </a>
-                                                                        <button type="button" class="btn btn-icon btn-warning" 
-                                                                                data-toggle="modal" 
-                                                                                data-target="#editCreditorModal_<?php echo h($creditor['id']); ?>" 
-                                                                                title="<?= __("edit_creditor") ?>">
-                                                                            <i class="feather icon-edit-2"></i>
-                                                                        </button>
-                                                                        <button type="button" class="btn btn-icon btn-danger" 
-                                                                                data-toggle="modal" 
-                                                                                data-target="#deleteCreditorModal_<?php echo h($creditor['id']); ?>" 
-                                                                                title="<?= __("delete_creditor") ?>">
-                                                                            <i class="feather icon-trash-2"></i>
-                                                                        </button>
+                                                                        <div class="dropdown">
+                                                                            <button class="btn btn-icon btn-primary dropdown-toggle" 
+                                                                                    type="button" 
+                                                                                    id="dropdownMenu_<?php echo h($creditor['id']); ?>" 
+                                                                                    data-toggle="dropdown" 
+                                                                                    aria-haspopup="true" 
+                                                                                    aria-expanded="false"
+                                                                                    title="<?= __("actions") ?>">
+                                                                                <i class="feather icon-more-vertical"></i>
+                                                                            </button>
+                                                                            <div class="dropdown-menu dropdown-menu-right" 
+                                                                                 aria-labelledby="dropdownMenu_<?php echo h($creditor['id']); ?>">
+                                                                                <button type="button" class="dropdown-item" 
+                                                                                        data-toggle="modal" 
+                                                                                        data-target="#paymentModal_<?php echo h($creditor['id']); ?>">
+                                                                                    <i class="feather icon-credit-card"></i> <?= __("process_payment") ?>
+                                                                                </button>
+                                                                                <button type="button" class="dropdown-item" 
+                                                                                        data-toggle="modal" 
+                                                                                        data-target="#transactionsModal_<?php echo h($creditor['id']); ?>">
+                                                                                    <i class="feather icon-list"></i> <?= __("view_transactions") ?>
+                                                                                </button>
+                                                                                <a href="../api/creditor/print_creditor_statement.php?id=<?php echo h($creditor['id']); ?>" 
+                                                                                   class="dropdown-item"
+                                                                                   target="_blank">
+                                                                                    <i class="feather icon-printer"></i> <?= __("print_statement") ?>
+                                                                                </a>
+                                                                                <div class="dropdown-divider"></div>
+                                                                                <button type="button" class="dropdown-item" 
+                                                                                        data-toggle="modal" 
+                                                                                        data-target="#editCreditorModal_<?php echo h($creditor['id']); ?>">
+                                                                                    <i class="feather icon-edit-2"></i> <?= __("edit_creditor") ?>
+                                                                                </button>
+                                                                                <button type="button" class="dropdown-item text-danger" 
+                                                                                        data-toggle="modal" 
+                                                                                        data-target="#deleteCreditorModal_<?php echo h($creditor['id']); ?>">
+                                                                                    <i class="feather icon-trash-2"></i> <?= __("delete_creditor") ?>
+                                                                                </button>
+                                                                            </div>
+                                                                        </div>
                                                                     </div>
                                                                 </td>
                                                             </tr>
@@ -394,7 +406,61 @@ include '../api/creditor/creditor_handler.php';
     <script type="text/javascript" src="https://cdn.datatables.net/responsive/2.2.9/js/dataTables.responsive.min.js"></script>
     <script type="text/javascript" src="https://cdn.datatables.net/responsive/2.2.9/js/responsive.bootstrap4.min.js"></script>
     
-    <script src="../js/creditor/datatables_init.js"></script>
+    <script>
+    $(document).ready(function() {
+        // Initialize DataTable for creditors
+        $('#creditorsTable').DataTable({
+            responsive: true,
+            language: {
+                search: "<?= __('search') ?>:",
+                lengthMenu: "<?= __('show') ?> _MENU_ <?= __('entries') ?>",
+                info: "<?= __('showing') ?> _START_ <?= __('to') ?> _END_ <?= __('of') ?> _TOTAL_ <?= __('entries') ?>",
+                infoEmpty: "<?= __('showing') ?> 0 <?= __('to') ?> 0 <?= __('of') ?> 0 <?= __('entries') ?>",
+                infoFiltered: "(<?= __('filtered_from') ?> _MAX_ <?= __('total_entries') ?>)",
+                paginate: {
+                    first: "<?= __('first') ?>",
+                    last: "<?= __('last') ?>",
+                    next: "<?= __('next') ?>",
+                    previous: "<?= __('previous') ?>"
+                }
+            },
+            pageLength: 10,
+            lengthMenu: [[5, 10, 25, 50, -1], [5, 10, 25, 50, "<?= __('all') ?>"]],
+            columnDefs: [
+                { targets: 'no-sort', orderable: false }
+            ],
+            order: [[0, 'asc']]
+        });
+
+        // Initialize DataTables for transaction tables
+        $('.transaction-table').each(function() {
+            $(this).DataTable({
+                responsive: true,
+                language: {
+                    search: "<?= __('search') ?>:",
+                    lengthMenu: "<?= __('show') ?> _MENU_",
+                    info: "<?= __('showing') ?> _START_ <?= __('to') ?> _END_ <?= __('of') ?> _TOTAL_",
+                    infoEmpty: "<?= __('no_records') ?>",
+                    paginate: {
+                        next: "<?= __('next') ?>",
+                        previous: "<?= __('previous') ?>"
+                    }
+                },
+                pageLength: 5,
+                lengthMenu: [[5, 10, 25, -1], [5, 10, 25, "<?= __('all') ?>"]],
+                columnDefs: [
+                    { targets: 'no-sort', orderable: false }
+                ],
+                order: [[0, 'desc']]
+            });
+        });
+
+        // Handle modal open events to fix DataTables layout issues
+        $('body').on('shown.bs.modal', function(e) {
+            $($.fn.dataTable.tables(true)).DataTable().columns.adjust().responsive.recalc();
+        });
+    });
+    </script>
 
 
     <script src="../js/creditor/modal_init.js"></script>

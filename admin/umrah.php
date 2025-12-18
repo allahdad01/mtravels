@@ -282,9 +282,6 @@ require_once('../includes/db.php');
                                                                 <tr class="family-row <?= $rowClass ?>">
                                                                     <td class="pl-4">
                                                                         <div class="d-flex align-items-center">
-                                                                            <div class="family-avatar bg-primary text-white rounded-circle mr-3 d-flex align-items-center justify-content-center" style="width: 50px; height: 50px;">
-                                                                                <?= strtoupper(substr($row['head_of_family'], 0, 2)) ?>
-                                                                            </div>
                                                                             <div>
                                                                                 <h6 class="mb-1 font-weight-bold"><?= htmlspecialchars($row['head_of_family']) ?></h6>
                                                                                 <div class="text-muted small">
@@ -303,21 +300,21 @@ require_once('../includes/db.php');
                                                                         </div>
                                                                     </td>
                                                                     <td>
-                                                                        <span class="badge badge-soft-info mb-2"><?= htmlspecialchars($row['package_type']) ?></span>
+                                                                        <span class=""><?= htmlspecialchars($row['package_type']) ?></span>
                                                                         <div class="text-muted small">
                                                                             <i class="feather icon-map mr-1"></i><?= htmlspecialchars($row['location']) ?>
                                                                         </div>
                                                                         <div class="text-muted small">
                                                                             <i class="feather icon-users mr-1"></i><?= __('members') ?>: 
-                                                                            <span class="badge badge-soft-primary"><?= htmlspecialchars($row['total_members']) ?></span>
+                                                                            <span class=""><?= htmlspecialchars($row['total_members']) ?></span>
                                                                         </div>
                                                                         <div class="text-muted small">
                                                                             <i class="feather icon-users mr-1"></i><?= __('refunded_members') ?>: 
-                                                                            <span class="badge badge-soft-danger"><?= htmlspecialchars($row['refunded_members']) ?></span>
+                                                                            <span><?= htmlspecialchars($row['refunded_members']) ?></span>
                                                                         </div>
                                                                         <div class="text-muted small">
                                                                             <i class="feather icon-check-circle mr-1"></i><?= __('visa') ?>: 
-                                                                            <span class="badge badge-soft-<?= $row['visa_status'] == 'Approved' ? 'success' : 'warning' ?>">
+                                                                            <span class="<?= $row['visa_status'] == 'Approved' ? 'success' : 'warning' ?>">
                                                                                 <?= htmlspecialchars($row['visa_status']) ?>
                                                                             </span>
                                                                         </div>
@@ -476,7 +473,7 @@ require_once('../includes/db.php');
                                                                                                             <div><strong><?= htmlspecialchars($member['name'] ?? '') ?></strong></div>
                                                                                                             <div><?= __('dob') ?>: <?= htmlspecialchars($member['dob'] ?? '') ?></div>
                                                                                                             <div><?= __('passport') ?>: <?= htmlspecialchars($member['passport_number'] ?? '') ?></div>
-                                                                                                            <div><?= __('id') ?>: <span class="badge badge-info"><?= htmlspecialchars($member['id_type'] ?? '') ?></span></div>
+                                                                                                            <div><?= __('id') ?>: <span class=""><?= htmlspecialchars($member['id_type'] ?? '') ?></span></div>
                                                                                                         </td>
                                                                                                         <td>
                                                                                                             <div><?= __('flight') ?>: <?= htmlspecialchars($member['flight_date'] ?? '') ?></div>

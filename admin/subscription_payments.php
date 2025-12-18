@@ -386,14 +386,14 @@ if (isset($_GET['payment'], $_GET['subscription_id'])) {
                                                                 </td>
                                                                 <td><?= htmlspecialchars($payment['currency']) ?></td>
                                                                 <td>
-                                                                    <span class="badge badge-primary">
+                                                                    <span class="">
                                                                         <?= htmlspecialchars($payment['plan_name'] ?: $payment['plan_id']) ?>
                                                                     </span>
                                                                 </td>
                                                                 <td><?= htmlspecialchars($payment['payment_method'] ?: 'N/A') ?></td>
                                                                 <td>
                                                                     <?php if ($payment['receipt_number']): ?>
-                                                                        <span class="badge badge-info"><?= htmlspecialchars($payment['receipt_number']) ?></span>
+                                                                        <span class=""><?= htmlspecialchars($payment['receipt_number']) ?></span>
                                                                     <?php else: ?>
                                                                         N/A
                                                                     <?php endif; ?>

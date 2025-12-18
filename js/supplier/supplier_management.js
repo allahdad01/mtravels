@@ -39,6 +39,17 @@
             searchInput: null,
             filterType: null
         },
+        
+        // Pagination settings
+        pagination: {
+            itemsPerPage: 10,
+            currentPage: 1
+        },
+        
+        // Stored data
+        allSuppliers: [],
+        activeSuppliers: [],
+        inactiveSuppliers: [],
 
         init: function() {
             Logger.log('Initializing SupplierManagement');
@@ -202,12 +213,26 @@
                         <td colspan="8" class="text-center"><?= __('no_matching_active_suppliers_found') ?></td>
                 </tr>
             `;
+                // Update count
+                const activeCountEl = document.getElementById('activeCount');
+                if (activeCountEl) activeCountEl.textContent = '0';
             return;
         }
 
-            this.elements.activeSupplierTable.innerHTML = suppliers.map((supplier, index) => `
+            // Update count
+            const activeCountEl = document.getElementById('activeCount');
+            if (activeCountEl) activeCountEl.textContent = suppliers.length;
+
+            // Calculate pagination
+            const itemsPerPage = this.pagination.itemsPerPage;
+            const totalPages = Math.ceil(suppliers.length / itemsPerPage);
+            const offset = (this.pagination.currentPage - 1) * itemsPerPage;
+            const paginatedSuppliers = suppliers.slice(offset, offset + itemsPerPage);
+
+            // Render table rows
+            this.elements.activeSupplierTable.innerHTML = paginatedSuppliers.map((supplier, index) => `
                 <tr>
-                    <td>${index + 1}</td>
+                    <td>${offset + index + 1}</td>
                     <td>
                         <div>
                             Name: <span class="fw-medium">${supplier.name}</span><br>
@@ -221,12 +246,29 @@
                     <td>${supplier.currency || '-'}</td>
                     <td style="max-width: 300px; word-wrap: break-word; white-space: normal;">${supplier.address || '-'}</td>
                     <td>
-                        <button class="btn btn-sm btn-warning" onclick="SupplierManagement.editSupplier(${supplier.id})">Edit</button>
-                        <button class="btn btn-sm btn-danger" onclick="SupplierManagement.deleteSupplier(${supplier.id})">Delete</button>
-                        <button class="btn btn-sm btn-secondary" onclick="SupplierManagement.deactivateSupplier(${supplier.id})">Deactivate</button>
+                        <div class="dropdown">
+                            <button class="btn btn-sm btn-outline-primary dropdown-toggle" type="button" id="dropdownMenuActive${supplier.id}" data-toggle="dropdown" aria-haspopup="true" aria-expanded="false">
+                                <i class="feather icon-more-vertical"></i> Actions
+                            </button>
+                            <div class="dropdown-menu" aria-labelledby="dropdownMenuActive${supplier.id}">
+                                <a class="dropdown-item" href="#" onclick="SupplierManagement.editSupplier(${supplier.id}); return false;">
+                                    <i class="feather icon-edit-2 mr-2"></i>Edit
+                                </a>
+                                <a class="dropdown-item" href="#" onclick="SupplierManagement.deleteSupplier(${supplier.id}); return false;">
+                                    <i class="feather icon-trash-2 mr-2"></i>Delete
+                                </a>
+                                <div class="dropdown-divider"></div>
+                                <a class="dropdown-item" href="#" onclick="SupplierManagement.deactivateSupplier(${supplier.id}); return false;">
+                                    <i class="feather icon-x mr-2"></i>Deactivate
+                                </a>
+                            </div>
+                        </div>
                     </td>
                 </tr>
             `).join('');
+
+            // Add pagination controls
+            this.renderPagination('activeSuppliers', suppliers.length);
         },
 
         updateInactiveTable: function(suppliers) {
@@ -248,12 +290,26 @@
                         <td colspan="8" class="text-center"><?= __('no_matching_inactive_suppliers_found') ?></td>
                     </tr>
                 `;
+                // Update count
+                const inactiveCountEl = document.getElementById('inactiveCount');
+                if (inactiveCountEl) inactiveCountEl.textContent = '0';
                 return;
             }
 
-            this.elements.inactiveSupplierTable.innerHTML = suppliers.map((supplier, index) => `
+            // Update count
+            const inactiveCountEl = document.getElementById('inactiveCount');
+            if (inactiveCountEl) inactiveCountEl.textContent = suppliers.length;
+
+            // Calculate pagination
+            const itemsPerPage = this.pagination.itemsPerPage;
+            const totalPages = Math.ceil(suppliers.length / itemsPerPage);
+            const offset = (this.pagination.currentPage - 1) * itemsPerPage;
+            const paginatedSuppliers = suppliers.slice(offset, offset + itemsPerPage);
+
+            // Render table rows
+            this.elements.inactiveSupplierTable.innerHTML = paginatedSuppliers.map((supplier, index) => `
                 <tr>
-                    <td>${index + 1}</td>
+                    <td>${offset + index + 1}</td>
                     <td>
                         <div>
                             Name: <span class="fw-medium">${supplier.name}</span><br>
@@ -267,12 +323,29 @@
                     <td>${supplier.currency || '-'}</td>
                     <td style="max-width: 300px; word-wrap: break-word; white-space: normal;">${supplier.address || '-'}</td>
                     <td>
-                        <button class="btn btn-sm btn-warning" onclick="SupplierManagement.editSupplier(${supplier.id})">Edit</button>
-                        <button class="btn btn-sm btn-danger" onclick="SupplierManagement.deleteSupplier(${supplier.id})">Delete</button>
-                        <button class="btn btn-sm btn-success" onclick="SupplierManagement.activateSupplier(${supplier.id})">Activate</button>
+                        <div class="dropdown">
+                            <button class="btn btn-sm btn-outline-primary dropdown-toggle" type="button" id="dropdownMenuInactive${supplier.id}" data-toggle="dropdown" aria-haspopup="true" aria-expanded="false">
+                                <i class="feather icon-more-vertical"></i> Actions
+                            </button>
+                            <div class="dropdown-menu" aria-labelledby="dropdownMenuInactive${supplier.id}">
+                                <a class="dropdown-item" href="#" onclick="SupplierManagement.editSupplier(${supplier.id}); return false;">
+                                    <i class="feather icon-edit-2 mr-2"></i>Edit
+                                </a>
+                                <a class="dropdown-item" href="#" onclick="SupplierManagement.deleteSupplier(${supplier.id}); return false;">
+                                    <i class="feather icon-trash-2 mr-2"></i>Delete
+                                </a>
+                                <div class="dropdown-divider"></div>
+                                <a class="dropdown-item" href="#" onclick="SupplierManagement.activateSupplier(${supplier.id}); return false;">
+                                    <i class="feather icon-check mr-2"></i>Activate
+                                </a>
+                            </div>
+                        </div>
                     </td>
                 </tr>
             `).join('');
+
+            // Add pagination controls
+            this.renderPagination('inactiveSuppliers', suppliers.length);
         },
 
         handleSupplierLoadError: function(error) {
@@ -385,6 +458,94 @@
                     }
                 })
                 .catch(error => console.error('error:', error));
+            }
+        },
+
+        renderPagination: function(tabType, totalItems) {
+            const itemsPerPage = this.pagination.itemsPerPage;
+            const totalPages = Math.ceil(totalItems / itemsPerPage);
+            const currentPage = this.pagination.currentPage;
+
+            const containerId = tabType === 'activeSuppliers' ? 'activePaginationContainer' : 'inactivePaginationContainer';
+            const container = document.getElementById(containerId);
+            
+            if (!container) return;
+
+            // Clear container
+            container.innerHTML = '';
+
+            if (totalPages <= 1) return;
+
+            // Create pagination HTML
+            let paginationHtml = `
+                <div class="d-flex justify-content-between align-items-center p-3 border-top">
+                    <small class="text-muted">Page ${currentPage} of ${totalPages}</small>
+                    <nav>
+                        <ul class="pagination pagination-sm mb-0">
+            `;
+
+            if (currentPage > 1) {
+                paginationHtml += `
+                    <li class="page-item">
+                        <a class="page-link" href="#" onclick="SupplierManagement.goToPage(1, '${tabType}'); return false;">
+                            <i class="feather icon-chevrons-left"></i> First
+                        </a>
+                    </li>
+                    <li class="page-item">
+                        <a class="page-link" href="#" onclick="SupplierManagement.goToPage(${currentPage - 1}, '${tabType}'); return false;">
+                            <i class="feather icon-chevron-left"></i> Prev
+                        </a>
+                    </li>
+                `;
+            }
+
+            const start = Math.max(1, currentPage - 2);
+            const end = Math.min(totalPages, currentPage + 2);
+
+            for (let i = start; i <= end; i++) {
+                const activeClass = i === currentPage ? 'active' : '';
+                paginationHtml += `
+                    <li class="page-item ${activeClass}">
+                        <a class="page-link" href="#" onclick="SupplierManagement.goToPage(${i}, '${tabType}'); return false;">
+                            ${i}
+                        </a>
+                    </li>
+                `;
+            }
+
+            if (currentPage < totalPages) {
+                paginationHtml += `
+                    <li class="page-item">
+                        <a class="page-link" href="#" onclick="SupplierManagement.goToPage(${currentPage + 1}, '${tabType}'); return false;">
+                            Next <i class="feather icon-chevron-right"></i>
+                        </a>
+                    </li>
+                    <li class="page-item">
+                        <a class="page-link" href="#" onclick="SupplierManagement.goToPage(${totalPages}, '${tabType}'); return false;">
+                            Last <i class="feather icon-chevrons-right"></i>
+                        </a>
+                    </li>
+                `;
+            }
+
+            paginationHtml += `
+                        </ul>
+                    </nav>
+                </div>
+            `;
+
+            // Insert pagination into container
+            container.innerHTML = paginationHtml;
+        },
+
+        goToPage: function(page, tabType) {
+            this.pagination.currentPage = page;
+            const suppliers = tabType === 'activeSuppliers' ? this.activeSuppliers : this.inactiveSuppliers;
+            
+            if (tabType === 'activeSuppliers') {
+                this.updateActiveTable(suppliers);
+            } else {
+                this.updateInactiveTable(suppliers);
             }
         }
     };

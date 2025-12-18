@@ -110,12 +110,7 @@ $paginationPattern = empty($search)
                                     <table class="table table-hover mb-0" id="bookingsTable">
                                         <thead>
                                             <tr>
-                                                <th class="border-0" width="40">
-                                                    <div class="custom-control custom-checkbox">
-                                                        <input type="checkbox" class="custom-control-input" id="selectAll">
-                                                        <label class="custom-control-label" for="selectAll"></label>
-                                                    </div>
-                                                </th>
+    
                                                 <th class="border-0"><?= __('booking_id') ?></th>
                                                 <th class="border-0"><?= __('guest') ?></th>
                                                 <th class="border-0"><?= __('check_in_out') ?></th>
@@ -129,22 +124,12 @@ $paginationPattern = empty($search)
                                             <?php if (!empty($bookings)): ?>
                                                 <?php foreach ($bookings as $booking): ?>
                                                     <tr class="align-middle">
-                                                        <td>
-                                                            <div class="custom-control custom-checkbox">
-                                                                <input type="checkbox" class="custom-control-input" 
-                                                                       id="booking<?= getValue($booking, 'id') ?>">
-                                                                <label class="custom-control-label" 
-                                                                       for="booking<?= getValue($booking, 'id') ?>"></label>
-                                                            </div>
-                                                        </td>
+    
                                                         <td>
                                                             <span class="font-weight-bold text-primary">#<?= getValue($booking, 'order_id') ?></span>
                                                         </td>
                                                         <td>
                                                             <div class="d-flex align-items-center">
-                                                                <div class="avatar bg-primary text-white mr-2">
-                                                                    <?= strtoupper(substr(getValue($booking, 'first_name'), 0, 1)) ?>
-                                                                </div>
                                                                 <div>
                                                                     <span class="d-block font-weight-medium"><?= getValue($booking, 'guest_name') ?></span>
                                                                     <small class="text-muted">
@@ -159,11 +144,11 @@ $paginationPattern = empty($search)
                                                                 <i class="feather icon-calendar text-primary mr-2"></i>
                                                                 <div>
                                                                     <div class="d-flex align-items-center mb-1">
-                                                                        <span class="badge badge-light mr-2">IN</span>
+                                                                        <span class="mr-2">IN</span>
                                                                         <span><?= getValue($booking, 'check_in_date') ? date('M d, Y', strtotime($booking['check_in_date'])) : 'N/A' ?></span>
                                                                     </div>
                                                                     <div class="d-flex align-items-center">
-                                                                        <span class="badge badge-light mr-2">OUT</span>
+                                                                        <span class="mr-2">OUT</span>
                                                                         <span><?= getValue($booking, 'check_out_date') ? date('M d, Y', strtotime($booking['check_out_date'])) : 'N/A' ?></span>
                                                                     </div>
                                                                 </div>

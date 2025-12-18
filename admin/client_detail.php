@@ -126,7 +126,7 @@ include '../includes/header.php';
                                 <i class="feather icon-user mr-2"></i>
                                 <?= __('client_information') ?>
                                 <span class="float-right">
-                                    <span class="badge badge-<?php 
+                                    <span class="badge-<?php 
                                         if (isset($clientData['status']) && $clientData['status'] == 'Active') echo 'success';
                                         elseif (isset($clientData['status']) && $clientData['status'] == 'Inactive') echo 'danger';
                                         else echo 'warning';
@@ -551,7 +551,7 @@ include '../includes/header.php';
                                         <tr>
                                             <td><?php echo date('Y-m-d', strtotime($transaction['transaction_date'])); ?></td>
                                             <td>
-                                                <span class="badge badge-<?php 
+                                                <span class="badge-<?php 
                                                     echo (isset($transaction['type']) && strtolower($transaction['type']) == 'credit') ? 'success' : 'info'; 
                                                 ?>">
                                                     <?php echo isset($transaction['type']) ? ucfirst(strtolower($transaction['type'])) : '—'; ?>

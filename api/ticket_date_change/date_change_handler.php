@@ -6,6 +6,42 @@ $tenant_id = $_SESSION['tenant_id'];
 $branch_id = $_SESSION['branch_id'];
 // Get the user ID from the session
 $user_id = $_SESSION["user_id"];
+
+// Pagination settings
+$items_per_page = 10;
+$current_page = isset($_GET['page']) ? max(1, intval($_GET['page'])) : 1;
+$offset = ($current_page - 1) * $items_per_page;
+
+// Search functionality
+$search_query = isset($_GET['search']) ? trim($_GET['search']) : '';
+$search_condition = '';
+
+if (!empty($search_query)) {
+    $search_condition = " AND (
+        rt.passenger_name LIKE ? OR
+        rt.pnr LIKE ? OR
+        rt.phone LIKE ? OR
+        c.name LIKE ? OR
+        rt.airline LIKE ? OR
+        rt.origin LIKE ? OR
+        rt.destination LIKE ?
+    )";
+}
+
+// Get total count
+$countQuery = "SELECT COUNT(*) as total FROM date_change_tickets rt 
+              LEFT JOIN clients c ON rt.sold_to = c.id 
+              WHERE rt.tenant_id = ? AND rt.branch_id = ?" . $search_condition;
+$countParams = [$tenant_id, $branch_id];
+if (!empty($search_query)) {
+    $search_param = '%' . $search_query . '%';
+    $countParams = array_merge($countParams, array_fill(0, 7, $search_param));
+}
+$stmt = $pdo->prepare($countQuery);
+$stmt->execute($countParams);
+$total_records = $stmt->fetch(PDO::FETCH_ASSOC)['total'];
+$total_pages = ceil($total_records / $items_per_page);
+
 $ticketsQuery = "
     SELECT
         rt.*,
@@ -32,14 +68,23 @@ $ticketsQuery = "
         ticket_bookings tb ON rt.ticket_id = tb.id AND tb.tenant_id = ? AND tb.branch_id = ?
     LEFT JOIN
         users u ON rt.created_by = u.id AND u.tenant_id = ? AND u.branch_id = ?
-    WHERE rt.tenant_id = ? AND rt.branch_id = ?
+    WHERE rt.tenant_id = ? AND rt.branch_id = ?" . $search_condition . "
     ORDER BY
         rt.id ASC
+    LIMIT ? OFFSET ?
  ";
 
 $stmt = $pdo->prepare($ticketsQuery);
-$stmt->execute([$tenant_id, $branch_id, $tenant_id, $branch_id, $tenant_id, $branch_id, $tenant_id, $branch_id, $tenant_id, $branch_id, $tenant_id, $branch_id]);
+$params = [$tenant_id, $branch_id, $tenant_id, $branch_id, $tenant_id, $branch_id, $tenant_id, $branch_id, $tenant_id, $branch_id, $tenant_id, $branch_id];
+if (!empty($search_query)) {
+    $search_param = '%' . $search_query . '%';
+    $params = array_merge($params, array_fill(0, 7, $search_param));
+}
+$params[] = $items_per_page;
+$params[] = $offset;
+$stmt->execute($params);
 $tickets = $stmt->fetchAll(PDO::FETCH_ASSOC);
+
 // Fetch Suppliers
 $suppliersQuery = "SELECT id, name FROM suppliers WHERE tenant_id = ? AND branch_id = ?";
 $stmt = $pdo->prepare($suppliersQuery);

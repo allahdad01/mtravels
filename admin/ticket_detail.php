@@ -185,7 +185,7 @@ include '../includes/header.php';
                                 <i class="feather icon-file-text mr-2"></i>
                                 <?= __('ticket_information') ?>
                                 <span class="float-right">
-                                    <span class="badge badge-<?php 
+                                    <span class="badge-<?php 
                                         if ($ticketData['status'] == 'Paid') echo 'success';
                                         elseif ($ticketData['status'] == 'Borrowed') echo 'warning';
                                         elseif ($ticketData['status'] == 'Date Changed') echo 'primary';
@@ -204,7 +204,7 @@ include '../includes/header.php';
                                             <th><?= __('passenger_name') ?></th>
                                             <td>
                                                 <?php echo htmlspecialchars($ticketData['title'] . ' ' . $ticketData['passenger_name']); ?>
-                                                <span class="badge badge-info"><?php echo h($ticketData['gender']); ?></span>
+                                                <span class="badge-info"><?php echo h($ticketData['gender']); ?></span>
                                             </td>
                                         </tr>
                                         <tr>
@@ -327,7 +327,7 @@ include '../includes/header.php';
                                         <tr>
                                             <th><?= __('status') ?></th>
                                             <td>
-                                                <span class="badge badge-<?php 
+                                                <span class="badge-<?php 
                                                     echo ($refundData['status'] == 'Refunded') ? 'success' : 
                                                         (($refundData['status'] == 'Pending') ? 'warning' : 'danger'); 
                                                 ?>">
@@ -389,7 +389,7 @@ include '../includes/header.php';
                                         <tr>
                                             <th><?= __('status') ?></th>
                                             <td>
-                                                <span class="badge badge-<?php 
+                                                <span class="badge-<?php 
                                                     echo ($dateChangeData['status'] == 'Refunded') ? 'success' : 
                                                         (($dateChangeData['status'] == 'Pending') ? 'warning' : 'danger'); 
                                                 ?>">
@@ -464,7 +464,7 @@ include '../includes/header.php';
                                                 <tr>
                                                     <td><?php echo date('Y-m-d', strtotime($transaction['transaction_date'])); ?></td>
                                                     <td>
-                                                        <span class="badge badge-<?php 
+                                                        <span class="badge-<?php 
                                                         if ($transaction['transaction_of'] == 'ticket_sale') echo 'info';
                                                         elseif ($transaction['transaction_of'] == 'ticket_refund') echo 'warning';
                                                         elseif ($transaction['transaction_of'] == 'date_change') echo 'dark';
@@ -514,7 +514,7 @@ include '../includes/header.php';
                                                 <tr>
                                                     <td><?php echo date('Y-m-d', strtotime($transaction['transaction_date'])); ?></td>
                                                     <td>
-                                                        <span class="badge badge-<?php 
+                                                        <span class="badge-<?php 
                                                         if ($transaction['transaction_of'] == 'ticket_sale') echo 'info';
                                                         elseif ($transaction['transaction_of'] == 'ticket_refund') echo 'warning';
                                                         elseif ($transaction['transaction_of'] == 'date_change') echo 'dark';
@@ -564,7 +564,7 @@ include '../includes/header.php';
                                                 <tr>
                                                     <td><?php echo date('Y-m-d', strtotime($transaction['transaction_date'])); ?></td>
                                                     <td>
-                                                        <span class="badge badge-<?php 
+                                                        <span class="badge-<?php 
                                                         if ($transaction['transaction_of'] == 'ticket_sale') echo 'info';
                                                         elseif ($transaction['transaction_of'] == 'ticket_refund') echo 'warning';
                                                         elseif ($transaction['transaction_of'] == 'date_change') echo 'dark';
