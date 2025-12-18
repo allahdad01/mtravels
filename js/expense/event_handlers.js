@@ -330,13 +330,18 @@ $(document).ready(function() {
     $('.delete-expense').on('click', function() {
         if (confirm('Are you sure you want to delete this expense?')) {
             const expenseId = $(this).data('id');
+
+            // Get CSRF token from meta tag or hidden input
+            const csrfToken = document.querySelector('meta[name="csrf-token"]')?.content || 
+                             document.querySelector('input[name="csrf_token"]')?.value;
             
             $.ajax({
                 url: '../api/expense/expense_actions.php',
                 type: 'POST',
                 data: {
                     action: 'delete_expense',
-                    expenseId: expenseId
+                    expenseId: expenseId,
+                    csrf_token: csrfToken
                 },
                 dataType: 'json',
                 success: function(response) {

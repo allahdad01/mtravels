@@ -414,12 +414,18 @@
                 deleteTransaction: function(id, amount) {
                     if (confirm('Are you sure you want to delete this transaction?')) {
                         const paymentId = $('#transaction_payment_id').val();
+
+                        // Get CSRF token from meta tag or hidden input
+                        const csrfToken = document.querySelector('meta[name="csrf-token"]')?.content || 
+                                         document.querySelector('input[name="csrf_token"]')?.value;
+                        
                         $.ajax({
                             url: '../api/additional_payment/delete_additional_payment_transaction.php',
                             type: 'POST',
                             data: {
                                 transaction_id: id,
-                                payment_id: paymentId
+                                payment_id: paymentId,
+                                csrf_token: csrfToken
                             },
                             success: function(response) {
                                 try {

@@ -473,13 +473,18 @@
 
         const visaId = $('#visa_id').val();
 
+        // Get CSRF token from meta tag or hidden input
+        const csrfToken = document.querySelector('meta[name="csrf-token"]')?.content || 
+                         document.querySelector('input[name="csrf_token"]')?.value;
+
         $.ajax({
             url: '../api/visa/delete_visa_transaction.php',
             type: 'POST',
             data: {
                 transaction_id: transactionId,
                 visa_id: visaId,
-                amount: amount
+                amount: amount,
+                csrf_token: csrfToken
             },
             success: function(response) {
                 try {

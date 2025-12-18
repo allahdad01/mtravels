@@ -122,8 +122,21 @@ function enforce_auth($allowed_roles = null) {
  * @return bool Whether the CSRF token is valid
  */
 function verify_csrf_token($token = null) {
-    // Get token from parameter or POST data
-    $token = $token ?? ($_POST['csrf_token'] ?? null);
+    // Get token from parameter, POST data, or JSON body
+    if ($token === null) {
+        $token = $_POST['csrf_token'] ?? null;
+        
+        // If not in POST, check JSON body
+        if (!$token && $_SERVER["REQUEST_METHOD"] == "POST") {
+            $data = json_decode(file_get_contents("php://input"), true);
+            $token = $data['csrf_token'] ?? null;
+        }
+        
+        // Also check headers for CSRF token (common in AJAX requests)
+        if (!$token && isset($_SERVER['HTTP_X_CSRF_TOKEN'])) {
+            $token = $_SERVER['HTTP_X_CSRF_TOKEN'];
+        }
+    }
     
     if (!$token || !isset($_SESSION['csrf_token'])) {
         // Log potential CSRF attack

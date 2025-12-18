@@ -28,10 +28,14 @@ document.querySelectorAll('.view-details').forEach(button => {
 
       function deleteVisa(id) {
             if (confirm('Are you sure you want to delete this Visa?')) {
+                // Get CSRF token from meta tag or hidden input
+                const csrfToken = document.querySelector('meta[name="csrf-token"]')?.content || 
+                                 document.querySelector('input[name="csrf_token"]')?.value;
+                
                 fetch('../api/visa/delete_visa.php', {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ id }),
+                    body: JSON.stringify({ id, csrf_token: csrfToken }),
                 })
                 .then(response => response.json())
                 .then(data => {

@@ -24,7 +24,7 @@ $user_id = $_SESSION['user_id'] ?? 0;
 require_once '../../includes/db.php';
 
 // Include WhatsApp Manager for notifications
-require_once '../api/whatsapp/WhatsAppManager.php';
+require_once '../../api/whatsapp/WhatsAppManager.php';
 
 // Validate inputs using DbSecurity
 $family_id = isset($_POST['family_id']) ? DbSecurity::validateInput($_POST['family_id'], 'int') : null;
@@ -37,8 +37,8 @@ $gender = isset($_POST['gender']) ? DbSecurity::validateInput($_POST['gender'], 
 $passport_number = isset($_POST['passport_number']) ? DbSecurity::validateInput($_POST['passport_number'], 'string') : null;
 $passport_expiry = isset($_POST['passport_expiry']) ? DbSecurity::validateInput($_POST['passport_expiry'], 'string') : null;
 $id_type = isset($_POST['id_type']) ? DbSecurity::validateInput($_POST['id_type'], 'string') : null;
-$flight_date = isset($_POST['flight_date']) ? DbSecurity::validateInput($_POST['flight_date'], 'string') : null;
-$return_date = isset($_POST['return_date']) ? DbSecurity::validateInput($_POST['return_date'], 'string') : null;
+$flight_date = !empty($_POST['flight_date']) ? DbSecurity::validateInput($_POST['flight_date'], 'string') : null;
+$return_date = !empty($_POST['return_date']) ? DbSecurity::validateInput($_POST['return_date'], 'string') : null;
 $duration = isset($_POST['duration']) ? DbSecurity::validateInput($_POST['duration'], 'string') : null;
 $room_type = isset($_POST['room_type']) ? DbSecurity::validateInput($_POST['room_type'], 'string') : null;
 $received_bank_payment = isset($_POST['received_bank_payment']) ? DbSecurity::validateInput($_POST['received_bank_payment'], 'float') : 0;
@@ -198,7 +198,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         }
 
         // Send email notification to client
-        require_once '../includes/functions.php';
+        require_once '../../includes/functions.php';
 
         if (!empty($client_email)) {
             $currency = isset($processed_services[0]['currency']) ? $processed_services[0]['currency'] : 'USD';

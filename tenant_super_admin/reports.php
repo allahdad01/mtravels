@@ -34,32 +34,50 @@ try {
             b.name as branch_name,
             b.code as branch_code,
             COALESCE(ticket_stats.ticket_bookings, 0) as ticket_bookings,
-            COALESCE(ticket_stats.ticket_profit, 0) as ticket_profit,
+            COALESCE(ticket_stats.ticket_profit_usd, 0) as ticket_profit_usd,
+            COALESCE(ticket_stats.ticket_profit_afs, 0) as ticket_profit_afs,
             COALESCE(reservation_stats.ticket_reservations, 0) as ticket_reservations,
-            COALESCE(reservation_stats.reservation_profit, 0) as reservation_profit,
+            COALESCE(reservation_stats.reservation_profit_usd, 0) as reservation_profit_usd,
+            COALESCE(reservation_stats.reservation_profit_afs, 0) as reservation_profit_afs,
             COALESCE(weight_stats.ticket_weights, 0) as ticket_weights,
-            COALESCE(weight_stats.weight_profit, 0) as weight_profit,
+            COALESCE(weight_stats.weight_profit_usd, 0) as weight_profit_usd,
+            COALESCE(weight_stats.weight_profit_afs, 0) as weight_profit_afs,
             COALESCE(hotel_stats.hotel_bookings, 0) as hotel_bookings,
-            COALESCE(hotel_stats.hotel_profit, 0) as hotel_profit,
+            COALESCE(hotel_stats.hotel_profit_usd, 0) as hotel_profit_usd,
+            COALESCE(hotel_stats.hotel_profit_afs, 0) as hotel_profit_afs,
             COALESCE(visa_stats.visa_applications, 0) as visa_applications,
-            COALESCE(visa_stats.visa_profit, 0) as visa_profit,
+            COALESCE(visa_stats.visa_profit_usd, 0) as visa_profit_usd,
+            COALESCE(visa_stats.visa_profit_afs, 0) as visa_profit_afs,
             COALESCE(umrah_stats.umrah_bookings, 0) as umrah_bookings,
-            COALESCE(umrah_stats.umrah_profit, 0) as umrah_profit,
+            COALESCE(umrah_stats.umrah_profit_usd, 0) as umrah_profit_usd,
+            COALESCE(umrah_stats.umrah_profit_afs, 0) as umrah_profit_afs,
             COALESCE(additional_stats.additional_payments, 0) as additional_payments,
-            COALESCE(additional_stats.additional_profit, 0) as additional_profit,
+            COALESCE(additional_stats.additional_profit_usd, 0) as additional_profit_usd,
+            COALESCE(additional_stats.additional_profit_afs, 0) as additional_profit_afs,
             COALESCE(refund_stats.refunded_tickets, 0) as refunded_tickets,
-            COALESCE(refund_stats.refund_profit, 0) as refund_profit,
+            COALESCE(refund_stats.refund_profit_usd, 0) as refund_profit_usd,
+            COALESCE(refund_stats.refund_profit_afs, 0) as refund_profit_afs,
             COALESCE(date_change_stats.date_change_tickets, 0) as date_change_tickets,
-            COALESCE(date_change_stats.date_change_profit, 0) as date_change_profit,
-            COALESCE(ticket_stats.ticket_profit, 0) +
-            COALESCE(reservation_stats.reservation_profit, 0) +
-            COALESCE(weight_stats.weight_profit, 0) +
-            COALESCE(hotel_stats.hotel_profit, 0) +
-            COALESCE(visa_stats.visa_profit, 0) +
-            COALESCE(umrah_stats.umrah_profit, 0) +
-            COALESCE(additional_stats.additional_profit, 0) +
-            COALESCE(refund_stats.refund_profit, 0) +
-            COALESCE(date_change_stats.date_change_profit, 0) as total_revenue,
+            COALESCE(date_change_stats.date_change_profit_usd, 0) as date_change_profit_usd,
+            COALESCE(date_change_stats.date_change_profit_afs, 0) as date_change_profit_afs,
+            COALESCE(ticket_stats.ticket_profit_usd, 0) +
+            COALESCE(reservation_stats.reservation_profit_usd, 0) +
+            COALESCE(weight_stats.weight_profit_usd, 0) +
+            COALESCE(hotel_stats.hotel_profit_usd, 0) +
+            COALESCE(visa_stats.visa_profit_usd, 0) +
+            COALESCE(umrah_stats.umrah_profit_usd, 0) +
+            COALESCE(additional_stats.additional_profit_usd, 0) +
+            COALESCE(refund_stats.refund_profit_usd, 0) +
+            COALESCE(date_change_stats.date_change_profit_usd, 0) as total_revenue_usd,
+            COALESCE(ticket_stats.ticket_profit_afs, 0) +
+            COALESCE(reservation_stats.reservation_profit_afs, 0) +
+            COALESCE(weight_stats.weight_profit_afs, 0) +
+            COALESCE(hotel_stats.hotel_profit_afs, 0) +
+            COALESCE(visa_stats.visa_profit_afs, 0) +
+            COALESCE(umrah_stats.umrah_profit_afs, 0) +
+            COALESCE(additional_stats.additional_profit_afs, 0) +
+            COALESCE(refund_stats.refund_profit_afs, 0) +
+            COALESCE(date_change_stats.date_change_profit_afs, 0) as total_revenue_afs,
             COALESCE(user_stats.total_users, 0) as total_users
         FROM branches b
 
@@ -76,7 +94,8 @@ try {
             SELECT
                 u.branch_id,
                 COUNT(t.id) as ticket_bookings,
-                SUM(CASE WHEN t.currency = 'USD' THEN t.profit ELSE 0 END) as ticket_profit
+                SUM(CASE WHEN t.currency = 'USD' THEN t.profit ELSE 0 END) as ticket_profit_usd,
+                SUM(CASE WHEN t.currency = 'AFS' THEN t.profit ELSE 0 END) as ticket_profit_afs
             FROM ticket_bookings t
             JOIN users u ON t.created_by = u.id
             WHERE t.created_at >= ? AND t.created_at <= ?
@@ -88,7 +107,8 @@ try {
             SELECT
                 u.branch_id,
                 COUNT(tr.id) as ticket_reservations,
-                SUM(CASE WHEN tr.currency = 'USD' THEN tr.profit ELSE 0 END) as reservation_profit
+                SUM(CASE WHEN tr.currency = 'USD' THEN tr.profit ELSE 0 END) as reservation_profit_usd,
+                SUM(CASE WHEN tr.currency = 'AFS' THEN tr.profit ELSE 0 END) as reservation_profit_afs
             FROM ticket_reservations tr
             JOIN users u ON tr.created_by = u.id
             WHERE tr.created_at >= ? AND tr.created_at <= ?
@@ -100,7 +120,8 @@ try {
             SELECT
                 u.branch_id,
                 COUNT(tw.id) as ticket_weights,
-                SUM(CASE WHEN tb.currency = 'USD' THEN tw.profit ELSE 0 END) as weight_profit
+                SUM(CASE WHEN tb.currency = 'USD' THEN tw.profit ELSE 0 END) as weight_profit_usd,
+                SUM(CASE WHEN tb.currency = 'AFS' THEN tw.profit ELSE 0 END) as weight_profit_afs
             FROM ticket_weights tw
             JOIN users u ON tw.created_by = u.id
             LEFT JOIN ticket_bookings tb ON tb.id = tw.ticket_id
@@ -113,7 +134,8 @@ try {
             SELECT
                 u.branch_id,
                 COUNT(h.id) as hotel_bookings,
-                SUM(CASE WHEN h.currency = 'USD' THEN h.profit ELSE 0 END) as hotel_profit
+                SUM(CASE WHEN h.currency = 'USD' THEN h.profit ELSE 0 END) as hotel_profit_usd,
+                SUM(CASE WHEN h.currency = 'AFS' THEN h.profit ELSE 0 END) as hotel_profit_afs
             FROM hotel_bookings h
             JOIN users u ON h.created_by = u.id
             WHERE h.created_at >= ? AND h.created_at <= ?
@@ -125,7 +147,8 @@ try {
             SELECT
                 u.branch_id,
                 COUNT(v.id) as visa_applications,
-                SUM(CASE WHEN v.currency = 'USD' THEN v.profit ELSE 0 END) as visa_profit
+                SUM(CASE WHEN v.currency = 'USD' THEN v.profit ELSE 0 END) as visa_profit_usd,
+                SUM(CASE WHEN v.currency = 'AFS' THEN v.profit ELSE 0 END) as visa_profit_afs
             FROM visa_applications v
             JOIN users u ON v.created_by = u.id
             WHERE v.created_at >= ? AND v.created_at <= ?
@@ -137,7 +160,8 @@ try {
             SELECT
                 u.branch_id,
                 COUNT(um.booking_id) as umrah_bookings,
-                SUM(CASE WHEN um.currency = 'USD' THEN um.profit ELSE 0 END) as umrah_profit
+                SUM(CASE WHEN um.currency = 'USD' THEN um.profit ELSE 0 END) as umrah_profit_usd,
+                SUM(CASE WHEN um.currency = 'AFS' THEN um.profit ELSE 0 END) as umrah_profit_afs
             FROM umrah_bookings um
             JOIN users u ON um.created_by = u.id
             WHERE um.created_at >= ? AND um.created_at <= ?
@@ -149,7 +173,8 @@ try {
             SELECT
                 u.branch_id,
                 COUNT(ap.id) as additional_payments,
-                SUM(CASE WHEN ap.currency = 'USD' THEN ap.profit ELSE 0 END) as additional_profit
+                SUM(CASE WHEN ap.currency = 'USD' THEN ap.profit ELSE 0 END) as additional_profit_usd,
+                SUM(CASE WHEN ap.currency = 'AFS' THEN ap.profit ELSE 0 END) as additional_profit_afs
             FROM additional_payments ap
             JOIN users u ON ap.created_by = u.id
             WHERE ap.created_at >= ? AND ap.created_at <= ?
@@ -165,7 +190,12 @@ try {
                     (CASE WHEN rt.calculation_method = 'base' THEN rt.service_penalty
                           WHEN rt.calculation_method = 'sold' THEN (rt.service_penalty - IFNULL(tb.profit, 0))
                           ELSE rt.service_penalty END)
-                    ELSE 0 END) as refund_profit
+                    ELSE 0 END) as refund_profit_usd,
+                SUM(CASE WHEN rt.currency = 'AFS' THEN
+                    (CASE WHEN rt.calculation_method = 'base' THEN rt.service_penalty
+                          WHEN rt.calculation_method = 'sold' THEN (rt.service_penalty - IFNULL(tb.profit, 0))
+                          ELSE rt.service_penalty END)
+                    ELSE 0 END) as refund_profit_afs
             FROM refunded_tickets rt
             JOIN users u ON rt.created_by = u.id
             LEFT JOIN ticket_bookings tb ON rt.ticket_id = tb.id
@@ -178,7 +208,8 @@ try {
             SELECT
                 u.branch_id,
                 COUNT(dt.id) as date_change_tickets,
-                SUM(CASE WHEN dt.currency = 'USD' THEN dt.service_penalty ELSE 0 END) as date_change_profit
+                SUM(CASE WHEN dt.currency = 'USD' THEN dt.service_penalty ELSE 0 END) as date_change_profit_usd,
+                SUM(CASE WHEN dt.currency = 'AFS' THEN dt.service_penalty ELSE 0 END) as date_change_profit_afs
             FROM date_change_tickets dt
             JOIN users u ON dt.created_by = u.id
             WHERE dt.created_at >= ? AND dt.created_at <= ?
@@ -187,7 +218,7 @@ try {
 
         WHERE b.tenant_id = ? AND b.status = 'active' $branchFilter
         GROUP BY b.id, b.name, b.code
-        ORDER BY total_revenue DESC
+        ORDER BY total_revenue_usd DESC
     ");
 
     // Parameters: tenant_id (for user_stats), start_date, end_date (x9 for each table: tickets, reservations, ticket_weights, hotels, visas, umrah, additional_payments, refunded, date_change), tenant_id (WHERE clause), [branch_id]
@@ -220,29 +251,67 @@ try {
 $totals = [
     'branches' => count($branchReports),
     'ticket_bookings' => 0,
+    'ticket_profit_usd' => 0,
+    'ticket_profit_afs' => 0,
     'ticket_reservations' => 0,
+    'reservation_profit_usd' => 0,
+    'reservation_profit_afs' => 0,
     'ticket_weights' => 0,
+    'weight_profit_usd' => 0,
+    'weight_profit_afs' => 0,
     'hotel_bookings' => 0,
+    'hotel_profit_usd' => 0,
+    'hotel_profit_afs' => 0,
     'visa_applications' => 0,
+    'visa_profit_usd' => 0,
+    'visa_profit_afs' => 0,
     'umrah_bookings' => 0,
+    'umrah_profit_usd' => 0,
+    'umrah_profit_afs' => 0,
     'additional_payments' => 0,
+    'additional_profit_usd' => 0,
+    'additional_profit_afs' => 0,
     'refunded_tickets' => 0,
+    'refund_profit_usd' => 0,
+    'refund_profit_afs' => 0,
     'date_change_tickets' => 0,
-    'total_revenue' => 0,
+    'date_change_profit_usd' => 0,
+    'date_change_profit_afs' => 0,
+    'total_revenue_usd' => 0,
+    'total_revenue_afs' => 0,
     'total_users' => 0
 ];
 
 foreach ($branchReports as $report) {
     $totals['ticket_bookings'] += $report['ticket_bookings'];
+    $totals['ticket_profit_usd'] += $report['ticket_profit_usd'] ?? 0;
+    $totals['ticket_profit_afs'] += $report['ticket_profit_afs'] ?? 0;
     $totals['ticket_reservations'] += $report['ticket_reservations'] ?? 0;
+    $totals['reservation_profit_usd'] += $report['reservation_profit_usd'] ?? 0;
+    $totals['reservation_profit_afs'] += $report['reservation_profit_afs'] ?? 0;
     $totals['ticket_weights'] += $report['ticket_weights'] ?? 0;
+    $totals['weight_profit_usd'] += $report['weight_profit_usd'] ?? 0;
+    $totals['weight_profit_afs'] += $report['weight_profit_afs'] ?? 0;
     $totals['hotel_bookings'] += $report['hotel_bookings'];
+    $totals['hotel_profit_usd'] += $report['hotel_profit_usd'] ?? 0;
+    $totals['hotel_profit_afs'] += $report['hotel_profit_afs'] ?? 0;
     $totals['visa_applications'] += $report['visa_applications'];
+    $totals['visa_profit_usd'] += $report['visa_profit_usd'] ?? 0;
+    $totals['visa_profit_afs'] += $report['visa_profit_afs'] ?? 0;
     $totals['umrah_bookings'] += $report['umrah_bookings'];
+    $totals['umrah_profit_usd'] += $report['umrah_profit_usd'] ?? 0;
+    $totals['umrah_profit_afs'] += $report['umrah_profit_afs'] ?? 0;
     $totals['additional_payments'] += $report['additional_payments'] ?? 0;
+    $totals['additional_profit_usd'] += $report['additional_profit_usd'] ?? 0;
+    $totals['additional_profit_afs'] += $report['additional_profit_afs'] ?? 0;
     $totals['refunded_tickets'] += $report['refunded_tickets'] ?? 0;
+    $totals['refund_profit_usd'] += $report['refund_profit_usd'] ?? 0;
+    $totals['refund_profit_afs'] += $report['refund_profit_afs'] ?? 0;
     $totals['date_change_tickets'] += $report['date_change_tickets'] ?? 0;
-    $totals['total_revenue'] += $report['total_revenue'];
+    $totals['date_change_profit_usd'] += $report['date_change_profit_usd'] ?? 0;
+    $totals['date_change_profit_afs'] += $report['date_change_profit_afs'] ?? 0;
+    $totals['total_revenue_usd'] += $report['total_revenue_usd'] ?? 0;
+    $totals['total_revenue_afs'] += $report['total_revenue_afs'] ?? 0;
     $totals['total_users'] += $report['total_users'];
 }
 
@@ -287,32 +356,50 @@ if (!empty($comparison_period)) {
             $comparisonStmt = $pdo->prepare("
                 SELECT
                     COALESCE(SUM(ticket_stats.ticket_bookings), 0) as ticket_bookings,
-                    COALESCE(SUM(ticket_stats.ticket_profit), 0) as ticket_profit,
+                    COALESCE(SUM(ticket_stats.ticket_profit_usd), 0) as ticket_profit_usd,
+                    COALESCE(SUM(ticket_stats.ticket_profit_afs), 0) as ticket_profit_afs,
                     COALESCE(SUM(reservation_stats.ticket_reservations), 0) as ticket_reservations,
-                    COALESCE(SUM(reservation_stats.reservation_profit), 0) as reservation_profit,
+                    COALESCE(SUM(reservation_stats.reservation_profit_usd), 0) as reservation_profit_usd,
+                    COALESCE(SUM(reservation_stats.reservation_profit_afs), 0) as reservation_profit_afs,
                     COALESCE(SUM(weight_stats.ticket_weights), 0) as ticket_weights,
-                    COALESCE(SUM(weight_stats.weight_profit), 0) as weight_profit,
+                    COALESCE(SUM(weight_stats.weight_profit_usd), 0) as weight_profit_usd,
+                    COALESCE(SUM(weight_stats.weight_profit_afs), 0) as weight_profit_afs,
                     COALESCE(SUM(hotel_stats.hotel_bookings), 0) as hotel_bookings,
-                    COALESCE(SUM(hotel_stats.hotel_profit), 0) as hotel_profit,
+                    COALESCE(SUM(hotel_stats.hotel_profit_usd), 0) as hotel_profit_usd,
+                    COALESCE(SUM(hotel_stats.hotel_profit_afs), 0) as hotel_profit_afs,
                     COALESCE(SUM(visa_stats.visa_applications), 0) as visa_applications,
-                    COALESCE(SUM(visa_stats.visa_profit), 0) as visa_profit,
+                    COALESCE(SUM(visa_stats.visa_profit_usd), 0) as visa_profit_usd,
+                    COALESCE(SUM(visa_stats.visa_profit_afs), 0) as visa_profit_afs,
                     COALESCE(SUM(umrah_stats.umrah_bookings), 0) as umrah_bookings,
-                    COALESCE(SUM(umrah_stats.umrah_profit), 0) as umrah_profit,
+                    COALESCE(SUM(umrah_stats.umrah_profit_usd), 0) as umrah_profit_usd,
+                    COALESCE(SUM(umrah_stats.umrah_profit_afs), 0) as umrah_profit_afs,
                     COALESCE(SUM(additional_stats.additional_payments), 0) as additional_payments,
-                    COALESCE(SUM(additional_stats.additional_profit), 0) as additional_profit,
+                    COALESCE(SUM(additional_stats.additional_profit_usd), 0) as additional_profit_usd,
+                    COALESCE(SUM(additional_stats.additional_profit_afs), 0) as additional_profit_afs,
                     COALESCE(SUM(refund_stats.refunded_tickets), 0) as refunded_tickets,
-                    COALESCE(SUM(refund_stats.refund_profit), 0) as refund_profit,
+                    COALESCE(SUM(refund_stats.refund_profit_usd), 0) as refund_profit_usd,
+                    COALESCE(SUM(refund_stats.refund_profit_afs), 0) as refund_profit_afs,
                     COALESCE(SUM(date_change_stats.date_change_tickets), 0) as date_change_tickets,
-                    COALESCE(SUM(date_change_stats.date_change_profit), 0) as date_change_profit,
-                    COALESCE(SUM(ticket_stats.ticket_profit), 0) +
-                    COALESCE(SUM(reservation_stats.reservation_profit), 0) +
-                    COALESCE(SUM(weight_stats.weight_profit), 0) +
-                    COALESCE(SUM(hotel_stats.hotel_profit), 0) +
-                    COALESCE(SUM(visa_stats.visa_profit), 0) +
-                    COALESCE(SUM(umrah_stats.umrah_profit), 0) +
-                    COALESCE(SUM(additional_stats.additional_profit), 0) +
-                    COALESCE(SUM(refund_stats.refund_profit), 0) +
-                    COALESCE(SUM(date_change_stats.date_change_profit), 0) as total_revenue,
+                    COALESCE(SUM(date_change_stats.date_change_profit_usd), 0) as date_change_profit_usd,
+                    COALESCE(SUM(date_change_stats.date_change_profit_afs), 0) as date_change_profit_afs,
+                    COALESCE(SUM(ticket_stats.ticket_profit_usd), 0) +
+                    COALESCE(SUM(reservation_stats.reservation_profit_usd), 0) +
+                    COALESCE(SUM(weight_stats.weight_profit_usd), 0) +
+                    COALESCE(SUM(hotel_stats.hotel_profit_usd), 0) +
+                    COALESCE(SUM(visa_stats.visa_profit_usd), 0) +
+                    COALESCE(SUM(umrah_stats.umrah_profit_usd), 0) +
+                    COALESCE(SUM(additional_stats.additional_profit_usd), 0) +
+                    COALESCE(SUM(refund_stats.refund_profit_usd), 0) +
+                    COALESCE(SUM(date_change_stats.date_change_profit_usd), 0) as total_revenue_usd,
+                    COALESCE(SUM(ticket_stats.ticket_profit_afs), 0) +
+                    COALESCE(SUM(reservation_stats.reservation_profit_afs), 0) +
+                    COALESCE(SUM(weight_stats.weight_profit_afs), 0) +
+                    COALESCE(SUM(hotel_stats.hotel_profit_afs), 0) +
+                    COALESCE(SUM(visa_stats.visa_profit_afs), 0) +
+                    COALESCE(SUM(umrah_stats.umrah_profit_afs), 0) +
+                    COALESCE(SUM(additional_stats.additional_profit_afs), 0) +
+                    COALESCE(SUM(refund_stats.refund_profit_afs), 0) +
+                    COALESCE(SUM(date_change_stats.date_change_profit_afs), 0) as total_revenue_afs,
                     COALESCE(SUM(user_stats.total_users), 0) as total_users
                 FROM branches b
 
@@ -324,7 +411,7 @@ if (!empty($comparison_period)) {
                 ) user_stats ON user_stats.branch_id = b.id
 
                 LEFT JOIN (
-                    SELECT u.branch_id, COUNT(t.id) as ticket_bookings, SUM(CASE WHEN t.currency = 'USD' THEN t.profit ELSE 0 END) as ticket_profit
+                    SELECT u.branch_id, COUNT(t.id) as ticket_bookings, SUM(CASE WHEN t.currency IN ('USD', 'AFS') THEN t.profit ELSE 0 END) as ticket_profit
                     FROM ticket_bookings t
                     JOIN users u ON t.created_by = u.id
                     WHERE t.created_at >= ? AND t.created_at <= ?
@@ -332,7 +419,7 @@ if (!empty($comparison_period)) {
                 ) ticket_stats ON ticket_stats.branch_id = b.id
 
                 LEFT JOIN (
-                    SELECT u.branch_id, COUNT(tr.id) as ticket_reservations, SUM(CASE WHEN tr.currency = 'USD' THEN tr.profit ELSE 0 END) as reservation_profit
+                    SELECT u.branch_id, COUNT(tr.id) as ticket_reservations, SUM(CASE WHEN tr.currency IN ('USD', 'AFS') THEN tr.profit ELSE 0 END) as reservation_profit
                     FROM ticket_reservations tr
                     JOIN users u ON tr.created_by = u.id
                     WHERE tr.created_at >= ? AND tr.created_at <= ?
@@ -340,7 +427,7 @@ if (!empty($comparison_period)) {
                 ) reservation_stats ON reservation_stats.branch_id = b.id
 
                 LEFT JOIN (
-                    SELECT u.branch_id, COUNT(tw.id) as ticket_weights, SUM(CASE WHEN tb.currency = 'USD' THEN tw.profit ELSE 0 END) as weight_profit
+                    SELECT u.branch_id, COUNT(tw.id) as ticket_weights, SUM(CASE WHEN tb.currency IN ('USD', 'AFS') THEN tw.profit ELSE 0 END) as weight_profit
                     FROM ticket_weights tw
                     JOIN users u ON tw.created_by = u.id
                     LEFT JOIN ticket_bookings tb ON tb.id = tw.ticket_id
@@ -349,7 +436,7 @@ if (!empty($comparison_period)) {
                 ) weight_stats ON weight_stats.branch_id = b.id
 
                 LEFT JOIN (
-                    SELECT u.branch_id, COUNT(h.id) as hotel_bookings, SUM(CASE WHEN h.currency = 'USD' THEN h.profit ELSE 0 END) as hotel_profit
+                    SELECT u.branch_id, COUNT(h.id) as hotel_bookings, SUM(CASE WHEN h.currency IN ('USD', 'AFS') THEN h.profit ELSE 0 END) as hotel_profit
                     FROM hotel_bookings h
                     JOIN users u ON h.created_by = u.id
                     WHERE h.created_at >= ? AND h.created_at <= ?
@@ -357,7 +444,7 @@ if (!empty($comparison_period)) {
                 ) hotel_stats ON hotel_stats.branch_id = b.id
 
                 LEFT JOIN (
-                    SELECT u.branch_id, COUNT(v.id) as visa_applications, SUM(CASE WHEN v.currency = 'USD' THEN v.profit ELSE 0 END) as visa_profit
+                    SELECT u.branch_id, COUNT(v.id) as visa_applications, SUM(CASE WHEN v.currency IN ('USD', 'AFS') THEN v.profit ELSE 0 END) as visa_profit
                     FROM visa_applications v
                     JOIN users u ON v.created_by = u.id
                     WHERE v.created_at >= ? AND v.created_at <= ?
@@ -365,7 +452,7 @@ if (!empty($comparison_period)) {
                 ) visa_stats ON visa_stats.branch_id = b.id
 
                 LEFT JOIN (
-                    SELECT u.branch_id, COUNT(um.booking_id) as umrah_bookings, SUM(CASE WHEN um.currency = 'USD' THEN um.profit ELSE 0 END) as umrah_profit
+                    SELECT u.branch_id, COUNT(um.booking_id) as umrah_bookings, SUM(CASE WHEN um.currency IN ('USD', 'AFS') THEN um.profit ELSE 0 END) as umrah_profit
                     FROM umrah_bookings um
                     JOIN users u ON um.created_by = u.id
                     WHERE um.created_at >= ? AND um.created_at <= ?
@@ -373,7 +460,7 @@ if (!empty($comparison_period)) {
                 ) umrah_stats ON umrah_stats.branch_id = b.id
 
                 LEFT JOIN (
-                    SELECT u.branch_id, COUNT(ap.id) as additional_payments, SUM(CASE WHEN ap.currency = 'USD' THEN ap.profit ELSE 0 END) as additional_profit
+                    SELECT u.branch_id, COUNT(ap.id) as additional_payments, SUM(CASE WHEN ap.currency IN ('USD', 'AFS') THEN ap.profit ELSE 0 END) as additional_profit
                     FROM additional_payments ap
                     JOIN users u ON ap.created_by = u.id
                     WHERE ap.created_at >= ? AND ap.created_at <= ?
@@ -381,7 +468,7 @@ if (!empty($comparison_period)) {
                 ) additional_stats ON additional_stats.branch_id = b.id
 
                 LEFT JOIN (
-                    SELECT u.branch_id, COUNT(rt.id) as refunded_tickets, -SUM(CASE WHEN rt.currency = 'USD' THEN (CASE WHEN rt.calculation_method = 'base' THEN rt.service_penalty WHEN rt.calculation_method = 'sold' THEN (rt.service_penalty - IFNULL(tb.profit, 0)) ELSE rt.service_penalty END) ELSE 0 END) as refund_profit
+                    SELECT u.branch_id, COUNT(rt.id) as refunded_tickets, -SUM(CASE WHEN rt.currency IN ('USD', 'AFS') THEN (CASE WHEN rt.calculation_method = 'base' THEN rt.service_penalty WHEN rt.calculation_method = 'sold' THEN (rt.service_penalty - IFNULL(tb.profit, 0)) ELSE rt.service_penalty END) ELSE 0 END) as refund_profit
                     FROM refunded_tickets rt
                     JOIN users u ON rt.created_by = u.id
                     LEFT JOIN ticket_bookings tb ON rt.ticket_id = tb.id
@@ -390,7 +477,7 @@ if (!empty($comparison_period)) {
                 ) refund_stats ON refund_stats.branch_id = b.id
 
                 LEFT JOIN (
-                    SELECT u.branch_id, COUNT(dt.id) as date_change_tickets, -SUM(CASE WHEN dt.currency = 'USD' THEN dt.service_penalty ELSE 0 END) as date_change_profit
+                    SELECT u.branch_id, COUNT(dt.id) as date_change_tickets, -SUM(CASE WHEN dt.currency IN ('USD', 'AFS') THEN dt.service_penalty ELSE 0 END) as date_change_profit
                     FROM date_change_tickets dt
                     JOIN users u ON dt.created_by = u.id
                     WHERE dt.created_at >= ? AND dt.created_at <= ?
@@ -734,13 +821,10 @@ if (!empty($comparison_period)) {
                         </div>
                         <div class="card-title">Tickets</div>
                         <div class="card-value"><?= $totals['ticket_bookings'] ?></div>
-                        <div class="card-subtitle">$<?php
-                             $totalTicketProfit = 0;
-                             foreach ($branchReports as $report) {
-                                 $totalTicketProfit += $report['ticket_profit'] ?? 0;
-                             }
-                             echo number_format($totalTicketProfit, 2);
-                         ?> profit</div>
+                        <div class="card-subtitle">
+                            USD: $<?= number_format($totals['ticket_profit_usd'], 2) ?><br>
+                            AFS: <?= number_format($totals['ticket_profit_afs'], 0) ?>
+                        </div>
                     </div>
                 </div>
             </div>
@@ -752,20 +836,11 @@ if (!empty($comparison_period)) {
                             <i class="feather icon-clock"></i>
                         </div>
                         <div class="card-title">Reservations</div>
-                        <div class="card-value"><?php
-                             $totalReservations = 0;
-                             foreach ($branchReports as $report) {
-                                 $totalReservations += $report['ticket_reservations'] ?? 0;
-                             }
-                             echo $totalReservations;
-                         ?></div>
-                        <div class="card-subtitle">$<?php
-                             $totalReservationProfit = 0;
-                             foreach ($branchReports as $report) {
-                                 $totalReservationProfit += $report['reservation_profit'] ?? 0;
-                             }
-                             echo number_format($totalReservationProfit, 2);
-                         ?> profit</div>
+                        <div class="card-value"><?= $totals['ticket_reservations'] ?></div>
+                        <div class="card-subtitle">
+                            USD: $<?= number_format($totals['reservation_profit_usd'], 2) ?><br>
+                            AFS: <?= number_format($totals['reservation_profit_afs'], 0) ?>
+                        </div>
                     </div>
                 </div>
             </div>
@@ -777,20 +852,11 @@ if (!empty($comparison_period)) {
                             <i class="feather icon-package"></i>
                         </div>
                         <div class="card-title">Ticket Weights</div>
-                        <div class="card-value"><?php
-                             $totalTicketWeights = 0;
-                             foreach ($branchReports as $report) {
-                                 $totalTicketWeights += $report['ticket_weights'] ?? 0;
-                             }
-                             echo $totalTicketWeights;
-                         ?></div>
-                        <div class="card-subtitle">$<?php
-                             $totalWeightProfit = 0;
-                             foreach ($branchReports as $report) {
-                                 $totalWeightProfit += $report['weight_profit'] ?? 0;
-                             }
-                             echo number_format($totalWeightProfit, 2);
-                         ?> profit</div>
+                        <div class="card-value"><?= $totals['ticket_weights'] ?></div>
+                        <div class="card-subtitle">
+                            USD: $<?= number_format($totals['weight_profit_usd'], 2) ?><br>
+                            AFS: <?= number_format($totals['weight_profit_afs'], 0) ?>
+                        </div>
                     </div>
                 </div>
             </div>
@@ -803,13 +869,10 @@ if (!empty($comparison_period)) {
                         </div>
                         <div class="card-title">Hotels</div>
                         <div class="card-value"><?= $totals['hotel_bookings'] ?></div>
-                        <div class="card-subtitle">$<?php
-                             $totalHotelProfit = 0;
-                             foreach ($branchReports as $report) {
-                                 $totalHotelProfit += $report['hotel_profit'] ?? 0;
-                             }
-                             echo number_format($totalHotelProfit, 2);
-                         ?> profit</div>
+                        <div class="card-subtitle">
+                            USD: $<?= number_format($totals['hotel_profit_usd'], 2) ?><br>
+                            AFS: <?= number_format($totals['hotel_profit_afs'], 0) ?>
+                        </div>
                     </div>
                 </div>
             </div>
@@ -822,13 +885,10 @@ if (!empty($comparison_period)) {
                         </div>
                         <div class="card-title">Visas</div>
                         <div class="card-value"><?= $totals['visa_applications'] ?></div>
-                        <div class="card-subtitle">$<?php
-                             $totalVisaProfit = 0;
-                             foreach ($branchReports as $report) {
-                                 $totalVisaProfit += $report['visa_profit'] ?? 0;
-                             }
-                             echo number_format($totalVisaProfit, 2);
-                         ?> profit</div>
+                        <div class="card-subtitle">
+                            USD: $<?= number_format($totals['visa_profit_usd'], 2) ?><br>
+                            AFS: <?= number_format($totals['visa_profit_afs'], 0) ?>
+                        </div>
                     </div>
                 </div>
             </div>
@@ -841,13 +901,10 @@ if (!empty($comparison_period)) {
                         </div>
                         <div class="card-title">Umrah</div>
                         <div class="card-value"><?= $totals['umrah_bookings'] ?></div>
-                        <div class="card-subtitle">$<?php
-                             $totalUmrahProfit = 0;
-                             foreach ($branchReports as $report) {
-                                 $totalUmrahProfit += $report['umrah_profit'] ?? 0;
-                             }
-                             echo number_format($totalUmrahProfit, 2);
-                         ?> profit</div>
+                        <div class="card-subtitle">
+                            USD: $<?= number_format($totals['umrah_profit_usd'], 2) ?><br>
+                            AFS: <?= number_format($totals['umrah_profit_afs'], 0) ?>
+                        </div>
                     </div>
                 </div>
             </div>
@@ -859,20 +916,11 @@ if (!empty($comparison_period)) {
                             <i class="feather icon-plus-circle"></i>
                         </div>
                         <div class="card-title">Add. Payments</div>
-                        <div class="card-value"><?php
-                             $totalAdditionalPayments = 0;
-                             foreach ($branchReports as $report) {
-                                 $totalAdditionalPayments += $report['additional_payments'] ?? 0;
-                             }
-                             echo $totalAdditionalPayments;
-                         ?></div>
-                        <div class="card-subtitle">$<?php
-                             $totalAdditionalProfit = 0;
-                             foreach ($branchReports as $report) {
-                                 $totalAdditionalProfit += $report['additional_profit'] ?? 0;
-                             }
-                             echo number_format($totalAdditionalProfit, 2);
-                         ?> profit</div>
+                        <div class="card-value"><?= $totals['additional_payments'] ?></div>
+                        <div class="card-subtitle">
+                            USD: $<?= number_format($totals['additional_profit_usd'], 2) ?><br>
+                            AFS: <?= number_format($totals['additional_profit_afs'], 0) ?>
+                        </div>
                     </div>
                 </div>
             </div>
@@ -884,20 +932,11 @@ if (!empty($comparison_period)) {
                             <i class="feather icon-refresh-ccw"></i>
                         </div>
                         <div class="card-title">Refunds</div>
-                        <div class="card-value"><?php
-                             $totalRefunded = 0;
-                             foreach ($branchReports as $report) {
-                                 $totalRefunded += $report['refunded_tickets'] ?? 0;
-                             }
-                             echo $totalRefunded;
-                         ?></div>
-                        <div class="card-subtitle">$<?php
-                             $totalRefundProfit = 0;
-                             foreach ($branchReports as $report) {
-                                 $totalRefundProfit += $report['refund_profit'] ?? 0;
-                             }
-                             echo number_format($totalRefundProfit, 2);
-                         ?> loss</div>
+                        <div class="card-value"><?= $totals['refunded_tickets'] ?></div>
+                        <div class="card-subtitle">
+                            USD: $<?= number_format($totals['refund_profit_usd'], 2) ?><br>
+                            AFS: <?= number_format($totals['refund_profit_afs'], 0) ?>
+                        </div>
                     </div>
                 </div>
             </div>
@@ -909,20 +948,11 @@ if (!empty($comparison_period)) {
                             <i class="feather icon-calendar"></i>
                         </div>
                         <div class="card-title">Date Changes</div>
-                        <div class="card-value"><?php
-                             $totalDateChanges = 0;
-                             foreach ($branchReports as $report) {
-                                 $totalDateChanges += $report['date_change_tickets'] ?? 0;
-                             }
-                             echo $totalDateChanges;
-                         ?></div>
-                        <div class="card-subtitle">$<?php
-                             $totalDateChangeProfit = 0;
-                             foreach ($branchReports as $report) {
-                                 $totalDateChangeProfit += $report['date_change_profit'] ?? 0;
-                             }
-                             echo number_format($totalDateChangeProfit, 2);
-                         ?> loss</div>
+                        <div class="card-value"><?= $totals['date_change_tickets'] ?></div>
+                        <div class="card-subtitle">
+                            USD: $<?= number_format($totals['date_change_profit_usd'], 2) ?><br>
+                            AFS: <?= number_format($totals['date_change_profit_afs'], 0) ?>
+                        </div>
                     </div>
                 </div>
             </div>
@@ -934,8 +964,10 @@ if (!empty($comparison_period)) {
                             <i class="feather icon-dollar-sign"></i>
                         </div>
                         <div class="card-title">Net Revenue</div>
-                        <div class="card-value">$<?= number_format($totals['total_revenue'], 2) ?></div>
-                        <div class="card-subtitle">Total Profit</div>
+                        <div class="card-value">USD: $<?= number_format($totals['total_revenue_usd'], 2) ?></div>
+                        <div class="card-subtitle">
+                            AFS: <?= number_format($totals['total_revenue_afs'], 0) ?>
+                        </div>
                     </div>
                 </div>
             </div>
@@ -953,18 +985,18 @@ if (!empty($comparison_period)) {
                         <div class="row">
                             <div class="col-md-3">
                                 <div class="text-center">
-                                    <h6 class="text-muted">Revenue</h6>
-                                    <h4 class="text-warning">$<?= number_format($comparisonData['total_revenue'], 2) ?></h4>
-                                    <small class="text-muted">vs Current: $<?= number_format($totals['total_revenue'], 2) ?></small>
+                                    <h6 class="text-muted">Revenue (USD)</h6>
+                                    <h4 class="text-warning">$<?= number_format($comparisonData['total_revenue_usd'] ?? 0, 2) ?></h4>
+                                    <small class="text-muted">vs Current: $<?= number_format($totals['total_revenue_usd'], 2) ?></small>
                                     <br>
                                     <?php
-                                    $revenueChange = $totals['total_revenue'] - $comparisonData['total_revenue'];
-                                    if ($comparisonData['total_revenue'] > 0) {
-                                        $revenuePercent = (($revenueChange / $comparisonData['total_revenue']) * 100);
+                                    $revenueChange = $totals['total_revenue_usd'] - ($comparisonData['total_revenue_usd'] ?? 0);
+                                    if (($comparisonData['total_revenue_usd'] ?? 0) > 0) {
+                                        $revenuePercent = (($revenueChange / ($comparisonData['total_revenue_usd'] ?? 0)) * 100);
                                         $revenueDisplay = number_format(abs($revenuePercent), 1) . '%';
                                         $changeClass = $revenueChange >= 0 ? 'success' : 'danger';
                                         $changeIcon = $revenueChange >= 0 ? 'trending-up' : 'trending-down';
-                                    } elseif ($totals['total_revenue'] > 0) {
+                                    } elseif ($totals['total_revenue_usd'] > 0) {
                                         // Comparison is 0 but current has value - infinite growth
                                         $revenueDisplay = '∞';
                                         $changeClass = 'success';
@@ -1029,7 +1061,8 @@ if (!empty($comparison_period)) {
                                         ?>
                                     </h4>
                                     <small class="text-muted">vs Current: $<?php
-                                        $avgCurrent = $currentTransactions > 0 ? round(($totals['total_revenue'] / $currentTransactions), 2) : 0;
+                                        $totalCurrentRevenue = $totals['total_revenue_usd'] + $totals['total_revenue_afs'];
+                                        $avgCurrent = $currentTransactions > 0 ? round(($totalCurrentRevenue / $currentTransactions), 2) : 0;
                                         echo $avgCurrent;
                                     ?></small>
                                     <br>
@@ -1129,7 +1162,7 @@ if (!empty($comparison_period)) {
                                                     }
                                                     ?>
                                                 </h4>
-                                                <small class="text-muted">$<?= number_format($totals['total_revenue'], 2) ?> total revenue</small>
+                                                <small class="text-muted">USD: $<?= number_format($totals['total_revenue_usd'], 2) ?> | AFS: <?= number_format($totals['total_revenue_afs'], 0) ?> total revenue</small>
                                             </div>
                                         </div>
                                     </div>
@@ -1148,8 +1181,9 @@ if (!empty($comparison_period)) {
                                                 <h6 class="text-muted">Avg Performance</h6>
                                                 <h4 class="text-warning" id="avgPerformance">
                                                     <?php
-                                                    $totalBookings = $totals['ticket_bookings'] + $totalReservations + $totalTicketWeights + $totals['hotel_bookings'] + $totals['visa_applications'] + $totals['umrah_bookings'] + $totalAdditionalPayments + $totalRefunded + $totalDateChanges;
-                                                    $avgPerformance = $totalBookings > 0 ? round(($totals['total_revenue'] / $totalBookings), 2) : 0;
+                                                    $totalBookings = $totals['ticket_bookings'] + $totals['ticket_reservations'] + $totals['ticket_weights'] + $totals['hotel_bookings'] + $totals['visa_applications'] + $totals['umrah_bookings'] + $totals['additional_payments'] + $totals['refunded_tickets'] + $totals['date_change_tickets'];
+                                                    $totalComparisonRevenue = $totals['total_revenue_usd'] + $totals['total_revenue_afs'];
+                                                    $avgPerformance = $totalBookings > 0 ? round(($totalComparisonRevenue / $totalBookings), 2) : 0;
                                                     echo '$' . $avgPerformance;
                                                     ?>/booking
                                                 </h4>
@@ -1294,7 +1328,8 @@ if (!empty($comparison_period)) {
                                     <?php foreach ($branchReports as $report): ?>
                                     <?php
                                     $totalBookings = $report['ticket_bookings'] + ($report['ticket_reservations'] ?? 0) + ($report['ticket_weights'] ?? 0) + $report['hotel_bookings'] + $report['visa_applications'] + $report['umrah_bookings'] + ($report['additional_payments'] ?? 0) + ($report['refunded_tickets'] ?? 0) + ($report['date_change_tickets'] ?? 0);
-                                    $performance = $totalBookings > 0 ? round(($report['total_revenue'] / $totalBookings), 2) : 0;
+                                    $totalRevenue = ($report['total_revenue_usd'] ?? 0) + ($report['total_revenue_afs'] ?? 0);
+                                    $performance = $totalBookings > 0 ? round(($totalRevenue / $totalBookings), 2) : 0;
                                     ?>
                                     <tr onclick="showBranchDetails('<?= htmlspecialchars($report['branch_code']) ?>', '<?= htmlspecialchars($report['branch_name']) ?>')" style="cursor: pointer;">
                                         <td>
@@ -1308,61 +1343,73 @@ if (!empty($comparison_period)) {
                                         <td>
                                             <div class="text-center">
                                                 <div class="font-weight-bold"><?= $report['ticket_bookings'] ?></div>
-                                                <small class="text-success">$<?= number_format($report['ticket_profit'] ?? 0, 2) ?></small>
+                                                <small class="text-success">USD: $<?= number_format($report['ticket_profit_usd'] ?? 0, 2) ?></small><br>
+                                                <small class="text-warning">AFS: <?= number_format($report['ticket_profit_afs'] ?? 0, 0) ?></small>
                                             </div>
                                         </td>
                                         <td>
                                             <div class="text-center">
                                                 <div class="font-weight-bold"><?= $report['ticket_reservations'] ?? 0 ?></div>
-                                                <small class="text-success">$<?= number_format($report['reservation_profit'] ?? 0, 2) ?></small>
+                                                <small class="text-success">USD: $<?= number_format($report['reservation_profit_usd'] ?? 0, 2) ?></small><br>
+                                                <small class="text-warning">AFS: <?= number_format($report['reservation_profit_afs'] ?? 0, 0) ?></small>
                                             </div>
                                         </td>
                                         <td>
                                             <div class="text-center">
                                                 <div class="font-weight-bold"><?= $report['ticket_weights'] ?? 0 ?></div>
-                                                <small class="text-success">$<?= number_format($report['weight_profit'] ?? 0, 2) ?></small>
+                                                <small class="text-success">USD: $<?= number_format($report['weight_profit_usd'] ?? 0, 2) ?></small><br>
+                                                <small class="text-warning">AFS: <?= number_format($report['weight_profit_afs'] ?? 0, 0) ?></small>
                                             </div>
                                         </td>
                                         <td>
                                             <div class="text-center">
                                                 <div class="font-weight-bold"><?= $report['hotel_bookings'] ?></div>
-                                                <small class="text-success">$<?= number_format($report['hotel_profit'] ?? 0, 2) ?></small>
+                                                <small class="text-success">USD: $<?= number_format($report['hotel_profit_usd'] ?? 0, 2) ?></small><br>
+                                                <small class="text-warning">AFS: <?= number_format($report['hotel_profit_afs'] ?? 0, 0) ?></small>
                                             </div>
                                         </td>
                                         <td>
                                             <div class="text-center">
                                                 <div class="font-weight-bold"><?= $report['visa_applications'] ?></div>
-                                                <small class="text-success">$<?= number_format($report['visa_profit'] ?? 0, 2) ?></small>
+                                                <small class="text-success">USD: $<?= number_format($report['visa_profit_usd'] ?? 0, 2) ?></small><br>
+                                                <small class="text-warning">AFS: <?= number_format($report['visa_profit_afs'] ?? 0, 0) ?></small>
                                             </div>
                                         </td>
                                         <td>
                                             <div class="text-center">
                                                 <div class="font-weight-bold"><?= $report['umrah_bookings'] ?></div>
-                                                <small class="text-success">$<?= number_format($report['umrah_profit'] ?? 0, 2) ?></small>
+                                                <small class="text-success">USD: $<?= number_format($report['umrah_profit_usd'] ?? 0, 2) ?></small><br>
+                                                <small class="text-warning">AFS: <?= number_format($report['umrah_profit_afs'] ?? 0, 0) ?></small>
                                             </div>
                                         </td>
                                         <td>
                                             <div class="text-center">
                                                 <div class="font-weight-bold"><?= $report['additional_payments'] ?? 0 ?></div>
-                                                <small class="text-success">$<?= number_format($report['additional_profit'] ?? 0, 2) ?></small>
+                                                <small class="text-success">USD: $<?= number_format($report['additional_profit_usd'] ?? 0, 2) ?></small><br>
+                                                <small class="text-warning">AFS: <?= number_format($report['additional_profit_afs'] ?? 0, 0) ?></small>
                                             </div>
                                         </td>
                                         <td>
                                             <div class="text-center">
                                                 <div class="font-weight-bold"><?= $report['refunded_tickets'] ?? 0 ?></div>
-                                                <small class="text-success">$<?= number_format($report['refund_profit'] ?? 0, 2) ?></small>
+                                                <small class="text-success">USD: $<?= number_format($report['refund_profit_usd'] ?? 0, 2) ?></small><br>
+                                                <small class="text-warning">AFS: <?= number_format($report['refund_profit_afs'] ?? 0, 0) ?></small>
                                             </div>
                                         </td>
                                         <td>
                                             <div class="text-center">
                                                 <div class="font-weight-bold"><?= $report['date_change_tickets'] ?? 0 ?></div>
-                                                <small class="text-success">$<?= number_format($report['date_change_profit'] ?? 0, 2) ?></small>
+                                                <small class="text-success">USD: $<?= number_format($report['date_change_profit_usd'] ?? 0, 2) ?></small><br>
+                                                <small class="text-warning">AFS: <?= number_format($report['date_change_profit_afs'] ?? 0, 0) ?></small>
                                             </div>
                                         </td>
                                         <td>
                                             <strong><?= $totalBookings ?></strong>
                                         </td>
-                                        <td>$<?= number_format($report['total_revenue'], 2) ?></td>
+                                        <td>
+                                            USD: $<?= number_format($report['total_revenue_usd'], 2) ?><br>
+                                            AFS: <?= number_format($report['total_revenue_afs'], 0) ?>
+                                        </td>
                                         <td>
                                             <?php if ($performance > 0): ?>
                                                 <span class="badge badge-success">$<?= $performance ?>/booking</span>
@@ -1390,147 +1437,76 @@ if (!empty($comparison_period)) {
                                         <th>
                                             <div class="text-center">
                                                 <div class="font-weight-bold"><?= $totals['ticket_bookings'] ?></div>
-                                                <small class="text-success">$<?php
-                                                    $totalTicketProfit = 0;
-                                                    foreach ($branchReports as $report) {
-                                                        $totalTicketProfit += $report['ticket_profit'] ?? 0;
-                                                    }
-                                                    echo number_format($totalTicketProfit, 2);
-                                                ?></small>
+                                                <small class="text-success">USD: $<?= number_format($totals['ticket_profit_usd'], 2) ?></small><br>
+                                                <small class="text-warning">AFS: <?= number_format($totals['ticket_profit_afs'], 0) ?></small>
                                             </div>
                                         </th>
                                         <th>
                                             <div class="text-center">
-                                                <div class="font-weight-bold"><?php
-                                                    $totalReservations = 0;
-                                                    foreach ($branchReports as $report) {
-                                                        $totalReservations += $report['ticket_reservations'] ?? 0;
-                                                    }
-                                                    echo $totalReservations;
-                                                ?></div>
-                                                <small class="text-success">$<?php
-                                                    $totalReservationProfit = 0;
-                                                    foreach ($branchReports as $report) {
-                                                        $totalReservationProfit += $report['reservation_profit'] ?? 0;
-                                                    }
-                                                    echo number_format($totalReservationProfit, 2);
-                                                ?></small>
+                                                <div class="font-weight-bold"><?= $totals['ticket_reservations'] ?></div>
+                                                <small class="text-success">USD: $<?= number_format($totals['reservation_profit_usd'], 2) ?></small><br>
+                                                <small class="text-warning">AFS: <?= number_format($totals['reservation_profit_afs'], 0) ?></small>
                                             </div>
                                         </th>
                                         <th>
                                             <div class="text-center">
-                                                <div class="font-weight-bold"><?php
-                                                    $totalTicketWeights = 0;
-                                                    foreach ($branchReports as $report) {
-                                                        $totalTicketWeights += $report['ticket_weights'] ?? 0;
-                                                    }
-                                                    echo $totalTicketWeights;
-                                                ?></div>
-                                                <small class="text-success">$<?php
-                                                    $totalWeightProfit = 0;
-                                                    foreach ($branchReports as $report) {
-                                                        $totalWeightProfit += $report['weight_profit'] ?? 0;
-                                                    }
-                                                    echo number_format($totalWeightProfit, 2);
-                                                ?></small>
+                                                <div class="font-weight-bold"><?= $totals['ticket_weights'] ?></div>
+                                                <small class="text-success">USD: $<?= number_format($totals['weight_profit_usd'], 2) ?></small><br>
+                                                <small class="text-warning">AFS: <?= number_format($totals['weight_profit_afs'], 0) ?></small>
                                             </div>
                                         </th>
                                         <th>
                                             <div class="text-center">
                                                 <div class="font-weight-bold"><?= $totals['hotel_bookings'] ?></div>
-                                                <small class="text-success">$<?php
-                                                    $totalHotelProfit = 0;
-                                                    foreach ($branchReports as $report) {
-                                                        $totalHotelProfit += $report['hotel_profit'] ?? 0;
-                                                    }
-                                                    echo number_format($totalHotelProfit, 2);
-                                                ?></small>
+                                                <small class="text-success">USD: $<?= number_format($totals['hotel_profit_usd'], 2) ?></small><br>
+                                                <small class="text-warning">AFS: <?= number_format($totals['hotel_profit_afs'], 0) ?></small>
                                             </div>
                                         </th>
                                         <th>
                                             <div class="text-center">
                                                 <div class="font-weight-bold"><?= $totals['visa_applications'] ?></div>
-                                                <small class="text-success">$<?php
-                                                    $totalVisaProfit = 0;
-                                                    foreach ($branchReports as $report) {
-                                                        $totalVisaProfit += $report['visa_profit'] ?? 0;
-                                                    }
-                                                    echo number_format($totalVisaProfit, 2);
-                                                ?></small>
+                                                <small class="text-success">USD: $<?= number_format($totals['visa_profit_usd'], 2) ?></small><br>
+                                                <small class="text-warning">AFS: <?= number_format($totals['visa_profit_afs'], 0) ?></small>
                                             </div>
                                         </th>
                                         <th>
                                             <div class="text-center">
                                                 <div class="font-weight-bold"><?= $totals['umrah_bookings'] ?></div>
-                                                <small class="text-success">$<?php
-                                                    $totalUmrahProfit = 0;
-                                                    foreach ($branchReports as $report) {
-                                                        $totalUmrahProfit += $report['umrah_profit'] ?? 0;
-                                                    }
-                                                    echo number_format($totalUmrahProfit, 2);
-                                                ?></small>
+                                                <small class="text-success">USD: $<?= number_format($totals['umrah_profit_usd'], 2) ?></small><br>
+                                                <small class="text-warning">AFS: <?= number_format($totals['umrah_profit_afs'], 0) ?></small>
                                             </div>
                                         </th>
                                         <th>
                                             <div class="text-center">
-                                                <div class="font-weight-bold"><?php
-                                                    $totalAdditionalPayments = 0;
-                                                    foreach ($branchReports as $report) {
-                                                        $totalAdditionalPayments += $report['additional_payments'] ?? 0;
-                                                    }
-                                                    echo $totalAdditionalPayments;
-                                                ?></div>
-                                                <small class="text-success">$<?php
-                                                    $totalAdditionalProfit = 0;
-                                                    foreach ($branchReports as $report) {
-                                                        $totalAdditionalProfit += $report['additional_profit'] ?? 0;
-                                                    }
-                                                    echo number_format($totalAdditionalProfit, 2);
-                                                ?></small>
+                                                <div class="font-weight-bold"><?= $totals['additional_payments'] ?></div>
+                                                <small class="text-success">USD: $<?= number_format($totals['additional_profit_usd'], 2) ?></small><br>
+                                                <small class="text-warning">AFS: <?= number_format($totals['additional_profit_afs'], 0) ?></small>
                                             </div>
                                         </th>
                                         <th>
                                             <div class="text-center">
-                                                <div class="font-weight-bold"><?php
-                                                    $totalRefunded = 0;
-                                                    foreach ($branchReports as $report) {
-                                                        $totalRefunded += $report['refunded_tickets'] ?? 0;
-                                                    }
-                                                    echo $totalRefunded;
-                                                ?></div>
-                                                <small class="text-success">$<?php
-                                                    $totalRefundProfit = 0;
-                                                    foreach ($branchReports as $report) {
-                                                        $totalRefundProfit += $report['refund_profit'] ?? 0;
-                                                    }
-                                                    echo number_format($totalRefundProfit, 2);
-                                                ?></small>
+                                                <div class="font-weight-bold"><?= $totals['refunded_tickets'] ?></div>
+                                                <small class="text-success">USD: $<?= number_format($totals['refund_profit_usd'], 2) ?></small><br>
+                                                <small class="text-warning">AFS: <?= number_format($totals['refund_profit_afs'], 0) ?></small>
                                             </div>
                                         </th>
                                         <th>
                                             <div class="text-center">
-                                                <div class="font-weight-bold"><?php
-                                                    $totalDateChanges = 0;
-                                                    foreach ($branchReports as $report) {
-                                                        $totalDateChanges += $report['date_change_tickets'] ?? 0;
-                                                    }
-                                                    echo $totalDateChanges;
-                                                ?></div>
-                                                <small class="text-success">$<?php
-                                                    $totalDateChangeProfit = 0;
-                                                    foreach ($branchReports as $report) {
-                                                        $totalDateChangeProfit += $report['date_change_profit'] ?? 0;
-                                                    }
-                                                    echo number_format($totalDateChangeProfit, 2);
-                                                ?></small>
+                                                <div class="font-weight-bold"><?= $totals['date_change_tickets'] ?></div>
+                                                <small class="text-success">USD: $<?= number_format($totals['date_change_profit_usd'], 2) ?></small><br>
+                                                <small class="text-warning">AFS: <?= number_format($totals['date_change_profit_afs'], 0) ?></small>
                                             </div>
                                         </th>
-                                        <th><strong><?= $totals['ticket_bookings'] + $totalReservations + $totalTicketWeights + $totals['hotel_bookings'] + $totals['visa_applications'] + $totals['umrah_bookings'] + $totalAdditionalPayments + $totalRefunded + $totalDateChanges ?></strong></th>
-                                        <th><strong>$<?= number_format($totals['total_revenue'], 2) ?></strong></th>
+                                        <th><strong><?= $totals['ticket_bookings'] + $totals['ticket_reservations'] + $totals['ticket_weights'] + $totals['hotel_bookings'] + $totals['visa_applications'] + $totals['umrah_bookings'] + $totals['additional_payments'] + $totals['refunded_tickets'] + $totals['date_change_tickets'] ?></strong></th>
+                                        <th>
+                                            <strong>USD: $<?= number_format($totals['total_revenue_usd'], 2) ?><br>
+                                            AFS: <?= number_format($totals['total_revenue_afs'], 0) ?></strong>
+                                        </th>
                                         <th>
                                             <?php
-                                            $totalBookings = $totals['ticket_bookings'] + $totalReservations + $totals['hotel_bookings'] + $totals['visa_applications'] + $totals['umrah_bookings'] + $totalAdditionalPayments + $totalRefunded + $totalDateChanges;
-                                            $avgPerformance = $totalBookings > 0 ? round(($totals['total_revenue'] / $totalBookings), 2) : 0;
+                                            $totalBookings = $totals['ticket_bookings'] + $totals['ticket_reservations'] + $totals['ticket_weights'] + $totals['hotel_bookings'] + $totals['visa_applications'] + $totals['umrah_bookings'] + $totals['additional_payments'] + $totals['refunded_tickets'] + $totals['date_change_tickets'];
+                                            $totalRevenue = $totals['total_revenue_usd'] + $totals['total_revenue_afs'];
+                                            $avgPerformance = $totalBookings > 0 ? round(($totalRevenue / $totalBookings), 2) : 0;
                                             ?>
                                             <?php if ($avgPerformance > 0): ?>
                                                 <strong>$<?= $avgPerformance ?>/booking</strong>
@@ -1725,7 +1701,8 @@ function initializeCharts() {
 
             // Prepare data for main chart
             const labels = branchData.map(branch => branch.branch_name);
-            const revenueData = branchData.map(branch => parseFloat(branch.total_revenue));
+            const revenueDataUSD = branchData.map(branch => parseFloat(branch.total_revenue_usd || 0));
+            const revenueDataAFS = branchData.map(branch => parseFloat(branch.total_revenue_afs || 0));
             const bookingData = branchData.map(branch => parseInt(branch.ticket_bookings) + parseInt(branch.ticket_reservations || 0) + parseInt(branch.hotel_bookings) + parseInt(branch.visa_applications) + parseInt(branch.umrah_bookings));
 
             mainChart = new Chart(ctx, {
@@ -1733,10 +1710,16 @@ function initializeCharts() {
                 data: {
                     labels: labels,
                     datasets: [{
-                        label: 'Revenue ($)',
-                        data: revenueData,
+                        label: 'Revenue (USD)',
+                        data: revenueDataUSD,
                         backgroundColor: 'rgba(64, 153, 255, 0.6)',
                         borderColor: 'rgba(64, 153, 255, 1)',
+                        borderWidth: 1
+                    }, {
+                        label: 'Revenue (AFS)',
+                        data: revenueDataAFS,
+                        backgroundColor: 'rgba(255, 193, 7, 0.6)',
+                        borderColor: 'rgba(255, 193, 7, 1)',
                         borderWidth: 1
                     }]
                 },
@@ -1750,7 +1733,9 @@ function initializeCharts() {
                         tooltip: {
                             callbacks: {
                                 label: function(context) {
-                                    return context.dataset.label + ': $' + context.parsed.y.toLocaleString();
+                                    const currency = context.dataset.label.includes('USD') ? '$' : '';
+                                    const value = context.parsed.y.toLocaleString();
+                                    return context.dataset.label + ': ' + currency + value + (context.dataset.label.includes('AFS') ? ' AFN' : '');
                                 }
                             }
                         }
@@ -1760,8 +1745,12 @@ function initializeCharts() {
                             beginAtZero: true,
                             ticks: {
                                 callback: function(value) {
-                                    return '$' + value.toLocaleString();
+                                    return '$' + (value / 1000).toFixed(0) + 'k';
                                 }
+                            },
+                            title: {
+                                display: true,
+                                text: 'Revenue (USD & AFS)'
                             }
                         }
                     }
@@ -1946,19 +1935,43 @@ function updateChartView(view) {
 
     let labels = branchData.map(branch => branch.branch_name);
     let data = [];
+    let dataUSD = [];
+    let dataAFS = [];
     let label = '';
     let color = '';
 
     switch(view) {
         case 'revenue':
-            data = branchData.map(branch => parseFloat(branch.total_revenue));
-            label = 'Revenue ($)';
+            dataUSD = branchData.map(branch => parseFloat(branch.total_revenue_usd || 0));
+            dataAFS = branchData.map(branch => parseFloat(branch.total_revenue_afs || 0));
+            label = 'Revenue (USD & AFS)';
             color = 'rgba(64, 153, 255, 0.6)';
+            
+            mainChart.data.datasets[0].label = 'Revenue (USD)';
+            mainChart.data.datasets[0].data = dataUSD;
+            mainChart.data.datasets[0].backgroundColor = 'rgba(64, 153, 255, 0.6)';
+            mainChart.data.datasets[1].label = 'Revenue (AFS)';
+            mainChart.data.datasets[1].data = dataAFS;
+            mainChart.data.datasets[1].backgroundColor = 'rgba(255, 193, 7, 0.6)';
+            mainChart.data.labels = labels;
+            mainChart.update();
+            return;
             break;
         case 'bookings':
             data = branchData.map(branch => parseInt(branch.ticket_bookings) + parseInt(branch.ticket_reservations || 0) + parseInt(branch.hotel_bookings) + parseInt(branch.visa_applications) + parseInt(branch.umrah_bookings));
             label = 'Total Bookings';
             color = 'rgba(46, 216, 182, 0.6)';
+            
+            // Single dataset for bookings
+            mainChart.data.labels = labels;
+            mainChart.data.datasets[0].data = data;
+            mainChart.data.datasets[0].label = label;
+            mainChart.data.datasets[0].backgroundColor = color;
+            if (mainChart.data.datasets.length > 1) {
+                mainChart.data.datasets.splice(1, 1);
+            }
+            mainChart.update();
+            return;
             break;
         case 'trends':
             // Show revenue trends based on current period
@@ -1969,43 +1982,53 @@ function updateChartView(view) {
             if (daysDiff <= 31) {
                 // Show daily trend for current month
                 labels = [];
-                data = [];
-                const currentData = branchData.map(branch => parseFloat(branch.total_revenue));
-                const avgDaily = currentData.reduce((a, b) => a + b, 0) / Math.max(daysDiff, 1);
+                dataUSD = [];
+                dataAFS = [];
+                const totalUSD = branchData.reduce((sum, branch) => sum + parseFloat(branch.total_revenue_usd || 0), 0);
+                const totalAFS = branchData.reduce((sum, branch) => sum + parseFloat(branch.total_revenue_afs || 0), 0);
+                const avgDailyUSD = totalUSD / Math.max(daysDiff, 1);
+                const avgDailyAFS = totalAFS / Math.max(daysDiff, 1);
 
                 for (let i = 0; i <= Math.min(daysDiff, 30); i++) {
                     const date = moment(startDate).add(i, 'days');
                     labels.push(date.format('MMM D'));
                     // Simulate daily variation around average
                     const variation = (Math.random() - 0.5) * 0.4; // ±20% variation
-                    data.push(Math.max(0, avgDaily * (1 + variation)));
+                    dataUSD.push(Math.max(0, avgDailyUSD * (1 + variation)));
+                    dataAFS.push(Math.max(0, avgDailyAFS * (1 + variation)));
                 }
-                label = 'Daily Revenue Trend ($)';
             } else {
                 // Show monthly trend
                 labels = [];
-                data = [];
+                dataUSD = [];
+                dataAFS = [];
                 const monthsDiff = Math.min(endDate.diff(startDate, 'months') + 1, 12);
 
                 for (let i = 0; i < monthsDiff; i++) {
                     const monthStart = moment(startDate).add(i, 'months');
                     labels.push(monthStart.format('MMM YYYY'));
                     // Use current total revenue distributed across months
-                    const monthlyRevenue = branchData.reduce((sum, branch) => sum + parseFloat(branch.total_revenue), 0) / monthsDiff;
+                    const monthlyRevenueUSD = branchData.reduce((sum, branch) => sum + parseFloat(branch.total_revenue_usd || 0), 0) / monthsDiff;
+                    const monthlyRevenueAFS = branchData.reduce((sum, branch) => sum + parseFloat(branch.total_revenue_afs || 0), 0) / monthsDiff;
                     const variation = (Math.random() - 0.5) * 0.3; // ±15% variation
-                    data.push(Math.max(0, monthlyRevenue * (1 + variation)));
+                    dataUSD.push(Math.max(0, monthlyRevenueUSD * (1 + variation)));
+                    dataAFS.push(Math.max(0, monthlyRevenueAFS * (1 + variation)));
                 }
-                label = 'Monthly Revenue Trend ($)';
             }
-            color = 'rgba(255, 193, 7, 0.6)';
+            
+            mainChart.data.labels = labels;
+            mainChart.data.datasets[0].label = 'Trend (USD)';
+            mainChart.data.datasets[0].data = dataUSD;
+            mainChart.data.datasets[0].backgroundColor = 'rgba(64, 153, 255, 0.6)';
+            mainChart.data.datasets[1].label = 'Trend (AFS)';
+            mainChart.data.datasets[1].data = dataAFS;
+            mainChart.data.datasets[1].backgroundColor = 'rgba(255, 193, 7, 0.6)';
+            mainChart.update();
+            return;
             break;
     }
 
-    mainChart.data.labels = labels;
-    mainChart.data.datasets[0].data = data;
-    mainChart.data.datasets[0].label = label;
-    mainChart.data.datasets[0].backgroundColor = color;
-    mainChart.data.datasets[0].borderColor = color.replace('0.6', '1');
+    // This code should not be reached due to returns in all cases
     mainChart.update();
 }
 

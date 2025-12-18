@@ -20,13 +20,17 @@ function deleteRefund(refundId) {
     const row = $(`a[onclick="deleteRefund(${refundId})"]`).closest('tr');
     row.addClass('loading');
 
+    // Get CSRF token from meta tag or hidden input
+    const csrfToken = document.querySelector('meta[name="csrf-token"]')?.content || 
+                     document.querySelector('input[name="csrf_token"]')?.value;
+
     // Send delete request
     fetch('../api/hotel/delete_hotel_refund.php', {
         method: 'POST',
         headers: {
             'Content-Type': 'application/json',
         },
-        body: JSON.stringify({ id: refundId })
+        body: JSON.stringify({ id: refundId, csrf_token: csrfToken })
     })
     .then(response => response.json())
     .then(data => {

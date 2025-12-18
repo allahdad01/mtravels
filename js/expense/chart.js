@@ -66,6 +66,15 @@ function createIncomeChart(data) {
             responsive: true,
             maintainAspectRatio: false,
             scales: {
+                x: {
+                    ticks: {
+                        maxRotation: 45,
+                        minRotation: 45,
+                        font: {
+                            size: 12
+                        }
+                    }
+                },
                 y: {
                     beginAtZero: true,
                     title: {
@@ -83,6 +92,9 @@ function createIncomeChart(data) {
                             return `${label}: ${value.toLocaleString()}`;
                         }
                     }
+                },
+                legend: {
+                    position: 'top'
                 }
             }
         }
@@ -436,7 +448,7 @@ function loadFinancialData() {
                 destroyExistingCharts(); // Destroy existing charts
 
                 // Calculate totals for USD
-                const totalIncomeUSD = response.income.tickets.USD + response.income.reservations.USD + response.income.refunds.USD + 
+                const totalIncomeUSD = response.income.tickets.USD + response.income.ticket_weights.USD + response.income.reservations.USD + response.income.refunds.USD + 
                     response.income.dateChanges.USD + response.income.visa.USD + 
                     response.income.umrah.USD + response.income.hotel.USD + 
                     response.income.additionalPayments.USD;
@@ -444,7 +456,7 @@ function loadFinancialData() {
                 const totalProfitLossUSD = response.profitLoss.USD.profit - response.profitLoss.USD.loss;
 
                 // Calculate totals for AFS
-                const totalIncomeAFS = response.income.tickets.AFS + response.income.reservations.AFS + response.income.refunds.AFS + 
+                const totalIncomeAFS = response.income.tickets.AFS + response.income.ticket_weights.AFS + response.income.reservations.AFS + response.income.refunds.AFS + 
                     response.income.dateChanges.AFS + response.income.visa.AFS + 
                     response.income.umrah.AFS + response.income.hotel.AFS + 
                     response.income.additionalPayments.AFS;

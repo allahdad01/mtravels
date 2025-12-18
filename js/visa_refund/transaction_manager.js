@@ -369,13 +369,18 @@
             }
             
             const refundId = $('#refund_id').val();
+
+            // Get CSRF token from meta tag or hidden input
+            const csrfToken = document.querySelector('meta[name="csrf-token"]')?.content || 
+                             document.querySelector('input[name="csrf_token"]')?.value;
             
             $.ajax({
                 url: '../api/visa/delete_visa_refund_transaction.php',
                 type: 'POST',
                 data: {
                     transaction_id: transactionId,
-                    refund_id: refundId
+                    refund_id: refundId,
+                    csrf_token: csrfToken
                 },
                 success: function(response) {
                     try {

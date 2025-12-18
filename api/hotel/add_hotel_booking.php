@@ -17,17 +17,12 @@ if (!verify_csrf_token()) {
 }
 
 // Include WhatsApp Manager for notifications
-require_once '../api/whatsapp/WhatsAppManager.php';
+require_once '../../api/whatsapp/WhatsAppManager.php';
 
 // Database connection
 require_once '../../includes/db.php';
 
 $user_id = $_SESSION['user_id'] ?? 0;
-
-// Validate and sanitize input
-function sanitize_input($data) {
-    return htmlspecialchars(strip_tags($data));
-}
 
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     $title = sanitize_input($_POST['title']);
@@ -146,7 +141,6 @@ $title = isset($_POST['title']) ? DbSecurity::validateInput($_POST['title'], 'st
         }
 
         $booking_id = $pdo->lastInsertId();
-        $stmt->close();
 
         // Fetch client details
         $stmtClient = $pdo->prepare("SELECT name, client_type, usd_balance, afs_balance FROM clients WHERE id = ? AND tenant_id = ? And branch_id = ?");
@@ -157,7 +151,6 @@ $title = isset($_POST['title']) ? DbSecurity::validateInput($_POST['title'], 'st
             throw new Exception("Failed to fetch client details");
         }
         $clientData = $stmtClient->fetch(PDO::FETCH_ASSOC);
-        $stmtClient->close();
 
         if (!$clientData) {
             throw new Exception("Client not found");
@@ -181,7 +174,6 @@ $title = isset($_POST['title']) ? DbSecurity::validateInput($_POST['title'], 'st
             if (!$stmtUpdateBalance->execute()) {
                 throw new Exception("Failed to update client balance");
             }
-            $stmtUpdateBalance->close();
 
             // Insert client transaction
             $stmtClientTrans = $pdo->prepare("INSERT INTO client_transactions (client_id, type, currency, amount, balance, transaction_of, description, reference_id, created_at, tenant_id, branch_id)
@@ -198,7 +190,6 @@ $title = isset($_POST['title']) ? DbSecurity::validateInput($_POST['title'], 'st
             if (!$stmtClientTrans->execute()) {
                 throw new Exception("Failed to create client transaction");
             }
-            $stmtClientTrans->close();
         }
 
         // Fetch supplier details
@@ -210,7 +201,6 @@ $title = isset($_POST['title']) ? DbSecurity::validateInput($_POST['title'], 'st
             throw new Exception("Failed to fetch supplier details");
         }
         $supplierData = $stmtSupplier->fetch(PDO::FETCH_ASSOC);
-        $stmtSupplier->close();
 
         if (!$supplierData) {
             throw new Exception("Supplier not found");
@@ -299,7 +289,7 @@ $title = isset($_POST['title']) ? DbSecurity::validateInput($_POST['title'], 'st
         $stmt_log->execute();
 
         // Send email notification to client
-        require_once '../includes/functions.php';
+        require_once '../../includes/functions.php';
 
         // Get client email and name
         $stmt_client_email = $pdo->prepare("SELECT email, name FROM clients WHERE id = ? AND tenant_id = ? And branch_id = ?");
@@ -312,7 +302,7 @@ $title = isset($_POST['title']) ? DbSecurity::validateInput($_POST['title'], 'st
         $client_name = $client_email_data['name'];
 
         // Send email notification to client
-        require_once '../includes/functions.php';
+        require_once '../../includes/functions.php';
 
         if (!empty($client_email)) {
             $guestName = $title . ' ' . $first_name . ' ' . $last_name;

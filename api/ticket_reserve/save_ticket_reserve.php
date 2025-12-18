@@ -110,8 +110,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     $profit = floatval($_POST['pro']);
     $description = htmlspecialchars($_POST['description']);
     $tripType = $_POST['tripType'];
-    $returnDestination = $_POST['returnDestination'];
-    $returnDate = $_POST['returnDate'];
+    $returnDestination = !empty($_POST['returnDestination']) ? $_POST['returnDestination'] : null;
+    $returnDate = !empty($_POST['returnDate']) ? $_POST['returnDate'] : null;
 
     // Begin a database transaction
     $pdo->beginTransaction();
@@ -140,7 +140,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 
         $current_balance = $supplierData['balance'];
         $supplier_currency = $supplierData['currency'];
-        $supplier_name = $supplierData['supplier_name'];
+        $supplier_name = $supplierData['name'];
         $supplier_type = $supplierData['supplier_type'];
 
         // Ensure that the ticket currency matches the supplier's currency
@@ -198,8 +198,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         $stmt_ticket->bindParam(17, $currency, PDO::PARAM_STR);
         $stmt_ticket->bindParam(18, $description, PDO::PARAM_STR);
         $stmt_ticket->bindParam(19, $tripType, PDO::PARAM_STR);
-        $stmt_ticket->bindParam(20, $returnDestination, PDO::PARAM_STR);
-        $stmt_ticket->bindParam(21, $returnDate, PDO::PARAM_STR);
+        $stmt_ticket->bindParam(20, $returnDestination, $returnDestination === null ? PDO::PARAM_NULL : PDO::PARAM_STR);
+        $stmt_ticket->bindParam(21, $returnDate, $returnDate === null ? PDO::PARAM_NULL : PDO::PARAM_STR);
         $stmt_ticket->bindParam(22, $user_id, PDO::PARAM_INT);
         $stmt_ticket->bindParam(23, $tenant_id, PDO::PARAM_INT);
         $stmt_ticket->bindParam(24, $branch_id, PDO::PARAM_INT);
@@ -214,15 +214,19 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             // Insert supplier transaction with balance
             $stmt_transaction = $pdo->prepare("INSERT INTO supplier_transactions (
                 supplier_id, reference_id, transaction_type, amount, balance, remarks, transaction_date, transaction_of, tenant_id, branch_id
-            ) VALUES (?, ?, 'Debit', ?, ?, ?, NOW(), 'ticket_reserve', ?, ?)");
+            ) VALUES (?, ?, ?, ?, ?, ?, NOW(), ?, ?, ?)");
             $remarks = "Base amount of $base $currency deducted for ticket reservation.";
+            $transaction_type = 'Debit';
+            $transaction_of = 'ticket_reserve';
             $stmt_transaction->bindParam(1, $supplier_id, PDO::PARAM_INT);
             $stmt_transaction->bindParam(2, $ticket_id, PDO::PARAM_INT);
-            $stmt_transaction->bindParam(3, $base, PDO::PARAM_STR);
-            $stmt_transaction->bindParam(4, $new_supplier_balance, PDO::PARAM_STR);
-            $stmt_transaction->bindParam(5, $remarks, PDO::PARAM_STR);
-            $stmt_transaction->bindParam(6, $tenant_id, PDO::PARAM_INT);
-            $stmt_transaction->bindParam(7, $branch_id, PDO::PARAM_INT);
+            $stmt_transaction->bindParam(3, $transaction_type, PDO::PARAM_STR);
+            $stmt_transaction->bindParam(4, $base, PDO::PARAM_STR);
+            $stmt_transaction->bindParam(5, $new_supplier_balance, PDO::PARAM_STR);
+            $stmt_transaction->bindParam(6, $remarks, PDO::PARAM_STR);
+            $stmt_transaction->bindParam(7, $transaction_of, PDO::PARAM_STR);
+            $stmt_transaction->bindParam(8, $tenant_id, PDO::PARAM_INT);
+            $stmt_transaction->bindParam(9, $branch_id, PDO::PARAM_INT);
             $stmt_transaction->execute();
             $transaction_id = $pdo->lastInsertId();
 
@@ -235,14 +239,18 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             // For non-regular suppliers, just record the transaction without balance
             $stmt_transaction = $pdo->prepare("INSERT INTO supplier_transactions (
                 supplier_id, reference_id, transaction_type, amount, remarks, transaction_date, transaction_of, tenant_id, branch_id
-            ) VALUES (?, ?, 'Debit', ?, ?, NOW(), 'ticket_reserve', ?, ?)");
+            ) VALUES (?, ?, ?, ?, ?, NOW(), ?, ?, ?)");
             $remarks = "Base amount of $base $currency deducted for ticket reservation.";
+            $transaction_type = 'Debit';
+            $transaction_of = 'ticket_reserve';
             $stmt_transaction->bindParam(1, $supplier_id, PDO::PARAM_INT);
             $stmt_transaction->bindParam(2, $ticket_id, PDO::PARAM_INT);
-            $stmt_transaction->bindParam(3, $base, PDO::PARAM_STR);
-            $stmt_transaction->bindParam(4, $remarks, PDO::PARAM_STR);
-            $stmt_transaction->bindParam(5, $tenant_id, PDO::PARAM_INT);
-            $stmt_transaction->bindParam(6, $branch_id, PDO::PARAM_INT);
+            $stmt_transaction->bindParam(3, $transaction_type, PDO::PARAM_STR);
+            $stmt_transaction->bindParam(4, $base, PDO::PARAM_STR);
+            $stmt_transaction->bindParam(5, $remarks, PDO::PARAM_STR);
+            $stmt_transaction->bindParam(6, $transaction_of, PDO::PARAM_STR);
+            $stmt_transaction->bindParam(7, $tenant_id, PDO::PARAM_INT);
+            $stmt_transaction->bindParam(8, $branch_id, PDO::PARAM_INT);
             $stmt_transaction->execute();
             $transaction_id = $pdo->lastInsertId();
         }
@@ -302,24 +310,30 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 
         // Insert activity log
         $activity_log_stmt = $pdo->prepare("INSERT INTO activity_log
-            (user_id, action, table_name, record_id, old_values, new_values, ip_address, user_agent, tenant_id, branch_id)
-            VALUES (?, 'add', 'ticket_reservations', ?, '{}', ?, ?, ?, NOW(), ?, ?)");
+            (user_id, action, table_name, record_id, old_values, new_values, ip_address, user_agent, created_at, tenant_id, branch_id)
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?, NOW(), ?, ?)");
 
         $new_values_json = json_encode($new_values);
+        $action = 'add';
+        $table_name = 'ticket_reservations';
+        $old_values = '{}';
         $activity_log_stmt->bindParam(1, $user_id, PDO::PARAM_INT);
-        $activity_log_stmt->bindParam(2, $ticket_id, PDO::PARAM_INT);
-        $activity_log_stmt->bindParam(3, $new_values_json, PDO::PARAM_STR);
-        $activity_log_stmt->bindParam(4, $ip_address, PDO::PARAM_STR);
-        $activity_log_stmt->bindParam(5, $user_agent, PDO::PARAM_STR);
-        $activity_log_stmt->bindParam(6, $tenant_id, PDO::PARAM_INT);
-        $activity_log_stmt->bindParam(7, $branch_id, PDO::PARAM_INT);
+        $activity_log_stmt->bindParam(2, $action, PDO::PARAM_STR);
+        $activity_log_stmt->bindParam(3, $table_name, PDO::PARAM_STR);
+        $activity_log_stmt->bindParam(4, $ticket_id, PDO::PARAM_INT);
+        $activity_log_stmt->bindParam(5, $old_values, PDO::PARAM_STR);
+        $activity_log_stmt->bindParam(6, $new_values_json, PDO::PARAM_STR);
+        $activity_log_stmt->bindParam(7, $ip_address, PDO::PARAM_STR);
+        $activity_log_stmt->bindParam(8, $user_agent, PDO::PARAM_STR);
+        $activity_log_stmt->bindParam(9, $tenant_id, PDO::PARAM_INT);
+        $activity_log_stmt->bindParam(10, $branch_id, PDO::PARAM_INT);
         $activity_log_stmt->execute();
 
         // Commit the database transaction
         $pdo->commit();
 
         // Send email notification to client
-        require_once '../includes/functions.php';
+        require_once '../../includes/functions.php';
 
         // Get client email
         $stmt_client_email = $pdo->prepare("SELECT email, name FROM clients WHERE id = ? AND tenant_id = ? AND branch_id = ?");

@@ -629,7 +629,7 @@ try {
             
             // Now delete the expense
             $stmt = $pdo->prepare("DELETE FROM expenses WHERE id = ? AND tenant_id = ? And branch_id = ?");
-            $stmt->execute([$expenseId, $tenant_id, branch_id]);
+            $stmt->execute([$expenseId, $tenant_id, $branch_id]);
             
             // Get category name for notification
             $categoryStmt = $pdo->prepare("SELECT ec.name FROM expenses e JOIN expense_categories ec ON e.category_id = ec.id WHERE e.id = ? AND e.tenant_id = ? And e.branch_id = ?");

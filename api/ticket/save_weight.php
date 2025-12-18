@@ -21,6 +21,7 @@ if (!$ticketId || !$weight || !$basePrice || !$soldPrice) {
     echo json_encode(['success' => false, 'message' => 'All required fields must be filled']);
     exit;
 }
+$user_id = $_SESSION['user_id'];
 $tenant_id = $_SESSION['tenant_id'];
 $branch_id = $_SESSION['branch_id'];
 try {
@@ -53,8 +54,8 @@ try {
     // Step 2: Insert into ticket_weights table
     $stmt = $pdo->prepare("
         INSERT INTO ticket_weights
-        (ticket_id, weight, base_price, sold_price, profit, remarks, created_at, updated_at, tenant_id, branch_id)
-        VALUES (?, ?, ?, ?, ?, ?, NOW(), NOW(), ?, ?)
+        (ticket_id, weight, base_price, sold_price, profit, remarks, created_by, created_at, updated_at, tenant_id, branch_id)
+        VALUES (?, ?, ?, ?, ?, ?, ?, NOW(), NOW(), ?, ?)
     ");
 
     $stmt->bindParam(1, $ticketId, PDO::PARAM_INT);
@@ -63,8 +64,9 @@ try {
     $stmt->bindParam(4, $soldPrice, PDO::PARAM_STR);
     $stmt->bindParam(5, $profit, PDO::PARAM_STR);
     $stmt->bindParam(6, $remarks, PDO::PARAM_STR);
-    $stmt->bindParam(7, $tenant_id, PDO::PARAM_INT);
-    $stmt->bindParam(8, $branch_id, PDO::PARAM_INT);
+    $stmt->bindParam(7, $user_id, PDO::PARAM_STR);
+    $stmt->bindParam(8, $tenant_id, PDO::PARAM_INT);
+    $stmt->bindParam(9, $branch_id, PDO::PARAM_INT);
 
     if (!$stmt->execute()) {
         throw new Exception('Failed to save weight data');

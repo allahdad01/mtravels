@@ -106,37 +106,55 @@ $userQuery = "
     $recentActivities = $stmt->fetchAll(PDO::FETCH_ASSOC);
 
     // Branch performance (bookings, revenue, etc.) - using aggregated subqueries to prevent multiplication
-    $performanceQuery = "
-        SELECT
-            b.name as branch_name,
-            b.id as branch_id,
-            COALESCE(ticket_stats.ticket_bookings, 0) as ticket_bookings,
-            COALESCE(ticket_stats.ticket_profit, 0) as ticket_profit,
-            COALESCE(reservation_stats.ticket_reservations, 0) as ticket_reservations,
-            COALESCE(reservation_stats.reservation_profit, 0) as reservation_profit,
-            COALESCE(weight_stats.ticket_weights, 0) as ticket_weights,
-            COALESCE(weight_stats.weight_profit, 0) as weight_profit,
-            COALESCE(hotel_stats.hotel_bookings, 0) as hotel_bookings,
-            COALESCE(hotel_stats.hotel_profit, 0) as hotel_profit,
-            COALESCE(visa_stats.visa_applications, 0) as visa_applications,
-            COALESCE(visa_stats.visa_profit, 0) as visa_profit,
-            COALESCE(umrah_stats.umrah_bookings, 0) as umrah_bookings,
-            COALESCE(umrah_stats.umrah_profit, 0) as umrah_profit,
-            COALESCE(additional_stats.additional_payments, 0) as additional_payments,
-            COALESCE(additional_stats.additional_profit, 0) as additional_profit,
-            COALESCE(refund_stats.refunded_tickets, 0) as refunded_tickets,
-            COALESCE(refund_stats.refund_profit, 0) as refund_profit,
-            COALESCE(date_change_stats.date_change_tickets, 0) as date_change_tickets,
-            COALESCE(date_change_stats.date_change_profit, 0) as date_change_profit,
-            COALESCE(ticket_stats.ticket_profit, 0) +
-            COALESCE(reservation_stats.reservation_profit, 0) +
-            COALESCE(weight_stats.weight_profit, 0) +
-            COALESCE(hotel_stats.hotel_profit, 0) +
-            COALESCE(visa_stats.visa_profit, 0) +
-            COALESCE(umrah_stats.umrah_profit, 0) +
-            COALESCE(additional_stats.additional_profit, 0) +
-            COALESCE(refund_stats.refund_profit, 0) +
-            COALESCE(date_change_stats.date_change_profit, 0) as total_revenue
+     $performanceQuery = "
+         SELECT
+             b.name as branch_name,
+             b.id as branch_id,
+             COALESCE(ticket_stats.ticket_bookings, 0) as ticket_bookings,
+             COALESCE(ticket_stats.ticket_profit_usd, 0) as ticket_profit_usd,
+             COALESCE(ticket_stats.ticket_profit_afs, 0) as ticket_profit_afs,
+             COALESCE(reservation_stats.ticket_reservations, 0) as ticket_reservations,
+             COALESCE(reservation_stats.reservation_profit_usd, 0) as reservation_profit_usd,
+             COALESCE(reservation_stats.reservation_profit_afs, 0) as reservation_profit_afs,
+             COALESCE(weight_stats.ticket_weights, 0) as ticket_weights,
+             COALESCE(weight_stats.weight_profit_usd, 0) as weight_profit_usd,
+             COALESCE(weight_stats.weight_profit_afs, 0) as weight_profit_afs,
+             COALESCE(hotel_stats.hotel_bookings, 0) as hotel_bookings,
+             COALESCE(hotel_stats.hotel_profit_usd, 0) as hotel_profit_usd,
+             COALESCE(hotel_stats.hotel_profit_afs, 0) as hotel_profit_afs,
+             COALESCE(visa_stats.visa_applications, 0) as visa_applications,
+             COALESCE(visa_stats.visa_profit_usd, 0) as visa_profit_usd,
+             COALESCE(visa_stats.visa_profit_afs, 0) as visa_profit_afs,
+             COALESCE(umrah_stats.umrah_bookings, 0) as umrah_bookings,
+             COALESCE(umrah_stats.umrah_profit_usd, 0) as umrah_profit_usd,
+             COALESCE(umrah_stats.umrah_profit_afs, 0) as umrah_profit_afs,
+             COALESCE(additional_stats.additional_payments, 0) as additional_payments,
+             COALESCE(additional_stats.additional_profit_usd, 0) as additional_profit_usd,
+             COALESCE(additional_stats.additional_profit_afs, 0) as additional_profit_afs,
+             COALESCE(refund_stats.refunded_tickets, 0) as refunded_tickets,
+             COALESCE(refund_stats.refund_profit_usd, 0) as refund_profit_usd,
+             COALESCE(refund_stats.refund_profit_afs, 0) as refund_profit_afs,
+             COALESCE(date_change_stats.date_change_tickets, 0) as date_change_tickets,
+             COALESCE(date_change_stats.date_change_profit_usd, 0) as date_change_profit_usd,
+             COALESCE(date_change_stats.date_change_profit_afs, 0) as date_change_profit_afs,
+             COALESCE(ticket_stats.ticket_profit_usd, 0) +
+             COALESCE(reservation_stats.reservation_profit_usd, 0) +
+             COALESCE(weight_stats.weight_profit_usd, 0) +
+             COALESCE(hotel_stats.hotel_profit_usd, 0) +
+             COALESCE(visa_stats.visa_profit_usd, 0) +
+             COALESCE(umrah_stats.umrah_profit_usd, 0) +
+             COALESCE(additional_stats.additional_profit_usd, 0) +
+             COALESCE(refund_stats.refund_profit_usd, 0) +
+             COALESCE(date_change_stats.date_change_profit_usd, 0) as total_revenue_usd,
+             COALESCE(ticket_stats.ticket_profit_afs, 0) +
+             COALESCE(reservation_stats.reservation_profit_afs, 0) +
+             COALESCE(weight_stats.weight_profit_afs, 0) +
+             COALESCE(hotel_stats.hotel_profit_afs, 0) +
+             COALESCE(visa_stats.visa_profit_afs, 0) +
+             COALESCE(umrah_stats.umrah_profit_afs, 0) +
+             COALESCE(additional_stats.additional_profit_afs, 0) +
+             COALESCE(refund_stats.refund_profit_afs, 0) +
+             COALESCE(date_change_stats.date_change_profit_afs, 0) as total_revenue_afs
         FROM branches b
 
         -- Ticket bookings aggregated by branch
@@ -144,7 +162,8 @@ $userQuery = "
             SELECT
                 u.branch_id,
                 COUNT(t.id) as ticket_bookings,
-                SUM(CASE WHEN t.currency = 'USD' THEN t.profit ELSE 0 END) as ticket_profit
+                SUM(CASE WHEN t.currency = 'USD' THEN t.profit ELSE 0 END) as ticket_profit_usd,
+                SUM(CASE WHEN t.currency = 'AFS' THEN t.profit ELSE 0 END) as ticket_profit_afs
             FROM ticket_bookings t
             JOIN users u ON t.created_by = u.id
             WHERE t.created_at >= DATE_SUB(NOW(), INTERVAL 30 DAY)
@@ -156,7 +175,8 @@ $userQuery = "
             SELECT
                 u.branch_id,
                 COUNT(tr.id) as ticket_reservations,
-                SUM(CASE WHEN tr.currency = 'USD' THEN tr.profit ELSE 0 END) as reservation_profit
+                SUM(CASE WHEN tr.currency = 'USD' THEN tr.profit ELSE 0 END) as reservation_profit_usd,
+                SUM(CASE WHEN tr.currency = 'AFS' THEN tr.profit ELSE 0 END) as reservation_profit_afs
             FROM ticket_reservations tr
             JOIN users u ON tr.created_by = u.id
             WHERE tr.created_at >= DATE_SUB(NOW(), INTERVAL 30 DAY)
@@ -168,7 +188,8 @@ $userQuery = "
             SELECT
                 u.branch_id,
                 COUNT(tw.id) as ticket_weights,
-                SUM(CASE WHEN tb.currency = 'USD' THEN tw.profit ELSE 0 END) as weight_profit
+                SUM(CASE WHEN tb.currency = 'USD' THEN tw.profit ELSE 0 END) as weight_profit_usd,
+                SUM(CASE WHEN tb.currency = 'AFS' THEN tw.profit ELSE 0 END) as weight_profit_afs
             FROM ticket_weights tw
             JOIN users u ON tw.created_by = u.id
             LEFT JOIN ticket_bookings tb ON tb.id = tw.ticket_id
@@ -181,7 +202,8 @@ $userQuery = "
             SELECT
                 u.branch_id,
                 COUNT(h.id) as hotel_bookings,
-                SUM(CASE WHEN h.currency = 'USD' THEN h.profit ELSE 0 END) as hotel_profit
+                SUM(CASE WHEN h.currency = 'USD' THEN h.profit ELSE 0 END) as hotel_profit_usd,
+                SUM(CASE WHEN h.currency = 'AFS' THEN h.profit ELSE 0 END) as hotel_profit_afs
             FROM hotel_bookings h
             JOIN users u ON h.created_by = u.id
             WHERE h.created_at >= DATE_SUB(NOW(), INTERVAL 30 DAY)
@@ -193,7 +215,8 @@ $userQuery = "
             SELECT
                 u.branch_id,
                 COUNT(v.id) as visa_applications,
-                SUM(CASE WHEN v.currency = 'USD' THEN v.profit ELSE 0 END) as visa_profit
+                SUM(CASE WHEN v.currency = 'USD' THEN v.profit ELSE 0 END) as visa_profit_usd,
+                SUM(CASE WHEN v.currency = 'AFS' THEN v.profit ELSE 0 END) as visa_profit_afs
             FROM visa_applications v
             JOIN users u ON v.created_by = u.id
             WHERE v.created_at >= DATE_SUB(NOW(), INTERVAL 30 DAY)
@@ -205,7 +228,8 @@ $userQuery = "
             SELECT
                 u.branch_id,
                 COUNT(um.booking_id) as umrah_bookings,
-                SUM(CASE WHEN um.currency = 'USD' THEN um.profit ELSE 0 END) as umrah_profit
+                SUM(CASE WHEN um.currency = 'USD' THEN um.profit ELSE 0 END) as umrah_profit_usd,
+                SUM(CASE WHEN um.currency = 'AFS' THEN um.profit ELSE 0 END) as umrah_profit_afs
             FROM umrah_bookings um
             JOIN users u ON um.created_by = u.id
             WHERE um.created_at >= DATE_SUB(NOW(), INTERVAL 30 DAY)
@@ -217,7 +241,8 @@ $userQuery = "
             SELECT
                 u.branch_id,
                 COUNT(ap.id) as additional_payments,
-                SUM(CASE WHEN ap.currency = 'USD' THEN ap.profit ELSE 0 END) as additional_profit
+                SUM(CASE WHEN ap.currency = 'USD' THEN ap.profit ELSE 0 END) as additional_profit_usd,
+                SUM(CASE WHEN ap.currency = 'AFS' THEN ap.profit ELSE 0 END) as additional_profit_afs
             FROM additional_payments ap
             JOIN users u ON ap.created_by = u.id
             WHERE ap.created_at >= DATE_SUB(NOW(), INTERVAL 30 DAY)
@@ -233,7 +258,12 @@ $userQuery = "
                     (CASE WHEN rt.calculation_method = 'base' THEN rt.service_penalty
                           WHEN rt.calculation_method = 'sold' THEN (rt.service_penalty - IFNULL(tb.profit, 0))
                           ELSE rt.service_penalty END)
-                    ELSE 0 END) as refund_profit
+                    ELSE 0 END) as refund_profit_usd,
+                SUM(CASE WHEN rt.currency = 'AFS' THEN
+                    (CASE WHEN rt.calculation_method = 'base' THEN rt.service_penalty
+                          WHEN rt.calculation_method = 'sold' THEN (rt.service_penalty - IFNULL(tb.profit, 0))
+                          ELSE rt.service_penalty END)
+                    ELSE 0 END) as refund_profit_afs
             FROM refunded_tickets rt
             JOIN users u ON rt.created_by = u.id
             LEFT JOIN ticket_bookings tb ON rt.ticket_id = tb.id
@@ -246,7 +276,8 @@ $userQuery = "
             SELECT
                 u.branch_id,
                 COUNT(dt.id) as date_change_tickets,
-                SUM(CASE WHEN dt.currency = 'USD' THEN dt.service_penalty ELSE 0 END) as date_change_profit
+                SUM(CASE WHEN dt.currency = 'USD' THEN dt.service_penalty ELSE 0 END) as date_change_profit_usd,
+                SUM(CASE WHEN dt.currency = 'AFS' THEN dt.service_penalty ELSE 0 END) as date_change_profit_afs
             FROM date_change_tickets dt
             JOIN users u ON dt.created_by = u.id
             WHERE dt.created_at >= DATE_SUB(NOW(), INTERVAL 30 DAY)
@@ -263,7 +294,7 @@ $userQuery = "
         $performanceParams[] = $current_branch_id;
     }
 
-    $performanceQuery .= " GROUP BY b.id, b.name ORDER BY total_revenue DESC";
+    $performanceQuery .= " GROUP BY b.id, b.name ORDER BY total_revenue_usd DESC";
 
     $stmt = $pdo->prepare($performanceQuery);
     $stmt->execute($performanceParams);
@@ -449,61 +480,70 @@ $userQuery = "
                                         <td>
                                             <div class="text-center">
                                                 <div class="font-weight-bold"><?= $branch['ticket_bookings'] ?? 0 ?></div>
-                                                <small class="text-success">$<?= number_format($branch['ticket_profit'] ?? 0, 2) ?></small>
-                                                <?php if (isset($_GET['debug'])): ?>
-                                                <br><small class="text-muted">Debug: $<?= number_format($branch['ticket_profit'] ?? 0, 2) ?></small>
-                                                <?php endif; ?>
+                                                <small class="text-success">USD: $<?= number_format($branch['ticket_profit_usd'] ?? 0, 2) ?></small><br>
+                                                <small class="text-warning">AFS: <?= number_format($branch['ticket_profit_afs'] ?? 0, 0) ?></small>
                                             </div>
                                         </td>
                                         <td>
                                             <div class="text-center">
                                                 <div class="font-weight-bold"><?= $branch['ticket_reservations'] ?? 0 ?></div>
-                                                <small class="text-success">$<?= number_format($branch['reservation_profit'] ?? 0, 2) ?></small>
+                                                <small class="text-success">USD: $<?= number_format($branch['reservation_profit_usd'] ?? 0, 2) ?></small><br>
+                                                <small class="text-warning">AFS: <?= number_format($branch['reservation_profit_afs'] ?? 0, 0) ?></small>
                                             </div>
                                         </td>
                                         <td>
                                             <div class="text-center">
                                                 <div class="font-weight-bold"><?= $branch['ticket_weights'] ?? 0 ?></div>
-                                                <small class="text-success">$<?= number_format($branch['weight_profit'] ?? 0, 2) ?></small>
+                                                <small class="text-success">USD: $<?= number_format($branch['weight_profit_usd'] ?? 0, 2) ?></small><br>
+                                                <small class="text-warning">AFS: <?= number_format($branch['weight_profit_afs'] ?? 0, 0) ?></small>
                                             </div>
                                         </td>
                                         <td>
                                             <div class="text-center">
                                                 <div class="font-weight-bold"><?= $branch['hotel_bookings'] ?? 0 ?></div>
-                                                <small class="text-success">$<?= number_format($branch['hotel_profit'] ?? 0, 2) ?></small>
+                                                <small class="text-success">USD: $<?= number_format($branch['hotel_profit_usd'] ?? 0, 2) ?></small><br>
+                                                <small class="text-warning">AFS: <?= number_format($branch['hotel_profit_afs'] ?? 0, 0) ?></small>
                                             </div>
                                         </td>
                                         <td>
                                             <div class="text-center">
                                                 <div class="font-weight-bold"><?= $branch['visa_applications'] ?? 0 ?></div>
-                                                <small class="text-success">$<?= number_format($branch['visa_profit'] ?? 0, 2) ?></small>
+                                                <small class="text-success">USD: $<?= number_format($branch['visa_profit_usd'] ?? 0, 2) ?></small><br>
+                                                <small class="text-warning">AFS: <?= number_format($branch['visa_profit_afs'] ?? 0, 0) ?></small>
                                             </div>
                                         </td>
                                         <td>
                                             <div class="text-center">
                                                 <div class="font-weight-bold"><?= $branch['umrah_bookings'] ?? 0 ?></div>
-                                                <small class="text-success">$<?= number_format($branch['umrah_profit'] ?? 0, 2) ?></small>
+                                                <small class="text-success">USD: $<?= number_format($branch['umrah_profit_usd'] ?? 0, 2) ?></small><br>
+                                                <small class="text-warning">AFS: <?= number_format($branch['umrah_profit_afs'] ?? 0, 0) ?></small>
                                             </div>
                                         </td>
                                         <td>
                                             <div class="text-center">
                                                 <div class="font-weight-bold"><?= $branch['additional_payments'] ?? 0 ?></div>
-                                                <small class="text-success">$<?= number_format($branch['additional_profit'] ?? 0, 2) ?></small>
+                                                <small class="text-success">USD: $<?= number_format($branch['additional_profit_usd'] ?? 0, 2) ?></small><br>
+                                                <small class="text-warning">AFS: <?= number_format($branch['additional_profit_afs'] ?? 0, 0) ?></small>
                                             </div>
                                         </td>
                                         <td>
                                             <div class="text-center">
                                                 <div class="font-weight-bold"><?= $branch['refunded_tickets'] ?? 0 ?></div>
-                                                <small class="text-success">$<?= number_format($branch['refund_profit'] ?? 0, 2) ?></small>
+                                                <small class="text-success">USD: $<?= number_format($branch['refund_profit_usd'] ?? 0, 2) ?></small><br>
+                                                <small class="text-warning">AFS: <?= number_format($branch['refund_profit_afs'] ?? 0, 0) ?></small>
                                             </div>
                                         </td>
                                         <td>
                                             <div class="text-center">
                                                 <div class="font-weight-bold"><?= $branch['date_change_tickets'] ?? 0 ?></div>
-                                                <small class="text-success">$<?= number_format($branch['date_change_profit'] ?? 0, 2) ?></small>
+                                                <small class="text-success">USD: $<?= number_format($branch['date_change_profit_usd'] ?? 0, 2) ?></small><br>
+                                                <small class="text-warning">AFS: <?= number_format($branch['date_change_profit_afs'] ?? 0, 0) ?></small>
                                             </div>
                                         </td>
-                                        <td>$<?= number_format($branch['total_revenue'] ?? 0, 2) ?></td>
+                                        <td>
+                                            <small class="text-success">USD: $<?= number_format($branch['total_revenue_usd'] ?? 0, 2) ?></small><br>
+                                            <small class="text-warning">AFS: <?= number_format($branch['total_revenue_afs'] ?? 0, 0) ?></small>
+                                        </td>
                                     </tr>
                                     <?php endforeach; ?>
                                     <?php if (empty($branchPerformance)): ?>

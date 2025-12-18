@@ -43,7 +43,7 @@ if ($search) {
         tb.airline LIKE ? OR 
         tb.origin LIKE ? OR 
         tb.destination LIKE ? OR 
-        s.name LIKE ? OR 
+        tb.supplier LIKE ? OR 
         c.name LIKE ?
     )";
 
@@ -53,6 +53,9 @@ if ($search) {
     $types .= str_repeat("s", 7);
 }
 
+// Store search params count before adding pagination
+$searchParamCount = count($params);
+
 // Main tickets query
 $ticketsQuery = "
    SELECT 
@@ -60,28 +63,12 @@ $ticketsQuery = "
     tb.origin, tb.destination, tb.issue_date, tb.departure_date, tb.sold, tb.price, 
     tb.profit, tb.gender, tb.currency, tb.phone, tb.description, tb.status, 
     tb.trip_type, tb.return_date, tb.return_origin, tb.return_destination,
-    s.name as supplier_name,
+    tb.supplier as supplier_name,
     c.name as sold_to_name,
     ma.name as paid_to_name,
-    
-    rt.supplier_penalty AS refund_supplier_penalty,
-    rt.service_penalty AS refund_service_penalty,
-    rt.refund_to_passenger,
-    rt.status AS refund_status,
-    rt.remarks AS refund_remarks,
-    dct.departure_date AS date_change_departure_date,
-    dct.currency AS date_change_currency,
-    dct.supplier_penalty AS date_change_supplier_penalty,
-    dct.service_penalty AS date_change_service_penalty,
-    dct.status AS date_change_status,
-    dct.remarks AS date_change_remarks,
-    
     u.name as created_by
 FROM 
     ticket_reservations tb
-LEFT JOIN refunded_tickets rt ON tb.id = rt.ticket_id
-LEFT JOIN date_change_tickets dct ON tb.id = dct.ticket_id
-LEFT JOIN suppliers s ON tb.supplier = s.id
 LEFT JOIN clients c ON tb.sold_to = c.id
 LEFT JOIN main_account ma ON tb.paid_to = ma.id
 LEFT JOIN users u ON tb.created_by = u.id
@@ -91,11 +78,6 @@ ORDER BY tb.id DESC
 LIMIT ? OFFSET ?
 ";
 
-// Add pagination params
-$params[] = $recordsPerPage;
-$params[] = $offset;
-$types   .= "iis";
-
 // Prepare & execute
 $stmt = $pdo->prepare($ticketsQuery);
 $stmt->bindParam(1, $tenant_id, PDO::PARAM_INT);
@@ -103,9 +85,14 @@ $stmt->bindParam(2, $branch_id, PDO::PARAM_INT);
 
 // Bind search parameters if any
 $paramIndex = 3;
-foreach ($params as $param) {
-    $stmt->bindParam($paramIndex++, $param, is_int($param) ? PDO::PARAM_INT : PDO::PARAM_STR);
+for ($i = 0; $i < $searchParamCount; $i++) {
+    $stmt->bindParam($paramIndex++, $params[$i], PDO::PARAM_STR);
 }
+
+// Bind pagination parameters after search params
+$stmt->bindParam($paramIndex++, $recordsPerPage, PDO::PARAM_INT);
+$stmt->bindParam($paramIndex++, $offset, PDO::PARAM_INT);
+
 $stmt->execute();
 $ticketsResult = $stmt->fetchAll(PDO::FETCH_ASSOC);
 
@@ -113,7 +100,6 @@ $ticketsResult = $stmt->fetchAll(PDO::FETCH_ASSOC);
 $countQuery = "
     SELECT COUNT(*) as total
     FROM ticket_reservations tb
-    LEFT JOIN suppliers s ON tb.supplier = s.id
     LEFT JOIN clients c ON tb.sold_to = c.id
     WHERE tb.tenant_id = ? AND tb.branch_id = ?
     $searchCondition
@@ -123,11 +109,10 @@ $stmtCount = $pdo->prepare($countQuery);
 $stmtCount->bindParam(1, $tenant_id, PDO::PARAM_INT);
 $stmtCount->bindParam(2, $branch_id, PDO::PARAM_INT);
 
-// Bind search parameters for count query (excluding limit/offset)
+// Bind search parameters for count query
 $countParamIndex = 3;
-$countParams = array_slice($params, 0, -2); // exclude limit/offset
-foreach ($countParams as $param) {
-    $stmtCount->bindParam($countParamIndex++, $param, is_int($param) ? PDO::PARAM_INT : PDO::PARAM_STR);
+for ($i = 0; $i < $searchParamCount; $i++) {
+    $stmtCount->bindParam($countParamIndex++, $params[$i], PDO::PARAM_STR);
 }
 $stmtCount->execute();
 $totalRecords = $stmtCount->fetch(PDO::FETCH_ASSOC)['total'];
@@ -471,7 +456,7 @@ foreach ($suppliers as $supplier) {
                                                                             <?= htmlspecialchars($ticket['ticket']['departure_date']) ?>
                                                                         </div>
                                                                         <div class="booking-info__return-date">
-                                                                            <?= htmlspecialchars($ticket['ticket']['return_date']) ?>
+                                                                            <?= htmlspecialchars($ticket['ticket']['return_date'] ?? '') ?>
                                                                         </div>
                                                                     </div>
                                                                 </div>
@@ -566,66 +551,66 @@ foreach ($suppliers as $supplier) {
 <div class="toast-container"></div>
 
 <style>
-.toast-container {
-    position: fixed;
-    top: 20px;
-    right: 20px;
-    z-index: 9999;
-    max-width: 350px;
-}
+    .toast-container {
+        position: fixed;
+        top: 20px;
+        right: 20px;
+        z-index: 9999;
+        max-width: 350px;
+    }
 
-.toast {
-    position: relative;
-    background-color: #fff;
-    border-radius: 8px;
-    box-shadow: 0 8px 16px rgba(0, 0, 0, 0.15);
-    margin-bottom: 10px;
-    overflow: hidden;
-    opacity: 0;
-    transform: translateX(40px);
-    transition: all 0.3s ease;
-    border-left: 4px solid transparent;
-    padding: 15px;
-}
+    .toast {
+        position: relative;
+        background-color: #fff;
+        border-radius: 8px;
+        box-shadow: 0 8px 16px rgba(0, 0, 0, 0.15);
+        margin-bottom: 10px;
+        overflow: hidden;
+        opacity: 0;
+        transform: translateX(40px);
+        transition: all 0.3s ease;
+        border-left: 4px solid transparent;
+        padding: 15px;
+    }
 
-.toast-showing {
-    opacity: 1;
-    transform: translateX(0);
-}
+    .toast-showing {
+        opacity: 1;
+        transform: translateX(0);
+    }
 
-.toast-removing {
-    opacity: 0;
-    transform: translateY(-20px);
-}
+    .toast-removing {
+        opacity: 0;
+        transform: translateY(-20px);
+    }
 
-.toast-success {
-    border-left-color: #10b981;
-}
+    .toast-success {
+        border-left-color: #10b981;
+    }
 
-.toast-error {
-    border-left-color: #ef4444;
-}
+    .toast-error {
+        border-left-color: #ef4444;
+    }
 
-.toast-warning {
-    border-left-color: #f59e0b;
-}
+    .toast-warning {
+        border-left-color: #f59e0b;
+    }
 
-.toast-info {
-    border-left-color: #3b82f6;
-}
+    .toast-info {
+        border-left-color: #3b82f6;
+    }
 
-.toast-title {
-    display: flex;
-    align-items: center;
-    font-weight: 600;
-    margin-bottom: 5px;
-}
+    .toast-title {
+        display: flex;
+        align-items: center;
+        font-weight: 600;
+        margin-bottom: 5px;
+    }
 
-.toast-message {
-    word-break: break-word;
-    line-height: 1.5;
-    color: #64748b;
-}
+    .toast-message {
+        word-break: break-word;
+        line-height: 1.5;
+        color: #64748b;
+    }
 </style>
 
 

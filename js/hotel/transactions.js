@@ -494,13 +494,18 @@ const transactionManager = {
             return;
         }
 
+        // Get CSRF token from meta tag or hidden input
+        const csrfToken = document.querySelector('meta[name="csrf-token"]')?.content || 
+                         document.querySelector('input[name="csrf_token"]')?.value;
+
         $.ajax({
             url: '../api/hotel/delete_hotel_transaction.php',
             type: 'POST',
             data: {
                 transaction_id: transactionId,
                 booking_id: bookingId,
-                amount: amount
+                amount: amount,
+                csrf_token: csrfToken
             },
             success: function(response) {
                 try {

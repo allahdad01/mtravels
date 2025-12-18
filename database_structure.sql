@@ -420,7 +420,7 @@ CREATE TABLE `date_change_tickets` (
   `base` decimal(10,3) NOT NULL,
   `supplier_penalty` decimal(10,3) NOT NULL,
   `service_penalty` decimal(10,3) NOT NULL,
-  `status` enum('Refunded','Pending','Declined') NOT NULL,
+  `status` enum('Date Changed','Refunded','Booked') NOT NULL,
   `remarks` mediumtext DEFAULT NULL,
   `created_by` int(50) NOT NULL,
   `created_at` datetime NOT NULL DEFAULT current_timestamp(),

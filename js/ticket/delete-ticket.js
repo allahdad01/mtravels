@@ -1,9 +1,13 @@
 function deleteTicket(id) {
     if (confirm('Are you sure you want to delete this ticket?')) {
+        // Get CSRF token from meta tag or hidden input
+        const csrfToken = document.querySelector('meta[name="csrf-token"]')?.content || 
+                         document.querySelector('input[name="csrf_token"]')?.value;
+        
         fetch('../api/ticket/delete_ticket.php', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ id }),
+            body: JSON.stringify({ id, csrf_token: csrfToken }),
         })
         .then(response => response.json())
         .then(data => {

@@ -118,8 +118,9 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     $currency = htmlspecialchars($_POST['curr'], ENT_QUOTES, 'UTF-8');
     $description = htmlspecialchars($_POST['description'], ENT_QUOTES, 'UTF-8');
     $tripType = $_POST['tripType'];
-    $returnDestination = $_POST['returnDestination'];
-    $returnDate = $_POST['returnDate'];
+    $returnDestination = !empty($_POST['returnDestination']) ? $_POST['returnDestination'] : null;
+    $returnDate = !empty($_POST['returnDate']) ? $_POST['returnDate'] : null;
+    $returnDepartureTime = !empty($_POST['returnDepartureTime']) ? $_POST['returnDepartureTime'] : null;
     $phone = htmlspecialchars($_POST['phone'], ENT_QUOTES, 'UTF-8');
     $passengers = isset($_POST['passengers']) ? $_POST['passengers'] : [];
 
@@ -247,9 +248,9 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             $stmt_ticket->bindParam(19, $currency, PDO::PARAM_STR);
             $stmt_ticket->bindParam(20, $description, PDO::PARAM_STR);
             $stmt_ticket->bindParam(21, $tripType, PDO::PARAM_STR);
-            $stmt_ticket->bindParam(22, $returnDestination, PDO::PARAM_STR);
-            $stmt_ticket->bindParam(23, $returnDate, PDO::PARAM_STR);
-            $stmt_ticket->bindParam(24, $returnDepartureTime, PDO::PARAM_STR);
+            $stmt_ticket->bindParam(22, $returnDestination, $returnDestination === null ? PDO::PARAM_NULL : PDO::PARAM_STR);
+            $stmt_ticket->bindParam(23, $returnDate, $returnDate === null ? PDO::PARAM_NULL : PDO::PARAM_STR);
+            $stmt_ticket->bindParam(24, $returnDepartureTime, $returnDepartureTime === null ? PDO::PARAM_NULL : PDO::PARAM_STR);
             $stmt_ticket->bindParam(25, $user_id, PDO::PARAM_INT);
             $stmt_ticket->bindParam(26, $tenant_id, PDO::PARAM_INT);
             $stmt_ticket->bindParam(27, $branch_id, PDO::PARAM_INT);

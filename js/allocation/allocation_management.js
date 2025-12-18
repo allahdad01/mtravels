@@ -88,12 +88,17 @@ function deleteFundTransaction(transactionId, allocationId) {
 
 // Delete expense
 function deleteExpense(expenseId) {
+    // Get CSRF token from meta tag or hidden input
+    const csrfToken = document.querySelector('meta[name="csrf-token"]')?.content || 
+                     document.querySelector('input[name="csrf_token"]')?.value;
+    
     return $.ajax({
         url: '../api/expense/expense_actions.php',
         type: 'POST',
         data: {
             action: 'delete_expense',
-            expenseId: expenseId
+            expenseId: expenseId,
+            csrf_token: csrfToken
         },
         dataType: 'json'
     });

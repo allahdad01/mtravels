@@ -14,7 +14,7 @@ if (!verify_csrf_token()) {
     echo json_encode(['success' => false, 'message' => 'Security validation failed. Please try again.']);
     exit;
 }
-
+$user_id = $_SESSION['user_id'];
 $tenant_id = $_SESSION['tenant_id'];
 $branch_id = $_SESSION['branch_id'];
 header('Content-Type: application/json'); // Ensure response is JSON
@@ -40,8 +40,8 @@ if (empty($head_of_family) || empty($contact) || empty($address) || empty($packa
 
 try {
     // Prepare the SQL statement
-    $sql = "INSERT INTO families (head_of_family, contact, address, package_type, location, tazmin, visa_status, province, district, tenant_id, branch_id)
-            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)";
+    $sql = "INSERT INTO families (head_of_family, contact, address, package_type, location, tazmin, visa_status, province, district, tenant_id, branch_id, created_by)
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)";
 
     $stmt = $pdo->prepare($sql);
     $stmt->bindParam(1, $head_of_family, PDO::PARAM_STR);
@@ -55,6 +55,7 @@ try {
     $stmt->bindParam(9, $district, PDO::PARAM_STR);
     $stmt->bindParam(10, $tenant_id, PDO::PARAM_INT);
     $stmt->bindParam(11, $branch_id, PDO::PARAM_INT);
+    $stmt->bindParam(12, $user_id, PDO::PARAM_INT);
 
     if ($stmt->execute()) {
         echo json_encode(["success" => true, "message" => "Family added successfully"]);

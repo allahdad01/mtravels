@@ -5,17 +5,14 @@
  */
 
 require_once __DIR__ . '/../../includes/db.php';
-require_once __DIR__ . '/../../includes/conn.php';
 
 class WhatsAppManager {
     private $pdo;
-    private $conn;
     private $tenant_id;
     private $settings;
     
     public function __construct($tenant_id = null) {
         $this->pdo = $GLOBALS['pdo'];
-        $this->conn = $GLOBALS['conection_db'];
         $this->tenant_id = $tenant_id ?: $_SESSION['tenant_id'] ?? null;
         $this->loadSettings();
     }

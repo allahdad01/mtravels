@@ -29,12 +29,16 @@ function deleteRefund(refundId) {
         confirmButtonText: 'Yes, delete it!'
     }).then((result) => {
         if (result.isConfirmed) {
+            // Get CSRF token from meta tag or hidden input
+            const csrfToken = document.querySelector('meta[name="csrf-token"]')?.content || 
+                             document.querySelector('input[name="csrf_token"]')?.value;
+            
             fetch('../api/visa/delete_visa_refund.php', {
                 method: 'POST',
                 headers: {
                     'Content-Type': 'application/json',
                 },
-                body: JSON.stringify({ id: refundId })
+                body: JSON.stringify({ id: refundId, csrf_token: csrfToken })
             })
             .then(response => response.json())
             .then(data => {

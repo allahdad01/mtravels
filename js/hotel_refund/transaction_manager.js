@@ -634,6 +634,10 @@ const transactionManager = {
 
         const refundId = $('#refund_id').val();
 
+        // Get CSRF token from meta tag or hidden input
+        const csrfToken = document.querySelector('meta[name="csrf-token"]')?.content || 
+                         document.querySelector('input[name="csrf_token"]')?.value;
+
         // Send as form data instead of JSON
         $.ajax({
             url: '../api/hotel/delete_hotel_refund_transactions.php',
@@ -641,7 +645,8 @@ const transactionManager = {
             data: {
                 transaction_id: transactionId,
                 refund_id: refundId,
-                amount: amount
+                amount: amount,
+                csrf_token: csrfToken
             },
             success: function(response) {
                 try {

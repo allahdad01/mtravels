@@ -152,10 +152,14 @@ function deleteBooking(id) {
     }
 
     if (confirm('Are you sure you want to delete this booking?')) {
+        // Get CSRF token from meta tag or hidden input
+        const csrfToken = document.querySelector('meta[name="csrf-token"]')?.content || 
+                         document.querySelector('input[name="csrf_token"]')?.value;
+        
         $.ajax({
             url: '../api/hotel/delete_hotel_booking.php',
             type: 'POST',
-            data: JSON.stringify({ id: id }),
+            data: JSON.stringify({ id: id, csrf_token: csrfToken }),
             contentType: 'application/json',
             dataType: 'json',
             success: function(response) {

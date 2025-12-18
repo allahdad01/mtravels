@@ -516,13 +516,18 @@ $(document).ready(function() {
         if (confirm("Are you sure you want to delete this transaction?")) {
             var id = $(this).data('id');
             var paymentId = $('#transaction_payment_id').val();
+
+            // Get CSRF token from meta tag or hidden input
+            const csrfToken = document.querySelector('meta[name="csrf-token"]')?.content || 
+                             document.querySelector('input[name="csrf_token"]')?.value;
             
             $.ajax({
                 url: '../api/additional_payment/delete_additional_payment_transaction.php',
                 type: 'POST',
                 data: { 
                     transaction_id: id,
-                    payment_id: paymentId
+                    payment_id: paymentId,
+                    csrf_token: csrfToken
                 },
                 success: function(response) {
                     try {
@@ -624,12 +629,17 @@ document.addEventListener('DOMContentLoaded', function() {
     $('.delete-payment').click(function() {
         var id = $(this).data('id');
         if (confirm("Are you sure you want to delete this payment?")) {
+            // Get CSRF token from meta tag or hidden input
+            const csrfToken = document.querySelector('meta[name="csrf-token"]')?.content || 
+                             document.querySelector('input[name="csrf_token"]')?.value;
+            
             $.ajax({
                 url: '../api/additional_payment/delete_additional_payment.php',
                 type: 'POST',
                 data: {
                     action: 'delete',
-                    id: id
+                    id: id,
+                    csrf_token: csrfToken
                 },
                 dataType: 'json',
                 success: function(response) {

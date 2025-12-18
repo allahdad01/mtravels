@@ -2097,3 +2097,6 @@ document.addEventListener('DOMContentLoaded', function() {
 </script>
 <?php endif; ?>
 
+<!-- Include Floating Tasks Widget -->
+<?php include_once 'floating_tasks.php'; ?>
+

@@ -112,8 +112,8 @@ if (
             $insertDateChangeStmt = $pdo->prepare("INSERT INTO date_change_tickets
                 (tenant_id, supplier, sold_to, paid_to, ticket_id, title, passenger_name, pnr, origin, destination, phone, airline, gender,
                 issue_date, departure_date, currency, base, sold, supplier_penalty, service_penalty,
-                status, remarks, created_at, updated_at, created_by)
-                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, NOW(), NOW(), ?)");
+                status, remarks, created_at, updated_at, created_by, branch_id)
+                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, NOW(), NOW(), ?, ?)");
 
             $insertDateChangeStmt->bindParam(1, $tenant_id, PDO::PARAM_INT);
             $insertDateChangeStmt->bindParam(2, $supplierId, PDO::PARAM_INT);
@@ -135,9 +135,13 @@ if (
             $insertDateChangeStmt->bindParam(18, $sold, PDO::PARAM_STR);
             $insertDateChangeStmt->bindParam(19, $supplierPenalty, PDO::PARAM_STR);
             $insertDateChangeStmt->bindParam(20, $servicePenalty, PDO::PARAM_STR);
-            $insertDateChangeStmt->bindParam(21, $status, PDO::PARAM_STR);
+            // Validate status is one of the allowed enum values
+            $allowedStatuses = ['Date Changed', 'Refunded', 'Booked'];
+            $validStatus = (in_array($status, $allowedStatuses)) ? $status : 'Date Changed';
+            $insertDateChangeStmt->bindParam(21, $validStatus, PDO::PARAM_STR);
             $insertDateChangeStmt->bindParam(22, $description, PDO::PARAM_STR);
             $insertDateChangeStmt->bindParam(23, $user_id, PDO::PARAM_INT);
+            $insertDateChangeStmt->bindParam(24, $branch_id, PDO::PARAM_INT);
 
             if (!$insertDateChangeStmt->execute()) {
                 throw new Exception("Failed to insert date change record.");

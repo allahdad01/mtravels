@@ -20,7 +20,7 @@ if (!verify_csrf_token()) {
 }
 
 // Include WhatsApp Manager for notifications
-require_once '../api/whatsapp/WhatsAppManager.php';
+require_once '../../api/whatsapp/WhatsAppManager.php';
 
 $user_id = $_SESSION['user_id'] ?? 0;
 
@@ -59,7 +59,7 @@ $sold = isset($_POST['sold']) ? DbSecurity::validateInput($_POST['sold'], 'float
 $base = isset($_POST['base']) ? DbSecurity::validateInput($_POST['base'], 'float', ['min' => 0]) : null;
 
 // Validate issuedDate
-$issuedDate = isset($_POST['issuedDate']) ? DbSecurity::validateInput($_POST['issuedDate'], 'date') : null;
+$issuedDate = !empty($_POST['issuedDate']) ? DbSecurity::validateInput($_POST['issuedDate'], 'date') : null;
 
 // Validate appliedDate
 $appliedDate = isset($_POST['appliedDate']) ? DbSecurity::validateInput($_POST['appliedDate'], 'date') : null;
@@ -110,9 +110,9 @@ $supplier = isset($_POST['supplier']) ? DbSecurity::validateInput($_POST['suppli
     $passportNumber = $_POST['passNum'];
     $country = $_POST['country'];
     $visaType = $_POST['visaType'];
-   $receiveDate = $_POST['receiveDate'] ?? null;
-    $appliedDate = $_POST['appliedDate'] ?? null;
-    $issuedDate = $_POST['issuedDate'] ?? null;
+    $receiveDate = !empty($_POST['receiveDate']) ? $_POST['receiveDate'] : null;
+    $appliedDate = !empty($_POST['appliedDate']) ? $_POST['appliedDate'] : null;
+    $issuedDate = !empty($_POST['issuedDate']) ? $_POST['issuedDate'] : null;
     $base = floatval($_POST['base']);
     $sold = floatval($_POST['sold']);
     $currency = $_POST['curr'];
@@ -127,7 +127,7 @@ $supplier = isset($_POST['supplier']) ? DbSecurity::validateInput($_POST['suppli
     $pdo->beginTransaction();
 
     // Check if supplier is internal or external
-    $stmtSupplier = $pdo->prepare("SELECT name, supplier_type,balance FROM suppliers WHERE id = ? AND tenant_id = ? AND branch_id = ?");
+    $stmtSupplier = $pdo->prepare("SELECT name, supplier_type, balance FROM suppliers WHERE id = ? AND tenant_id = ? AND branch_id = ?");
     $stmtSupplier->bindParam(1, $supplier, PDO::PARAM_INT);
     $stmtSupplier->bindParam(2, $tenant_id, PDO::PARAM_INT);
     $stmtSupplier->bindParam(3, $branch_id, PDO::PARAM_INT);
@@ -225,15 +225,19 @@ $supplier = isset($_POST['supplier']) ? DbSecurity::validateInput($_POST['suppli
         INSERT INTO supplier_transactions (
             supplier_id, transaction_type, amount, transaction_of,
             reference_id, remarks, transaction_date, balance, tenant_id, branch_id
-        ) VALUES (?, 'Debit', ?, 'visa_sale', ?, ?, NOW(), ?, ?, ?)
+        ) VALUES (?, ?, ?, ?, ?, ?, NOW(), ?, ?, ?)
     ");
+    $transaction_type = 'Debit';
+    $transaction_of = 'visa_sale';
     $stmtSupplierTrans->bindParam(1, $supplier, PDO::PARAM_INT);
-    $stmtSupplierTrans->bindParam(2, $base, PDO::PARAM_STR);
-    $stmtSupplierTrans->bindParam(3, $visaApplicationId, PDO::PARAM_INT);
-    $stmtSupplierTrans->bindParam(4, $description, PDO::PARAM_STR);
-    $stmtSupplierTrans->bindParam(5, $newBalance, PDO::PARAM_STR);
-    $stmtSupplierTrans->bindParam(6, $tenant_id, PDO::PARAM_INT);
-    $stmtSupplierTrans->bindParam(7, $branch_id, PDO::PARAM_INT);
+    $stmtSupplierTrans->bindParam(2, $transaction_type, PDO::PARAM_STR);
+    $stmtSupplierTrans->bindParam(3, $base, PDO::PARAM_STR);
+    $stmtSupplierTrans->bindParam(4, $transaction_of, PDO::PARAM_STR);
+    $stmtSupplierTrans->bindParam(5, $visaApplicationId, PDO::PARAM_INT);
+    $stmtSupplierTrans->bindParam(6, $description, PDO::PARAM_STR);
+    $stmtSupplierTrans->bindParam(7, $newBalance, PDO::PARAM_STR);
+    $stmtSupplierTrans->bindParam(8, $tenant_id, PDO::PARAM_INT);
+    $stmtSupplierTrans->bindParam(9, $branch_id, PDO::PARAM_INT);
 
     if (!$stmtSupplierTrans->execute()) {
         throw new PDOException('Failed to create supplier transaction: ' . $stmtSupplierTrans->errorInfo()[2]);
@@ -283,38 +287,50 @@ $supplier = isset($_POST['supplier']) ? DbSecurity::validateInput($_POST['suppli
         }
 
         // Insert into client_transactions with balance
-        $stmtTransaction = $pdo->prepare("
-            INSERT INTO client_transactions (
-                client_id, type, currency, amount, balance, transaction_of, description, reference_id, created_at, tenant_id, branch_id
-            ) VALUES (?, 'Debit', ?, ?, ?, 'visa_sale', ?, ?, NOW(), ?, ?)
-        ");
-        $description = "Visa booking for $applicantName";
-        $stmtTransaction->bindParam(1, $soldTo, PDO::PARAM_INT);
-        $stmtTransaction->bindParam(2, $currency, PDO::PARAM_STR);
-        $stmtTransaction->bindParam(3, $sold, PDO::PARAM_STR);
-        $stmtTransaction->bindParam(4, $newBalance, PDO::PARAM_STR);
-        $stmtTransaction->bindParam(5, $description, PDO::PARAM_STR);
-        $stmtTransaction->bindParam(6, $visaApplicationId, PDO::PARAM_INT);
-        $stmtTransaction->bindParam(7, $tenant_id, PDO::PARAM_INT);
-        $stmtTransaction->bindParam(8, $branch_id, PDO::PARAM_INT);
+         $stmtTransaction = $pdo->prepare("
+             INSERT INTO client_transactions (
+                 client_id, type, currency, amount, balance, transaction_of, description, reference_id, created_at, tenant_id, branch_id
+             ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, NOW(), ?, ?)
+         ");
+         $description = "Visa booking for $applicantName";
+         $type = 'Debit';
+         $transaction_of = 'visa_sale';
+         $stmtTransaction->bindParam(1, $soldTo, PDO::PARAM_INT);
+         $stmtTransaction->bindParam(2, $type, PDO::PARAM_STR);
+         $stmtTransaction->bindParam(3, $currency, PDO::PARAM_STR);
+         $stmtTransaction->bindParam(4, $sold, PDO::PARAM_STR);
+         $stmtTransaction->bindParam(5, $newBalance, PDO::PARAM_STR);
+         $stmtTransaction->bindParam(6, $transaction_of, PDO::PARAM_STR);
+         $stmtTransaction->bindParam(7, $description, PDO::PARAM_STR);
+         $stmtTransaction->bindParam(8, $visaApplicationId, PDO::PARAM_INT);
+         $stmtTransaction->bindParam(9, $tenant_id, PDO::PARAM_INT);
+         $stmtTransaction->bindParam(10, $branch_id, PDO::PARAM_INT);
         if (!$stmtTransaction->execute()) {
             throw new PDOException('Failed to create client transaction: ' . $stmtTransaction->errorInfo()[2]);
         }
     } else {
-        // For non-regular clients, insert transaction without affecting balance
-        $stmtTransaction = $pdo->prepare("
-            INSERT INTO client_transactions (
-                client_id, type, currency, amount, transaction_of, description, reference_id, created_at, tenant_id, branch_id
-            ) VALUES (?, 'Debit', ?, ?, 'visa_sale', ?, ?, NOW(), ?, ?)
-        ");
-        $description = "Visa booking for $applicantName";
-        $stmtTransaction->bindParam(1, $soldTo, PDO::PARAM_INT);
-        $stmtTransaction->bindParam(2, $currency, PDO::PARAM_STR);
-        $stmtTransaction->bindParam(3, $sold, PDO::PARAM_STR);
-        $stmtTransaction->bindParam(4, $description, PDO::PARAM_STR);
-        $stmtTransaction->bindParam(5, $visaApplicationId, PDO::PARAM_INT);
-        $stmtTransaction->bindParam(6, $tenant_id, PDO::PARAM_INT);
-        $stmtTransaction->bindParam(7, $branch_id, PDO::PARAM_INT);
+         // For non-regular clients, insert transaction without affecting balance
+         // Get current balance based on currency
+         $currentBalance = ($currency === 'USD') ? $usdBalance : $afsBalance;
+         
+         $stmtTransaction = $pdo->prepare("
+             INSERT INTO client_transactions (
+                 client_id, type, currency, amount, balance, transaction_of, description, reference_id, created_at, tenant_id, branch_id
+             ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, NOW(), ?, ?)
+         ");
+         $description = "Visa booking for $applicantName";
+         $type = 'Debit';
+         $transaction_of = 'visa_sale';
+         $stmtTransaction->bindParam(1, $soldTo, PDO::PARAM_INT);
+         $stmtTransaction->bindParam(2, $type, PDO::PARAM_STR);
+         $stmtTransaction->bindParam(3, $currency, PDO::PARAM_STR);
+         $stmtTransaction->bindParam(4, $sold, PDO::PARAM_STR);
+         $stmtTransaction->bindParam(5, $currentBalance, PDO::PARAM_STR);
+         $stmtTransaction->bindParam(6, $transaction_of, PDO::PARAM_STR);
+         $stmtTransaction->bindParam(7, $description, PDO::PARAM_STR);
+         $stmtTransaction->bindParam(8, $visaApplicationId, PDO::PARAM_INT);
+         $stmtTransaction->bindParam(9, $tenant_id, PDO::PARAM_INT);
+         $stmtTransaction->bindParam(10, $branch_id, PDO::PARAM_INT);
         if (!$stmtTransaction->execute()) {
             throw new PDOException('Failed to create client transaction: ' . $stmtTransaction->errorInfo()[2]);
         }
@@ -345,20 +361,24 @@ $supplier = isset($_POST['supplier']) ? DbSecurity::validateInput($_POST['suppli
     $stmtLog = $pdo->prepare("
         INSERT INTO activity_log
         (user_id, action, table_name, record_id, old_values, new_values, ip_address, user_agent, created_at, tenant_id, branch_id)
-        VALUES (?, 'add', 'visa_applications', ?, ?, ?, ?, ?, NOW(), ?, ?)
+        VALUES (?, ?, ?, ?, ?, ?, ?, ?, NOW(), ?, ?)
     ");
+    $action = 'add';
+    $table_name = 'visa_applications';
     $stmtLog->bindParam(1, $user_id, PDO::PARAM_INT);
-    $stmtLog->bindParam(2, $visaApplicationId, PDO::PARAM_INT);
-    $stmtLog->bindParam(3, $old_values, PDO::PARAM_STR);
-    $stmtLog->bindParam(4, $new_values, PDO::PARAM_STR);
-    $stmtLog->bindParam(5, $ip_address, PDO::PARAM_STR);
-    $stmtLog->bindParam(6, $user_agent, PDO::PARAM_STR);
-    $stmtLog->bindParam(7, $tenant_id, PDO::PARAM_INT);
-    $stmtLog->bindParam(8, $branch_id, PDO::PARAM_INT);
+    $stmtLog->bindParam(2, $action, PDO::PARAM_STR);
+    $stmtLog->bindParam(3, $table_name, PDO::PARAM_STR);
+    $stmtLog->bindParam(4, $visaApplicationId, PDO::PARAM_INT);
+    $stmtLog->bindParam(5, $old_values, PDO::PARAM_STR);
+    $stmtLog->bindParam(6, $new_values, PDO::PARAM_STR);
+    $stmtLog->bindParam(7, $ip_address, PDO::PARAM_STR);
+    $stmtLog->bindParam(8, $user_agent, PDO::PARAM_STR);
+    $stmtLog->bindParam(9, $tenant_id, PDO::PARAM_INT);
+    $stmtLog->bindParam(10, $branch_id, PDO::PARAM_INT);
     $stmtLog->execute();
 
     // Send email notification to client
-    require_once '../includes/functions.php';
+    require_once '../../includes/functions.php';
 
     // Get client email and name
     $stmt_client_email = $pdo->prepare("SELECT email, name FROM clients WHERE id = ? AND tenant_id = ? AND branch_id = ?");
@@ -371,7 +391,7 @@ $supplier = isset($_POST['supplier']) ? DbSecurity::validateInput($_POST['suppli
     $client_name = $client_email_data['name'];
 
     // Send email notification to client
-    require_once '../includes/functions.php';
+    require_once '../../includes/functions.php';
 
     if (!empty($client_email)) {
         sendVisaNotification(
