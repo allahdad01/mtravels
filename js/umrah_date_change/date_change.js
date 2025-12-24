@@ -68,7 +68,7 @@ function renderDateChangeRequests(requests) {
                 </td>
                 <td>${priceChange}</td>
                 <td>
-                    <span class="badge status-badge status-${request.status}">${request.status}</span>
+                    <span class="status-badge status-${request.status}">${request.status}</span>
                 </td>
                 <td>
                     <small>${new Date(request.created_at).toLocaleDateString()}</small>

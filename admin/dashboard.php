@@ -181,7 +181,7 @@ if (!file_exists($imagePath)) {
                                                 <div class="col-lg-4">
                                                     <div class="d-flex align-items-center justify-content-between mb-3">
                                                         <h6 class="text-muted mb-0"><?= __('wealth_distribution') ?></h6>
-                                                        <span class="badge badge-pill badge-light" id="currentDateBadge"></span>
+                                                        <span class="badge-pill badge-light" id="currentDateBadge"></span>
                                                     </div>
                                                     <div class="wealth-distribution-summary p-3 rounded">
                                                         <div class="d-flex flex-column flex-sm-row justify-content-between mb-3">

@@ -31,7 +31,7 @@ $(document).ready(function() {
     // If filter is active, show a reset button at the top
     if (urlStartDate && urlEndDate) {
         // Add a visible indicator that a filter is active
-        $('.card-header h5').append(' <span class="badge badge-primary">Filtered</span>');
+        $('.card-header h5').append(' <span class="badge-primary">Filtered</span>');
     }
     
     // Expense Filter Section Toggle

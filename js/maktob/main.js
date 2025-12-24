@@ -40,9 +40,9 @@ jQuery(document).ready(function($) {
         
         // Set the status indicator with translation
         if (status === 'sent') {
-            $('#maktobStatus').html('<span class="badge badge-success"><i class="feather icon-check mr-1"></i>Sent</span>');
+            $('#maktobStatus').html('<span class="badge-success"><i class="feather icon-check mr-1"></i>Sent</span>');
         } else {
-            $('#maktobStatus').html('<span class="badge badge-warning"><i class="feather icon-clock mr-1"></i>Draft</span>');
+            $('#maktobStatus').html('<span class="badge-warning"><i class="feather icon-clock mr-1"></i>Draft</span>');
         }
 
         // Display file links if available

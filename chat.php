@@ -11,11 +11,25 @@ if (empty($_SESSION['csrf_token'])) {
     $_SESSION['csrf_token'] = bin2hex(random_bytes(32));
 }
 $csrfToken = $_SESSION['csrf_token'];
+
+// Database connection
+require_once('includes/db.php');
+$tenant_id = $_SESSION['tenant_id'];
+// Fetch settings data
+try {
+    $settingStmt = $pdo->prepare("SELECT * FROM settings WHERE tenant_id = ?");
+    $settingStmt->execute([$tenant_id]);
+    $settings = $settingStmt->fetch(PDO::FETCH_ASSOC);
+} catch (PDOException $e) {
+    error_log("Settings Error: " . $e->getMessage());
+}
 ?>
 <!DOCTYPE html>
 <html lang="en">
 <head>
     <meta charset="utf-8">
+        <!-- Favicon icon -->
+        <link rel="icon" href="uploads/logo/<?= htmlspecialchars($settings['logo']) ?>" type="image/x-icon">
     <meta name="viewport" content="width=device-width, initial-scale=1">
     <title>Chat - Messaging</title>
     

@@ -123,7 +123,7 @@ document.addEventListener('DOMContentLoaded', function() {
                     </div>
                 </td>
                 <td>
-                    <span class="badge badge-${client.client_type.toLowerCase()}">
+                    <span class="badge-${client.client_type.toLowerCase()}">
                         ${displayType}
                     </span>
                 </td>

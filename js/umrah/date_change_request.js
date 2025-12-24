@@ -130,10 +130,10 @@ function loadDateChangeHistory(bookingId) {
 
                     let statusBadge = '';
                     switch(item.status) {
-                        case 'Pending': statusBadge = '<span class="badge badge-warning">Pending</span>'; break;
-                        case 'Approved': statusBadge = '<span class="badge badge-info">Approved</span>'; break;
-                        case 'Rejected': statusBadge = '<span class="badge badge-danger">Rejected</span>'; break;
-                        case 'Completed': statusBadge = '<span class="badge badge-success">Completed</span>'; break;
+                        case 'Pending': statusBadge = '<span class="badge-warning">Pending</span>'; break;
+                        case 'Approved': statusBadge = '<span class="badge-info">Approved</span>'; break;
+                        case 'Rejected': statusBadge = '<span class="badge-danger">Rejected</span>'; break;
+                        case 'Completed': statusBadge = '<span class="badge-success">Completed</span>'; break;
                     }
 
                     historyHtml += `<tr>

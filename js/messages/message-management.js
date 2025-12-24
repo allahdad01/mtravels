@@ -97,9 +97,9 @@ document.addEventListener('DOMContentLoaded', function() {
         
         // Set status badge
         if (readStatus === 'read') {
-            modal.find('#messageStatus').html('<span class="badge badge-success"><i class="feather icon-check mr-1"></i> ' + readText + '</span>');
+            modal.find('#messageStatus').html('<span class="badge-success"><i class="feather icon-check mr-1"></i> ' + readText + '</span>');
         } else {
-            modal.find('#messageStatus').html('<span class="badge badge-warning"><i class="feather icon-clock mr-1"></i> ' + unreadText + '</span>');
+            modal.find('#messageStatus').html('<span class="badge-warning"><i class="feather icon-clock mr-1"></i> ' + unreadText + '</span>');
         }
         
         // Show modal with fade animation

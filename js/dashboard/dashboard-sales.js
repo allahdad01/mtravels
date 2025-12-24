@@ -117,7 +117,7 @@ $(document).ready(function() {
                 transactionsHtml += `
                     <tr class="${clickableClass}" data-source="${item.source}" data-type="${item.type}">
                         <td>
-                            <span class="badge badge-${getBadgeClass(item.source)}">${item.source}</span>
+                            <span class="badge-${getBadgeClass(item.source)}">${item.source}</span>
                             <small class="ml-2 text-primary"><i class="feather icon-external-link"></i> View Details</small>
                         </td>
                         <td>$${usdFormatted}</td>

@@ -48,7 +48,7 @@ function showBankLetterModal(userId) {
                         item.innerHTML = `
                             <input type="checkbox" class="mr-2" name="bank_member_ids" value="${m.booking_id}" ${m.is_head ? 'checked' : ''}>
                             <span class="flex-grow-1">${m.name || 'Unknown'}${m.passport_number ? ` — ${m.passport_number}` : ''}</span>
-                            ${m.is_head ? '<span class="badge badge-info ml-2">Head</span>' : ''}
+                            ${m.is_head ? '<span class="badge-info ml-2">Head</span>' : ''}
                         `;
                         list.appendChild(item);
                     });
