@@ -508,7 +508,7 @@ include '../api/creditor/creditor_handler.php';
                                         $dateTime = new DateTime($transaction['created_at']);
                                         echo '<td>' . $dateTime->format('Y-m-d H:i:s') . '</td>';
                                         echo '<td>' . number_format($transaction['amount'], 2) . ' ' . $transaction['currency'] . '</td>';
-                                        echo '<td>' . ($transaction['transaction_type'] == 'debit' ? '<span class="badge badge-success">' . __("payment") . '</span>' : '<span class="badge badge-danger">' . __("credit") . '</span>') . '</td>';
+                                        echo '<td>' . ($transaction['transaction_type'] == 'debit' ? '<span class="badge-success">' . __("payment") . '</span>' : '<span class="badge-danger">' . __("credit") . '</span>') . '</td>';
                                         echo '<td>' . htmlspecialchars($transaction['description']) . '</td>';
                                         echo '<td>' . htmlspecialchars($transaction['reference_number']) . '</td>';
                                         echo '<td>';

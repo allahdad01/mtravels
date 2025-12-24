@@ -209,22 +209,22 @@ var errorMessage = <?= $error_message ? json_encode($error_message) : 'null' ?>;
                                         <td><?php echo htmlspecialchars($row['subject']); ?></td>
                                         <td>
                                             <?php if ($row['recipient_type'] === 'individual'): ?>
-                                                <span class="badge badge-info">
+                                                <span class="badge-info">
                                                     <?php echo htmlspecialchars($row['recipient_name']); ?>
                                                 </span>
                                             <?php else: ?>
-                                                <span class="badge badge-primary">
+                                                <span class="badge-primary">
                                                     <?php echo ucfirst($row['recipient_type']); ?>
                                                 </span>
                                             <?php endif; ?>
                                         </td>
                                         <td>
                                             <?php if (isset($row['status']) && $row['status'] === 'read'): ?>
-                                                <span class="badge badge-success">
+                                                <span class="badge-success">
                                                     <i class="feather icon-check mr-1"></i> <?= __("read") ?>
                                                 </span>
                                             <?php else: ?>
-                                                <span class="badge badge-warning">
+                                                <span class="badge-warning">
                                                     <i class="feather icon-clock mr-1"></i> <?= __("unread") ?>
                                                 </span>
                                             <?php endif; ?>

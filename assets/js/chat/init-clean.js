@@ -22,14 +22,14 @@ async function initChat() {
          // Initialize
          await manager.init();
          ui.init(manager);
-         ui.renderContacts(manager.contacts);
+         ui.renderContacts(manager.contacts); // Render with online status after full init
          voiceUI.init();
          voiceAdvanced.init();
 
          // Store in window
          window.chatApp = { manager, ui, api, voiceRecorder, voiceUI, voiceAdvanced };
 
-         console.log(`[Chat] Ready. ${manager.contacts.length} contacts loaded.`);
+         console.log(`[Chat] Ready. ${manager.contacts.length} contacts loaded. Online users: ${manager.onlineUsers.size}`);
 
          // Setup listeners
          setupListeners(manager, ui, api, voiceUI);

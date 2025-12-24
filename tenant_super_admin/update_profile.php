@@ -12,6 +12,7 @@ if (!isset($_SESSION['user_id'])) {
 }
 
 require_once('../includes/db.php');
+require_once('db_security.php');
 
 try {
     $user_id = $_SESSION['user_id'];

@@ -194,7 +194,7 @@ if (isset($_SESSION['tenant_id'])) {
                                             </div>
                                             <div class="col-md-4 text-center">
                                                 <?php if ($subscription['status'] !== 'active'): ?>
-                                                    <form method="post" action="admin/process_subscription_payment.php">
+                                                    <form method="post" action="tenant_super_admin/process_subscription_payment.php">
                                                         <input type="hidden" name="subscription_id" value="<?php echo $subscription['id']; ?>">
                                                         <input type="hidden" name="amount" value="<?php echo $subscription['amount']; ?>">
                                                         <input type="hidden" name="currency" value="<?php echo $subscription['currency']; ?>">

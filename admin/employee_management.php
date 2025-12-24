@@ -205,14 +205,14 @@ include '../includes/header.php';
                                                                     </td>
                                                                     <td><?php echo htmlspecialchars($employee['email']); ?></td>
                                                                     <td>
-                                                                        <span class="badge badge-role badge-<?php echo strtolower($employee['role']); ?>">
+                                                                        <span class="badge-role badge-<?php echo strtolower($employee['role']); ?>">
                                                                             <?php echo ucfirst(htmlspecialchars($employee['role'])); ?>
                                                                         </span>
                                                                     </td>
                                                                     <td><?php echo htmlspecialchars($employee['phone'] ?? 'N/A'); ?></td>
                                                                     <td><?php echo date('M d, Y', strtotime($employee['created_at'])); ?></td>
                                                                     <td>
-                                                                        <span class="badge badge-success">
+                                                                        <span class="badge-success">
                                                                             <?php echo __('active'); ?>
                                                                         </span>
                                                                     </td>
@@ -292,14 +292,14 @@ include '../includes/header.php';
                                                                     </td>
                                                                     <td><?php echo htmlspecialchars($employee['email']); ?></td>
                                                                     <td>
-                                                                        <span class="badge badge-role badge-<?php echo strtolower($employee['role']); ?>">
+                                                                        <span class="badge-role badge-<?php echo strtolower($employee['role']); ?>">
                                                                             <?php echo ucfirst(htmlspecialchars($employee['role'])); ?>
                                                                         </span>
                                                                     </td>
                                                                     <td><?php echo htmlspecialchars($employee['phone'] ?? 'N/A'); ?></td>
                                                                     <td><?php echo date('M d, Y', strtotime($employee['created_at'])); ?></td>
                                                                     <td>
-                                                                        <span class="badge badge-danger">
+                                                                        <span class="badge-danger">
                                                                             <?php echo __('fired'); ?>
                                                                         </span>
                                                                     </td>

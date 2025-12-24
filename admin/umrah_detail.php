@@ -355,7 +355,7 @@ include '../includes/header.php';
                                                 <tr>
                                                     <td><?php echo date('Y-m-d', strtotime($transaction['transaction_date'])); ?></td>
                                                     <td>
-                                                        <span class="badge badge-info"><?= __('umrah') ?></span>
+                                                        <span class="badge-info"><?= __('umrah') ?></span>
                                                     </td>
                                                     <td><?php echo ucfirst(strtolower($transaction['type'])); ?></td>
                                                     <td>
@@ -393,7 +393,7 @@ include '../includes/header.php';
                                                 <tr>
                                                     <td><?php echo date('Y-m-d', strtotime($transaction['transaction_date'])); ?></td>
                                                     <td>
-                                                        <span class="badge badge-info"><?= __('umrah') ?></span>
+                                                        <span class="badge-info"><?= __('umrah') ?></span>
                                                     </td>
                                                     <td><?php echo ucfirst(strtolower($transaction['type'])); ?></td>
                                                     <td>
@@ -431,7 +431,7 @@ include '../includes/header.php';
                                                 <tr>
                                                     <td><?php echo date('Y-m-d', strtotime($transaction['transaction_date'])); ?></td>
                                                     <td>
-                                                        <span class="badge badge-info"><?= __('umrah') ?></span>
+                                                        <span class="badge-info"><?= __('umrah') ?></span>
                                                     </td>
                                                     <td><?php echo ucfirst(strtolower($transaction['type'])); ?></td>
                                                     <td>
@@ -479,10 +479,10 @@ include '../includes/header.php';
                                                 <tr>
                                                     <td><?php echo date('Y-m-d', strtotime($transaction['transaction_date'])); ?></td>
                                                     <td>
-                                                        <span class="badge badge-info">Umrah</span>
+                                                        <span class="badge-info">Umrah</span>
                                                     </td>
                                                     <td>
-                                                        <span class="badge badge-<?php 
+                                                        <span class="badge-<?php 
                                                             if ($transaction['transaction_type'] == 'Client') echo 'primary';
                                                             elseif ($transaction['transaction_type'] == 'Supplier') echo 'warning';
                                                             elseif ($transaction['transaction_type'] == 'Main Account') echo 'info';

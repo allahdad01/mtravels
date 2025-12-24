@@ -714,7 +714,7 @@ require_once('../includes/db.php');
 <div id="groupTicketFloatingButton" class="position-fixed" style="bottom: 80px; right: 30px; z-index: 1050; display: none;">
     <button type="button" class="btn btn-primary btn-lg shadow" id="showGroupTicketModal" title="<?= __('generate_group_ticket') ?>">
         <i class="feather icon-airplay"></i>
-        <span class="badge badge-light badge-pill position-absolute" style="top: -5px; right: -5px;" id="groupTicketSelectionCount">0</span>
+        <span class="badge-light badge-pill position-absolute" style="top: -5px; right: -5px;" id="groupTicketSelectionCount">0</span>
     </button>
 </div>
     <!-- Required Js -->
@@ -818,7 +818,7 @@ require_once('../includes/db.php');
 <div id="idCardFloatingButton" class="position-fixed" style="bottom: 80px; right: 30px; z-index: 1050; display: none;">
     <button type="button" class="btn btn-dark btn-lg shadow" id="showIdCardModal" title="<?= __('generate_id_cards') ?>">
         <i class="feather icon-credit-card"></i>
-        <span class="badge badge-light badge-pill position-absolute" style="top: -5px; right: -5px;" id="idCardSelectionCount">0</span>
+        <span class="badge-light badge-pill position-absolute" style="top: -5px; right: -5px;" id="idCardSelectionCount">0</span>
     </button>
 </div>
 

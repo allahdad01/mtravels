@@ -141,7 +141,7 @@
                                     </div>
                                     <div class="d-flex justify-content-between mb-3">
                                         <span class="text-muted"><?= __('status') ?></span>
-                                        <span id="refund-status" class="badge badge-pill badge-info">-</span>
+                                        <span id="refund-status" class="badge-pill badge-info">-</span>
                                     </div>
                                     <div class="mt-3">
                                         <h6 class="text-muted mb-2"><?= __('remarks') ?></h6>
@@ -173,7 +173,7 @@
                                     </div>
                                     <div class="d-flex justify-content-between mb-3">
                                         <span class="text-muted"><?= __('status') ?></span>
-                                        <span id="date-change-status" class="badge badge-pill badge-info">-</span>
+                                        <span id="date-change-status" class="badge-pill badge-info">-</span>
                                     </div>
                                     <div class="mt-3">
                                         <h6 class="text-muted mb-2"><?= __('remarks') ?></h6>

@@ -179,22 +179,22 @@ include '../includes/header.php';
                                                                     </div>
                                                                 </td>
                                                                 <td>
-                                                                    <span class="badge badge-primary"><?php echo htmlspecialchars(ucfirst($employee['role'] ?: 'N/A')); ?></span>
+                                                                    <span class="badge-primary"><?php echo htmlspecialchars(ucfirst($employee['role'] ?: 'N/A')); ?></span>
                                                                 </td>
                                                                 <td>
                                                                     <?php echo $employee['hire_date'] ? date('M d, Y', strtotime($employee['hire_date'])) : '-'; ?>
                                                                 </td>
                                                                 <td>
                                                                     <?php if ($employee['fired']): ?>
-                                                                        <span class="badge badge-danger"><?php echo __('terminated'); ?></span>
+                                                                        <span class="badge-danger"><?php echo __('terminated'); ?></span>
                                                                     <?php else: ?>
-                                                                        <span class="badge badge-success"><?php echo __('active'); ?></span>
+                                                                        <span class="badge-success"><?php echo __('active'); ?></span>
                                                                     <?php endif; ?>
                                                                 </td>
                                                                 <td>
                                                                     <?php if ($employee['review_id'] && $employee['review_status'] == 'approved'): ?>
                                                                         <div class="d-flex align-items-center">
-                                                                            <span class="badge badge-success mr-2">
+                                                                            <span class="badge-success mr-2">
                                                                                 <?php echo $employee['overall_rating'] ? $employee['overall_rating'] . '/5' : __('evaluated'); ?>
                                                                             </span>
                                                                             <small class="text-muted">
@@ -202,11 +202,11 @@ include '../includes/header.php';
                                                                             </small>
                                                                         </div>
                                                                     <?php elseif ($employee['review_id'] && $employee['review_status'] == 'draft'): ?>
-                                                                        <span class="badge badge-warning"><?php echo __('draft'); ?></span>
+                                                                        <span class="badge-warning"><?php echo __('draft'); ?></span>
                                                                     <?php elseif ($employee['review_id'] && $employee['review_status'] == 'submitted'): ?>
-                                                                        <span class="badge badge-info"><?php echo __('submitted'); ?></span>
+                                                                        <span class="badge-info"><?php echo __('submitted'); ?></span>
                                                                     <?php else: ?>
-                                                                        <span class="badge badge-secondary"><?php echo __('not_evaluated'); ?></span>
+                                                                        <span class="badge-secondary"><?php echo __('not_evaluated'); ?></span>
                                                                     <?php endif; ?>
                                                                 </td>
                                                                 <td>

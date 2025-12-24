@@ -388,14 +388,14 @@ try {
                                             $row_class = $row['is_fired'] ? 'table-danger fired-user' : '';
                                             $status_badge = $row['status'] == 'active' 
                                                 ? ($row['is_fired'] 
-                                                    ? '<span class="badge badge-danger">Fired</span>' 
-                                                    : '<span class="badge badge-success">Active</span>') 
-                                                : '<span class="badge badge-warning">Inactive</span>';
+                                                    ? '<span class="badge-danger">Fired</span>' 
+                                                    : '<span class="badge-success">Active</span>') 
+                                                : '<span class="badge-warning">Inactive</span>';
                                             
                                             echo "<tr class='" . $row_class . "'>";
                                             echo "<td>" . $row['id'] . "</td>";
                                             echo "<td class='font-weight-bold'>" . $row['employee_name'] . 
-                                                 ($row['is_fired'] ? " <span class='badge badge-danger ml-2'>Fired</span>" : "") . 
+                                                 ($row['is_fired'] ? " <span class='badge-danger ml-2'>Fired</span>" : "") . 
                                                  "</td>";
                                             echo "<td class='text-right'>" . number_format($row['base_salary'], 2) . "</td>";
                                             echo "<td>" . $row['currency'] . "</td>";

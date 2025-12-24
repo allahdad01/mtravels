@@ -167,7 +167,7 @@ include '../includes/header.php';
                                 <i class="feather icon-file-text mr-2"></i>
                                 <?= __('visa_application_information') ?>
                                 <span class="float-right">
-                                    <span class="badge badge-<?php 
+                                    <span class="badge-<?php 
                                         if ($visaData['status'] == 'Approved') echo 'success';
                                         elseif ($visaData['status'] == 'Processing') echo 'warning';
                                         elseif ($visaData['status'] == 'Rejected') echo 'danger';
@@ -266,7 +266,7 @@ include '../includes/header.php';
                                             <tr>
                                                 <th><?= __('status') ?></th>
                                                 <td>
-                                                    <span class="badge badge-<?php 
+                                                    <span class="badge-<?php 
                                                         if ($visaData['status'] == 'Approved') echo 'success';
                                                         elseif ($visaData['status'] == 'Processing') echo 'warning';
                                                         elseif ($visaData['status'] == 'Rejected') echo 'danger';
@@ -380,7 +380,7 @@ include '../includes/header.php';
                                                 <tr>
                                                     <td><?php echo date('Y-m-d', strtotime($transaction['transaction_date'])); ?></td>
                                                     <td>
-                                                        <span class="badge badge-info">Visa</span>
+                                                        <span class="badge-info">Visa</span>
                                                     </td>
                                                     <td><?php echo isset($transaction['type']) ? ucfirst(strtolower($transaction['type'])) : '—'; ?></td>
                                                     <td>
@@ -424,7 +424,7 @@ include '../includes/header.php';
                                                 <tr>
                                                     <td><?php echo date('Y-m-d', strtotime($transaction['transaction_date'])); ?></td>
                                                     <td>
-                                                        <span class="badge badge-info">Visa</span>
+                                                        <span class="badge-info">Visa</span>
                                                     </td>
                                                     <td><?php echo isset($transaction['type']) ? ucfirst(strtolower($transaction['type'])) : '—'; ?></td>
                                                     <td>
@@ -468,7 +468,7 @@ include '../includes/header.php';
                                                 <tr>
                                                     <td><?php echo date('Y-m-d', strtotime($transaction['transaction_date'])); ?></td>
                                                     <td>
-                                                        <span class="badge badge-info">Visa</span>
+                                                        <span class="badge-info">Visa</span>
                                                     </td>
                                                     <td><?php echo isset($transaction['type']) ? ucfirst(strtolower($transaction['type'])) : '—'; ?></td>
                                                     <td>
@@ -522,10 +522,10 @@ include '../includes/header.php';
                                                 <tr>
                                                     <td><?php echo date('Y-m-d', strtotime($transaction['transaction_date'])); ?></td>
                                                     <td>
-                                                        <span class="badge badge-info">Visa</span>
+                                                        <span class="badge-info">Visa</span>
                                                     </td>
                                                     <td>
-                                                        <span class="badge badge-<?php 
+                                                        <span class="badge-<?php 
                                                             if ($transaction['transaction_type'] == 'Client') echo 'primary';
                                                             elseif ($transaction['transaction_type'] == 'Supplier') echo 'warning';
                                                             elseif ($transaction['transaction_type'] == 'Main Account') echo 'info';

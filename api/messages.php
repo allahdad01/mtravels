@@ -19,11 +19,12 @@
 
 	$method = $_SERVER['REQUEST_METHOD'];
 
-	// Validate current user and get tenant
-	$stmt = secure_query($pdo, 'SELECT id, tenant_id FROM users WHERE id = ?', [$currentUserId]);
+	// Validate current user and get tenant and role
+	$stmt = secure_query($pdo, 'SELECT id, tenant_id, role FROM users WHERE id = ?', [$currentUserId]);
 	$me = $stmt ? $stmt->fetch() : null;
 	if (!$me) { http_response_code(404); echo json_encode(['error' => 'user_not_found']); exit; }
 	$tenantId = (int)$me['tenant_id'];
+	$userRole = $me['role'];
 
 	function room_from_users($a, $b) {
 		$ids = [$a, $b]; sort($ids, SORT_NUMERIC); return 'u-' . $ids[0] . '-' . $ids[1];
@@ -34,12 +35,13 @@
 		if ($peerId <= 0) { http_response_code(400); echo json_encode(['error' => 'invalid_peer']); exit; }
 		
 		// Validate peer exists and get their info
-		$peerStmt = secure_query($pdo, 'SELECT id, tenant_id, branch_id FROM users WHERE id = ?', [$peerId]);
+		$peerStmt = secure_query($pdo, 'SELECT id, tenant_id, branch_id, role FROM users WHERE id = ?', [$peerId]);
 		$peerUser = $peerStmt ? $peerStmt->fetch(PDO::FETCH_ASSOC) : null;
 		if (!$peerUser) { http_response_code(404); echo json_encode(['error' => 'peer_not_found']); exit; }
 		
 		$peerTenant = (int)$peerUser['tenant_id'];
 		$peerBranch = (int)$peerUser['branch_id'];
+		$peerRole = $peerUser['role'];
 		
 		// Get current user's branch
 		$meStmt = secure_query($pdo, 'SELECT branch_id FROM users WHERE id = ?', [$currentUserId]);
@@ -48,8 +50,8 @@
 		
 		// Validate communication is allowed
 		if ($peerTenant === $tenantId) {
-			// Same tenant: must be same branch (unless cross-branch is explicitly allowed)
-			if ($peerBranch !== $myBranch) {
+			// Same tenant: must be same branch UNLESS either user is tenant_super_admin
+			if ($peerBranch !== $myBranch && $userRole !== 'tenant_super_admin' && $peerRole !== 'tenant_super_admin') {
 				ChatAudit::logFailedAccess($tenantId, $myBranch, $currentUserId, $peerId, 'read_message', 'cross_branch_denied', 'Cross-branch chat not allowed');
 				http_response_code(403);
 				echo json_encode(['error' => 'cross_branch_chat_not_allowed']);
@@ -203,7 +205,7 @@
 		}
 
 		// Validate recipient exists and get their details
-		$recipientStmt = secure_query($pdo, 'SELECT id, tenant_id, branch_id, deleted_at, fired FROM users WHERE id = ?', [$toUserId]);
+		$recipientStmt = secure_query($pdo, 'SELECT id, tenant_id, branch_id, role, deleted_at, fired FROM users WHERE id = ?', [$toUserId]);
 		$recipient = $recipientStmt ? $recipientStmt->fetch(PDO::FETCH_ASSOC) : null;
 		if (!$recipient || $recipient['deleted_at'] !== null || $recipient['fired']) {
 			http_response_code(404);
@@ -213,14 +215,15 @@
 		
 		$recipientTenant = (int)$recipient['tenant_id'];
 		$recipientBranch = (int)$recipient['branch_id'];
+		$recipientRole = $recipient['role'];
 		
 		// Get current user's branch
 		$meStmt = secure_query($pdo, 'SELECT branch_id FROM users WHERE id = ?', [$currentUserId]);
 		$meUser = $meStmt ? $meStmt->fetch(PDO::FETCH_ASSOC) : null;
 		$myBranch = $meUser ? (int)$meUser['branch_id'] : 0;
 		
-		// Validate branch compatibility (same tenant = same branch)
-		if ($recipientTenant === $tenantId && $recipientBranch !== $myBranch) {
+		// Validate branch compatibility (same tenant = same branch UNLESS either user is tenant_super_admin)
+		if ($recipientTenant === $tenantId && $recipientBranch !== $myBranch && $userRole !== 'tenant_super_admin' && $recipientRole !== 'tenant_super_admin') {
 			ChatAudit::logFailedAccess($tenantId, $myBranch, $currentUserId, $toUserId, 'send_message', 'cross_branch_denied', 'Cross-branch chat not allowed');
 			http_response_code(403);
 			echo json_encode(['error' => 'cross_branch_chat_not_allowed']);

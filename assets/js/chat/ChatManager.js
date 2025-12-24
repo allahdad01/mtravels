@@ -26,9 +26,11 @@ class ChatManager {
             await Promise.all([
                 this.loadSettings(),
                 this.loadContacts(),
-                this.loadPreferences(),
-                this.loadUserStatus()
+                this.loadPreferences()
             ]);
+            
+            // Load user status separately to ensure contacts are loaded first
+            await this.loadUserStatus();
             
             // Refresh online status every 30 seconds
             this.statusRefreshInterval = setInterval(() => this.loadUserStatus(), 30000);

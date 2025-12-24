@@ -180,7 +180,7 @@ $totalPages = 0;
                                                                     </td>
                                                                     <td>
                                                                         <div class="d-flex flex-column">
-                                                                            <span class="badge badge-<?= $refund['refund_type'] === 'full' ? 'danger' : 'warning' ?>">
+                                                                            <span class="badge-<?= $refund['refund_type'] === 'full' ? 'danger' : 'warning' ?>">
                                                                                 <?= ucfirst($refund['refund_type']) ?> <?= __('refund') ?>
                                                                             </span>
                                                                             <small class="text-muted mt-1">

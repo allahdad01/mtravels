@@ -574,7 +574,7 @@ if (!file_exists($imagePath)) {
                                         <div class="card-header d-flex justify-content-between align-items-center">
                                             <div class="d-flex align-items-center">
                                                 <h5 class="mb-0 mr-2"><?= __('recent_notifications') ?></h5>
-                                                <span class="badge badge-pill badge-danger notification-count">
+                                                <span class="badge-pill badge-danger notification-count">
                                                     <?php
                                                     try {
                                                         $countStmt = $pdo->prepare("SELECT COUNT(*)
@@ -599,7 +599,7 @@ if (!file_exists($imagePath)) {
                                                 <li class="nav-item">
                                                     <a class="nav-link active" id="unread-tab" data-toggle="tab" href="#unread" role="tab">
                                                         <i class="feather icon-bell mr-1"></i><?= __('unread') ?> 
-                                                        <span class="badge badge-pill badge-danger notification-count ml-1">
+                                                        <span class="badge-pill badge-danger notification-count ml-1">
                                                             <?php 
                                                         try {
                                                             $countStmt = $pdo->prepare("SELECT COUNT(*) 

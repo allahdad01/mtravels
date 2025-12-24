@@ -21,7 +21,7 @@ if (isset($_SESSION['last_activity']) && (time() - $_SESSION['last_activity'] > 
 $_SESSION['last_activity'] = time();
 
 // Check user role
-if (!isset($_SESSION['user_id']) || $_SESSION['role'] !== 'admin') {
+if (!isset($_SESSION['user_id']) || $_SESSION['role'] !== 'tenant_super_admin') {
     error_log("Unauthorized access attempt: " . ($_SESSION['user_id'] ?? 'unknown') . " - IP: " . $_SERVER['REMOTE_ADDR']);
     header('Location: ../login.php');
     exit();
@@ -182,7 +182,7 @@ if (isset($_GET['payment'], $_GET['subscription_id'])) {
 ?>
 
 
-<?php include '../includes/header.php'; ?>
+<?php include 'header.php'; ?>
 
 <style>
 .subscription-card {

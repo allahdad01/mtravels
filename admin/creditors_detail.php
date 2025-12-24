@@ -126,7 +126,7 @@ include '../includes/header.php';
                                 <i class="feather icon-user mr-2"></i>
                                 Creditor Information
                                 <span class="float-right">
-                                    <span class="badge badge-<?php 
+                                    <span class="badge-<?php 
                                         if ($creditorData['status'] == 'Active') echo 'success';
                                         elseif ($creditorData['status'] == 'Inactive') echo 'danger';
                                         else echo 'warning';
@@ -175,7 +175,7 @@ include '../includes/header.php';
                                         <tr>
                                             <th>Status</th>
                                             <td>
-                                                <span class="badge badge-<?php 
+                                                <span class="badge-<?php 
                                                     if ($creditorData['status'] == 'Active') echo 'success';
                                                     elseif ($creditorData['status'] == 'Inactive') echo 'danger';
                                                     else echo 'warning';

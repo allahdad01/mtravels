@@ -585,7 +585,7 @@ include '../includes/header.php';
                                             <?php foreach ($searchResults as $index => $result): ?>
                                                 <tr>
                                                     <td>
-                                                        <span class="badge badge-<?php 
+                                                        <span class="badge-<?php 
                                                         if ($result['record_type'] == 'Ticket') echo 'primary';
                                                         elseif ($result['record_type'] == 'Ticket Reservation') echo 'primary';
                                                         elseif ($result['record_type'] == 'Visa') echo 'danger';
@@ -697,7 +697,7 @@ include '../includes/header.php';
                                                                                 <?php foreach ($result['transactions'] as $transaction): ?>
                                                                                     <tr>
                                                                                         <td>
-                                                                                            <span class="badge badge-<?php 
+                                                                                            <span class="badge-<?php 
                                                                                             if ($transaction['transaction_type'] == 'Main Account') {
                                                                                                 if (strpos(strtolower($transaction['type']), 'debit') !== false) {
                                                                                                     echo 'danger';

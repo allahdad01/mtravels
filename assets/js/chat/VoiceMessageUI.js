@@ -243,36 +243,54 @@ class VoiceMessageUI {
         if (!container) return;
 
         const messageGroup = document.createElement('div');
-        messageGroup.className = `message-group ${isOwn ? 'own' : 'other'}`;
+        messageGroup.className = `message ${isOwn ? 'outgoing' : 'incoming'}`;
         messageGroup.id = `msg-${message.id}`;
+        messageGroup.setAttribute('data-message-id', message.id);
 
         const messageBubble = document.createElement('div');
         messageBubble.className = `message-bubble voice-message ${isOwn ? 'sent' : 'received'}`;
 
         const voiceContent = document.createElement('div');
         voiceContent.className = 'voice-content';
+
+        // Create waveform bars (30 bars for visualization)
+        const waveformBars = Array.from({ length: 30 }, () => {
+            const height = Math.floor(Math.random() * 12) + 4;
+            return `<div class="waveform-bar" style="height: ${height}px;"></div>`;
+        }).join('');
+
+        // Get user initials or avatar
+        const senderInitial = message.sender_name ? message.sender_name.charAt(0).toUpperCase() : 'U';
+        const avatarURL = message.sender_avatar || '';
+
+        // Format the timestamp
+        const timestamp = new Date(message.created_at || Date.now());
+        const timeStr = timestamp.toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit' });
+
         voiceContent.innerHTML = `
             <div class="voice-player">
-                <button class="voice-play-btn" data-message-id="${message.id}">
+                <button class="voice-play-btn" data-message-id="${message.id}" data-url="${message.url || '#'}" title="Play voice message">
                     <i class="fas fa-play"></i>
                 </button>
                 <div class="voice-info">
-                    <span class="voice-duration">${VoiceRecorder.formatTime(message.duration || 0)}</span>
-                    <div class="voice-waveform"></div>
+                    <div class="voice-waveform-container">
+                        ${waveformBars}
+                    </div>
+                    <div class="voice-footer">
+                        <div class="voice-times">
+                            <span class="voice-current-time">0:00</span>
+                            <span class="voice-timestamp">${timeStr}</span>
+                        </div>
+                        <div class="voice-avatar">
+                            ${avatarURL ? `<img src="${avatarURL}" alt="${message.sender_name}">` : senderInitial}
+                        </div>
+                    </div>
                 </div>
             </div>
         `;
 
         messageBubble.appendChild(voiceContent);
         messageGroup.appendChild(messageBubble);
-
-        // Add message info
-        const messageInfo = document.createElement('div');
-        messageInfo.className = 'message-info';
-        messageInfo.innerHTML = `
-            <small class="text-muted">${this.formatMessageTime(message.created_at)}</small>
-        `;
-        messageGroup.appendChild(messageInfo);
 
         container.appendChild(messageGroup);
 
@@ -297,6 +315,7 @@ class VoiceMessageUI {
 
         try {
             const icon = playBtn.querySelector('i');
+            const voicePlayer = playBtn.closest('.voice-player');
 
             // Check if audio is already playing for this button
             let audio = playBtn._voiceAudio;
@@ -309,17 +328,24 @@ class VoiceMessageUI {
                 audio.addEventListener('play', () => {
                     icon.className = 'fas fa-pause';
                     playBtn.classList.add('playing');
-                }, { once: false });
+
+                    // Stop other playing audios
+                    document.querySelectorAll('.voice-play-btn.playing').forEach(btn => {
+                        if (btn !== playBtn && btn._voiceAudio) {
+                            btn._voiceAudio.pause();
+                        }
+                    });
+                });
 
                 audio.addEventListener('pause', () => {
                     icon.className = 'fas fa-play';
                     playBtn.classList.remove('playing');
-                }, { once: false });
+                });
 
                 audio.addEventListener('ended', () => {
                     icon.className = 'fas fa-play';
                     playBtn.classList.remove('playing');
-                }, { once: false });
+                });
 
                 audio.addEventListener('error', (e) => {
                     console.error('[VoiceMessageUI] Audio playback error:', e);
@@ -327,6 +353,28 @@ class VoiceMessageUI {
                     icon.className = 'fas fa-play';
                     playBtn.classList.remove('playing');
                 });
+
+                audio.addEventListener('timeupdate', () => {
+                    this.updateVoiceProgress(voicePlayer, audio);
+                });
+
+                audio.addEventListener('loadedmetadata', () => {
+                    this.updateVoiceProgress(voicePlayer, audio);
+                });
+            }
+
+            // Setup seeking - attach to progress bar
+            const progressBar = voicePlayer?.querySelector('.voice-progress-bar');
+            if (progressBar && !progressBar._seekListener) {
+                progressBar._seekListener = (e) => {
+                    if (!audio.duration) return;
+                    const rect = progressBar.getBoundingClientRect();
+                    const clickX = e.clientX - rect.left;
+                    const percentage = Math.min(Math.max(clickX / rect.width, 0), 1);
+                    audio.currentTime = percentage * audio.duration;
+                };
+                progressBar.addEventListener('click', progressBar._seekListener);
+                progressBar.style.cursor = 'pointer';
             }
 
             // Toggle play/pause
@@ -344,6 +392,44 @@ class VoiceMessageUI {
         } catch (error) {
             console.error('[VoiceMessageUI] Failed to play voice message:', error);
             alert('Failed to play voice message: ' + error.message);
+        }
+    }
+
+    /**
+     * Update voice message progress bar and timer
+     */
+    updateVoiceProgress(voicePlayer, audio) {
+        if (!voicePlayer) {
+            console.warn('[VoiceMessageUI] voicePlayer is null');
+            return;
+        }
+
+        if (!audio || !audio.duration) {
+            console.warn('[VoiceMessageUI] audio or duration is not set');
+            return;
+        }
+
+        const currentTimeEl = voicePlayer.querySelector('.voice-current-time');
+        const waveformBars = voicePlayer.querySelectorAll('.waveform-bar');
+
+        // Update current time display
+        if (currentTimeEl) {
+            const timeStr = VoiceRecorder.formatTime(Math.floor(audio.currentTime));
+            currentTimeEl.textContent = timeStr;
+        }
+
+        // Update waveform bar progress
+        if (waveformBars && waveformBars.length > 0) {
+            const progress = (audio.currentTime / audio.duration);
+            const playedBarsCount = Math.ceil(progress * waveformBars.length);
+
+            waveformBars.forEach((bar, index) => {
+                if (index < playedBarsCount) {
+                    bar.classList.add('played');
+                } else {
+                    bar.classList.remove('played');
+                }
+            });
         }
     }
 

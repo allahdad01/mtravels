@@ -180,7 +180,7 @@ include '../includes/header.php';
                                                                     </td>
                                                                     <td>
                                                                         <div class="d-flex flex-column">
-                                                                            <span class="badge badge-<?= $refund['refund_type'] === 'full' ? 'danger' : 'warning' ?> mb-2">
+                                                                            <span class="badge-<?= $refund['refund_type'] === 'full' ? 'danger' : 'warning' ?> mb-2">
                                                                                 <?= ucfirst($refund['refund_type']) ?> <?= __('refund') ?>
                                                                             </span>
                                                                             <small class="text-muted d-block">

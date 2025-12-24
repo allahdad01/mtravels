@@ -583,12 +583,12 @@ unset($_SESSION['error_message']);
                                                                 ?>
                                                             </td>
                                                             <td>
-                                                                <span class="badge badge-light">
+                                                                <span class="badge-light">
                                                                     <?= htmlspecialchars($transaction['currency']) ?>
                                                                 </span>
                                                             </td>
                                                             <td>
-                                                                <span class="badge badge-<?= $transaction['status'] === 'completed' ? 'success' : ($transaction['status'] === 'pending' ? 'warning' : 'danger') ?>">
+                                                                <span class="badge-<?= $transaction['status'] === 'completed' ? 'success' : ($transaction['status'] === 'pending' ? 'warning' : 'danger') ?>">
                                                                     <?= __($transaction['status']) ?>
                                                                 </span>
                                                             </td>
@@ -778,7 +778,7 @@ unset($_SESSION['error_message']);
                                         <tr>
                                             <th><?= __("type") ?>:</th>
                                             <td>
-                                                <span class="badge badge-${getTypeClass(data.transaction.type)}">
+                                                <span class="badge-${getTypeClass(data.transaction.type)}">
                                                     ${capitalizeFirstLetter(data.transaction.type.replace('_', ' '))}
                                                 </span>
                                             </td>
@@ -798,7 +798,7 @@ unset($_SESSION['error_message']);
                                         <tr>
                                             <th><?= __("status") ?>:</th>
                                             <td>
-                                                <span class="badge badge-${getStatusClass(data.transaction.status)}">
+                                                <span class="badge-${getStatusClass(data.transaction.status)}">
                                                     ${capitalizeFirstLetter(data.transaction.status)}
                                                 </span>
                                             </td>
@@ -834,7 +834,7 @@ unset($_SESSION['error_message']);
                                         <tr>
                                             <th><?= __("wallet_balance") ?>:</th>
                                             <td>
-                                                <span class="badge badge-${parseFloat(data.customer.wallet_balance) >= 0 ? 'success' : 'danger'}">
+                                                <span class="badge-${parseFloat(data.customer.wallet_balance) >= 0 ? 'success' : 'danger'}">
                                                     ${data.transaction.currency} ${parseFloat(data.customer.wallet_balance).toFixed(2)}
                                                 </span>
                                             </td>

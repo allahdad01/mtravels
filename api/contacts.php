@@ -26,7 +26,7 @@ if (!$user) {
 
 $tenantId = (int)$user['tenant_id'];
 $myBranch = (int)$user['branch_id'];
-$isTenantOwner = $user['role'] === 'super_tenant_admin';
+$isTenantOwner = $user['role'] === 'tenant_super_admin';
 
 // Allowed tenants: self + approved peers (both directions) + tenants with approved branch peering
 $peerSql = 'SELECT peer_tenant_id AS peer FROM tenant_peering WHERE tenant_id = ? AND status = "approved" 
@@ -47,27 +47,29 @@ if (count($allowedTenantIds) > 0) {
     if ($isTenantOwner) {
         // Tenant owner sees all users in their tenant (no branch filtering)
         $params = array_merge([$tenantId], [$currentUserId]);
-        $sql = 'SELECT u.id, u.role, u.name, u.tenant_id, u.branch_id, u.profile_pic, s.agency_name 
+        $sql = 'SELECT u.id, u.role, u.name, u.tenant_id, u.branch_id, u.profile_pic, s.agency_name, b.name as branch_name, t.name as tenant_name
                 FROM users u 
                 JOIN tenants t ON u.tenant_id = t.id 
                 LEFT JOIN settings s ON t.id = s.tenant_id 
+                LEFT JOIN branches b ON u.branch_id = b.id
                 WHERE u.tenant_id = ? 
                 AND u.id <> ? 
                 AND u.deleted_at IS NULL 
                 AND u.fired <> 1';
     } else {
-        // Regular users: show same branch in same tenant, or all users from different tenants (with branch peering check)
+        // Regular users: show same branch in same tenant, all tenant admins, or all users from different tenants (with branch peering check)
         $params = array_merge($allowedTenantIds, [$currentUserId, $tenantId, $myBranch, $tenantId]);
-        $sql = 'SELECT u.id, u.role, u.name, u.tenant_id, u.branch_id, u.profile_pic, s.agency_name 
+        $sql = 'SELECT u.id, u.role, u.name, u.tenant_id, u.branch_id, u.profile_pic, s.agency_name, b.name as branch_name, t.name as tenant_name
                 FROM users u 
                 JOIN tenants t ON u.tenant_id = t.id 
                 LEFT JOIN settings s ON t.id = s.tenant_id 
+                LEFT JOIN branches b ON u.branch_id = b.id
                 WHERE u.tenant_id IN (' . $in . ') 
                 AND u.id <> ? 
                 AND u.deleted_at IS NULL 
                 AND u.fired <> 1
                 AND (
-                    (u.tenant_id = ? AND u.branch_id = ?)
+                    (u.tenant_id = ? AND (u.branch_id = ? OR u.role = "tenant_super_admin"))
                     OR u.tenant_id <> ?
                 )';
     }
@@ -169,9 +171,11 @@ $contacts = array_map(function($r) use ($currentUserId, $pdo, $tenantId) {
     return [
         'id' => (int)$r['id'],
         'role' => $r['role'] ?: 'Unknown Role',
-  'name' => $r['name'] ?: 'Unknown user',
+        'name' => $r['name'] ?: 'Unknown user',
         'agency_name' => $r['agency_name'] ?: 'Unknown Agency',
+        'branch_name' => $r['branch_name'] ?: 'Unknown Branch',
         'tenant_id' => (int)$r['tenant_id'],
+        'tenant_name' => $r['tenant_name'] ?: 'Unknown Tenant',
         'room_id' => $room,
         'lastMessage' => $lastMessage,
         'unread' => $unreadCount,

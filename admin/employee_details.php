@@ -108,13 +108,13 @@ include '../includes/header.php';
                                                 <p class="text-muted"><?php echo htmlspecialchars($employee['email']); ?></p>
                                                 <div class="mb-3">
                                                     <?php if ($employee['fired']): ?>
-                                                        <span class="badge badge-danger badge-lg"><?php echo __('terminated'); ?></span>
+                                                        <span class="badge-danger badge-lg"><?php echo __('terminated'); ?></span>
                                                     <?php else: ?>
-                                                        <span class="badge badge-success badge-lg"><?php echo __('active'); ?></span>
+                                                        <span class="badge-success badge-lg"><?php echo __('active'); ?></span>
                                                     <?php endif; ?>
                                                 </div>
                                                 <div class="mb-2">
-                                                    <span class="badge badge-primary"><?php echo htmlspecialchars(ucfirst($employee['role'])); ?></span>
+                                                    <span class="badge-primary"><?php echo htmlspecialchars(ucfirst($employee['role'])); ?></span>
                                                 </div>
                                             </div>
                                         </div>
@@ -221,7 +221,7 @@ include '../includes/header.php';
                                                             <div class="form-group">
                                                                 <label><?php echo __('salary_status'); ?></label>
                                                                 <p class="form-control-plaintext">
-                                                                    <span class="badge badge-<?php echo $employee['salary_status'] === 'active' ? 'success' : 'warning'; ?>">
+                                                                    <span class="badge-<?php echo $employee['salary_status'] === 'active' ? 'success' : 'warning'; ?>">
                                                                         <?php echo ucfirst($employee['salary_status']); ?>
                                                                     </span>
                                                                 </p>

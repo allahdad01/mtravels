@@ -243,7 +243,7 @@ foreach ($branches as $branch) {
 																<tr>
 																	<td><strong><?= htmlspecialchars($branch['name']) ?></strong></td>
 																	<td><?= $maxSize ?> MB</td>
-																	<td><span class="badge <?= $autoDownload === 'Yes' ? 'badge-success' : 'badge-secondary' ?>"><?= $autoDownload ?></span></td>
+																	<td><span class="<?= $autoDownload === 'Yes' ? 'badge-success' : 'badge-secondary' ?>"><?= $autoDownload ?></span></td>
 																	<td>
 																		<a href="?branch_id=<?= $branchId ?>" class="btn btn-sm btn-outline-primary">
 																			<i class="feather icon-edit-2"></i> Edit

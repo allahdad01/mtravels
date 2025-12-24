@@ -689,7 +689,7 @@ try {
                                                                         echo '<tr>';
                                                                         echo '<td>' . date('M d, Y H:i:s', strtotime($transaction['created_at'])) . '</td>';
                                                                         echo '<td>' . number_format($transaction['amount'], 2) . ' ' . $transaction['currency'] . '</td>';
-                                                                        echo '<td>' . ($transaction['transaction_type'] == 'credit' ? '<span class="badge badge-success">Payment</span>' : '<span class="badge badge-danger">Debt</span>') . '</td>';
+                                                                        echo '<td>' . ($transaction['transaction_type'] == 'credit' ? '<span class="badge-success">Payment</span>' : '<span class="badge-danger">Debt</span>') . '</td>';
                                                                         echo '<td>' . htmlspecialchars($transaction['description']) . '</td>';
                                                                         echo '<td>' . htmlspecialchars($transaction['reference_number']) . '</td>';
                                                                         echo '<td>';

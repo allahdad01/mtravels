@@ -97,7 +97,7 @@ include '../includes/header.php';
                                 <i class="feather icon-user mr-2"></i>
                                 <?= __('debtor_information') ?>
                                 <span class="float-right">
-                                    <span class="badge badge-<?php 
+                                    <span class="badge-<?php 
                                         if (isset($debtorData['status']) && $debtorData['status'] == 'Active') echo 'success';
                                         elseif (isset($debtorData['status']) && $debtorData['status'] == 'Inactive') echo 'danger';
                                         else echo 'warning';
@@ -152,7 +152,7 @@ include '../includes/header.php';
                                             <tr>
                                                 <th><?= __('status') ?></th>
                                                 <td>
-                                                    <span class="badge badge-<?php 
+                                                    <span class="badge-<?php 
                                                         if (isset($debtorData['status']) && $debtorData['status'] == 'Active') echo 'success';
                                                         elseif (isset($debtorData['status']) && $debtorData['status'] == 'Inactive') echo 'danger';
                                                         else echo 'warning';
@@ -213,7 +213,7 @@ include '../includes/header.php';
                                         <tr>
                                             <td><?php echo date('Y-m-d', strtotime($transaction['transaction_date'])); ?></td>
                                             <td>
-                                                <span class="badge badge-<?php 
+                                                <span class="badge-<?php 
                                                     echo (isset($transaction['transaction_type']) && strtolower($transaction['transaction_type']) == 'payment') ? 'success' : 'info'; 
                                                 ?>">
                                                     <?php echo isset($transaction['transaction_type']) ? ucfirst(strtolower($transaction['transaction_type'])) : '—'; ?>

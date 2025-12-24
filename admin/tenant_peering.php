@@ -195,7 +195,7 @@
                                                                 <td><?= htmlspecialchars($p['peer_name'] ?: ('#'.$p['peer_tenant_id'])) ?></td>
                                                                 <td>
                                                                     <?php $st = htmlspecialchars($p['status']); $cls = $st === 'approved' ? 'bg-success' : ($st === 'pending' ? 'bg-warning text-dark' : 'bg-danger'); ?>
-                                                                    <span class="badge badge-status <?= $cls ?>"><?= $st ?></span>
+                                                                    <span class="badge-status <?= $cls ?>"><?= $st ?></span>
                                                                 </td>
                                                                 <td>
                                                                     <?php if ((int)$p['peer_tenant_id'] === $currentTenantId && $p['status'] === 'pending'): ?>

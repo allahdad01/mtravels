@@ -55,7 +55,7 @@
                     <div id="selectedActionDisplay" class="alert alert-info" style="display: none;">
                         <div class="d-flex justify-content-between align-items-center">
                             <span><strong><?= __('selected_action') ?>:</strong></span>
-                            <span id="actionText" class="badge badge-info">-</span>
+                            <span id="actionText" class="badge-info">-</span>
                         </div>
                     </div>
 

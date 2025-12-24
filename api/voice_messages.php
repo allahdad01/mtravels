@@ -19,8 +19,8 @@ if (!isset($_SESSION['user_id'])) {
 $currentUserId = (int)$_SESSION['user_id'];
 $method = $_SERVER['REQUEST_METHOD'];
 
-// Validate current user and get tenant
-$stmt = secure_query($pdo, 'SELECT id, tenant_id FROM users WHERE id = ?', [$currentUserId]);
+// Validate current user and get tenant and role
+$stmt = secure_query($pdo, 'SELECT id, tenant_id, role FROM users WHERE id = ?', [$currentUserId]);
 $me = $stmt ? $stmt->fetch() : null;
 if (!$me) {
     http_response_code(404);
@@ -28,6 +28,7 @@ if (!$me) {
     exit;
 }
 $tenantId = (int)$me['tenant_id'];
+$userRole = $me['role'];
 
 // Helper function to create room ID
 function room_from_users($a, $b) {
@@ -87,7 +88,7 @@ if ($method === 'POST') {
     }
 
     // Validate recipient
-    $recipientStmt = secure_query($pdo, 'SELECT id, tenant_id, branch_id, deleted_at, fired FROM users WHERE id = ?', [$toUserId]);
+    $recipientStmt = secure_query($pdo, 'SELECT id, tenant_id, branch_id, role, deleted_at, fired FROM users WHERE id = ?', [$toUserId]);
     $recipient = $recipientStmt ? $recipientStmt->fetch(PDO::FETCH_ASSOC) : null;
     
     if (!$recipient || $recipient['deleted_at'] !== null || $recipient['fired']) {
@@ -98,14 +99,15 @@ if ($method === 'POST') {
 
     $recipientTenant = (int)$recipient['tenant_id'];
     $recipientBranch = (int)$recipient['branch_id'];
+    $recipientRole = $recipient['role'];
 
     // Get current user's branch and info
     $meStmt = secure_query($pdo, 'SELECT branch_id FROM users WHERE id = ?', [$currentUserId]);
     $meUser = $meStmt ? $meStmt->fetch(PDO::FETCH_ASSOC) : null;
     $myBranch = $meUser ? (int)$meUser['branch_id'] : 0;
 
-    // Validate branch compatibility
-    if ($recipientTenant === $tenantId && $recipientBranch !== $myBranch) {
+    // Validate branch compatibility (same tenant = same branch UNLESS either user is tenant_super_admin)
+    if ($recipientTenant === $tenantId && $recipientBranch !== $myBranch && $userRole !== 'tenant_super_admin' && $recipientRole !== 'tenant_super_admin') {
         if (class_exists('ChatAudit')) {
             try {
                 ChatAudit::logFailedAccess($tenantId, $myBranch, $currentUserId, $toUserId, 'send_message', 'cross_branch_denied', 'Cross-branch chat not allowed');

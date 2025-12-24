@@ -1545,12 +1545,7 @@ MOBILE SIDEBAR - CLEAN LAYOUT FIX
                         <span class="pcoded-mtext"><?= __('accounts') ?></span>
                     </a>
                 </li>
-                <li data-username="subscription_payments" class="nav-item <?php echo basename($_SERVER['PHP_SELF']) == 'subscription_payments.php' ? 'active' : ''; ?>">
-                    <a href="subscription_payments.php" class="nav-link">
-                        <span class="pcoded-micon"><i class="feather icon-credit-card"></i></span>
-                        <span class="pcoded-mtext"><?= __('subscription_payments') ?></span>
-                    </a>
-                </li>
+
                 <?php if (hasFeature('debtors', $allowed_features)): ?>
                 <li data-username="debtors" class="nav-item <?php echo basename($_SERVER['PHP_SELF']) == 'debtors.php' ? 'active' : ''; ?>">
                     <a href="debtors.php" class="nav-link">

@@ -31,38 +31,135 @@ $error_message = isset($_SESSION['error_message']) ? $_SESSION['error_message'] 
 unset($_SESSION['success_message']);
 unset($_SESSION['error_message']);
 
-// Handle maktob submission via API
+// Include database connection
+require_once('../includes/db.php');
+
+// Handle maktob submission directly
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
-    // Prepare data for API call
-    $postData = [
-        'subject' => $_POST['subject'] ?? '',
-        'content' => $_POST['content'] ?? '',
-        'company_name' => $_POST['company_name'] ?? '',
-        'maktob_number' => $_POST['maktob_number'] ?? '',
-        'maktob_date' => $_POST['maktob_date'] ?? '',
-        'language' => $_POST['language'] ?? 'english'
-    ];
+    error_log("=== MAKTOB CREATE REQUEST FROM ADMIN ===");
+    error_log("Raw POST data: " . json_encode($_POST));
+    
+    // Get input data
+    $subject = $_POST['subject'] ?? '';
+    $content = $_POST['content'] ?? '';
+    $company_name = $_POST['company_name'] ?? '';
+    $maktob_number = $_POST['maktob_number'] ?? '';
+    $maktob_date = $_POST['maktob_date'] ?? '';
+    $language = $_POST['language'] ?? 'english';
+    $sender_id = $_SESSION['user_id'];
 
-    // Call the API endpoint
-    $ch = curl_init();
-    curl_setopt($ch, CURLOPT_URL, '../api/maktob/manage.php');
-    curl_setopt($ch, CURLOPT_POST, true);
-    curl_setopt($ch, CURLOPT_POSTFIELDS, http_build_query($postData));
-    curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
-    curl_setopt($ch, CURLOPT_HTTPHEADER, [
-        'Content-Type: application/x-www-form-urlencoded'
-    ]);
+    error_log("Session info - tenant_id: $tenant_id, branch_id: $branch_id, user_id: $sender_id");
 
-    $response = curl_exec($ch);
-    $httpCode = curl_getinfo($ch, CURLINFO_HTTP_CODE);
-    curl_close($ch);
+    // Validate required fields
+    if (empty($company_name)) {
+        error_log("VALIDATION FAILED: company_name is empty");
+        $_SESSION['error_message'] = __('please_enter_company');
+        header('Location: ' . $_SERVER['PHP_SELF']);
+        exit();
+    }
 
-    $responseData = json_decode($response, true);
+    if (empty($subject)) {
+        error_log("VALIDATION FAILED: subject is empty");
+        $_SESSION['error_message'] = __('all_fields_required');
+        header('Location: ' . $_SERVER['PHP_SELF']);
+        exit();
+    }
 
-    if ($httpCode === 200 && isset($responseData['success']) && $responseData['success']) {
-        $_SESSION['success_message'] = $responseData['message'] ?? __('letter_created');
-    } else {
-        $_SESSION['error_message'] = $responseData['message'] ?? __('error_creating_letter');
+    if (empty($content)) {
+        error_log("VALIDATION FAILED: content is empty");
+        $_SESSION['error_message'] = __('all_fields_required');
+        header('Location: ' . $_SERVER['PHP_SELF']);
+        exit();
+    }
+
+    if (empty($maktob_number)) {
+        error_log("VALIDATION FAILED: maktob_number is empty");
+        $_SESSION['error_message'] = __('all_fields_required');
+        header('Location: ' . $_SERVER['PHP_SELF']);
+        exit();
+    }
+
+    if (empty($maktob_date)) {
+        error_log("VALIDATION FAILED: maktob_date is empty");
+        $_SESSION['error_message'] = __('all_fields_required');
+        header('Location: ' . $_SERVER['PHP_SELF']);
+        exit();
+    }
+
+    if (!$sender_id) {
+        error_log("VALIDATION FAILED: sender_id not found in session");
+        $_SESSION['error_message'] = 'User session not found';
+        header('Location: ' . $_SERVER['PHP_SELF']);
+        exit();
+    }
+
+    // Validate maktob_date format
+    if (!preg_match('/^\d{4}-\d{2}-\d{2}$/', $maktob_date)) {
+        error_log("VALIDATION FAILED: Invalid maktob_date format: $maktob_date");
+        $_SESSION['error_message'] = 'Invalid date format. Use YYYY-MM-DD';
+        header('Location: ' . $_SERVER['PHP_SELF']);
+        exit();
+    }
+
+    error_log("All validations passed. Proceeding with INSERT");
+
+    // Insert new maktob directly
+    try {
+        $query = "INSERT INTO maktobs (tenant_id, branch_id, subject, content, company_name, maktob_number, maktob_date, sender_id, status, language)
+                  VALUES (?, ?, ?, ?, ?, ?, ?, ?, 'draft', ?)";
+
+        error_log("Preparing statement: $query");
+        $stmt = $pdo->prepare($query);
+        
+        if (!$stmt) {
+            error_log("PREPARE ERROR: " . json_encode($pdo->errorInfo()));
+            $_SESSION['error_message'] = 'Database prepare error: ' . $pdo->errorInfo()[2];
+            header('Location: ' . $_SERVER['PHP_SELF']);
+            exit();
+        }
+
+        error_log("Statement prepared. Binding parameters...");
+        $stmt->bindParam(1, $tenant_id, PDO::PARAM_INT);
+        $stmt->bindParam(2, $branch_id, PDO::PARAM_INT);
+        $stmt->bindParam(3, $subject, PDO::PARAM_STR);
+        $stmt->bindParam(4, $content, PDO::PARAM_STR);
+        $stmt->bindParam(5, $company_name, PDO::PARAM_STR);
+        $stmt->bindParam(6, $maktob_number, PDO::PARAM_STR);
+        $stmt->bindParam(7, $maktob_date, PDO::PARAM_STR);
+        $stmt->bindParam(8, $sender_id, PDO::PARAM_INT);
+        $stmt->bindParam(9, $language, PDO::PARAM_STR);
+
+        error_log("Parameters bound. Execution details:");
+        error_log("  tenant_id: $tenant_id (int)");
+        error_log("  branch_id: $branch_id (int)");
+        error_log("  subject: $subject");
+        error_log("  company_name: $company_name");
+        error_log("  maktob_number: $maktob_number");
+        error_log("  maktob_date: $maktob_date");
+        error_log("  sender_id: $sender_id (int)");
+        error_log("  language: $language");
+
+        error_log("Executing INSERT statement...");
+        if ($stmt->execute()) {
+            $insert_id = $pdo->lastInsertId();
+            error_log("=== MAKTOB CREATE SUCCESS: ID=$insert_id ===");
+            $_SESSION['success_message'] = __('letter_created');
+        } else {
+            $errorInfo = $stmt->errorInfo();
+            error_log("=== MAKTOB EXECUTION FAILED ===");
+            error_log("SQLSTATE: " . $errorInfo[0]);
+            error_log("Driver Error Code: " . $errorInfo[1]);
+            error_log("Driver Error Message: " . $errorInfo[2]);
+            
+            $_SESSION['error_message'] = __('error_creating_letter') . ": " . $errorInfo[2];
+        }
+    } catch (PDOException $e) {
+        error_log("=== PDO EXCEPTION DURING INSERT ===");
+        error_log("Exception Code: " . $e->getCode());
+        error_log("Exception Message: " . $e->getMessage());
+        error_log("Stack Trace: " . $e->getTraceAsString());
+        
+        $_SESSION['error_message'] = __('error_creating_letter') . ": " . $e->getMessage();
     }
 
     // Redirect back to the same page
@@ -86,77 +183,86 @@ if (!empty($search_query)) {
     $search_params = array_fill(0, 3, $search_param);
 }
 
-// Fetch maktobs with pagination and search via API
+// Fetch maktobs directly from database
 $recent_maktobs_result = null;
 $total_records = 0;
 $total_pages = 1;
 
 try {
-    $ch = curl_init();
-    curl_setopt($ch, CURLOPT_URL, '../api/maktob/manage.php');
-    curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
-    curl_setopt($ch, CURLOPT_HTTPHEADER, [
-        'Content-Type: application/json'
-    ]);
+    error_log("=== MAKTOB FETCH REQUEST ===");
+    error_log("Search query: " . ($search_query ?: 'none'));
+    error_log("Pagination - Page: $current_page, Items per page: $items_per_page, Offset: $offset");
+    
+    // Build query
+    $query = "SELECT m.*,
+        u.name as sender_name
+        FROM maktobs m
+        JOIN users u ON m.sender_id = u.id
+        WHERE m.tenant_id = ? AND m.branch_id = ?";
+    
+    $params = [$tenant_id, $branch_id];
+    
+    // Apply search filter if needed
+    if (!empty($search_query)) {
+        error_log("Applying search filter: $search_query");
+        $query .= " AND (m.maktob_number LIKE ? OR m.subject LIKE ? OR m.company_name LIKE ?)";
+        $searchParam = '%' . $search_query . '%';
+        $params = array_merge($params, [$searchParam, $searchParam, $searchParam]);
+    }
+    
+    $query .= " ORDER BY m.maktob_date DESC";
+    
+    error_log("Executing query: $query");
+    error_log("Params: " . json_encode($params));
+    
+    $stmt = $pdo->prepare($query);
+    $stmt->execute($params);
+    $allMaktobs = $stmt->fetchAll(PDO::FETCH_ASSOC);
+    
+    error_log("Records found: " . count($allMaktobs));
+    
+    // Calculate pagination
+    $total_records = count($allMaktobs);
+    $total_pages = ceil($total_records / $items_per_page);
+    
+    error_log("Total records: $total_records, Total pages: $total_pages");
+    
+    // Ensure current page is valid
+    if ($current_page > $total_pages && $total_pages > 0) {
+        error_log("Current page $current_page exceeds total pages $total_pages. Adjusting to last page.");
+        $current_page = $total_pages;
+    }
+    
+    // Get page data
+    $paged_maktobs = array_slice($allMaktobs, $offset, $items_per_page);
+    error_log("Displaying " . count($paged_maktobs) . " records on page $current_page");
 
-    $response = curl_exec($ch);
-    $httpCode = curl_getinfo($ch, CURLINFO_HTTP_CODE);
-    curl_close($ch);
+    // Create a mock result object that mimics mysqli_result
+    class MockMysqliResult {
+        private $data;
+        private $currentIndex = 0;
 
-    if ($httpCode === 200) {
-        $responseData = json_decode($response, true);
-        if (isset($responseData['success']) && $responseData['success'] && isset($responseData['data'])) {
-            $allMaktobs = $responseData['data'];
-            
-            // Apply search filter if needed
-            if (!empty($search_query)) {
-                $search_lower = strtolower($search_query);
-                $allMaktobs = array_filter($allMaktobs, function($maktob) use ($search_lower) {
-                    return (
-                        stripos($maktob['maktob_number'] ?? '', $search_query) !== false ||
-                        stripos($maktob['subject'] ?? '', $search_query) !== false ||
-                        stripos($maktob['company_name'] ?? '', $search_query) !== false
-                    );
-                });
-                $allMaktobs = array_values($allMaktobs); // Re-index array
+        public function __construct($data) {
+            $this->data = $data;
+        }
+
+        public function fetch_assoc() {
+            if ($this->currentIndex < count($this->data)) {
+                $row = $this->data[$this->currentIndex];
+                $this->currentIndex++;
+                return $row;
             }
-            
-            // Calculate pagination
-            $total_records = count($allMaktobs);
-            $total_pages = ceil($total_records / $items_per_page);
-            
-            // Ensure current page is valid
-            if ($current_page > $total_pages && $total_pages > 0) {
-                $current_page = $total_pages;
-            }
-            
-            // Get page data
-            $paged_maktobs = array_slice($allMaktobs, $offset, $items_per_page);
-
-            // Create a mock result object that mimics mysqli_result
-            class MockMysqliResult {
-                private $data;
-                private $currentIndex = 0;
-
-                public function __construct($data) {
-                    $this->data = $data;
-                }
-
-                public function fetch_assoc() {
-                    if ($this->currentIndex < count($this->data)) {
-                        $row = $this->data[$this->currentIndex];
-                        $this->currentIndex++;
-                        return $row;
-                    }
-                    return null;
-                }
-            }
-
-            $recent_maktobs_result = new MockMysqliResult($paged_maktobs);
+            return null;
         }
     }
+
+    $recent_maktobs_result = new MockMysqliResult($paged_maktobs);
+    error_log("=== MAKTOB FETCH SUCCESS ===\n");
 } catch (Exception $e) {
-    error_log("Error fetching maktobs: " . $e->getMessage());
+    error_log("=== EXCEPTION DURING MAKTOB FETCH ===");
+    error_log("Exception Code: " . $e->getCode());
+    error_log("Exception Message: " . $e->getMessage());
+    error_log("Stack Trace: " . $e->getTraceAsString());
     // Fallback to empty result
     $recent_maktobs_result = null;
 }
@@ -215,10 +321,20 @@ include '../includes/header.php';
         <div class="row">
             <div class="col-md-12">
                 <?php if (isset($error_message)): ?>
-                    <div class="alert alert-danger"><?php echo htmlspecialchars($error_message); ?></div>
+                    <div class="alert alert-danger alert-dismissible fade show" role="alert">
+                        <strong>Error:</strong> <?php echo htmlspecialchars($error_message); ?>
+                        <button type="button" class="close" data-dismiss="alert" aria-label="Close">
+                            <span aria-hidden="true">&times;</span>
+                        </button>
+                    </div>
                 <?php endif; ?>
                 <?php if (isset($success_message)): ?>
-                    <div class="alert alert-success"><?php echo htmlspecialchars($success_message); ?></div>
+                    <div class="alert alert-success alert-dismissible fade show" role="alert">
+                        <strong>Success:</strong> <?php echo nl2br(htmlspecialchars($success_message)); ?>
+                        <button type="button" class="close" data-dismiss="alert" aria-label="Close">
+                            <span aria-hidden="true">&times;</span>
+                        </button>
+                    </div>
                 <?php endif; ?>
 
                 <!-- Create Maktob Card -->
@@ -344,11 +460,11 @@ include '../includes/header.php';
                                         <td><?php echo htmlspecialchars($row['company_name']); ?></td>
                                         <td>
                                             <?php if ($row['status'] === 'sent'): ?>
-                                                <span class="badge badge-success">
+                                                <span class="badge-success">
                                                     <i class="feather icon-check mr-1"></i> <?= __('sent') ?>
                                                 </span>
                                             <?php else: ?>
-                                                <span class="badge badge-warning">
+                                                <span class="badge-warning">
                                                     <i class="feather icon-clock mr-1"></i> <?= __('draft') ?>
                                                 </span>
                                             <?php endif; ?>
@@ -359,7 +475,7 @@ include '../includes/header.php';
                                             if ($row['language'] === 'dari') $langBadgeClass = 'info';
                                             if ($row['language'] === 'pashto') $langBadgeClass = 'warning';
                                             ?>
-                                            <span class="badge badge-<?php echo $langBadgeClass; ?>">
+                                            <span class="badge-<?php echo $langBadgeClass; ?>">
                                                 <?= __($row['language'] ?? 'english') ?>
                                             </span>
                                         </td>

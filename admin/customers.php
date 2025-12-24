@@ -198,7 +198,7 @@ foreach ($result as $row) {
                                                                     foreach ($customer['balances'] as $currency => $balance) {
                                                                         if (floatval($balance) != 0) {
                                                                             $badgeClass = floatval($balance) > 0 ? 'badge-success' : 'badge-danger';
-                                                                            echo "<div class='badge {$badgeClass} mr-1'>" . 
+                                                                            echo "<div class='{$badgeClass} mr-1'>" . 
                                                                                 htmlspecialchars(number_format($balance, 2) . " " . $currency) . 
                                                                                 "</div>";
                                                                         }

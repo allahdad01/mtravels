@@ -150,22 +150,22 @@ require_once('../includes/db.php');
                                                 <ul class="nav nav-tabs" id="statusTabs" role="tablist">
                                                     <li class="nav-item">
                                                         <a class="nav-link active" id="all-tab" data-toggle="tab" href="#all" role="tab">
-                                                            <?= __('all') ?> <span class="badge badge-light" id="all-count">0</span>
+                                                            <?= __('all') ?> <span class="badge-light" id="all-count">0</span>
                                                         </a>
                                                     </li>
                                                     <li class="nav-item">
                                                         <a class="nav-link" id="pending-tab" data-toggle="tab" href="#pending" role="tab">
-                                                            <?= __('pending') ?> <span class="badge badge-warning" id="pending-count">0</span>
+                                                            <?= __('pending') ?> <span class="badge-warning" id="pending-count">0</span>
                                                         </a>
                                                     </li>
                                                     <li class="nav-item">
                                                         <a class="nav-link" id="approved-tab" data-toggle="tab" href="#approved" role="tab">
-                                                            <?= __('approved') ?> <span class="badge badge-info" id="approved-count">0</span>
+                                                            <?= __('approved') ?> <span class="badge-info" id="approved-count">0</span>
                                                         </a>
                                                     </li>
                                                     <li class="nav-item">
                                                         <a class="nav-link" id="completed-tab" data-toggle="tab" href="#completed" role="tab">
-                                                            <?= __('completed') ?> <span class="badge badge-success" id="completed-count">0</span>
+                                                            <?= __('completed') ?> <span class="badge-success" id="completed-count">0</span>
                                                         </a>
                                                     </li>
                                                 </ul>

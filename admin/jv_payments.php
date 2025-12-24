@@ -1019,7 +1019,7 @@ try {
                     
                     // Add payment ID to modal title
                     $('#viewCsModal .modal-title').html(
-                        `<i class="feather icon-credit-card mr-2"></i><?= __('payment_details') ?> <span class="badge badge-light ml-2">ID: ${p.id}</span>`
+                        `<i class="feather icon-credit-card mr-2"></i><?= __('payment_details') ?> <span class="badge-light ml-2">ID: ${p.id}</span>`
                     );
                     
                     // Show action buttons and set their click handlers

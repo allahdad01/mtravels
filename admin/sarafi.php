@@ -651,7 +651,7 @@ foreach ($result as $row) {
                             <strong><?= number_format($transaction['amount'], 2) ?></strong>
                         </td>
                         <td>
-                            <span class="badge badge-light">
+                            <span class="badge-light">
                                 <?= __($transaction['currency']) ?>
                             </span>
                         </td>
@@ -659,7 +659,7 @@ foreach ($result as $row) {
                             <code><?= htmlspecialchars($transaction['reference_number']) ?></code>
                         </td>
                         <td>
-                            <span class="badge badge-<?= $transaction['status'] === 'completed' ? 'success' : ($transaction['status'] === 'pending' ? 'warning' : 'danger') ?>">
+                            <span class="badge-<?= $transaction['status'] === 'completed' ? 'success' : ($transaction['status'] === 'pending' ? 'warning' : 'danger') ?>">
                                 <?= __($transaction['status']) ?>
                             </span>
                         </td>
@@ -947,7 +947,7 @@ foreach ($result as $row) {
                                 <tr>
                                     <th><?= __("status") ?>:</th>
                                     <td>
-                                        <span class="badge badge-${data.transaction.status === 'completed' ? 'success' : (data.transaction.status === 'pending' ? 'warning' : 'danger')}">
+                                        <span class="badge-${data.transaction.status === 'completed' ? 'success' : (data.transaction.status === 'pending' ? 'warning' : 'danger')}">
                                             ${capitalizeFirstLetter(data.transaction.status)}
                                         </span>
                                     </td>
@@ -984,7 +984,7 @@ foreach ($result as $row) {
                                         <tr>
                                             <th><?= __("status") ?>:</th>
                                             <td>
-                                                <span class="badge badge-${data.hawala.status === 'completed' ? 'success' : 'warning'}">
+                                                <span class="badge-${data.hawala.status === 'completed' ? 'success' : 'warning'}">
                                                     ${capitalizeFirstLetter(data.hawala.status)}
                                                 </span>
                                             </td>

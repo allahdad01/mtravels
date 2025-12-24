@@ -389,7 +389,7 @@ $stmt->closeCursor();
                                         <div class="card-body">
                                             <div class="d-flex justify-content-between align-items-center mb-3">
                                                 <h5 class="mb-0"><?= htmlspecialchars($allocation['category_name']) ?></h5>
-                                                <span class="badge badge-light date-badge">
+                                                <span class="badge-light date-badge">
                                                     <i class="feather icon-calendar mr-1"></i>
                                                     <?= date('d M Y', strtotime($allocation['allocation_date'])) ?>
                                                 </span>

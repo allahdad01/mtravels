@@ -15,6 +15,8 @@ class ChatUI {
             contactSearch: document.getElementById('contactSearch'),
             backButton: document.getElementById('backButton'),
 
+            chatHeader: document.getElementById('chatHeader'),
+            inputArea: document.getElementById('inputArea'),
             welcomeScreen: document.getElementById('welcomeScreen'),
             messagesContainer: document.getElementById('messagesContainer'),
 
@@ -24,6 +26,13 @@ class ChatUI {
 
             messageInput: document.getElementById('messageInput'),
             sendBtn: document.getElementById('sendBtn'),
+            
+            // Lightbox elements
+            lightboxModal: document.getElementById('imageLightboxModal'),
+            lightboxImage: document.getElementById('lightboxImage'),
+            lightboxFileName: document.getElementById('lightboxFileName'),
+            lightboxClose: document.getElementById('lightboxClose'),
+            lightboxOverlay: document.getElementById('lightboxOverlay'),
         };
     }
 
@@ -36,6 +45,22 @@ class ChatUI {
     }
 
     bindEvents() {
+        // Lightbox handlers
+        this.elements.lightboxClose?.addEventListener('click', () => {
+            this.closeLightbox();
+        });
+
+        this.elements.lightboxOverlay?.addEventListener('click', () => {
+            this.closeLightbox();
+        });
+
+        // Close lightbox on Escape key
+        document.addEventListener('keydown', (e) => {
+            if (e.key === 'Escape' && this.elements.lightboxModal && !this.elements.lightboxModal.classList.contains('hidden')) {
+                this.closeLightbox();
+            }
+        });
+
         // Back button
         this.elements.backButton?.addEventListener('click', () => {
             this.showSidebar();
@@ -147,25 +172,54 @@ class ChatUI {
 
         try {
             const icon = button.querySelector('i');
+            const voicePlayer = button.closest('.voice-player');
             let audio = button._voiceAudio;
 
             if (!audio) {
                 audio = new Audio(url);
                 button._voiceAudio = audio;
+                const messageId = voicePlayer?.dataset.messageId;
+                const waveformContainer = voicePlayer?.querySelector('.voice-waveform-container');
 
                 audio.addEventListener('play', () => {
                     icon.className = 'fas fa-pause';
                     button.classList.add('playing');
+                    
+                    // Stop other playing audios
+                    document.querySelectorAll('.voice-play-btn.playing').forEach(btn => {
+                        if (btn !== button && btn._voiceAudio) {
+                            btn._voiceAudio.pause();
+                        }
+                    });
+
+                    // Start audio visualization with progress tracking
+                    if (window.audioVisualization && messageId && waveformContainer) {
+                        window.audioVisualization.initVisualization(messageId, audio, waveformContainer);
+                        // Store audio element reference for progress tracking
+                        window.audioVisualization._audioElements = window.audioVisualization._audioElements || {};
+                        window.audioVisualization._audioElements[messageId] = audio;
+                    }
                 });
 
                 audio.addEventListener('pause', () => {
                     icon.className = 'fas fa-play';
                     button.classList.remove('playing');
+                    
+                    // Stop visualization
+                    if (window.audioVisualization && messageId) {
+                        window.audioVisualization.stopVisualization(messageId);
+                    }
                 });
 
                 audio.addEventListener('ended', () => {
                     icon.className = 'fas fa-play';
                     button.classList.remove('playing');
+                    
+                    // Stop visualization and reset
+                    if (window.audioVisualization && messageId) {
+                        window.audioVisualization.stopVisualization(messageId);
+                        window.audioVisualization.resetVisualization(waveformContainer);
+                    }
                 });
 
                 audio.addEventListener('error', (e) => {
@@ -174,6 +228,44 @@ class ChatUI {
                     icon.className = 'fas fa-play';
                     button.classList.remove('playing');
                 });
+                
+                // Update progress bar on timeupdate
+                audio.addEventListener('timeupdate', () => {
+                    this.updateVoiceProgress(voicePlayer, audio);
+                });
+                
+                // Update when metadata is loaded
+                audio.addEventListener('loadedmetadata', () => {
+                    this.updateVoiceProgress(voicePlayer, audio);
+                });
+            }
+            
+            // Setup seeking on waveform container
+            const waveformContainer = voicePlayer?.querySelector('.voice-waveform-container');
+            if (waveformContainer && !waveformContainer._seekListener) {
+                waveformContainer._seekListener = (e) => {
+                    if (!audio.duration) return;
+                    const rect = waveformContainer.getBoundingClientRect();
+                    const clickX = e.clientX - rect.left;
+                    const percentage = Math.min(Math.max(clickX / rect.width, 0), 1);
+                    audio.currentTime = percentage * audio.duration;
+                };
+                waveformContainer.addEventListener('click', waveformContainer._seekListener);
+                waveformContainer.style.cursor = 'pointer';
+            }
+            
+            // Fallback: Setup seeking on progress bar if it exists
+            const progressBar = voicePlayer?.querySelector('.voice-progress-bar');
+            if (progressBar && !progressBar._seekListener) {
+                progressBar._seekListener = (e) => {
+                    if (!audio.duration) return;
+                    const rect = progressBar.getBoundingClientRect();
+                    const clickX = e.clientX - rect.left;
+                    const percentage = Math.min(Math.max(clickX / rect.width, 0), 1);
+                    audio.currentTime = percentage * audio.duration;
+                };
+                progressBar.addEventListener('click', progressBar._seekListener);
+                progressBar.style.cursor = 'pointer';
             }
 
             if (audio.paused) {
@@ -192,44 +284,153 @@ class ChatUI {
             alert('Error playing voice message: ' + error.message);
         }
     }
+    
+    /**
+     * Update voice message progress bar and timer
+     */
+    updateVoiceProgress(voicePlayer, audio) {
+        if (!voicePlayer) return;
+        if (!audio || !audio.duration) return;
+        
+        const waveformContainer = voicePlayer.querySelector('.voice-waveform-container');
+        const currentTimeEl = voicePlayer.querySelector('.voice-current-time');
+        
+        // Update waveform progress
+        if (waveformContainer) {
+            const progress = (audio.currentTime / audio.duration) * 100;
+            
+            // Update all bars
+            const bars = waveformContainer.querySelectorAll('.waveform-bar');
+            bars.forEach((bar, index) => {
+                const barProgress = (index / bars.length) * 100;
+                if (barProgress <= progress) {
+                    bar.classList.add('played');
+                } else {
+                    bar.classList.remove('played');
+                }
+            });
+        }
+        
+        // Update current time display
+        if (currentTimeEl) {
+            const timeStr = VoiceRecorder.formatTime(Math.floor(audio.currentTime));
+            currentTimeEl.textContent = timeStr;
+        }
+    }
+
+    formatRole(role) {
+        const roleMap = {
+            'tenant_super_admin': 'Owner',
+            'admin': 'Admin',
+            'manager': 'Manager',
+            'staff': 'Staff'
+        };
+        return roleMap[role] || role;
+    }
+
+    openImageLightbox(imageUrl, fileName) {
+        if (!this.elements.lightboxModal) return;
+        
+        this.elements.lightboxImage.src = imageUrl;
+        this.elements.lightboxFileName.textContent = fileName;
+        this.elements.lightboxModal.classList.remove('hidden');
+        document.body.style.overflow = 'hidden';
+    }
+
+    closeLightbox() {
+        if (!this.elements.lightboxModal) return;
+        
+        this.elements.lightboxModal.classList.add('hidden');
+        document.body.style.overflow = '';
+    }
+
+    renderContactItem(contact) {
+        const firstLetter = (contact.name || '?').charAt(0).toUpperCase();
+        const avatar = contact.photo
+            ? `<img src="${this.escape(contact.photo)}" alt="${this.escape(contact.name)}">`
+            : firstLetter;
+
+        const onlineIndicator = contact.online
+            ? '<div class="online-indicator"></div>'
+            : '';
+
+        const unreadBadge = contact.unread > 0
+            ? `<div class="badge-unread">${contact.unread}</div>`
+            : '';
+
+        const displayRole = contact.role ? this.formatRole(contact.role) : '';
+
+        return `
+            <div class="contact-item" data-id="${contact.id}" role="button">
+                <div class="contact-avatar">
+                    ${avatar}
+                    ${onlineIndicator}
+                </div>
+                <div class="contact-info">
+                    <p class="contact-name">${this.escape(contact.name)}</p>
+                    <p class="contact-agency">${this.escape(contact.agency_name || '')} ${contact.branch_name ? '• ' + this.escape(contact.branch_name) : ''} ${displayRole ? '• ' + this.escape(displayRole) : ''}</p>
+                    <p class="contact-message">${this.extractMessagePreview(contact.lastMessage)}</p>
+                </div>
+                <div class="contact-meta">
+                    <span class="contact-time">${contact.time || ''}</span>
+                    ${unreadBadge}
+                </div>
+            </div>
+        `;
+    }
 
     renderContacts(contacts) {
-        const html = contacts.map(contact => {
-            const firstLetter = (contact.name || '?').charAt(0).toUpperCase();
-            const avatar = contact.photo
-                ? `<img src="${this.escape(contact.photo)}" alt="${this.escape(contact.name)}">`
-                : firstLetter;
+        // Group contacts by tenant
+        const groupedByTenant = {};
+        contacts.forEach(contact => {
+            const tenantId = contact.tenant_id;
+            const tenantName = contact.tenant_name || 'Unknown Tenant';
+            if (!groupedByTenant[tenantId]) {
+                groupedByTenant[tenantId] = { name: tenantName, contacts: [] };
+            }
+            groupedByTenant[tenantId].contacts.push(contact);
+        });
 
-            const onlineIndicator = contact.online
-                ? '<div class="online-indicator"></div>'
-                : '';
+        // Build HTML with collapsible sections
+        let html = '';
+        for (const [tenantId, group] of Object.entries(groupedByTenant)) {
+            const isCollapsed = localStorage.getItem(`chat-tenant-collapsed-${tenantId}`) === 'true';
+            const arrowIcon = isCollapsed ? '▶' : '▼';
+            const contactsDisplay = isCollapsed ? 'none' : 'block';
 
-            const unreadBadge = contact.unread > 0
-                ? `<div class="badge-unread">${contact.unread}</div>`
-                : '';
-
-            return `
-                <div class="contact-item" data-id="${contact.id}" role="button">
-                    <div class="contact-avatar">
-                        ${avatar}
-                        ${onlineIndicator}
+            html += `
+                <div class="tenant-group">
+                    <div class="tenant-header" data-tenant-id="${tenantId}" role="button">
+                        <span class="tenant-arrow">${arrowIcon}</span>
+                        <span class="tenant-name">${this.escape(group.name)}</span>
+                        <span class="tenant-count">(${group.contacts.length})</span>
                     </div>
-                    <div class="contact-info">
-                        <p class="contact-name">${this.escape(contact.name)}</p>
-                        <p class="contact-agency">${this.escape(contact.agency_name || '')} ${contact.role ? '• ' + this.escape(contact.role) : ''}</p>
-                        <p class="contact-message">${this.extractMessagePreview(contact.lastMessage)}</p>
-                    </div>
-                    <div class="contact-meta">
-                        <span class="contact-time">${contact.time || ''}</span>
-                        ${unreadBadge}
+                    <div class="tenant-contacts" style="display: ${contactsDisplay}">
+                        ${group.contacts.map(c => this.renderContactItem(c)).join('')}
                     </div>
                 </div>
             `;
-        }).join('');
+        }
 
         this.elements.contactList.innerHTML = html;
 
-        // Add click listeners
+        // Add click listeners for tenant headers (collapse/expand)
+        this.elements.contactList.querySelectorAll('.tenant-header').forEach(header => {
+            header.addEventListener('click', () => {
+                const tenantId = header.getAttribute('data-tenant-id');
+                const contactsDiv = header.nextElementSibling;
+                const arrow = header.querySelector('.tenant-arrow');
+                
+                const isCurrentlyCollapsed = contactsDiv.style.display === 'none';
+                contactsDiv.style.display = isCurrentlyCollapsed ? 'block' : 'none';
+                arrow.textContent = isCurrentlyCollapsed ? '▼' : '▶';
+                
+                // Save state in localStorage
+                localStorage.setItem(`chat-tenant-collapsed-${tenantId}`, !isCurrentlyCollapsed);
+            });
+        });
+
+        // Add click listeners for contact items
         this.elements.contactList.querySelectorAll('.contact-item').forEach(item => {
             item.addEventListener('click', () => {
                 const contactId = parseInt(item.getAttribute('data-id'), 10);
@@ -241,21 +442,54 @@ class ChatUI {
     }
 
     extractMessagePreview(messageText) {
-        if (!messageText) return 'No messages yet';
+         if (!messageText) return 'No messages yet';
 
-        try {
-            // Try to parse as JSON if it looks like JSON
-            if (messageText.startsWith('{') || messageText.startsWith('[')) {
-                const data = JSON.parse(messageText);
-                if (data.content) return this.escape(data.content);
-                if (data.text) return this.escape(data.text);
-            }
-        } catch (e) {
-            // Not JSON, return as-is
-        }
+         try {
+             // Try to parse as JSON if it looks like JSON
+             if (messageText.startsWith('{') || messageText.startsWith('[')) {
+                 const data = JSON.parse(messageText);
+                 
+                 // Handle voice messages
+                 if (data.type === 'voice') {
+                     const duration = data.duration ? this.formatDuration(data.duration) : '0:00';
+                     return `🎤 Voice message (${duration})`;
+                 }
+                 
+                 // Handle file messages
+                 if (data.type === 'file' && data.filename) {
+                     const fileIcon = this.getFileIcon(data.mimetype || '');
+                     return `${fileIcon} ${this.escape(data.filename)}`;
+                 }
+                 
+                 // Handle image messages
+                 if (data.type === 'image') {
+                     return '🖼️ Image';
+                 }
+                 
+                 // Handle video messages
+                 if (data.type === 'video') {
+                     return '🎥 Video';
+                 }
+                 
+                 // Handle generic content/text fields
+                 if (data.content) return this.escape(data.content);
+                 if (data.text) return this.escape(data.text);
+             }
+         } catch (e) {
+             // Not JSON, return as-is
+         }
 
-        return this.escape(messageText);
-    }
+         return this.escape(messageText);
+     }
+     
+     /**
+      * Format duration in seconds to MM:SS
+      */
+     formatDuration(seconds) {
+         const mins = Math.floor(seconds / 60);
+         const secs = seconds % 60;
+         return `${mins}:${secs.toString().padStart(2, '0')}`;
+     }
 
     getFileIcon(mimeType) {
         if (!mimeType) return '📄';
@@ -271,27 +505,24 @@ class ChatUI {
     }
 
     renderMessageContent(msg) {
-        // Handle voice messages - check multiple fields for robustness
-        if (msg.messageType === 'voice' || msg.type === 'voice') {
-            const duration = msg.duration ? VoiceRecorder.formatTime(msg.duration) : '0:00';
-            const url = msg.url || '#';
+         // Handle voice messages - check multiple fields for robustness
+         if (msg.messageType === 'voice' || msg.type === 'voice') {
+             const duration = msg.duration ? VoiceRecorder.formatTime(msg.duration) : '0:00';
+             const url = msg.url || '#';
+             const messageId = msg.id || Math.random();
 
-            console.log('[ChatUI] Voice message detected - ID:', msg.id, 'URL:', url, 'Duration:', duration);
+             console.log('[ChatUI] Voice message detected - ID:', messageId, 'URL:', url, 'Duration:', duration);
 
-            return `
-                 <div class="voice-content">
-                     <div class="voice-player" data-message-id="${msg.id}">
-                         <button class="voice-play-btn" ${url === '#' ? 'disabled' : ''} data-url="${url}" title="${url === '#' ? 'Voice message URL not available' : 'Play voice message'}">
-                             <i class="fas fa-play"></i>
-                         </button>
-                         <div class="voice-info">
-                             <span class="voice-duration">${duration}</span>
-                             <div class="voice-waveform"></div>
-                         </div>
-                     </div>
-                 </div>
-             `;
-        }
+             return `
+                  <div class="voice-message-box">
+                      <button class="voice-play-btn" data-message-id="${messageId}" ${url === '#' ? 'disabled' : ''} data-url="${url}" title="${url === '#' ? 'Voice message URL not available' : 'Play voice message'}">
+                          <i class="fas fa-play"></i>
+                      </button>
+                      <div class="waveform-wrapper" id="waveform-${messageId}"></div>
+                      <span class="voice-time" id="time-${messageId}">0:00</span>
+                  </div>
+              `;
+         }
 
         // Try to parse as JSON to detect file/special message types
         try {
@@ -323,13 +554,12 @@ class ChatUI {
                     // Check if it's an image
                     if (mimeType.startsWith('image/')) {
                         return `
-                            <div class="file-preview image-preview">
-                                <img src="${downloadUrl}" alt="${fileName}" class="preview-image" style="max-width: 300px; max-height: 300px; border-radius: 8px; cursor: pointer; object-fit: cover;" onclick="window.open('${downloadUrl}', '_blank')" onerror="this.style.display='none'; this.nextElementSibling.style.display='block';">
-                                <div class="file-fallback" style="display:none; padding: 20px; background: #f0f0f0; border-radius: 8px; text-align: center;">
-                                    <div style="font-size: 2em;">${fileIcon}</div>
-                                    <div>${fileName}</div>
+                            <div class="whatsapp-image-preview">
+                                <img src="${downloadUrl}" alt="${fileName}" class="preview-image" onclick="window.chatApp.ui.openImageLightbox('${downloadUrl}', '${fileName}')" style="cursor: pointer;" onerror="this.style.display='none'; this.nextElementSibling.style.display='flex';">
+                                <div class="file-fallback" style="display:none;">
+                                    <div style="font-size: 2.5em;">${fileIcon}</div>
+                                    <div style="margin-top: 8px; font-size: 0.9em;">${fileName}</div>
                                 </div>
-                                <div class="file-info" style="margin-top: 8px; font-size: 0.85em; color: #666;">${fileSize}MB</div>
                             </div>
                         `;
                     }
@@ -337,12 +567,11 @@ class ChatUI {
                     // Check if it's a video
                     if (mimeType.startsWith('video/')) {
                         return `
-                            <div class="file-preview video-preview">
-                                <video width="300" style="border-radius: 8px; background: #000;" controls>
+                            <div class="whatsapp-video-preview">
+                                <video controls>
                                     <source src="${downloadUrl}" type="${mimeType}">
                                     Your browser does not support the video tag.
                                 </video>
-                                <div class="file-info" style="margin-top: 8px;">${fileName} (${fileSize}MB)</div>
                             </div>
                         `;
                     }
@@ -350,27 +579,33 @@ class ChatUI {
                     // Check if it's audio
                     if (mimeType.startsWith('audio/')) {
                         return `
-                            <div class="file-preview audio-preview">
-                                <audio style="width: 100%; margin-bottom: 8px;" controls>
+                            <div class="whatsapp-audio-preview">
+                                <audio controls style="width: 100%;">
                                     <source src="${downloadUrl}" type="${mimeType}">
                                     Your browser does not support the audio tag.
                                 </audio>
-                                <div class="file-info">${fileName} (${fileSize}MB)</div>
                             </div>
                         `;
                     }
 
-                    // For other files, show file card with icon
+                    // For other files, show WhatsApp-like file card
+                    const formatFileSize = (size) => {
+                        if (size < 1024) return size + ' B';
+                        if (size < 1024 * 1024) return (size / 1024).toFixed(1) + ' KB';
+                        return (size / 1024 / 1024).toFixed(1) + ' MB';
+                    };
+                    const displaySize = formatFileSize(data.size || 0);
+
                     return `
-                        <div class="file-card" style="padding: 12px; background: #f9f9f9; border-radius: 8px; border-left: 4px solid #4099ff; display: inline-block;">
-                            <div style="display: flex; align-items: center; gap: 12px;">
-                                <div style="font-size: 1.5em;">${fileIcon}</div>
-                                <div style="flex: 1; min-width: 0;">
-                                    <div style="font-weight: 500; word-break: break-word;">${fileName}</div>
-                                    <div style="font-size: 0.85em; color: #666;">${fileSize}MB</div>
-                                </div>
-                                <a href="${downloadUrl}" download title="Download ${fileName}" style="padding: 8px 12px; background: #4099ff; color: white; border-radius: 4px; text-decoration: none; cursor: pointer; font-size: 0.9em;">⬇️ Download</a>
+                        <div class="whatsapp-file-card">
+                            <div class="file-card-icon">${fileIcon}</div>
+                            <div class="file-card-content">
+                                <div class="file-card-name" title="${fileName}">${fileName}</div>
+                                <div class="file-card-size">${displaySize}</div>
                             </div>
+                            <a href="${downloadUrl}" download title="Download ${fileName}" class="file-card-download">
+                                <i class="fas fa-download"></i>
+                            </a>
                         </div>
                     `;
                 }
@@ -400,7 +635,8 @@ class ChatUI {
         this.currentContact = contact;
 
         // Update header
-        this.elements.contactName.textContent = `${contact.name || 'Unknown'} (${contact.role || ''})`.trim();
+        const displayRole = contact.role ? ` (${this.formatRole(contact.role)})` : '';
+        this.elements.contactName.textContent = `${contact.name || 'Unknown'}${displayRole}`;
 
         // Display online status with typing indicator support
         const statusText = contact.typing ? 'Typing…' : (contact.online ? 'Online' : 'Offline');
@@ -425,12 +661,16 @@ class ChatUI {
         // Show chat, hide welcome
         this.elements.welcomeScreen.classList.add('hidden');
         this.elements.messagesContainer.classList.remove('hidden');
+        
+        // Show header and input area
+        this.elements.chatHeader.classList.remove('hidden');
+        this.elements.inputArea.classList.remove('hidden');
 
         // Mobile: hide sidebar, show chat
         if (window.innerWidth < 769) {
             this.showChatView();
         }
-    }
+        }
 
     setAvatarInitials(contact) {
         const initials = (contact.name || '?').trim().split(/\s+/).map(s => s[0]).slice(0, 2).join('').toUpperCase();
@@ -504,7 +744,75 @@ class ChatUI {
         });
 
         this.scrollToBottom();
-    }
+        
+        // Initialize WaveSurfer for voice messages
+        this.initializeVoiceMessages();
+        }
+        
+        initializeVoiceMessages() {
+         const voiceButtons = document.querySelectorAll('.voice-play-btn');
+         
+         voiceButtons.forEach(btn => {
+             const messageId = btn.dataset.messageId;
+             const url = btn.dataset.url;
+             const waveformContainer = document.getElementById(`waveform-${messageId}`);
+             const timeLabel = document.getElementById(`time-${messageId}`);
+             
+             if (!waveformContainer || url === '#') return;
+             
+             // Create WaveSurfer instance if not already created
+             if (!btn._wavesurfer && typeof WaveSurfer !== 'undefined') {
+                 btn._wavesurfer = WaveSurfer.create({
+                     container: waveformContainer,
+                     waveColor: '#ddd',
+                     progressColor: '#4fc3f7',
+                     height: 40,
+                     barWidth: 3,
+                     barGap: 1.5,
+                     cursorWidth: 0
+                 });
+                 
+                 // Load audio
+                 btn._wavesurfer.load(url);
+                 
+                 // Update time display
+                 btn._wavesurfer.on('ready', () => {
+                     const duration = btn._wavesurfer.getDuration();
+                     const durationStr = this.formatVoiceTime(Math.floor(duration));
+                     timeLabel.textContent = durationStr;
+                 });
+                 
+                 // Update time during playback
+                 btn._wavesurfer.on('timeupdate', (currentTime) => {
+                     timeLabel.textContent = this.formatVoiceTime(Math.floor(currentTime));
+                 });
+                 
+                 // Update button state
+                 btn._wavesurfer.on('play', () => {
+                     btn.innerHTML = '<i class="fas fa-pause"></i>';
+                     btn.classList.add('playing');
+                 });
+                 
+                 btn._wavesurfer.on('pause', () => {
+                     btn.innerHTML = '<i class="fas fa-play"></i>';
+                     btn.classList.remove('playing');
+                 });
+             }
+             
+             // Toggle play/pause
+             btn.addEventListener('click', (e) => {
+                 e.stopPropagation();
+                 if (btn._wavesurfer) {
+                     btn._wavesurfer.playPause();
+                 }
+             });
+         });
+        }
+        
+        formatVoiceTime(seconds) {
+         seconds = Math.floor(seconds);
+         return Math.floor(seconds / 60) + ':' + (seconds % 60).toString().padStart(2, '0');
+        }
 
     addMessage(message) {
         console.log('[ChatUI] Adding message:', message.id, message.text);

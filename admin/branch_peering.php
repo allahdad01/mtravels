@@ -210,7 +210,7 @@
                                                                 <td><?= htmlspecialchars($p['peer_branch_name'] ?: ('#'.$p['peer_branch_id'])) ?></td>
                                                                 <td>
                                                                     <?php $st = htmlspecialchars($p['status']); $cls = $st === 'approved' ? 'bg-success' : ($st === 'pending' ? 'bg-warning text-dark' : 'bg-danger'); ?>
-                                                                    <span class="badge badge-status <?= $cls ?>"><?= $st ?></span>
+                                                                    <span class="badge-status <?= $cls ?>"><?= $st ?></span>
                                                                 </td>
                                                                 <td>
                                                                     <form method="post" onsubmit="return confirm('Delete this request?');" style="display:inline-block;">
@@ -258,7 +258,7 @@
                                                                 <td><?= htmlspecialchars($p['peer_branch_name'] ?: ('#'.$p['peer_branch_id'])) ?></td>
                                                                 <td>
                                                                     <?php $st = htmlspecialchars($p['status']); $cls = $st === 'approved' ? 'bg-success' : ($st === 'pending' ? 'bg-warning text-dark' : 'bg-danger'); ?>
-                                                                    <span class="badge badge-status <?= $cls ?>"><?= $st ?></span>
+                                                                    <span class="badge-status <?= $cls ?>"><?= $st ?></span>
                                                                 </td>
                                                                 <td>
                                                                     <?php if ($p['status'] === 'pending'): ?>

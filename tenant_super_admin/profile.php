@@ -4,11 +4,6 @@ if (session_status() === PHP_SESSION_NONE) {
     session_start();
 }
 
-// Check if user is logged in
-if (!isset($_SESSION['user_id'])) {
-    header('Location: ../login.php');
-    exit();
-}
 require_once('../includes/session_check.php');
 require_once('../includes/language_helpers.php');
 $lang = init_language();
@@ -18,7 +13,6 @@ if (isset($_GET['lang'])) {
 }
 
 require_once('../includes/db.php');
-include '../includes/conn.php';
 $tenant_id = $_SESSION['tenant_id'];
 
 try {

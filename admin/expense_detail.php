@@ -234,7 +234,7 @@ include '../includes/header.php';
                                                 <tr>
                                                     <td><?php echo h($transaction['id']); ?></td>
                                                     <td>
-                                                        <span class="badge badge-<?php echo strtolower($transaction['type']) == 'debit' ? 'danger' : 'success'; ?>">
+                                                        <span class="badge-<?php echo strtolower($transaction['type']) == 'debit' ? 'danger' : 'success'; ?>">
                                                             <?php echo h($transaction['type']); ?>
                                                         </span>
                                                     </td>

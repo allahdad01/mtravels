@@ -14,6 +14,14 @@
 
 document.addEventListener('DOMContentLoaded', function() {
     setupDocumentUploadZones();
+    
+    // Pre-load Tesseract worker in background (no await - let it load quietly)
+    console.log('Pre-loading Tesseract worker in background...');
+    setTimeout(() => {
+        initializeTesseractWorker().catch(err => {
+            console.warn('Background Tesseract initialization failed:', err);
+        });
+    }, 1000); // Load after page settles
 });
 
 /**
@@ -108,6 +116,7 @@ let globalTesseractWorker = null;
 
 /**
  * Initialize Tesseract worker (reuse same instance)
+ * With optimized settings for faster initialization
  */
 async function initializeTesseractWorker() {
     if (globalTesseractWorker) {
@@ -120,9 +129,12 @@ async function initializeTesseractWorker() {
         }
         
         console.log('Creating Tesseract worker...');
-        globalTesseractWorker = await Tesseract.createWorker();
+        globalTesseractWorker = await Tesseract.createWorker({
+            // Use faster legacy model instead of default
+            legacyLang: true
+        });
         
-        // Load English language
+        // Load English language (cached in browser)
         console.log('Loading English language data...');
         await globalTesseractWorker.loadLanguage('eng');
         console.log('Initializing OCR engine...');
@@ -142,27 +154,35 @@ async function initializeTesseractWorker() {
  */
 async function performClientSideOCR(file, documentType) {
     let fileUrl = null;
+    const startTime = performance.now();
     
     try {
         showDocumentStatus(documentType, `⏳ Starting browser-based OCR (Tesseract.js)...`, 'info');
-        console.log('Using Tesseract.js for OCR...');
+        console.log(`[${documentType}] Starting OCR for ${file.size} bytes`);
         
         // Create image URL for Tesseract
         fileUrl = URL.createObjectURL(file);
         
         // Initialize Tesseract worker (loads language data on first use)
         showDocumentStatus(documentType, `⏳ Loading Tesseract worker and language data...`, 'info');
+        const initStart = performance.now();
         const worker = await initializeTesseractWorker();
+        const initTime = performance.now() - initStart;
+        console.log(`[${documentType}] Worker initialized in ${(initTime/1000).toFixed(2)}s`);
         
         // Process image with timeout
         showDocumentStatus(documentType, `⏳ Tesseract.js processing image...`, 'info');
+        const ocrStart = performance.now();
         
         const result = await Promise.race([
             worker.recognize(fileUrl),
             new Promise((_, reject) => 
-                setTimeout(() => reject(new Error('OCR processing timeout')), 120000)
+                setTimeout(() => reject(new Error('OCR processing timeout')), 60000) // 60 seconds max
             )
         ]);
+        
+        const ocrTime = performance.now() - ocrStart;
+        console.log(`[${documentType}] OCR completed in ${(ocrTime/1000).toFixed(2)}s`);
         
         const text = result.data.text;
         
@@ -196,12 +216,13 @@ async function performClientSideOCR(file, documentType) {
             const confidence = serverData.confidence ? Math.round(serverData.confidence * 100) : 0;
             const mrzValid = serverData.mrz_valid ? 'MRZ' : 'Pattern';
             
+            const totalTime = (performance.now() - startTime) / 1000;
             showDocumentStatus(documentType, 
-                `✅ Extracted via Tesseract.js + ${mrzValid} (Confidence: ${confidence}%)`, 
+                `✅ Extracted via Tesseract.js + ${mrzValid} (${confidence}%, ${totalTime.toFixed(1)}s)`, 
                 'success'
             );
             
-            console.log(`${documentType} Extraction (${mrzValid}):`, serverData.data);
+            console.log(`[${documentType}] Total extraction time: ${totalTime.toFixed(2)}s`);
         } else {
             throw new Error(serverData.message || 'Server extraction failed');
         }
@@ -209,41 +230,48 @@ async function performClientSideOCR(file, documentType) {
     } catch (error) {
         console.error(`Client-side OCR Error (${documentType}):`, error);
         
-        // Try fallback: client-side pattern matching
-        console.log('Attempting client-side fallback extraction...');
-        try {
-            if (!fileUrl) {
-                fileUrl = URL.createObjectURL(file);
-            }
-            
-            const worker = await initializeTesseractWorker();
-            const result = await Promise.race([
-                worker.recognize(fileUrl),
-                new Promise((_, reject) => 
-                    setTimeout(() => reject(new Error('OCR timeout')), 120000)
-                )
-            ]);
-            
-            const text = result.data.text;
-            if (text && text.trim().length > 0) {
-                const documentData = extractDocumentFromText(text, documentType);
-                fillUmrahForm(documentData, documentType);
+        // Attempt fallback ONLY if server extraction failed
+        if (error.response && !error.response.ok) {
+            console.log('Server extraction failed, attempting client-side fallback extraction...');
+            try {
+                if (!fileUrl) {
+                    fileUrl = URL.createObjectURL(file);
+                }
                 
+                const worker = await initializeTesseractWorker();
+                const result = await Promise.race([
+                    worker.recognize(fileUrl),
+                    new Promise((_, reject) => 
+                        setTimeout(() => reject(new Error('OCR timeout')), 60000) // Reduced timeout
+                    )
+                ]);
+                
+                const text = result.data.text;
+                if (text && text.trim().length > 0) {
+                    const documentData = extractDocumentFromText(text, documentType);
+                    fillUmrahForm(documentData, documentType);
+                    
+                    showDocumentStatus(documentType, 
+                        `✅ Extracted via Tesseract.js (Client-side pattern matching)`, 
+                        'success'
+                    );
+                    
+                    console.log(`${documentType} Extraction (fallback):`, documentData);
+                } else {
+                    throw new Error('No text detected in fallback');
+                }
+            } catch (fallbackError) {
                 showDocumentStatus(documentType, 
-                    `✅ Extracted via Tesseract.js (Client-side pattern matching)`, 
-                    'success'
+                    `❌ OCR Error: ${error.message}`, 
+                    'error'
                 );
-                
-                console.log(`${documentType} Extraction (fallback):`, documentData);
-            } else {
-                throw new Error('No text detected in fallback');
+                console.error('Fallback also failed:', fallbackError);
             }
-        } catch (fallbackError) {
+        } else {
             showDocumentStatus(documentType, 
                 `❌ OCR Error: ${error.message}`, 
                 'error'
             );
-            console.error('Fallback also failed:', fallbackError);
         }
     } finally {
         if (fileUrl) {
