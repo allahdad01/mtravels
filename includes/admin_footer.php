@@ -12,7 +12,7 @@
     // Flag to identify admin users for detailed error messages
     var isAdminUser = true;
 </script>
-
+<link rel="stylesheet" href="../css/modal-scrollable.css">
 <!-- Include AI Chatbot -->
 
 <style>

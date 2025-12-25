@@ -1,0 +1,46 @@
+/**
+ * Modal Scrollable Styles
+ * Ensures modal body is scrollable when content exceeds viewport height
+ */
+
+/* Make modal body scrollable */
+.modal-body {
+    max-height: calc(100vh - 200px);
+    overflow-y: auto;
+    overflow-x: hidden;
+}
+
+/* For larger modals */
+.modal-lg .modal-body {
+    max-height: calc(100vh - 250px);
+}
+
+/* For extra large modals */
+.modal-xl .modal-body {
+    max-height: calc(100vh - 280px);
+}
+
+
+
+/* Style scrollbar for webkit browsers */
+.modal-body::-webkit-scrollbar {
+    width: 8px;
+}
+
+.modal-body::-webkit-scrollbar-track {
+    background: transparent;
+}
+
+.modal-body::-webkit-scrollbar-thumb {
+    background: #ccc;
+    border-radius: 4px;
+}
+
+.modal-body::-webkit-scrollbar-thumb:hover {
+    background: #999;
+}
+
+/* Prevent body scroll when modal is open */
+body.modal-open {
+    overflow: hidden;
+}
