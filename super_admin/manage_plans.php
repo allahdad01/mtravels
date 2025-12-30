@@ -34,13 +34,46 @@ if (!isset($_SESSION['csrf_token'])) {
 }
 
 // Database connection
-require_once '../includes/conn.php';
+require_once '../includes/db.php';
 
-// Fetch all plans
-$stmt = $conn->prepare("SELECT name, description, features, price, max_users, trial_days, status, created_at FROM plans ORDER BY created_at DESC");
-$stmt->execute();
-$plans = $stmt->get_result()->fetch_all(MYSQLI_ASSOC);
-$stmt->close();
+// Pagination and search
+$items_per_page = 10;
+$current_page = intval($_GET['page'] ?? 1);
+$search_query = $_GET['search'] ?? '';
+
+// Count total items
+$count_query = "SELECT COUNT(*) as total FROM plans WHERE 1=1";
+$filter_params = [];
+
+if (!empty($search_query)) {
+    $count_query .= " AND (name LIKE ? OR description LIKE ?)";
+    $search_term = "%{$search_query}%";
+    $filter_params[] = $search_term;
+    $filter_params[] = $search_term;
+}
+
+$stmt = $pdo->prepare($count_query);
+$stmt->execute($filter_params);
+$total_items = $stmt->fetch()['total'];
+$total_pages = ceil($total_items / $items_per_page);
+$current_page = max(1, min($current_page, $total_pages));
+$offset = ($current_page - 1) * $items_per_page;
+
+// Fetch paginated plans
+$query = "SELECT name, description, features, price, max_users, trial_days, status, created_at FROM plans WHERE 1=1";
+
+if (!empty($search_query)) {
+    $query .= " AND (name LIKE ? OR description LIKE ?)";
+}
+$query .= " ORDER BY created_at DESC LIMIT ? OFFSET ?";
+
+$query_params = $filter_params;
+$query_params[] = $items_per_page;
+$query_params[] = $offset;
+
+$stmt = $pdo->prepare($query);
+$stmt->execute($query_params);
+$plans = $stmt->fetchAll();
 ?>
 
 <?php include '../includes/header_super_admin.php'; ?>
@@ -104,14 +137,23 @@ $stmt->close();
                                 <?php endif; ?>
                                 
                                 <div class="card">
-                                    <div class="card-header">
-                                        <h5><?= __('plans_list') ?></h5>
-                                        <button class="btn btn-primary float-right" data-toggle="modal" data-target="#createPlanModal">
-                                            <i class="feather icon-plus mr-1"></i><?= __('create_plan') ?>
-                                        </button>
-                                    </div>
-                                    <div class="card-body table-border-style">
-                                        <div class="table-responsive">
+                                     <div class="card-header">
+                                         <h5><?= __('plans_list') ?></h5>
+                                         <button class="btn btn-primary float-right" data-toggle="modal" data-target="#createPlanModal">
+                                             <i class="feather icon-plus mr-1"></i><?= __('create_plan') ?>
+                                         </button>
+                                     </div>
+                                     <div class="card-body table-border-style">
+                                         <div class="mb-3">
+                                             <form method="GET" action="manage_plans.php" class="form-inline">
+                                                 <input type="text" class="form-control mr-2" name="search" placeholder="Search plans..." value="<?= htmlspecialchars($search_query) ?>" style="width: 250px;">
+                                                 <button type="submit" class="btn btn-primary mr-2">Search</button>
+                                                 <?php if (!empty($search_query)): ?>
+                                                 <a href="manage_plans.php" class="btn btn-secondary">Clear</a>
+                                                 <?php endif; ?>
+                                             </form>
+                                         </div>
+                                         <div class="table-responsive">
                                             <table class="table table-hover">
                                                 <thead>
                                                     <tr>
@@ -160,14 +202,55 @@ $stmt->close();
                                                     <tr><td colspan="9" class="text-center"><?= __('no_plans_found') ?></td></tr>
                                                     <?php endif; ?>
                                                 </tbody>
-                                            </table>
-                                        </div>
-                                    </div>
-                                </div>
-                            </div>
-                        </div>
+                                                </table>
+                                                </div>
+                                                
+                                                <!-- Pagination -->
+                                                <?php if ($total_pages > 1): ?>
+                                                <nav aria-label="Page navigation" class="mt-3">
+                                                <ul class="pagination justify-content-center">
+                                                <li class="page-item <?= $current_page === 1 ? 'disabled' : '' ?>">
+                                                <a class="page-link" href="?page=<?= $current_page - 1 ?><?= !empty($search_query) ? '&search=' . urlencode($search_query) : '' ?>">Previous</a>
+                                                </li>
+                                                <?php 
+                                                $start_page = max(1, $current_page - 2);
+                                                $end_page = min($total_pages, $current_page + 2);
+                                                if ($start_page > 1): ?>
+                                                <li class="page-item">
+                                                <a class="page-link" href="?page=1<?= !empty($search_query) ? '&search=' . urlencode($search_query) : '' ?>">1</a>
+                                                </li>
+                                                <?php if ($start_page > 2): ?>
+                                                <li class="page-item disabled"><span class="page-link">...</span></li>
+                                                <?php endif; ?>
+                                                <?php endif; ?>
+                                                <?php for ($i = $start_page; $i <= $end_page; $i++): ?>
+                                                <li class="page-item <?= $i === $current_page ? 'active' : '' ?>">
+                                                <a class="page-link" href="?page=<?= $i ?><?= !empty($search_query) ? '&search=' . urlencode($search_query) : '' ?>"><?= $i ?></a>
+                                                </li>
+                                                <?php endfor; ?>
+                                                <?php if ($end_page < $total_pages): ?>
+                                                <?php if ($end_page < $total_pages - 1): ?>
+                                                <li class="page-item disabled"><span class="page-link">...</span></li>
+                                                <?php endif; ?>
+                                                <li class="page-item">
+                                                <a class="page-link" href="?page=<?= $total_pages ?><?= !empty($search_query) ? '&search=' . urlencode($search_query) : '' ?>"><?= $total_pages ?></a>
+                                                </li>
+                                                <?php endif; ?>
+                                                <li class="page-item <?= $current_page === $total_pages ? 'disabled' : '' ?>">
+                                                <a class="page-link" href="?page=<?= $current_page + 1 ?><?= !empty($search_query) ? '&search=' . urlencode($search_query) : '' ?>">Next</a>
+                                                </li>
+                                                </ul>
+                                                </nav>
+                                                <div class="text-center text-muted small mt-2">
+                                                Page <?= $current_page ?> of <?= $total_pages ?> | Showing <?= count($plans) ?> of <?= $total_items ?> plans
+                                                </div>
+                                                <?php endif; ?>
+                                                </div>
+                                                </div>
+                                                </div>
+                                                </div>
 
-                       <!-- Create Plan Modal -->
+                                                <!-- Create Plan Modal -->
                         <div class="modal fade" id="createPlanModal" tabindex="-1" role="dialog" aria-labelledby="createPlanModalLabel" aria-hidden="true">
                             <div class="modal-dialog modal-lg modal-dialog-centered" role="document">
                                 <div class="modal-content">

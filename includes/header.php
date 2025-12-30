@@ -88,7 +88,6 @@ if ($tenant_id) {
 
 // Temporary fix: If no features found, assign default features for testing
 if (empty($allowed_features)) {
-    error_log("No features found, using default feature set");
     $allowed_features = [
         "ticket_bookings",
         "ticket_reservations", 
@@ -119,8 +118,6 @@ if (empty($allowed_features)) {
 // Helper function to check if a feature is allowed
 function hasFeature($feature, $allowed_features) {
     $hasIt = in_array($feature, $allowed_features);
-    // Debug: Log feature checks
-    error_log("Checking feature '$feature': " . ($hasIt ? 'ALLOWED' : 'DENIED'));
     return $hasIt;
 }
 
@@ -144,14 +141,7 @@ $session_timeout = 1800; // 30 minutes in seconds
 $remaining_time = isset($_SESSION['login_time']) ? $session_timeout - (time() - $_SESSION['login_time']) : $session_timeout;
 $remaining_time = max(0, $remaining_time); // Ensure non-negative
 
-// Debug output for development (remove in production)
-if (isset($_GET['debug'])) {
-    echo "<pre>";
-    echo "Tenant ID: " . $tenant_id . "\n";
-    echo "Allowed Features: " . print_r($allowed_features, true) . "\n";
-    echo "</pre>";
-    exit();
-}
+
 ?>
 
 
@@ -1801,6 +1791,13 @@ MOBILE SIDEBAR - CLEAN LAYOUT FIX
                     </a>
                 </li>
 
+                <li data-username="support_tickets" class="nav-item <?php echo basename($_SERVER['PHP_SELF']) == 'support_tickets.php' || basename($_SERVER['PHP_SELF']) == 'support_ticket_create.php' || basename($_SERVER['PHP_SELF']) == 'support_ticket_detail.php' ? 'active' : ''; ?>">
+                    <a href="support_tickets.php" class="nav-link">
+                        <span class="pcoded-micon"><i class="feather icon-headphones"></i></span>
+                        <span class="pcoded-mtext">Support Tickets</span>
+                    </a>
+                </li>
+
                 <li data-username="activity_log" class="nav-item <?php echo basename($_SERVER['PHP_SELF']) == 'activity_log.php' ? 'active' : ''; ?>">
                     <a href="activity_log.php" class="nav-link">
                         <span class="pcoded-micon"><i class="feather icon-activity"></i></span>
@@ -1811,6 +1808,26 @@ MOBILE SIDEBAR - CLEAN LAYOUT FIX
                     <a href="email_analytics.php" class="nav-link">
                         <span class="pcoded-micon"><i class="feather icon-mail"></i></span>
                         <span class="pcoded-mtext">Email Analytics</span>
+                    </a>
+                </li>
+                <li data-username="support_tickets" class="nav-item <?php echo basename($_SERVER['PHP_SELF']) == 'support_ticket_create.php' || basename($_SERVER['PHP_SELF']) == 'support_tickets.php' || basename($_SERVER['PHP_SELF']) == 'support_ticket_detail.php' ? 'active' : ''; ?>">
+                    <a href="javascript:" class="nav-link">
+                        <span class="pcoded-micon"><i class="feather icon-help-circle"></i></span>
+                        <span class="pcoded-mtext">Support Tickets</span>
+                    </a>
+                    <ul class="pcoded-submenu">
+                        <li class="<?php echo basename($_SERVER['PHP_SELF']) == 'support_tickets.php' || basename($_SERVER['PHP_SELF']) == 'support_ticket_detail.php' ? 'active' : ''; ?>">
+                            <a href="support_tickets.php">My Tickets</a>
+                        </li>
+                        <li class="<?php echo basename($_SERVER['PHP_SELF']) == 'support_ticket_create.php' ? 'active' : ''; ?>">
+                            <a href="support_ticket_create.php">Submit New Ticket</a>
+                        </li>
+                    </ul>
+                </li>
+                <li data-username="tutorial" class="nav-item <?php echo basename($_SERVER['PHP_SELF']) == 'tutorial.php' ? 'active' : ''; ?>">
+                    <a href="tutorial.php" class="nav-link">
+                        <span class="pcoded-micon"><i class="feather icon-book"></i></span>
+                        <span class="pcoded-mtext">Tutorials</span>
                     </a>
                 </li>
             </ul>

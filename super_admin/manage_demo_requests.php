@@ -34,7 +34,7 @@ if (!isset($_SESSION['csrf_token'])) {
 }
 
 // Database connection
-require_once '../includes/conn.php';
+require_once '../includes/db.php';
 
 // Handle status update
 if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['update_status'])) {
@@ -53,21 +53,15 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['update_status'])) {
     }
 
     try {
-        $stmt = $conn->prepare("UPDATE demo_requests SET status = ?, updated_at = NOW() WHERE id = ?");
-        $stmt->bind_param('si', $new_status, $request_id);
-        $stmt->execute();
-        $stmt->close();
-
+        $stmt = $pdo->prepare("UPDATE demo_requests SET status = ?, updated_at = NOW() WHERE id = ?");
+        $stmt->execute([$new_status, $request_id]);
         // Log action
         $user_id = $_SESSION['user_id'];
-        $stmt = $conn->prepare("INSERT INTO audit_logs (user_id, action, entity_type, entity_id, details, ip_address, created_at)
+        $stmt = $pdo->prepare("INSERT INTO audit_logs (user_id, action, entity_type, entity_id, details, ip_address, created_at)
                                 VALUES (?, 'update_demo_request_status', 'demo_request', ?, ?, ?, NOW())");
         $details = json_encode(['new_status' => $new_status]);
         $ip_address = $_SERVER['REMOTE_ADDR'];
-        $stmt->bind_param('iiss', $user_id, $request_id, $details, $ip_address);
-        $stmt->execute();
-        $stmt->close();
-
+        $stmt->execute([$user_id, $request_id, $details, $ip_address]);
         header('Location: manage_demo_requests.php?success=status_updated');
         exit();
     } catch (Exception $e) {
@@ -87,21 +81,15 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['delete_request'])) {
     $request_id = intval($_POST['request_id']);
 
     try {
-        $stmt = $conn->prepare("DELETE FROM demo_requests WHERE id = ?");
-        $stmt->bind_param('i', $request_id);
-        $stmt->execute();
-        $stmt->close();
-
+        $stmt = $pdo->prepare("DELETE FROM demo_requests WHERE id = ?");
+        $stmt->execute([$request_id]);
         // Log action
         $user_id = $_SESSION['user_id'];
-        $stmt = $conn->prepare("INSERT INTO audit_logs (user_id, action, entity_type, entity_id, details, ip_address, created_at)
+        $stmt = $pdo->prepare("INSERT INTO audit_logs (user_id, action, entity_type, entity_id, details, ip_address, created_at)
                                 VALUES (?, 'delete_demo_request', 'demo_request', ?, ?, ?, NOW())");
         $details = json_encode(['action' => 'deleted']);
         $ip_address = $_SERVER['REMOTE_ADDR'];
-        $stmt->bind_param('iiss', $user_id, $request_id, $details, $ip_address);
-        $stmt->execute();
-        $stmt->close();
-
+        $stmt->execute([$user_id, $request_id, $details, $ip_address]);
         header('Location: manage_demo_requests.php?success=request_deleted');
         exit();
     } catch (Exception $e) {
@@ -111,18 +99,40 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['delete_request'])) {
     }
 }
 
-// Fetch demo requests with optional filters
+// Pagination and filters
+$items_per_page = 10;
+$current_page = intval($_GET['page'] ?? 1);
 $status_filter = $_GET['status'] ?? '';
 $search = $_GET['search'] ?? '';
 
+// Count total
+$count_query = "SELECT COUNT(*) as total FROM demo_requests WHERE 1=1";
+$filter_params = [];
+if ($status_filter) {
+    $count_query .= " AND status = ?";
+    $filter_params[] = $status_filter;
+}
+if ($search) {
+    $count_query .= " AND (name LIKE ? OR email LIKE ? OR company LIKE ?)";
+    $search_param = "%$search%";
+    $filter_params[] = $search_param;
+    $filter_params[] = $search_param;
+    $filter_params[] = $search_param;
+}
+$stmt = $pdo->prepare($count_query);
+$stmt->execute($filter_params);
+$total_items = $stmt->fetch()['total'];
+$total_pages = ceil($total_items / $items_per_page);
+$current_page = max(1, min($current_page, $total_pages));
+$offset = ($current_page - 1) * $items_per_page;
+
+// Fetch paginated requests
 $query = "SELECT * FROM demo_requests WHERE 1=1";
 $params = [];
-$types = '';
 
 if ($status_filter) {
     $query .= " AND status = ?";
     $params[] = $status_filter;
-    $types .= 's';
 }
 
 if ($search) {
@@ -131,24 +141,19 @@ if ($search) {
     $params[] = $search_param;
     $params[] = $search_param;
     $params[] = $search_param;
-    $types .= 'sss';
 }
 
-$query .= " ORDER BY created_at DESC";
+$query .= " ORDER BY created_at DESC LIMIT ? OFFSET ?";
+$params[] = $items_per_page;
+$params[] = $offset;
 
-$stmt = $conn->prepare($query);
-if ($params) {
-    $stmt->bind_param($types, ...$params);
-}
-$stmt->execute();
-$demo_requests = $stmt->get_result()->fetch_all(MYSQLI_ASSOC);
-$stmt->close();
-
+$stmt = $pdo->prepare($query);
+$stmt->execute($params);
+$demo_requests = $stmt->fetchAll();
 // Get status counts for summary
-$stmt = $conn->prepare("SELECT status, COUNT(*) as count FROM demo_requests GROUP BY status");
+$stmt = $pdo->prepare("SELECT status, COUNT(*) as count FROM demo_requests GROUP BY status");
 $stmt->execute();
-$status_counts = $stmt->get_result()->fetch_all(MYSQLI_ASSOC);
-$stmt->close();
+$status_counts = $stmt->fetchAll();
 $status_summary = array_column($status_counts, 'count', 'status');
 ?>
 
@@ -338,12 +343,29 @@ $status_summary = array_column($status_counts, 'count', 'status');
                         <div class="row">
                             <div class="col-md-12">
                                 <div class="card shadow-lg border-0">
-                                    <div class="card-header d-flex justify-content-between align-items-center">
-                                        <h4 class="mb-0"><i class="feather icon-users mr-2"></i>Demo Requests</h4>
-                                        <span class="badge badge-pill badge-info"><?= count($demo_requests) ?> requests</span>
-                                    </div>
-                                    <div class="card-body p-0">
-                                        <div class="table-responsive">
+                                     <div class="card-header d-flex justify-content-between align-items-center">
+                                         <h4 class="mb-0"><i class="feather icon-users mr-2"></i>Demo Requests</h4>
+                                         <span class="badge badge-pill badge-info"><?= $total_items ?> total</span>
+                                     </div>
+                                     <div class="card-body p-0">
+                                         <div class="p-3">
+                                             <form method="GET" action="manage_demo_requests.php" class="form-inline">
+                                                 <input type="text" class="form-control mr-2" name="search" placeholder="Name, email, company..." value="<?= htmlspecialchars($search) ?>" style="width: 250px;">
+                                                 <select class="form-control mr-2" name="status" style="width: 120px;">
+                                                     <option value="">All Statuses</option>
+                                                     <option value="pending" <?= $status_filter === 'pending' ? 'selected' : '' ?>>Pending</option>
+                                                     <option value="contacted" <?= $status_filter === 'contacted' ? 'selected' : '' ?>>Contacted</option>
+                                                     <option value="scheduled" <?= $status_filter === 'scheduled' ? 'selected' : '' ?>>Scheduled</option>
+                                                     <option value="completed" <?= $status_filter === 'completed' ? 'selected' : '' ?>>Completed</option>
+                                                     <option value="cancelled" <?= $status_filter === 'cancelled' ? 'selected' : '' ?>>Cancelled</option>
+                                                 </select>
+                                                 <button type="submit" class="btn btn-primary mr-2">Search</button>
+                                                 <?php if (!empty($search) || !empty($status_filter)): ?>
+                                                 <a href="manage_demo_requests.php" class="btn btn-secondary">Clear</a>
+                                                 <?php endif; ?>
+                                             </form>
+                                         </div>
+                                         <div class="table-responsive">
                                             <table class="table table-hover table-striped mb-0">
                                                 <thead class="bg-light">
                                                     <tr>
@@ -436,6 +458,49 @@ $status_summary = array_column($status_counts, 'count', 'status');
                                                 </tbody>
                                             </table>
                                         </div>
+                                        
+                                        <!-- Pagination -->
+                                        <?php if ($total_pages > 1): ?>
+                                        <div class="p-3">
+                                        <nav aria-label="Page navigation" class="mt-3">
+                                        <ul class="pagination justify-content-center">
+                                            <li class="page-item <?= $current_page === 1 ? 'disabled' : '' ?>">
+                                            <a class="page-link" href="?page=<?= $current_page - 1 ?><?= !empty($search) ? '&search=' . urlencode($search) : '' ?><?= !empty($status_filter) ? '&status=' . urlencode($status_filter) : '' ?>">Previous</a>
+                                            </li>
+                                            <?php 
+                                            $start_page = max(1, $current_page - 2);
+                                            $end_page = min($total_pages, $current_page + 2);
+                                            if ($start_page > 1): ?>
+                                            <li class="page-item">
+                                            <a class="page-link" href="?page=1<?= !empty($search) ? '&search=' . urlencode($search) : '' ?><?= !empty($status_filter) ? '&status=' . urlencode($status_filter) : '' ?>">1</a>
+                                            </li>
+                                            <?php if ($start_page > 2): ?>
+                                            <li class="page-item disabled"><span class="page-link">...</span></li>
+                                            <?php endif; ?>
+                                            <?php endif; ?>
+                                            <?php for ($i = $start_page; $i <= $end_page; $i++): ?>
+                                            <li class="page-item <?= $i === $current_page ? 'active' : '' ?>">
+                                            <a class="page-link" href="?page=<?= $i ?><?= !empty($search) ? '&search=' . urlencode($search) : '' ?><?= !empty($status_filter) ? '&status=' . urlencode($status_filter) : '' ?>"><?= $i ?></a>
+                                            </li>
+                                            <?php endfor; ?>
+                                            <?php if ($end_page < $total_pages): ?>
+                                            <?php if ($end_page < $total_pages - 1): ?>
+                                            <li class="page-item disabled"><span class="page-link">...</span></li>
+                                            <?php endif; ?>
+                                            <li class="page-item">
+                                            <a class="page-link" href="?page=<?= $total_pages ?><?= !empty($search) ? '&search=' . urlencode($search) : '' ?><?= !empty($status_filter) ? '&status=' . urlencode($status_filter) : '' ?>"><?= $total_pages ?></a>
+                                            </li>
+                                            <?php endif; ?>
+                                            <li class="page-item <?= $current_page === $total_pages ? 'disabled' : '' ?>">
+                                            <a class="page-link" href="?page=<?= $current_page + 1 ?><?= !empty($search) ? '&search=' . urlencode($search) : '' ?><?= !empty($status_filter) ? '&status=' . urlencode($status_filter) : '' ?>">Next</a>
+                                            </li>
+                                        </ul>
+                                        </nav>
+                                        <div class="text-center text-muted small mt-2">
+                                        Page <?= $current_page ?> of <?= $total_pages ?> | Showing <?= count($demo_requests) ?> of <?= $total_items ?> requests
+                                        </div>
+                                        </div>
+                                        <?php endif; ?>
                                     </div>
                                 </div>
                             </div>

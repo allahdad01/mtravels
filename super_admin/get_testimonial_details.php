@@ -12,26 +12,24 @@ if (!isset($_SESSION['user_id']) || !isset($_SESSION['role']) || $_SESSION['role
 }
 
 // Database connection
-require_once '../includes/conn.php';
+require_once '../includes/db.php';
 
 if ($_SERVER['REQUEST_METHOD'] === 'GET' && isset($_GET['id'])) {
     $testimonial_id = (int)$_GET['id'];
 
-    $stmt = $conn->prepare("SELECT * FROM testimonials WHERE id = ?");
-    $stmt->bind_param('i', $testimonial_id);
-    $stmt->execute();
+    $stmt = $pdo->prepare("SELECT * FROM testimonials WHERE id = ?");
+    $stmt->execute([$testimonial_id]);
     $result = $stmt->get_result();
 
     if ($result->num_rows > 0) {
-        $testimonial = $result->fetch_assoc();
+        $testimonial = $result->fetch();
         echo json_encode($testimonial);
     } else {
         http_response_code(404);
         echo json_encode(['error' => 'Testimonial not found']);
     }
 
-    $stmt->close();
-} else {
+    } else {
     http_response_code(400);
     echo json_encode(['error' => 'Invalid request']);
 }

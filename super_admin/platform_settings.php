@@ -34,13 +34,12 @@ if (!isset($_SESSION['csrf_token'])) {
 }
 
 // Database connection
-require_once '../includes/conn.php';
+require_once '../includes/db.php';
 
 // Fetch platform settings
-$stmt = $conn->prepare("SELECT `key`, `value`, `type`, `description` FROM platform_settings");
+$stmt = $pdo->prepare("SELECT `key`, `value`, `type`, `description` FROM platform_settings");
 $stmt->execute();
-$settings = $stmt->get_result()->fetch_all(MYSQLI_ASSOC);
-$stmt->close();
+$settings = $stmt->fetchAll();
 $settings_map = array_column($settings, 'value', 'key');
 ?>
 

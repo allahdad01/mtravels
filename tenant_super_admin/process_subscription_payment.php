@@ -29,6 +29,7 @@ if (!$tenant_id) {
 $subscription_id = intval($_POST['subscription_id'] ?? 0);
 $amount = floatval($_POST['amount'] ?? 0);
 $currency = $_POST['currency'] ?? 'USD';
+$addon_cost = floatval($_POST['addon_cost'] ?? 0);
 
 if ($subscription_id <= 0 || $amount <= 0) {
     die("Invalid payment data.");
@@ -66,14 +67,25 @@ $redirect_failure_url = $base_url . '?' . $failure_params;
 
 // Prepare HesabPay API request
 $api_url = HESABPAY_BASE_URL . '/payment/create-session';
+$items = [
+    [
+        'id' => 'sub_' . $subscription_id,
+        'name' => $subscription['plan_name'] ?? 'Subscription',
+        'price' => $amount_afn - $addon_cost
+    ]
+];
+
+// Add addon cost as separate item if present
+if ($addon_cost > 0) {
+    $items[] = [
+        'id' => 'addon_' . $subscription_id,
+        'name' => 'Branch Add-ons',
+        'price' => $addon_cost
+    ];
+}
+
 $request_payload = [
-    'items' => [
-        [
-            'id' => $subscription_id,
-            'name' => $subscription['plan_name'] ?? 'Subscription',
-            'price' => $amount_afn
-        ]
-    ],
+    'items' => $items,
     'redirect_success_url' => $redirect_success_url,
     'redirect_failure_url' => $redirect_failure_url
 ];

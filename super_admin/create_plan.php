@@ -1,6 +1,6 @@
 <?php
 session_start();
-require_once '../includes/conn.php';
+require_once '../includes/db.php';
 
 // Set secure headers
 header("X-XSS-Protection: 1; mode=block");
@@ -68,32 +68,23 @@ if (!json_decode($features, true) || json_last_error() !== JSON_ERROR_NONE) {
 }
 
 // Check if plan name exists
-$stmt = $conn->prepare("SELECT COUNT(*) as count FROM plans WHERE name = ?");
-$stmt->bind_param('s', $name);
-$stmt->execute();
-if ($stmt->get_result()->fetch_assoc()['count'] > 0) {
+$stmt = $pdo->prepare("SELECT COUNT(*) as count FROM plans WHERE name = ?");
+$stmt->execute([$name]);
+if ($stmt->fetch()['count'] > 0) {
     $errors[] = "Plan name already exists.";
 }
-$stmt->close();
-
 if (empty($errors)) {
     // Insert new plan
-    $stmt = $conn->prepare("INSERT INTO plans (name, description, features, price, max_users, trial_days, status, created_at, updated_at) 
+    $stmt = $pdo->prepare("INSERT INTO plans (name, description, features, price, max_users, trial_days, status, created_at, updated_at) 
                             VALUES (?, ?, ?, ?, ?, ?, 'active', NOW(), NOW())");
-    $stmt->bind_param('sssdii', $name, $description, $features, $price, $max_users, $trial_days);
-    $stmt->execute();
-    $stmt->close();
-
+    $stmt->execute([$name, $description, $features, $price, $max_users, $trial_days]);
     // Log action
     $user_id = $_SESSION['user_id'];
-    $stmt = $conn->prepare("INSERT INTO audit_logs (user_id, action, entity_type, entity_id, details, ip_address, created_at) 
+    $stmt = $pdo->prepare("INSERT INTO audit_logs (user_id, action, entity_type, entity_id, details, ip_address, created_at) 
                             VALUES (?, 'create_plan', 'plan', ?, ?, ?, NOW())");
     $details = json_encode(['name' => $name, 'description' => $description, 'price' => $price, 'max_users' => $max_users, 'trial_days' => $trial_days]);
     $ip_address = $_SERVER['REMOTE_ADDR'];
-    $stmt->bind_param('isss', $user_id, $name, $details, $ip_address);
-    $stmt->execute();
-    $stmt->close();
-
+    $stmt->execute([$user_id, $name, $details, $ip_address]);
     header('Location: manage_plans.php?success=plan_created');
 } else {
     header('Location: manage_plans.php?error=' . urlencode(implode(', ', $errors)));

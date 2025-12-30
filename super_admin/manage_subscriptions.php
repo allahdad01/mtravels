@@ -34,13 +34,13 @@ if (!isset($_SESSION['csrf_token'])) {
 }
 
 // Database connection
-require_once '../includes/conn.php';
+require_once '../includes/db.php';
 
 // Handle AJAX requests for edit subscription
 if (isset($_GET['action']) && $_GET['action'] === 'get_subscription' && isset($_GET['subscription_id'])) {
     $subscription_id = intval($_GET['subscription_id']);
 
-    $stmt = $conn->prepare("
+    $stmt = $pdo->prepare("
         SELECT ts.id, ts.tenant_id, ts.plan_id, ts.status, ts.billing_cycle, ts.start_date, ts.end_date,
             ts.amount, ts.currency, ts.payment_method, ts.last_payment_date, ts.next_billing_date,
             ts.transaction_id, COALESCE(t.name, 'Deleted Tenant') as tenant_name, p.name as plan_name
@@ -49,19 +49,17 @@ if (isset($_GET['action']) && $_GET['action'] === 'get_subscription' && isset($_
         LEFT JOIN plans p ON ts.plan_id = p.id
         WHERE ts.id = ?
     ");
-    $stmt->bind_param('i', $subscription_id);
-    $stmt->execute();
-
-    if ($stmt->error) {
-        error_log("Database error in get_subscription: " . $stmt->error);
+    
+    try {
+        $stmt->execute([$subscription_id]);
+    } catch (PDOException $e) {
+        error_log("Database error in get_subscription: " . $e->getMessage());
         header('Content-Type: application/json');
         echo json_encode(['error' => 'Database error occurred']);
         exit();
     }
 
-    $subscription = $stmt->get_result()->fetch_assoc();
-    $stmt->close();
-
+    $subscription = $stmt->fetch();
     if ($subscription) {
         header('Content-Type: application/json');
         echo json_encode($subscription);
@@ -87,7 +85,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action']) && $_POST['
     $amount = $_POST['amount'] ?? '';
     $currency = $_POST['currency'] ?? '';
     $payment_method = $_POST['payment_method'] ?? '';
-    $next_billing_date = $_POST['next_billing_date'] ?? '';
+    $next_billing_date = !empty($_POST['next_billing_date']) ? $_POST['next_billing_date'] : null;
 
     $errors = [];
 
@@ -112,30 +110,23 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action']) && $_POST['
     }
 
     // Verify plan exists
-    $stmt = $conn->prepare("SELECT COUNT(*) as count FROM plans WHERE id = ? AND status = 'active'");
-    $stmt->bind_param('i', $plan_id);
-    $stmt->execute();
-    if ($stmt->get_result()->fetch_assoc()['count'] == 0) {
+    $stmt = $pdo->prepare("SELECT COUNT(*) as count FROM plans WHERE id = ? AND status = 'active'");
+    $stmt->execute([$plan_id]);
+    if ($stmt->fetch()['count'] == 0) {
         $errors[] = "Invalid or inactive plan selected.";
     }
-    $stmt->close();
-
     if (empty($errors)) {
         // Update subscription
-        $stmt = $conn->prepare("
+        $stmt = $pdo->prepare("
             UPDATE tenant_subscriptions
             SET plan_id = ?, status = ?, billing_cycle = ?, amount = ?, currency = ?,
                 payment_method = ?, next_billing_date = ?, updated_at = NOW()
             WHERE id = ?
         ");
-        $stmt->bind_param('sssdsssi', $plan_id, $status, $billing_cycle, $amount, $currency,
-                          $payment_method, $next_billing_date, $subscription_id);
-        $stmt->execute();
-        $stmt->close();
-
+        $stmt->execute([$plan_id, $status, $billing_cycle, $amount, $currency, $payment_method, $next_billing_date, $subscription_id]);
         // Log action
         $user_id = $_SESSION['user_id'];
-        $stmt = $conn->prepare("INSERT INTO audit_logs (user_id, action, entity_type, entity_id, details, ip_address, created_at)
+        $stmt = $pdo->prepare("INSERT INTO audit_logs (user_id, action, entity_type, entity_id, details, ip_address, created_at)
                                 VALUES (?, 'update_subscription', 'subscription', ?, ?, ?, NOW())");
         $details = json_encode([
             'subscription_id' => $subscription_id,
@@ -144,10 +135,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action']) && $_POST['
             'billing_cycle' => $billing_cycle
         ]);
         $ip_address = $_SERVER['REMOTE_ADDR'];
-        $stmt->bind_param('iiss', $user_id, $subscription_id, $details, $ip_address);
-        $stmt->execute();
-        $stmt->close();
-
+        $stmt->execute([$user_id, $subscription_id, $details, $ip_address]);
         header('Location: manage_subscriptions.php?success=subscription_updated');
         exit();
     } else {
@@ -156,25 +144,63 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action']) && $_POST['
     }
 }
 
-// Fetch all subscriptions with tenant names (including deleted tenants)
-$stmt = $conn->prepare("
+// Pagination and search
+$items_per_page = 10;
+$current_page = intval($_GET['page'] ?? 1);
+$search_query = $_GET['search'] ?? '';
+$status_filter = $_GET['status'] ?? '';
+
+// Count total items
+$count_query = "SELECT COUNT(*) as total FROM tenant_subscriptions ts LEFT JOIN tenants t ON ts.tenant_id = t.id WHERE 1=1";
+$filter_params = [];
+
+if (!empty($search_query)) {
+    $count_query .= " AND (COALESCE(t.name, 'Deleted Tenant') LIKE ? OR t.identifier LIKE ?)";
+    $search_term = "%{$search_query}%";
+    $filter_params[] = $search_term;
+    $filter_params[] = $search_term;
+}
+if (!empty($status_filter)) {
+    $count_query .= " AND ts.status = ?";
+    $filter_params[] = $status_filter;
+}
+
+$stmt = $pdo->prepare($count_query);
+$stmt->execute($filter_params);
+$total_items = $stmt->fetch()['total'];
+$total_pages = ceil($total_items / $items_per_page);
+$current_page = max(1, min($current_page, $total_pages));
+$offset = ($current_page - 1) * $items_per_page;
+
+// Fetch paginated subscriptions
+$query = "
     SELECT ts.id, ts.tenant_id, ts.status, ts.billing_cycle, ts.start_date, ts.end_date,
            ts.amount, ts.currency, ts.payment_method, ts.last_payment_date, ts.next_billing_date,
            ts.transaction_id, COALESCE(t.name, 'Deleted Tenant') as tenant_name, t.status as tenant_status, p.name as plan_name
     FROM tenant_subscriptions ts
     LEFT JOIN tenants t ON ts.tenant_id = t.id
     LEFT JOIN plans p ON ts.plan_id = p.id
-    ORDER BY ts.start_date DESC
-");
-$stmt->execute();
-$subscriptions = $stmt->get_result()->fetch_all(MYSQLI_ASSOC);
-$stmt->close();
+    WHERE 1=1";
 
+if (!empty($search_query)) {
+    $query .= " AND (COALESCE(t.name, 'Deleted Tenant') LIKE ? OR t.identifier LIKE ?)";
+}
+if (!empty($status_filter)) {
+    $query .= " AND ts.status = ?";
+}
+$query .= " ORDER BY ts.start_date DESC LIMIT ? OFFSET ?";
+
+$query_params = $filter_params;
+$query_params[] = $items_per_page;
+$query_params[] = $offset;
+
+$stmt = $pdo->prepare($query);
+$stmt->execute($query_params);
+$subscriptions = $stmt->fetchAll();
 // Fetch active plans for the create and edit subscription modals
-$stmt = $conn->prepare("SELECT id, name, description, features, price, max_users, trial_days FROM plans WHERE status = 'active' ORDER BY name");
+$stmt = $pdo->prepare("SELECT id, name, description, features, price, max_users, trial_days FROM plans WHERE status = 'active' ORDER BY name");
 $stmt->execute();
-$plans = $stmt->get_result()->fetch_all(MYSQLI_ASSOC);
-$stmt->close();
+$plans = $stmt->fetchAll();
 ?>
 
 <?php include '../includes/header_super_admin.php'; ?>
@@ -245,16 +271,38 @@ $stmt->close();
                                         </button>
                                     </div>
                                     <div class="card-body">
-                                        <!-- Tabs -->
-                                        <ul class="nav nav-tabs" id="subscriptionTabs" role="tablist">
+                                         <div class="mb-3">
+                                             <form method="GET" action="manage_subscriptions.php" class="form-inline">
+                                                 <input type="text" class="form-control mr-2" name="search" placeholder="Search subscriptions..." value="<?= htmlspecialchars($search_query) ?>" style="width: 200px;">
+                                                 <select class="form-control mr-2" name="status" style="width: 150px;">
+                                                     <option value="">All Statuses</option>
+                                                     <option value="active" <?= $status_filter === 'active' ? 'selected' : '' ?>>Active</option>
+                                                     <option value="pending" <?= $status_filter === 'pending' ? 'selected' : '' ?>>Pending</option>
+                                                     <option value="expired" <?= $status_filter === 'expired' ? 'selected' : '' ?>>Expired</option>
+                                                     <option value="cancelled" <?= $status_filter === 'cancelled' ? 'selected' : '' ?>>Cancelled</option>
+                                                 </select>
+                                                 <button type="submit" class="btn btn-primary mr-2">Search</button>
+                                                 <?php if (!empty($search_query) || !empty($status_filter)): ?>
+                                                 <a href="manage_subscriptions.php" class="btn btn-secondary">Clear</a>
+                                                 <?php endif; ?>
+                                             </form>
+                                             <small class="text-muted d-block mt-2">Showing <?= count($subscriptions) ?> of <?= $total_items ?> subscriptions</small>
+                                         </div>
+                                         <!-- Tabs -->
+                                         <ul class="nav nav-tabs" id="subscriptionTabs" role="tablist">
                                             <li class="nav-item">
                                                 <a class="nav-link active" id="active-tab" data-toggle="tab" href="#active" role="tab" aria-controls="active" aria-selected="true">
                                                     <?= __('active') ?> Subscriptions
                                                 </a>
                                             </li>
                                             <li class="nav-item">
+                                                <a class="nav-link" id="inactive-tab" data-toggle="tab" href="#inactive" role="tab" aria-controls="inactive" aria-selected="false">
+                                                    Inactive/Expired Subscriptions
+                                                </a>
+                                            </li>
+                                            <li class="nav-item">
                                                 <a class="nav-link" id="deleted-tab" data-toggle="tab" href="#deleted" role="tab" aria-controls="deleted" aria-selected="false">
-                                                    Deleted/Cancelled Subscriptions
+                                                    Deleted Tenant Subscriptions
                                                 </a>
                                             </li>
                                         </ul>
@@ -276,13 +324,72 @@ $stmt->close();
                                                             </tr>
                                                         </thead>
                                                         <tbody id="active-subscriptions-body">
+                                                                     <?php foreach ($subscriptions as $sub): ?>
+                                                                     <?php if ($sub['tenant_status'] !== 'deleted' && $sub['status'] === 'active'): ?>
+                                                                     <tr data-tenant-status="<?= $sub['tenant_status'] ?>" data-sub-status="<?= $sub['status'] ?>">
+                                                                         <td><?= htmlspecialchars($sub['tenant_name']) ?></td>
+                                                                         <td><?= htmlspecialchars($sub['plan_name']) ?></td>
+                                                                         <td>
+                                                                             <span class="badge badge-success">
+                                                                                 <?= htmlspecialchars($sub['status']) ?>
+                                                                             </span>
+                                                                         </td>
+                                                                         <td><?= htmlspecialchars($sub['billing_cycle']) ?></td>
+                                                                         <td><?= number_format($sub['amount'], 2) ?> <?= htmlspecialchars($sub['currency']) ?></td>
+                                                                         <td><?= date('M d, Y', strtotime($sub['start_date'])) ?></td>
+                                                                         <td><?= $sub['next_billing_date'] ? date('M d, Y', strtotime($sub['next_billing_date'])) : '-' ?></td>
+                                                                         <td>
+                                                                             <button type="button" class="btn btn-sm btn-primary edit-subscription-btn"
+                                                                                     data-subscription-id="<?= $sub['id'] ?>"
+                                                                                     data-tenant-id="<?= $sub['tenant_id'] ?>"
+                                                                                     data-toggle="modal"
+                                                                                     data-target="#editSubscriptionModal">
+                                                                                 <i class="feather icon-edit"></i>
+                                                                             </button>
+                                                                         </td>
+                                                                     </tr>
+                                                                     <?php endif; ?>
+                                                                     <?php endforeach; ?>
+                                                                     <?php
+                                                                     $hasActive = false;
+                                                                     foreach ($subscriptions as $sub) {
+                                                                         if ($sub['tenant_status'] !== 'deleted' && $sub['status'] === 'active') {
+                                                                             $hasActive = true;
+                                                                             break;
+                                                                         }
+                                                                     }
+                                                                     if (!$hasActive):
+                                                                     ?>
+                                                                     <tr><td colspan="8" class="text-center"><?= __('no_subscriptions_found') ?></td></tr>
+                                                                     <?php endif; ?>
+                                                        </tbody>
+                                                    </table>
+                                                </div>
+                                            </div>
+                                            <!-- Inactive/Expired Subscriptions Tab -->
+                                            <div class="tab-pane fade" id="inactive" role="tabpanel" aria-labelledby="inactive-tab">
+                                                <div class="table-responsive">
+                                                    <table class="table table-hover">
+                                                        <thead>
+                                                            <tr>
+                                                                <th><?= __('tenant') ?></th>
+                                                                <th><?= __('plan') ?></th>
+                                                                <th><?= __('status') ?></th>
+                                                                <th><?= __('billing_cycle') ?></th>
+                                                                <th><?= __('amount') ?></th>
+                                                                <th><?= __('start_date') ?></th>
+                                                                <th><?= __('next_billing') ?></th>
+                                                                <th><?= __('actions') ?></th>
+                                                            </tr>
+                                                        </thead>
+                                                        <tbody id="inactive-subscriptions-body">
                                                             <?php foreach ($subscriptions as $sub): ?>
-                                                            <?php if ($sub['tenant_status'] !== 'deleted'): ?>
-                                                            <tr data-tenant-status="<?= $sub['tenant_status'] ?>">
+                                                            <?php if ($sub['tenant_status'] !== 'deleted' && in_array($sub['status'], ['pending', 'expired', 'cancelled'])): ?>
+                                                            <tr data-tenant-status="<?= $sub['tenant_status'] ?>" data-sub-status="<?= $sub['status'] ?>">
                                                                 <td><?= htmlspecialchars($sub['tenant_name']) ?></td>
                                                                 <td><?= htmlspecialchars($sub['plan_name']) ?></td>
                                                                 <td>
-                                                                    <span class="badge badge-<?= $sub['status'] === 'active' ? 'success' : ($sub['status'] === 'expired' ? 'danger' : 'warning') ?>">
+                                                                    <span class="badge badge-<?= $sub['status'] === 'active' ? 'success' : ($sub['status'] === 'expired' ? 'danger' : ($sub['status'] === 'cancelled' ? 'secondary' : 'warning')) ?>">
                                                                         <?= htmlspecialchars($sub['status']) ?>
                                                                     </span>
                                                                 </td>
@@ -303,14 +410,14 @@ $stmt->close();
                                                             <?php endif; ?>
                                                             <?php endforeach; ?>
                                                             <?php
-                                                            $hasActive = false;
+                                                            $hasInactive = false;
                                                             foreach ($subscriptions as $sub) {
-                                                                if ($sub['tenant_status'] !== 'deleted') {
-                                                                    $hasActive = true;
+                                                                if ($sub['tenant_status'] !== 'deleted' && in_array($sub['status'], ['pending', 'expired', 'cancelled'])) {
+                                                                    $hasInactive = true;
                                                                     break;
                                                                 }
                                                             }
-                                                            if (!$hasActive):
+                                                            if (!$hasInactive):
                                                             ?>
                                                             <tr><td colspan="8" class="text-center"><?= __('no_subscriptions_found') ?></td></tr>
                                                             <?php endif; ?>
@@ -403,11 +510,9 @@ $stmt->close();
                             <option value=""><?= __('select_tenant') ?></option>
                             <?php 
                             // Fetch active tenants
-                            $stmt = $conn->prepare("SELECT id, name FROM tenants WHERE status != 'deleted' ORDER BY name");
+                            $stmt = $pdo->prepare("SELECT id, name FROM tenants WHERE status != 'deleted' ORDER BY name");
                             $stmt->execute();
-                            $tenants_list = $stmt->get_result()->fetch_all(MYSQLI_ASSOC);
-                            $stmt->close();
-                            
+                            $tenants_list = $stmt->fetchAll();
                             foreach ($tenants_list as $tenant): 
                             ?>
                             <option value="<?= htmlspecialchars($tenant['id']) ?>">

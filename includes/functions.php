@@ -1,7 +1,7 @@
 <?php
 // Email sending function using PHPMailer with tracking
 function sendEmail($to, $subject, $body, $isHtml = true, $emailType = 'general', $recipientName = '', $tenantId = null) {
-    require_once '../../vendor/autoload.php';
+    require_once '../vendor/autoload.php';
 
     // Get SMTP settings - tenant-specific or platform fallback
     $smtpSettings = getTenantSMTPSettings($tenantId);
@@ -135,6 +135,24 @@ function getPlatformSettings() {
     return $settings;
 }
 
+// Get platform settings formatted for SMTP use
+function getPlatformSettingsFormatted() {
+    $raw_settings = getPlatformSettings();
+    
+    // Map platform_settings keys to SMTP field names
+    $formatted = [
+        'smtp_host' => $raw_settings['smtp_host'] ?? '',
+        'smtp_port' => $raw_settings['smtp_port'] ?? 587,
+        'smtp_encryption' => $raw_settings['smtp_encryption'] ?? 'tls',
+        'smtp_username' => $raw_settings['smtp_username'] ?? '',
+        'smtp_password' => $raw_settings['smtp_password'] ?? '',
+        'smtp_from_email' => $raw_settings['smtp_from_email'] ?? '',
+        'smtp_from_name' => $raw_settings['smtp_from_name'] ?? 'MTravels'
+    ];
+    
+    return $formatted;
+}
+
 // Get tenant-specific SMTP settings (fallback to platform settings)
 function getTenantSMTPSettings($tenantId = null) {
     global $pdo;
@@ -145,7 +163,7 @@ function getTenantSMTPSettings($tenantId = null) {
     }
 
     if (!$tenantId) {
-        return getPlatformSettings();
+        return getPlatformSettingsFormatted();
     }
 
     // Check if tenant has custom SMTP settings in settings table
@@ -164,7 +182,7 @@ function getTenantSMTPSettings($tenantId = null) {
         return $filteredSettings;
     }
 
-    return getPlatformSettings();
+    return getPlatformSettingsFormatted();
 }
 
 // Send ticket notification email
@@ -1036,6 +1054,12 @@ function sendPaymentConfirmationEmail($tenantId, $amount, $currency, $paymentDat
     $billingEmail = $tenant['billing_email'];
     $subdomain = $tenant['subdomain'];
 
+    // Validate billing email
+    if (empty($billingEmail)) {
+        error_log("No billing email configured for tenant: {$tenantId} ({$tenantName})");
+        return false;
+    }
+
     // Get agency name from settings
     $agencyName = '';
     $stmt = $pdo->prepare("SELECT agency_name FROM settings WHERE tenant_id = ?");
@@ -1114,30 +1138,9 @@ function sendPaymentConfirmationEmail($tenantId, $amount, $currency, $paymentDat
     ";
 
     return sendEmail($billingEmail, $subject, $body, true, 'payment_confirmation', $tenantName, null); // Use platform SMTP for payment confirmations
-}
-
-// Helper function to calculate next billing date (duplicate from subscription_payments.php)
-function calculateNextBillingDate($payment_date, $billing_cycle) {
-    $date = new DateTime($payment_date);
-
-    switch ($billing_cycle) {
-        case 'monthly':
-            $date->modify('+1 month');
-            break;
-        case 'quarterly':
-            $date->modify('+3 months');
-            break;
-        case 'yearly':
-            $date->modify('+1 year');
-            break;
-        default:
-            $date->modify('+1 month'); // Default to monthly
     }
 
-    return $date->format('Y-m-d');
-}
-
-// Generate PDF ticket from booking data
+    // Generate PDF ticket from booking data
 function generateTicketPDF($bookingData, $tenantId) {
     require_once '../../vendor/autoload.php';
     

@@ -14,14 +14,29 @@ if (!isset($_SESSION['user_id']) || $_SESSION['role'] !== 'super_admin') {
 
 // Database connection
 require_once '../config.php';
-require_once '../includes/conn.php';
 require_once '../includes/db.php';
+require_once '../includes/BranchAddonManager.php';
 
 // Check if $pdo is available
 if (!isset($pdo) || !$pdo) {
     http_response_code(500);
     echo json_encode(['error' => 'Database connection failed']);
     exit();
+}
+
+// Helper function to get currency symbol
+function getCurrencySymbol($currencyCode) {
+    $symbols = [
+        'USD' => '$',
+        'EUR' => '€',
+        'GBP' => '£',
+        'JPY' => '¥',
+        'AFN' => '؋',
+        'AED' => 'د.إ',
+        'INR' => '₹',
+        'PKR' => '₨',
+    ];
+    return $symbols[$currencyCode] ?? $currencyCode;
 }
 
 $subscription_id = intval($_GET['subscription_id'] ?? 0);
@@ -45,11 +60,22 @@ try {
     $subscription = $stmt->fetch(PDO::FETCH_ASSOC);
 
     if (!$subscription) {
-        echo '<div class="alert alert-danger">Subscription not found</div>';
-        exit();
-    }
+         echo '<div class="alert alert-danger">Subscription not found</div>';
+         exit();
+     }
 
-    // Get payment history
+     // Get active branch add-ons for this tenant
+     $stmt = $pdo->prepare("
+         SELECT COALESCE(SUM(total_addon_cost), 0) as total_addon_cost
+         FROM branch_addons
+         WHERE tenant_id = ? AND status = 'active'
+     ");
+     $stmt->execute([$subscription['tenant_id']]);
+     $addonCostResult = $stmt->fetch(PDO::FETCH_ASSOC);
+     $totalAddonCost = floatval($addonCostResult['total_addon_cost'] ?? 0);
+     $totalAmount = floatval($subscription['amount']) + $totalAddonCost;
+
+     // Get payment history
     $stmt = $pdo->prepare("
         SELECT sp.*, u.name as processed_by_name
         FROM subscription_payments sp
@@ -82,10 +108,18 @@ try {
                         </p>
                     </div>
                     <div class="col-md-6">
-                        <p><strong>Billing Cycle:</strong> <?= ucfirst(htmlspecialchars($subscription['billing_cycle'])) ?></p>
-                        <p><strong>Amount:</strong> $<?= number_format($subscription['amount'], 2) ?> <?= htmlspecialchars($subscription['currency']) ?></p>
-                        <p><strong>Next Billing:</strong> <?= $subscription['next_billing_date'] ? date('M d, Y', strtotime($subscription['next_billing_date'])) : 'N/A' ?></p>
-                    </div>
+                         <p><strong>Billing Cycle:</strong> <?= ucfirst(htmlspecialchars($subscription['billing_cycle'])) ?></p>
+                         <p><strong>Amount:</strong>
+                             <div>
+                                 <?php $symbol = getCurrencySymbol($subscription['currency']); ?>
+                                 <span><?= $symbol . number_format($subscription['amount'], 2) ?></span>
+                                 <?php if ($totalAddonCost > 0): ?>
+                                 <br><small class="text-info">+ <?= $symbol . number_format($totalAddonCost, 2) ?> add-ons = <?= $symbol . number_format($totalAmount, 2) ?></small>
+                                 <?php endif; ?>
+                             </div>
+                         </p>
+                         <p><strong>Next Billing:</strong> <?= $subscription['next_billing_date'] ? date('M d, Y', strtotime($subscription['next_billing_date'])) : 'N/A' ?></p>
+                     </div>
                 </div>
             </div>
         </div>
@@ -124,9 +158,10 @@ try {
                         </thead>
                         <tbody>
                             <?php foreach ($payments as $payment): ?>
-                            <tr>
-                                <td><?= date('M d, Y', strtotime($payment['payment_date'])) ?></td>
-                                <td>$<?= number_format($payment['amount'], 2) ?> <?= htmlspecialchars($payment['currency']) ?></td>
+                             <?php $paymentSymbol = getCurrencySymbol($payment['currency']); ?>
+                             <tr>
+                                 <td><?= date('M d, Y', strtotime($payment['payment_date'])) ?></td>
+                                 <td><?= $paymentSymbol . number_format($payment['amount'], 2) ?> <?= htmlspecialchars($payment['currency']) ?></td>
                                 <td><?= htmlspecialchars($payment['payment_method'] ?: 'N/A') ?></td>
                                 <td><?= htmlspecialchars($payment['receipt_number'] ?: 'N/A') ?></td>
                                 <td>

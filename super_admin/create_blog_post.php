@@ -1,6 +1,6 @@
 <?php
 session_start();
-require_once '../includes/conn.php';
+require_once '../includes/db.php';
 
 // Set secure headers
 header("X-XSS-Protection: 1; mode=block");
@@ -63,17 +63,13 @@ if (!in_array($status, ['draft', 'published'])) {
 }
 
 // Check if slug already exists
-$stmt = $conn->prepare("SELECT id FROM blog_posts WHERE slug = ?");
-$stmt->bind_param("s", $slug);
-$stmt->execute();
+$stmt = $pdo->prepare("SELECT id FROM blog_posts WHERE slug = ?");
+$stmt->execute([$slug]);
 $result = $stmt->get_result();
 if ($result->num_rows > 0) {
-    $stmt->close();
     header('Location: manage_blog_posts.php?error=slug_exists');
     exit();
 }
-$stmt->close();
-
 // Handle file upload
 $featured_image = '';
 if (isset($_FILES['featured_image']) && $_FILES['featured_image']['error'] === UPLOAD_ERR_OK) {
@@ -109,20 +105,17 @@ if (isset($_FILES['featured_image']) && $_FILES['featured_image']['error'] === U
 }
 
 // Insert blog post
-$stmt = $conn->prepare("INSERT INTO blog_posts (title, slug, content, excerpt, featured_image, author, category, status, created_at, updated_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?, NOW(), NOW())");
-$stmt->bind_param("ssssssss", $title, $slug, $content, $excerpt, $featured_image, $author, $category, $status);
+$stmt = $pdo->prepare("INSERT INTO blog_posts (title, slug, content, excerpt, featured_image, author, category, status, created_at, updated_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?, NOW(), NOW())");
+$stmt->execute([$title, $slug, $content, $excerpt, $featured_image, $author, $category, $status]);
 
 if ($stmt->execute()) {
-    $post_id = $stmt->insert_id;
-    $stmt->close();
-
+    $post_id = $pdo->lastInsertId();
     // Log the action
     error_log("Blog post created: ID=$post_id, Title=$title, Author=" . $_SESSION['user_id'] . ", IP=" . $_SERVER['REMOTE_ADDR']);
 
     header('Location: manage_blog_posts.php?success=created');
     exit();
 } else {
-    $stmt->close();
     error_log("Failed to create blog post: " . $stmt->error);
     header('Location: manage_blog_posts.php?error=create_failed');
     exit();

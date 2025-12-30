@@ -1,34 +1,7 @@
   // Add this to your existing scripts
-  document.addEventListener('DOMContentLoaded', function() {
-    // Handle View Transactions button clicks
-    document.querySelectorAll('.view-transactions-btn').forEach(button => {
-        button.addEventListener('click', function() {
-            const accountId = this.dataset.accountId;
-            const accountName = this.dataset.accountName;
-            loadTransactions('main', accountId, accountName);
-        });
-    });
-
-    // Handle Supplier Transactions button clicks
-    document.querySelectorAll('.view-supplier-transactions-btn').forEach(button => {
-        button.addEventListener('click', function() {
-            const supplierId = this.dataset.supplierId;
-            const supplierName = this.dataset.supplierName;
-            loadTransactions('supplier', supplierId, supplierName);
-        });
-    });
-
-    // Handle Client Transactions button clicks
-    document.querySelectorAll('.view-client-transactions-btn').forEach(button => {
-        button.addEventListener('click', function() {
-            const clientId = this.dataset.clientId;
-            const clientName = this.dataset.clientName;
-            loadTransactions('client', clientId, clientName);
-        });
-    });
-
-    // Function to load transactions
-    function loadTransactions(accountType, accountId, accountName) {
+  
+  // Function to load transactions - defined globally so it can be accessed from event handlers
+  function loadTransactions(accountType, accountId, accountName) {
         let tableBody, loader, noTransactionsMessage, modal;
         
         // Set the appropriate elements based on account type
@@ -115,6 +88,7 @@
                         // Check if this transaction should show delete button based on account type
                         let showDeleteButton = false;
                         let showEditButton = false;
+                        let showEditReceiptButton = false;
 
                         if (accountType === 'main') {
                             // For main accounts, show delete for fund, transfer, and supplier_bonus, but NOT client_fund
@@ -125,6 +99,8 @@
                             ));
                             // Show edit button only for fund transactions in main accounts
                             showEditButton = (transaction.transaction_of && transaction.transaction_of.toLowerCase() === 'fund');
+                            // Show edit receipt button for all main account transactions
+                            showEditReceiptButton = true;
                         } else if (accountType === 'supplier') {
                             // For suppliers, show delete for supplier_bonus, fund, and fund_withdrawal transactions
                             showDeleteButton = (transaction.transaction_of && (
@@ -138,7 +114,7 @@
                         }
 
                         let actionsHtml = '';
-                        if (showDeleteButton || showEditButton) {
+                        if (showDeleteButton || showEditButton || showEditReceiptButton) {
                             actionsHtml += '<td class="text-center">';
                             if (showDeleteButton) {
                                 actionsHtml += `<button class="btn btn-danger btn-sm delete-transaction-btn mr-1"
@@ -149,7 +125,7 @@
                                 </button>`;
                             }
                             if (showEditButton) {
-                                actionsHtml += `<button class="btn btn-primary btn-sm edit-transaction-btn"
+                                actionsHtml += `<button class="btn btn-primary btn-sm edit-transaction-btn mr-1"
                                         data-transaction-id="${transaction.id}"
                                         data-transaction-type="${accountType}"
                                         data-amount="${Math.abs(amount).toFixed(3)}"
@@ -161,6 +137,16 @@
                                         data-type="${transaction.type || transaction.transaction_type || ''}"
                                         title="Edit Transaction">
                                     <i class="feather icon-edit"></i>
+                                </button>`;
+                            }
+                            if (showEditReceiptButton) {
+                                actionsHtml += `<button class="btn btn-info btn-sm edit-receipt-btn"
+                                        data-transaction-id="${transaction.id}"
+                                        data-transaction-type="${accountType}"
+                                        data-receipt="${transaction.receipt || ''}"
+                                        data-transaction-date="${dateField || ''}"
+                                        title="Edit Receipt">
+                                    <i class="feather icon-file-text"></i>
                                 </button>`;
                             }
                             actionsHtml += '</td>';
@@ -346,6 +332,44 @@
                             }
                         });
                     });
+
+                    // Add event listeners for edit receipt buttons (main accounts only)
+                    document.querySelectorAll('.edit-receipt-btn').forEach(button => {
+                        // Clone the button to remove all event listeners
+                        const newButton = button.cloneNode(true);
+                        button.parentNode.replaceChild(newButton, button);
+
+                        // Add click event listener to the new button
+                        newButton.addEventListener('click', function(e) {
+                            e.stopPropagation();
+
+                            // Get transaction data from data attributes
+                            const transactionId = this.dataset.transactionId;
+                            const transactionType = this.dataset.transactionType;
+                            const receipt = this.dataset.receipt;
+                            const transactionDate = this.dataset.transactionDate;
+
+                            // Populate the edit receipt form
+                            const editReceiptTransactionId = document.getElementById('editReceiptTransactionId');
+                            const editReceiptTransactionType = document.getElementById('editReceiptTransactionType');
+                            const editReceiptNumber = document.getElementById('editReceiptNumber');
+
+                            if (editReceiptTransactionId && editReceiptTransactionType && editReceiptNumber) {
+                                editReceiptTransactionId.value = transactionId;
+                                editReceiptTransactionType.value = transactionType;
+                                editReceiptNumber.value = receipt;
+
+                                // Hide the current transaction history modal
+                                $('#transactionHistoryModal').modal('hide');
+
+                                // Show the edit receipt modal after a short delay
+                                setTimeout(() => {
+                                    const editReceiptModal = new bootstrap.Modal(document.getElementById('editReceiptModal'));
+                                    editReceiptModal.show();
+                                }, 500);
+                            }
+                        });
+                    });
                 }
             })
             .catch(error => {
@@ -369,40 +393,68 @@
         });
         
         // Now add the event listeners to the fresh buttons
-        document.querySelectorAll('.delete-transaction-btn').forEach(button => {
-            button.addEventListener('click', function(e) {
-                // Prevent event bubbling
-                e.stopPropagation();
-                
-                const transactionId = this.dataset.transactionId;
-                const transactionType = this.dataset.transactionType;
-                
-                // Set values in hidden form
-                document.getElementById('deleteTransactionId').value = transactionId;
-                document.getElementById('deleteTransactionType').value = transactionType;
-                
-                // Hide the current transaction history modal
-                if (transactionType === 'main') {
-                    $('#transactionHistoryModal').modal('hide');
-                } else if (transactionType === 'supplier') {
-                    $('#supplierTransactionHistoryModal').modal('hide');
-                } else if (transactionType === 'client') {
-                    $('#clientTransactionHistoryModal').modal('hide');
-                }
-                
-                // Delete transaction directly without confirmation
-                setTimeout(() => {
-                    deleteTransaction(transactionId, transactionType);
-                }, 300);
-            });
-        });
+         document.querySelectorAll('.delete-transaction-btn').forEach(button => {
+             button.addEventListener('click', function(e) {
+                 // Prevent event bubbling
+                 e.stopPropagation();
+                 
+                 const transactionId = this.dataset.transactionId;
+                 const transactionType = this.dataset.transactionType;
+                 
+                 // Set values in hidden form
+                 document.getElementById('deleteTransactionId').value = transactionId;
+                 document.getElementById('deleteTransactionType').value = transactionType;
+                 
+                 // Hide the current transaction history modal
+                 if (transactionType === 'main') {
+                     $('#transactionHistoryModal').modal('hide');
+                 } else if (transactionType === 'supplier') {
+                     $('#supplierTransactionHistoryModal').modal('hide');
+                 } else if (transactionType === 'client') {
+                     $('#clientTransactionHistoryModal').modal('hide');
+                 }
+                 
+                 // Delete transaction directly without confirmation
+                 setTimeout(() => {
+                     deleteTransaction(transactionId, transactionType);
+                 }, 300);
+             });
+         });
+         
+        }
         
-    }
-    
+        // DOMContentLoaded event handlers
+        document.addEventListener('DOMContentLoaded', function() {
+        // Handle View Transactions button clicks
+        document.querySelectorAll('.view-transactions-btn').forEach(button => {
+        button.addEventListener('click', function() {
+            const accountId = this.dataset.accountId;
+            const accountName = this.dataset.accountName;
+            loadTransactions('main', accountId, accountName);
+        });
+        });
 
-});
+        // Handle Supplier Transactions button clicks
+        document.querySelectorAll('.view-supplier-transactions-btn').forEach(button => {
+        button.addEventListener('click', function() {
+            const supplierId = this.dataset.supplierId;
+            const supplierName = this.dataset.supplierName;
+            loadTransactions('supplier', supplierId, supplierName);
+        });
+        });
 
-// Add event listener for the save edit button (only for main account fund transactions)
+        // Handle Client Transactions button clicks
+        document.querySelectorAll('.view-client-transactions-btn').forEach(button => {
+        button.addEventListener('click', function() {
+            const clientId = this.dataset.clientId;
+            const clientName = this.dataset.clientName;
+            loadTransactions('client', clientId, clientName);
+        });
+        });
+        });
+
+        // Add event listener for the save edit button (only for main account fund transactions)
+if (document.getElementById('saveEditTransactionBtn')) {
 document.getElementById('saveEditTransactionBtn').addEventListener('click', function() {
     // Get form data
     const form = document.getElementById('editTransactionForm');
@@ -451,6 +503,71 @@ document.getElementById('saveEditTransactionBtn').addEventListener('click', func
         showErrorToast('please_try_again');
     });
 });
+}
+
+// Add event listener for the save edit receipt button (main accounts only)
+if (document.getElementById('saveEditReceiptBtn')) {
+document.getElementById('saveEditReceiptBtn').addEventListener('click', function() {
+    // Get form data
+    const transactionId = document.getElementById('editReceiptTransactionId').value;
+    const transactionType = document.getElementById('editReceiptTransactionType').value;
+    const receipt = document.getElementById('editReceiptNumber').value;
+
+    // Validate receipt number
+    if (!receipt.trim()) {
+        showErrorToast('please_enter_a_receipt_number');
+        return;
+    }
+
+    // Show loading state
+    this.disabled = true;
+    this.innerHTML = '<span class="spinner-border spinner-border-sm" role="status" aria-hidden="true"></span> saving...';
+
+    // Send AJAX request to update the receipt
+    fetch('../api/accounts/update_receipt.php', {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+            transaction_id: transactionId,
+            transaction_type: transactionType,
+            receipt: receipt
+        })
+    })
+    .then(response => response.json())
+    .then(data => {
+        // Reset button state
+        this.disabled = false;
+        this.innerHTML = '<i class="feather icon-save mr-1"></i>Save Receipt';
+
+        if (data.success) {
+            // Close the modal
+            $('#editReceiptModal').modal('hide');
+
+            // Show success message
+            showSuccessToast('receipt_updated_successfully');
+
+            // Reload the transactions to show updated data
+            const accountId = data.account_id;
+            const accountName = data.account_name;
+
+            // Reload transactions
+            loadTransactions('main', accountId, accountName);
+        } else {
+            // Show error message
+            showErrorToast('error: ' + data.message);
+        }
+    })
+    .catch(error => {
+        showErrorToast('error_updating_receipt: ' + error);
+        this.disabled = false;
+        this.innerHTML = '<i class="feather icon-save mr-1"></i>Save Receipt';
+        showErrorToast('an_error_occurred_while_updating_the_receipt');
+        showErrorToast('please_try_again');
+    });
+});
+}
 
 // Function to delete transaction directly
 function deleteTransaction(transactionId, transactionType) {

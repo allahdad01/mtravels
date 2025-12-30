@@ -1,6 +1,6 @@
 <?php
 session_start();
-require_once '../includes/conn.php';
+require_once '../includes/db.php';
 
 // Set secure headers
 header("X-XSS-Protection: 1; mode=block");
@@ -84,51 +84,41 @@ if (empty($next_billing_date)) {
 
 // Verify tenant exists
 if (empty($errors)) {
-    $stmt = $conn->prepare("SELECT COUNT(*) as count FROM tenants WHERE id = ? AND status != 'deleted'");
-    $stmt->bind_param('i', $tenant_id);
-    $stmt->execute();
-    if ($stmt->get_result()->fetch_assoc()['count'] == 0) {
+    $stmt = $pdo->prepare("SELECT COUNT(*) as count FROM tenants WHERE id = ? AND status != 'deleted'");
+    $stmt->execute([$tenant_id]);
+    if ($stmt->fetch()['count'] == 0) {
         $errors[] = "Invalid or inactive tenant selected.";
     }
-    $stmt->close();
-}
+    }
 
 // Verify plan exists
 if (empty($errors)) {
-    $stmt = $conn->prepare("SELECT COUNT(*) as count FROM plans WHERE name = ? AND status = 'active'");
-    $stmt->bind_param('s', $plan_id);
-    $stmt->execute();
-    if ($stmt->get_result()->fetch_assoc()['count'] == 0) {
+    $stmt = $pdo->prepare("SELECT COUNT(*) as count FROM plans WHERE name = ? AND status = 'active'");
+    $stmt->execute([$plan_id]);
+    if ($stmt->fetch()['count'] == 0) {
         $errors[] = "Invalid or inactive plan selected.";
     }
-    $stmt->close();
-}
+    }
 
 // Check if tenant already has an active subscription
 if (empty($errors)) {
-    $stmt = $conn->prepare("SELECT COUNT(*) as count FROM tenant_subscriptions WHERE tenant_id = ? AND status = 'active'");
-    $stmt->bind_param('i', $tenant_id);
-    $stmt->execute();
-    if ($stmt->get_result()->fetch_assoc()['count'] > 0) {
+    $stmt = $pdo->prepare("SELECT COUNT(*) as count FROM tenant_subscriptions WHERE tenant_id = ? AND status = 'active'");
+    $stmt->execute([$tenant_id]);
+    if ($stmt->fetch()['count'] > 0) {
         $errors[] = "Tenant already has an active subscription. Please edit the existing subscription instead.";
     }
-    $stmt->close();
-}
+    }
 
 if (empty($errors)) {
     // Create subscription
-    $stmt = $conn->prepare("INSERT INTO tenant_subscriptions 
+    $stmt = $pdo->prepare("INSERT INTO tenant_subscriptions 
                           (tenant_id, plan_id, status, billing_cycle, start_date, end_date, 
                            amount, currency, payment_method, next_billing_date, created_at, updated_at) 
                           VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, NOW(), NOW())");
-    $stmt->bind_param('isssssdsss', $tenant_id, $plan_id, $status, $billing_cycle, $start_date, 
-                      $end_date, $amount, $currency, $payment_method, $next_billing_date);
-    $stmt->execute();
-    $stmt->close();
-
+    $stmt->execute([$tenant_id, $plan_id, $status, $billing_cycle, $start_date, $end_date, $amount, $currency, $payment_method, $next_billing_date]);
     // Log action
     $user_id = $_SESSION['user_id'];
-    $stmt = $conn->prepare("INSERT INTO audit_logs (user_id, action, entity_type, entity_id, details, ip_address, created_at) 
+    $stmt = $pdo->prepare("INSERT INTO audit_logs (user_id, action, entity_type, entity_id, details, ip_address, created_at) 
                             VALUES (?, 'create_subscription', 'subscription', ?, ?, ?, NOW())");
     $details = json_encode([
         'tenant_id' => $tenant_id,
@@ -139,10 +129,7 @@ if (empty($errors)) {
         'currency' => $currency
     ]);
     $ip_address = $_SERVER['REMOTE_ADDR'];
-    $stmt->bind_param('iiss', $user_id, $tenant_id, $details, $ip_address);
-    $stmt->execute();
-    $stmt->close();
-
+    $stmt->execute([$user_id, $tenant_id, $details, $ip_address]);
     header('Location: manage_subscriptions.php?success=subscription_created');
     exit();
 } else {

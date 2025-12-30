@@ -34,18 +34,15 @@ if (!isset($_SESSION['csrf_token'])) {
 }
 
 // Database connection
-require_once '../includes/conn.php';
+require_once '../includes/db.php';
 
 // Handle AJAX requests for get tenant
 if (isset($_GET['action']) && $_GET['action'] === 'get_tenant' && isset($_GET['id'])) {
     $tenant_id = intval($_GET['id']);
     
-    $stmt = $conn->prepare("SELECT id, name, subdomain, identifier, status, plan, billing_email, created_at FROM tenants WHERE id = ? AND status != 'deleted'");
-    $stmt->bind_param('i', $tenant_id);
-    $stmt->execute();
-    $tenant = $stmt->get_result()->fetch_assoc();
-    $stmt->close();
-    
+    $stmt = $pdo->prepare("SELECT id, name, subdomain, identifier, status, plan, billing_email, created_at FROM tenants WHERE id = ? AND status != 'deleted'");
+    $stmt->execute([$tenant_id]);
+    $tenant = $stmt->fetch();
     if ($tenant) {
         header('Content-Type: application/json');
         echo json_encode($tenant);
@@ -92,47 +89,35 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action']) && $_POST['
     }
 
     // Check for duplicate subdomain (excluding current tenant)
-    $stmt = $conn->prepare("SELECT COUNT(*) as count FROM tenants WHERE subdomain = ? AND id != ? AND status != 'deleted'");
-    $stmt->bind_param('si', $subdomain, $tenant_id);
-    $stmt->execute();
-    if ($stmt->get_result()->fetch_assoc()['count'] > 0) {
+    $stmt = $pdo->prepare("SELECT COUNT(*) as count FROM tenants WHERE subdomain = ? AND id != ? AND status != 'deleted'");
+    $stmt->execute([$subdomain, $tenant_id]);
+    if ($stmt->fetch()['count'] > 0) {
         $errors[] = "Subdomain already exists.";
     }
-    $stmt->close();
-
     // Check for duplicate identifier (excluding current tenant)
-    $stmt = $conn->prepare("SELECT COUNT(*) as count FROM tenants WHERE identifier = ? AND id != ? AND status != 'deleted'");
-    $stmt->bind_param('si', $identifier, $tenant_id);
-    $stmt->execute();
-    if ($stmt->get_result()->fetch_assoc()['count'] > 0) {
+    $stmt = $pdo->prepare("SELECT COUNT(*) as count FROM tenants WHERE identifier = ? AND id != ? AND status != 'deleted'");
+    $stmt->execute([$identifier, $tenant_id]);
+    if ($stmt->fetch()['count'] > 0) {
         $errors[] = "Identifier already exists.";
     }
-    $stmt->close();
-
     // Verify plan exists
-    $stmt = $conn->prepare("SELECT COUNT(*) as count FROM plans WHERE name = ? AND status = 'active'");
-    $stmt->bind_param('s', $plan);
-    $stmt->execute();
-    if ($stmt->get_result()->fetch_assoc()['count'] == 0) {
+    $stmt = $pdo->prepare("SELECT COUNT(*) as count FROM plans WHERE name = ? AND status = 'active'");
+    $stmt->execute([$plan]);
+    if ($stmt->fetch()['count'] == 0) {
         $errors[] = "Invalid or inactive plan selected.";
     }
-    $stmt->close();
-
     if (empty($errors)) {
         // Update tenant
-        $stmt = $conn->prepare("
+        $stmt = $pdo->prepare("
             UPDATE tenants 
             SET name = ?, subdomain = ?, identifier = ?, plan = ?, status = ?, 
                 billing_email = ?, updated_at = NOW()
             WHERE id = ?
         ");
-        $stmt->bind_param('ssssssi', $name, $subdomain, $identifier, $plan, $status, $billing_email, $tenant_id);
-        $stmt->execute();
-        $stmt->close();
-
+        $stmt->execute([$name, $subdomain, $identifier, $plan, $status, $billing_email, $tenant_id]);
         // Log action
         $user_id = $_SESSION['user_id'];
-        $stmt = $conn->prepare("INSERT INTO audit_logs (user_id, action, entity_type, entity_id, details, ip_address, created_at) 
+        $stmt = $pdo->prepare("INSERT INTO audit_logs (user_id, action, entity_type, entity_id, details, ip_address, created_at) 
                                 VALUES (?, 'update_tenant', 'tenant', ?, ?, ?, NOW())");
         $details = json_encode([
             'tenant_id' => $tenant_id,
@@ -141,10 +126,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action']) && $_POST['
             'status' => $status
         ]);
         $ip_address = $_SERVER['REMOTE_ADDR'];
-        $stmt->bind_param('iiss', $user_id, $tenant_id, $details, $ip_address);
-        $stmt->execute();
-        $stmt->close();
-
+        $stmt->execute([$user_id, $tenant_id, $details, $ip_address]);
         header('Location: manage_tenants.php?success=tenant_updated');
         exit();
     } else {
@@ -153,17 +135,59 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action']) && $_POST['
     }
 }
 
-// Fetch all tenants
-$stmt = $conn->prepare("SELECT id, name, subdomain, identifier, status, plan, billing_email, created_at FROM tenants WHERE status != 'deleted' ORDER BY created_at DESC");
-$stmt->execute();
-$tenants = $stmt->get_result()->fetch_all(MYSQLI_ASSOC);
-$stmt->close();
+// Pagination and search
+$items_per_page = 10;
+$current_page = intval($_GET['page'] ?? 1);
+$search_query = $_GET['search'] ?? '';
+$status_filter = $_GET['status'] ?? '';
+
+// Count total items
+$count_query = "SELECT COUNT(*) as total FROM tenants WHERE status != 'deleted'";
+$filter_params = [];
+
+if (!empty($search_query)) {
+    $count_query .= " AND (name LIKE ? OR subdomain LIKE ? OR identifier LIKE ? OR billing_email LIKE ?)";
+    $search_term = "%{$search_query}%";
+    $filter_params[] = $search_term;
+    $filter_params[] = $search_term;
+    $filter_params[] = $search_term;
+    $filter_params[] = $search_term;
+}
+if (!empty($status_filter)) {
+    $count_query .= " AND status = ?";
+    $filter_params[] = $status_filter;
+}
+
+$stmt = $pdo->prepare($count_query);
+$stmt->execute($filter_params);
+$total_items = $stmt->fetch()['total'];
+$total_pages = ceil($total_items / $items_per_page);
+$current_page = max(1, min($current_page, $total_pages));
+$offset = ($current_page - 1) * $items_per_page;
+
+// Fetch paginated tenants
+$query = "SELECT id, name, subdomain, identifier, status, plan, billing_email, created_at FROM tenants WHERE status != 'deleted'";
+
+if (!empty($search_query)) {
+    $query .= " AND (name LIKE ? OR subdomain LIKE ? OR identifier LIKE ? OR billing_email LIKE ?)";
+}
+if (!empty($status_filter)) {
+    $query .= " AND status = ?";
+}
+$query .= " ORDER BY created_at DESC LIMIT ? OFFSET ?";
+
+$query_params = $filter_params;
+$query_params[] = $items_per_page;
+$query_params[] = $offset;
+
+$stmt = $pdo->prepare($query);
+$stmt->execute($query_params);
+$tenants = $stmt->fetchAll();
 
 // Fetch plans for create and edit tenant forms
-$stmt = $conn->prepare("SELECT name FROM plans WHERE status = 'active'");
+$stmt = $pdo->prepare("SELECT name FROM plans WHERE status = 'active'");
 $stmt->execute();
-$plans = $stmt->get_result()->fetch_all(MYSQLI_ASSOC);
-$stmt->close();
+$plans = $stmt->fetchAll();
 ?>
 
 <?php include '../includes/header_super_admin.php'; ?>
@@ -237,8 +261,23 @@ $stmt->close();
                                         </button>
                                     </div>
                                     <div class="card-body table-border-style">
-                                        <div class="table-responsive">
-                                            <table class="table table-hover">
+                                         <div class="mb-3">
+                                             <form method="GET" action="manage_tenants.php" class="form-inline">
+                                                 <input type="text" class="form-control mr-2" name="search" placeholder="Search tenants..." value="<?= htmlspecialchars($search_query) ?>" style="width: 200px;">
+                                                 <select class="form-control mr-2" name="status" style="width: 120px;">
+                                                     <option value="">All Status</option>
+                                                     <option value="active" <?= $status_filter === 'active' ? 'selected' : '' ?>>Active</option>
+                                                     <option value="inactive" <?= $status_filter === 'inactive' ? 'selected' : '' ?>>Inactive</option>
+                                                     <option value="suspended" <?= $status_filter === 'suspended' ? 'selected' : '' ?>>Suspended</option>
+                                                 </select>
+                                                 <button type="submit" class="btn btn-primary mr-2">Search</button>
+                                                 <?php if (!empty($search_query) || !empty($status_filter)): ?>
+                                                 <a href="manage_tenants.php" class="btn btn-secondary">Clear</a>
+                                                 <?php endif; ?>
+                                             </form>
+                                         </div>
+                                         <div class="table-responsive">
+                                             <table class="table table-hover">
                                                 <thead>
                                                     <tr>
                                                         <th><?= __('name') ?></th>
@@ -282,14 +321,55 @@ $stmt->close();
                                                     <tr><td colspan="8" class="text-center"><?= __('no_tenants_found') ?></td></tr>
                                                     <?php endif; ?>
                                                 </tbody>
-                                            </table>
-                                        </div>
-                                    </div>
-                                </div>
-                            </div>
-                        </div>
+                                                </table>
+                                                </div>
+                                                
+                                                <!-- Pagination -->
+                                                <?php if ($total_pages > 1): ?>
+                                                <nav aria-label="Page navigation" class="mt-3">
+                                                <ul class="pagination justify-content-center">
+                                                <li class="page-item <?= $current_page === 1 ? 'disabled' : '' ?>">
+                                                <a class="page-link" href="?page=<?= $current_page - 1 ?><?= !empty($search_query) ? '&search=' . urlencode($search_query) : '' ?><?= !empty($status_filter) ? '&status=' . urlencode($status_filter) : '' ?>">Previous</a>
+                                                </li>
+                                                <?php 
+                                                $start_page = max(1, $current_page - 2);
+                                                $end_page = min($total_pages, $current_page + 2);
+                                                if ($start_page > 1): ?>
+                                                <li class="page-item">
+                                                <a class="page-link" href="?page=1<?= !empty($search_query) ? '&search=' . urlencode($search_query) : '' ?><?= !empty($status_filter) ? '&status=' . urlencode($status_filter) : '' ?>">1</a>
+                                                </li>
+                                                <?php if ($start_page > 2): ?>
+                                                <li class="page-item disabled"><span class="page-link">...</span></li>
+                                                <?php endif; ?>
+                                                <?php endif; ?>
+                                                <?php for ($i = $start_page; $i <= $end_page; $i++): ?>
+                                                <li class="page-item <?= $i === $current_page ? 'active' : '' ?>">
+                                                <a class="page-link" href="?page=<?= $i ?><?= !empty($search_query) ? '&search=' . urlencode($search_query) : '' ?><?= !empty($status_filter) ? '&status=' . urlencode($status_filter) : '' ?>"><?= $i ?></a>
+                                                </li>
+                                                <?php endfor; ?>
+                                                <?php if ($end_page < $total_pages): ?>
+                                                <?php if ($end_page < $total_pages - 1): ?>
+                                                <li class="page-item disabled"><span class="page-link">...</span></li>
+                                                <?php endif; ?>
+                                                <li class="page-item">
+                                                <a class="page-link" href="?page=<?= $total_pages ?><?= !empty($search_query) ? '&search=' . urlencode($search_query) : '' ?><?= !empty($status_filter) ? '&status=' . urlencode($status_filter) : '' ?>"><?= $total_pages ?></a>
+                                                </li>
+                                                <?php endif; ?>
+                                                <li class="page-item <?= $current_page === $total_pages ? 'disabled' : '' ?>">
+                                                <a class="page-link" href="?page=<?= $current_page + 1 ?><?= !empty($search_query) ? '&search=' . urlencode($search_query) : '' ?><?= !empty($status_filter) ? '&status=' . urlencode($status_filter) : '' ?>">Next</a>
+                                                </li>
+                                                </ul>
+                                                </nav>
+                                                <div class="text-center text-muted small mt-2">
+                                                Page <?= $current_page ?> of <?= $total_pages ?> | Showing <?= count($tenants) ?> of <?= $total_items ?> tenants
+                                                </div>
+                                                <?php endif; ?>
+                                                </div>
+                                                </div>
+                                                </div>
+                                                </div>
 
-                        <!-- Create Tenant Modal -->
+                                                <!-- Create Tenant Modal -->
                         <div class="modal fade" id="createTenantModal" tabindex="-1" role="dialog" aria-labelledby="createTenantModalLabel" aria-hidden="true">
                             <div class="modal-dialog modal-lg modal-dialog-centered" role="document">
                                 <div class="modal-content">

@@ -34,7 +34,7 @@ if (!isset($_SESSION['csrf_token'])) {
 }
 
 // Database connection
-require_once '../includes/conn.php';
+require_once '../includes/db.php';
 
 // Handle POST requests for CRUD operations
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
@@ -76,12 +76,11 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                     $photo_path = 'uploads/testimonials/' . $filename;
                 }
 
-                $stmt = $conn->prepare("INSERT INTO testimonials (tenant_id, name, photo, testimonial, destination, rating, active, created_at, updated_at) VALUES (?, ?, ?, ?, ?, ?, 1, NOW(), NOW())");
-                $stmt->bind_param('issssi', $_POST['tenant_id'], $_POST['name'], $photo_path, $_POST['testimonial'], $_POST['destination'], $_POST['rating']);
-                $stmt->execute();
+                $stmt = $pdo->prepare("INSERT INTO testimonials (tenant_id, name, photo, testimonial, destination, rating, active, created_at, updated_at) VALUES (?, ?, ?, ?, ?, ?, 1, NOW(), NOW())");
+                $stmt->execute([$_POST['tenant_id'], $_POST['name'], $photo_path, $_POST['testimonial'], $_POST['destination'], $_POST['rating']]);
 
                 // Log audit
-                logAudit($conn, $_SESSION['user_id'], 'create_testimonial', 'testimonials', $stmt->insert_id, 'Created new testimonial for ' . $_POST['name']);
+                logAudit($pdo, $_SESSION['user_id'], 'create_testimonial', 'testimonials', $pdo->lastInsertId(), 'Created new testimonial for ' . $_POST['name']);
 
                 echo json_encode(['success' => true, 'message' => 'Testimonial added successfully']);
                 break;
@@ -116,12 +115,11 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                     }
                 }
 
-                $stmt = $conn->prepare("UPDATE testimonials SET name = ?, photo = ?, testimonial = ?, destination = ?, rating = ?, updated_at = NOW() WHERE id = ?");
-                $stmt->bind_param('ssssii', $_POST['name'], $photo_path, $_POST['testimonial'], $_POST['destination'], $_POST['rating'], $testimonial_id);
-                $stmt->execute();
+                $stmt = $pdo->prepare("UPDATE testimonials SET name = ?, photo = ?, testimonial = ?, destination = ?, rating = ?, updated_at = NOW() WHERE id = ?");
+                $stmt->execute([$_POST['name'], $photo_path, $_POST['testimonial'], $_POST['destination'], $_POST['rating'], $testimonial_id]);
 
                 // Log audit
-                logAudit($conn, $_SESSION['user_id'], 'update_testimonial', 'testimonials', $testimonial_id, 'Updated testimonial for ' . $_POST['name']);
+                logAudit($pdo, $_SESSION['user_id'], 'update_testimonial', 'testimonials', $testimonial_id, 'Updated testimonial for ' . $_POST['name']);
 
                 echo json_encode(['success' => true, 'message' => 'Testimonial updated successfully']);
                 break;
@@ -130,10 +128,9 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 $testimonial_id = $_POST['testimonial_id'];
 
                 // Get testimonial data for cleanup
-                $stmt = $conn->prepare("SELECT name, photo FROM testimonials WHERE id = ?");
-                $stmt->bind_param('i', $testimonial_id);
-                $stmt->execute();
-                $testimonial = $stmt->get_result()->fetch_assoc();
+                $stmt = $pdo->prepare("SELECT name, photo FROM testimonials WHERE id = ?");
+                $stmt->execute([$testimonial_id]);
+                $testimonial = $stmt->fetch();
 
                 // Delete photo file if exists
                 if ($testimonial['photo'] && file_exists('../' . $testimonial['photo'])) {
@@ -141,12 +138,11 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 }
 
                 // Delete testimonial
-                $stmt = $conn->prepare("DELETE FROM testimonials WHERE id = ?");
-                $stmt->bind_param('i', $testimonial_id);
-                $stmt->execute();
+                $stmt = $pdo->prepare("DELETE FROM testimonials WHERE id = ?");
+                $stmt->execute([$testimonial_id]);
 
                 // Log audit
-                logAudit($conn, $_SESSION['user_id'], 'delete_testimonial', 'testimonials', $testimonial_id, 'Deleted testimonial from ' . $testimonial['name']);
+                logAudit($pdo, $_SESSION['user_id'], 'delete_testimonial', 'testimonials', $testimonial_id, 'Deleted testimonial from ' . $testimonial['name']);
 
                 echo json_encode(['success' => true, 'message' => 'Testimonial deleted successfully']);
                 break;
@@ -155,12 +151,11 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 $testimonial_id = $_POST['testimonial_id'];
                 $active = $_POST['active'];
 
-                $stmt = $conn->prepare("UPDATE testimonials SET active = ?, updated_at = NOW() WHERE id = ?");
-                $stmt->bind_param('ii', $active, $testimonial_id);
-                $stmt->execute();
+                $stmt = $pdo->prepare("UPDATE testimonials SET active = ?, updated_at = NOW() WHERE id = ?");
+                $stmt->execute([$active, $testimonial_id]);
 
                 // Log audit
-                logAudit($conn, $_SESSION['user_id'], 'toggle_testimonial_status', 'testimonials', $testimonial_id, 'Changed testimonial status to ' . ($active ? 'active' : 'inactive'));
+                logAudit($pdo, $_SESSION['user_id'], 'toggle_testimonial_status', 'testimonials', $testimonial_id, 'Changed testimonial status to ' . ($active ? 'active' : 'inactive'));
 
                 echo json_encode(['success' => true, 'message' => 'Testimonial status updated successfully']);
                 break;
@@ -172,26 +167,54 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     exit();
 }
 
-// Fetch testimonials with tenant information
-$stmt = $conn->prepare("
+// Pagination and search
+$items_per_page = 10;
+$current_page = intval($_GET['page'] ?? 1);
+$search_query = $_GET['search'] ?? '';
+
+// Count total items
+$count_query = "SELECT COUNT(*) as total FROM testimonials t WHERE 1=1";
+$filter_params = [];
+if (!empty($search_query)) {
+    $count_query .= " AND (t.name LIKE ? OR t.destination LIKE ? OR t.testimonial LIKE ?)";
+    $search_term = "%{$search_query}%";
+    $filter_params[] = $search_term;
+    $filter_params[] = $search_term;
+    $filter_params[] = $search_term;
+}
+$stmt = $pdo->prepare($count_query);
+$stmt->execute($filter_params);
+$total_items = $stmt->fetch()['total'];
+$total_pages = ceil($total_items / $items_per_page);
+$current_page = max(1, min($current_page, $total_pages));
+$offset = ($current_page - 1) * $items_per_page;
+
+// Fetch paginated testimonials
+$query = "
     SELECT t.*, tn.name as tenant_name
     FROM testimonials t
     LEFT JOIN tenants tn ON t.tenant_id = tn.id
-    ORDER BY t.created_at DESC
-");
-$stmt->execute();
-$testimonials = $stmt->get_result()->fetch_all(MYSQLI_ASSOC);
+    WHERE 1=1";
+if (!empty($search_query)) {
+    $query .= " AND (t.name LIKE ? OR t.destination LIKE ? OR t.testimonial LIKE ?)";
+}
+$query .= " ORDER BY t.created_at DESC LIMIT ? OFFSET ?";
+$params = $filter_params;
+$params[] = $items_per_page;
+$params[] = $offset;
+$stmt = $pdo->prepare($query);
+$stmt->execute($params);
+$testimonials = $stmt->fetchAll();
 
 // Fetch tenants for dropdown
-$stmt = $conn->prepare("SELECT id, name FROM tenants WHERE status != 'deleted' ORDER BY name");
+$stmt = $pdo->prepare("SELECT id, name FROM tenants WHERE status != 'deleted' ORDER BY name");
 $stmt->execute();
-$tenants = $stmt->get_result()->fetch_all(MYSQLI_ASSOC);
+$tenants = $stmt->fetchAll();
 
 // Audit logging function
-function logAudit($conn, $user_id, $action, $entity_type, $entity_id, $details) {
-    $stmt = $conn->prepare("INSERT INTO audit_logs (user_id, action, entity_type, entity_id, details, created_at) VALUES (?, ?, ?, ?, ?, NOW())");
-    $stmt->bind_param('issis', $user_id, $action, $entity_type, $entity_id, $details);
-    $stmt->execute();
+function logAudit($pdo, $user_id, $action, $entity_type, $entity_id, $details) {
+    $stmt = $pdo->prepare("INSERT INTO audit_logs (user_id, action, entity_type, entity_id, details, created_at) VALUES (?, ?, ?, ?, ?, NOW())");
+    $stmt->execute([$user_id, $action, $entity_type, $entity_id, $details]);
 }
 ?>
 
@@ -237,12 +260,21 @@ function logAudit($conn, $user_id, $action, $entity_type, $entity_id, $details) 
                                 </div>
 
                                 <!-- Testimonials Table -->
-                                <div class="card bg-white dark:bg-gray-800 shadow-md rounded-lg">
-                                    <div class="card-header border-b pb-4">
-                                        <h5 class="text-lg font-semibold text-gray-800 dark:text-white">All Testimonials</h5>
-                                    </div>
-                                    <div class="card-body">
-                                        <div class="table-responsive">
+                                 <div class="card bg-white dark:bg-gray-800 shadow-md rounded-lg">
+                                     <div class="card-header border-b pb-4">
+                                         <h5 class="text-lg font-semibold text-gray-800 dark:text-white">All Testimonials <span class="badge badge-info"><?= $total_items ?> total</span></h5>
+                                     </div>
+                                     <div class="card-body">
+                                         <div class="mb-3">
+                                             <form method="GET" action="manage_testimonials.php" class="form-inline">
+                                                 <input type="text" class="form-control mr-2" name="search" placeholder="Name, destination, testimonial..." value="<?= htmlspecialchars($search_query) ?>" style="width: 300px;">
+                                                 <button type="submit" class="btn btn-primary mr-2">Search</button>
+                                                 <?php if (!empty($search_query)): ?>
+                                                 <a href="manage_testimonials.php" class="btn btn-secondary">Clear</a>
+                                                 <?php endif; ?>
+                                             </form>
+                                         </div>
+                                         <div class="table-responsive">
                                             <table id="testimonialsTable" class="table table-striped table-bordered">
                                                 <thead class="bg-gray-50 dark:bg-gray-700">
                                                     <tr>
@@ -310,10 +342,51 @@ function logAudit($conn, $user_id, $action, $entity_type, $entity_id, $details) 
                                                     </tr>
                                                     <?php endforeach; ?>
                                                 </tbody>
-                                            </table>
-                                        </div>
-                                    </div>
-                                </div>
+                                                </table>
+                                                </div>
+                                                
+                                                <!-- Pagination -->
+                                                <?php if ($total_pages > 1): ?>
+                                                <nav aria-label="Page navigation" class="mt-3">
+                                                <ul class="pagination justify-content-center">
+                                                <li class="page-item <?= $current_page === 1 ? 'disabled' : '' ?>">
+                                                <a class="page-link" href="?page=<?= $current_page - 1 ?><?= !empty($search_query) ? '&search=' . urlencode($search_query) : '' ?>">Previous</a>
+                                                </li>
+                                                <?php 
+                                                $start_page = max(1, $current_page - 2);
+                                                $end_page = min($total_pages, $current_page + 2);
+                                                if ($start_page > 1): ?>
+                                                <li class="page-item">
+                                                <a class="page-link" href="?page=1<?= !empty($search_query) ? '&search=' . urlencode($search_query) : '' ?>">1</a>
+                                                </li>
+                                                <?php if ($start_page > 2): ?>
+                                                <li class="page-item disabled"><span class="page-link">...</span></li>
+                                                <?php endif; ?>
+                                                <?php endif; ?>
+                                                <?php for ($i = $start_page; $i <= $end_page; $i++): ?>
+                                                <li class="page-item <?= $i === $current_page ? 'active' : '' ?>">
+                                                <a class="page-link" href="?page=<?= $i ?><?= !empty($search_query) ? '&search=' . urlencode($search_query) : '' ?>"><?= $i ?></a>
+                                                </li>
+                                                <?php endfor; ?>
+                                                <?php if ($end_page < $total_pages): ?>
+                                                <?php if ($end_page < $total_pages - 1): ?>
+                                                <li class="page-item disabled"><span class="page-link">...</span></li>
+                                                <?php endif; ?>
+                                                <li class="page-item">
+                                                <a class="page-link" href="?page=<?= $total_pages ?><?= !empty($search_query) ? '&search=' . urlencode($search_query) : '' ?>"><?= $total_pages ?></a>
+                                                </li>
+                                                <?php endif; ?>
+                                                <li class="page-item <?= $current_page === $total_pages ? 'disabled' : '' ?>">
+                                                <a class="page-link" href="?page=<?= $current_page + 1 ?><?= !empty($search_query) ? '&search=' . urlencode($search_query) : '' ?>">Next</a>
+                                                </li>
+                                                </ul>
+                                                </nav>
+                                                <div class="text-center text-muted small mt-2">
+                                                Page <?= $current_page ?> of <?= $total_pages ?> | Showing <?= count($testimonials) ?> of <?= $total_items ?> testimonials
+                                                </div>
+                                                <?php endif; ?>
+                                                </div>
+                                                </div>
                             </div>
                         </div>
                         <!-- [ Main Content ] end -->

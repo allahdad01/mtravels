@@ -1551,7 +1551,12 @@ MOBILE SIDEBAR - CLEAN LAYOUT FIX
                         <span class="pcoded-mtext">Branches</span>
                     </a>
                 </li>
-
+                <li data-username="request_branch_addon" class="nav-item <?php echo basename($_SERVER['PHP_SELF']) == 'request_branch_addon.php' ? 'active' : ''; ?>">
+                    <a href="request_branch_addon.php" class="nav-link">
+                        <span class="pcoded-micon"><i class="feather icon-package"></i></span>
+                        <span class="pcoded-mtext">Request Branch Addon</span>
+                    </a>
+                </li>
                 <li data-username="users" class="nav-item <?php echo basename($_SERVER['PHP_SELF']) == 'users.php' ? 'active' : ''; ?>">
                     <a href="users.php" class="nav-link">
                         <span class="pcoded-micon"><i class="feather icon-user-plus"></i></span>

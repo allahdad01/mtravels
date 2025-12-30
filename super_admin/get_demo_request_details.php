@@ -11,7 +11,7 @@ if (!isset($_SESSION['user_id']) || !isset($_SESSION['role']) || $_SESSION['role
 }
 
 // Database connection
-require_once '../includes/conn.php';
+require_once '../includes/db.php';
 
 $request_id = intval($_GET['id'] ?? 0);
 $basic = isset($_GET['basic']);
@@ -22,12 +22,9 @@ if (!$request_id) {
 }
 
 try {
-    $stmt = $conn->prepare("SELECT * FROM demo_requests WHERE id = ?");
-    $stmt->bind_param('i', $request_id);
-    $stmt->execute();
-    $request = $stmt->get_result()->fetch_assoc();
-    $stmt->close();
-
+    $stmt = $pdo->prepare("SELECT * FROM demo_requests WHERE id = ?");
+    $stmt->execute([$request_id]);
+    $request = $stmt->fetch();
     if (!$request) {
         http_response_code(404);
         exit('Request not found');

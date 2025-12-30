@@ -1,8 +1,18 @@
 <?php
 include 'header.php';
+require_once '../includes/BranchAddonManager.php';
 
 // Get tenant ID from session
 $tenant_id = $_SESSION['tenant_id'];
+
+// Initialize branch addon manager
+$addon_manager = new BranchAddonManager($pdo, $tenant_id);
+
+// Get current branch limits and status for display
+$plan_info = $addon_manager->getTenantPlanInfo($tenant_id);
+$current_branches = $addon_manager->getCurrentBranchCount($tenant_id);
+$max_allowed_branches = $addon_manager->getMaxAllowedBranches($tenant_id);
+$additional_branches = $addon_manager->getTotalAdditionalBranches($tenant_id);
 
 // Handle form submissions
 $message = '';
@@ -22,6 +32,13 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 
                 if (empty($name) || empty($code)) {
                     $message = 'Branch name and code are required.';
+                    $messageType = 'danger';
+                } elseif (!$addon_manager->canAddMoreBranches()) {
+                    // Check if tenant has reached branch limit
+                    $message = "You have reached the maximum number of branches (" . $max_allowed_branches . "). ";
+                    $message .= ($additional_branches > 0) ? 
+                        "To create more branches, please contact support or request additional branches." :
+                        "Please <a href='../admin/request_branch_addon.php' style='font-weight: bold; text-decoration: underline;'>request additional branches</a> to exceed your plan limit.";
                     $messageType = 'danger';
                 } else {
                     try {
@@ -43,6 +60,9 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 
                         $message = 'Branch created successfully.';
                         $messageType = 'success';
+                        
+                        // Refresh branch limits after successful creation
+                        $current_branches = $addon_manager->getCurrentBranchCount($tenant_id);
                     } catch (PDOException $e) {
                         if ($e->getCode() == 23000) { // Duplicate entry
                             $message = 'Branch code already exists.';
@@ -231,19 +251,77 @@ function logActivity($pdo, $tenant_id, $user_id, $action, $table_name, $record_i
         <?php if ($message): ?>
         <div class="alert alert-<?= $messageType ?> alert-dismissible fade show" role="alert">
             <i class="feather icon-<?= $messageType === 'success' ? 'check-circle' : 'alert-circle' ?>"></i>
-            <?= htmlspecialchars($message) ?>
+            <?php if ($messageType === 'danger' && strpos($message, 'request additional branches') !== false): ?>
+                <?= $message ?>
+            <?php else: ?>
+                <?= htmlspecialchars($message) ?>
+            <?php endif; ?>
             <button type="button" class="close" data-dismiss="alert" aria-label="Close">
                 <span aria-hidden="true">&times;</span>
             </button>
         </div>
         <?php endif; ?>
 
+        <!-- Branch Limits Info Card -->
+        <?php if ($plan_info): ?>
+        <div class="row mb-4">
+            <div class="col-12">
+                <div class="card border-left-primary shadow">
+                    <div class="card-body">
+                        <div class="row">
+                            <div class="col-md-3">
+                                <h6 class="text-muted"><i class="feather icon-package"></i> Current Plan</h6>
+                                <h5 class="mb-0"><?= htmlspecialchars($plan_info['name']) ?></h5>
+                            </div>
+                            <div class="col-md-3">
+                                <h6 class="text-muted"><i class="feather icon-git-branch"></i> Branches</h6>
+                                <h5 class="mb-0">
+                                    <span class="text-primary"><?= $current_branches ?></span>
+                                    <small class="text-muted">/ <?= $max_allowed_branches ?></small>
+                                </h5>
+                            </div>
+                            <div class="col-md-3">
+                                <h6 class="text-muted"><i class="feather icon-check"></i> Included</h6>
+                                <h5 class="mb-0"><?= htmlspecialchars($plan_info['max_branches']) ?></h5>
+                            </div>
+                            <div class="col-md-3">
+                                <h6 class="text-muted"><i class="feather icon-plus-circle"></i> Add-ons</h6>
+                                <h5 class="mb-0"><?= $additional_branches > 0 ? '+' . $additional_branches : '-' ?></h5>
+                            </div>
+                        </div>
+                        <?php if ($max_allowed_branches > $plan_info['max_branches']): ?>
+                        <hr>
+                        <div class="alert alert-info mb-0">
+                            <i class="feather icon-info"></i>
+                            You have purchased <strong><?= $additional_branches ?> additional branch(es)</strong> for this billing period.
+                            <?php if (!$addon_manager->canAddMoreBranches()): ?>
+                            <br><strong>Maximum capacity reached.</strong> To add more branches, contact support.
+                            <?php endif; ?>
+                        </div>
+                        <?php endif; ?>
+                    </div>
+                </div>
+            </div>
+        </div>
+        <?php endif; ?>
+
         <!-- Action Buttons -->
         <div class="row mb-4">
             <div class="col-12">
-                <button type="button" class="btn btn-primary" data-toggle="modal" data-target="#createBranchModal">
+                <button type="button" class="btn btn-primary <?= !$addon_manager->canAddMoreBranches() ? 'disabled' : '' ?>" 
+                        data-toggle="modal" 
+                        data-target="#createBranchModal"
+                        <?= !$addon_manager->canAddMoreBranches() ? 'disabled' : '' ?>>
                     <i class="feather icon-plus"></i> Create New Branch
                 </button>
+                <?php if ($current_branches < $max_allowed_branches && $additional_branches == 0): ?>
+                <small class="text-muted d-block mt-2">Available: <?= $max_allowed_branches - $current_branches ?> more branch(es) for your plan</small>
+                <?php elseif (!$addon_manager->canAddMoreBranches()): ?>
+                <small class="text-danger d-block mt-2">
+                    <i class="feather icon-alert-circle"></i>
+                    You have reached your maximum branches. <a href="../admin/request_branch_addon.php">Request more branches</a>
+                </small>
+                <?php endif; ?>
             </div>
         </div>
 

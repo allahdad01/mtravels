@@ -1,6 +1,6 @@
 <?php
 session_start();
-require_once '../includes/conn.php';
+require_once '../includes/db.php';
 
 // Set secure headers
 header("X-XSS-Protection: 1; mode=block");
@@ -41,41 +41,30 @@ if (empty($plan_name)) {
 }
 
 // Check if plan exists
-$stmt = $conn->prepare("SELECT status FROM plans WHERE name = ?");
-$stmt->bind_param('s', $plan_name);
-$stmt->execute();
-$plan = $stmt->get_result()->fetch_assoc();
-$stmt->close();
+$stmt = $pdo->prepare("SELECT status FROM plans WHERE name = ?");
+$stmt->execute([$plan_name]);
+$plan = $stmt->fetch();
 if (!$plan) {
     $errors[] = "Plan not found.";
 }
 
 // Check if plan is in use
-$stmt = $conn->prepare("SELECT COUNT(*) as count FROM tenants WHERE plan = ? AND status != 'deleted'");
-$stmt->bind_param('s', $plan_name);
-$stmt->execute();
-if ($stmt->get_result()->fetch_assoc()['count'] > 0) {
+$stmt = $pdo->prepare("SELECT COUNT(*) as count FROM tenants WHERE plan = ? AND status != 'deleted'");
+$stmt->execute([$plan_name]);
+if ($stmt->fetch()['count'] > 0) {
     $errors[] = "Cannot delete plan; it is in use by active tenants.";
 }
-$stmt->close();
-
 if (empty($errors)) {
     // Deactivate plan
-    $stmt = $conn->prepare("UPDATE plans SET status = 'inactive', updated_at = NOW() WHERE name = ?");
-    $stmt->bind_param('s', $plan_name);
-    $stmt->execute();
-    $stmt->close();
-
+    $stmt = $pdo->prepare("UPDATE plans SET status = 'inactive', updated_at = NOW() WHERE name = ?");
+    $stmt->execute([$plan_name]);
     // Log action
     $user_id = $_SESSION['user_id'];
-    $stmt = $conn->prepare("INSERT INTO audit_logs (user_id, action, entity_type, entity_id, details, ip_address, created_at) 
+    $stmt = $pdo->prepare("INSERT INTO audit_logs (user_id, action, entity_type, entity_id, details, ip_address, created_at) 
                             VALUES (?, 'delete_plan', 'plan', ?, ?, ?, NOW())");
     $details = json_encode(['name' => $plan_name]);
     $ip_address = $_SERVER['REMOTE_ADDR'];
-    $stmt->bind_param('iss', $user_id, $plan_name, $details, $ip_address);
-    $stmt->execute();
-    $stmt->close();
-
+    $stmt->execute([$user_id, $plan_name, $details, $ip_address]);
     header('Location: manage_plans.php?success=plan_deleted');
 } else {
     header('Location: manage_plans.php?error=' . urlencode(implode(', ', $errors)));

@@ -1,6 +1,6 @@
 <?php
 session_start();
-require_once '../includes/conn.php';
+require_once '../includes/db.php';
 
 // Set secure headers
 header("X-XSS-Protection: 1; mode=block");
@@ -33,13 +33,10 @@ if (!$post_id) {
 }
 
 // Fetch blog post
-$stmt = $conn->prepare("SELECT `id`, `title`, `slug`, `content`, `excerpt`, `featured_image`, `author`, `category`, `status`, `created_at`, `updated_at` FROM `blog_posts` WHERE `id` = ?");
-$stmt->bind_param("i", $post_id);
-$stmt->execute();
+$stmt = $pdo->prepare("SELECT `id`, `title`, `slug`, `content`, `excerpt`, `featured_image`, `author`, `category`, `status`, `created_at`, `updated_at` FROM `blog_posts` WHERE `id` = ?");
+$stmt->execute([$post_id]);
 $result = $stmt->get_result();
-$blog_post = $result->fetch_assoc();
-$stmt->close();
-
+$blog_post = $result->fetch();
 if (!$blog_post) {
     header('Location: manage_blog_posts.php?error=post_not_found');
     exit();
@@ -79,17 +76,13 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     }
 
     // Check if slug already exists (excluding current post)
-    $stmt = $conn->prepare("SELECT id FROM blog_posts WHERE slug = ? AND id != ?");
-    $stmt->bind_param("si", $slug, $post_id);
-    $stmt->execute();
+    $stmt = $pdo->prepare("SELECT id FROM blog_posts WHERE slug = ? AND id != ?");
+    $stmt->execute([$slug, $post_id]);
     $result = $stmt->get_result();
     if ($result->num_rows > 0) {
-        $stmt->close();
         header('Location: edit_blog_post.php?id=' . $post_id . '&error=slug_exists');
         exit();
     }
-    $stmt->close();
-
     // Handle file upload
     $featured_image = $blog_post['featured_image'];
     if (isset($_FILES['featured_image']) && $_FILES['featured_image']['error'] === UPLOAD_ERR_OK) {
@@ -132,19 +125,16 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     }
 
     // Update blog post
-    $stmt = $conn->prepare("UPDATE blog_posts SET title = ?, slug = ?, content = ?, excerpt = ?, featured_image = ?, author = ?, category = ?, status = ?, updated_at = NOW() WHERE id = ?");
-    $stmt->bind_param("sssssssssi", $title, $slug, $content, $excerpt, $featured_image, $author, $category, $status, $post_id);
+    $stmt = $pdo->prepare("UPDATE blog_posts SET title = ?, slug = ?, content = ?, excerpt = ?, featured_image = ?, author = ?, category = ?, status = ?, updated_at = NOW() WHERE id = ?");
+    $stmt->execute([$title, $slug, $content, $excerpt, $featured_image, $author, $category, $status, $post_id]);
 
     if ($stmt->execute()) {
-        $stmt->close();
-
         // Log the action
         error_log("Blog post updated: ID=$post_id, Title=$title, Author=" . $_SESSION['user_id'] . ", IP=" . $_SERVER['REMOTE_ADDR']);
 
         header('Location: manage_blog_posts.php?success=updated');
         exit();
     } else {
-        $stmt->close();
         error_log("Failed to update blog post: " . $stmt->error);
         header('Location: edit_blog_post.php?id=' . $post_id . '&error=update_failed');
         exit();

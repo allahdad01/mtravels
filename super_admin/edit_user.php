@@ -1,6 +1,6 @@
 <?php
 session_start();
-require_once '../includes/conn.php';
+require_once '../includes/db.php';
 
 // Set secure headers
 header("X-XSS-Protection: 1; mode=block");
@@ -35,22 +35,17 @@ if (!isset($_SESSION['csrf_token'])) {
 $user_id = $_GET['id'] ?? '';
 $errors = [];
 if ($user_id && is_numeric($user_id)) {
-    $stmt = $conn->prepare("SELECT id, name, email, role, tenant_id FROM users WHERE id = ?");
-    $stmt->bind_param('i', $user_id);
-    $stmt->execute();
-    $user = $stmt->get_result()->fetch_assoc();
-    $stmt->close();
-   
-} else {
+    $stmt = $pdo->prepare("SELECT id, name, email, role, tenant_id FROM users WHERE id = ?");
+    $stmt->execute([$user_id]);
+    $user = $stmt->fetch();
+    } else {
     $errors[] = "Invalid user ID.";
 }
 
 // Fetch tenants for dropdown
-$stmt = $conn->prepare("SELECT id, name FROM tenants WHERE status != 'deleted'");
+$stmt = $pdo->prepare("SELECT id, name FROM tenants WHERE status != 'deleted'");
 $stmt->execute();
-$tenants = $stmt->get_result()->fetch_all(MYSQLI_ASSOC);
-$stmt->close();
-
+$tenants = $stmt->fetchAll();
 // Handle form submission
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     // Verify CSRF token
@@ -86,48 +81,38 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     }
 
     // Check for duplicate email (excluding current user)
-    $stmt = $conn->prepare("SELECT COUNT(*) as count FROM users WHERE email = ? AND id != ?");
-    $stmt->bind_param('si', $email, $user_id);
-    $stmt->execute();
-    if ($stmt->get_result()->fetch_assoc()['count'] > 0) {
+    $stmt = $pdo->prepare("SELECT COUNT(*) as count FROM users WHERE email = ? AND id != ?");
+    $stmt->execute([$email, $user_id]);
+    if ($stmt->fetch()['count'] > 0) {
         $errors[] = "Email already exists.";
     }
-    $stmt->close();
-
     // Verify tenant exists (if applicable)
     if ($tenant_id) {
-        $stmt = $conn->prepare("SELECT COUNT(*) as count FROM tenants WHERE id = ? AND status != 'deleted'");
-        $stmt->bind_param('i', $tenant_id);
-        $stmt->execute();
-        if ($stmt->get_result()->fetch_assoc()['count'] == 0) {
+        $stmt = $pdo->prepare("SELECT COUNT(*) as count FROM tenants WHERE id = ? AND status != 'deleted'");
+        $stmt->execute([$tenant_id]);
+        if ($stmt->fetch()['count'] == 0) {
             $errors[] = "Invalid or deleted tenant.";
         }
-        $stmt->close();
-    }
+        }
 
     if (empty($errors)) {
         // Update user
         $tenant_id = $tenant_id ?: null;
         if ($password) {
             $hashed_password = password_hash($password, PASSWORD_DEFAULT);
-            $stmt = $conn->prepare("UPDATE users SET name = ?, email = ?, password = ?, role = ?, tenant_id = ?, updated_at = NOW() WHERE id = ?");
-            $stmt->bind_param('ssssi', $name, $email, $hashed_password, $role, $tenant_id, $user_id);
+            $stmt = $pdo->prepare("UPDATE users SET name = ?, email = ?, password = ?, role = ?, tenant_id = ?, updated_at = NOW() WHERE id = ?");
+            $stmt->execute([$name, $email, $hashed_password, $role, $tenant_id, $user_id]);
         } else {
-            $stmt = $conn->prepare("UPDATE users SET name = ?, email = ?, role = ?, tenant_id = ?, updated_at = NOW() WHERE id = ?");
-            $stmt->bind_param('sssi', $name, $email, $role, $tenant_id, $user_id);
+            $stmt = $pdo->prepare("UPDATE users SET name = ?, email = ?, role = ?, tenant_id = ?, updated_at = NOW() WHERE id = ?");
+            $stmt->execute([$name, $email, $role, $tenant_id, $user_id]);
         }
         $stmt->execute();
-        $stmt->close();
-
         // Log action
-        $stmt = $conn->prepare("INSERT INTO audit_logs (user_id, action, entity_type, entity_id, details, ip_address, created_at) 
+        $stmt = $pdo->prepare("INSERT INTO audit_logs (user_id, action, entity_type, entity_id, details, ip_address, created_at) 
                                 VALUES (?, 'update_user', 'user', ?, ?, ?, NOW())");
         $details = json_encode(['name' => $name, 'email' => $email, 'role' => $role, 'tenant_id' => $tenant_id, 'password_updated' => !!$password]);
         $ip_address = $_SERVER['REMOTE_ADDR'];
-        $stmt->bind_param('iiss', $_SESSION['user_id'], $user_id, $details, $ip_address);
-        $stmt->execute();
-        $stmt->close();
-
+        $stmt->execute([$_SESSION['user_id'], $user_id, $details, $ip_address]);
         header('Location: manage_users.php?success=user_updated');
         exit();
     }

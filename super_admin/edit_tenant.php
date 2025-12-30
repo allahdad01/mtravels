@@ -1,6 +1,6 @@
 <?php
 session_start();
-require_once '../includes/conn.php';
+require_once '../includes/db.php';
 
 // Set secure headers
 header("X-XSS-Protection: 1; mode=block");
@@ -35,11 +35,9 @@ if (!isset($_SESSION['csrf_token'])) {
 $tenant_id = $_GET['id'] ?? '';
 $errors = [];
 if ($tenant_id && is_numeric($tenant_id)) {
-    $stmt = $conn->prepare("SELECT id, name, subdomain, identifier, status, plan, billing_email FROM tenants WHERE id = ? AND status != 'deleted'");
-    $stmt->bind_param('i', $tenant_id);
-    $stmt->execute();
-    $tenant = $stmt->get_result()->fetch_assoc();
-    $stmt->close();
+    $stmt = $pdo->prepare("SELECT id, name, subdomain, identifier, status, plan, billing_email FROM tenants WHERE id = ? AND status != 'deleted'");
+    $stmt->execute([$tenant_id]);
+    $tenant = $stmt->fetch();
     if (!$tenant) {
         $errors[] = "Tenant not found or deleted.";
     }
@@ -48,11 +46,9 @@ if ($tenant_id && is_numeric($tenant_id)) {
 }
 
 // Fetch plans for dropdown
-$stmt = $conn->prepare("SELECT name FROM plans WHERE status = 'active'");
+$stmt = $pdo->prepare("SELECT name FROM plans WHERE status = 'active'");
 $stmt->execute();
-$plans = $stmt->get_result()->fetch_all(MYSQLI_ASSOC);
-$stmt->close();
-
+$plans = $stmt->fetchAll();
 // Handle form submission
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     // Verify CSRF token
@@ -86,40 +82,28 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     }
 
     // Check for duplicate subdomain or identifier (excluding current tenant)
-    $stmt = $conn->prepare("SELECT COUNT(*) as count FROM tenants WHERE (subdomain = ? OR identifier = ?) AND id != ? AND status != 'deleted'");
-    $stmt->bind_param('ssi', $subdomain, $identifier, $tenant_id);
-    $stmt->execute();
-    if ($stmt->get_result()->fetch_assoc()['count'] > 0) {
+    $stmt = $pdo->prepare("SELECT COUNT(*) as count FROM tenants WHERE (subdomain = ? OR identifier = ?) AND id != ? AND status != 'deleted'");
+    $stmt->execute([$subdomain, $identifier, $tenant_id]);
+    if ($stmt->fetch()['count'] > 0) {
         $errors[] = "Subdomain or identifier already exists.";
     }
-    $stmt->close();
-
     // Verify plan exists
-    $stmt = $conn->prepare("SELECT COUNT(*) as count FROM plans WHERE name = ? AND status = 'active'");
-    $stmt->bind_param('s', $plan);
-    $stmt->execute();
-    if ($stmt->get_result()->fetch_assoc()['count'] == 0) {
+    $stmt = $pdo->prepare("SELECT COUNT(*) as count FROM plans WHERE name = ? AND status = 'active'");
+    $stmt->execute([$plan]);
+    if ($stmt->fetch()['count'] == 0) {
         $errors[] = "Invalid or inactive plan selected.";
     }
-    $stmt->close();
-
     if (empty($errors)) {
         // Update tenant
-        $stmt = $conn->prepare("UPDATE tenants SET name = ?, subdomain = ?, identifier = ?, status = ?, plan = ?, billing_email = ?, updated_at = NOW() WHERE id = ?");
-        $stmt->bind_param('ssssssi', $name, $subdomain, $identifier, $status, $plan, $billing_email, $tenant_id);
-        $stmt->execute();
-        $stmt->close();
-
+        $stmt = $pdo->prepare("UPDATE tenants SET name = ?, subdomain = ?, identifier = ?, status = ?, plan = ?, billing_email = ?, updated_at = NOW() WHERE id = ?");
+        $stmt->execute([$name, $subdomain, $identifier, $status, $plan, $billing_email, $tenant_id]);
         // Log action
         $user_id = $_SESSION['user_id'];
-        $stmt = $conn->prepare("INSERT INTO audit_logs (user_id, action, entity_type, entity_id, details, ip_address, created_at) 
+        $stmt = $pdo->prepare("INSERT INTO audit_logs (user_id, action, entity_type, entity_id, details, ip_address, created_at) 
                                 VALUES (?, 'update_tenant', 'tenant', ?, ?, ?, NOW())");
         $details = json_encode(['name' => $name, 'subdomain' => $subdomain, 'identifier' => $identifier, 'plan' => $plan, 'status' => $status]);
         $ip_address = $_SERVER['REMOTE_ADDR'];
-        $stmt->bind_param('iiss', $user_id, $tenant_id, $details, $ip_address);
-        $stmt->execute();
-        $stmt->close();
-
+        $stmt->execute([$user_id, $tenant_id, $details, $ip_address]);
         header('Location: manage_tenants.php?success=tenant_updated');
         exit();
     }

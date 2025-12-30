@@ -1,6 +1,6 @@
 <?php
 session_start();
-require_once '../includes/conn.php';
+require_once '../includes/db.php';
 
 // Set secure headers
 header("X-XSS-Protection: 1; mode=block");
@@ -216,18 +216,15 @@ if (empty($errors)) {
         $settings[] = ['key' => 'platform_favicon', 'value' => $platform_favicon_path, 'type' => 'string', 'description' => 'Platform favicon file name'];
     }
 
-    $stmt = $conn->prepare("INSERT INTO platform_settings (`key`, `value`, `type`, `description`, `created_at`, `updated_at`) 
+    $stmt = $pdo->prepare("INSERT INTO platform_settings (`key`, `value`, `type`, `description`, `created_at`, `updated_at`) 
                             VALUES (?, ?, ?, ?, NOW(), NOW()) 
                             ON DUPLICATE KEY UPDATE `value` = ?, `updated_at` = NOW()");
     foreach ($settings as $setting) {
-        $stmt->bind_param('sssss', $setting['key'], $setting['value'], $setting['type'], $setting['description'], $setting['value']);
-        $stmt->execute();
+        $stmt->execute([$setting['key'], $setting['value'], $setting['type'], $setting['description'], $setting['value']]);
     }
-    $stmt->close();
-
     // Log action
     $user_id = $_SESSION['user_id'];
-    $stmt = $conn->prepare("INSERT INTO audit_logs (user_id, action, entity_type, entity_id, details, ip_address, created_at)
+    $stmt = $pdo->prepare("INSERT INTO audit_logs (user_id, action, entity_type, entity_id, details, ip_address, created_at)
                             VALUES (?, 'update_platform_settings', 'platform_setting', 0, ?, ?, NOW())");
     $details = json_encode([
         'platform_name' => $platform_name,
@@ -254,10 +251,7 @@ if (empty($errors)) {
         'smtp_from_name' => $smtp_from_name
     ]);
     $ip_address = $_SERVER['REMOTE_ADDR'];
-    $stmt->bind_param('iss', $user_id, $details, $ip_address);
-    $stmt->execute();
-    $stmt->close();
-
+    $stmt->execute([$user_id, $details, $ip_address]);
     // Return JSON response for AJAX
     header('Content-Type: application/json');
     echo json_encode([

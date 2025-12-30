@@ -1,8 +1,13 @@
 <?php
 include 'header.php';
+include __DIR__ . '/../includes/branch_performance_monitor.php';
 
 // Get tenant ID from session
 $tenant_id = $_SESSION['tenant_id'];
+
+// Initialize performance monitor
+$monitor = initBranchPerformanceMonitor($pdo, $tenant_id);
+$performance_alerts = $monitor->getRecentAlerts(5);
 
 // Get branch parameter from URL or session
 $selected_branch_id = isset($_GET['branch']) ? (int)$_GET['branch'] : null;
@@ -448,6 +453,43 @@ $userQuery = "
             </div>
         </div>
 
+        <!-- Performance Alerts Section -->
+        <?php if (!empty($performance_alerts)): ?>
+        <div class="row">
+            <div class="col-12">
+                <div class="card">
+                    <div class="card-header">
+                        <h5><i class="feather icon-alert-triangle"></i> Branch Performance Alerts</h5>
+                    </div>
+                    <div class="card-body">
+                        <div class="alert-container">
+                            <?php foreach ($performance_alerts as $alert): ?>
+                            <div class="alert alert-<?= ($alert['severity'] === 'CRITICAL') ? 'danger' : 'warning' ?> alert-dismissible fade show" role="alert">
+                                <h6 class="alert-heading">
+                                    <?= ($alert['severity'] === 'CRITICAL') ? '⚠️ CRITICAL' : '⚡ WARNING' ?> - 
+                                    <?= htmlspecialchars($alert['branch_name'] ?? 'Unknown Branch') ?>
+                                </h6>
+                                <p class="mb-2"><?= htmlspecialchars($alert['message']) ?></p>
+                                <small class="text-muted">
+                                    <i class="feather icon-clock"></i> 
+                                    <?= date('M d, Y H:i', strtotime($alert['created_at'])) ?>
+                                    <?php if ($alert['status'] !== 'new'): ?>
+                                    | Status: <span class="badge badge-secondary"><?= ucfirst($alert['status']) ?></span>
+                                    <?php endif; ?>
+                                </small>
+                                <?php if ($alert['status'] === 'new'): ?>
+                                <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close" 
+                                        onclick="acknowledgeAlert(<?= $alert['id'] ?>)"></button>
+                                <?php endif; ?>
+                            </div>
+                            <?php endforeach; ?>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+        <?php endif; ?>
+
         <!-- Branch Performance Table -->
         <div class="row">
             <div class="col-xl-8 col-md-12">
@@ -715,6 +757,24 @@ $userQuery = "
 </div>
 
 <script>
+// Acknowledge performance alert
+function acknowledgeAlert(alertId) {
+    $.ajax({
+        url: 'acknowledge_performance_alert.php',
+        type: 'POST',
+        data: { alert_id: alertId },
+        success: function(response) {
+            if (response.success) {
+                location.reload();
+            }
+        },
+        error: function(xhr) {
+            console.error('Error acknowledging alert:', xhr);
+        },
+        dataType: 'json'
+    });
+}
+
 // Branch change functionality
 function changeBranch() {
     const branchId = document.getElementById('branchSelector').value;

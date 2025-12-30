@@ -1671,11 +1671,47 @@ $imagePath = "../assets/images/user/" . $profilePic;
                         <span class="pcoded-mtext"><?= __('manage_subscriptions') ?></span>
                     </a>
                 </li>
+                <li data-username="manage_branch_addons" class="nav-item <?php echo basename($_SERVER['PHP_SELF']) == 'manage_branch_addons.php' ? 'active' : ''; ?>">
+                    <a href="manage_branch_addons.php" class="nav-link">
+                        <span class="pcoded-micon"><i class="fas fa-gift"></i></span>
+                        <span class="pcoded-mtext"><?= __('manage_branch_addons') ?></span>
+                    </a>
+                </li>
+                <li data-username="manage_tenant_addon_pricing" class="nav-item <?php echo basename($_SERVER['PHP_SELF']) == 'manage_tenant_addon_pricing.php' ? 'active' : ''; ?>">
+                    <a href="manage_tenant_addon_pricing.php" class="nav-link">
+                        <span class="pcoded-micon"><i class="fas fa-tag"></i></span>
+                        <span class="pcoded-mtext">Branch Addon Pricing</span>
+                    </a>
+                </li>
                 <li data-username="subscription_payments" class="nav-item <?php echo basename($_SERVER['PHP_SELF']) == 'subscription_payments.php' ? 'active' : ''; ?>">
                     <a href="subscription_payments.php" class="nav-link">
                         <span class="pcoded-micon"><i class="fas fa-dollar-sign"></i></span>
                         <span class="pcoded-mtext">Subscription Payments</span>
                     </a>
+                </li>
+                <li data-username="support_tickets" class="nav-item <?php echo basename($_SERVER['PHP_SELF']) == 'support_tickets_manage.php' || basename($_SERVER['PHP_SELF']) == 'support_ticket_manage.php' ? 'active' : ''; ?>">
+                    <a href="support_tickets_manage.php" class="nav-link">
+                        <span class="pcoded-micon"><i class="feather icon-headphones"></i></span>
+                        <span class="pcoded-mtext">Support Tickets</span>
+                    </a>
+                </li>
+                <li data-username="expense_management" class="nav-item pcoded-hasmenu <?php echo in_array(basename($_SERVER['PHP_SELF']), ['system_expenses.php', 'system_expense_categories.php', 'system_revenue.php', 'profit_loss_dashboard.php']) ? 'active' : ''; ?>">
+                    <a href="javascript:void(0);" class="nav-link">
+                        <span class="pcoded-micon"><i class="fas fa-chart-line"></i></span>
+                        <span class="pcoded-mtext"><?= __('expense_management') ?></span>
+                    </a>
+                    <ul class="pcoded-submenu">
+                        <li class="nav-item <?php echo basename($_SERVER['PHP_SELF']) == 'system_expenses.php' ? 'active' : ''; ?>">
+                            <a href="system_expenses.php" class="nav-link">
+                                <span class="pcoded-mtext"><?= __('system_expenses') ?></span>
+                            </a>
+                        </li>
+                        <li class="nav-item <?php echo basename($_SERVER['PHP_SELF']) == 'profit_loss_dashboard.php' ? 'active' : ''; ?>">
+                            <a href="profit_loss_dashboard.php" class="nav-link">
+                                <span class="pcoded-mtext"><?= __('profit_loss_dashboard') ?></span>
+                            </a>
+                        </li>
+                    </ul>
                 </li>
                 <li data-username="manage_demo_requests" class="nav-item <?php echo basename($_SERVER['PHP_SELF']) == 'manage_demo_requests.php' ? 'active' : ''; ?>">
                     <a href="manage_demo_requests.php" class="nav-link">
@@ -1704,20 +1740,26 @@ $imagePath = "../assets/images/user/" . $profilePic;
                 </li>
                 <li data-username="manage_testimonials" class="nav-item <?php echo basename($_SERVER['PHP_SELF']) == 'manage_testimonials.php' ? 'active' : ''; ?>">
                     <a href="manage_testimonials.php" class="nav-link">
-                        <span class="pcoded-micon"><i class="feather icon-message-square"></i></span>
+                        <span class="pcoded-micon"><i class="feather icon-star"></i></span>
                         <span class="pcoded-mtext">Manage Testimonials</span>
                     </a>
                 </li>
                 <li data-username="manage_blog_posts" class="nav-item <?php echo basename($_SERVER['PHP_SELF']) == 'manage_blog_posts.php' ? 'active' : ''; ?>">
                     <a href="manage_blog_posts.php" class="nav-link">
-                        <span class="pcoded-micon"><i class="feather icon-message-square"></i></span>
+                        <span class="pcoded-micon"><i class="feather icon-edit"></i></span>
                         <span class="pcoded-mtext">Manage Posts</span>
                     </a>
                 </li>
                 <li data-username="backup_management" class="nav-item <?php echo basename($_SERVER['PHP_SELF']) == 'backup_management.php' ? 'active' : ''; ?>">
                     <a href="backup_management.php" class="nav-link">
-                        <span class="pcoded-micon"><i class="feather icon-message-square"></i></span>
+                        <span class="pcoded-micon"><i class="feather icon-save"></i></span>
                         <span class="pcoded-mtext">Manage Backup</span>
+                    </a>
+                </li>
+                <li data-username="support_tickets_admin" class="nav-item <?php echo basename($_SERVER['PHP_SELF']) == 'support_tickets_list.php' || basename($_SERVER['PHP_SELF']) == 'support_ticket_view.php' ? 'active' : ''; ?>">
+                    <a href="support_tickets_list.php" class="nav-link">
+                        <span class="pcoded-micon"><i class="feather icon-help-circle"></i></span>
+                        <span class="pcoded-mtext">Support Tickets</span>
                     </a>
                 </li>
             </ul>

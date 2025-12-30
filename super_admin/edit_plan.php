@@ -1,6 +1,6 @@
 <?php
 session_start();
-require_once '../includes/conn.php';
+require_once '../includes/db.php';
 
 // Set secure headers
 header("X-XSS-Protection: 1; mode=block");
@@ -35,11 +35,9 @@ if (!isset($_SESSION['csrf_token'])) {
 $plan_name = $_GET['name'] ?? '';
 $errors = [];
 if ($plan_name) {
-    $stmt = $conn->prepare("SELECT name, description, features, price, max_users, trial_days, status FROM plans WHERE name = ?");
-    $stmt->bind_param('s', $plan_name);
-    $stmt->execute();
-    $plan = $stmt->get_result()->fetch_assoc();
-    $stmt->close();
+    $stmt = $pdo->prepare("SELECT name, description, features, price, max_users, trial_days, status FROM plans WHERE name = ?");
+    $stmt->execute([$plan_name]);
+    $plan = $stmt->fetch();
     if (!$plan) {
         $errors[] = "Plan not found.";
     }
@@ -93,55 +91,39 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     }
 
     // Check for duplicate name (excluding current plan)
-    $stmt = $conn->prepare("SELECT COUNT(*) as count FROM plans WHERE name = ? AND name != ?");
-    $stmt->bind_param('ss', $new_name, $plan_name);
-    $stmt->execute();
-    if ($stmt->get_result()->fetch_assoc()['count'] > 0) {
+    $stmt = $pdo->prepare("SELECT COUNT(*) as count FROM plans WHERE name = ? AND name != ?");
+    $stmt->execute([$new_name, $plan_name]);
+    if ($stmt->fetch()['count'] > 0) {
         $errors[] = "Plan name already exists.";
     }
-    $stmt->close();
-
     // Check if plan is in use (for inactive status)
     if ($status === 'inactive') {
-        $stmt = $conn->prepare("SELECT COUNT(*) as count FROM tenants WHERE plan = ? AND status != 'deleted'");
-        $stmt->bind_param('s', $plan_name);
-        $stmt->execute();
-        if ($stmt->get_result()->fetch_assoc()['count'] > 0) {
+        $stmt = $pdo->prepare("SELECT COUNT(*) as count FROM tenants WHERE plan = ? AND status != 'deleted'");
+        $stmt->execute([$plan_name]);
+        if ($stmt->fetch()['count'] > 0) {
             $errors[] = "Cannot deactivate plan; it is in use by active tenants.";
         }
-        $stmt->close();
-    }
+        }
 
     if (empty($errors)) {
         // Update plan
-        $stmt = $conn->prepare("UPDATE plans SET name = ?, description = ?, features = ?, price = ?, max_users = ?, trial_days = ?, status = ?, updated_at = NOW() WHERE name = ?");
-        $stmt->bind_param('sssdiiss', $new_name, $description, $features, $price, $max_users, $trial_days, $status, $plan_name);
-        $stmt->execute();
-        $stmt->close();
-
+        $stmt = $pdo->prepare("UPDATE plans SET name = ?, description = ?, features = ?, price = ?, max_users = ?, trial_days = ?, status = ?, updated_at = NOW() WHERE name = ?");
+        $stmt->execute([$new_name, $description, $features, $price, $max_users, $trial_days, $status, $plan_name]);
         // Update tenant plans if name changed
         if ($new_name !== $plan_name) {
-            $stmt = $conn->prepare("UPDATE tenants SET plan = ? WHERE plan = ?");
-            $stmt->bind_param('ss', $new_name, $plan_name);
-            $stmt->execute();
-            $stmt->close();
-
-            $stmt = $conn->prepare("UPDATE tenant_subscriptions SET plan_id = ? WHERE plan_id = ?");
-            $stmt->bind_param('ss', $new_name, $plan_name);
-            $stmt->execute();
-            $stmt->close();
-        }
+            $stmt = $pdo->prepare("UPDATE tenants SET plan = ? WHERE plan = ?");
+            $stmt->execute([$new_name, $plan_name]);
+            $stmt = $pdo->prepare("UPDATE tenant_subscriptions SET plan_id = ? WHERE plan_id = ?");
+            $stmt->execute([$new_name, $plan_name]);
+            }
 
         // Log action
         $user_id = $_SESSION['user_id'];
-        $stmt = $conn->prepare("INSERT INTO audit_logs (user_id, action, entity_type, entity_id, details, ip_address, created_at) 
+        $stmt = $pdo->prepare("INSERT INTO audit_logs (user_id, action, entity_type, entity_id, details, ip_address, created_at) 
                                 VALUES (?, 'update_plan', 'plan', ?, ?, ?, NOW())");
         $details = json_encode(['old_name' => $plan_name, 'new_name' => $new_name, 'description' => $description, 'price' => $price, 'max_users' => $max_users, 'trial_days' => $trial_days, 'status' => $status]);
         $ip_address = $_SERVER['REMOTE_ADDR'];
-        $stmt->bind_param('isss', $user_id, $new_name, $details, $ip_address);
-        $stmt->execute();
-        $stmt->close();
-
+        $stmt->execute([$user_id, $new_name, $details, $ip_address]);
         header('Location: manage_plans.php?success=plan_updated');
         exit();
     }

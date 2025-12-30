@@ -65,6 +65,7 @@ $clientAccounts = $clientStmt->fetchAll(PDO::FETCH_ASSOC);
 
 // Include dashboard handler for low balance alerts
 require_once '../api/dashboard/supplier_notification.php';
+require_once '../api/dashboard/client_notification.php';
 ?>
 
 <?php include '../includes/header.php'; ?>
@@ -81,7 +82,7 @@ require_once '../api/dashboard/supplier_notification.php';
                     <div class="page-header">
                         <div class="page-block">
                             <div class="row align-items-center">
-                                <div class="col-md-12">
+                                <div class="col-md-6">
                                     <div class="page-header-title">
                                         <h5 class="m-b-10"><?= __('accounts_management') ?></h5>
                                     </div>
@@ -89,6 +90,11 @@ require_once '../api/dashboard/supplier_notification.php';
                                         <li class="breadcrumb-item"><a href="dashboard.php"><i class="feather icon-home"></i></a></li>
                                         <li class="breadcrumb-item"><?= __('accounts') ?></li>
                                     </ul>
+                                </div>
+                                <div class="col-md-6 text-right">
+                                    <button class="btn btn-info" type="button" id="watchTutorialsBtn" data-toggle="modal" data-target="#accountsTutorialsModal">
+                                        <i class="feather icon-play-circle mr-1"></i>Watch Tutorials
+                                    </button>
                                 </div>
                             </div>
                         </div>
@@ -146,6 +152,49 @@ require_once '../api/dashboard/supplier_notification.php';
                                                                  $threshold = ($lowBalanceSupplier['currency'] === 'USD') ? 500 : 20000;
                                                                  $threshold_display = ($lowBalanceSupplier['currency'] === 'USD') ? '$500' : '؋20,000';
                                                                  echo $lowBalanceSupplier['currency'] . ": " . $currency_symbol . number_format($lowBalanceSupplier['balance'], 2) . " (Threshold: " . $threshold_display . ")";
+                                                                 ?>
+                                                             </small>
+                                                         </div>
+                                                     <?php endforeach; ?>
+                                                 </div>
+                                             </div>
+                                         </div>
+                                         <button type="button" class="close" data-dismiss="alert" aria-label="Close">
+                                             <span aria-hidden="true">&times;</span>
+                                         </button>
+                                     </div>
+                                 </div>
+                             </div>
+                             <?php endif; ?>
+
+                             <!-- Client Low/Negative Balance Alert -->
+                             <?php if (!empty($clientsWithLowBalance)): ?>
+                             <div class="row mb-4">
+                                 <div class="col-md-12">
+                                     <div class="alert alert-danger alert-dismissible fade show border-left-danger" role="alert">
+                                         <div class="d-flex align-items-start">
+                                             <i class="feather icon-alert-circle mr-3" style="font-size: 20px; margin-top: 2px;"></i>
+                                             <div class="flex-grow-1">
+                                                 <h5 class="alert-heading mb-2">Client Balance Due Alert</h5>
+                                                 <p class="mb-2">The following clients have reached the balance due thresholds:</p>
+                                                 <div class="client-alerts">
+                                                     <?php foreach ($clientsWithLowBalance as $lowBalanceClient): ?>
+                                                         <div class="alert alert-sm mb-2" style="background-color: rgba(220,53,69,0.1); border-left: 3px solid #dc3545; padding: 8px 12px;">
+                                                             <strong><?= htmlspecialchars($lowBalanceClient['name']) ?></strong><br>
+                                                             <small class="text-muted">
+                                                                 <?php
+                                                                 $usd_threshold = -1000;
+                                                                 $afs_threshold = -20000;
+                                                                 $display_items = [];
+                                                                 
+                                                                 if ($lowBalanceClient['usd_balance'] < $usd_threshold) {
+                                                                     $display_items[] = "USD: $" . number_format($lowBalanceClient['usd_balance'], 2) . " (Threshold: $-1,000)";
+                                                                 }
+                                                                 if ($lowBalanceClient['afs_balance'] < $afs_threshold) {
+                                                                     $display_items[] = "AFS: ؋" . number_format($lowBalanceClient['afs_balance'], 2) . " (Threshold: ؋-20,000)";
+                                                                 }
+                                                                 
+                                                                 echo implode(" | ", $display_items);
                                                                  ?>
                                                              </small>
                                                          </div>
@@ -637,6 +686,7 @@ require_once '../api/dashboard/supplier_notification.php';
   <?php include '../modals/accounts/main_account_transaction_history_modal.php'; ?>
   <?php include '../modals/accounts/remarks_modal.php'; ?>
   <?php include '../modals/accounts/edit_transaction_modal.php'; ?>
+  <?php include '../modals/accounts/edit_receipt_modal.php'; ?>
   <!-- Hidden form for transaction deletion -->
 <form id="deleteTransactionForm" class="d-none">
     <input type="hidden" id="deleteTransactionId" name="transaction_id">
@@ -702,10 +752,132 @@ require_once '../api/dashboard/supplier_notification.php';
     <script src="../js/accounts/transaction-management.js"></script>
     <script src="../js/accounts/status-management.js?v=1.1"></script>
 
+    <!-- Accounts Tutorials Modal -->
+    <div class="modal fade" id="accountsTutorialsModal" tabindex="-1" role="dialog" aria-labelledby="accountsTutorialsModalLabel" aria-hidden="true">
+        <div class="modal-dialog modal-xl" role="document">
+            <div class="modal-content">
+                <div class="modal-header bg-info text-white">
+                    <h5 class="modal-title" id="accountsTutorialsModalLabel">
+                        <i class="feather icon-play-circle mr-2"></i>Accounts Management Tutorials
+                    </h5>
+                    <button type="button" class="close text-white" data-dismiss="modal" aria-label="Close">
+                        <span aria-hidden="true">&times;</span>
+                    </button>
+                </div>
+                <div class="modal-body p-0">
+                    <div class="row h-100 no-gutters">
+                        <!-- Video Player Column -->
+                        <div class="col-md-8">
+                            <div style="background: #000; position: relative;">
+                                <iframe id="tutorialVideoPlayer" style="width: 100%; height: 500px; border: none;" 
+                                        src="" allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture" 
+                                        allowfullscreen>
+                                </iframe>
+                            </div>
+                            <div class="p-3">
+                                <h6 id="tutorialTitle" class="mb-2">Select a tutorial to watch</h6>
+                                <p id="tutorialDescription" class="text-muted small mb-0"></p>
+                                <div class="mt-2">
+                                    <small class="badge-primary" id="tutorialLevel">Beginner</small>
+                                    <small class="badge-secondary" id="tutorialDuration">5:00</small>
+                                </div>
+                            </div>
+                        </div>
+                        <!-- Tutorials List Column -->
+                        <div class="col-md-4" style="max-height: 600px; overflow-y: auto; border-left: 1px solid #e9ecef;">
+                            <div class="p-3">
+                                <h6 class="mb-3">Available Tutorials</h6>
+                                <div id="tutorialsListContainer">
+                                    <p class="text-muted text-center py-3">Loading tutorials...</p>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-dismiss="modal">Close</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+    // Accounts Tutorials Data
+    const accountsTutorials = [
+        {id: 1, title: 'View Account Balances', description: 'Viewing comprehensive account overview, understanding main account balances, supplier account balances, and client account balances with USD and AFS currency support.', duration: '4:30', level: 'Beginner', vimeo_id: ''},
+        {id: 2, title: 'Search & Filter Accounts', description: 'Using search functionality to find accounts, filtering by account type (main, supplier, client), filtering by status (active, inactive), managing large account lists.', duration: '5:00', level: 'Beginner', vimeo_id: ''},
+        {id: 3, title: 'Add Account Funds', description: 'Adding funds to account balances, selecting currency (USD/AFS), entering amount, recording transactions, understanding debit and credit operations, updating account status.', duration: '6:00', level: 'Intermediate', vimeo_id: ''},
+        {id: 4, title: 'Withdraw Account Funds', description: 'Withdrawing funds from accounts, verifying withdrawal requests, processing withdrawals with proper documentation, managing withdrawal transactions, updating balances.', duration: '6:00', level: 'Intermediate', vimeo_id: ''},
+        {id: 5, title: 'View Transaction History', description: 'Accessing account transaction history, reviewing all account transactions, understanding transaction types and amounts, tracking account changes over time, exporting transaction records.', duration: '5:30', level: 'Intermediate', vimeo_id: ''},
+        {id: 6, title: 'Manage Account Status', description: 'Changing account status (active/inactive), understanding status impact on operations, deactivating accounts, reactivating accounts, managing account lifecycle.', duration: '4:30', level: 'Advanced', vimeo_id: ''}
+    ];
+
+    $(document).ready(function() {
+        // Initialize tutorials list
+        function loadTutorialsInModal() {
+            let html = '';
+            accountsTutorials.forEach(function(tutorial) {
+                html += `
+                    <div class="tutorial-item p-2 mb-2 border rounded cursor-pointer tutorial-selectable" 
+                         data-tutorial-id="${tutorial.id}" 
+                         style="background: #f8f9fa; transition: all 0.3s ease;">
+                        <div class="d-flex align-items-start">
+                            <div class="flex-grow-1">
+                                <h6 class="mb-1 small font-weight-bold">${tutorial.title}</h6>
+                                <small class="text-muted d-block mb-1">${tutorial.duration}</small>
+                                <small class="badge-light">${tutorial.level}</small>
+                            </div>
+                            <i class="feather icon-play text-muted" style="margin-top: 2px;"></i>
+                        </div>
+                    </div>
+                `;
+            });
+            $('#tutorialsListContainer').html(html);
+
+            // Add click handlers
+            $('.tutorial-selectable').click(function() {
+                const tutorialId = $(this).data('tutorial-id');
+                const tutorial = accountsTutorials.find(t => t.id == tutorialId);
+                
+                if (tutorial) {
+                    // Update active state
+                    $('.tutorial-selectable').css('background', '#f8f9fa');
+                    $(this).css('background', '#e7f3ff').css('border-color', '#4099ff');
+                    
+                    // Update video player and info
+                    if (tutorial.vimeo_id) {
+                        const videoUrl = `https://player.vimeo.com/video/${tutorial.vimeo_id}`;
+                        $('#tutorialVideoPlayer').attr('src', videoUrl);
+                    } else {
+                        $('#tutorialVideoPlayer').attr('src', '');
+                    }
+                    
+                    $('#tutorialTitle').text(tutorial.title);
+                    $('#tutorialDescription').text(tutorial.description);
+                    $('#tutorialLevel').text(tutorial.level);
+                    $('#tutorialDuration').text(tutorial.duration);
+                }
+            });
+        }
+
+        // Load tutorials when modal is shown
+        $('#accountsTutorialsModal').on('show.bs.modal', function() {
+            loadTutorialsInModal();
+            // Select first tutorial by default
+            if (accountsTutorials.length > 0) {
+                $('.tutorial-selectable').first().click();
+            }
+        });
+
+        // Add CSS for cursor pointer
+        $('<style>').text('.cursor-pointer { cursor: pointer; }').appendTo('head');
+    });
+    </script>
+
     <!-- Include Admin Footer -->
     <?php include '../includes/admin_footer.php'; ?>
     </body>
-</html>
+    </html>
 
                                                
 

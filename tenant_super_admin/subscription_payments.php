@@ -29,6 +29,7 @@ if (!isset($_SESSION['user_id']) || $_SESSION['role'] !== 'tenant_super_admin') 
 
 require_once '../config.php';
 require_once '../includes/db.php';
+require_once '../includes/BranchAddonManager.php';
 
 if (!isset($pdo) || !$pdo) {
     die("Database connection failed. Please contact administrator.");
@@ -40,6 +41,24 @@ if (!$tenant_id) {
     header('Location: dashboard.php');
     exit();
 }
+
+// Helper function to get currency symbol
+function getCurrencySymbol($currencyCode) {
+    $symbols = [
+        'USD' => '$',
+        'EUR' => '€',
+        'GBP' => '£',
+        'JPY' => '¥',
+        'AFN' => '؋',
+        'AED' => 'د.إ',
+        'INR' => '₹',
+        'PKR' => '₨',
+    ];
+    return $symbols[$currencyCode] ?? $currencyCode;
+}
+
+// Initialize BranchAddonManager
+$addonManager = new BranchAddonManager($pdo, $tenant_id);
 
 // Fetch tenant payment status
 $tenant_payment_status = 'current';
@@ -284,6 +303,16 @@ if (isset($_GET['payment'], $_GET['subscription_id'])) {
                         <div class="row mb-4">
                             <?php if (count($subscriptions) > 0): ?>
                                 <?php foreach ($subscriptions as $subscription): ?>
+                                    <?php
+                                    // Get active branch add-ons for this subscription
+                                    $activeAddons = $addonManager->getActiveBranchAddons($tenant_id);
+                                    $totalAddonCost = 0;
+                                    foreach ($activeAddons as $addon) {
+                                        $totalAddonCost += floatval($addon['total_addon_cost'] ?? 0);
+                                    }
+                                    $totalAmount = floatval($subscription['amount']) + $totalAddonCost;
+                                    $symbol = getCurrencySymbol($subscription['currency']);
+                                    ?>
                                     <div class="col-md-6 col-xl-4 mb-4">
                                         <div class="card subscription-card">
                                             <div class="card-header bg-primary text-white">
@@ -298,13 +327,26 @@ if (isset($_GET['payment'], $_GET['subscription_id'])) {
                                                 <div class="row">
                                                     <div class="col-6">
                                                         <small class="text-muted"><?= __('amount') ?></small>
-                                                        <h6 class="mb-0"><?= number_format($subscription['amount'], 2) ?> <?= htmlspecialchars($subscription['currency']) ?></h6>
+                                                        <h6 class="mb-0"><?= $symbol . number_format($subscription['amount'], 2) ?></h6>
                                                     </div>
                                                     <div class="col-6">
                                                         <small class="text-muted"><?= __('billing_cycle') ?></small>
                                                         <h6 class="mb-0"><?= ucfirst($subscription['billing_cycle']) ?></h6>
                                                     </div>
                                                 </div>
+                                                <?php if ($totalAddonCost > 0): ?>
+                                                <hr>
+                                                <div class="row">
+                                                    <div class="col-6">
+                                                        <small class="text-muted">Add-on Cost</small>
+                                                        <h6 class="mb-0 text-info"><?= $symbol . number_format($totalAddonCost, 2) ?></h6>
+                                                    </div>
+                                                    <div class="col-6">
+                                                        <small class="text-muted">Total Due</small>
+                                                        <h6 class="mb-0 text-success font-weight-bold"><?= $symbol . number_format($totalAmount, 2) ?></h6>
+                                                    </div>
+                                                </div>
+                                                <?php endif; ?>
                                                 <hr>
                                                 <div class="row">
                                                     <div class="col-6">
@@ -328,13 +370,16 @@ if (isset($_GET['payment'], $_GET['subscription_id'])) {
                                                     </div>
                                                 <?php endif; ?>
                                                 
-                                                    <form method="post" action="process_subscription_payment.php" class="mt-2">
-                                                        <input type="hidden" name="csrf_token" value="<?php echo $_SESSION['csrf_token']; ?>">
-                                                        <input type="hidden" name="subscription_id" value="<?php echo $subscription['id']; ?>">
-                                                        <input type="hidden" name="amount" value="<?php echo $subscription['amount']; ?>">
-                                                        <input type="hidden" name="currency" value="<?php echo $subscription['currency']; ?>">
-                                                        <button type="submit" class="btn btn-primary btn-sm">Pay Now</button>
-                                                    </form>
+                                                    <form method="post" action="process_subscription_payment.php" class="mt-3">
+                                                         <input type="hidden" name="csrf_token" value="<?php echo $_SESSION['csrf_token']; ?>">
+                                                         <input type="hidden" name="subscription_id" value="<?php echo $subscription['id']; ?>">
+                                                         <input type="hidden" name="amount" value="<?php echo $totalAmount; ?>">
+                                                         <input type="hidden" name="currency" value="<?php echo $subscription['currency']; ?>">
+                                                         <input type="hidden" name="addon_cost" value="<?php echo $totalAddonCost; ?>">
+                                                         <button type="submit" class="btn btn-primary btn-sm btn-block">
+                                                             <i class="fas fa-credit-card mr-1"></i> Pay Now
+                                                         </button>
+                                                     </form>
                                                 
                                             </div>
                                         </div>
@@ -377,11 +422,12 @@ if (isset($_GET['payment'], $_GET['subscription_id'])) {
                                                     </thead>
                                                     <tbody>
                                                         <?php foreach ($payments as $payment): ?>
+                                                            <?php $paymentSymbol = getCurrencySymbol($payment['currency']); ?>
                                                             <tr>
                                                                 <td><?= date('M d, Y', strtotime($payment['payment_date'])) ?></td>
                                                                 <td>
                                                                     <span class="font-weight-bold text-success">
-                                                                        $<?= number_format($payment['amount'], 2) ?>
+                                                                        <?= $paymentSymbol . number_format($payment['amount'], 2) ?>
                                                                     </span>
                                                                 </td>
                                                                 <td><?= htmlspecialchars($payment['currency']) ?></td>

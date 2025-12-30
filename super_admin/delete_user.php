@@ -1,6 +1,6 @@
 <?php
 session_start();
-require_once '../includes/conn.php';
+require_once '../includes/db.php';
 
 // Set secure headers
 header("X-XSS-Protection: 1; mode=block");
@@ -46,31 +46,23 @@ if ($user_id == $_SESSION['user_id']) {
 }
 
 // Check if user exists
-$stmt = $conn->prepare("SELECT name, email, role, tenant_id, deleted_at FROM users WHERE id = ?");
-$stmt->bind_param('i', $user_id);
-$stmt->execute();
-$user = $stmt->get_result()->fetch_assoc();
-$stmt->close();
+$stmt = $pdo->prepare("SELECT name, email, role, tenant_id, deleted_at FROM users WHERE id = ?");
+$stmt->execute([$user_id]);
+$user = $stmt->fetch();
 if (!$user || $user['deleted_at']) {
     $errors[] = "User not found or already deleted.";
 }
 
 if (empty($errors)) {
     // Soft delete user
-    $stmt = $conn->prepare("UPDATE users SET deleted_at = NOW() WHERE id = ?");
-    $stmt->bind_param('i', $user_id);
-    $stmt->execute();
-    $stmt->close();
-
+    $stmt = $pdo->prepare("UPDATE users SET deleted_at = NOW() WHERE id = ?");
+    $stmt->execute([$user_id]);
     // Log action
-    $stmt = $conn->prepare("INSERT INTO audit_logs (user_id, action, entity_type, entity_id, details, ip_address, created_at) 
+    $stmt = $pdo->prepare("INSERT INTO audit_logs (user_id, action, entity_type, entity_id, details, ip_address, created_at) 
                             VALUES (?, 'delete_user', 'user', ?, ?, ?, NOW())");
     $details = json_encode(['name' => $user['name'], 'email' => $user['email'], 'role' => $user['role'], 'tenant_id' => $user['tenant_id']]);
     $ip_address = $_SERVER['REMOTE_ADDR'];
-    $stmt->bind_param('iiss', $_SESSION['user_id'], $user_id, $details, $ip_address);
-    $stmt->execute();
-    $stmt->close();
-
+    $stmt->execute([$_SESSION['user_id'], $user_id, $details, $ip_address]);
     header('Location: manage_users.php?success=user_deleted');
 } else {
     header('Location: manage_users.php?error=' . urlencode(implode(', ', $errors)));

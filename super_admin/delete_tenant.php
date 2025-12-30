@@ -1,6 +1,6 @@
 <?php
 session_start();
-require_once '../includes/conn.php';
+require_once '../includes/db.php';
 
 // Set secure headers
 header("X-XSS-Protection: 1; mode=block");
@@ -41,32 +41,24 @@ if (empty($tenant_id) || !is_numeric($tenant_id)) {
 }
 
 // Check if tenant exists
-$stmt = $conn->prepare("SELECT name, status FROM tenants WHERE id = ? AND status != 'deleted'");
-$stmt->bind_param('i', $tenant_id);
-$stmt->execute();
-$tenant = $stmt->get_result()->fetch_assoc();
-$stmt->close();
+$stmt = $pdo->prepare("SELECT name, status FROM tenants WHERE id = ? AND status != 'deleted'");
+$stmt->execute([$tenant_id]);
+$tenant = $stmt->fetch();
 if (!$tenant) {
     $errors[] = "Tenant not found or already deleted.";
 }
 
 if (empty($errors)) {
     // Soft delete tenant
-    $stmt = $conn->prepare("UPDATE tenants SET status = 'deleted', deleted_at = NOW() WHERE id = ?");
-    $stmt->bind_param('i', $tenant_id);
-    $stmt->execute();
-    $stmt->close();
-
+    $stmt = $pdo->prepare("UPDATE tenants SET status = 'deleted', deleted_at = NOW() WHERE id = ?");
+    $stmt->execute([$tenant_id]);
     // Log action
     $user_id = $_SESSION['user_id'];
-    $stmt = $conn->prepare("INSERT INTO audit_logs (user_id, action, entity_type, entity_id, details, ip_address, created_at) 
+    $stmt = $pdo->prepare("INSERT INTO audit_logs (user_id, action, entity_type, entity_id, details, ip_address, created_at) 
                             VALUES (?, 'delete_tenant', 'tenant', ?, ?, ?, NOW())");
     $details = json_encode(['name' => $tenant['name']]);
     $ip_address = $_SERVER['REMOTE_ADDR'];
-    $stmt->bind_param('iiss', $user_id, $tenant_id, $details, $ip_address);
-    $stmt->execute();
-    $stmt->close();
-
+    $stmt->execute([$user_id, $tenant_id, $details, $ip_address]);
     header('Location: manage_tenants.php?success=tenant_deleted');
 } else {
     header('Location: manage_tenants.php?error=' . urlencode(implode(', ', $errors)));

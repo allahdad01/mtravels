@@ -34,51 +34,78 @@ if (!isset($_SESSION['csrf_token'])) {
 }
 
 // Database connection
-require_once '../includes/conn.php';
+require_once '../includes/db.php';
 
 // Fetch super admin data
 $user_id = $_SESSION['user_id'];
-$stmt = $conn->prepare("SELECT email, name, profile_pic, created_at FROM users WHERE id = ? AND role = 'super_admin'");
-$stmt->bind_param('i', $user_id);
-$stmt->execute();
-$result = $stmt->get_result();
-$user = $result->fetch_assoc() ?: ['name' => 'Admin', 'email' => 'Not Set', 'profile_pic' => null, 'created_at' => 'now'];
-$stmt->close();
+$stmt = $pdo->prepare("SELECT email, name, profile_pic, created_at FROM users WHERE id = ? AND role = 'super_admin'");
+$stmt->execute([$user_id]);
+$user = $stmt->fetch() ?: ['name' => 'Admin', 'email' => 'Not Set', 'profile_pic' => null, 'created_at' => 'now'];
 
 // Default profile image
 $imagePath = !empty($user['profile_pic']) ? htmlspecialchars($user['profile_pic']) : '../assets/images/user/avatar-2.jpg';
 
 // Fetch dashboard metrics
 // Total tenants
-$stmt = $conn->prepare("SELECT COUNT(*) as total_tenants FROM tenants WHERE status != 'deleted'");
+$stmt = $pdo->prepare("SELECT COUNT(*) as total_tenants FROM tenants WHERE status != 'deleted'");
 $stmt->execute();
-$total_tenants = $stmt->get_result()->fetch_assoc()['total_tenants'];
-$stmt->close();
+$total_tenants = $stmt->fetch()['total_tenants'];
 
 // Total users
-$stmt = $conn->prepare("SELECT COUNT(*) as total_users FROM users WHERE deleted_at IS NULL");
+$stmt = $pdo->prepare("SELECT COUNT(*) as total_users FROM users WHERE deleted_at IS NULL");
 $stmt->execute();
-$total_users = $stmt->get_result()->fetch_assoc()['total_users'];
-$stmt->close();
+$total_users = $stmt->fetch()['total_users'];
 
 // Active subscriptions
-$stmt = $conn->prepare("SELECT COUNT(*) as active_subscriptions FROM tenant_subscriptions WHERE status = 'active'");
+$stmt = $pdo->prepare("SELECT COUNT(*) as active_subscriptions FROM tenant_subscriptions WHERE status = 'active'");
 $stmt->execute();
-$active_subscriptions = $stmt->get_result()->fetch_assoc()['active_subscriptions'];
-$stmt->close();
+$active_subscriptions = $stmt->fetch()['active_subscriptions'];
 
-// Calculate actual monthly revenue from subscription payments
-$stmt = $conn->prepare("
-    SELECT SUM(sp.amount) as total_revenue
-    FROM subscription_payments sp
-    LEFT JOIN tenant_subscriptions ts ON sp.subscription_id = ts.id
-    WHERE ts.status = 'active'
-    AND DATE_FORMAT(sp.payment_date, '%Y-%m') = DATE_FORMAT(CURDATE(), '%Y-%m')
+// Current month P&L data - calculate from actual revenue and expenses by currency
+$current_month = date('Y-m');
+$start_date = date('Y-m-01');
+$end_date = date('Y-m-t');
+
+// Get revenue by currency for current month from system_revenue
+$stmt = $pdo->prepare("
+    SELECT currency, SUM(amount) as total FROM system_revenue
+    WHERE payment_date BETWEEN ? AND ? AND status = 'completed'
+    GROUP BY currency
 ");
-$stmt->execute();
-$result = $stmt->get_result()->fetch_assoc();
-$total_revenue = $result['total_revenue'] ?? 0;
-$stmt->close();
+$stmt->execute([$start_date, $end_date]);
+$revenue_by_currency = $stmt->fetchAll(PDO::FETCH_KEY_PAIR);
+
+// Get expenses by currency for current month from system_expenses
+$stmt = $pdo->prepare("
+    SELECT currency, SUM(amount) as total FROM system_expenses
+    WHERE date BETWEEN ? AND ?
+    GROUP BY currency
+");
+$stmt->execute([$start_date, $end_date]);
+$expense_by_currency = $stmt->fetchAll(PDO::FETCH_KEY_PAIR);
+
+// Calculate totals and P&L by currency
+$monthly_data = [];
+$all_currencies = array_unique(array_merge(array_keys($revenue_by_currency), array_keys($expense_by_currency)));
+
+foreach ($all_currencies as $currency) {
+    $rev = floatval($revenue_by_currency[$currency] ?? 0);
+    $exp = floatval($expense_by_currency[$currency] ?? 0);
+    $profit = $rev - $exp;
+    $margin = $rev > 0 ? ($profit / $rev) * 100 : 0;
+    
+    $monthly_data[$currency] = [
+        'revenue' => $rev,
+        'expenses' => $exp,
+        'profit' => $profit,
+        'margin' => $margin
+    ];
+}
+
+// For backward compatibility, use first currency (usually AFS or USD)
+$total_revenue = array_sum($revenue_by_currency);
+$monthly_profit = array_sum(array_column($monthly_data, 'profit'));
+$profit_margin = $total_revenue > 0 ? ($monthly_profit / $total_revenue) * 100 : 0;
 
 // Tenant growth (last 6 months)
 $tenant_growth = [];
@@ -86,46 +113,40 @@ $months = [];
 for ($i = 5; $i >= 0; $i--) {
     $month = date('Y-m', strtotime("-$i months"));
     $months[] = date('M Y', strtotime($month));
-    $stmt = $conn->prepare("SELECT COUNT(*) as count FROM tenants WHERE status != 'deleted' AND DATE_FORMAT(created_at, '%Y-%m') = ?");
-    $stmt->bind_param('s', $month);
-    $stmt->execute();
-    $tenant_growth[] = $stmt->get_result()->fetch_assoc()['count'];
-    $stmt->close();
+    $stmt = $pdo->prepare("SELECT COUNT(*) as count FROM tenants WHERE status != 'deleted' AND DATE_FORMAT(created_at, '%Y-%m') = ?");
+    $stmt->execute([$month]);
+    $tenant_growth[] = $stmt->fetch()['count'];
 }
 
 // Subscription status distribution
-$stmt = $conn->prepare("SELECT status, COUNT(*) as count FROM tenant_subscriptions GROUP BY status");
+$stmt = $pdo->prepare("SELECT status, COUNT(*) as count FROM tenant_subscriptions GROUP BY status");
 $stmt->execute();
-$sub_status = $stmt->get_result()->fetch_all(MYSQLI_ASSOC);
-$stmt->close();
+$sub_status = $stmt->fetchAll();
 $sub_status_data = ['active' => 0, 'expired' => 0, 'pending' => 0];
 foreach ($sub_status as $status) {
     $sub_status_data[$status['status']] = $status['count'];
 }
 
 // Recent audit logs (last 5 actions)
-$stmt = $conn->prepare("
+$stmt = $pdo->prepare("
     SELECT action, entity_type, entity_id, details, created_at 
     FROM audit_logs 
     WHERE user_id = ? 
     ORDER BY created_at DESC 
     LIMIT 5
 ");
-$stmt->bind_param('i', $user_id);
-$stmt->execute();
-$recent_audit_logs = $stmt->get_result()->fetch_all(MYSQLI_ASSOC);
-$stmt->close();
+$stmt->execute([$user_id]);
+$recent_audit_logs = $stmt->fetchAll();
 
 // Activity by action type (last 30 days)
-$stmt = $conn->prepare("
+$stmt = $pdo->prepare("
     SELECT action, COUNT(*) as count 
     FROM audit_logs 
     WHERE created_at >= NOW() - INTERVAL 30 DAY 
     GROUP BY action
 ");
 $stmt->execute();
-$activity_data = $stmt->get_result()->fetch_all(MYSQLI_ASSOC);
-$stmt->close();
+$activity_data = $stmt->fetchAll();
 $activity_labels = [];
 $activity_counts = [];
 foreach ($activity_data as $data) {
@@ -228,21 +249,47 @@ foreach ($activity_data as $data) {
                                     </div>
                                 </div>
                             </div>
-                            <div class="col-xl-3 col-md-6">
-                                <div class="card statustic-card bg-white dark:bg-gray-800 shadow-md rounded-lg p-6 hover:shadow-lg transition-shadow border-l-4 border-yellow-500">
-                                    <div class="flex items-center">
-                                        <div class="bg-yellow-100 text-yellow-600 rounded-full p-3">
-                                            <i class="fas fa-dollar-sign text-2xl"></i>
-                                        </div>
-                                        <div class="ml-4">
-                                            <h5 class="text-2xl font-semibold text-gray-800 dark:text-white"><span class="currency">$</span><?= number_format($total_revenue, 2) ?></h5>
-                                            <span class="text-gray-600 dark:text-gray-300"><?= __('current_month_revenue') ?></span>
-                                            <a href="manage_subscriptions.php" class="text-yellow-500 hover:underline block mt-2"><?= __('view_details') ?></a>
-                                        </div>
-                                    </div>
-                                </div>
+                            <!-- Revenue and P&L by Currency -->
+                            <?php foreach ($monthly_data as $currency => $data): 
+                                $symbol = $currency === 'AFS' ? '؋' : '$';
+                                $profit = $data['profit'];
+                                $is_positive = $profit >= 0;
+                            ?>
+                            <div class="col-xl-3 col-md-6 mb-3">
+                                 <div class="card statustic-card bg-white dark:bg-gray-800 shadow-md rounded-lg p-6 hover:shadow-lg transition-shadow border-l-4 border-yellow-500">
+                                     <div class="flex items-center">
+                                         <div class="bg-yellow-100 text-yellow-600 rounded-full p-3">
+                                             <i class="fas fa-dollar-sign text-2xl"></i>
+                                         </div>
+                                         <div class="ml-4">
+                                             <h5 class="text-2xl font-semibold text-gray-800 dark:text-white"><?= $symbol . number_format($data['revenue'], 2) ?></h5>
+                                             <span class="text-gray-600 dark:text-gray-300"><?= __('current_month_revenue') ?> (<?= htmlspecialchars($currency) ?>)</span>
+                                             <a href="profit_loss_dashboard.php?period=<?= date('Y-m') ?>" class="text-yellow-500 hover:underline block mt-2"><?= __('view_details') ?></a>
+                                         </div>
+                                     </div>
+                                 </div>
+                             </div>
+                             <div class="col-xl-3 col-md-6 mb-3">
+                                 <div class="card statustic-card bg-white dark:bg-gray-800 shadow-md rounded-lg p-6 hover:shadow-lg transition-shadow border-l-4 <?= $is_positive ? 'border-green-500' : 'border-red-500' ?>">
+                                     <div class="flex items-center">
+                                         <div class="<?= $is_positive ? 'bg-green-100 text-green-600' : 'bg-red-100 text-red-600' ?> rounded-full p-3">
+                                             <i class="fas <?= $is_positive ? 'fa-arrow-up' : 'fa-arrow-down' ?> text-2xl"></i>
+                                         </div>
+                                         <div class="ml-4">
+                                             <h5 class="text-2xl font-semibold text-gray-800 dark:text-white"><?= $symbol . number_format($profit, 2) ?></h5>
+                                             <span class="text-gray-600 dark:text-gray-300"><?= __('monthly_profit_loss') ?> (<?= htmlspecialchars($currency) ?>)</span>
+                                             <a href="profit_loss_dashboard.php?period=<?= date('Y-m') ?>" class="<?= $is_positive ? 'text-green-500' : 'text-red-500' ?> hover:underline block mt-2"><?= __('view_report') ?></a>
+                                         </div>
+                                     </div>
+                                 </div>
+                             </div>
+                            <?php endforeach; ?>
+                            <?php if (empty($monthly_data)): ?>
+                            <div class="col-xl-6 col-md-12">
+                                <div class="alert alert-info">No financial data available for current month</div>
                             </div>
-                        </div>
+                            <?php endif; ?>
+                            </div>
 
                         <!-- Charts Section -->
                         <div class="row mt-6 gap-y-6">

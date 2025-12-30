@@ -1,6 +1,6 @@
 <?php
 session_start();
-require_once '../includes/conn.php';
+require_once '../includes/db.php';
 
 // Set secure headers
 header("X-XSS-Protection: 1; mode=block");
@@ -32,44 +32,75 @@ if (!isset($_SESSION['csrf_token'])) {
 }
 
 // Fetch tenants for filter and create user form
-$stmt = $conn->prepare("SELECT id, name FROM tenants WHERE status != 'deleted'");
+$stmt = $pdo->prepare("SELECT id, name FROM tenants WHERE status != 'deleted'");
 $stmt->execute();
-$tenants = $stmt->get_result()->fetch_all(MYSQLI_ASSOC);
-$stmt->close();
+$tenants = $stmt->fetchAll();
 
-// Fetch users with optional filters
+// Pagination and search
+$items_per_page = 10;
+$current_page = intval($_GET['page'] ?? 1);
+$search_query = $_GET['search'] ?? '';
 $tenant_id = $_GET['tenant_id'] ?? '';
 $role = $_GET['role'] ?? '';
+
+// Build base query for counting total items
+$count_query = "SELECT COUNT(*) as total FROM users u WHERE 1=1";
+$filter_params = [];
+$filter_types = '';
+
+if ($tenant_id) {
+    $count_query .= " AND u.tenant_id = ?";
+    $filter_params[] = $tenant_id;
+    $filter_types .= 'i';
+}
+if ($role) {
+    $count_query .= " AND u.role = ?";
+    $filter_params[] = $role;
+    $filter_types .= 's';
+}
+if (!empty($search_query)) {
+    $count_query .= " AND (u.name LIKE ? OR u.email LIKE ?)";
+    $search_term = "%{$search_query}%";
+    $filter_params[] = $search_term;
+    $filter_params[] = $search_term;
+    $filter_types .= 'ss';
+}
+
+$stmt = $pdo->prepare($count_query);
+$stmt->execute($filter_params);
+$total_items = $stmt->fetch()['total'];
+$total_pages = ceil($total_items / $items_per_page);
+$current_page = max(1, min($current_page, $total_pages));
+$offset = ($current_page - 1) * $items_per_page;
+
+// Build main query with pagination
 $query = "SELECT u.id, u.name, u.email, u.role, u.tenant_id, u.created_at, t.name as tenant_name 
           FROM users u 
           LEFT JOIN tenants t ON u.tenant_id = t.id 
           WHERE 1=1";
-$params = [];
-$types = '';
+
 if ($tenant_id) {
     $query .= " AND u.tenant_id = ?";
-    $params[] = $tenant_id;
-    $types .= 'i';
 }
 if ($role) {
     $query .= " AND u.role = ?";
-    $params[] = $role;
-    $types .= 's';
 }
-$query .= " ORDER BY u.created_at DESC";
-$stmt = $conn->prepare($query);
-if ($params) {
-    $stmt->bind_param($types, ...$params);
+if (!empty($search_query)) {
+    $query .= " AND (u.name LIKE ? OR u.email LIKE ?)";
 }
-$stmt->execute();
-$users = $stmt->get_result()->fetch_all(MYSQLI_ASSOC);
-$stmt->close();
+$query .= " ORDER BY u.created_at DESC LIMIT ? OFFSET ?";
+$query_params = $filter_params;
+$query_params[] = $items_per_page;
+$query_params[] = $offset;
+
+$stmt = $pdo->prepare($query);
+$stmt->execute($query_params);
+$users = $stmt->fetchAll();
 
 // Fetch distinct roles for filter
-$stmt = $conn->prepare("SELECT DISTINCT role FROM users");
+$stmt = $pdo->prepare("SELECT DISTINCT role FROM users");
 $stmt->execute();
-$roles = $stmt->get_result()->fetch_all(MYSQLI_ASSOC);
-$stmt->close();
+$roles = $stmt->fetchAll();
 ?>
 
 <?php include '../includes/header_super_admin.php'; ?>
@@ -109,42 +140,48 @@ $stmt->close();
                                         </button>
                                     </div>
                                     <div class="card-body">
-                                        <form method="GET" action="manage_users.php">
-                                            <div class="row">
-                                                <div class="col-md-4">
-                                                    <div class="form-group">
-                                                        <label for="tenant_id"><?= __('tenant') ?></label>
-                                                        <select class="form-control" id="tenant_id" name="tenant_id">
-                                                            <option value=""><?= __('all_tenants') ?></option>
-                                                            <?php foreach ($tenants as $tenant): ?>
-                                                            <option value="<?= $tenant['id'] ?>" <?= $tenant_id == $tenant['id'] ? 'selected' : '' ?>>
-                                                                <?= htmlspecialchars($tenant['name']) ?>
-                                                            </option>
-                                                            <?php endforeach; ?>
-                                                        </select>
-                                                    </div>
-                                                </div>
-                                                <div class="col-md-4">
-                                                    <div class="form-group">
-                                                        <label for="role"><?= __('role') ?></label>
-                                                        <select class="form-control" id="role" name="role">
-                                                            <option value=""><?= __('all_roles') ?></option>
-                                                            <?php foreach ($roles as $r): ?>
-                                                            <option value="<?= htmlspecialchars($r['role']) ?>" <?= $role == $r['role'] ? 'selected' : '' ?>>
-                                                                <?= htmlspecialchars($r['role']) ?>
-                                                            </option>
-                                                            <?php endforeach; ?>
-                                                        </select>
-                                                    </div>
-                                                </div>
-                                                <div class="col-md-4">
-                                                    <div class="form-group">
-                                                        <label>&nbsp;</label>
-                                                        <button type="submit" class="btn btn-primary btn-block"><?= __('filter') ?></button>
-                                                    </div>
-                                                </div>
-                                            </div>
-                                        </form>
+                                         <form method="GET" action="manage_users.php" class="mb-3">
+                                             <div class="row">
+                                                 <div class="col-md-3">
+                                                     <div class="form-group">
+                                                         <label for="search"><?= __('search') ?></label>
+                                                         <input type="text" class="form-control" id="search" name="search" placeholder="Name or email..." value="<?= htmlspecialchars($search_query) ?>">
+                                                     </div>
+                                                 </div>
+                                                 <div class="col-md-3">
+                                                     <div class="form-group">
+                                                         <label for="tenant_id"><?= __('tenant') ?></label>
+                                                         <select class="form-control" id="tenant_id" name="tenant_id">
+                                                             <option value=""><?= __('all_tenants') ?></option>
+                                                             <?php foreach ($tenants as $tenant): ?>
+                                                             <option value="<?= $tenant['id'] ?>" <?= $tenant_id == $tenant['id'] ? 'selected' : '' ?>>
+                                                                 <?= htmlspecialchars($tenant['name']) ?>
+                                                             </option>
+                                                             <?php endforeach; ?>
+                                                         </select>
+                                                     </div>
+                                                 </div>
+                                                 <div class="col-md-3">
+                                                     <div class="form-group">
+                                                         <label for="role"><?= __('role') ?></label>
+                                                         <select class="form-control" id="role" name="role">
+                                                             <option value=""><?= __('all_roles') ?></option>
+                                                             <?php foreach ($roles as $r): ?>
+                                                             <option value="<?= htmlspecialchars($r['role']) ?>" <?= $role == $r['role'] ? 'selected' : '' ?>>
+                                                                 <?= htmlspecialchars($r['role']) ?>
+                                                             </option>
+                                                             <?php endforeach; ?>
+                                                         </select>
+                                                     </div>
+                                                 </div>
+                                                 <div class="col-md-3">
+                                                     <div class="form-group">
+                                                         <label>&nbsp;</label>
+                                                         <button type="submit" class="btn btn-primary btn-block"><?= __('filter') ?></button>
+                                                     </div>
+                                                 </div>
+                                             </div>
+                                         </form>
                                         <div class="table-responsive">
                                             <table class="table table-hover">
                                                 <thead>
@@ -181,8 +218,49 @@ $stmt->close();
                                                 </tbody>
                                             </table>
                                         </div>
-                                    </div>
-                                </div>
+                                        
+                                        <!-- Pagination -->
+                                        <?php if ($total_pages > 1): ?>
+                                        <nav aria-label="Page navigation" class="mt-3">
+                                        <ul class="pagination justify-content-center">
+                                            <li class="page-item <?= $current_page === 1 ? 'disabled' : '' ?>">
+                                            <a class="page-link" href="?page=<?= $current_page - 1 ?><?= !empty($search_query) ? '&search=' . urlencode($search_query) : '' ?><?= !empty($tenant_id) ? '&tenant_id=' . urlencode($tenant_id) : '' ?><?= !empty($role) ? '&role=' . urlencode($role) : '' ?>">Previous</a>
+                                            </li>
+                                            <?php 
+                                            $start_page = max(1, $current_page - 2);
+                                            $end_page = min($total_pages, $current_page + 2);
+                                            if ($start_page > 1): ?>
+                                            <li class="page-item">
+                                            <a class="page-link" href="?page=1<?= !empty($search_query) ? '&search=' . urlencode($search_query) : '' ?><?= !empty($tenant_id) ? '&tenant_id=' . urlencode($tenant_id) : '' ?><?= !empty($role) ? '&role=' . urlencode($role) : '' ?>">1</a>
+                                            </li>
+                                            <?php if ($start_page > 2): ?>
+                                            <li class="page-item disabled"><span class="page-link">...</span></li>
+                                            <?php endif; ?>
+                                            <?php endif; ?>
+                                            <?php for ($i = $start_page; $i <= $end_page; $i++): ?>
+                                            <li class="page-item <?= $i === $current_page ? 'active' : '' ?>">
+                                            <a class="page-link" href="?page=<?= $i ?><?= !empty($search_query) ? '&search=' . urlencode($search_query) : '' ?><?= !empty($tenant_id) ? '&tenant_id=' . urlencode($tenant_id) : '' ?><?= !empty($role) ? '&role=' . urlencode($role) : '' ?>"><?= $i ?></a>
+                                            </li>
+                                            <?php endfor; ?>
+                                            <?php if ($end_page < $total_pages): ?>
+                                            <?php if ($end_page < $total_pages - 1): ?>
+                                            <li class="page-item disabled"><span class="page-link">...</span></li>
+                                            <?php endif; ?>
+                                            <li class="page-item">
+                                            <a class="page-link" href="?page=<?= $total_pages ?><?= !empty($search_query) ? '&search=' . urlencode($search_query) : '' ?><?= !empty($tenant_id) ? '&tenant_id=' . urlencode($tenant_id) : '' ?><?= !empty($role) ? '&role=' . urlencode($role) : '' ?>"><?= $total_pages ?></a>
+                                            </li>
+                                            <?php endif; ?>
+                                            <li class="page-item <?= $current_page === $total_pages ? 'disabled' : '' ?>">
+                                            <a class="page-link" href="?page=<?= $current_page + 1 ?><?= !empty($search_query) ? '&search=' . urlencode($search_query) : '' ?><?= !empty($tenant_id) ? '&tenant_id=' . urlencode($tenant_id) : '' ?><?= !empty($role) ? '&role=' . urlencode($role) : '' ?>">Next</a>
+                                            </li>
+                                        </ul>
+                                        </nav>
+                                        <div class="text-center text-muted small mt-2">
+                                        Page <?= $current_page ?> of <?= $total_pages ?> | Showing <?= count($users) ?> of <?= $total_items ?> users
+                                        </div>
+                                        <?php endif; ?>
+                                        </div>
+                                        </div>
                             </div>
                         </div>
 

@@ -1,6 +1,6 @@
 <?php
 // Send test email for SMTP configuration testing
-require_once '../includes/conn.php';
+require_once '../includes/db.php';
 require_once '../includes/functions.php';
 
 // Get POST data

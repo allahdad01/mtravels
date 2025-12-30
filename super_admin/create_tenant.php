@@ -1,6 +1,6 @@
 <?php
 session_start();
-require_once '../includes/conn.php';
+require_once '../includes/db.php';
 
 // Set secure headers
 header("X-XSS-Protection: 1; mode=block");
@@ -58,52 +58,37 @@ if (!preg_match('/^[a-zA-Z0-9_-]+$/', $identifier)) {
 }
 
 // Check if subdomain or identifier already exists
-$stmt = $conn->prepare("SELECT COUNT(*) as count FROM tenants WHERE subdomain = ? OR identifier = ?");
-$stmt->bind_param('ss', $subdomain, $identifier);
-$stmt->execute();
-if ($stmt->get_result()->fetch_assoc()['count'] > 0) {
+$stmt = $pdo->prepare("SELECT COUNT(*) as count FROM tenants WHERE subdomain = ? OR identifier = ?");
+$stmt->execute([$subdomain, $identifier]);
+if ($stmt->fetch()['count'] > 0) {
     $errors[] = "Subdomain or identifier already exists.";
 }
-$stmt->close();
-
 // Verify plan exists
-$stmt = $conn->prepare("SELECT COUNT(*) as count FROM plans WHERE name = ? AND status = 'active'");
-$stmt->bind_param('s', $plan);
-$stmt->execute();
-if ($stmt->get_result()->fetch_assoc()['count'] == 0) {
+$stmt = $pdo->prepare("SELECT COUNT(*) as count FROM plans WHERE name = ? AND status = 'active'");
+$stmt->execute([$plan]);
+if ($stmt->fetch()['count'] == 0) {
     $errors[] = "Invalid or inactive plan selected.";
 }
-$stmt->close();
-
 if (empty($errors)) {
     // Insert new tenant
-    $stmt = $conn->prepare("INSERT INTO tenants (name, subdomain, identifier, status, plan, billing_email, created_at, updated_at) 
+    $stmt = $pdo->prepare("INSERT INTO tenants (name, subdomain, identifier, status, plan, billing_email, created_at, updated_at) 
                             VALUES (?, ?, ?, 'active', ?, ?, NOW(), NOW())");
-    $stmt->bind_param('sssss', $name, $subdomain, $identifier, $plan, $billing_email);
-    $stmt->execute();
-    $tenant_id = $conn->insert_id;
-    $stmt->close();
-
+    $stmt->execute([$name, $subdomain, $identifier, $plan, $billing_email]);
+    $tenant_id = $pdo->lastInsertId();
     // Insert settings for the new tenant
-    $stmt = $conn->prepare("INSERT INTO settings (tenant_id, agency_name, title, phone, email, address) VALUES (?, ?, ?, ?, ?, ?)");
-    $stmt->bind_param('isssss', $tenant_id, $agency_name, $title, $phone, $billing_email, $address);
-    $stmt->execute();
-    $stmt->close();
-
+    $stmt = $pdo->prepare("INSERT INTO settings (tenant_id, agency_name, title, phone, email, address) VALUES (?, ?, ?, ?, ?, ?)");
+    $stmt->execute([$tenant_id, $agency_name, $title, $phone, $billing_email, $address]);
     // Send welcome email to tenant
     require_once '../includes/functions.php';
     sendTenantWelcomeEmail($billing_email, $name, $agency_name, $subdomain);
 
     // Log action
     $user_id = $_SESSION['user_id'];
-    $stmt = $conn->prepare("INSERT INTO audit_logs (user_id, action, entity_type, entity_id, details, ip_address, created_at)
+    $stmt = $pdo->prepare("INSERT INTO audit_logs (user_id, action, entity_type, entity_id, details, ip_address, created_at)
                             VALUES (?, 'create_tenant', 'tenant', ?, ?, ?, NOW())");
     $details = json_encode(['name' => $name, 'subdomain' => $subdomain, 'identifier' => $identifier, 'plan' => $plan]);
     $ip_address = $_SERVER['REMOTE_ADDR'];
-    $stmt->bind_param('iiss', $user_id, $tenant_id, $details, $ip_address);
-    $stmt->execute();
-    $stmt->close();
-
+    $stmt->execute([$user_id, $tenant_id, $details, $ip_address]);
     header('Location: manage_tenants.php?success=tenant_created');
 } else {
     header('Location: manage_tenants.php?error=' . urlencode(implode(', ', $errors)));

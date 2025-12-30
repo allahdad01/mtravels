@@ -1,6 +1,6 @@
 <?php
 session_start();
-require_once '../includes/conn.php';
+require_once '../includes/db.php';
 
 // Set secure headers
 header("X-XSS-Protection: 1; mode=block");
@@ -60,38 +60,30 @@ if ($role === 'super_admin' && !empty($tenant_id)) {
 }
 
 // Check if email exists
-$stmt = $conn->prepare("SELECT COUNT(*) as count FROM users WHERE email = ?");
-$stmt->bind_param('s', $email);
-$stmt->execute();
-if ($stmt->get_result()->fetch_assoc()['count'] > 0) {
+$stmt = $pdo->prepare("SELECT COUNT(*) as count FROM users WHERE email = ?");
+$stmt->execute([$email]);
+if ($stmt->fetch()['count'] > 0) {
     $errors[] = "Email already exists.";
 }
-$stmt->close();
-
 // Verify tenant exists (if applicable)
 if ($tenant_id) {
-    $stmt = $conn->prepare("SELECT COUNT(*) as count FROM tenants WHERE id = ? AND status != 'deleted'");
-    $stmt->bind_param('i', $tenant_id);
-    $stmt->execute();
-    if ($stmt->get_result()->fetch_assoc()['count'] == 0) {
+    $stmt = $pdo->prepare("SELECT COUNT(*) as count FROM tenants WHERE id = ? AND status != 'deleted'");
+    $stmt->execute([$tenant_id]);
+    if ($stmt->fetch()['count'] == 0) {
         $errors[] = "Invalid or deleted tenant.";
     }
-    $stmt->close();
-}
+    }
 
 if (empty($errors)) {
     // Hash password
     $hashed_password = password_hash($password, PASSWORD_DEFAULT);
 
     // Insert new user
-    $stmt = $conn->prepare("INSERT INTO users (name, email, password, role, tenant_id, created_at, updated_at) 
+    $stmt = $pdo->prepare("INSERT INTO users (name, email, password, role, tenant_id, created_at, updated_at) 
                             VALUES (?, ?, ?, ?, ?, NOW(), NOW())");
     $tenant_id = $tenant_id ?: null;
-    $stmt->bind_param('ssssi', $name, $email, $hashed_password, $role, $tenant_id);
-    $stmt->execute();
-    $user_id = $conn->insert_id;
-    $stmt->close();
-
+    $stmt->execute([$name, $email, $hashed_password, $role, $tenant_id]);
+    $user_id = $pdo->lastInsertId();
     // Send credentials email to user and tenant (using platform SMTP for super admin actions)
     require_once '../includes/functions.php';
     sendUserCredentialsEmail($email, $name, $password, $role, $tenant_id);
@@ -102,14 +94,11 @@ if (empty($errors)) {
     }
 
     // Log action
-    $stmt = $conn->prepare("INSERT INTO audit_logs (user_id, action, entity_type, entity_id, details, ip_address, created_at)
+    $stmt = $pdo->prepare("INSERT INTO audit_logs (user_id, action, entity_type, entity_id, details, ip_address, created_at)
                             VALUES (?, 'create_user', 'user', ?, ?, ?, NOW())");
     $details = json_encode(['name' => $name, 'email' => $email, 'role' => $role, 'tenant_id' => $tenant_id]);
     $ip_address = $_SERVER['REMOTE_ADDR'];
-    $stmt->bind_param('iiss', $_SESSION['user_id'], $user_id, $details, $ip_address);
-    $stmt->execute();
-    $stmt->close();
-
+    $stmt->execute([$_SESSION['user_id'], $user_id, $details, $ip_address]);
     header('Location: manage_users.php?success=user_created');
 } else {
     header('Location: manage_users.php?error=' . urlencode(implode(', ', $errors)));

@@ -1,6 +1,6 @@
 <?php
 session_start();
-require_once '../includes/conn.php';
+require_once '../includes/db.php';
 
 // Set secure headers
 header("X-XSS-Protection: 1; mode=block");
@@ -30,39 +30,69 @@ if (!isset($_SESSION['csrf_token'])) {
     $_SESSION['csrf_token'] = bin2hex(random_bytes(32));
 }
 
-// Fetch blog posts with optional filters
+// Pagination and filters
+$items_per_page = 10;
+$current_page = intval($_GET['page'] ?? 1);
+$search_query = $_GET['search'] ?? '';
 $status = $_GET['status'] ?? '';
 $category = $_GET['category'] ?? '';
+
+// Count total
+$count_query = "SELECT COUNT(*) as total FROM `blog_posts` WHERE 1=1";
+$filter_params = [];
+if ($status) {
+    $count_query .= " AND `status` = ?";
+    $filter_params[] = $status;
+}
+if ($category) {
+    $count_query .= " AND `category` LIKE ?";
+    $filter_params[] = '%' . $category . '%';
+}
+if (!empty($search_query)) {
+    $count_query .= " AND (title LIKE ? OR content LIKE ? OR excerpt LIKE ?)";
+    $search_term = "%{$search_query}%";
+    $filter_params[] = $search_term;
+    $filter_params[] = $search_term;
+    $filter_params[] = $search_term;
+}
+
+$stmt = $pdo->prepare($count_query);
+$stmt->execute($filter_params);
+$total_items = $stmt->fetch()['total'];
+$total_pages = ceil($total_items / $items_per_page);
+$current_page = max(1, min($current_page, $total_pages));
+$offset = ($current_page - 1) * $items_per_page;
+
+// Fetch paginated posts
 $query = "SELECT `id`, `title`, `slug`, `content`, `excerpt`, `featured_image`, `author`, `category`, `status`, `created_at`, `updated_at` FROM `blog_posts` WHERE 1=1";
 $params = [];
-$types = '';
 
 if ($status) {
     $query .= " AND `status` = ?";
     $params[] = $status;
-    $types .= 's';
 }
-
 if ($category) {
     $query .= " AND `category` LIKE ?";
     $params[] = '%' . $category . '%';
-    $types .= 's';
 }
-
-$query .= " ORDER BY `created_at` DESC";
-$stmt = $conn->prepare($query);
-if ($params) {
-    $stmt->bind_param($types, ...$params);
+if (!empty($search_query)) {
+    $query .= " AND (title LIKE ? OR content LIKE ? OR excerpt LIKE ?)";
+    $search_term = "%{$search_query}%";
+    $params[] = $search_term;
+    $params[] = $search_term;
+    $params[] = $search_term;
 }
-$stmt->execute();
-$blog_posts = $stmt->get_result()->fetch_all(MYSQLI_ASSOC);
-$stmt->close();
+$query .= " ORDER BY `created_at` DESC LIMIT ? OFFSET ?";
+$params[] = $items_per_page;
+$params[] = $offset;
 
+$stmt = $pdo->prepare($query);
+$stmt->execute($params);
+$blog_posts = $stmt->fetchAll();
 // Fetch distinct categories for filter
-$stmt = $conn->prepare("SELECT DISTINCT `category` FROM `blog_posts` WHERE `category` IS NOT NULL AND `category` != '' ORDER BY `category`");
+$stmt = $pdo->prepare("SELECT DISTINCT `category` FROM `blog_posts` WHERE `category` IS NOT NULL AND `category` != '' ORDER BY `category`");
 $stmt->execute();
-$categories = $stmt->get_result()->fetch_all(MYSQLI_ASSOC);
-$stmt->close();
+$categories = $stmt->fetchAll();
 ?>
 
 <?php include '../includes/header_super_admin.php'; ?>
@@ -102,39 +132,45 @@ $stmt->close();
                                         </button>
                                     </div>
                                     <div class="card-body">
-                                        <form method="GET" action="manage_blog_posts.php">
-                                            <div class="row">
-                                                <div class="col-md-4">
-                                                    <div class="form-group">
-                                                        <label for="status">Status</label>
-                                                        <select class="form-control" id="status" name="status">
-                                                            <option value="">All Status</option>
-                                                            <option value="draft" <?= $status == 'draft' ? 'selected' : '' ?>>Draft</option>
-                                                            <option value="published" <?= $status == 'published' ? 'selected' : '' ?>>Published</option>
-                                                        </select>
-                                                    </div>
-                                                </div>
-                                                <div class="col-md-4">
-                                                    <div class="form-group">
-                                                        <label for="category">Category</label>
-                                                        <select class="form-control" id="category" name="category">
-                                                            <option value="">All Categories</option>
-                                                            <?php foreach ($categories as $cat): ?>
-                                                            <option value="<?= htmlspecialchars($cat['category']) ?>" <?= $category == $cat['category'] ? 'selected' : '' ?>>
-                                                                <?= htmlspecialchars($cat['category']) ?>
-                                                            </option>
-                                                            <?php endforeach; ?>
-                                                        </select>
-                                                    </div>
-                                                </div>
-                                                <div class="col-md-4">
-                                                    <div class="form-group">
-                                                        <label>&nbsp;</label>
-                                                        <button type="submit" class="btn btn-primary btn-block">Filter</button>
-                                                    </div>
-                                                </div>
-                                            </div>
-                                        </form>
+                                         <form method="GET" action="manage_blog_posts.php">
+                                             <div class="row">
+                                                 <div class="col-md-3">
+                                                     <div class="form-group">
+                                                         <label for="search">Search</label>
+                                                         <input type="text" class="form-control" id="search" name="search" placeholder="Title, content..." value="<?= htmlspecialchars($search_query) ?>">
+                                                     </div>
+                                                 </div>
+                                                 <div class="col-md-3">
+                                                     <div class="form-group">
+                                                         <label for="status">Status</label>
+                                                         <select class="form-control" id="status" name="status">
+                                                             <option value="">All Status</option>
+                                                             <option value="draft" <?= $status == 'draft' ? 'selected' : '' ?>>Draft</option>
+                                                             <option value="published" <?= $status == 'published' ? 'selected' : '' ?>>Published</option>
+                                                         </select>
+                                                     </div>
+                                                 </div>
+                                                 <div class="col-md-3">
+                                                     <div class="form-group">
+                                                         <label for="category">Category</label>
+                                                         <select class="form-control" id="category" name="category">
+                                                             <option value="">All Categories</option>
+                                                             <?php foreach ($categories as $cat): ?>
+                                                             <option value="<?= htmlspecialchars($cat['category']) ?>" <?= $category == $cat['category'] ? 'selected' : '' ?>>
+                                                                 <?= htmlspecialchars($cat['category']) ?>
+                                                             </option>
+                                                             <?php endforeach; ?>
+                                                         </select>
+                                                     </div>
+                                                 </div>
+                                                 <div class="col-md-3">
+                                                     <div class="form-group">
+                                                         <label>&nbsp;</label>
+                                                         <button type="submit" class="btn btn-primary btn-block">Filter</button>
+                                                     </div>
+                                                 </div>
+                                             </div>
+                                         </form>
                                         <div class="table-responsive">
                                             <table class="table table-hover">
                                                 <thead>
@@ -183,10 +219,51 @@ $stmt->close();
                                                     <tr><td colspan="6" class="text-center">No blog posts found</td></tr>
                                                     <?php endif; ?>
                                                 </tbody>
-                                            </table>
-                                        </div>
+                                                </table>
+                                                </div>
+                                                
+                                                <!-- Pagination -->
+                                                <?php if ($total_pages > 1): ?>
+                                                <nav aria-label="Page navigation" class="mt-3">
+                                                <ul class="pagination justify-content-center">
+                                                <li class="page-item <?= $current_page === 1 ? 'disabled' : '' ?>">
+                                                <a class="page-link" href="?page=<?= $current_page - 1 ?><?= !empty($search_query) ? '&search=' . urlencode($search_query) : '' ?><?= !empty($status) ? '&status=' . urlencode($status) : '' ?><?= !empty($category) ? '&category=' . urlencode($category) : '' ?>">Previous</a>
+                                                </li>
+                                                <?php 
+                                                $start_page = max(1, $current_page - 2);
+                                                $end_page = min($total_pages, $current_page + 2);
+                                                if ($start_page > 1): ?>
+                                                <li class="page-item">
+                                                <a class="page-link" href="?page=1<?= !empty($search_query) ? '&search=' . urlencode($search_query) : '' ?><?= !empty($status) ? '&status=' . urlencode($status) : '' ?><?= !empty($category) ? '&category=' . urlencode($category) : '' ?>">1</a>
+                                                </li>
+                                                <?php if ($start_page > 2): ?>
+                                                <li class="page-item disabled"><span class="page-link">...</span></li>
+                                                <?php endif; ?>
+                                                <?php endif; ?>
+                                                <?php for ($i = $start_page; $i <= $end_page; $i++): ?>
+                                                <li class="page-item <?= $i === $current_page ? 'active' : '' ?>">
+                                                <a class="page-link" href="?page=<?= $i ?><?= !empty($search_query) ? '&search=' . urlencode($search_query) : '' ?><?= !empty($status) ? '&status=' . urlencode($status) : '' ?><?= !empty($category) ? '&category=' . urlencode($category) : '' ?>"><?= $i ?></a>
+                                                </li>
+                                                <?php endfor; ?>
+                                                <?php if ($end_page < $total_pages): ?>
+                                                <?php if ($end_page < $total_pages - 1): ?>
+                                                <li class="page-item disabled"><span class="page-link">...</span></li>
+                                                <?php endif; ?>
+                                                <li class="page-item">
+                                                <a class="page-link" href="?page=<?= $total_pages ?><?= !empty($search_query) ? '&search=' . urlencode($search_query) : '' ?><?= !empty($status) ? '&status=' . urlencode($status) : '' ?><?= !empty($category) ? '&category=' . urlencode($category) : '' ?>"><?= $total_pages ?></a>
+                                                </li>
+                                                <?php endif; ?>
+                                                <li class="page-item <?= $current_page === $total_pages ? 'disabled' : '' ?>">
+                                                <a class="page-link" href="?page=<?= $current_page + 1 ?><?= !empty($search_query) ? '&search=' . urlencode($search_query) : '' ?><?= !empty($status) ? '&status=' . urlencode($status) : '' ?><?= !empty($category) ? '&category=' . urlencode($category) : '' ?>">Next</a>
+                                                </li>
+                                                </ul>
+                                                </nav>
+                                                <div class="text-center text-muted small mt-2">
+                                                Page <?= $current_page ?> of <?= $total_pages ?> | Showing <?= count($blog_posts) ?> of <?= $total_items ?> posts
+                                                </div>
+                                                <?php endif; ?>
 
-                                        <!-- Success/Error Messages -->
+                                                <!-- Success/Error Messages -->
                                         <?php if (isset($_GET['success'])): ?>
                                         <div class="alert alert-success alert-dismissible fade show" role="alert">
                                             <?php

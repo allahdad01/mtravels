@@ -1,6 +1,6 @@
 <?php
 session_start();
-require_once '../includes/conn.php';
+require_once '../includes/db.php';
 
 // Set secure headers
 header("X-XSS-Protection: 1; mode=block");
@@ -46,25 +46,20 @@ if (!$post_id) {
 }
 
 // Fetch blog post to get image path for deletion
-$stmt = $conn->prepare("SELECT title, featured_image FROM blog_posts WHERE id = ?");
-$stmt->bind_param("i", $post_id);
-$stmt->execute();
+$stmt = $pdo->prepare("SELECT title, featured_image FROM blog_posts WHERE id = ?");
+$stmt->execute([$post_id]);
 $result = $stmt->get_result();
-$blog_post = $result->fetch_assoc();
-$stmt->close();
-
+$blog_post = $result->fetch();
 if (!$blog_post) {
     header('Location: manage_blog_posts.php?error=post_not_found');
     exit();
 }
 
 // Delete the blog post
-$stmt = $conn->prepare("DELETE FROM blog_posts WHERE id = ?");
-$stmt->bind_param("i", $post_id);
+$stmt = $pdo->prepare("DELETE FROM blog_posts WHERE id = ?");
+$stmt->execute([$post_id]);
 
 if ($stmt->execute()) {
-    $stmt->close();
-
     // Delete associated image file if exists
     if (!empty($blog_post['featured_image'])) {
         $image_path = '../' . ltrim($blog_post['featured_image'], '/');
@@ -79,7 +74,6 @@ if ($stmt->execute()) {
     header('Location: manage_blog_posts.php?success=deleted');
     exit();
 } else {
-    $stmt->close();
     error_log("Failed to delete blog post: " . $stmt->error);
     header('Location: manage_blog_posts.php?error=delete_failed');
     exit();

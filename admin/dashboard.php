@@ -37,6 +37,7 @@ if (!isset($_SESSION['csrf_token'])) {
 
 require_once '../api/dashboard/dashboard_handler.php';
 require_once '../api/dashboard/supplier_notification.php';
+require_once '../api/dashboard/client_notification.php';
 ?>
 
 
@@ -80,7 +81,7 @@ if (!file_exists($imagePath)) {
                                             <h3 class="dashboard-title"><?= __('welcome_back') ?>, <?= htmlspecialchars($user['name'] ?? 'Admin') ?></h3>
                                             <p class="dashboard-subtitle"><?= __('dashboard_subtitle') ?></p>
                                         </div>
-                                        <div class="d-flex flex-wrap">
+                                        <div class="d-flex flex-wrap gap-2">
                                            
                                              <div class="dropdown">
                                                  <button class="btn btn-light dropdown-toggle mb-2 mb-md-0" type="button" id="quickActionsDropdown" data-toggle="dropdown" aria-haspopup="true" aria-expanded="false">
@@ -99,6 +100,10 @@ if (!file_exists($imagePath)) {
                                                      
                                                  </div>
                                              </div>
+
+                                             <button class="btn btn-info mb-2 mb-md-0" type="button" id="watchTutorialsBtn" data-toggle="modal" data-target="#dashboardTutorialsModal">
+                                                 <i class="feather icon-play-circle mr-1"></i>Watch Tutorials
+                                             </button>
                                          </div>
                                      </div>
                                  </div>
@@ -131,6 +136,52 @@ if (!file_exists($imagePath)) {
                                                 </div>
                                                 <small class="d-block mt-2">
                                                     <a href="accounts.php" class="text-warning font-weight-bold">View All Suppliers</a>
+                                                </small>
+                                            </div>
+                                        </div>
+                                        <button type="button" class="close" data-dismiss="alert" aria-label="Close">
+                                            <span aria-hidden="true">&times;</span>
+                                        </button>
+                                    </div>
+                                </div>
+                            </div>
+                            <?php endif; ?>
+                            
+                            <!-- Client Low/Negative Balance Alert -->
+                            <?php if (!empty($clientsWithLowBalance)): ?>
+                            <div class="row mb-4">
+                                <div class="col-md-12">
+                                    <div class="alert alert-danger alert-dismissible fade show border-left-danger" role="alert">
+                                        <div class="d-flex align-items-start">
+                                            <i class="feather icon-alert-circle mr-3" style="font-size: 20px; margin-top: 2px;"></i>
+                                            <div class="flex-grow-1">
+                                                <h5 class="alert-heading mb-2">Client Balance Due Alert</h5>
+                                                <p class="mb-2">The following clients have reached the balance due thresholds:</p>
+                                                <div class="client-alerts">
+                                                    <?php foreach ($clientsWithLowBalance as $client): ?>
+                                                        <div class="alert alert-sm mb-2" style="background-color: rgba(220,53,69,0.1); border-left: 3px solid #dc3545; padding: 8px 12px;">
+                                                            <strong><?= htmlspecialchars($client['name']) ?></strong><br>
+                                                            <small class="text-muted">
+                                                                <?php
+                                                                $usd_threshold = -1000;
+                                                                $afs_threshold = -20000;
+                                                                $display_items = [];
+                                                                
+                                                                if ($client['usd_balance'] < $usd_threshold) {
+                                                                    $display_items[] = "USD: $" . number_format($client['usd_balance'], 2) . " (Threshold: $-1,000)";
+                                                                }
+                                                                if ($client['afs_balance'] < $afs_threshold) {
+                                                                    $display_items[] = "AFS: ؋" . number_format($client['afs_balance'], 2) . " (Threshold: ؋-20,000)";
+                                                                }
+                                                                
+                                                                echo implode(" | ", $display_items);
+                                                                ?>
+                                                            </small>
+                                                        </div>
+                                                    <?php endforeach; ?>
+                                                </div>
+                                                <small class="d-block mt-2">
+                                                    <a href="accounts.php" class="text-danger font-weight-bold">View All Clients</a>
                                                 </small>
                                             </div>
                                         </div>
@@ -1479,6 +1530,125 @@ if (!file_exists($imagePath)) {
         $collapse.on('hidden.bs.collapse', function() {
             $icon.removeClass('icon-chevron-up').addClass('icon-chevron-down');
         });
+    });
+    </script>
+
+    <!-- Dashboard Tutorials Modal -->
+    <div class="modal fade" id="dashboardTutorialsModal" tabindex="-1" role="dialog" aria-labelledby="dashboardTutorialsModalLabel" aria-hidden="true">
+        <div class="modal-dialog modal-xl" role="document">
+            <div class="modal-content">
+                <div class="modal-header bg-info text-white">
+                    <h5 class="modal-title" id="dashboardTutorialsModalLabel">
+                        <i class="feather icon-play-circle mr-2"></i>Dashboard Tutorials
+                    </h5>
+                    <button type="button" class="close text-white" data-dismiss="modal" aria-label="Close">
+                        <span aria-hidden="true">&times;</span>
+                    </button>
+                </div>
+                <div class="modal-body p-0">
+                    <div class="row h-100 no-gutters">
+                        <!-- Video Player Column -->
+                        <div class="col-md-8">
+                            <div style="background: #000; position: relative;">
+                                <iframe id="tutorialVideoPlayer" style="width: 100%; height: 500px; border: none;" 
+                                        src="" allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture" 
+                                        allowfullscreen>
+                                </iframe>
+                            </div>
+                            <div class="p-3">
+                                <h6 id="tutorialTitle" class="mb-2">Select a tutorial to watch</h6>
+                                <p id="tutorialDescription" class="text-muted small mb-0"></p>
+                                <div class="mt-2">
+                                    <small class="badge-primary" id="tutorialLevel">Beginner</small>
+                                    <small class="badge-secondary" id="tutorialDuration">5:00</small>
+                                </div>
+                            </div>
+                        </div>
+                        <!-- Tutorials List Column -->
+                        <div class="col-md-4" style="max-height: 600px; overflow-y: auto; border-left: 1px solid #e9ecef;">
+                            <div class="p-3">
+                                <h6 class="mb-3">Available Tutorials</h6>
+                                <div id="tutorialsListContainer">
+                                    <p class="text-muted text-center py-3">Loading tutorials...</p>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-dismiss="modal">Close</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+    // Dashboard Tutorials Data
+    const dashboardTutorials = [
+        {id: 1, title: 'Dashboard Overview', description: 'Welcome page with quick action dropdown (Add Ticket, Client, Supplier), low supplier balance alerts with currency thresholds, financial wealth distribution chart with daily/monthly/yearly periods, multi-currency support (USD, AFS, EUR, AED).', duration: '5:00', level: 'Beginner', vimeo_id: ''},
+        {id: 2, title: 'Dashboard Sales Cards', description: 'Daily, Monthly, Yearly sales cards with profit trends, outstanding dues (tickets, date changes, refunds, umrah, visa, hotel, additional payments) with USD/AFS amounts.', duration: '6:00', level: 'Beginner', vimeo_id: ''},
+        {id: 3, title: 'Dashboard Charts & Departures', description: 'Ticket bookings by departure dates, today\'s departures, this week, this month tabs, top performers ranking with commissions, financial metrics.', duration: '5:30', level: 'Beginner', vimeo_id: ''}
+    ];
+
+    $(document).ready(function() {
+        // Initialize tutorials list
+        function loadTutorialsInModal() {
+            let html = '';
+            dashboardTutorials.forEach(function(tutorial) {
+                html += `
+                    <div class="tutorial-item p-2 mb-2 border rounded cursor-pointer tutorial-selectable" 
+                         data-tutorial-id="${tutorial.id}" 
+                         style="background: #f8f9fa; transition: all 0.3s ease;">
+                        <div class="d-flex align-items-start">
+                            <div class="flex-grow-1">
+                                <h6 class="mb-1 small font-weight-bold">${tutorial.title}</h6>
+                                <small class="text-muted d-block mb-1">${tutorial.duration}</small>
+                                <small class="badge-light">${tutorial.level}</small>
+                            </div>
+                            <i class="feather icon-play text-muted" style="margin-top: 2px;"></i>
+                        </div>
+                    </div>
+                `;
+            });
+            $('#tutorialsListContainer').html(html);
+
+            // Add click handlers
+            $('.tutorial-selectable').click(function() {
+                const tutorialId = $(this).data('tutorial-id');
+                const tutorial = dashboardTutorials.find(t => t.id == tutorialId);
+                
+                if (tutorial) {
+                    // Update active state
+                    $('.tutorial-selectable').css('background', '#f8f9fa');
+                    $(this).css('background', '#e7f3ff').css('border-color', '#4099ff');
+                    
+                    // Update video player and info
+                    if (tutorial.vimeo_id) {
+                        const videoUrl = `https://player.vimeo.com/video/${tutorial.vimeo_id}`;
+                        $('#tutorialVideoPlayer').attr('src', videoUrl);
+                    } else {
+                        $('#tutorialVideoPlayer').attr('src', '');
+                    }
+                    
+                    $('#tutorialTitle').text(tutorial.title);
+                    $('#tutorialDescription').text(tutorial.description);
+                    $('#tutorialLevel').text(tutorial.level);
+                    $('#tutorialDuration').text(tutorial.duration);
+                }
+            });
+        }
+
+        // Load tutorials when modal is shown
+        $('#dashboardTutorialsModal').on('show.bs.modal', function() {
+            loadTutorialsInModal();
+            // Select first tutorial by default
+            if (dashboardTutorials.length > 0) {
+                $('.tutorial-selectable').first().click();
+            }
+        });
+
+        // Add CSS for cursor pointer
+        $('<style>').text('.cursor-pointer { cursor: pointer; }').appendTo('head');
     });
     </script>
     

@@ -1,10 +1,12 @@
-# Payment Status Check Cron Job Setup
+# Cron Jobs Setup
 
-This directory contains the payment status monitoring system for tenant subscriptions.
+This directory contains automated cron job scripts for various system tasks.
 
 ## Files
 
-- `check_payment_status.php` - Main cron job script that checks and updates tenant payment statuses
+- `check_payment_status.php` - Checks and updates tenant payment statuses
+- `generate_monthly_reports.php` - Generates monthly reports for tenants
+- `update_ticket_sla.php` - Updates SLA status for support tickets (runs hourly)
 
 ## Setup Instructions
 

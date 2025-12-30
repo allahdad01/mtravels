@@ -27,7 +27,7 @@ if (!isset($_SESSION['user_id']) || !isset($_SESSION['role']) || $_SESSION['role
     header('Location: ../login.php');
     exit();
 }
-require_once '../includes/conn.php';
+require_once '../includes/db.php';
 require_once '../includes/db.php';
 
 // Initialize messages
@@ -60,27 +60,11 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['backup_database'])) {
         $filename = "backup_{$timestamp}.sql";
         $abs_path = $backup_dir . '/' . $filename;
         
-        // Read database credentials from conn.php
-        $conn_file_path = '../includes/conn.php';
-        if (!file_exists($conn_file_path)) {
-            throw new Exception("Database connection file not found");
-        }
-        
-        // Read the contents of conn.php
-        $conn_file_contents = file_get_contents($conn_file_path);
-        
-        // Extract database credentials using regex
-        preg_match('/new\s+mysqli\s*\(\s*"([^"]*)",\s*"([^"]*)",\s*"([^"]*)",\s*"([^"]*)"\s*\)/', $conn_file_contents, $matches);
-        
-        if (count($matches) !== 5) {
-            throw new Exception("Could not parse database credentials from conn.php");
-        }
-        
-        // Assign extracted credentials
-        $host = $matches[1];
-        $user = $matches[2];
-        $pass = $matches[3];
-        $name = $matches[4];
+        // Use PDO connection details from config.php constants
+        $host = DB_SERVER;
+        $user = DB_USERNAME;
+        $pass = DB_PASSWORD;
+        $name = DB_NAME;
         
         // Validate required fields
         if (empty($host) || empty($user) || empty($name)) {

@@ -153,7 +153,7 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
              
              if (empty($email_err)) {
                  // First check users table
-                 $sql = "SELECT id, tenant_id, branch_id, name, email, password, role, totp_enabled FROM users WHERE email = ?";
+                 $sql = "SELECT id, tenant_id, branch_id, name, email, password, role, totp_enabled FROM users WHERE email = ? AND fired = 0";
             
             if ($stmt = $conection_db->prepare($sql)) {
                 $stmt->bind_param("s", $email);
