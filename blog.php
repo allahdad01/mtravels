@@ -4,6 +4,8 @@ session_start();
 // Database connection and security
 require_once 'includes/db.php';
 require_once 'includes/cache.php';
+require_once 'includes/theme-helper.php';
+require_once 'includes/helpers.php';
 
 // Default tenant ID for landing page (can be made configurable)
 $default_tenant_id = 1;
@@ -61,10 +63,7 @@ function getBlogPosts($pdo, $limit = null) {
     }
 }
 
-// Helper function to get setting value
-function getSetting($settings, $key, $default = '') {
-    return isset($settings[$key]) ? htmlspecialchars($settings[$key]) : $default;
-}
+
 
 // Helper function to format date
 function formatDate($date) {
@@ -84,7 +83,9 @@ $blog_posts = getBlogPosts($pdo);
     <meta name="description" content="Stay updated with the latest insights, trends, and best practices in travel agency management and technology.">
         <!-- Favicon -->
         <link rel="icon" href="uploads/logo/<?= htmlspecialchars(getSetting($platform_settings, 'platform_logo') ?? 'default-logo.png') ?>" type="image/x-icon">
-    <style>
+        <link rel="stylesheet" href="assets/css/index.css">
+        <?php renderThemeStyles(); ?>
+        <style>
         * {
             margin: 0;
             padding: 0;
@@ -120,8 +121,8 @@ $blog_posts = getBlogPosts($pdo);
         body {
             font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
             line-height: 1.6;
-            color: var(--gray-800);
-            background: var(--white);
+            color: var(--text-primary);
+            background: var(--bg-primary);
             overflow-x: hidden;
         }
 
@@ -333,7 +334,7 @@ $blog_posts = getBlogPosts($pdo);
         .blog-title {
             font-size: 1.4rem;
             font-weight: 700;
-            color: var(--gray-900);
+            color: var(--text-primary);
             margin-bottom: 1rem;
             line-height: 1.3;
         }
@@ -349,7 +350,7 @@ $blog_posts = getBlogPosts($pdo);
         }
 
         .blog-excerpt {
-            color: var(--gray-600);
+            color: var(--text-secondary);
             line-height: 1.6;
             margin-bottom: 1.5rem;
         }
@@ -362,9 +363,10 @@ $blog_posts = getBlogPosts($pdo);
         }
 
         .blog-tag {
-            background: var(--gray-100);
+            background: var(--bg-secondary);
             color: var(--primary);
             padding: 0.25rem 0.75rem;
+            border: 1px solid rgba(64, 153, 255, 0.2);
             border-radius: 20px;
             font-size: 0.8rem;
             font-weight: 600;
@@ -391,7 +393,8 @@ $blog_posts = getBlogPosts($pdo);
         }
 
         .featured-card {
-            background: var(--white);
+            background: var(--bg-surface);
+            border: 1px solid rgba(64, 153, 255, 0.2);
             border-radius: 20px;
             overflow: hidden;
             box-shadow: 0 20px 60px rgba(0, 0, 0, 0.1);
@@ -432,7 +435,7 @@ $blog_posts = getBlogPosts($pdo);
         .featured-title {
             font-size: 2.5rem;
             font-weight: 800;
-            color: var(--gray-900);
+            color: var(--text-primary);
             margin-bottom: 1.5rem;
             line-height: 1.2;
         }
@@ -449,7 +452,7 @@ $blog_posts = getBlogPosts($pdo);
 
         .featured-excerpt {
             font-size: 1.1rem;
-            color: var(--gray-600);
+            color: var(--text-secondary);
             line-height: 1.7;
             margin-bottom: 2rem;
         }
@@ -457,20 +460,20 @@ $blog_posts = getBlogPosts($pdo);
         /* Newsletter Section */
         .newsletter {
             padding: 6rem 0;
-            background: var(--gray-50);
+            background: var(--bg-secondary);
             text-align: center;
         }
 
         .newsletter h2 {
             font-size: 2.5rem;
             font-weight: 800;
-            color: var(--gray-900);
+            color: var(--text-primary);
             margin-bottom: 1rem;
         }
 
         .newsletter p {
             font-size: 1.1rem;
-            color: var(--gray-600);
+            color: var(--text-secondary);
             margin-bottom: 2rem;
             max-width: 600px;
             margin-left: auto;
@@ -845,52 +848,7 @@ $blog_posts = getBlogPosts($pdo);
         </div>
     </section>
 
-    <!-- Footer -->
-    <footer class="footer">
-        <div class="container">
-            <div class="footer-content">
-                <div class="footer-section">
-                    <h3><?php echo getSetting($platform_settings, 'platform_name', 'MTravels'); ?></h3>
-                    <p style="color: var(--gray-300); line-height: 1.6;">
-                        <?php echo getSetting($platform_settings, 'platform_description', 'Professional travel agency management platform providing comprehensive solutions for booking management, financial operations, customer service, and business intelligence.'); ?>
-                    </p>
-                </div>
-                <div class="footer-section">
-                    <h3>Product</h3>
-                    <ul>
-                        <li><a href="index.php#features">Features</a></li>
-                        <li><a href="index.php#pricing">Pricing</a></li>
-                        <li><a href="integrations.php">Integrations</a></li>
-                        <li><a href="api-docs.php">API Documentation</a></li>
-                        <li><a href="security.php">Security</a></li>
-                    </ul>
-                </div>
-                <div class="footer-section">
-                    <h3>Company</h3>
-                    <ul>
-                        <li><a href="about.php">About Us</a></li>
-                        <li><a href="careers.php">Careers</a></li>
-                        <li><a href="press.php">Press</a></li>
-                        <li><a href="blog.php">Blog</a></li>
-                        <li><a href="partners.php">Partners</a></li>
-                    </ul>
-                </div>
-                <div class="footer-section">
-                    <h3>Support</h3>
-                    <ul>
-                        <li><a href="help.php">Help Center</a></li>
-                        <li><a href="index.php#contact">Contact Support</a></li>
-                        <li><a href="status.php">System Status</a></li>
-                        <li><a href="community.php">Community</a></li>
-                        <li><a href="training.php">Training</a></li>
-                    </ul>
-                </div>
-            </div>
-            <div class="footer-bottom">
-                <p>&copy; <?php echo date('Y'); ?> <?php echo getSetting($platform_settings, 'platform_name', 'MTravels'); ?>. All rights reserved.</p>
-            </div>
-        </div>
-    </footer>
+    <?php require_once 'includes/footer.php'; ?>
 
     <script>
         // Navbar scroll effect
@@ -926,6 +884,7 @@ $blog_posts = getBlogPosts($pdo);
             alert('Thank you for subscribing! We\'ll keep you updated with the latest travel tech insights.');
             this.reset();
         });
-    </script>
-</body>
-</html>
+        </script>
+        <?php renderThemeScript(); ?>
+        </body>
+        </html>

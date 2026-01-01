@@ -4,6 +4,8 @@ session_start();
 // Database connection and security
 require_once 'includes/db.php';
 require_once 'includes/cache.php';
+require_once 'includes/helpers.php';
+require_once 'includes/theme-helper.php';
 
 // Default tenant ID for landing page (can be made configurable)
 $default_tenant_id = 1;
@@ -32,11 +34,6 @@ function getPlatformSettings($pdo) {
     }
 }
 
-// Helper function to get setting value
-function getSetting($settings, $key, $default = '') {
-    return isset($settings[$key]) ? htmlspecialchars($settings[$key]) : $default;
-}
-
 // Fetch platform settings
 $platform_settings = getPlatformSettings($pdo);
 ?>
@@ -49,6 +46,7 @@ $platform_settings = getPlatformSettings($pdo);
     <meta name="description" content="Real-time system status and uptime monitoring for MTravels platform. Check service availability and incident history.">
         <!-- Favicon -->
         <link rel="icon" href="uploads/logo/<?= htmlspecialchars(getSetting($platform_settings, 'platform_logo') ?? 'default-logo.png') ?>" type="image/x-icon">
+    <?php renderThemeStyles(); ?>
     <style>
         * {
             margin: 0;
@@ -857,52 +855,7 @@ $platform_settings = getPlatformSettings($pdo);
         </div>
     </section>
 
-    <!-- Footer -->
-    <footer class="footer">
-        <div class="container">
-            <div class="footer-content">
-                <div class="footer-section">
-                    <h3><?php echo getSetting($platform_settings, 'platform_name', 'MTravels'); ?></h3>
-                    <p style="color: var(--gray-300); line-height: 1.6;">
-                        <?php echo getSetting($platform_settings, 'platform_description', 'Professional travel agency management platform providing comprehensive solutions for booking management, financial operations, customer service, and business intelligence.'); ?>
-                    </p>
-                </div>
-                <div class="footer-section">
-                    <h3>Product</h3>
-                    <ul>
-                        <li><a href="index.php#features">Features</a></li>
-                        <li><a href="index.php#pricing">Pricing</a></li>
-                        <li><a href="integrations.php">Integrations</a></li>
-                        <li><a href="api-docs.php">API Documentation</a></li>
-                        <li><a href="security.php">Security</a></li>
-                    </ul>
-                </div>
-                <div class="footer-section">
-                    <h3>Company</h3>
-                    <ul>
-                        <li><a href="about.php">About Us</a></li>
-                        <li><a href="careers.php">Careers</a></li>
-                        <li><a href="press.php">Press</a></li>
-                        <li><a href="blog.php">Blog</a></li>
-                        <li><a href="partners.php">Partners</a></li>
-                    </ul>
-                </div>
-                <div class="footer-section">
-                    <h3>Support</h3>
-                    <ul>
-                        <li><a href="help.php">Help Center</a></li>
-                        <li><a href="index.php#contact">Contact Support</a></li>
-                        <li><a href="status.php">System Status</a></li>
-                        <li><a href="community.php">Community</a></li>
-                        <li><a href="training.php">Training</a></li>
-                    </ul>
-                </div>
-            </div>
-            <div class="footer-bottom">
-                <p>&copy; <?php echo date('Y'); ?> <?php echo getSetting($platform_settings, 'platform_name', 'MTravels'); ?>. All rights reserved.</p>
-            </div>
-        </div>
-    </footer>
+    <?php require_once 'includes/footer.php'; ?>
 
     <script>
         // Navbar scroll effect
@@ -949,8 +902,9 @@ $platform_settings = getPlatformSettings($pdo);
                 const newHeight = Math.max(95, Math.min(100, currentHeight + variation));
                 bar.style.height = newHeight + '%';
                 bar.title = Math.round(newHeight) + '% uptime';
-            });
-        }, 30000); // Update every 30 seconds
-    </script>
-</body>
-</html>
+                });
+                }, 30000); // Update every 30 seconds
+                </script>
+                <?php renderThemeScript(); ?>
+                </body>
+                </html>

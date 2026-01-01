@@ -3,6 +3,7 @@ session_start();
 
 // Database connection and security
 require_once 'includes/db.php';
+require_once 'includes/helpers.php';
 
 // Handle form submission
 if ($_POST) {
@@ -49,10 +50,7 @@ try {
     $platform_settings = [];
 }
 
-// Helper function to get setting value
-function getSetting($settings, $key, $default = '') {
-    return isset($settings[$key]) ? htmlspecialchars($settings[$key]) : $default;
-}
+
 ?>
 <!DOCTYPE html>
 <html lang="en">
@@ -63,6 +61,7 @@ function getSetting($settings, $key, $default = '') {
     <meta name="description" content="Schedule a personalized demo of MTravels - the most advanced travel agency management platform.">
     <link rel="icon" href="uploads/logo/<?= htmlspecialchars(getSetting($platform_settings, 'platform_logo') ?? 'default-logo.png') ?>" type="image/x-icon">
     <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600;700;800;900&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="assets/css/index.css">
 
     <style>
         * {
@@ -100,8 +99,8 @@ function getSetting($settings, $key, $default = '') {
         body {
             font-family: 'Poppins', sans-serif;
             line-height: 1.6;
-            color: var(--gray-800);
-            background: var(--gray-50);
+            color: var(--text-primary);
+            background: var(--bg-primary);
             min-height: 100vh;
         }
 
@@ -130,7 +129,7 @@ function getSetting($settings, $key, $default = '') {
             left: 100px;
             right: 100px;
             padding: 1.5rem 2rem;
-            background: rgba(255, 255, 255, 0.9);
+            background: rgba(var(--bg-surface-rgb), 0.9);
             backdrop-filter: blur(20px);
             border-radius: 50px;
             box-shadow: 0 10px 40px rgba(0, 0, 0, 0.15);
@@ -179,14 +178,14 @@ function getSetting($settings, $key, $default = '') {
         /* Hero Section */
         .hero {
             padding: 10rem 0 2rem;
-            background: var(--gray-50);
+            background: var(--bg-primary);
             text-align: center;
         }
 
         .hero h1 {
             font-size: 3.5rem;
             font-weight: 900;
-            color: var(--gray-900);
+            color: var(--text-primary);
             margin-bottom: 1rem;
             line-height: 1.2;
             position: relative;
@@ -210,7 +209,7 @@ function getSetting($settings, $key, $default = '') {
 
         .hero p {
             font-size: 1.3rem;
-            color: var(--gray-600);
+            color: var(--text-secondary);
             margin-bottom: 3rem;
             max-width: 600px;
             margin-left: auto;
@@ -221,7 +220,7 @@ function getSetting($settings, $key, $default = '') {
         /* Main Content */
         .main-content {
             padding: 2rem 0;
-            background: var(--gray-50);
+            background: var(--bg-primary);
         }
 
         .demo-container {
@@ -232,7 +231,7 @@ function getSetting($settings, $key, $default = '') {
             border-radius: 10px;
             box-shadow: 0 10px 40px rgba(0, 0, 0, 0.1);
             overflow: hidden;
-            background: var(--white);
+            background: var(--bg-surface);
         }
 
         .demo-info {
@@ -269,14 +268,14 @@ function getSetting($settings, $key, $default = '') {
         .demo-info h1 {
             font-size: 2rem;
             font-weight: 900;
-            color: var(--gray-900);
+            color: var(--text-primary);
             margin-bottom: 2rem;
             line-height: 1.2;
         }
 
         .demo-info p {
             font-size: 1.2rem;
-            color: var(--gray-600);
+            color: var(--text-secondary);
             margin-bottom: 2rem;
             line-height: 1.2;
         }
@@ -290,7 +289,7 @@ function getSetting($settings, $key, $default = '') {
             display: flex;
             align-items: center;
             gap: 2rem;
-            color: var(--gray-700);
+            color: var(--text-primary);
             font-weight: 500;
         }
 
@@ -319,7 +318,8 @@ function getSetting($settings, $key, $default = '') {
         .stat-item {
             text-align: center;
             padding: 1.5rem;
-            background: var(--gray-50);
+            background: var(--bg-secondary);
+            border: 1px solid rgba(64, 153, 255, 0.2);
             border-radius: 15px;
         }
 
@@ -332,13 +332,13 @@ function getSetting($settings, $key, $default = '') {
 
         .stat-label {
             font-size: 0.9rem;
-            color: var(--gray-600);
+            color: var(--text-secondary);
             font-weight: 600;
         }
 
         /* Demo Form */
         .demo-form {
-            background: var(--white);
+            background: var(--bg-surface);
             padding: 3rem;
             border-radius: 0;
         }
@@ -351,12 +351,12 @@ function getSetting($settings, $key, $default = '') {
         .form-header h2 {
             font-size: 1.8rem;
             font-weight: 700;
-            color: var(--gray-900);
+            color: var(--text-primary);
             margin-bottom: 0.5rem;
         }
 
         .form-header p {
-            color: var(--gray-600);
+            color: var(--text-secondary);
         }
 
         .form-group {
@@ -373,7 +373,7 @@ function getSetting($settings, $key, $default = '') {
             display: block;
             margin-bottom: 0.5rem;
             font-weight: 600;
-            color: var(--gray-700);
+            color: var(--text-primary);
         }
 
         .required {
@@ -385,11 +385,12 @@ function getSetting($settings, $key, $default = '') {
         .form-group textarea {
             width: 100%;
             padding: 1rem;
-            border: 2px solid var(--gray-200);
+            border: 2px solid var(--bg-secondary);
             border-radius: 10px;
             font-size: 1rem;
             transition: all 0.3s ease;
-            background: var(--white);
+            background: var(--bg-surface);
+            color: var(--text-primary);
         }
 
         .form-group input:focus,
@@ -452,8 +453,8 @@ function getSetting($settings, $key, $default = '') {
 
         /* Footer */
         .footer {
-            background: var(--gray-50);
-            color: var(--gray-900);
+            background: var(--bg-secondary);
+            color: var(--text-primary);
             padding: 6rem 0 3rem;
             position: relative;
         }
@@ -479,7 +480,7 @@ function getSetting($settings, $key, $default = '') {
             font-size: 1.2rem;
             font-weight: 700;
             margin-bottom: 1.5rem;
-            color: var(--gray-900);
+            color: var(--text-primary);
         }
 
         .footer-section ul {
@@ -491,7 +492,7 @@ function getSetting($settings, $key, $default = '') {
         }
 
         .footer-section a {
-            color: var(--gray-600);
+            color: var(--text-secondary);
             text-decoration: none;
             transition: color 0.3s;
         }
@@ -501,14 +502,14 @@ function getSetting($settings, $key, $default = '') {
         }
 
         .footer p {
-            color: var(--gray-600) !important;
+            color: var(--text-secondary) !important;
         }
 
         .footer-bottom {
             padding-top: 3rem;
             border-top: 1px solid var(--primary);
             text-align: center;
-            color: var(--gray-600);
+            color: var(--text-secondary);
         }
 
         /* Responsive Design */

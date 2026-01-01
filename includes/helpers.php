@@ -1,168 +1,128 @@
 <?php
 /**
  * Global Helper Functions
- * These functions are used throughout the application for common tasks
+ * Shared utilities used across the application
  */
 
-// Prevent direct access
-if (count(get_included_files()) == 1) {
-    header("HTTP/1.0 403 Forbidden");
-    exit("Direct access to this file is not allowed.");
-}
-
 /**
- * HTML escape/sanitize output
- * Safely escapes HTML special characters to prevent XSS attacks
+ * Get a setting value from settings array
  * 
- * @param string $string Input string to sanitize
- * @return string Sanitized string safe for HTML output
+ * @param array $settings Settings array
+ * @param string $key Setting key
+ * @param string $default Default value if not found
+ * @return string Escaped setting value
  */
-if (!function_exists('h')) {
-    function h($string) {
-        if ($string === null) {
-            return '';
-        }
-        return htmlspecialchars((string)$string, ENT_QUOTES, 'UTF-8');
-    }
+function getSetting($settings, $key, $default = '') {
+    return isset($settings[$key]) ? htmlspecialchars($settings[$key]) : $default;
 }
 
 /**
- * Sanitize user input
- * Removes unwanted characters and normalizes whitespace
- * 
- * @param string $data Input data to sanitize
- * @return string Sanitized data
- */
-if (!function_exists('sanitize')) {
-    function sanitize($data) {
-        $data = trim($data);
-        $data = stripslashes($data);
-        return htmlspecialchars($data, ENT_QUOTES, 'UTF-8');
-    }
-}
-
-/**
- * Format currency for display
+ * Format amount as currency string
  * 
  * @param float $amount Amount to format
- * @param string $currency Currency code (USD, AFS, EUR, AED)
+ * @param string $currency Currency code (default: AFN)
  * @return string Formatted currency string
  */
-if (!function_exists('formatCurrency')) {
-    function formatCurrency($amount, $currency = 'USD') {
-        $symbols = [
-            'USD' => '$',
-            'AFS' => '؋',
-            'EUR' => '€',
-            'AED' => 'د.إ',
-            'DARHAM' => '؋'
-        ];
-        
-        $symbol = $symbols[$currency] ?? $currency;
-        return $symbol . ' ' . number_format($amount, 2);
+function formatCurrency($amount, $currency = DEFAULT_CURRENCY) {
+    return $currency . ' ' . number_format($amount, 0);
+}
+
+/**
+ * Convert snake_case to Title Case
+ * Useful for feature names and labels
+ * 
+ * @param string $feature Feature name in snake_case
+ * @return string Formatted feature name
+ */
+function formatFeatureName($feature) {
+    return ucwords(str_replace('_', ' ', $feature));
+}
+
+/**
+ * Get safe asset URL with optional cache busting
+ * 
+ * @param string $path Relative path to asset
+ * @param bool $cacheBust Include file modification time for cache busting
+ * @return string Full asset URL
+ */
+function getAssetUrl($path, $cacheBust = false) {
+    if ($cacheBust && file_exists($path)) {
+        $mtime = filemtime($path);
+        return $path . '?v=' . $mtime;
+    }
+    return $path;
+}
+
+/**
+ * Get logo URL with fallback
+ * 
+ * @param array $settings Platform settings
+ * @return string Logo URL
+ */
+function getLogoUrl($settings) {
+    $logo = getSetting($settings, 'platform_logo', DEFAULT_LOGO);
+    return LOGO_UPLOAD_PATH . htmlspecialchars($logo);
+}
+
+/**
+ * Get platform name with fallback
+ * 
+ * @param array $settings Platform settings
+ * @return string Platform name
+ */
+function getPlatformName($settings) {
+    return getSetting($settings, 'platform_name', 'MTravels');
+}
+
+/**
+ * Get platform description with fallback
+ * 
+ * @param array $settings Platform settings
+ * @return string Platform description
+ */
+function getPlatformDescription($settings) {
+    $default = 'The most advanced SaaS platform for modern travel agencies. Streamline operations, boost sales, and delight customers.';
+    return getSetting($settings, 'platform_description', $default);
+}
+
+/**
+ * Truncate text to specified length
+ * 
+ * @param string $text Text to truncate
+ * @param int $length Maximum length
+ * @param string $suffix Suffix to append (default: ...)
+ * @return string Truncated text
+ */
+function truncateText($text, $length = 100, $suffix = '...') {
+    if (strlen($text) <= $length) {
+        return $text;
+    }
+    return substr($text, 0, $length - strlen($suffix)) . $suffix;
+}
+
+/**
+ * Log debug information if debug mode is enabled
+ * 
+ * @param string $message Message to log
+ * @param string $level Log level (info, warning, error)
+ * @return void
+ */
+function logDebug($message, $level = 'info') {
+    if (ENABLE_DEBUG_MODE) {
+        $timestamp = date('Y-m-d H:i:s');
+        error_log("[$timestamp] [$level] $message");
     }
 }
 
 /**
- * Format number with thousands separator
+ * Measure execution time
  * 
- * @param float|int $number Number to format
- * @param int $decimals Number of decimal places
- * @return string Formatted number
+ * @param string $label Label for the timing
+ * @param float $startTime Start time from microtime(true)
+ * @return float Elapsed time in milliseconds
  */
-if (!function_exists('formatNumber')) {
-    function formatNumber($number, $decimals = 2) {
-        return number_format($number, $decimals);
-    }
+function getElapsedTime($label, $startTime) {
+    $elapsed = (microtime(true) - $startTime) * 1000;
+    logDebug("$label: {$elapsed}ms");
+    return $elapsed;
 }
-
-/**
- * Check if user has a specific role
- * 
- * @param string|array $role Role(s) to check
- * @return bool True if user has the role
- */
-if (!function_exists('hasRole')) {
-    function hasRole($role) {
-        if (!isset($_SESSION['role'])) {
-            return false;
-        }
-        
-        if (is_array($role)) {
-            return in_array(strtolower($_SESSION['role']), array_map('strtolower', $role));
-        }
-        
-        return strtolower($_SESSION['role']) === strtolower($role);
-    }
-}
-
-/**
- * Check if user is authenticated
- * 
- * @return bool True if user is logged in
- */
-if (!function_exists('isAuthenticated')) {
-    function isAuthenticated() {
-        return isset($_SESSION['loggedin']) && $_SESSION['loggedin'] === true;
-    }
-}
-
-/**
- * Get current user ID
- * 
- * @return int|null User ID or null if not authenticated
- */
-if (!function_exists('getCurrentUserId')) {
-    function getCurrentUserId() {
-        return isset($_SESSION['user_id']) ? intval($_SESSION['user_id']) : null;
-    }
-}
-
-/**
- * Get current tenant ID
- * 
- * @return int|null Tenant ID or null if not set
- */
-if (!function_exists('getCurrentTenantId')) {
-    function getCurrentTenantId() {
-        return isset($_SESSION['tenant_id']) ? intval($_SESSION['tenant_id']) : null;
-    }
-}
-
-/**
- * Get current branch ID
- * 
- * @return int|null Branch ID or null if not set
- */
-if (!function_exists('getCurrentBranchId')) {
-    function getCurrentBranchId() {
-        return isset($_SESSION['branch_id']) ? intval($_SESSION['branch_id']) : null;
-    }
-}
-
-/**
- * Redirect to URL
- * 
- * @param string $url URL to redirect to
- * @param int $statusCode HTTP status code (default 302)
- */
-if (!function_exists('redirect')) {
-    function redirect($url, $statusCode = 302) {
-        http_response_code($statusCode);
-        header("Location: " . $url);
-        exit();
-    }
-}
-
-/**
- * Check if variable is set and not empty
- * 
- * @param mixed $var Variable to check
- * @return bool True if variable is set and not empty
- */
-if (!function_exists('notEmpty')) {
-    function notEmpty($var) {
-        return isset($var) && !empty($var);
-    }
-}
-?>

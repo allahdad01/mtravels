@@ -4,51 +4,27 @@ session_start();
 // Database connection and security
 require_once 'includes/db.php';
 require_once 'includes/cache.php';
+require_once 'includes/config.php';
+require_once 'includes/helpers.php';
+require_once 'includes/pricing-helper.php';
+require_once 'includes/features-helper.php';
+require_once 'includes/landing-data.php';
+require_once 'includes/theme-helper.php';
 
-// Default tenant ID for landing page (can be made configurable)
-$default_tenant_id = 1;
-
-// Optimized function to fetch platform settings with caching
-function getPlatformSettings($pdo) {
-    $cache_key = getCacheKey('platform_settings');
-
-    if ($cached = getCachedData($cache_key)) {
-        return $cached;
-    }
-
-    try {
-        $stmt = $pdo->prepare("SELECT `key`, `value` FROM platform_settings ORDER BY id");
-        $stmt->execute();
-        $settings = [];
-        while ($row = $stmt->fetch(PDO::FETCH_ASSOC)) {
-            $settings[$row['key']] = $row['value'];
-        }
-
-        setCachedData($cache_key, $settings);
-        return $settings;
-    } catch (PDOException $e) {
-        error_log("Error fetching platform settings: " . $e->getMessage());
-        return [];
-    }
-}
-
-// Helper function to get setting value
-function getSetting($settings, $key, $default = '') {
-    return isset($settings[$key]) ? htmlspecialchars($settings[$key]) : $default;
-}
-
-// Fetch platform settings
-$platform_settings = getPlatformSettings($pdo);
+// Fetch all landing page data
+$landingData = fetchLandingPageData($pdo);
+$platform_settings = $landingData['settings'];
 ?>
 <!DOCTYPE html>
 <html lang="en">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>About Us - <?php echo getSetting($platform_settings, 'platform_name', 'MTravels'); ?></title>
-    <meta name="description" content="Learn about MTravels - the leading travel agency management platform revolutionizing how travel businesses operate worldwide.">
-        <!-- Favicon -->
-        <link rel="icon" href="uploads/logo/<?= htmlspecialchars(getSetting($platform_settings, 'platform_logo') ?? 'default-logo.png') ?>" type="image/x-icon">
+    <title><?php echo getSetting($platform_settings, 'platform_name', 'MTravels') . ' - About Us'; ?></title>
+    <meta name="description" content="Learn about MTravels - the platform built by travel professionals for travel professionals.">
+    <link rel="icon" href="uploads/logo/<?= htmlspecialchars(getSetting($platform_settings, 'platform_logo') ?? 'default-logo.png') ?>" type="image/x-icon">
+    <link rel="stylesheet" href="assets/css/index.css">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
     <style>
         * {
             margin: 0;
@@ -58,633 +34,880 @@ $platform_settings = getPlatformSettings($pdo);
 
         :root {
             --primary: #4099ff;
-            --primary-dark: #2673cc;
-            --primary-light: #a0e6ff;
             --secondary: #2ed8b6;
-            --secondary-dark: #24a88f;
-            --secondary-light: #8ef0e0;
             --accent: #25c6b4;
-            --success: #10b981;
             --danger: #ef4444;
-            --warning: #f59e0b;
+            --success: #10b981;
             --dark: #0f172a;
             --light: #f8fafc;
-            --white: #ffffff;
-            --gray-50: #f8fafc;
-            --gray-100: #f1f5f9;
-            --gray-200: #e2e8f0;
-            --gray-300: #cbd5e1;
-            --gray-400: #94a3b8;
-            --gray-500: #64748b;
-            --gray-600: #475569;
-            --gray-700: #334155;
-            --gray-800: #1e293b;
-            --gray-900: #0f172a;
+            --border: #e2e8f0;
         }
 
-        body {
-            font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
-            line-height: 1.6;
-            color: var(--gray-800);
-            background: var(--white);
-            overflow-x: hidden;
-        }
-
-        .container {
-            max-width: 1200px;
-            margin: 0 auto;
-            padding: 0 20px;
-        }
-
-        /* Advanced Navbar */
-        .navbar {
-            position: fixed;
-            top: 30px;
-            left: 100px;
-            right: 100px;
-            padding: 1.5rem 2rem;
-            background: rgba(255, 255, 255, 0.9);
-            backdrop-filter: blur(20px);
-            border-radius: 50px;
-            box-shadow: 0 10px 40px rgba(0, 0, 0, 0.15);
-            z-index: 1000;
-            transition: all 0.3s ease;
-        }
-
-        .navbar.scrolled {
-            background: rgba(255, 255, 255, 0.95);
-            padding: 1rem 2rem;
-            border-radius: 50px;
-            box-shadow: 0 15px 50px rgba(0, 0, 0, 0.2);
-        }
-
-        .nav-content {
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-        }
-
-        .logo {
-            display: flex;
-            align-items: center;
-            text-decoration: none;
-        }
-
-        .logo img {
-            max-height: 40px;
-            width: auto;
-        }
-
-        .logo-text {
-            font-size: 1.8rem;
-            font-weight: 800;
-            text-decoration: none;
-            color: var(--primary);
-        }
-
-        .nav-menu {
-            display: flex;
-            align-items: center;
-            gap: 2rem;
-        }
-
-        .nav-links {
-            display: flex;
-            gap: 2rem;
-            list-style: none;
-        }
-
-        .nav-links a {
-            color: var(--gray-700);
-            text-decoration: none;
-            font-weight: 600;
-            position: relative;
-            transition: color 0.3s;
-        }
-
-        .nav-links a:hover {
-            color: var(--primary);
-        }
-
-        .nav-actions {
-            display: flex;
-            align-items: center;
-            gap: 1rem;
-        }
-
-        .btn {
-            padding: 0.75rem 2rem;
-            border: none;
-            border-radius: 50px;
-            font-weight: 600;
-            text-decoration: none;
-            display: inline-flex;
-            align-items: center;
-            gap: 0.5rem;
-            transition: all 0.3s;
-            cursor: pointer;
-            position: relative;
-            overflow: hidden;
-        }
-
-        .btn-primary {
-            background: linear-gradient(135deg, #4099ff 0%, #2ed8b6 100%) !important;
-            color: #ffffff !important;
-            border-bottom: none !important;
-        }
-
-        .btn-primary:hover {
-            transform: translateY(-3px);
-            box-shadow: 0 15px 35px rgba(64, 153, 255, 0.4);
+        .about-wrapper {
+            min-height: 100vh;
+            background: var(--bg-primary);
+            color: var(--text-primary);
+            transition: background 0.3s ease, color 0.3s ease;
         }
 
         /* Hero Section */
-        .hero {
-            padding: 12rem 0 8rem;
+        .about-hero {
             position: relative;
-            background: linear-gradient(135deg, var(--primary) 0%, var(--secondary) 100%);
+            padding: 8rem 2rem 5rem 2rem;
+            background: linear-gradient(135deg, #4099ff 0%, #2ed8b6 100%);
             color: white;
+            overflow: hidden;
             text-align: center;
+            margin-top: 120px;
+            z-index: 1;
         }
 
-        .hero h1 {
-            font-size: 4rem;
-            font-weight: 900;
-            margin-bottom: 1.5rem;
-            line-height: 1.1;
+        .about-hero::before {
+            content: '';
+            position: absolute;
+            width: 600px;
+            height: 600px;
+            background: rgba(255, 255, 255, 0.1);
+            border-radius: 50%;
+            top: -200px;
+            right: -200px;
         }
 
-        .hero p {
-            font-size: 1.25rem;
-            margin-bottom: 3rem;
-            max-width: 700px;
-            margin-left: auto;
-            margin-right: auto;
-            opacity: 0.9;
+        .about-hero::after {
+            content: '';
+            position: absolute;
+            width: 400px;
+            height: 400px;
+            background: rgba(255, 255, 255, 0.05);
+            border-radius: 50%;
+            bottom: -150px;
+            left: -150px;
         }
 
-        /* About Content */
-        .about-content {
-            padding: 6rem 0;
-            background: var(--white);
+        .about-hero-content {
+            position: relative;
+            z-index: 1;
+            max-width: 900px;
+            margin: 0 auto;
         }
 
-        .about-grid {
-            display: grid;
-            grid-template-columns: 1fr 1fr;
-            gap: 4rem;
+        .about-hero h1 {
+            font-size: 3.5rem;
+            font-weight: 700;
+            margin-bottom: 1rem;
+            letter-spacing: -1px;
+            line-height: 1.2;
+        }
+
+        .about-hero p {
+            font-size: 1.2rem;
+            opacity: 0.95;
+            line-height: 1.6;
+        }
+
+        /* Content Container */
+        .about-container {
+            max-width: 1000px;
+            margin: 0 auto;
+            padding: 4rem 2rem;
+        }
+
+        /* Section */
+        .about-section {
+            margin-bottom: 5rem;
+        }
+
+        .section-header {
+            display: flex;
             align-items: center;
-            margin-bottom: 6rem;
-        }
-
-        .about-text h2 {
-            font-size: 2.5rem;
-            font-weight: 800;
-            color: var(--gray-900);
-            margin-bottom: 1.5rem;
-        }
-
-        .about-text p {
-            font-size: 1.1rem;
-            color: var(--gray-600);
-            line-height: 1.7;
+            gap: 1rem;
             margin-bottom: 2rem;
         }
 
-        .about-image {
-            position: relative;
-        }
-
-        .about-image img {
-            width: 100%;
-            border-radius: 20px;
-            box-shadow: 0 20px 60px rgba(0, 0, 0, 0.1);
-        }
-
-        /* Stats Section */
-        .stats {
-            padding: 6rem 0;
-            background: var(--gray-50);
-        }
-
-        .stats-grid {
-            display: grid;
-            grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
-            gap: 3rem;
-        }
-
-        .stat-item {
-            text-align: center;
-            background: var(--white);
-            border-radius: 20px;
-            padding: 3rem 2rem;
-            border: 1px solid var(--gray-200);
-            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.05);
-            transition: transform 0.3s ease;
-        }
-
-        .stat-item:hover {
-            transform: translateY(-5px);
-        }
-
-        .stat-icon {
-            font-size: 3rem;
-            margin-bottom: 1rem;
-            color: var(--primary);
-        }
-
-        .stat-number {
-            font-size: 2rem;
-            font-weight: 900;
-            margin-bottom: 0.5rem;
-            color: var(--primary);
-        }
-
-        .stat-label {
-            font-size: 1.2rem;
-            font-weight: 600;
-            opacity: 0.9;
-        }
-
-        /* Team Section */
-        .team {
-            padding: 6rem 0;
-            background: var(--white);
-        }
-
-        .team-grid {
-            display: grid;
-            grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
-            gap: 2rem;
-        }
-
-        .team-member {
-            background: var(--white);
-            border-radius: 20px;
-            padding: 2rem;
-            text-align: center;
-            border: 1px solid var(--gray-200);
-            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.05);
-            transition: transform 0.3s ease;
-        }
-
-        .team-member:hover {
-            transform: translateY(-5px);
-        }
-
-        .member-avatar {
-            width: 120px;
-            height: 120px;
-            border-radius: 50%;
-            margin: 0 auto 1.5rem;
-            background: linear-gradient(135deg, var(--primary), var(--secondary));
+        .section-icon {
+            width: 70px;
+            height: 70px;
+            background: linear-gradient(135deg, #4099ff, #2ed8b6);
+            border-radius: 12px;
             display: flex;
             align-items: center;
             justify-content: center;
             color: white;
             font-size: 2.5rem;
-            font-weight: bold;
+            flex-shrink: 0;
         }
 
-        .member-name {
-            font-size: 1.3rem;
+        .section-title {
+            font-size: 2rem;
+            color: var(--text-primary);
             font-weight: 700;
-            color: var(--gray-900);
-            margin-bottom: 0.5rem;
+            margin: 0;
         }
 
-        .member-role {
-            color: var(--primary);
-            font-weight: 600;
+        .section-subtitle {
+            font-size: 1.1rem;
+            color: var(--text-secondary);
+            line-height: 1.7;
+            margin-top: 1.5rem;
+        }
+
+        /* Vision Section */
+        .vision-box {
+            background: var(--bg-secondary);
+            padding: 3rem;
+            border-radius: 16px;
+            border-left: 4px solid #4099ff;
+            margin-top: 2rem;
+            transition: all 0.3s ease;
+        }
+
+        html.dark-mode .vision-box {
+            box-shadow: 0 4px 15px rgba(0, 0, 0, 0.3);
+        }
+
+        .vision-box p {
+            color: var(--text-primary);
+            font-size: 1.15rem;
+            line-height: 1.8;
+            font-weight: 500;
+            margin: 0;
+        }
+
+        /* Problem List */
+        .problem-list {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+            gap: 2rem;
+            margin-top: 2rem;
+        }
+
+        .problem-item {
+            background: var(--bg-secondary);
+            padding: 2rem;
+            border-radius: 12px;
+            border-left: 4px solid #ef4444;
+            transition: all 0.3s ease;
+        }
+
+        .problem-item:hover {
+            transform: translateY(-5px);
+            box-shadow: 0 10px 25px rgba(239, 68, 68, 0.1);
+        }
+
+        .problem-item h4 {
+            color: #ef4444;
+            font-size: 1rem;
+            font-weight: 700;
+            margin-bottom: 0.8rem;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+        }
+
+        .problem-item p {
+            color: var(--text-secondary);
+            font-size: 0.95rem;
+            line-height: 1.6;
+            margin: 0;
+        }
+
+        /* Values Grid */
+        .values-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+            gap: 2rem;
+            margin-top: 2rem;
+        }
+
+        .value-card {
+            background: linear-gradient(135deg, var(--bg-secondary), var(--bg-primary));
+            padding: 2.5rem;
+            border-radius: 12px;
+            border: 1px solid var(--border);
+            text-align: center;
+            transition: all 0.3s ease;
+        }
+
+        .value-card:hover {
+            transform: translateY(-8px);
+            border-color: #4099ff;
+            box-shadow: 0 15px 35px rgba(64, 153, 255, 0.15);
+        }
+
+        .value-icon {
+            font-size: 2.5rem;
             margin-bottom: 1rem;
         }
 
-        .member-bio {
-            color: var(--gray-600);
+        .value-card h4 {
+            color: var(--text-primary);
+            font-size: 1.2rem;
+            margin-bottom: 0.8rem;
+            font-weight: 700;
+        }
+
+        .value-card p {
+            color: var(--text-secondary);
+            font-size: 0.95rem;
             line-height: 1.6;
+            margin: 0;
         }
 
-        /* CTA Section */
-        .cta {
-            padding: 6rem 0;
-            background: var(--gray-50);
+        /* Commitment Section */
+        .commitment-list {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 2rem;
+            margin-top: 2rem;
+        }
+
+        .commitment-item {
+            background: var(--bg-secondary);
+            padding: 2rem;
+            border-radius: 12px;
+            border-left: 4px solid #10b981;
+            transition: all 0.3s ease;
+        }
+
+        .commitment-item:hover {
+            transform: translateY(-5px);
+            box-shadow: 0 10px 25px rgba(16, 185, 129, 0.1);
+        }
+
+        .commitment-item h4 {
+            color: #10b981;
+            font-size: 1.1rem;
+            font-weight: 700;
+            margin-bottom: 0.8rem;
+            display: flex;
+            align-items: center;
+            gap: 0.6rem;
+        }
+
+        .commitment-item p {
+            color: var(--text-secondary);
+            font-size: 0.9rem;
+            line-height: 1.6;
+            margin: 0;
+        }
+
+        /* Why Section */
+        .why-content {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 3rem;
+            align-items: center;
+            margin-top: 2rem;
+        }
+
+        .why-text {
+            display: flex;
+            flex-direction: column;
+            gap: 1.5rem;
+        }
+
+        .why-point {
+            background: var(--bg-secondary);
+            padding: 1.5rem;
+            border-radius: 12px;
+            border-left: 4px solid #4099ff;
+            transition: all 0.3s ease;
+        }
+
+        .why-point h4 {
+            color: var(--text-primary);
+            font-weight: 700;
+            margin-bottom: 0.5rem;
+            font-size: 1rem;
+        }
+
+        .why-point p {
+            color: var(--text-secondary);
+            font-size: 0.95rem;
+            line-height: 1.6;
+            margin: 0;
+        }
+
+        .why-visual {
+            background: var(--bg-secondary);
+            padding: 3rem 2rem;
+            border-radius: 16px;
+            border: 2px solid var(--border);
             text-align: center;
+            transition: all 0.3s ease;
         }
 
-        .cta h2 {
-            font-size: 3rem;
-            font-weight: 800;
-            color: var(--gray-900);
+        .why-visual:hover {
+            border-color: #4099ff;
+        }
+
+        .why-visual-icon {
+            font-size: 4rem;
             margin-bottom: 1.5rem;
         }
 
-        .cta p {
-            font-size: 1.2rem;
-            color: var(--gray-600);
+        .why-visual-text {
+            color: var(--text-primary);
+            font-size: 1.1rem;
+            font-weight: 600;
+            line-height: 1.6;
+        }
+
+        /* Timeline */
+        .timeline {
+            position: relative;
+            padding: 2rem 0;
+            margin-top: 2rem;
+        }
+
+        .timeline::before {
+            content: '';
+            position: absolute;
+            left: 50%;
+            transform: translateX(-50%);
+            width: 2px;
+            height: 100%;
+            background: linear-gradient(180deg, #4099ff, #2ed8b6);
+        }
+
+        .timeline-item {
             margin-bottom: 3rem;
-            max-width: 600px;
+            width: 45%;
+            position: relative;
+        }
+
+        .timeline-item:nth-child(odd) {
+            margin-left: 0;
+            text-align: right;
+            padding-right: 3rem;
+        }
+
+        .timeline-item:nth-child(even) {
             margin-left: auto;
-            margin-right: auto;
+            padding-left: 3rem;
+        }
+
+        .timeline-dot {
+            position: absolute;
+            width: 16px;
+            height: 16px;
+            background: #4099ff;
+            border: 4px solid var(--bg-primary);
+            border-radius: 50%;
+            top: 0;
+            left: 50%;
+            transform: translateX(-50%);
+        }
+
+        .timeline-content {
+            background: var(--bg-secondary);
+            padding: 1.5rem;
+            border-radius: 12px;
+            border-left: 4px solid #4099ff;
+        }
+
+        .timeline-content h4 {
+            color: var(--text-primary);
+            font-weight: 700;
+            margin-bottom: 0.5rem;
+        }
+
+        .timeline-content p {
+            color: var(--text-secondary);
+            font-size: 0.9rem;
+            margin: 0;
+        }
+
+        /* Trust Section */
+        .trust-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 2rem;
+            margin-top: 2rem;
+        }
+
+        .trust-item {
+            text-align: center;
+            padding: 2rem 1.5rem;
+            background: var(--bg-surface);
+            border-radius: 16px;
+            border: 2px solid var(--border);
+            transition: all 0.3s ease;
+            box-shadow: 0 2px 8px rgba(0, 0, 0, 0.05);
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: flex-start;
+            min-height: 280px;
+            overflow: hidden;
+        }
+
+        html.dark-mode .trust-item {
+            box-shadow: 0 2px 8px rgba(0, 0, 0, 0.2);
+        }
+
+        .trust-item:hover {
+            border-color: #4099ff;
+            transform: translateY(-8px);
+            box-shadow: 0 12px 24px rgba(64, 153, 255, 0.15);
+        }
+
+        html.dark-mode .trust-item:hover {
+            box-shadow: 0 12px 24px rgba(64, 153, 255, 0.2);
+        }
+
+        .trust-icon {
+            font-size: 2.5rem;
+            margin-bottom: 1rem;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            width: 60px;
+            height: 60px;
+            background: linear-gradient(135deg, #4099ff15, #2ed8b615);
+            border-radius: 12px;
+            flex-shrink: 0;
+        }
+
+        .trust-item h4 {
+            color: var(--text-primary);
+            font-weight: 700;
+            margin-bottom: 0.8rem;
+            font-size: 1rem;
+            line-height: 1.3;
+            word-break: break-word;
+        }
+
+        .trust-item p {
+            color: var(--text-secondary);
+            font-size: 0.85rem;
+            line-height: 1.4;
+            margin: 0;
+            word-break: break-word;
+            overflow-wrap: break-word;
+        }
+
+        /* CTA Section */
+        .about-cta {
+            background: var(--bg-surface);
+            padding: 4rem 2rem;
+            border-radius: 16px;
+            text-align: center;
+            margin-bottom: 4rem;
+            transition: all 0.3s ease;
+        }
+
+        html.dark-mode .about-cta {
+            box-shadow: 0 4px 15px rgba(0, 0, 0, 0.3);
+        }
+
+        .about-cta h3 {
+            font-size: 2rem;
+            color: var(--text-primary);
+            margin-bottom: 1rem;
+        }
+
+        .about-cta p {
+            font-size: 1.1rem;
+            color: var(--text-secondary);
+            margin-bottom: 2rem;
         }
 
         .cta-buttons {
             display: flex;
-            gap: 1.5rem;
             justify-content: center;
+            gap: 1rem;
             flex-wrap: wrap;
         }
 
-        /* Footer */
-        .footer {
-            background: var(--gray-50);
-            color: var(--gray-900);
-            padding: 4rem 0 2rem;
-        }
-
-        .footer-content {
-            display: grid;
-            grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
-            gap: 3rem;
-            margin-bottom: 2rem;
-        }
-
-        .footer-section h3 {
-            font-size: 1.2rem;
-            font-weight: 700;
-            margin-bottom: 1.5rem;
-            color: var(--gray-900);
-        }
-
-        .footer-section ul {
-            list-style: none;
-        }
-
-        .footer-section li {
-            margin-bottom: 0.8rem;
-        }
-
-        .footer-section a {
-            color: var(--gray-600);
+        .btn-primary, .btn-secondary {
+            padding: 1rem 2.5rem;
+            border: 2px solid transparent;
+            border-radius: 8px;
+            font-size: 1rem;
+            font-weight: 600;
+            cursor: pointer;
             text-decoration: none;
-            transition: color 0.3s;
+            transition: all 0.3s ease;
+            display: inline-block;
         }
 
-        .footer-section a:hover {
-            color: var(--primary);
+        .btn-primary {
+            background: linear-gradient(135deg, #4099ff, #2ed8b6);
+            color: white;
         }
 
-        .footer-bottom {
-            padding-top: 2rem;
-            border-top: 1px solid var(--primary);
-            text-align: center;
-            color: var(--gray-600);
+        .btn-primary:hover {
+            transform: translateY(-3px);
+            box-shadow: 0 10px 25px rgba(64, 153, 255, 0.3);
         }
 
-        /* Mobile Responsive */
+        .btn-secondary {
+            background: transparent;
+            color: #4099ff;
+            border-color: #4099ff;
+        }
+
+        .btn-secondary:hover {
+            background: rgba(64, 153, 255, 0.1);
+        }
+
+        /* Responsive */
         @media (max-width: 768px) {
-            .navbar {
-                left: 20px;
-                right: 20px;
-                padding: 1rem 1.5rem;
+            .about-hero {
+                margin-top: 80px;
             }
 
-            .hero h1 {
-                font-size: 2.5rem;
+            .about-hero h1 {
+                font-size: 2.2rem;
             }
 
-            .about-grid {
+            .section-title {
+                font-size: 1.5rem;
+            }
+
+            .why-content {
                 grid-template-columns: 1fr;
-                gap: 3rem;
             }
 
-            .about-text h2 {
-                font-size: 2rem;
+            .timeline::before {
+                left: 20px;
             }
 
-            .cta h2 {
-                font-size: 2rem;
+            .timeline-item {
+                width: 100%;
             }
 
-            .cta-buttons {
-                flex-direction: column;
-                align-items: center;
+            .timeline-item:nth-child(odd),
+            .timeline-item:nth-child(even) {
+                margin-left: 0;
+                text-align: left;
+                padding-left: 60px;
+                padding-right: 0;
+            }
+
+            .timeline-dot {
+                left: 20px;
+            }
+
+            .vision-box {
+                padding: 2rem;
+            }
+
+            .trust-grid {
+                grid-template-columns: repeat(2, 1fr);
+            }
+
+            .trust-item {
+                min-height: auto;
+            }
+        }
+
+        @media (max-width: 480px) {
+            .trust-grid {
+                grid-template-columns: 1fr;
             }
         }
     </style>
+    <?php renderThemeStyles(); ?>
 </head>
 <body>
-    <!-- Navigation -->
-    <nav class="navbar" id="navbar">
-        <div class="container">
-            <div class="nav-content">
-                <a href="index.php" class="logo">
-                    <img src="uploads/logo/<?= htmlspecialchars(getSetting($platform_settings, 'platform_logo') ?? 'logo.png') ?>" alt="Logo" style="height: 40px;">
-                    <span class="logo-text"><?= htmlspecialchars(getSetting($platform_settings, 'platform_name') ?? 'MTravels') ?></span>
-                </a>
-                <div class="nav-menu">
-                    <ul class="nav-links">
-                        <li><a href="index.php">Home</a></li>
-                        <li><a href="index.php#features">Features</a></li>
-                        <li><a href="index.php#pricing">Pricing</a></li>
-                        <li><a href="about.php">About</a></li>
-                        <li><a href="index.php#contact">Contact</a></li>
-                    </ul>
-                    <div class="nav-actions">
-                        <a href="login.php" class="nav-login-link" style="color: var(--primary); text-decoration: none; font-weight: 600; transition: color 0.3s;">Login</a>
-                        <a href="book-demo.php" class="btn btn-primary">
-                            <span>Book a Demo</span>
-                        </a>
+    <!-- Animated Background -->
+    <div class="animated-bg"></div>
+
+    <!-- Floating Elements -->
+    <div class="floating-elements">
+        <div class="floating-element"></div>
+        <div class="floating-element"></div>
+        <div class="floating-element"></div>
+        <div class="floating-element"></div>
+        <div class="floating-element"></div>
+        <div class="floating-element"></div>
+    </div>
+
+    <?php 
+    $nav_links = [
+        ['href' => 'index.php', 'label' => 'Home'],
+        ['href' => 'features.php', 'label' => 'Features'],
+        ['href' => 'how-it-works.php', 'label' => 'How It Works'],
+        ['href' => 'about.php', 'label' => 'About'],
+        ['href' => 'index.php#contact', 'label' => 'Contact']
+    ];
+    require_once 'includes/navbar.php'; 
+    ?>
+
+    <div class="about-wrapper">
+        <!-- Hero -->
+        <section class="about-hero">
+            <div class="about-hero-content">
+                <h1>Built by Travel Professionals</h1>
+                <p>For Travel Professionals</p>
+            </div>
+        </section>
+
+        <!-- Content -->
+        <div class="about-container">
+
+            <!-- Our Vision -->
+            <div class="about-section">
+                <div class="section-header">
+                    <div class="section-icon">🎯</div>
+                    <h2 class="section-title">Our Vision</h2>
+                </div>
+                
+                <div class="vision-box">
+                    <p>
+                        To fully automate travel agency operations with accuracy, transparency, and control — 
+                        so agencies can grow without chaos, make decisions with confidence, and focus on 
+                        building relationships instead of fighting spreadsheets.
+                    </p>
+                </div>
+            </div>
+
+            <!-- Why We Built This -->
+            <div class="about-section">
+                <div class="section-header">
+                    <div class="section-icon">💡</div>
+                    <h2 class="section-title">Why We Built This</h2>
+                </div>
+
+                <p class="section-subtitle">
+                    Travel agencies run on chaos. We watched agencies struggle with:
+                </p>
+
+                <div class="problem-list">
+                    <div class="problem-item">
+                        <h4>⚠️ Scattered Systems</h4>
+                        <p>Tickets in one place, finances in Excel, clients in WhatsApp — no central truth.</p>
+                    </div>
+                    <div class="problem-item">
+                        <h4>⚠️ Manual Everything</h4>
+                        <p>Hours wasted on data entry, follow-ups, and manual reconciliation every day.</p>
+                    </div>
+                    <div class="problem-item">
+                        <h4>⚠️ Hidden Profit Leaks</h4>
+                        <p>Owners don't know if they're making money — no visibility into what's profitable.</p>
+                    </div>
+                    <div class="problem-item">
+                        <h4>⚠️ Growth Pain</h4>
+                        <p>Adding a branch means duplicating chaos, not scaling a system.</p>
+                    </div>
+                    <div class="problem-item">
+                        <h4>⚠️ Human Error</h4>
+                        <p>Manual processes = mistakes = lost money and angry customers.</p>
+                    </div>
+                    <div class="problem-item">
+                        <h4>⚠️ Lost Compliance</h4>
+                        <p>No audit trail, no accountability, compliance becomes a nightmare during audits.</p>
+                    </div>
+                </div>
+
+                <p class="section-subtitle" style="margin-top: 3rem;">
+                    We built MTravels to fix this — a system designed specifically for travel agencies, 
+                    by people who understand the industry.
+                </p>
+            </div>
+
+            <!-- What We Believe In -->
+            <div class="about-section">
+                <div class="section-header">
+                    <div class="section-icon">⭐</div>
+                    <h2 class="section-title">What We Believe In</h2>
+                </div>
+
+                <div class="values-grid">
+                    <div class="value-card">
+                        <div class="value-icon">✓</div>
+                        <h4>Accuracy Over Assumptions</h4>
+                        <p>Real data beats guessing. Every transaction is tracked, every number is accurate.</p>
+                    </div>
+                    <div class="value-card">
+                        <div class="value-icon">💎</div>
+                        <h4>Transparency in Finance</h4>
+                        <p>You should know exactly where every rupiah, afghani, dirham, and dinar goes.</p>
+                    </div>
+                    <div class="value-card">
+                        <div class="value-icon">🎛️</div>
+                        <h4>Automation with Control</h4>
+                        <p>Let the system automate — but you stay in control. No surprises, only efficiency.</p>
+                    </div>
+                    <div class="value-card">
+                        <div class="value-icon">🔐</div>
+                        <h4>Compliance & Accountability</h4>
+                        <p>Your data is protected. Every action is logged. Audits become simple, not scary.</p>
+                    </div>
+                    <div class="value-card">
+                        <div class="value-icon">🤝</div>
+                        <h4>Built for Real Agencies</h4>
+                        <p>Not generic software. Built from real pain points of real travel professionals.</p>
+                    </div>
+                    <div class="value-card">
+                        <div class="value-icon">📈</div>
+                        <h4>Growth Without Complexity</h4>
+                        <p>Grow from 1 branch to 100+ without changing systems or learning new tools.</p>
                     </div>
                 </div>
             </div>
-        </div>
-    </nav>
 
-    <!-- Hero Section -->
-    <section class="hero">
-        <div class="container">
-            <h1>About <?php echo getSetting($platform_settings, 'platform_name', 'MTravels'); ?></h1>
-            <p>Revolutionizing travel agency management with innovative technology and comprehensive solutions that empower businesses worldwide.</p>
-        </div>
-    </section>
+            <!-- Our Commitment -->
+            <div class="about-section">
+                <div class="section-header">
+                    <div class="section-icon">🙏</div>
+                    <h2 class="section-title">Our Commitment to You</h2>
+                </div>
 
-    <!-- About Content -->
-    <section class="about-content">
-        <div class="container">
-            <div class="about-grid">
-                <div class="about-text">
-                    <h2>Our Mission</h2>
-                    <p>At <?php echo getSetting($platform_settings, 'platform_name', 'MTravels'); ?>, we're dedicated to transforming how travel agencies operate. Our comprehensive SaaS platform combines cutting-edge technology with deep industry expertise to deliver solutions that streamline operations, boost efficiency, and drive growth.</p>
-                    <p>We believe that every travel agency, regardless of size, deserves access to enterprise-level tools that simplify complex workflows and enhance customer experiences. Our mission is to empower travel professionals with the technology they need to succeed in an increasingly competitive market.</p>
-                </div>
-                <div class="about-image">
-                    <img src="assets/images/widget/undraw_finance_m6vw.svg" alt="Our Mission" style="max-width: 100%; height: auto;">
+                <div class="commitment-list">
+                    <div class="commitment-item">
+                        <h4>✓ Continuous Improvement</h4>
+                        <p>We listen to feedback and evolve the platform based on real agency needs.</p>
+                    </div>
+                    <div class="commitment-item">
+                        <h4>✓ Real-World Usability</h4>
+                        <p>Not just powerful — easy to use. Your team should love this, not dread it.</p>
+                    </div>
+                    <div class="commitment-item">
+                        <h4>✓ Scalable Architecture</h4>
+                        <p>Built to grow with you. From startup to enterprise, the system doesn't break.</p>
+                    </div>
+                    <div class="commitment-item">
+                        <h4>✓ Long-Term Partnership</h4>
+                        <p>Your success is our success. We're here for the long haul, not a quick sale.</p>
+                    </div>
+                    <div class="commitment-item">
+                        <h4>✓ 24/7 Support</h4>
+                        <p>Questions at 2 AM? We're there. Your agency never stops, neither do we.</p>
+                    </div>
+                    <div class="commitment-item">
+                        <h4>✓ Data Security</h4>
+                        <p>Bank-level encryption. Your data is protected like your customers' money.</p>
+                    </div>
                 </div>
             </div>
 
-            <div class="about-grid">
-                <div class="about-image">
-                    <img src="assets/images/widget/our_vision.jpg" alt="Our Vision" style="max-width: 100%; height: auto;">
+            <!-- Why Choose Us -->
+            <div class="about-section">
+                <div class="section-header">
+                    <div class="section-icon">🏆</div>
+                    <h2 class="section-title">Why Choose MTravels</h2>
                 </div>
-                <div class="about-text">
-                    <h2>Our Vision</h2>
-                    <p>To become the global standard for travel agency management software, recognized for innovation, reliability, and exceptional customer service. We envision a world where travel agencies can focus on what they do best - creating memorable experiences - while we handle the complexities of operations and technology.</p>
-                    <p>Through continuous innovation and a customer-centric approach, we aim to set new industry benchmarks and help travel agencies thrive in the digital age.</p>
-                </div>
-            </div>
-        </div>
-    </section>
 
-    <!-- Stats Section -->
-    <section class="stats">
-        <div class="container">
-            <div class="stats-grid">
-                <div class="stat-item">
-                    <div class="stat-icon">🏢</div>
-                    <div class="stat-number"><?php echo getSetting($platform_settings, 'stat_agencies', '10K+'); ?></div>
-                    <div class="stat-label">Travel Agencies Served</div>
-                </div>
-                <div class="stat-item">
-                    <div class="stat-icon">📊</div>
-                    <div class="stat-number"><?php echo getSetting($platform_settings, 'stat_bookings', '2M+'); ?></div>
-                    <div class="stat-label">Bookings Processed</div>
-                </div>
-                <div class="stat-item">
-                    <div class="stat-icon">💰</div>
-                    <div class="stat-number"><?php echo getSetting($platform_settings, 'stat_revenue', '$500M+'); ?></div>
-                    <div class="stat-label">Revenue Managed</div>
-                </div>
-                <div class="stat-item">
-                    <div class="stat-icon">🌍</div>
-                    <div class="stat-number">50+</div>
-                    <div class="stat-label">Countries Served</div>
-                </div>
-            </div>
-        </div>
-    </section>
+                <div class="why-content">
+                    <div class="why-text">
+                        <div class="why-point">
+                            <h4>✈️ Travel Industry Expertise</h4>
+                            <p>Built by people who've worked in travel. We know your pain points because we've lived them.</p>
+                        </div>
+                        <div class="why-point">
+                            <h4>🚀 Fast Implementation</h4>
+                            <p>Start selling the same day. No weeks of setup. No IT department needed.</p>
+                        </div>
+                        <div class="why-point">
+                            <h4>💰 Real ROI</h4>
+                            <p>Agencies report 80% reduction in manual work, 40% fewer support tickets, 3x faster processing.</p>
+                        </div>
+                        <div class="why-point">
+                            <h4>🌍 Multi-Currency, Multi-Location</h4>
+                            <p>Designed for global operations. Handle AFN, USD, AED, EUR — scale to unlimited branches.</p>
+                        </div>
+                    </div>
 
-    <!-- Team Section -->
-    <section class="team">
-        <div class="container">
-            <div class="section-header" style="text-align: center; margin-bottom: 4rem;">
-                <h2>Meet Our Team</h2>
-                <p>Passionate experts dedicated to revolutionizing travel technology</p>
-            </div>
-            <div class="team-grid">
-                <div class="team-member">
-                    <div class="member-avatar">👨‍💼</div>
-                    <h3 class="member-name">Ahmadullah</h3>
-                    <div class="member-role">CEO & Founder</div>
-                    <p class="member-bio">Visionary leader with 15+ years in travel technology, driving innovation and strategic growth for travel agencies worldwide.</p>
-                </div>
-                <div class="team-member">
-                    <div class="member-avatar">👨‍💻</div>
-                    <h3 class="member-name">Development Team</h3>
-                    <div class="member-role">Technical Experts</div>
-                    <p class="member-bio">Skilled developers and engineers building robust, scalable solutions that power thousands of travel agencies globally.</p>
-                </div>
-                <div class="team-member">
-                    <div class="member-avatar">🎯</div>
-                    <h3 class="member-name">Product Team</h3>
-                    <div class="member-role">Product Managers</div>
-                    <p class="member-bio">Dedicated product specialists ensuring our platform meets the evolving needs of modern travel agencies.</p>
-                </div>
-                <div class="team-member">
-                    <div class="member-avatar">🛠️</div>
-                    <h3 class="member-name">Support Team</h3>
-                    <div class="member-role">Customer Success</div>
-                    <p class="member-bio">Expert support professionals committed to helping travel agencies maximize their success with our platform.</p>
+                    <div class="why-visual">
+                        <div class="why-visual-icon">🎯</div>
+                        <div class="why-visual-text">
+                            We're not just a software company.<br/>
+                            We're your growth partner.
+                        </div>
+                    </div>
                 </div>
             </div>
-        </div>
-    </section>
 
-    <!-- CTA Section -->
-    <section class="cta">
-        <div class="container">
-            <h2>Ready to Join Our Success Story?</h2>
-            <p>Join thousands of travel agencies worldwide who trust <?php echo getSetting($platform_settings, 'platform_name', 'MTravels'); ?> to power their business operations.</p>
-            <div class="cta-buttons">
-                <a href="book-demo.php" class="btn btn-primary">Book a Demo</a>
-                <a href="index.php#contact" class="btn" style="background: transparent; color: var(--primary); border: 2px solid var(--primary);">Contact Us</a>
-            </div>
-        </div>
-    </section>
+            <!-- Trust Section -->
+            <div class="about-section">
+                <h2 class="section-title" style="margin-bottom: 2rem;">Why Agencies Trust Us</h2>
 
-    <!-- Footer -->
-    <footer class="footer">
-        <div class="container">
-            <div class="footer-content">
-                <div class="footer-section">
-                    <h3><?php echo getSetting($platform_settings, 'platform_name', 'MTravels'); ?></h3>
-                    <p style="color: var(--gray-300); line-height: 1.6;">
-                        <?php echo getSetting($platform_settings, 'platform_description', 'Professional travel agency management platform providing comprehensive solutions for booking management, financial operations, customer service, and business intelligence.'); ?>
-                    </p>
-                </div>
-                <div class="footer-section">
-                    <h3>Product</h3>
-                    <ul>
-                        <li><a href="index.php#features">Features</a></li>
-                        <li><a href="index.php#pricing">Pricing</a></li>
-                        <li><a href="integrations.php">Integrations</a></li>
-                        <li><a href="api-docs.php">API Documentation</a></li>
-                        <li><a href="security.php">Security</a></li>
-                    </ul>
-                </div>
-                <div class="footer-section">
-                    <h3>Company</h3>
-                    <ul>
-                        <li><a href="about.php">About Us</a></li>
-                        <li><a href="careers.php">Careers</a></li>
-                        <li><a href="press.php">Press</a></li>
-                        <li><a href="blog.php">Blog</a></li>
-                        <li><a href="partners.php">Partners</a></li>
-                    </ul>
-                </div>
-                <div class="footer-section">
-                    <h3>Support</h3>
-                    <ul>
-                        <li><a href="help.php">Help Center</a></li>
-                        <li><a href="index.php#contact">Contact Support</a></li>
-                        <li><a href="status.php">System Status</a></li>
-                        <li><a href="community.php">Community</a></li>
-                        <li><a href="training.php">Training</a></li>
-                    </ul>
+                <div class="trust-grid">
+                    <div class="trust-item">
+                        <div class="trust-icon">🔒</div>
+                        <h4>Bank-Level Security</h4>
+                        <p>AES-256 encryption, audit logs, compliance-ready</p>
+                    </div>
+                    <div class="trust-item">
+                        <div class="trust-icon">⚡</div>
+                        <h4>99.9% Uptime</h4>
+                        <p>Your system is always online, always available</p>
+                    </div>
+                    <div class="trust-item">
+                        <div class="trust-icon">🤝</div>
+                        <h4>24/7 Support</h4>
+                        <p>Expert support whenever you need it</p>
+                    </div>
+                    <div class="trust-item">
+                        <div class="trust-icon">📈</div>
+                        <h4>Proven Results</h4>
+                        <p>Thousands of agencies, millions in bookings</p>
+                    </div>
+                    <div class="trust-item">
+                        <div class="trust-icon">📚</div>
+                        <h4>Learning Built-In</h4>
+                        <p>Tutorials, guides, webinars included</p>
+                    </div>
+                    <div class="trust-item">
+                        <div class="trust-icon">🎓</div>
+                        <h4>Onboarding Support</h4>
+                        <p>We help you get set up, not just sell you software</p>
+                    </div>
                 </div>
             </div>
-            <div class="footer-bottom">
-                <p>&copy; <?php echo date('Y'); ?> <?php echo getSetting($platform_settings, 'platform_name', 'MTravels'); ?>. All rights reserved.</p>
+
+            <!-- CTA -->
+            <div class="about-cta">
+                <h3>Ready to Join the MTravels Community?</h3>
+                <p>Thousands of travel agencies have transformed their operations. Join them today.</p>
+                <div class="cta-buttons">
+                    <a href="book-demo.php" class="btn-primary">Schedule Your Demo</a>
+                    <a href="how-it-works.php" class="btn-secondary">See How It Works</a>
+                </div>
             </div>
+
         </div>
-    </footer>
+    </div>
 
     <script>
-        // Navbar scroll effect
-        window.addEventListener('scroll', function() {
-            const navbar = document.getElementById('navbar');
-            if (window.scrollY > 50) {
-                navbar.classList.add('scrolled');
-            } else {
-                navbar.classList.remove('scrolled');
-            }
-        });
-
-        // Smooth scroll for anchor links
-        document.querySelectorAll('a[href^="#"]').forEach(anchor => {
-            anchor.addEventListener('click', function (e) {
-                const href = this.getAttribute('href');
-                if (href !== '#' && href.length > 1) {
-                    e.preventDefault();
-                    const target = document.querySelector(href);
-                    if (target) {
-                        target.scrollIntoView({
-                            behavior: 'smooth',
-                            block: 'start'
-                        });
-                    }
-                }
+        // Parallax effect
+        window.addEventListener('scroll', () => {
+            const scrolled = window.pageYOffset;
+            const parallax = document.querySelectorAll('.floating-element');
+            parallax.forEach((element, index) => {
+                const speed = 0.5 + (index * 0.1);
+                element.style.transform = `translateY(${scrolled * speed}px)`;
             });
         });
+
+        // Mobile menu
+        function toggleMobileMenu() {
+            const hamburger = document.getElementById('hamburger');
+            const navMenu = document.querySelector('.nav-menu');
+            if (hamburger && navMenu) {
+                hamburger.addEventListener('click', function() {
+                    navMenu.classList.toggle('open');
+                });
+                document.addEventListener('click', function(event) {
+                    if (!hamburger.contains(event.target) && !navMenu.contains(event.target)) {
+                        navMenu.classList.remove('open');
+                    }
+                });
+                navMenu.addEventListener('click', function(event) {
+                    if (event.target.tagName === 'A') {
+                        navMenu.classList.remove('open');
+                    }
+                });
+            }
+        }
+
+        document.addEventListener('DOMContentLoaded', function() {
+            toggleMobileMenu();
+        });
     </script>
+    <?php renderThemeScript(); ?>
+    <?php require_once 'includes/footer.php'; ?>
 </body>
 </html>
