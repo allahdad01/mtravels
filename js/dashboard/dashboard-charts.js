@@ -118,48 +118,207 @@ document.addEventListener('DOMContentLoaded', function() {
                 }
             ],
             chart: {
-                height: 400,
+                height: 450,
                 type: 'line',
                 stacked: false,
-                toolbar: { show: true }
+                toolbar: { 
+                    show: true,
+                    tools: {
+                        download: true,
+                        selection: true,
+                        zoom: true,
+                        zoomin: true,
+                        zoomout: true,
+                        pan: true,
+                        reset: true
+                    }
+                },
+                animations: {
+                    enabled: true,
+                    speed: 800,
+                    animateGradually: {
+                        enabled: true,
+                        delay: 150
+                    },
+                    dynamicAnimation: {
+                        enabled: true,
+                        speed: 150
+                    }
+                },
+                dropShadow: {
+                    enabled: true,
+                    top: 3,
+                    left: 2,
+                    blur: 4,
+                    opacity: 0.08
+                }
             },
             plotOptions: {
-                bar: { borderRadius: 4, columnWidth: '50%' }
+                bar: { 
+                    borderRadius: 6, 
+                    columnWidth: '70%',
+                    dataLabels: {
+                        position: 'top'
+                    }
+                }
             },
-            dataLabels: { enabled: false },
+            dataLabels: { 
+                enabled: false
+            },
             stroke: {
-                width: [0, 0, 3],
-                curve: 'smooth',
-                colors: ['#4099ff', '#FF5370', '#00E396']
+                width: [0, 0, 4],
+                curve: 'monotoneCubic',
+                colors: ['#00D084', '#FF5370', '#00E396'],
+                lineCap: 'round'
             },
             xaxis: {
-                categories: formattedDates
+                categories: formattedDates,
+                labels: {
+                    style: {
+                        colors: '#808080',
+                        fontSize: '12px',
+                        fontWeight: 400
+                    }
+                },
+                axisBorder: {
+                    show: true,
+                    color: '#e0e0e0',
+                    height: 1
+                },
+                axisTicks: {
+                    show: true,
+                    borderType: 'solid',
+                    color: '#e0e0e0',
+                    height: 4,
+                    offsetX: 0,
+                    offsetY: 0
+                }
             },
             yaxis: [
                 {
                     labels: {
-                        formatter: (value) => currencySymbol + Math.abs(value).toFixed(2)
+                        formatter: (value) => currencySymbol + Math.abs(value).toFixed(2),
+                        style: {
+                            colors: '#808080',
+                            fontSize: '12px'
+                        }
                     },
-                    title: { text: "Cash Flow Amount" }
+                    title: { 
+                        text: "Income & Expenses",
+                        style: {
+                            color: '#374151',
+                            fontSize: '13px',
+                            fontWeight: 600
+                        }
+                    },
+                    axisBorder: {
+                        show: true,
+                        color: '#e0e0e0'
+                    }
                 },
                 {
                     opposite: true,
                     labels: {
-                        formatter: (value) => currencySymbol + value.toFixed(2)
+                        formatter: (value) => currencySymbol + value.toFixed(2),
+                        style: {
+                            colors: '#808080',
+                            fontSize: '12px'
+                        }
                     },
-                    title: { text: "Cumulative Flow" }
+                    title: { 
+                        text: "Cumulative Flow",
+                        style: {
+                            color: '#374151',
+                            fontSize: '13px',
+                            fontWeight: 600
+                        }
+                    },
+                    axisBorder: {
+                        show: true,
+                        color: '#e0e0e0'
+                    }
                 }
             ],
             tooltip: {
                 shared: true,
+                intersect: false,
+                theme: 'dark',
+                style: {
+                    fontSize: '12px',
+                    fontFamily: 'inherit'
+                },
+                onDatasetHover: {
+                    highlightDataSeries: true
+                },
                 y: {
-                    formatter: (value, { seriesIndex }) =>
-                        seriesIndex === 1
-                            ? currencySymbol + Math.abs(value).toFixed(2)
-                            : currencySymbol + value.toFixed(2)
+                    formatter: (value, { seriesIndex, series, dataPointIndex }) => {
+                        if (seriesIndex === 1) {
+                            return currencySymbol + Math.abs(value).toFixed(2);
+                        }
+                        return currencySymbol + value.toFixed(2);
+                    },
+                    title: {
+                        formatter: (seriesName) => seriesName
+                    }
+                },
+                custom: function({ series, seriesIndex, dataPointIndex, w }) {
+                    const credit = series[0][dataPointIndex];
+                    const debit = series[1][dataPointIndex];
+                    const net = series[2][dataPointIndex];
+                    
+                    return '<div class="apexcharts-tooltip-advanced" style="background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); padding: 12px 16px; border-radius: 8px; box-shadow: 0 4px 20px rgba(0,0,0,0.3);">' +
+                        '<span style="color: #fff; font-weight: bold; display: block; margin-bottom: 6px;">' + w.globals.categoryLabels[dataPointIndex] + '</span>' +
+                        '<span style="color: #76ff03; display: block; font-size: 11px; margin-bottom: 4px;">Income: ' + currencySymbol + Math.abs(credit).toFixed(2) + '</span>' +
+                        '<span style="color: #ff4081; display: block; font-size: 11px; margin-bottom: 4px;">Expense: ' + currencySymbol + Math.abs(debit).toFixed(2) + '</span>' +
+                        '<span style="color: #4fc3f7; display: block; font-size: 11px; font-weight: bold; border-top: 1px solid rgba(255,255,255,0.2); padding-top: 4px; margin-top: 4px;">Net: ' + currencySymbol + net.toFixed(2) + '</span>' +
+                        '</div>';
                 }
             },
-            colors: ['#4099ff', '#FF5370', '#00E396']
+            colors: ['#00D084', '#FF5370', '#00E396'],
+            grid: {
+                show: true,
+                borderColor: '#f0f0f0',
+                strokeDashArray: 4,
+                xaxis: {
+                    lines: {
+                        show: false
+                    }
+                },
+                yaxis: {
+                    lines: {
+                        show: true
+                    }
+                },
+                padding: {
+                    left: 0,
+                    right: 0,
+                    top: 20,
+                    bottom: 0
+                }
+            },
+            fill: {
+                type: 'gradient',
+                gradient: {
+                    shadeIntensity: 0.1,
+                    opacityFrom: 0.45,
+                    opacityTo: 0.05,
+                    stops: [20, 100, 100, 100]
+                }
+            },
+            states: {
+                hover: {
+                    filter: {
+                        type: 'darken',
+                        value: 0.05
+                    }
+                },
+                active: {
+                    filter: {
+                        type: 'darken',
+                        value: 0.1
+                    }
+                }
+            }
         };
     
         if (window.financialChart) {

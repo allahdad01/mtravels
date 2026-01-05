@@ -197,10 +197,10 @@ if (!file_exists($imagePath)) {
                             <!-- Financial Wealth Distribution Chart -->
                             <div class="row mb-4">
                                 <div class="col-md-12">
-                                    <div class="card border-0 shadow-sm">
-                                        <div class="card-header bg-white">
+                                    <div class="card border-0 shadow-lg" style="border-radius: 12px; overflow: hidden; background: linear-gradient(135deg, #ffffff 0%, #f8f9fa 100%); transition: all 0.3s ease;">
+                                        <div class="card-header bg-white" style="border-bottom: 2px solid #f0f0f0; padding: 20px;">
                                             <div class="d-flex justify-content-between align-items-center flex-wrap">
-                                                <h5 class="mb-0 mb-md-0">
+                                                <h5 class="mb-0 mb-md-0" style="font-weight: 700; font-size: 18px; color: #1a202c;">
                                                     <i class="feather icon-bar-chart-2 text-primary mr-2"></i><?= __('financial_wealth_distribution') ?>
                                                 </h5>
                                                 <div class="chart-controls d-flex flex-column flex-md-row mt-2 mt-md-0">
@@ -224,17 +224,17 @@ if (!file_exists($imagePath)) {
                                                 </div>
                                             </div>
                                         </div>
-                                        <div class="card-body">
+                                        <div class="card-body" style="padding: 25px;">
                                             <div class="row">
                                                 <div class="col-lg-8 mb-4 mb-lg-0">
-                                                    <div id="financeFlowChart" style="height: 400px;"></div>
+                                                    <div id="financeFlowChart" style="height: 450px; position: relative;"></div>
                                                 </div>
                                                 <div class="col-lg-4">
-                                                    <div class="d-flex align-items-center justify-content-between mb-3">
-                                                        <h6 class="text-muted mb-0"><?= __('wealth_distribution') ?></h6>
-                                                        <span class="badge-pill badge-light" id="currentDateBadge"></span>
+                                                    <div class="d-flex align-items-center justify-content-between mb-4">
+                                                        <h6 class="mb-0" style="font-weight: 700; color: #374151; font-size: 14px; text-transform: uppercase; letter-spacing: 0.5px;"><?= __('wealth_distribution') ?></h6>
+                                                        <span class="badge badge-pill" id="currentDateBadge" style="background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: white; font-size: 11px; font-weight: 600;"></span>
                                                     </div>
-                                                    <div class="wealth-distribution-summary p-3 rounded">
+                                                    <div class="wealth-distribution-summary p-4 rounded-lg" style="background: linear-gradient(135deg, #f5f7fa 0%, #c3cfe2 100%); border-left: 4px solid #667eea;">
                                                         <div class="d-flex flex-column flex-sm-row justify-content-between mb-3">
                                                             <span class="mb-1 mb-sm-0"><?= __('main_accounts') ?>:</span>
                                                             <span id="mainAccountBalance" class="font-weight-bold">$0.00</span>

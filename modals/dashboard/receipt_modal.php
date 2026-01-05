@@ -1,5 +1,13 @@
-                                <!-- Modal Structure -->
-                                <div class="modal fade" id="receiptModal" tabindex="-1" aria-labelledby="receiptModalLabel" aria-hidden="true">
+                                <?php 
+                                // Define h() function if not already defined
+                                if (!function_exists('h')) {
+                                    function h($string) {
+                                        return htmlspecialchars($string, ENT_QUOTES, 'UTF-8');
+                                    }
+                                }
+                                ?>
+                                                                 <!-- Modal Structure -->
+                                                                 <div class="modal fade" id="receiptModal" tabindex="-1" aria-labelledby="receiptModalLabel" aria-hidden="true">
                                     <div class="modal-dialog">
                                         <div class="modal-content">
                                             <div class="modal-header">

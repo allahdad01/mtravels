@@ -112,17 +112,17 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 
                     $pdo->commit();
 
-                    // Send payment confirmation email to tenant
-                    require_once '../includes/functions.php';
-                    $email_sent = sendPaymentConfirmationEmail($tenant_id, $amount, $currency, $payment_date, $billing_cycle);
-                    if (!$email_sent) {
-                        error_log("Failed to send payment confirmation email for tenant: {$tenant_id}");
-                        // Log for debugging
-                        $stmt = $pdo->prepare("SELECT name, billing_email FROM tenants WHERE id = ?");
-                        $stmt->execute([$tenant_id]);
-                        $tenant_info = $stmt->fetch(PDO::FETCH_ASSOC);
-                        error_log("Tenant billing email status: " . json_encode($tenant_info));
-                    }
+                     // Send payment confirmation email to tenant with PDF invoice
+                     require_once '../includes/functions.php';
+                     $email_sent = sendPaymentConfirmationEmail($tenant_id, $amount, $currency, $payment_date, $billing_cycle, $payment_id, $subscription_id);
+                     if (!$email_sent) {
+                         error_log("Failed to send payment confirmation email for tenant: {$tenant_id}");
+                         // Log for debugging
+                         $stmt = $pdo->prepare("SELECT name, billing_email FROM tenants WHERE id = ?");
+                         $stmt->execute([$tenant_id]);
+                         $tenant_info = $stmt->fetch(PDO::FETCH_ASSOC);
+                         error_log("Tenant billing email status: " . json_encode($tenant_info));
+                     }
                 } else {
                     $pdo->rollBack();
                     throw new Exception('Subscription not found');
@@ -545,12 +545,13 @@ $recent_payments = array_slice(array_values($filtered_payments), $pay_offset, $p
                                                         <th>Method</th>
                                                         <th>Receipt</th>
                                                         <th>Processed By</th>
+                                                        <th style="width: 100px; text-align: center;">Actions</th>
                                                     </tr>
                                                 </thead>
                                                 <tbody>
                                                     <?php if (empty($recent_payments)): ?>
                                                     <tr>
-                                                        <td colspan="7" class="text-center py-4">
+                                                        <td colspan="8" class="text-center py-4">
                                                             <i class="feather icon-inbox text-muted mb-2" style="font-size: 2rem;"></i>
                                                             <p class="text-muted">
                                                                 <?php if (!empty($pay_search_query)): ?>
@@ -581,7 +582,12 @@ $recent_payments = array_slice(array_values($filtered_payments), $pay_offset, $p
                                                         <td><?= htmlspecialchars($payment['payment_method'] ?: 'N/A') ?></td>
                                                         <td><?= htmlspecialchars($payment['receipt_number'] ?: 'N/A') ?></td>
                                                         <td><?= htmlspecialchars($payment['processed_by_name'] ?: 'System') ?></td>
-                                                    </tr>
+                                                        <td style="text-align: center;">
+                                                            <button class="btn btn-sm btn-info" onclick="downloadInvoice(<?= $payment['id'] ?>)" title="Download Invoice PDF">
+                                                                <i class="feather icon-download"></i>
+                                                            </button>
+                                                        </td>
+                                                        </tr>
                                                     <?php endforeach; ?>
                                                     <?php endif; ?>
                                                     </tbody>
@@ -819,6 +825,42 @@ $(document).ready(function() {
         $('#amountSymbol').text(symbol);
     });
 });
+
+function generateInvoicePreview() {
+    const subscriptionId = $('#subscription_id').val();
+    const amount = $('#amount').val();
+    const currency = $('#currency').val();
+    const paymentDate = $('#payment_date').val();
+    const paymentMethod = $('#payment_method').val();
+    const transactionId = $('#transaction_id').val();
+    const receiptNumber = $('#receipt_number').val();
+    const notes = $('#notes').val();
+
+    if (!subscriptionId || !amount) {
+        alert('Please select a subscription and enter an amount');
+        return;
+    }
+
+    // Open PDF in new window or download
+    window.open('generate_invoice_pdf.php?subscription_id=' + subscriptionId + 
+                '&amount=' + amount + 
+                '&currency=' + currency + 
+                '&payment_date=' + paymentDate + 
+                '&payment_method=' + encodeURIComponent(paymentMethod) +
+                '&transaction_id=' + encodeURIComponent(transactionId) +
+                '&receipt_number=' + encodeURIComponent(receiptNumber) +
+                '&notes=' + encodeURIComponent(notes), 'invoice');
+}
+
+function downloadInvoice(paymentId) {
+    if (!paymentId) {
+        alert('Invalid payment ID');
+        return;
+    }
+    
+    // Open PDF for existing payment
+    window.open('generate_invoice_pdf.php?payment_id=' + paymentId, 'invoice');
+}
 
 function viewSubscriptionPayments(subscriptionId) {
     // Load subscription payment history

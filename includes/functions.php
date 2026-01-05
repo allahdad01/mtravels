@@ -1,6 +1,6 @@
 <?php
 // Email sending function using PHPMailer with tracking
-function sendEmail($to, $subject, $body, $isHtml = true, $emailType = 'general', $recipientName = '', $tenantId = null) {
+function sendEmail($to, $subject, $body, $isHtml = true, $emailType = 'general', $recipientName = '', $tenantId = null, $attachments = []) {
     require_once '../vendor/autoload.php';
 
     // Get SMTP settings - tenant-specific or platform fallback
@@ -73,6 +73,18 @@ function sendEmail($to, $subject, $body, $isHtml = true, $emailType = 'general',
 
         if ($isHtml) {
             $mail->AltBody = strip_tags($body);
+        }
+
+        // Add attachments if provided
+        if (!empty($attachments) && is_array($attachments)) {
+            foreach ($attachments as $attachment) {
+                if (is_array($attachment) && isset($attachment['path']) && file_exists($attachment['path'])) {
+                    $name = $attachment['name'] ?? basename($attachment['path']);
+                    $mail->addAttachment($attachment['path'], $name);
+                } elseif (is_string($attachment) && file_exists($attachment)) {
+                    $mail->addAttachment($attachment);
+                }
+            }
         }
 
         $mail->send();
@@ -1031,7 +1043,7 @@ function sendTenantUserNotificationEmail($tenantId, $userName, $userEmail, $user
 }
 
 // Send payment confirmation email to tenant
-function sendPaymentConfirmationEmail($tenantId, $amount, $currency, $paymentDate, $billingCycle) {
+function sendPaymentConfirmationEmail($tenantId, $amount, $currency, $paymentDate, $billingCycle, $paymentId = null, $subscriptionId = null) {
     global $pdo;
 
     if ($pdo === null) {
@@ -1058,6 +1070,18 @@ function sendPaymentConfirmationEmail($tenantId, $amount, $currency, $paymentDat
     if (empty($billingEmail)) {
         error_log("No billing email configured for tenant: {$tenantId} ({$tenantName})");
         return false;
+    }
+
+    // Generate invoice PDF if payment_id is available
+    $attachments = [];
+    if ($paymentId && $subscriptionId) {
+        $pdfPath = generateInvoicePDF($paymentId, $subscriptionId);
+        if ($pdfPath && file_exists($pdfPath)) {
+            $attachments[] = [
+                'path' => $pdfPath,
+                'name' => 'Invoice_' . $paymentId . '.pdf'
+            ];
+        }
     }
 
     // Get agency name from settings
@@ -1137,11 +1161,56 @@ function sendPaymentConfirmationEmail($tenantId, $amount, $currency, $paymentDat
     </html>
     ";
 
-    return sendEmail($billingEmail, $subject, $body, true, 'payment_confirmation', $tenantName, null); // Use platform SMTP for payment confirmations
+    return sendEmail($billingEmail, $subject, $body, true, 'payment_confirmation', $tenantName, null, $attachments); // Use platform SMTP for payment confirmations with PDF attachment
     }
 
-    // Generate PDF ticket from booking data
-function generateTicketPDF($bookingData, $tenantId) {
+    // Generate invoice PDF for email attachment using the existing generate_invoice_pdf.php
+    function generateInvoicePDF($paymentId, $subscriptionId) {
+        global $pdo;
+        
+        try {
+            require_once '../vendor/autoload.php';
+            
+            // Create temp directory if not exists
+            $temp_dir = '../temp/';
+            if (!is_dir($temp_dir)) {
+                mkdir($temp_dir, 0755, true);
+            }
+            
+            // Generate filename with timestamp
+            $pdf_filename = 'invoice_' . $paymentId . '_' . time() . '.pdf';
+            $pdf_path = $temp_dir . $pdf_filename;
+            
+            // Use output buffering to capture PDF from generate_invoice_pdf.php
+            ob_start();
+            
+            // Call the existing generate_invoice_pdf.php with parameters
+            $_GET['payment_id'] = $paymentId;
+            $_GET['subscription_id'] = $subscriptionId;
+            $_GET['output'] = 'file'; // Add flag to save as file
+            $_GET['output_path'] = $pdf_path;
+            
+            // Include the existing invoice generator
+            include '../super_admin/generate_invoice_pdf.php';
+            
+            ob_end_clean();
+            
+            // Check if file was created
+            if (file_exists($pdf_path)) {
+                return $pdf_path;
+            } else {
+                error_log("Invoice PDF file was not created at: {$pdf_path}");
+                return false;
+            }
+            
+        } catch (Exception $e) {
+            error_log("Error generating invoice PDF: " . $e->getMessage());
+            return false;
+        }
+    }
+
+     // Generate PDF ticket from booking data
+    function generateTicketPDF($bookingData, $tenantId) {
     require_once '../../vendor/autoload.php';
     
     // Create new PDF document

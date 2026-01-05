@@ -39,6 +39,12 @@ try {
 } catch (PDOException $e) {
     error_log("Database Error: " . $e->getMessage());
 }
+ // Define h() function if not already defined
+ if (!function_exists('h')) {
+    function h($string) {
+        return htmlspecialchars($string, ENT_QUOTES, 'UTF-8');
+    }
+}
 
 $allowed_features = [];
 

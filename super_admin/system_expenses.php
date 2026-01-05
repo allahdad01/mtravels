@@ -82,14 +82,7 @@ foreach ($expenses as $expense) {
     $categoryTotals[$catId]['currencies'][$expense['currency']] += $expense['amount'];
 }
 
-// Helper function to format currency
-function formatCurrency($amount, $currency) {
-    if ($currency === 'USD') {
-        return '$' . number_format($amount, 2);
-    } else {
-        return '؋' . number_format($amount, 2);
-    }
-}
+
 
 // Calculate averages per currency
 $usdCount = 0;
