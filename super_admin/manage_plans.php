@@ -105,28 +105,27 @@ $plans = $stmt->fetchAll();
                         <!-- [ Main Content ] start -->
                         <div class="row">
                             <div class="col-xl-12">
+                                <!-- Success/Error Alerts -->
                                 <?php if (isset($_GET['success'])): ?>
                                 <div class="alert alert-success alert-dismissible fade show" role="alert">
-                                    <?php 
-                                    $success_message = '';
+                                    <?php
                                     switch ($_GET['success']) {
                                         case 'plan_created':
-                                            $success_message = __('plan_created_successfully');
+                                            echo __('plan_created_successfully');
                                             break;
                                         case 'plan_updated':
-                                            $success_message = __('plan_updated_successfully');
+                                            echo __('plan_updated_successfully');
                                             break;
                                         default:
-                                            $success_message = __('operation_completed_successfully');
+                                            echo __('operation_completed_successfully');
                                     }
-                                    echo $success_message;
                                     ?>
                                     <button type="button" class="close" data-dismiss="alert" aria-label="Close">
                                         <span aria-hidden="true">&times;</span>
                                     </button>
                                 </div>
                                 <?php endif; ?>
-                                
+
                                 <?php if (isset($_GET['error'])): ?>
                                 <div class="alert alert-danger alert-dismissible fade show" role="alert">
                                     <?= htmlspecialchars($_GET['error']) ?>
@@ -135,169 +134,215 @@ $plans = $stmt->fetchAll();
                                     </button>
                                 </div>
                                 <?php endif; ?>
-                                
+
                                 <div class="card">
-                                     <div class="card-header">
-                                         <h5><?= __('plans_list') ?></h5>
-                                         <button class="btn btn-primary float-right" data-toggle="modal" data-target="#createPlanModal">
-                                             <i class="feather icon-plus mr-1"></i><?= __('create_plan') ?>
-                                         </button>
-                                     </div>
-                                     <div class="card-body table-border-style">
-                                         <div class="mb-3">
-                                             <form method="GET" action="manage_plans.php" class="form-inline">
-                                                 <input type="text" class="form-control mr-2" name="search" placeholder="Search plans..." value="<?= htmlspecialchars($search_query) ?>" style="width: 250px;">
-                                                 <button type="submit" class="btn btn-primary mr-2">Search</button>
-                                                 <?php if (!empty($search_query)): ?>
-                                                 <a href="manage_plans.php" class="btn btn-secondary">Clear</a>
-                                                 <?php endif; ?>
-                                             </form>
-                                         </div>
-                                         <div class="table-responsive">
+                                    <div class="card-header d-flex justify-content-between align-items-center">
+                                        <h5>Plan Management</h5>
+                                        <button class="btn btn-primary" data-toggle="modal" data-target="#createPlanModal">
+                                            <i class="feather icon-plus mr-1"></i>Create Plan
+                                        </button>
+                                    </div>
+
+                                    <!-- Stats Cards -->
+                                    <div class="stats-cards">
+                                        <div class="stat-card">
+                                            <div class="stat-icon">
+                                                <i class="feather icon-package"></i>
+                                            </div>
+                                            <div class="stat-value"><?= $total_items ?></div>
+                                            <div class="stat-label">Total Plans</div>
+                                        </div>
+                                        <div class="stat-card">
+                                            <div class="stat-icon">
+                                                <i class="feather icon-check-circle"></i>
+                                            </div>
+                                            <div class="stat-value"><?= count(array_filter($plans, fn($p) => $p['status'] === 'active')) ?></div>
+                                            <div class="stat-label">Active Plans</div>
+                                        </div>
+                                        <div class="stat-card">
+                                            <div class="stat-icon">
+                                                <i class="feather icon-users"></i>
+                                            </div>
+                                            <div class="stat-value">
+                                                <?php
+                                                $total_users = array_sum(array_column($plans, 'max_users'));
+                                                echo number_format($total_users);
+                                                ?>
+                                            </div>
+                                            <div class="stat-label">Max Users</div>
+                                        </div>
+                                        <div class="stat-card">
+                                            <div class="stat-icon">
+                                                <i class="feather icon-dollar-sign"></i>
+                                            </div>
+                                            <div class="stat-value">
+                                                <?php
+                                                $total_revenue = array_sum(array_column($plans, 'price'));
+                                                echo '$' . number_format($total_revenue, 0);
+                                                ?>
+                                            </div>
+                                            <div class="stat-label">Total Value</div>
+                                        </div>
+                                    </div>
+
+                                    <div class="card-body table-border-style">
+                                        <!-- Search Form -->
+                                        <div class="mb-3">
+                                            <form method="GET" action="manage_plans.php" class="form-inline">
+                                                <input type="text" class="form-control mr-2" name="search" placeholder="Search plans..." value="<?= htmlspecialchars($search_query) ?>" style="width: 250px;">
+                                                <button type="submit" class="btn btn-primary mr-2">Search</button>
+                                                <?php if (!empty($search_query)): ?>
+                                                <a href="manage_plans.php" class="btn btn-secondary">Clear</a>
+                                                <?php endif; ?>
+                                            </form>
+                                        </div>
+
+                                        <div class="table-responsive">
                                             <table class="table table-hover">
                                                 <thead>
                                                     <tr>
-                                                        <th><?= __('name') ?></th>
-                                                        <th><?= __('description') ?></th>
-                                                        <th><?= __('features') ?></th>
-                                                        <th><?= __('price') ?? 'Price' ?></th>
-                                                        <th><?= __('max_users') ?? 'Max Users' ?></th>
-                                                        <th><?= __('trial_days') ?? 'Trial Days' ?></th>
-                                                        <th><?= __('status') ?></th>
-                                                        <th><?= __('created_at') ?></th>
-                                                        <th><?= __('actions') ?></th>
+                                                        <th>Name</th>
+                                                        <th>Description</th>
+                                                        <th>Features</th>
+                                                        <th>Price</th>
+                                                        <th>Max Users</th>
+                                                        <th>Trial Days</th>
+                                                        <th>Status</th>
+                                                        <th>Created</th>
+                                                        <th>Actions</th>
                                                     </tr>
                                                 </thead>
                                                 <tbody>
                                                     <?php foreach ($plans as $plan): ?>
                                                     <tr>
-                                                        <td><?= htmlspecialchars($plan['name']) ?></td>
-                                                        <td><?= htmlspecialchars($plan['description']) ?></td>
+                                                        <td>
+                                                            <div class="plan-name"><?= htmlspecialchars($plan['name']) ?></div>
+                                                        </td>
+                                                        <td>
+                                                            <div class="description-cell">
+                                                                <div class="description-text" title="<?= htmlspecialchars($plan['description']) ?>">
+                                                                    <?= htmlspecialchars($plan['description']) ?>
+                                                                </div>
+                                                            </div>
+                                                        </td>
                                                         <td>
                                                             <?php
                                                             $features = json_decode($plan['features'], true);
-                                                            echo htmlspecialchars(implode(', ', is_array($features) ? $features : []));
                                                             ?>
+                                                            <div class="features-badges" data-features='<?= htmlspecialchars($plan['features']) ?>'>
+                                                                <?php
+                                                                if (is_array($features) && !empty($features)) {
+                                                                    $display_features = array_slice($features, 0, 3); // Show first 3
+                                                                    foreach ($display_features as $feature) {
+                                                                        echo '<span class="feature-badge">' . htmlspecialchars($feature) . '</span>';
+                                                                    }
+                                                                    if (count($features) > 3) {
+                                                                        echo '<span class="feature-badge feature-badge-more" data-toggle="modal" data-target="#featuresModal" data-plan="' . htmlspecialchars($plan['name']) . '" title="Click to view all features">+' . (count($features) - 3) . ' more</span>';
+                                                                    }
+                                                                } else {
+                                                                    echo '<span class="text-muted">No features</span>';
+                                                                }
+                                                                ?>
+                                                            </div>
                                                         </td>
-                                                        <td><?= number_format($plan['price'], 2) ?></td>
-                                                        <td><?= htmlspecialchars($plan['max_users']) ?></td>
-                                                        <td><?= htmlspecialchars($plan['trial_days']) ?></td>
                                                         <td>
-                                                            <span class="badge badge-<?= $plan['status'] === 'active' ? 'success' : 'warning' ?>">
+                                                            <div class="price-cell">$<?= number_format($plan['price'], 2) ?></div>
+                                                        </td>
+                                                        <td class="text-center">
+                                                            <span class="badge badge-secondary">
+                                                                <?= htmlspecialchars($plan['max_users']) ?>
+                                                            </span>
+                                                        </td>
+                                                        <td class="text-center">
+                                                            <span class="badge badge-info">
+                                                                <?= htmlspecialchars($plan['trial_days']) ?>
+                                                            </span>
+                                                        </td>
+                                                        <td>
+                                                            <span class="status-badge status-<?= $plan['status'] ?>">
                                                                 <?= htmlspecialchars($plan['status']) ?>
                                                             </span>
                                                         </td>
-                                                        <td><?= date('M d, Y', strtotime($plan['created_at'])) ?></td>
                                                         <td>
-                                                            <a href="edit_plan.php?name=<?= urlencode($plan['name']) ?>" class="btn btn-sm btn-primary">
-                                                                <i class="feather icon-edit"></i>
-                                                            </a>
-                                                            <button class="btn btn-sm btn-danger delete-plan" data-name="<?= htmlspecialchars($plan['name']) ?>">
-                                                                <i class="feather icon-trash-2"></i>
-                                                            </button>
+                                                            <div class="date-cell">
+                                                                <?= date('M j, Y', strtotime($plan['created_at'])) ?>
+                                                            </div>
+                                                        </td>
+                                                        <td>
+                                                            <div class="actions-cell">
+                                                                <a href="edit_plan.php?name=<?= urlencode($plan['name']) ?>" class="btn btn-sm btn-primary" title="Edit Plan">
+                                                                    <i class="feather icon-edit"></i> Edit
+                                                                </a>
+                                                                <button class="btn btn-sm btn-danger delete-plan ml-1" data-name="<?= htmlspecialchars($plan['name']) ?>" title="Delete Plan">
+                                                                    <i class="feather icon-trash-2"></i> Delete
+                                                                </button>
+                                                            </div>
                                                         </td>
                                                     </tr>
                                                     <?php endforeach; ?>
                                                     <?php if (empty($plans)): ?>
-                                                    <tr><td colspan="9" class="text-center"><?= __('no_plans_found') ?></td></tr>
+                                                    <tr>
+                                                        <td colspan="9" class="text-center py-5">
+                                                            <div class="text-muted">
+                                                                <i class="feather icon-package" style="font-size: 3rem; margin-bottom: 1rem; display: block;"></i>
+                                                                <h5>No Plans Found</h5>
+                                                                <p>Create your first subscription plan to get started.</p>
+                                                            </div>
+                                                        </td>
+                                                    </tr>
                                                     <?php endif; ?>
                                                 </tbody>
-                                                </table>
-                                                </div>
-                                                
-                                                <!-- Pagination -->
-                                                <?php if ($total_pages > 1): ?>
-                                                <nav aria-label="Page navigation" class="mt-3">
-                                                <ul class="pagination justify-content-center">
+                                            </table>
+                                        </div>
+
+                                        <!-- Pagination -->
+                                        <?php if ($total_pages > 1): ?>
+                                        <nav aria-label="Page navigation" class="mt-3">
+                                            <ul class="pagination justify-content-center">
                                                 <li class="page-item <?= $current_page === 1 ? 'disabled' : '' ?>">
-                                                <a class="page-link" href="?page=<?= $current_page - 1 ?><?= !empty($search_query) ? '&search=' . urlencode($search_query) : '' ?>">Previous</a>
+                                                    <a class="page-link" href="?page=<?= $current_page - 1 ?><?= !empty($search_query) ? '&search=' . urlencode($search_query) : '' ?>">
+                                                        <i class="feather icon-chevron-left"></i> Previous
+                                                    </a>
                                                 </li>
-                                                <?php 
+
+                                                <?php
                                                 $start_page = max(1, $current_page - 2);
                                                 $end_page = min($total_pages, $current_page + 2);
                                                 if ($start_page > 1): ?>
-                                                <li class="page-item">
-                                                <a class="page-link" href="?page=1<?= !empty($search_query) ? '&search=' . urlencode($search_query) : '' ?>">1</a>
-                                                </li>
-                                                <?php if ($start_page > 2): ?>
-                                                <li class="page-item disabled"><span class="page-link">...</span></li>
+                                                    <li class="page-item">
+                                                        <a class="page-link" href="?page=1<?= !empty($search_query) ? '&search=' . urlencode($search_query) : '' ?>">1</a>
+                                                    </li>
+                                                    <?php if ($start_page > 2): ?>
+                                                        <li class="page-item disabled"><span class="page-link">...</span></li>
+                                                    <?php endif; ?>
                                                 <?php endif; ?>
-                                                <?php endif; ?>
-                                                <?php for ($i = $start_page; $i <= $end_page; $i++): ?>
-                                                <li class="page-item <?= $i === $current_page ? 'active' : '' ?>">
-                                                <a class="page-link" href="?page=<?= $i ?><?= !empty($search_query) ? '&search=' . urlencode($search_query) : '' ?>"><?= $i ?></a>
-                                                </li>
-                                                <?php endfor; ?>
-                                                <?php if ($end_page < $total_pages): ?>
-                                                <?php if ($end_page < $total_pages - 1): ?>
-                                                <li class="page-item disabled"><span class="page-link">...</span></li>
-                                                <?php endif; ?>
-                                                <li class="page-item">
-                                                <a class="page-link" href="?page=<?= $total_pages ?><?= !empty($search_query) ? '&search=' . urlencode($search_query) : '' ?>"><?= $total_pages ?></a>
-                                                </li>
-                                                <?php endif; ?>
-                                                <li class="page-item <?= $current_page === $total_pages ? 'disabled' : '' ?>">
-                                                <a class="page-link" href="?page=<?= $current_page + 1 ?><?= !empty($search_query) ? '&search=' . urlencode($search_query) : '' ?>">Next</a>
-                                                </li>
-                                                </ul>
-                                                </nav>
-                                                <div class="text-center text-muted small mt-2">
-                                                Page <?= $current_page ?> of <?= $total_pages ?> | Showing <?= count($plans) ?> of <?= $total_items ?> plans
-                                                </div>
-                                                <?php endif; ?>
-                                                </div>
-                                                </div>
-                                                </div>
-                                                </div>
 
-                                                <!-- Create Plan Modal -->
-                        <div class="modal fade" id="createPlanModal" tabindex="-1" role="dialog" aria-labelledby="createPlanModalLabel" aria-hidden="true">
-                            <div class="modal-dialog modal-lg modal-dialog-centered" role="document">
-                                <div class="modal-content">
-                                    <div class="modal-header bg-primary text-white">
-                                        <h5 class="modal-title" id="createPlanModalLabel"><?= __('create_new_plan') ?></h5>
-                                        <button type="button" class="close text-white" data-dismiss="modal" aria-label="Close">
-                                            <span aria-hidden="true">&times;</span>
-                                        </button>
-                                    </div>
-                                    <div class="modal-body">
-                                        <form id="createPlanForm" method="POST" action="create_plan.php">
-                                            <input type="hidden" name="csrf_token" value="<?= htmlspecialchars($_SESSION['csrf_token']) ?>">
-                                            
-                                            <div class="form-group">
-                                                <label for="planName"><?= __('plan_name') ?></label>
-                                                <input type="text" class="form-control" id="planName" name="name" required>
-                                            </div>
-                                            
-                                            <div class="form-group">
-                                                <label for="description"><?= __('description') ?></label>
-                                                <textarea class="form-control" id="description" name="description" required></textarea>
-                                            </div>
-                                            
-                                            <div class="form-group">
-                                                <label for="features"><?= __('features') ?></label>
-                                                <textarea class="form-control" id="features" name="features" placeholder='["feature1","feature2"]' required></textarea>
-                                            </div>
-                                            
-                                            <div class="form-group">
-                                                <label for="price"><?= __('price') ?? 'Price' ?></label>
-                                                <input type="number" step="0.01" min="0" class="form-control" id="price" name="price" value="0.00">
-                                            </div>
-                                            
-                                            <div class="form-group">
-                                                <label for="max_users"><?= __('max_users') ?? 'Max Users' ?></label>
-                                                <input type="number" min="0" class="form-control" id="max_users" name="max_users" value="0">
-                                            </div>
-                                            
-                                            <div class="form-group">
-                                                <label for="trial_days"><?= __('trial_days') ?? 'Trial Days' ?></label>
-                                                <input type="number" min="0" class="form-control" id="trial_days" name="trial_days" value="0">
-                                            </div>
-                                        </form>
-                                    </div>
-                                    <div class="modal-footer">
-                                        <button type="button" class="btn btn-outline-secondary" data-dismiss="modal"><?= __('cancel') ?></button>
-                                        <button type="submit" form="createPlanForm" class="btn btn-primary"><?= __('create') ?></button>
+                                                <?php for ($i = $start_page; $i <= $end_page; $i++): ?>
+                                                    <li class="page-item <?= $i === $current_page ? 'active' : '' ?>">
+                                                        <a class="page-link" href="?page=<?= $i ?><?= !empty($search_query) ? '&search=' . urlencode($search_query) : '' ?>"><?= $i ?></a>
+                                                    </li>
+                                                <?php endfor; ?>
+
+                                                <?php if ($end_page < $total_pages): ?>
+                                                    <?php if ($end_page < $total_pages - 1): ?>
+                                                        <li class="page-item disabled"><span class="page-link">...</span></li>
+                                                    <?php endif; ?>
+                                                    <li class="page-item">
+                                                        <a class="page-link" href="?page=<?= $total_pages ?><?= !empty($search_query) ? '&search=' . urlencode($search_query) : '' ?>"><?= $total_pages ?></a>
+                                                    </li>
+                                                <?php endif; ?>
+
+                                                <li class="page-item <?= $current_page === $total_pages ? 'disabled' : '' ?>">
+                                                    <a class="page-link" href="?page=<?= $current_page + 1 ?><?= !empty($search_query) ? '&search=' . urlencode($search_query) : '' ?>">
+                                                        Next <i class="feather icon-chevron-right"></i>
+                                                    </a>
+                                                </li>
+                                            </ul>
+                                        </nav>
+                                        <div class="text-center text-muted small mt-2">
+                                            Page <?= $current_page ?> of <?= $total_pages ?> | Showing <?= count($plans) ?> of <?= $total_items ?> plans
+                                        </div>
+                                        <?php endif; ?>
                                     </div>
                                 </div>
                             </div>
@@ -308,27 +353,162 @@ $plans = $stmt->fetchAll();
             </div>
         </div>
     </div>
+</div>
+
+<!-- Create Plan Modal -->
+<div class="modal fade" id="createPlanModal" tabindex="-1" role="dialog" aria-labelledby="createPlanModalLabel" aria-hidden="true">
+    <div class="modal-dialog modal-lg modal-dialog-centered" role="document">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title" id="createPlanModalLabel">
+                    <i class="feather icon-plus"></i> Create New Plan
+                </h5>
+                <button type="button" class="close" data-dismiss="modal" aria-label="Close">
+                    <span aria-hidden="true">&times;</span>
+                </button>
+            </div>
+            <div class="modal-body">
+                <form id="createPlanForm" method="POST" action="create_plan.php">
+                    <input type="hidden" name="csrf_token" value="<?= htmlspecialchars($_SESSION['csrf_token']) ?>">
+
+                    <div class="row">
+                        <div class="col-md-6">
+                            <div class="form-group">
+                                <label for="planName">Plan Name</label>
+                                <input type="text" class="form-control" id="planName" name="name" required>
+                            </div>
+                        </div>
+                        <div class="col-md-6">
+                            <div class="form-group">
+                                <label for="price">Price ($)</label>
+                                <input type="number" step="0.01" min="0" class="form-control" id="price" name="price" value="0.00">
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="form-group">
+                        <label for="description">Description</label>
+                        <textarea class="form-control" id="description" name="description" rows="3" required></textarea>
+                    </div>
+
+                    <div class="row">
+                        <div class="col-md-4">
+                            <div class="form-group">
+                                <label for="max_users">Max Users</label>
+                                <input type="number" min="0" class="form-control" id="max_users" name="max_users" value="0">
+                            </div>
+                        </div>
+                        <div class="col-md-4">
+                            <div class="form-group">
+                                <label for="trial_days">Trial Days</label>
+                                <input type="number" min="0" class="form-control" id="trial_days" name="trial_days" value="0">
+                            </div>
+                        </div>
+                        <div class="col-md-4">
+                            <div class="form-group">
+                                <label for="status">Status</label>
+                                <select class="form-control" id="status" name="status">
+                                    <option value="active">Active</option>
+                                    <option value="inactive">Inactive</option>
+                                </select>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="form-group">
+                        <label for="features">Features (JSON Array)</label>
+                        <textarea class="form-control" id="features" name="features" rows="4" placeholder='["feature1","feature2","feature3"]' required></textarea>
+                        <small class="form-text text-muted">Enter features as a JSON array, e.g., ["feature1", "feature2"]</small>
+                    </div>
+                </form>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-dismiss="modal">Cancel</button>
+                <button type="submit" form="createPlanForm" class="btn btn-primary">Create Plan</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Features Modal -->
+<div class="modal fade" id="featuresModal" tabindex="-1" role="dialog" aria-labelledby="featuresModalLabel" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered" role="document">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title" id="featuresModalLabel">
+                    <i class="feather icon-list"></i> All Features - <span id="planName"></span>
+                </h5>
+                <button type="button" class="close" data-dismiss="modal" aria-label="Close">
+                    <span aria-hidden="true">&times;</span>
+                </button>
+            </div>
+            <div class="modal-body">
+                <div id="featuresList" class="features-modal-list">
+                    <!-- Features will be populated here -->
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
 
 <!-- Required Js -->
 <script src="../assets/js/vendor-all.min.js"></script>
 <script src="../assets/plugins/bootstrap/js/bootstrap.min.js"></script>
 <script src="../assets/js/pcoded.min.js"></script>
 <script>
-document.querySelectorAll('.delete-plan').forEach(button => {
-    button.addEventListener('click', function() {
-        if (confirm('<?= __('confirm_delete_plan') ?>')) {
+// JavaScript for Plan Management
+document.addEventListener('DOMContentLoaded', () => {
+    // Delete plan functionality
+    document.querySelectorAll('.delete-plan').forEach(button => {
+        button.addEventListener('click', function() {
             const planName = this.getAttribute('data-name');
-            const form = document.createElement('form');
-            form.method = 'POST';
-            form.action = 'delete_plan.php';
-            form.innerHTML = `
-                <input type="hidden" name="csrf_token" value="<?= htmlspecialchars($_SESSION['csrf_token']) ?>">
-                <input type="hidden" name="plan_name" value="${planName}">
-            `;
-            document.body.appendChild(form);
-            form.submit();
-        }
+
+            if (confirm(`Are you sure you want to delete the plan "${planName}"? This action cannot be undone.`)) {
+                const form = document.createElement('form');
+                form.method = 'POST';
+                form.action = 'delete_plan.php';
+                form.innerHTML = `
+                    <input type="hidden" name="csrf_token" value="<?= htmlspecialchars($_SESSION['csrf_token']) ?>">
+                    <input type="hidden" name="plan_name" value="${planName}">
+                `;
+                document.body.appendChild(form);
+                form.submit();
+            }
+        });
     });
+
+    // Handle features modal
+    document.querySelectorAll('.feature-badge-more').forEach(button => {
+        button.addEventListener('click', function() {
+            const planName = this.getAttribute('data-plan');
+            const featuresContainer = this.closest('.features-badges');
+            const features = JSON.parse(featuresContainer.getAttribute('data-features') || '[]');
+
+            document.getElementById('planName').textContent = planName;
+            const featuresList = document.getElementById('featuresList');
+            featuresList.innerHTML = '';
+
+            if (features.length === 0) {
+                featuresList.innerHTML = '<div class="text-center text-muted py-4">No features available</div>';
+                return;
+            }
+
+            features.forEach(feature => {
+                const badge = document.createElement('span');
+                badge.className = 'feature-badge';
+                badge.textContent = feature;
+                featuresList.appendChild(badge);
+            });
+        });
+    });
+
+    // Auto-hide alerts after 5 seconds
+    setTimeout(() => {
+        document.querySelectorAll('.alert').forEach(alert => {
+            const closeBtn = alert.querySelector('.close');
+            if (closeBtn) closeBtn.click();
+        });
+    }, 5000);
 });
 </script>
 </body>

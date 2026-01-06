@@ -7,7 +7,7 @@
 // Check authentication and permissions
 session_start();
 require_once '../includes/db.php';
-require_once '../includes/conn.php';
+
 
 // Verify user authentication
 if (!isset($_SESSION['user_id'])) {
@@ -674,50 +674,56 @@ include 'header.php';
 <div class="pcoded-main-container">
     <div class="pcoded-wrapper">
         <div class="pcoded-content">
-            <div class="page-header">
-                <div class="page-block">
-                    <div class="row align-items-center">
-                        <div class="col-md-8">
-                            <div class="page-header-title">
-                                <h5 class="m-b-10">WhatsApp Automation Settings</h5>
-                                <p class="m-b-0">Configure WhatsApp notifications for your tenant</p>
+            <div class="pcoded-inner-content">
+                <div class="main-body">
+                    <div class="page-wrapper">
+                        <div class="main-content">
+                            <div class="page-header card">
+                                <div class="row align-items-center">
+                                    <div class="col-md-8">
+                                        <h5 class="mb-0"><i class="feather icon-message-square mr-2"></i><?php echo __('whatsapp_automation_settings'); ?></h5>
+                                        <p class="mb-0 mt-1" style="font-size: 14px; opacity: 0.9;"><?php echo __('configure_whatsapp_notifications'); ?></p>
+                                    </div>
+                                    <div class="col-md-4 text-end">
+                                        <button type="button" class="btn btn-outline-light btn-sm" id="test-connection-btn" onclick="testConnection()">
+                                            <i class="fas fa-plug mr-1" id="test-connection-icon"></i> <span id="test-connection-text"><?php echo __('test_connection'); ?></span>
+                                        </button>
+                                    </div>
+                                </div>
                             </div>
-                        </div>
-                        <div class="col-md-4">
-                            <div class="text-right">
-                                <button type="button" class="btn btn-primary" id="test-connection-btn" onclick="testConnection()">
-                                    <i class="fas fa-plug" id="test-connection-icon"></i> <span id="test-connection-text">Test Connection</span>
-                                </button>
-                            </div>
-                        </div>
-                    </div>
-                </div>
-            </div>
 
-            <div class="main-body">
-                <div class="page-wrapper">
-                    <div class="row">
+                            <div class="row">
                         <!-- Settings Tab -->
                         <div class="col-md-6">
-                            <div class="card">
-                                <div class="card-header">
-                                    <h5>WhatsApp Configuration</h5>
-                                </div>
-                                <div class="card-body">
-                                    <!-- System Information -->
-                                    <div class="alert alert-info">
-                                        <strong>System Information:</strong><br>
-                                        cURL Available: <?= function_exists('curl_init') ? '✅ Yes' : '❌ No' ?><br>
-                                        SSL Enabled: <?= extension_loaded('openssl') ? '✅ Yes' : '❌ No' ?><br>
-                                        PHP Version: <?= phpversion() ?><br>
-                                        Server: <?= $_SERVER['SERVER_SOFTWARE'] ?? 'Unknown' ?>
+                                <div class="card">
+                                    <div class="card-header">
+                                        <h5><i class="feather icon-settings mr-2"></i><?php echo __('whatsapp_configuration'); ?></h5>
                                     </div>
-                                    
-                                    <form id="whatsapp-settings-form">
+                                    <div class="card-body">
+                                        <!-- System Information -->
+                                        <div class="alert alert-info border-0 shadow-sm mb-4">
+                                            <h6 class="text-primary mb-3"><i class="feather icon-info mr-2"></i><?php echo __('system_information'); ?></h6>
+                                            <div class="row text-center">
+                                                <div class="col-4">
+                                                    <div class="font-weight-bold"><?php echo function_exists('curl_init') ? '<span class="text-success">✅</span>' : '<span class="text-danger">❌</span>'; ?></div>
+                                                    <small class="text-muted">cURL</small>
+                                                </div>
+                                                <div class="col-4">
+                                                    <div class="font-weight-bold"><?php echo extension_loaded('openssl') ? '<span class="text-success">✅</span>' : '<span class="text-danger">❌</span>'; ?></div>
+                                                    <small class="text-muted">SSL</small>
+                                                </div>
+                                                <div class="col-4">
+                                                    <div class="font-weight-bold text-primary"><?php echo phpversion(); ?></div>
+                                                    <small class="text-muted">PHP</small>
+                                                </div>
+                                            </div>
+                                        </div>
+                                        
+                                        <form id="whatsapp-settings-form">
                                         <div class="row">
                                             <div class="col-md-6">
                                                 <div class="form-group">
-                                                    <label for="provider">Provider</label>
+                                                    <label for="provider"><i class="feather icon-server mr-2"></i><?php echo __('provider'); ?></label>
                                                     <select class="form-control" id="provider" name="provider">
                                                         <option value="meta" <?= ($whatsapp_settings['provider'] ?? 'meta') === 'meta' ? 'selected' : '' ?>>Meta WhatsApp Business API</option>
                                                         <option value="twilio" <?= ($whatsapp_settings['provider'] ?? 'meta') === 'twilio' ? 'selected' : '' ?>>Twilio</option>
@@ -728,7 +734,7 @@ include 'header.php';
                                             </div>
                                             <div class="col-md-6">
                                                 <div class="form-group">
-                                                    <label for="status">Status</label>
+                                                    <label for="status"><i class="feather icon-toggle-left mr-2"></i><?php echo __('status'); ?></label>
                                                     <select class="form-control" id="status" name="status">
                                                         <option value="active" <?= ($whatsapp_settings['status'] ?? 'inactive') === 'active' ? 'selected' : '' ?>>Active</option>
                                                         <option value="inactive" <?= ($whatsapp_settings['status'] ?? 'inactive') === 'inactive' ? 'selected' : '' ?>>Inactive</option>
@@ -739,49 +745,49 @@ include 'header.php';
                                         </div>
 
                                         <div class="form-group">
-                                            <label for="api_token">API Token</label>
+                                            <label for="api_token"><i class="feather icon-key mr-2"></i><?php echo __('api_token'); ?></label>
                                             <input type="password" class="form-control" id="api_token" name="api_token"
-                                                   value="<?= htmlspecialchars($whatsapp_settings['api_token'] ?? '') ?>"
-                                                   placeholder="Enter your WhatsApp API token">
+                                                   value="<?php echo htmlspecialchars($whatsapp_settings['api_token'] ?? ''); ?>"
+                                                   placeholder="<?php echo __('enter_api_token'); ?>">
                                         </div>
 
                                         <div class="form-group">
-                                            <label for="phone_number_id">Phone Number ID</label>
+                                            <label for="phone_number_id"><i class="feather icon-phone mr-2"></i><?php echo __('phone_number_id'); ?></label>
                                             <input type="text" class="form-control" id="phone_number_id" name="phone_number_id"
-                                                   value="<?= htmlspecialchars($whatsapp_settings['phone_number_id'] ?? '') ?>"
-                                                   placeholder="Enter your WhatsApp Business Phone Number ID">
+                                                   value="<?php echo htmlspecialchars($whatsapp_settings['phone_number_id'] ?? ''); ?>"
+                                                   placeholder="<?php echo __('enter_phone_number_id'); ?>">
                                         </div>
 
                                         <div class="form-group">
-                                            <label for="webhook_verify_token">Webhook Verify Token</label>
+                                            <label for="webhook_verify_token"><i class="feather icon-shield mr-2"></i><?php echo __('webhook_verify_token'); ?></label>
                                             <input type="text" class="form-control" id="webhook_verify_token" name="webhook_verify_token"
-                                                   value="<?= htmlspecialchars($whatsapp_settings['webhook_verify_token'] ?? '') ?>"
-                                                   placeholder="Enter webhook verification token">
+                                                   value="<?php echo htmlspecialchars($whatsapp_settings['webhook_verify_token'] ?? ''); ?>"
+                                                   placeholder="<?php echo __('enter_webhook_token'); ?>">
                                         </div>
 
                                         <div class="form-group">
-                                            <label for="webhook_url">Webhook URL</label>
+                                            <label for="webhook_url"><i class="feather icon-link mr-2"></i><?php echo __('webhook_url'); ?></label>
                                             <input type="text" class="form-control" id="webhook_url" name="webhook_url"
-                                                   value="<?= htmlspecialchars($whatsapp_settings['webhook_url'] ?? '') ?>"
-                                                   placeholder="Enter your webhook URL">
+                                                   value="<?php echo htmlspecialchars($whatsapp_settings['webhook_url'] ?? ''); ?>"
+                                                   placeholder="<?php echo __('enter_webhook_url'); ?>">
                                             <small class="form-text text-muted">
-                                                URL where WhatsApp will send status updates and messages
+                                                <i class="feather icon-info mr-1"></i><?php echo __('webhook_url_hint'); ?>
                                             </small>
                                         </div>
 
                                         <div class="row">
                                             <div class="col-md-6">
                                                 <div class="form-group">
-                                                    <label for="max_messages_per_hour">Max Messages/Hour</label>
+                                                    <label for="max_messages_per_hour"><i class="feather icon-clock mr-2"></i><?php echo __('max_messages_per_hour'); ?></label>
                                                     <input type="number" class="form-control" id="max_messages_per_hour" name="max_messages_per_hour"
-                                                           value="<?= $whatsapp_settings['max_messages_per_hour'] ?? 1000 ?>" min="1">
+                                                           value="<?php echo $whatsapp_settings['max_messages_per_hour'] ?? 1000; ?>" min="1">
                                                 </div>
                                             </div>
                                             <div class="col-md-6">
                                                 <div class="form-group">
-                                                    <label for="retry_attempts">Retry Attempts</label>
+                                                    <label for="retry_attempts"><i class="feather icon-refresh-cw mr-2"></i><?php echo __('retry_attempts'); ?></label>
                                                     <input type="number" class="form-control" id="retry_attempts" name="retry_attempts"
-                                                           value="<?= $whatsapp_settings['retry_attempts'] ?? 3 ?>" min="0" max="10">
+                                                           value="<?php echo $whatsapp_settings['retry_attempts'] ?? 3; ?>" min="0" max="10">
                                                 </div>
                                             </div>
                                         </div>
@@ -789,26 +795,26 @@ include 'header.php';
                                         <div class="form-group">
                                             <div class="custom-control custom-switch">
                                                 <input type="checkbox" class="custom-control-input" id="auto_notifications" name="auto_notifications"
-                                                       <?= ($whatsapp_settings['auto_notifications'] ?? 1) ? 'checked' : '' ?>>
+                                                       <?php echo ($whatsapp_settings['auto_notifications'] ?? 1) ? 'checked' : ''; ?>>
                                                 <label class="custom-control-label" for="auto_notifications">
-                                                    Enable Auto Notifications
+                                                    <i class="feather icon-bell mr-2"></i><?php echo __('enable_auto_notifications'); ?>
                                                 </label>
                                             </div>
                                         </div>
 
-                                        <div class="form-group">
+                                        <div class="form-group mb-0">
                                             <div class="custom-control custom-switch">
                                                 <input type="checkbox" class="custom-control-input" id="real_time_notifications" name="real_time_notifications"
-                                                       <?= ($whatsapp_settings['real_time_notifications'] ?? 0) ? 'checked' : '' ?>>
+                                                       <?php echo ($whatsapp_settings['real_time_notifications'] ?? 0) ? 'checked' : ''; ?>>
                                                 <label class="custom-control-label" for="real_time_notifications">
-                                                    Real-time Notifications (Queue if disabled)
+                                                    <i class="feather icon-zap mr-2"></i><?php echo __('real_time_notifications'); ?>
                                                 </label>
                                             </div>
                                         </div>
 
-                                        <div class="form-group">
-                                            <button type="submit" class="btn btn-success">
-                                                <i class="fas fa-save"></i> Save Settings
+                                        <div class="form-group mb-0 mt-4">
+                                            <button type="submit" class="btn btn-primary">
+                                                <i class="feather icon-save mr-2"></i><?php echo __('save_settings'); ?>
                                             </button>
                                         </div>
                                     </form>
@@ -817,96 +823,114 @@ include 'header.php';
                         </div>
 
                         <!-- Templates Tab -->
-                        <div class="col-md-6">
-                            <div class="card">
-                                <div class="card-header">
-                                    <h5>Message Templates</h5>
-                                    <button type="button" class="btn btn-sm btn-primary float-right" onclick="openTemplateModal()">
-                                        <i class="fas fa-plus"></i> Add Template
-                                    </button>
-                                </div>
-                                <div class="card-body">
-                                    <div id="templates-list">
-                                        <?php if (empty($templates)): ?>
-                                            <p class="text-muted">No templates found. Add your first template.</p>
-                                        <?php else: ?>
-                                            <?php foreach ($templates as $template): ?>
-                                                <div class="template-item" data-id="<?= $template['id'] ?>">
-                                                    <div class="d-flex justify-content-between align-items-center">
-                                                        <div>
-                                                            <strong><?= ucfirst($template['template_type']) ?></strong> 
-                                                            <small class="text-muted">(<?= strtoupper($template['language']) ?>)</small>
-                                                            <br>
-                                                            <small><?= htmlspecialchars(substr($template['message_template'], 0, 100)) ?>...</small>
-                                                        </div>
-                                                        <div>
-                                                            <button type="button" class="btn btn-sm btn-outline-primary" onclick="editTemplate(<?= $template['id'] ?>)">
-                                                                <i class="fas fa-edit"></i>
-                                                            </button>
-                                                            <button type="button" class="btn btn-sm btn-outline-danger" onclick="deleteTemplate(<?= $template['id'] ?>)">
-                                                                <i class="fas fa-trash"></i>
-                                                            </button>
-                                                        </div>
-                                                    </div>
-                                                    <hr>
+                                <div class="col-md-6">
+                                <div class="card">
+                                    <div class="card-header">
+                                        <h5><i class="feather icon-file-text mr-2"></i><?php echo __('message_templates'); ?></h5>
+                                        <button type="button" class="btn btn-sm btn-outline-light float-right" onclick="openTemplateModal()">
+                                            <i class="feather icon-plus mr-1"></i><?php echo __('add_template'); ?>
+                                        </button>
+                                    </div>
+                                    <div class="card-body">
+                                        <div id="templates-list">
+                                            <?php if (empty($templates)): ?>
+                                                <div class="text-center text-muted py-4">
+                                                    <i class="feather icon-inbox feather-3x mb-3"></i>
+                                                    <p class="mb-0"><?php echo __('no_templates_found'); ?></p>
+                                                    <small><?php echo __('add_first_template'); ?></small>
                                                 </div>
-                                            <?php endforeach; ?>
-                                        <?php endif; ?>
+                                            <?php else: ?>
+                                                <div class="table-responsive">
+                                                    <table class="table table-hover">
+                                                        <thead>
+                                                            <tr>
+                                                                <th><i class="feather icon-tag mr-1"></i><?php echo __('template'); ?></th>
+                                                                <th><i class="feather icon-globe mr-1"></i><?php echo __('language'); ?></th>
+                                                                <th class="text-right"><i class="feather icon-cog mr-1"></i><?php echo __('actions'); ?></th>
+                                                            </tr>
+                                                        </thead>
+                                                        <tbody>
+                                                            <?php foreach ($templates as $template): ?>
+                                                            <tr data-id="<?php echo $template['id']; ?>">
+                                                                <td>
+                                                                    <span class="badge badge-primary badge-pill">
+                                                                        <?php echo ucfirst(htmlspecialchars($template['template_type'])); ?>
+                                                                    </span>
+                                                                </td>
+                                                                <td>
+                                                                    <span class="text-muted"><?php echo strtoupper(htmlspecialchars($template['language'])); ?></span>
+                                                                </td>
+                                                                <td class="text-right">
+                                                                    <button type="button" class="btn btn-sm btn-outline-primary" onclick="editTemplate(<?php echo $template['id']; ?>)">
+                                                                        <i class="feather icon-edit"></i>
+                                                                    </button>
+                                                                    <button type="button" class="btn btn-sm btn-outline-danger" onclick="deleteTemplate(<?php echo $template['id']; ?>)">
+                                                                        <i class="feather icon-trash-2"></i>
+                                                                    </button>
+                                                                </td>
+                                                            </tr>
+                                                            <?php endforeach; ?>
+                                                        </tbody>
+                                                    </table>
+                                                </div>
+                                            <?php endif; ?>
+                                        </div>
                                     </div>
                                 </div>
                             </div>
-                        </div>
                     </div>
 
-                    <div class="row">
-                        <!-- Test Message Section -->
-                        <div class="col-md-6">
-                            <div class="card">
-                                <div class="card-header">
-                                    <h5>Send Test Message</h5>
-                                </div>
-                                <div class="card-body">
-                                    <form id="test-message-form">
-                                        <div class="form-group">
-                                            <label for="test_phone">Phone Number</label>
-                                            <input type="text" class="form-control" id="test_phone" name="phone_number" 
-                                                   placeholder="+1234567890" required>
-                                            <small class="form-text text-muted">Include country code (e.g., +1 for US)</small>
+                            <div class="row mt-4">
+                                <!-- Test Message Section -->
+                                <div class="col-md-6">
+                                    <div class="card">
+                                        <div class="card-header">
+                                            <h5><i class="feather icon-send mr-2"></i><?php echo __('send_test_message'); ?></h5>
                                         </div>
-                                        <div class="form-group">
-                                            <label for="test_message">Message</label>
-                                            <textarea class="form-control" id="test_message" name="message" rows="3" 
-                                                      placeholder="Enter test message">Hello! This is a test message from your WhatsApp automation system.</textarea>
+                                        <div class="card-body">
+                                            <form id="test-message-form">
+                                                <div class="form-group">
+                                                    <label for="test_phone"><i class="feather icon-phone mr-2"></i><?php echo __('phone_number'); ?></label>
+                                                    <input type="text" class="form-control" id="test_phone" name="phone_number" 
+                                                           placeholder="+1234567890" required>
+                                                    <small class="form-text text-muted">
+                                                        <i class="feather icon-info mr-1"></i><?php echo __('include_country_code'); ?>
+                                                    </small>
+                                                </div>
+                                                <div class="form-group">
+                                                    <label for="test_message"><i class="feather icon-message-square mr-2"></i><?php echo __('message'); ?></label>
+                                                    <textarea class="form-control" id="test_message" name="message" rows="3" 
+                                                              placeholder="<?php echo __('enter_test_message'); ?>"><?php echo __('default_test_message'); ?></textarea>
+                                                </div>
+                                                <button type="submit" class="btn btn-info" id="send-test-btn">
+                                                    <i class="feather icon-paper-plane mr-1" id="send-test-icon"></i> <span id="send-test-text"><?php echo __('send_test_message'); ?></span>
+                                                </button>
+                                            </form>
                                         </div>
-                                        <button type="submit" class="btn btn-info" id="send-test-btn">
-                                            <i class="fas fa-paper-plane" id="send-test-icon"></i> <span id="send-test-text">Send Test Message</span>
-                                        </button>
-                                    </form>
+                                    </div>
                                 </div>
-                            </div>
-                        </div>
 
-                        <!-- Queue Status -->
-                        <div class="col-md-6">
-                            <div class="card">
-                                <div class="card-header">
-                                    <h5>Message Queue Status</h5>
-                                    <button type="button" class="btn btn-sm btn-warning float-right" id="process-queue-btn" onclick="processQueue()">
-                                        <i class="fas fa-cog" id="process-queue-icon"></i> <span id="process-queue-text">Process Queue</span>
-                                    </button>
-                                </div>
-                                <div class="card-body">
-                                    <div id="queue-status">
-                                        <div class="text-center">
-                                            <div class="spinner-border spinner-border-sm" role="status">
-                                                <span class="sr-only">Loading...</span>
+                                <!-- Queue Status -->
+                                <div class="col-md-6">
+                                    <div class="card">
+                                        <div class="card-header">
+                                            <h5><i class="feather icon-list mr-2"></i><?php echo __('message_queue_status'); ?></h5>
+                                            <button type="button" class="btn btn-sm btn-outline-warning float-right" id="process-queue-btn" onclick="processQueue()">
+                                                <i class="feather icon-refresh-cw mr-1" id="process-queue-icon"></i> <span id="process-queue-text"><?php echo __('process_queue'); ?></span>
+                                            </button>
+                                        </div>
+                                        <div class="card-body">
+                                            <div id="queue-status">
+                                                <div class="text-center py-4">
+                                                    <div class="spinner-border text-primary" role="status">
+                                                        <span class="sr-only"><?php echo __('loading'); ?>...</span>
+                                                    </div>
+                                                </div>
                                             </div>
                                         </div>
                                     </div>
                                 </div>
                             </div>
-                        </div>
-                    </div>
                 </div>
             </div>
         </div>
@@ -977,6 +1001,199 @@ include 'header.php';
     <script src="../assets/js/vendor-all.min.js"></script>
     <script src="../assets/plugins/bootstrap/js/bootstrap.min.js"></script>
     <script src="../assets/js/pcoded.min.js"></script>
+
+    <style>
+    /* Enhanced custom styles for WhatsApp Settings */
+    .page-header.card {
+        background: linear-gradient(135deg, #25D366 0%, #128C7E 100%);
+        color: #ffffff;
+        border: none;
+        margin-bottom: 20px;
+        padding: 20px !important;
+        box-shadow: 0 4px 12px rgba(37, 211, 102, 0.3);
+        border-radius: 10px;
+    }
+
+    .page-header.card .row {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+    }
+
+    .page-header.card h5 {
+        color: #ffffff;
+        margin: 0;
+        font-weight: 600;
+    }
+
+    .page-header.card .text-end {
+        text-align: right;
+    }
+
+    .page-header.card .btn {
+        background: rgba(255,255,255,0.2);
+        color: #ffffff;
+        border: 1px solid rgba(255,255,255,0.3);
+        border-radius: 25px;
+        transition: all 0.3s ease;
+    }
+
+    .page-header.card .btn:hover {
+        background: rgba(255,255,255,0.3);
+        border-color: rgba(255,255,255,0.5);
+        transform: translateY(-1px);
+    }
+
+    .card {
+        border-radius: 10px;
+        box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+        transition: transform 0.2s ease-in-out, box-shadow 0.2s ease-in-out;
+        border: none;
+    }
+
+    .card:hover {
+        transform: translateY(-2px);
+        box-shadow: 0 4px 16px rgba(0,0,0,0.15);
+    }
+
+    .card-header {
+        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        color: white;
+        border-radius: 10px 10px 0 0;
+        padding: 1rem 1.5rem;
+        border: none;
+    }
+
+    .card-header h5 {
+        margin: 0;
+        font-weight: 600;
+        display: flex;
+        align-items: center;
+    }
+
+    .card-header .btn-outline-light {
+        background: rgba(255,255,255,0.2);
+        border: 1px solid rgba(255,255,255,0.3);
+        color: #ffffff;
+        border-radius: 20px;
+        transition: all 0.3s ease;
+    }
+
+    .card-header .btn-outline-light:hover {
+        background: rgba(255,255,255,0.3);
+        border-color: rgba(255,255,255,0.5);
+        color: #ffffff;
+    }
+
+    .card-header .btn-outline-warning {
+        background: rgba(255, 193, 7, 0.2);
+        border: 1px solid rgba(255, 193, 7, 0.5);
+        color: #ffc107;
+        border-radius: 20px;
+        transition: all 0.3s ease;
+    }
+
+    .card-header .btn-outline-warning:hover {
+        background: rgba(255, 193, 7, 0.3);
+        border-color: #ffc107;
+        color: #ffc107;
+    }
+
+    .badge {
+        font-size: 0.85em;
+        padding: 0.5em 0.75em;
+        border-radius: 20px;
+        font-weight: 500;
+    }
+
+    .table-responsive {
+        border-radius: 10px;
+        overflow: hidden;
+    }
+
+    .table {
+        margin-bottom: 0;
+    }
+
+    .table thead th {
+        background-color: #f8f9fa;
+        border-bottom: 2px solid #dee2e6;
+        font-weight: 600;
+        color: #495057;
+        padding: 1rem;
+    }
+
+    .table tbody tr:hover {
+        background-color: #f1f3f4;
+    }
+
+    .table tbody td {
+        padding: 1rem;
+        vertical-align: middle;
+    }
+
+    .form-control {
+        border-radius: 8px;
+        border: 1px solid #ced4da;
+        transition: border-color 0.15s ease-in-out, box-shadow 0.15s ease-in-out;
+        padding: 0.75rem;
+    }
+
+    .form-control:focus {
+        border-color: #25D366;
+        box-shadow: 0 0 0 0.2rem rgba(37, 211, 102, 0.25);
+    }
+
+    .btn-primary {
+        background: linear-gradient(135deg, #25D366 0%, #128C7E 100%);
+        border: none;
+        border-radius: 25px;
+        padding: 0.75rem 2rem;
+        font-weight: 600;
+        transition: all 0.3s ease;
+    }
+
+    .btn-primary:hover {
+        transform: translateY(-1px);
+        box-shadow: 0 4px 12px rgba(37, 211, 102, 0.3);
+        background: linear-gradient(135deg, #25D366 0%, #128C7E 100%);
+    }
+
+    .btn-info {
+        background: linear-gradient(135deg, #17a2b8 0%, #138496 100%);
+        border: none;
+        border-radius: 25px;
+        padding: 0.75rem 2rem;
+        font-weight: 600;
+        transition: all 0.3s ease;
+    }
+
+    .btn-info:hover {
+        transform: translateY(-1px);
+        box-shadow: 0 4px 12px rgba(23, 162, 184, 0.3);
+    }
+
+    .alert {
+        border-radius: 10px;
+        border: none;
+        padding: 1rem 1.5rem;
+    }
+
+    .alert-info {
+        background: linear-gradient(135deg, #d1ecf1 0%, #bee5eb 100%);
+        color: #0c5460;
+    }
+
+    .spinner-border {
+        color: #25D366;
+    }
+
+    .feather-3x {
+        width: 48px;
+        height: 48px;
+        stroke-width: 1.5;
+    }
+    </style>
 <script>
 $(document).ready(function() {
     loadQueueStatus();

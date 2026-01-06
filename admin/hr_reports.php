@@ -69,6 +69,41 @@ try {
 $page_title = __('hr_reports');
 include '../includes/header.php';
 ?>
+<style>
+    .page-header.card {
+        background: linear-gradient(135deg, #4099ff 0%, #2ed8b6 100%);
+        color: #ffffff;
+        border: none;
+        margin-bottom: 20px;
+        padding: 20px !important;
+    }
+
+    .page-header.card .row {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+    }
+
+    .page-header.card h5 {
+        color: #ffffff;
+        margin: 0;
+    }
+
+    .page-header.card .text-end {
+        text-align: right;
+    }
+
+    .page-header.card .btn {
+        background: rgba(255,255,255,0.2);
+        color: #ffffff;
+        border: 1px solid rgba(255,255,255,0.3);
+    }
+
+    .page-header.card .btn:hover {
+        background: rgba(255,255,255,0.3);
+        border-color: rgba(255,255,255,0.5);
+    }
+</style>
     <!-- [ Main Content ] start -->
     <div class="pcoded-main-container">
         <div class="pcoded-wrapper">
@@ -78,15 +113,16 @@ include '../includes/header.php';
                         <div class="page-wrapper">
                             <!-- [ Main Content ] start -->
                                 <div class="main-content">
-                                    <div class="page-header">
-                                        <div class="page-header-content">
-                                            <h1><i class="feather icon-file-text mr-2"></i><?php echo __('hr_reports'); ?></h1>
-                                            <p><?php echo __('comprehensive_hr_reports_and_analytics'); ?></p>
-                                        </div>
-                                        <div class="page-header-actions">
-                                            <a href="hr.php" class="btn btn-outline-secondary">
-                                                <i class="feather icon-arrow-left mr-1"></i><?php echo __('back_to_hr'); ?>
-                                            </a>
+                                    <div class="page-header card">
+                                        <div class="row align-items-center">
+                                            <div class="col-md-6">
+                                                <h5 class="mb-0"><i class="feather icon-file-text mr-2"></i><?php echo __('hr_reports'); ?></h5>
+                                            </div>
+                                            <div class="col-md-6 text-end">
+                                                <a href="hr.php" class="btn btn-outline-secondary btn-sm">
+                                                    <i class="feather icon-arrow-left mr-1"></i><?php echo __('back'); ?>
+                                                </a>
+                                            </div>
                                         </div>
                                     </div>
 

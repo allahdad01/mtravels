@@ -59,6 +59,41 @@ $employees = $stmt->fetchAll(PDO::FETCH_ASSOC);
 $page_title = __('performance_reviews');
 include '../includes/header.php';
 ?>
+<style>
+    .page-header.card {
+        background: linear-gradient(135deg, #4099ff 0%, #2ed8b6 100%);
+        color: #ffffff;
+        border: none;
+        margin-bottom: 20px;
+        padding: 20px !important;
+    }
+
+    .page-header.card .row {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+    }
+
+    .page-header.card h5 {
+        color: #ffffff;
+        margin: 0;
+    }
+
+    .page-header.card .text-end {
+        text-align: right;
+    }
+
+    .page-header.card .btn {
+        background: rgba(255,255,255,0.2);
+        color: #ffffff;
+        border: 1px solid rgba(255,255,255,0.3);
+    }
+
+    .page-header.card .btn:hover {
+        background: rgba(255,255,255,0.3);
+        border-color: rgba(255,255,255,0.5);
+    }
+</style>
     <!-- [ Main Content ] start -->
     <div class="pcoded-main-container">
         <div class="pcoded-wrapper">
@@ -68,12 +103,17 @@ include '../includes/header.php';
                         <div class="page-wrapper">
                             <!-- [ Main Content ] start -->
                             <div class="main-content">
-                                <div class="page-header">
-                                    <div class="page-header-content">
-                                        <h1><i class="feather icon-trending-up mr-2"></i><?php echo __('performance_reviews'); ?></h1>
-                                        <p><?php echo __('manage_employee_performance_reviews_and_evaluations'); ?></p>
+                                <div class="page-header card">
+                                    <div class="row align-items-center">
+                                        <div class="col-md-6">
+                                            <h5 class="mb-0"><i class="feather icon-trending-up mr-2"></i><?php echo __('performance_reviews'); ?></h5>
+                                        </div>
+                                        <div class="col-md-6 text-end">
+                                            <a href="employee_management.php" class="btn btn-outline-secondary btn-sm">
+                                                <i class="feather icon-arrow-left mr-1"></i><?php echo __('back'); ?>
+                                            </a>
+                                        </div>
                                     </div>
-                                    
                                 </div>
 
                                 <!-- Filters and Search -->
@@ -170,7 +210,7 @@ include '../includes/header.php';
                                                             <tr>
                                                                 <td>
                                                                     <div class="d-flex align-items-center">
-                                                                        <img src="<?php echo htmlspecialchars($employee['profile_pic'] ?: '../assets/images/user/avatar-1.jpg'); ?>"
+                                                                        <img src="../assets/images/user/<?= htmlspecialchars($employee['profile_pic'] ?: '../assets/images/user/avatar-1.jpg'); ?>"
                                                                             class="rounded-circle mr-3" style="width: 40px; height: 40px; object-fit: cover;">
                                                                         <div>
                                                                             <h6 class="mb-0"><?php echo htmlspecialchars($employee['name']); ?></h6>

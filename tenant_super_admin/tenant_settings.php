@@ -26,36 +26,6 @@ require_once('../includes/db.php');
 
 ?>
 
-
-
-<?php  ?>
-<style>
-/* Apply gradient background to card headers matching the sidebar */
-.card-header {
-    background: linear-gradient(135deg, #4099ff 0%, #2ed8b6 100%) !important;
-    color: #ffffff !important;
-    border-bottom: none !important;
-}
-
-.card-header h5 {
-    color: #ffffff !important;
-    margin-bottom: 0 !important;
-}
-
-.card-header .card-header-right {
-    color: #ffffff !important;
-}
-
-.card-header .card-header-right .btn {
-    color: #ffffff !important;
-    border-color: rgba(255, 255, 255, 0.3) !important;
-}
-
-.card-header .card-header-right .btn:hover {
-    background: rgba(255, 255, 255, 0.1) !important;
-    border-color: rgba(255, 255, 255, 0.5) !important;
-}
-</style>
 <!-- [ Main Content ] start -->
 <div class="pcoded-main-container">
     <div class="pcoded-wrapper">
@@ -64,211 +34,216 @@ require_once('../includes/db.php');
                 <div class="main-body">
                     <div class="page-wrapper">
                         <!-- [ Main Content ] start -->
-                        <div class="row">
-                            <div class="col-sm-12">
-                               
-                                    <!-- body -->
-    <div class="container-fluid">
-        <!-- Alert Section -->
-        <?php if ($alertMessage): ?>
-        <div class="alert alert-<?= $alertType ?> alert-dismissible fade show" role="alert">
-            <div class="d-flex align-items-center">
-                <i class="feather icon-check-circle mr-2"></i>
-                <strong><?= htmlspecialchars($alertMessage) ?></strong>
-            </div>
-            <button type="button" class="close" data-dismiss="alert" aria-label="Close">
-                <span aria-hidden="true">&times;</span>
-            </button>
-        </div>
-        <?php endif; ?>
+                        <div class="main-content">
+                            <div class="page-header card">
+                                <div class="row align-items-center">
+                                    <div class="col-md-6">
+                                        <h5 class="mb-0"><i class="feather icon-settings mr-2"></i><?php echo __('agency_settings'); ?></h5>
+                                        <p class="mb-0 mt-1" style="font-size: 14px; opacity: 0.9;"><?php echo __('manage_your_agency_settings'); ?></p>
+                                    </div>
+                                    <div class="col-md-6 text-end">
+                                        <a href="dashboard.php" class="btn btn-outline-secondary btn-sm">
+                                            <i class="feather icon-arrow-left mr-1"></i><?php echo __('back_to_dashboard'); ?>
+                                        </a>
+                                    </div>
+                                </div>
+                            </div>
 
-        <div class="row">
-            <div class="col-md-12">
-                <div class="card">
-                    <div class="card-header">
-                        <h5><i class="feather icon-settings mr-2"></i><?= __('agency_settings') ?></h5>
-                    </div>
-                    <div class="card-body">
-                        <?php if ($settings): ?>
-                        <form action="updateSettings.php" method="POST" enctype="multipart/form-data" class="settings-form">
+                            <?php if ($alertMessage): ?>
+                            <div class="alert alert-<?= $alertType ?> alert-dismissible fade show" role="alert">
+                                <div class="d-flex align-items-center">
+                                    <i class="feather icon-check-circle mr-2"></i>
+                                    <strong><?= htmlspecialchars($alertMessage) ?></strong>
+                                </div>
+                                <button type="button" class="close" data-dismiss="alert" aria-label="Close">
+                                    <span aria-hidden="true">&times;</span>
+                                </button>
+                            </div>
+                            <?php endif; ?>
 
-    
-                            <input type="hidden" name="id" value="<?= htmlspecialchars($settings['id']); ?>">
-                            
                             <div class="row">
-                                <div class="col-md-6">
-                                    <div class="form-group">
-                                        <label for="agency_name"><?= __('agency_name') ?></label>
-                                        <input type="text" class="form-control" id="agency_name" name="agency_name" 
-                                               value="<?= htmlspecialchars($settings['agency_name']); ?>" required>
-                                    </div>
-
-                                    <div class="form-group">
-                                        <label for="title"><?= __('agency_title') ?></label>
-                                        <input type="text" class="form-control" id="title" name="title" 
-                                               value="<?= htmlspecialchars($settings['title']); ?>" required>
-                                    </div>
-
-                                    <div class="form-group">
-                                        <label for="phone"><?= __('phone') ?></label>
-                                        <input type="text" class="form-control" id="phone" name="phone" 
-                                               value="<?= htmlspecialchars($settings['phone']); ?>" required>
-                                    </div>
-                                </div>
-
-                                <div class="col-md-6">
-                                    <div class="form-group">
-                                        <label for="email"><?=__('email')?></label>
-                                        <input type="email" class="form-control" id="email" name="email" 
-                                               value="<?= htmlspecialchars($settings['email']); ?>" required>
-                                    </div>
-
-                                    <div class="form-group">
-                                        <label for="address"><?= __('address') ?></label>
-                                        <textarea class="form-control" id="address" name="address" 
-                                                  rows="3" required><?= htmlspecialchars($settings['address']); ?></textarea>
-                                    </div>
-
-                                    <div class="form-group">
-                                        <label for="logo"><?= __('logo') ?></label>
-                                        <div class="custom-file">
-                                            <input type="file" class="custom-file-input" id="logo" name="logo"
-                                                   accept="image/*" onchange="previewImage(this);">
-                                            <label class="custom-file-label" for="logo"><?= __('choose_file') ?></label>
+                                <div class="col-md-12">
+                                    <?php if ($settings): ?>
+                                    <div class="card">
+                                        <div class="card-header">
+                                            <h5><i class="feather icon-home mr-2"></i><?php echo __('agency_information'); ?></h5>
                                         </div>
-                                        <div class="logo-preview mt-3">
-                                            <?php if ($settings['logo']): ?>
-                                                <img src="../uploads/logo/<?= htmlspecialchars($settings['logo']); ?>"
-                                                     alt="Logo" id="logoPreview" class="img-thumbnail">
-                                            <?php else: ?>
-                                                <img src="../assets/images/default-logo.png"
-                                                     alt="Default Logo" id="logoPreview" class="img-thumbnail">
-                                            <?php endif; ?>
-                                        </div>
-                                        <input type="hidden" name="existing_logo"
-                                               value="<?= htmlspecialchars($settings['logo']); ?>">
-                                    </div>
-                                </div>
-                            </div>
-
-                            <!-- SMTP Configuration Section -->
-                            <div class="row mt-4">
-                                <div class="col-12">
-                                    <h5 class="mb-3"><i class="feather icon-mail mr-2"></i>SMTP Configuration</h5>
-                                    <div class="card border-primary">
                                         <div class="card-body">
-                                            <div class="row">
-                                                <div class="col-md-6">
-                                                    <div class="form-group">
-                                                        <label for="smtp_host">SMTP Host</label>
-                                                        <input type="text" class="form-control" id="smtp_host" name="smtp_host"
-                                                               value="<?= htmlspecialchars($settings['smtp_host'] ?? '') ?>"
-                                                               placeholder="smtp.gmail.com">
-                                                    </div>
-                                                </div>
-                                                <div class="col-md-3">
-                                                    <div class="form-group">
-                                                        <label for="smtp_port">SMTP Port</label>
-                                                        <input type="number" class="form-control" id="smtp_port" name="smtp_port"
-                                                               value="<?= htmlspecialchars($settings['smtp_port'] ?? '') ?>"
-                                                               placeholder="587" min="1" max="65535">
-                                                    </div>
-                                                </div>
-                                                <div class="col-md-3">
-                                                    <div class="form-group">
-                                                        <label for="smtp_encryption">Encryption</label>
-                                                        <select class="form-control" id="smtp_encryption" name="smtp_encryption">
-                                                            <option value="">None</option>
-                                                            <option value="tls" <?= ($settings['smtp_encryption'] ?? '') === 'tls' ? 'selected' : '' ?>>TLS</option>
-                                                            <option value="ssl" <?= ($settings['smtp_encryption'] ?? '') === 'ssl' ? 'selected' : '' ?>>SSL</option>
-                                                        </select>
-                                                    </div>
-                                                </div>
-                                            </div>
+                                            <form action="updateSettings.php" method="POST" enctype="multipart/form-data" class="settings-form">
+                                                
+                                                <input type="hidden" name="id" value="<?= htmlspecialchars($settings['id']); ?>">
+                                                
+                                                <div class="row">
+                                                    <div class="col-md-6">
+                                                        <div class="form-group">
+                                                            <label for="agency_name"><i class="feather icon-hash mr-2"></i><?php echo __('agency_name') ?></label>
+                                                            <input type="text" class="form-control" id="agency_name" name="agency_name" 
+                                                                   value="<?= htmlspecialchars($settings['agency_name']); ?>" required>
+                                                        </div>
 
-                                            <div class="row">
-                                                <div class="col-md-6">
-                                                    <div class="form-group">
-                                                        <label for="smtp_username">SMTP Username</label>
-                                                        <input type="text" class="form-control" id="smtp_username" name="smtp_username"
-                                                               value="<?= htmlspecialchars($settings['smtp_username'] ?? '') ?>"
-                                                               placeholder="your-email@gmail.com">
-                                                    </div>
-                                                </div>
-                                                <div class="col-md-6">
-                                                    <div class="form-group">
-                                                        <label for="smtp_password">SMTP Password</label>
-                                                        <input type="password" class="form-control" id="smtp_password" name="smtp_password"
-                                                               value="<?= htmlspecialchars($settings['smtp_password'] ?? '') ?>"
-                                                               placeholder="Your SMTP password">
-                                                    </div>
-                                                </div>
-                                            </div>
+                                                        <div class="form-group">
+                                                            <label for="title"><i class="feather icon-edit-2 mr-2"></i><?php echo __('agency_title') ?></label>
+                                                            <input type="text" class="form-control" id="title" name="title" 
+                                                                   value="<?= htmlspecialchars($settings['title']); ?>" required>
+                                                        </div>
 
-                                            <div class="row">
-                                                <div class="col-md-6">
-                                                    <div class="form-group">
-                                                        <label for="smtp_from_email">From Email</label>
-                                                        <input type="email" class="form-control" id="smtp_from_email" name="smtp_from_email"
-                                                               value="<?= htmlspecialchars($settings['smtp_from_email'] ?? '') ?>"
-                                                               placeholder="noreply@yourdomain.com">
+                                                        <div class="form-group">
+                                                            <label for="phone"><i class="feather icon-phone mr-2"></i><?php echo __('phone') ?></label>
+                                                            <input type="text" class="form-control" id="phone" name="phone" 
+                                                                   value="<?= htmlspecialchars($settings['phone']); ?>" required>
+                                                        </div>
                                                     </div>
-                                                </div>
-                                                <div class="col-md-6">
-                                                    <div class="form-group">
-                                                        <label for="smtp_from_name">From Name</label>
-                                                        <input type="text" class="form-control" id="smtp_from_name" name="smtp_from_name"
-                                                               value="<?= htmlspecialchars($settings['smtp_from_name'] ?? '') ?>"
-                                                               placeholder="Your Agency Name">
-                                                    </div>
-                                                </div>
-                                            </div>
 
-                                            <!-- Test Email Section -->
-                                            <div class="row">
-                                                <div class="col-md-6">
-                                                    <div class="form-group">
-                                                        <label for="test_email">Test Email Address</label>
-                                                        <input type="email" class="form-control" id="test_email" name="test_email"
-                                                               placeholder="test@example.com">
+                                                    <div class="col-md-6">
+                                                        <div class="form-group">
+                                                            <label for="email"><i class="feather icon-mail mr-2"></i><?php echo __('email') ?></label>
+                                                            <input type="email" class="form-control" id="email" name="email" 
+                                                                   value="<?= htmlspecialchars($settings['email']); ?>" required>
+                                                        </div>
+
+                                                        <div class="form-group">
+                                                            <label for="address"><i class="feather icon-map-pin mr-2"></i><?php echo __('address') ?></label>
+                                                            <textarea class="form-control" id="address" name="address" 
+                                                                      rows="3" required><?= htmlspecialchars($settings['address']); ?></textarea>
+                                                        </div>
+
+                                                        <div class="form-group">
+                                                            <label for="logo"><i class="feather icon-image mr-2"></i><?php echo __('logo') ?></label>
+                                                            <div class="custom-file">
+                                                                <input type="file" class="custom-file-input" id="logo" name="logo"
+                                                                       accept="image/*" onchange="previewImage(this);">
+                                                                <label class="custom-file-label" for="logo"><?php echo __('choose_file') ?></label>
+                                                            </div>
+                                                            <div class="logo-preview mt-3">
+                                                                <?php if ($settings['logo']): ?>
+                                                                    <img src="../uploads/logo/<?= htmlspecialchars($settings['logo']); ?>"
+                                                                         alt="Logo" id="logoPreview" class="img-thumbnail">
+                                                                <?php else: ?>
+                                                                    <img src="../assets/images/default-logo.png"
+                                                                         alt="Default Logo" id="logoPreview" class="img-thumbnail">
+                                                                <?php endif; ?>
+                                                            </div>
+                                                            <input type="hidden" name="existing_logo"
+                                                                   value="<?= htmlspecialchars($settings['logo']); ?>">
+                                                        </div>
                                                     </div>
                                                 </div>
-                                                <div class="col-md-6 d-flex align-items-end">
-                                                    <button type="button" class="btn btn-info" id="testEmailBtn">
-                                                        <i class="feather icon-send mr-2"></i>Send Test Email
-                                                    </button>
-                                                </div>
-                                            </div>
+                                            </form>
                                         </div>
                                     </div>
-                                </div>
-                            </div>
-                                </div>
-                            </div>
 
-                            <div class="row mt-4">
-                                <div class="col-12">
-                                    <button type="submit" class="btn btn-primary">
-                                        <i class="feather icon-save mr-2"></i><?= __('update_settings') ?>
-                                    </button>
-                                    <button type="reset" class="btn btn-light ml-2">
-                                        <i class="feather icon-refresh-ccw mr-2"></i><?= __('reset') ?>
-                                    </button>
-                                </div>
-                            </div>
-                        </form>
-                        <?php else: ?>
-                        <div class="alert alert-danger" role="alert">
-                            <i class="feather icon-alert-circle mr-2"></i>
-                            <?= __('no_settings_found_in_the_database') ?>
-                        </div>
-                        <?php endif; ?>
-                    </div>
-                </div>
-            </div>
-        </div>
-    </div>
-    
+                                    <!-- SMTP Configuration Section -->
+                                    <div class="card mt-3">
+                                        <div class="card-header">
+                                            <h5><i class="feather icon-mail mr-2"></i><?php echo __('smtp_configuration'); ?></h5>
+                                        </div>
+                                        <div class="card-body">
+                                            <form action="updateSettings.php" method="POST" enctype="multipart/form-data" class="settings-form">
+                                                <input type="hidden" name="id" value="<?= htmlspecialchars($settings['id']); ?>">
+                                                <input type="hidden" name="existing_logo" value="<?= htmlspecialchars($settings['logo']); ?>">
+                                                
+                                                <div class="row">
+                                                    <div class="col-md-6">
+                                                        <div class="form-group">
+                                                            <label for="smtp_host"><i class="feather icon-server mr-2"></i><?php echo __('smtp_host'); ?></label>
+                                                            <input type="text" class="form-control" id="smtp_host" name="smtp_host"
+                                                                   value="<?= htmlspecialchars($settings['smtp_host'] ?? '') ?>"
+                                                                   placeholder="smtp.gmail.com">
+                                                        </div>
+                                                    </div>
+                                                    <div class="col-md-3">
+                                                        <div class="form-group">
+                                                            <label for="smtp_port"><i class="feather icon-hash mr-2"></i><?php echo __('smtp_port'); ?></label>
+                                                            <input type="number" class="form-control" id="smtp_port" name="smtp_port"
+                                                                   value="<?= htmlspecialchars($settings['smtp_port'] ?? '') ?>"
+                                                                   placeholder="587" min="1" max="65535">
+                                                        </div>
+                                                    </div>
+                                                    <div class="col-md-3">
+                                                        <div class="form-group">
+                                                            <label for="smtp_encryption"><i class="feather icon-shield mr-2"></i><?php echo __('encryption'); ?></label>
+                                                            <select class="form-control" id="smtp_encryption" name="smtp_encryption">
+                                                                <option value=""><?php echo __('none'); ?></option>
+                                                                <option value="tls" <?= ($settings['smtp_encryption'] ?? '') === 'tls' ? 'selected' : '' ?>><?php echo __('tls'); ?></option>
+                                                                <option value="ssl" <?= ($settings['smtp_encryption'] ?? '') === 'ssl' ? 'selected' : '' ?>><?php echo __('ssl'); ?></option>
+                                                            </select>
+                                                        </div>
+                                                    </div>
+                                                </div>
+
+                                                <div class="row">
+                                                    <div class="col-md-6">
+                                                        <div class="form-group">
+                                                            <label for="smtp_username"><i class="feather icon-user mr-2"></i><?php echo __('smtp_username'); ?></label>
+                                                            <input type="text" class="form-control" id="smtp_username" name="smtp_username"
+                                                                   value="<?= htmlspecialchars($settings['smtp_username'] ?? '') ?>"
+                                                                   placeholder="your-email@gmail.com">
+                                                        </div>
+                                                    </div>
+                                                    <div class="col-md-6">
+                                                        <div class="form-group">
+                                                            <label for="smtp_password"><i class="feather icon-lock mr-2"></i><?php echo __('smtp_password'); ?></label>
+                                                            <input type="password" class="form-control" id="smtp_password" name="smtp_password"
+                                                                   value="<?= htmlspecialchars($settings['smtp_password'] ?? '') ?>"
+                                                                   placeholder="<?php echo __('your_smtp_password'); ?>">
+                                                        </div>
+                                                    </div>
+                                                </div>
+
+                                                <div class="row">
+                                                    <div class="col-md-6">
+                                                        <div class="form-group">
+                                                            <label for="smtp_from_email"><i class="feather icon-send mr-2"></i><?php echo __('from_email'); ?></label>
+                                                            <input type="email" class="form-control" id="smtp_from_email" name="smtp_from_email"
+                                                                   value="<?= htmlspecialchars($settings['smtp_from_email'] ?? '') ?>"
+                                                                   placeholder="noreply@yourdomain.com">
+                                                        </div>
+                                                    </div>
+                                                    <div class="col-md-6">
+                                                        <div class="form-group">
+                                                            <label for="smtp_from_name"><i class="feather icon-tag mr-2"></i><?php echo __('from_name'); ?></label>
+                                                            <input type="text" class="form-control" id="smtp_from_name" name="smtp_from_name"
+                                                                   value="<?= htmlspecialchars($settings['smtp_from_name'] ?? '') ?>"
+                                                                   placeholder="<?php echo __('your_agency_name'); ?>">
+                                                        </div>
+                                                    </div>
+                                                </div>
+
+                                                <!-- Test Email Section -->
+                                                <div class="row">
+                                                    <div class="col-md-6">
+                                                        <div class="form-group">
+                                                            <label for="test_email"><i class="feather icon-mail mr-2"></i><?php echo __('test_email_address'); ?></label>
+                                                            <input type="email" class="form-control" id="test_email" name="test_email"
+                                                                   placeholder="test@example.com">
+                                                        </div>
+                                                    </div>
+                                                    <div class="col-md-6 d-flex align-items-end">
+                                                        <button type="button" class="btn btn-info" id="testEmailBtn">
+                                                            <i class="feather icon-send mr-2"></i><?php echo __('send_test_email'); ?>
+                                                        </button>
+                                                    </div>
+                                                </div>
+
+                                                <div class="row mt-4">
+                                                    <div class="col-12">
+                                                        <button type="submit" class="btn btn-primary">
+                                                            <i class="feather icon-save mr-2"></i><?php echo __('update_settings'); ?>
+                                                        </button>
+                                                        <button type="reset" class="btn btn-secondary ml-2">
+                                                            <i class="feather icon-refresh-ccw mr-2"></i><?php echo __('reset'); ?>
+                                                        </button>
+                                                    </div>
+                                                </div>
+                                            </form>
+                                        </div>
+                                    </div>
+                                    <?php else: ?>
+                                    <div class="alert alert-danger" role="alert">
+                                        <i class="feather icon-alert-circle mr-2"></i>
+                                        <?php echo __('no_settings_found_in_the_database'); ?>
+                                    </div>
+                                    <?php endif; ?>
                                 </div>
                             </div>
                         </div>
@@ -278,11 +253,83 @@ require_once('../includes/db.php');
             </div>
         </div>
     </div>
-    
+</div>
 
 <style>
+/* Enhanced custom styles for better layout and design */
+.page-header.card {
+    background: linear-gradient(135deg, #4099ff 0%, #2ed8b6 100%);
+    color: #ffffff;
+    border: none;
+    margin-bottom: 20px;
+    padding: 20px !important;
+    box-shadow: 0 4px 12px rgba(0,0,0,0.15);
+    border-radius: 10px;
+}
+
+.page-header.card .row {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+}
+
+.page-header.card h5 {
+    color: #ffffff;
+    margin: 0;
+    font-weight: 600;
+}
+
+.page-header.card .text-end {
+    text-align: right;
+}
+
+.page-header.card .btn {
+    background: rgba(255,255,255,0.2);
+    color: #ffffff;
+    border: 1px solid rgba(255,255,255,0.3);
+    border-radius: 25px;
+    transition: all 0.3s ease;
+}
+
+.page-header.card .btn:hover {
+    background: rgba(255,255,255,0.3);
+    border-color: rgba(255,255,255,0.5);
+    transform: translateY(-1px);
+}
+
+.card {
+    border-radius: 10px;
+    box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+    transition: transform 0.2s ease-in-out, box-shadow 0.2s ease-in-out;
+    border: none;
+}
+
+.card:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 4px 16px rgba(0,0,0,0.15);
+}
+
+.card-header {
+    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    color: white;
+    border-radius: 10px 10px 0 0;
+    padding: 1rem 1.5rem;
+    border: none;
+}
+
+.card-header h5 {
+    margin: 0;
+    font-weight: 600;
+    display: flex;
+    align-items: center;
+}
+
+.card-body {
+    padding: 1.5rem;
+}
+
 .settings-form {
-    max-width: 1200px;
+    max-width: 100%;
     margin: 0 auto;
 }
 
@@ -297,67 +344,148 @@ require_once('../includes/db.php');
     object-fit: contain;
     border: 1px solid #ddd;
     padding: 5px;
-    border-radius: 4px;
+    border-radius: 8px;
 }
 
 .custom-file-label {
     overflow: hidden;
     text-overflow: ellipsis;
     white-space: nowrap;
+    border-radius: 8px;
 }
 
 .form-group label {
     font-weight: 500;
     color: #333;
+    margin-bottom: 0.5rem;
 }
 
-.card {
-    box-shadow: 0 1px 3px rgba(0,0,0,0.12), 0 1px 2px rgba(0,0,0,0.24);
-    transition: all 0.3s cubic-bezier(.25,.8,.25,1);
+.form-control {
+    border-radius: 8px;
+    border: 1px solid #ced4da;
+    transition: border-color 0.15s ease-in-out, box-shadow 0.15s ease-in-out;
+    padding: 0.75rem;
 }
 
-.card:hover {
-    box-shadow: 0 14px 28px rgba(0,0,0,0.25), 0 10px 10px rgba(0,0,0,0.22);
+.form-control:focus {
+    border-color: #4099ff;
+    box-shadow: 0 0 0 0.2rem rgba(64, 153, 255, 0.25);
+}
+
+.btn-primary {
+    background: linear-gradient(135deg, #4099ff 0%, #2ed8b6 100%);
+    border: none;
+    border-radius: 25px;
+    padding: 0.75rem 2rem;
+    font-weight: 600;
+    transition: all 0.3s ease;
+}
+
+.btn-primary:hover {
+    transform: translateY(-1px);
+    box-shadow: 0 4px 12px rgba(64, 153, 255, 0.3);
+}
+
+.btn-secondary {
+    background: linear-gradient(135deg, #6c757d 0%, #5a6268 100%);
+    border: none;
+    border-radius: 25px;
+    padding: 0.75rem 2rem;
+    font-weight: 600;
+    transition: all 0.3s ease;
+    color: #ffffff;
+}
+
+.btn-secondary:hover {
+    transform: translateY(-1px);
+    box-shadow: 0 4px 12px rgba(108, 117, 125, 0.3);
+}
+
+.btn-info {
+    background: linear-gradient(135deg, #17a2b8 0%, #138496 100%);
+    border: none;
+    border-radius: 25px;
+    padding: 0.75rem 1.5rem;
+    font-weight: 600;
+    transition: all 0.3s ease;
+}
+
+.btn-info:hover {
+    transform: translateY(-1px);
+    box-shadow: 0 4px 12px rgba(23, 162, 184, 0.3);
 }
 
 .alert {
-    margin-bottom: 20px;
+    border-radius: 10px;
     border: none;
-    border-radius: 4px;
-    box-shadow: 0 2px 6px rgba(0,0,0,0.1);
+    padding: 1rem 1.5rem;
 }
 
 .alert-success {
-    background-color: #d4edda;
+    background: linear-gradient(135deg, #d4edda 0%, #c3e6cb 100%);
     color: #155724;
-    border-left: 4px solid #28a745;
 }
 
 .alert-danger {
-    background-color: #f8d7da;
+    background: linear-gradient(135deg, #f8d7da 0%, #f5c6cb 100%);
     color: #721c24;
-    border-left: 4px solid #dc3545;
 }
 
 .alert-warning {
-    background-color: #fff3cd;
+    background: linear-gradient(135deg, #fff3cd 0%, #ffeeba 100%);
     color: #856404;
-    border-left: 4px solid #ffc107;
 }
 
-.alert.fade {
-    transition: opacity 0.3s linear;
+.alert-info {
+    background: linear-gradient(135deg, #d1ecf1 0%, #bee5eb 100%);
+    color: #0c5460;
 }
 
 .alert-dismissible .close {
     padding: 0.75rem 1.25rem;
-    transition: opacity 0.15s linear;
 }
 
 .alert .feather {
     width: 20px;
     height: 20px;
     stroke-width: 2.5;
+}
+
+.custom-file {
+    margin-bottom: 0.5rem;
+}
+
+.custom-file-input {
+    border-radius: 8px;
+}
+
+.img-thumbnail {
+    border-radius: 8px;
+    box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+}
+
+.mt-3 {
+    margin-top: 1rem !important;
+}
+
+.mt-4 {
+    margin-top: 1.5rem !important;
+}
+
+.mb-0 {
+    margin-bottom: 0 !important;
+}
+
+.ml-2 {
+    margin-left: 0.5rem !important;
+}
+
+.d-flex {
+    display: flex !important;
+}
+
+.align-items-end {
+    align-items: flex-end !important;
 }
 </style>
 
@@ -502,14 +630,11 @@ document.addEventListener('DOMContentLoaded', function() {
 });
 </script>
 
-    <!-- Required Js -->
-    <script src="../assets/js/vendor-all.min.js"></script>
-    <script src="../assets/plugins/bootstrap/js/bootstrap.min.js"></script>
-    <script src="../assets/js/pcoded.min.js"></script>
+<!-- Required Js -->
+<script src="../assets/js/vendor-all.min.js"></script>
+<script src="../assets/plugins/bootstrap/js/bootstrap.min.js"></script>
+<script src="../assets/js/pcoded.min.js"></script>
 
-                        
 <!-- Include Admin Footer -->
 <?php include '../includes/admin_footer.php'; ?>
 
-    </body>
-</html>

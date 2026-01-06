@@ -18,9 +18,26 @@
     vertical-align: middle;
 }
 
+/* Profile Avatar Styles - High specificity to override any other CSS */
+.table tbody td:first-child img.user-avatar,
+.table-responsive img.user-avatar {
+    width: 40px !important;
+    height: 40px !important;
+    min-width: 40px !important;
+    min-height: 40px !important;
+    max-width: 40px !important;
+    max-height: 40px !important;
+    border-radius: 50% !important;
+    object-fit: cover !important;
+    border: 2px solid #fff !important;
+    box-shadow: 0 2px 5px rgba(0,0,0,0.1) !important;
+}
+
 .user-avatar {
-    width: 40px;
-    height: 40px;
+    width: 40px !important;
+    height: 40px !important;
+    min-width: 40px !important;
+    min-height: 40px !important;
     border-radius: 50%;
     object-fit: cover;
     border: 2px solid #fff;
@@ -132,11 +149,11 @@
     }
 }
 
-/* Add default avatar fallback */
+/* Add default avatar fallback - merged with main user-avatar rule above */
 .user-avatar {
-    background-image: url('data:image/svg+xml,<svg xmlns="http://www.w3.org/2000/svg" width="40" height="40" viewBox="0 0 24 24"><path fill="%23ccc" d="M12 12c2.21 0 4-1.79 4-4s-1.79-4-4-4-4 1.79-4 4 1.79 4 4 4zm0 2c-2.67 0-8 1.34-8 4v2h16v-2c0-2.66-5.33-4-8-4z"/></svg>');
-    background-size: cover;
-    background-position: center;
+    background-image: url('data:image/svg+xml,<svg xmlns="http://www.w3.org/2000/svg" width="40" height="40" viewBox="0 0 24 24"><path fill="%23ccc" d="M12 12c2.21 0 4-1.79 4-4s-1.79-4-4-4-4 1.79-4 4 1.79 4 4 4zm0 2c-2.67 0-8 1.34-8 4v2h16v-2c0-2.66-5.33-4-8-4z"/></svg>') !important;
+    background-size: cover !important;
+    background-position: center !important;
 }
 
 /* Enhanced Tab Styles */

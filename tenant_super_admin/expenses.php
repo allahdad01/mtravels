@@ -31,7 +31,6 @@ if ($selected_branch !== 'all') {
 // Build query for expenses
 $query = "SELECT e.*,
                  ec.name as category_name,
-                 
                  b.name as branch_name
           FROM expenses e
           LEFT JOIN expense_categories ec ON e.category_id = ec.id
@@ -119,16 +118,73 @@ $summary = $summary_stmt->fetch(PDO::FETCH_ASSOC);
 ?>
 
 <style>
-/* Apply gradient background to card headers matching the sidebar */
+/* Enhanced custom styles for better layout and design - matching request_user_addon.php */
+.page-header.card {
+    background: linear-gradient(135deg, #4099ff 0%, #2ed8b6 100%);
+    color: #ffffff;
+    border: none;
+    margin-bottom: 20px;
+    padding: 20px !important;
+    box-shadow: 0 4px 12px rgba(0,0,0,0.15);
+    border-radius: 10px;
+}
+
+.page-header.card .row {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+}
+
+.page-header.card h5 {
+    color: #ffffff;
+    margin: 0;
+    font-weight: 600;
+}
+
+.page-header.card .text-end {
+    text-align: right;
+}
+
+.page-header.card .btn {
+    background: rgba(255,255,255,0.2);
+    color: #ffffff;
+    border: 1px solid rgba(255,255,255,0.3);
+    border-radius: 25px;
+    transition: all 0.3s ease;
+}
+
+.page-header.card .btn:hover {
+    background: rgba(255,255,255,0.3);
+    border-color: rgba(255,255,255,0.5);
+    transform: translateY(-1px);
+}
+
+.card {
+    border-radius: 10px;
+    box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+    transition: transform 0.2s ease-in-out, box-shadow 0.2s ease-in-out;
+    border: none;
+}
+
+.card:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 4px 16px rgba(0,0,0,0.15);
+}
+
 .card-header {
-    background: linear-gradient(135deg, #4099ff 0%, #2ed8b6 100%) !important;
-    color: #ffffff !important;
-    border-bottom: none !important;
+    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    color: white;
+    border-radius: 10px 10px 0 0;
+    padding: 1rem 1.5rem;
+    border: none;
 }
 
 .card-header h5 {
+    margin: 0;
+    font-weight: 600;
+    display: flex;
+    align-items: center;
     color: #ffffff !important;
-    margin-bottom: 0 !important;
 }
 
 .card-header .card-header-right {
@@ -144,6 +200,165 @@ $summary = $summary_stmt->fetch(PDO::FETCH_ASSOC);
     background: rgba(255, 255, 255, 0.1) !important;
     border-color: rgba(255, 255, 255, 0.5) !important;
 }
+
+/* Summary cards */
+.bg-c-blue, .bg-c-green, .bg-c-red, .bg-c-yellow {
+    border-radius: 10px;
+    box-shadow: 0 2px 8px rgba(0,0,0,0.15);
+}
+
+/* Table styles */
+.table-responsive {
+    border-radius: 10px;
+    overflow: hidden;
+}
+
+.table {
+    margin-bottom: 0;
+}
+
+.table thead th {
+    background-color: #f8f9fa;
+    border-bottom: 2px solid #dee2e6;
+    font-weight: 600;
+    color: #495057;
+    padding: 1rem;
+}
+
+.table tbody tr:hover {
+    background-color: #f1f3f4;
+}
+
+.table tbody td {
+    padding: 1rem;
+    vertical-align: middle;
+}
+
+/* Badge styles */
+.badge {
+    font-size: 0.85em;
+    padding: 0.5em 0.75em;
+    border-radius: 20px;
+    font-weight: 500;
+}
+
+.badge-success {
+    background-color: #28a745;
+}
+
+.badge-warning {
+    background-color: #ffc107;
+    color: #212529;
+}
+
+.badge-info {
+    background-color: #17a2b8;
+}
+
+/* Button styles */
+.btn-primary {
+    background: linear-gradient(135deg, #4099ff 0%, #2ed8b6 100%);
+    border: none;
+    border-radius: 25px;
+    padding: 0.75rem 2rem;
+    font-weight: 600;
+    transition: all 0.3s ease;
+}
+
+.btn-primary:hover {
+    transform: translateY(-1px);
+    box-shadow: 0 4px 12px rgba(64, 153, 255, 0.3);
+}
+
+.btn-secondary {
+    border-radius: 25px;
+    padding: 0.75rem 2rem;
+    font-weight: 600;
+    transition: all 0.3s ease;
+}
+
+.btn-sm {
+    border-radius: 20px;
+}
+
+/* Form controls */
+.form-control {
+    border-radius: 8px;
+    border: 1px solid #ced4da;
+    transition: border-color 0.15s ease-in-out, box-shadow 0.15s ease-in-out;
+    padding: 0.75rem;
+}
+
+.form-control:focus {
+    border-color: #4099ff;
+    box-shadow: 0 0 0 0.2rem rgba(64, 153, 255, 0.25);
+}
+
+/* Pagination */
+.pagination .page-link {
+    border-radius: 20px;
+    margin: 0 2px;
+    border: none;
+}
+
+.pagination .page-item.active .page-link {
+    background: linear-gradient(135deg, #4099ff 0%, #2ed8b6 100%);
+}
+
+/* Modal styles */
+.modal-content {
+    border-radius: 15px;
+    border: none;
+    box-shadow: 0 5px 20px rgba(0,0,0,0.2);
+}
+
+.modal-header {
+    border-radius: 15px 15px 0 0;
+}
+
+/* Alert styles */
+.alert {
+    border-radius: 10px;
+    border: none;
+    padding: 1rem 1.5rem;
+}
+
+.alert-info {
+    background: linear-gradient(135deg, #d1ecf1 0%, #bee5eb 100%);
+    color: #0c5460;
+}
+
+.alert-success {
+    background: linear-gradient(135deg, #d4edda 0%, #c3e6cb 100%);
+    color: #155724;
+}
+
+.alert-danger {
+    background: linear-gradient(135deg, #f8d7da 0%, #f5c6cb 100%);
+    color: #721c24;
+}
+
+/* Progress bars */
+.progress {
+    border-radius: 15px;
+    overflow: hidden;
+    box-shadow: inset 0 1px 2px rgba(0,0,0,0.1);
+}
+
+.progress-bar {
+    transition: width 0.6s ease;
+}
+
+/* Dropdown styles */
+.dropdown-menu {
+    border-radius: 10px;
+    border: none;
+    box-shadow: 0 4px 12px rgba(0,0,0,0.15);
+}
+
+.dropdown-item:hover {
+    background-color: #f8f9fa;
+}
 </style>
 
 <!-- [ Main Content ] start -->
@@ -151,288 +366,292 @@ $summary = $summary_stmt->fetch(PDO::FETCH_ASSOC);
     <div class="pcoded-wrapper">
         <div class="pcoded-content">
             <div class="pcoded-inner-content">
-                <!-- [ breadcrumb ] start -->
-                <div class="page-header">
-                    <div class="page-block">
-                        <div class="row align-items-center">
-                            <div class="col-md-12">
-                                <div class="page-header-title">
-                                    <h5 class="m-b-10">Expenses</h5>
-                                </div>
-                                <ul class="breadcrumb">
-                                    <li class="breadcrumb-item"><a href="dashboard.php"><i class="feather icon-home"></i></a></li>
-                                    <li class="breadcrumb-item"><a href="javascript:">Expenses</a></li>
-                                </ul>
-                            </div>
-                        </div>
-                    </div>
-                </div>
-                <!-- [ breadcrumb ] end -->
                 <div class="main-body">
                     <div class="page-wrapper">
                         <!-- [ Main Content ] start -->
-                        <div class="row">
-                            <!-- Summary Cards -->
-                            <div class="col-xl-3 col-md-6">
-                                <div class="card bg-c-blue text-white">
-                                    <div class="card-body">
-                                        <div class="row align-items-center">
-                                            <div class="col">
-                                                <p class="m-b-5">Total Expenses</p>
-                                                <h4 class="m-b-0"><?= number_format($summary['total_expenses'] ?? 0) ?></h4>
-                                            </div>
-                                            <div class="col col-auto text-right">
-                                                <i class="fas fa-receipt f-50 text-c-blue"></i>
-                                            </div>
-                                        </div>
+                        <div class="main-content">
+                            <div class="page-header card">
+                                <div class="row align-items-center">
+                                    <div class="col-md-6">
+                                        <h5 class="mb-0"><i class="feather icon-receipt mr-2"></i>Expenses</h5>
+                                        <p class="mb-0 mt-1" style="font-size: 14px; opacity: 0.9;">Manage and track your expenses</p>
+                                    </div>
+                                    <div class="col-md-6 text-end">
+                                        <a href="dashboard.php" class="btn btn-outline-secondary btn-sm">
+                                            <i class="feather icon-arrow-left mr-1"></i>Back to Dashboard
+                                        </a>
                                     </div>
                                 </div>
                             </div>
-                            <div class="col-xl-3 col-md-6">
-                                <div class="card bg-c-green text-white">
-                                    <div class="card-body">
-                                        <div class="row align-items-center">
-                                            <div class="col">
-                                                <p class="m-b-5">Total USD Expenses</p>
-                                                <h4 class="m-b-0">$<?= number_format($summary['total_usd_expenses'] ?? 0, 2) ?></h4>
-                                            </div>
-                                            <div class="col col-auto text-right">
-                                                <i class="fas fa-dollar-sign f-50 text-c-green"></i>
-                                            </div>
-                                        </div>
-                                    </div>
-                                </div>
-                            </div>
-                            <div class="col-xl-3 col-md-6">
-                                <div class="card bg-c-red text-white">
-                                    <div class="card-body">
-                                        <div class="row align-items-center">
-                                            <div class="col">
-                                                <p class="m-b-5">Total AFS Expenses</p>
-                                                <h4 class="m-b-0">AFS <?= number_format($summary['total_afs_expenses'] ?? 0, 2) ?></h4>
-                                            </div>
-                                            <div class="col col-auto text-right">
-                                                <i class="fas fa-money-bill-wave f-50 text-c-red"></i>
-                                            </div>
-                                        </div>
-                                    </div>
-                                </div>
-                            </div>
-                            <div class="col-xl-3 col-md-6">
-                                <div class="card bg-c-yellow text-white">
-                                    <div class="card-body">
-                                        <div class="row align-items-center">
-                                            <div class="col">
-                                                <p class="m-b-5">Average Expense</p>
-                                                <h4 class="m-b-0">$<?= number_format($summary['avg_expense_amount'] ?? 0, 2) ?></h4>
-                                            </div>
-                                            <div class="col col-auto text-right">
-                                                <i class="fas fa-chart-line f-50 text-c-yellow"></i>
-                                            </div>
-                                        </div>
-                                    </div>
-                                </div>
-                            </div>
-                        </div>
 
-                        <div class="row">
-                            <div class="col-sm-12">
-                                <!-- Branch and Search Section -->
-                                <div class="card mb-3">
-                                    <div class="card-body">
-                                        <div class="row align-items-center">
-                                            <div class="col-md-6">
-                                                <div class="branch-selector">
-                                                    <label for="branchSelect" class="form-label">Select Branch:</label>
-                                                    <select id="branchSelect" class="form-control">
-                                                        <option value="all" <?= $selected_branch === 'all' ? 'selected' : '' ?>>All Branches</option>
-                                                        <?php
-                                                        try {
-                                                            $branch_stmt = $pdo->prepare("SELECT id, name FROM branches WHERE tenant_id = ? AND status = 'active' ORDER BY name");
-                                                            $branch_stmt->execute([$tenant_id]);
-                                                            $branches = $branch_stmt->fetchAll(PDO::FETCH_ASSOC);
-
-                                                            foreach ($branches as $branch) {
-                                                                $selected = ($selected_branch == $branch['id']) ? 'selected' : '';
-                                                                echo '<option value="' . $branch['id'] . '" ' . $selected . '>' . htmlspecialchars($branch['name']) . '</option>';
-                                                            }
-                                                        } catch (PDOException $e) {
-                                                            error_log("Error fetching branches: " . $e->getMessage());
-                                                        }
-                                                        ?>
-                                                    </select>
+                            <div class="row">
+                                <!-- Summary Cards -->
+                                <div class="col-xl-3 col-md-6">
+                                    <div class="card bg-c-blue text-white">
+                                        <div class="card-body">
+                                            <div class="row align-items-center">
+                                                <div class="col">
+                                                    <p class="m-b-5">Total Expenses</p>
+                                                    <h4 class="m-b-0"><?= number_format($summary['total_expenses'] ?? 0) ?></h4>
+                                                </div>
+                                                <div class="col col-auto text-right">
+                                                    <i class="fas fa-receipt f-50 text-white"></i>
                                                 </div>
                                             </div>
-                                            <div class="col-md-6">
-                                                <div class="search-box">
-                                                    <div class="input-group">
-                                                        <input type="text" id="searchInput" class="form-control" placeholder="Search by description, category" value="<?= htmlspecialchars($search) ?>">
-                                                        <div class="input-group-append">
-                                                            <button class="btn btn-primary" type="button" id="searchBtn">
-                                                                <i class="feather icon-search"></i> Search
-                                                            </button>
-                                                            <?php if (!empty($search)): ?>
-                                                            <a href="?branch=<?= urlencode($selected_branch) ?>" class="btn btn-secondary">
-                                                                <i class="feather icon-x"></i> Clear
-                                                            </a>
-                                                            <?php endif; ?>
+                                        </div>
+                                    </div>
+                                </div>
+                                <div class="col-xl-3 col-md-6">
+                                    <div class="card bg-c-green text-white">
+                                        <div class="card-body">
+                                            <div class="row align-items-center">
+                                                <div class="col">
+                                                    <p class="m-b-5">Total USD Expenses</p>
+                                                    <h4 class="m-b-0">$<?= number_format($summary['total_usd_expenses'] ?? 0, 2) ?></h4>
+                                                </div>
+                                                <div class="col col-auto text-right">
+                                                    <i class="fas fa-dollar-sign f-50 text-white"></i>
+                                                </div>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+                                <div class="col-xl-3 col-md-6">
+                                    <div class="card bg-c-red text-white">
+                                        <div class="card-body">
+                                            <div class="row align-items-center">
+                                                <div class="col">
+                                                    <p class="m-b-5">Total AFS Expenses</p>
+                                                    <h4 class="m-b-0">AFS <?= number_format($summary['total_afs_expenses'] ?? 0, 2) ?></h4>
+                                                </div>
+                                                <div class="col col-auto text-right">
+                                                    <i class="fas fa-money-bill-wave f-50 text-white"></i>
+                                                </div>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+                                <div class="col-xl-3 col-md-6">
+                                    <div class="card bg-c-yellow text-white">
+                                        <div class="card-body">
+                                            <div class="row align-items-center">
+                                                <div class="col">
+                                                    <p class="m-b-5">Average Expense</p>
+                                                    <h4 class="m-b-0">$<?= number_format($summary['avg_expense_amount'] ?? 0, 2) ?></h4>
+                                                </div>
+                                                <div class="col col-auto text-right">
+                                                    <i class="fas fa-chart-line f-50 text-white"></i>
+                                                </div>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <div class="row">
+                                <div class="col-sm-12">
+                                    <!-- Branch and Search Section -->
+                                    <div class="card mb-3">
+                                        <div class="card-body">
+                                            <div class="row align-items-center">
+                                                <div class="col-md-6">
+                                                    <div class="branch-selector">
+                                                        <label for="branchSelect" class="form-label"><i class="feather icon-home mr-2"></i>Select Branch:</label>
+                                                        <select id="branchSelect" class="form-control">
+                                                            <option value="all" <?= $selected_branch === 'all' ? 'selected' : '' ?>>All Branches</option>
+                                                            <?php
+                                                            try {
+                                                                $branch_stmt = $pdo->prepare("SELECT id, name FROM branches WHERE tenant_id = ? AND status = 'active' ORDER BY name");
+                                                                $branch_stmt->execute([$tenant_id]);
+                                                                $branches = $branch_stmt->fetchAll(PDO::FETCH_ASSOC);
+
+                                                                foreach ($branches as $branch) {
+                                                                    $selected = ($selected_branch == $branch['id']) ? 'selected' : '';
+                                                                    echo '<option value="' . $branch['id'] . '" ' . $selected . '>' . htmlspecialchars($branch['name']) . '</option>';
+                                                                }
+                                                            } catch (PDOException $e) {
+                                                                error_log("Error fetching branches: " . $e->getMessage());
+                                                            }
+                                                            ?>
+                                                        </select>
+                                                    </div>
+                                                </div>
+                                                <div class="col-md-6">
+                                                    <div class="search-box">
+                                                        <div class="input-group">
+                                                            <input type="text" id="searchInput" class="form-control" placeholder="Search by description, category" value="<?= htmlspecialchars($search) ?>">
+                                                            <div class="input-group-append">
+                                                                <button class="btn btn-primary" type="button" id="searchBtn">
+                                                                    <i class="feather icon-search"></i> Search
+                                                                </button>
+                                                                <?php if (!empty($search)): ?>
+                                                                <a href="?branch=<?= urlencode($selected_branch) ?>" class="btn btn-secondary">
+                                                                    <i class="feather icon-x"></i> Clear
+                                                                </a>
+                                                                <?php endif; ?>
+                                                            </div>
                                                         </div>
                                                     </div>
                                                 </div>
                                             </div>
                                         </div>
                                     </div>
-                                </div>
 
-                                <!-- Expenses Table Section -->
-                                <div class="card">
-                                    <div class="card-body p-0">
-                                        <div class="table-responsive">
-                                            <table class="table table-hover">
-                                                <thead>
-                                                    <tr>
-                                                        <th class="text-center" width="50">#</th>
-                                                        <th width="100">Action</th>
-                                                        <th>Expense Details</th>
-                                                        <th>Category & Amount</th>
-                                                        <th>Branch</th>
-                                                        <th>Date</th>
-                                                    </tr>
-                                                </thead>
-                                                <tbody id="expenseTable">
-                                                    <?php
-                                                    $counter = $offset + 1;
-                                                    foreach ($expenses as $expense):
-                                                    ?>
-                                                    <tr>
-                                                        <td class="text-center"><?= $counter++ ?></td>
-                                                        <td>
-                                                            <div class="dropdown">
-                                                                <button class="btn btn-secondary btn-sm dropdown-toggle" type="button" data-toggle="dropdown">
-                                                                    <i class="feather icon-more-vertical"></i>
-                                                                </button>
-                                                                <div class="dropdown-menu dropdown-menu-right">
-                                                                    <button class="dropdown-item view-details" data-expense='<?= htmlspecialchars(json_encode($expense)) ?>'>
-                                                                        <i class="feather icon-eye text-primary mr-2"></i> View Details
-                                                                    </button>
-                                                                </div>
-                                                            </div>
-                                                        </td>
-
-                                                        <td>
-                                                            <div class="expense-info">
-                                                                <div class="expense-info__description">
-                                                                    <strong><?= htmlspecialchars($expense['description']) ?></strong>
-                                                                </div>
-                                                                <?php if (!empty($expense['receipt'])): ?>
-                                                                <div class="expense-info__receipt">
-                                                                    <small class="text-muted">Receipt: <?= htmlspecialchars($expense['receipt']) ?></small>
-                                                                </div>
-                                                                <?php endif; ?>
-                                                            </div>
-                                                        </td>
-
-                                                        <td>
-                                                            <div class="category-amount-info">
-                                                                <div class="category-amount-info__category">
-                                                                    <span class="badge badge-primary">
-                                                                        <?= htmlspecialchars($expense['category_name'] ?? 'Uncategorized') ?>
-                                                                    </span>
-                                                                </div>
-                                                                <div class="category-amount-info__amount">
-                                                                    <strong class="text-<?= $expense['currency'] === 'USD' ? 'success' : 'info' ?>">
-                                                                        <?= $expense['currency'] === 'USD' ? '$' : 'AFS ' ?>
-                                                                        <?= number_format($expense['amount'], 2) ?>
-                                                                    </strong>
-                                                                </div>
-                                                            </div>
-                                                        </td>
-
-                                                        <td>
-                                                            <span class="badge badge-secondary">
-                                                                <?= htmlspecialchars($expense['branch_name'] ?? 'N/A') ?>
-                                                            </span>
-                                                        </td>
-
-                                                        <td>
-                                                            <div class="date-info">
-                                                                <div class="date-info__date">
-                                                                    <?= date('d/m/Y', strtotime($expense['date'])) ?>
-                                                                </div>
-                                                                <div class="date-info__time">
-                                                                    <small class="text-muted">
-                                                                        <?= date('H:i', strtotime($expense['created_at'])) ?>
-                                                                    </small>
-                                                                </div>
-                                                            </div>
-                                                        </td>
-                                                    </tr>
-                                                    <?php endforeach; ?>
-                                                </tbody>
-                                            </table>
+                                    <!-- Expenses Table Section -->
+                                    <div class="card">
+                                        <div class="card-header">
+                                            <h5><i class="feather icon-list mr-2"></i>Expenses List</h5>
                                         </div>
-
-                                        <!-- Pagination -->
-                                        <div class="card-footer bg-white">
-                                            <div class="d-flex justify-content-between align-items-center">
-                                                <div class="text-muted">
-                                                    Showing <?= min(($page - 1) * $results_per_page + 1, $total_expenses) ?> to <?= min($page * $results_per_page, $total_expenses) ?> of <?= $total_expenses ?> expenses
-                                                </div>
-                                                <nav aria-label="Page navigation">
-                                                    <ul class="pagination mb-0">
-                                                        <?php if ($page > 1): ?>
-                                                            <li class="page-item">
-                                                                <a class="page-link" href="?page=1&search=<?= urlencode($search) ?>&branch=<?= urlencode($selected_branch) ?>">
-                                                                    <i class="feather icon-chevrons-left"></i>
-                                                                </a>
-                                                            </li>
-                                                            <li class="page-item">
-                                                                <a class="page-link" href="?page=<?= $page - 1 ?>&search=<?= urlencode($search) ?>&branch=<?= urlencode($selected_branch) ?>">
-                                                                    <i class="feather icon-chevron-left"></i>
-                                                                </a>
-                                                            </li>
-                                                        <?php endif; ?>
-
+                                        <div class="card-body p-0">
+                                            <div class="table-responsive">
+                                                <table class="table table-hover">
+                                                    <thead>
+                                                        <tr>
+                                                            <th class="text-center" width="50"><i class="feather icon-hash mr-1"></i>#</th>
+                                                            <th width="100"><i class="feather icon-cog mr-1"></i>Action</th>
+                                                            <th><i class="feather icon-file-text mr-1"></i>Expense Details</th>
+                                                            <th><i class="feather icon-tag mr-1"></i>Category & Amount</th>
+                                                            <th><i class="feather icon-home mr-1"></i>Branch</th>
+                                                            <th><i class="feather icon-calendar mr-1"></i>Date</th>
+                                                        </tr>
+                                                    </thead>
+                                                    <tbody id="expenseTable">
                                                         <?php
-                                                        $start_page = max(1, $page - 2);
-                                                        $end_page = min($total_pages, $page + 2);
-
-                                                        if ($start_page > 1) {
-                                                            echo '<li class="page-item"><a class="page-link" href="?page=1&search=' . urlencode($search) . '&branch=' . urlencode($selected_branch) . '">1</a></li>';
-                                                            if ($start_page > 2) {
-                                                                echo '<li class="page-item disabled"><span class="page-link">...</span></li>';
-                                                            }
-                                                        }
-
-                                                        for ($i = $start_page; $i <= $end_page; $i++) {
-                                                            echo '<li class="page-item ' . ($i == $page ? 'active' : '') . '">
-                                                                <a class="page-link" href="?page=' . $i . '&search=' . urlencode($search) . '&branch=' . urlencode($selected_branch) . '">' . $i . '</a>
-                                                            </li>';
-                                                        }
-
-                                                        if ($end_page < $total_pages) {
-                                                            if ($end_page < $total_pages - 1) {
-                                                                echo '<li class="page-item disabled"><span class="page-link">...</span></li>';
-                                                            }
-                                                            echo '<li class="page-item"><a class="page-link" href="?page=' . $total_pages . '&search=' . urlencode($search) . '&branch=' . urlencode($selected_branch) . '">' . $total_pages . '</a></li>';
-                                                        }
+                                                        $counter = $offset + 1;
+                                                        foreach ($expenses as $expense):
                                                         ?>
+                                                        <tr>
+                                                            <td class="text-center"><?= $counter++ ?></td>
+                                                            <td>
+                                                                <div class="dropdown">
+                                                                    <button class="btn btn-secondary btn-sm dropdown-toggle" type="button" data-toggle="dropdown">
+                                                                        <i class="feather icon-more-vertical"></i>
+                                                                    </button>
+                                                                    <div class="dropdown-menu dropdown-menu-right">
+                                                                        <button class="dropdown-item view-details" data-expense='<?= htmlspecialchars(json_encode($expense)) ?>'>
+                                                                            <i class="feather icon-eye text-primary mr-2"></i> View Details
+                                                                        </button>
+                                                                    </div>
+                                                                </div>
+                                                            </td>
 
-                                                        <?php if ($page < $total_pages): ?>
-                                                            <li class="page-item">
-                                                                <a class="page-link" href="?page=<?= $page + 1 ?>&search=<?= urlencode($search) ?>&branch=<?= urlencode($selected_branch) ?>">
-                                                                    <i class="feather icon-chevron-right"></i>
-                                                                </a>
-                                                            </li>
-                                                            <li class="page-item">
-                                                                <a class="page-link" href="?page=<?= $total_pages ?>&search=<?= urlencode($search) ?>&branch=<?= urlencode($selected_branch) ?>">
-                                                                    <i class="feather icon-chevrons-right"></i>
-                                                                </a>
-                                                            </li>
-                                                        <?php endif; ?>
-                                                    </ul>
-                                                </nav>
+                                                            <td>
+                                                                <div class="expense-info">
+                                                                    <div class="expense-info__description">
+                                                                        <strong><?= htmlspecialchars($expense['description']) ?></strong>
+                                                                    </div>
+                                                                    <?php if (!empty($expense['receipt'])): ?>
+                                                                    <div class="expense-info__receipt">
+                                                                        <small class="text-muted">Receipt: <?= htmlspecialchars($expense['receipt']) ?></small>
+                                                                    </div>
+                                                                    <?php endif; ?>
+                                                                </div>
+                                                            </td>
+
+                                                            <td>
+                                                                <div class="category-amount-info">
+                                                                    <div class="category-amount-info__category">
+                                                                        <span class="badge badge-primary">
+                                                                            <?= htmlspecialchars($expense['category_name'] ?? 'Uncategorized') ?>
+                                                                        </span>
+                                                                    </div>
+                                                                    <div class="category-amount-info__amount">
+                                                                        <strong class="text-<?= $expense['currency'] === 'USD' ? 'success' : 'info' ?>">
+                                                                            <?= $expense['currency'] === 'USD' ? '$' : 'AFS ' ?>
+                                                                            <?= number_format($expense['amount'], 2) ?>
+                                                                        </strong>
+                                                                    </div>
+                                                                </div>
+                                                            </td>
+
+                                                            <td>
+                                                                <span class="badge badge-secondary">
+                                                                    <?= htmlspecialchars($expense['branch_name'] ?? 'N/A') ?>
+                                                                </span>
+                                                            </td>
+
+                                                            <td>
+                                                                <div class="date-info">
+                                                                    <div class="date-info__date">
+                                                                        <?= date('d/m/Y', strtotime($expense['date'])) ?>
+                                                                    </div>
+                                                                    <div class="date-info__time">
+                                                                        <small class="text-muted">
+                                                                            <?= date('H:i', strtotime($expense['created_at'])) ?>
+                                                                        </small>
+                                                                    </div>
+                                                                </div>
+                                                            </td>
+                                                        </tr>
+                                                        <?php endforeach; ?>
+                                                    </tbody>
+                                                </table>
                                             </div>
+
+                                            <!-- Pagination -->
+                                            <?php if ($total_pages > 1): ?>
+                                            <div class="card-footer bg-white">
+                                                <div class="d-flex justify-content-between align-items-center">
+                                                    <div class="text-muted">
+                                                        Showing <?= min(($page - 1) * $results_per_page + 1, $total_expenses) ?> to <?= min($page * $results_per_page, $total_expenses) ?> of <?= $total_expenses ?> expenses
+                                                    </div>
+                                                    <nav aria-label="Page navigation">
+                                                        <ul class="pagination mb-0">
+                                                            <?php if ($page > 1): ?>
+                                                                <li class="page-item">
+                                                                    <a class="page-link" href="?page=1&search=<?= urlencode($search) ?>&branch=<?= urlencode($selected_branch) ?>">
+                                                                        <i class="feather icon-chevrons-left"></i>
+                                                                    </a>
+                                                                </li>
+                                                                <li class="page-item">
+                                                                    <a class="page-link" href="?page=<?= $page - 1 ?>&search=<?= urlencode($search) ?>&branch=<?= urlencode($selected_branch) ?>">
+                                                                        <i class="feather icon-chevron-left"></i>
+                                                                    </a>
+                                                                </li>
+                                                            <?php endif; ?>
+
+                                                            <?php
+                                                            $start_page = max(1, $page - 2);
+                                                            $end_page = min($total_pages, $page + 2);
+
+                                                            if ($start_page > 1) {
+                                                                echo '<li class="page-item"><a class="page-link" href="?page=1&search=' . urlencode($search) . '&branch=' . urlencode($selected_branch) . '">1</a></li>';
+                                                                if ($start_page > 2) {
+                                                                    echo '<li class="page-item disabled"><span class="page-link">...</span></li>';
+                                                                }
+                                                            }
+
+                                                            for ($i = $start_page; $i <= $end_page; $i++) {
+                                                                echo '<li class="page-item ' . ($i == $page ? 'active' : '') . '">
+                                                                    <a class="page-link" href="?page=' . $i . '&search=' . urlencode($search) . '&branch=' . urlencode($selected_branch) . '">' . $i . '</a>
+                                                                </li>';
+                                                            }
+
+                                                            if ($end_page < $total_pages) {
+                                                                if ($end_page < $total_pages - 1) {
+                                                                    echo '<li class="page-item disabled"><span class="page-link">...</span></li>';
+                                                                }
+                                                                echo '<li class="page-item"><a class="page-link" href="?page=' . $total_pages . '&search=' . urlencode($search) . '&branch=' . urlencode($selected_branch) . '">' . $total_pages . '</a></li>';
+                                                            }
+                                                            ?>
+
+                                                            <?php if ($page < $total_pages): ?>
+                                                                <li class="page-item">
+                                                                    <a class="page-link" href="?page=<?= $page + 1 ?>&search=<?= urlencode($search) ?>&branch=<?= urlencode($selected_branch) ?>">
+                                                                        <i class="feather icon-chevron-right"></i>
+                                                                    </a>
+                                                                </li>
+                                                                <li class="page-item">
+                                                                    <a class="page-link" href="?page=<?= $total_pages ?>&search=<?= urlencode($search) ?>&branch=<?= urlencode($selected_branch) ?>">
+                                                                        <i class="feather icon-chevrons-right"></i>
+                                                                    </a>
+                                                                </li>
+                                                            <?php endif; ?>
+                                                        </ul>
+                                                    </nav>
+                                                </div>
+                                            </div>
+                                            <?php endif; ?>
                                         </div>
                                     </div>
                                 </div>

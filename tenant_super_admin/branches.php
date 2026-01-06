@@ -227,6 +227,163 @@ function logActivity($pdo, $tenant_id, $user_id, $action, $table_name, $record_i
 ?>
 
 <!-- [ Main Content ] start -->
+<style>
+/* Enhanced custom styles for better layout and design */
+.page-header-title h5 {
+    color: #007bff;
+    font-weight: 600;
+}
+.card {
+    border-radius: 10px;
+    box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+    transition: transform 0.2s ease-in-out, box-shadow 0.2s ease-in-out;
+    border: none;
+}
+.card:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 4px 16px rgba(0,0,0,0.15);
+}
+.card.border-left-primary {
+    border-left: 4px solid #007bff !important;
+}
+.card-header {
+    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    color: white;
+    border-radius: 10px 10px 0 0;
+    padding: 1rem 1.5rem;
+    border: none;
+}
+.card-header h5 {
+    margin: 0;
+    font-weight: 600;
+    display: flex;
+    align-items: center;
+}
+.badge {
+    font-size: 0.85em;
+    padding: 0.5em 0.75em;
+    border-radius: 20px;
+    font-weight: 500;
+}
+.badge-success {
+    background-color: #28a745;
+}
+.badge-info {
+    background-color: #17a2b8;
+}
+.badge-secondary {
+    background-color: #6c757d;
+}
+.table-responsive {
+    border-radius: 10px;
+    overflow: hidden;
+}
+.table {
+    margin-bottom: 0;
+}
+.table thead th {
+    background-color: #f8f9fa;
+    border-bottom: 2px solid #dee2e6;
+    font-weight: 600;
+    color: #495057;
+    padding: 1rem;
+}
+.table tbody tr:hover {
+    background-color: #f1f3f4;
+}
+.table tbody td {
+    padding: 1rem;
+    vertical-align: middle;
+}
+.btn {
+    border-radius: 25px;
+    font-weight: 600;
+    transition: all 0.3s ease;
+}
+.btn-primary {
+    background: linear-gradient(135deg, #007bff 0%, #0056b3 100%);
+    border: none;
+}
+.btn-primary:hover {
+    transform: translateY(-1px);
+    box-shadow: 0 4px 12px rgba(0,123,255,0.3);
+}
+.btn-outline-primary {
+    border-color: #007bff;
+    color: #007bff;
+}
+.btn-outline-primary:hover {
+    background-color: #007bff;
+    border-color: #007bff;
+}
+.btn-outline-danger {
+    border-color: #dc3545;
+    color: #dc3545;
+}
+.btn-outline-danger:hover {
+    background-color: #dc3545;
+    border-color: #dc3545;
+}
+.btn-sm {
+    padding: 0.375rem 0.75rem;
+    font-size: 0.875rem;
+}
+.alert {
+    border-radius: 10px;
+    border: none;
+    padding: 1rem 1.5rem;
+}
+.alert-success {
+    background: linear-gradient(135deg, #d4edda 0%, #c3e6cb 100%);
+    color: #155724;
+}
+.alert-danger {
+    background: linear-gradient(135deg, #f8d7da 0%, #f5c6cb 100%);
+    color: #721c24;
+}
+.alert-info {
+    background: linear-gradient(135deg, #d1ecf1 0%, #bee5eb 100%);
+    color: #0c5460;
+}
+.modal-content {
+    border-radius: 15px;
+    border: none;
+    box-shadow: 0 10px 30px rgba(0,0,0,0.2);
+}
+.modal-header {
+    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    color: white;
+    border-radius: 15px 15px 0 0;
+    border: none;
+}
+.modal-header .close {
+    color: white;
+    opacity: 0.8;
+}
+.modal-header .close:hover {
+    opacity: 1;
+}
+.form-control {
+    border-radius: 8px;
+    border: 1px solid #ced4da;
+    transition: border-color 0.15s ease-in-out, box-shadow 0.15s ease-in-out;
+    padding: 0.75rem;
+}
+.form-control:focus {
+    border-color: #007bff;
+    box-shadow: 0 0 0 0.2rem rgba(0,123,255,0.25);
+}
+.btn-group .btn {
+    border-radius: 50% !important;
+    margin: 0 2px;
+}
+.text-primary {
+    color: #007bff !important;
+}
+.text-muted {
+    color: #6c757d !important;
+}
+</style>
 <div class="pcoded-main-container">
     <div class="pcoded-content">
         <!-- [ breadcrumb ] start -->
@@ -235,7 +392,7 @@ function logActivity($pdo, $tenant_id, $user_id, $action, $table_name, $record_i
                 <div class="row align-items-center">
                     <div class="col-md-12">
                         <div class="page-header-title">
-                            <h5 class="m-b-10">Branch Management</h5>
+                            <h5 class="m-b-10"><i class="feather icon-git-branch mr-2"></i>Branch Management</h5>
                         </div>
                         <ul class="breadcrumb">
                             <li class="breadcrumb-item"><a href="dashboard.php"><i class="feather icon-home"></i></a></li>
@@ -269,33 +426,45 @@ function logActivity($pdo, $tenant_id, $user_id, $action, $table_name, $record_i
                 <div class="card border-left-primary shadow">
                     <div class="card-body">
                         <div class="row">
-                            <div class="col-md-3">
-                                <h6 class="text-muted"><i class="feather icon-package"></i> Current Plan</h6>
-                                <h5 class="mb-0"><?= htmlspecialchars($plan_info['name']) ?></h5>
+                            <div class="col-md-3 text-center">
+                                <div class="mb-3">
+                                    <i class="feather icon-package text-primary" style="font-size: 2rem;"></i>
+                                </div>
+                                <h6 class="text-muted mb-2">Current Plan</h6>
+                                <h5 class="mb-0 font-weight-bold text-primary"><?= htmlspecialchars($plan_info['name']) ?></h5>
                             </div>
-                            <div class="col-md-3">
-                                <h6 class="text-muted"><i class="feather icon-git-branch"></i> Branches</h6>
+                            <div class="col-md-3 text-center">
+                                <div class="mb-3">
+                                    <i class="feather icon-git-branch text-info" style="font-size: 2rem;"></i>
+                                </div>
+                                <h6 class="text-muted mb-2">Branches</h6>
                                 <h5 class="mb-0">
-                                    <span class="text-primary"><?= $current_branches ?></span>
+                                    <span class="text-primary font-weight-bold h3"><?= $current_branches ?></span>
                                     <small class="text-muted">/ <?= $max_allowed_branches ?></small>
                                 </h5>
                             </div>
-                            <div class="col-md-3">
-                                <h6 class="text-muted"><i class="feather icon-check"></i> Included</h6>
-                                <h5 class="mb-0"><?= htmlspecialchars($plan_info['max_branches']) ?></h5>
+                            <div class="col-md-3 text-center">
+                                <div class="mb-3">
+                                    <i class="feather icon-check text-success" style="font-size: 2rem;"></i>
+                                </div>
+                                <h6 class="text-muted mb-2">Included</h6>
+                                <h5 class="mb-0 font-weight-bold text-success"><?= htmlspecialchars($plan_info['max_branches']) ?></h5>
                             </div>
-                            <div class="col-md-3">
-                                <h6 class="text-muted"><i class="feather icon-plus-circle"></i> Add-ons</h6>
-                                <h5 class="mb-0"><?= $additional_branches > 0 ? '+' . $additional_branches : '-' ?></h5>
+                            <div class="col-md-3 text-center">
+                                <div class="mb-3">
+                                    <i class="feather icon-plus-circle text-warning" style="font-size: 2rem;"></i>
+                                </div>
+                                <h6 class="text-muted mb-2">Add-ons</h6>
+                                <h5 class="mb-0 font-weight-bold text-warning"><?= $additional_branches > 0 ? '+' . $additional_branches : '-' ?></h5>
                             </div>
                         </div>
                         <?php if ($max_allowed_branches > $plan_info['max_branches']): ?>
-                        <hr>
-                        <div class="alert alert-info mb-0">
-                            <i class="feather icon-info"></i>
-                            You have purchased <strong><?= $additional_branches ?> additional branch(es)</strong> for this billing period.
+                        <hr class="my-4">
+                        <div class="alert alert-info mb-0 border-0 shadow-sm">
+                            <i class="feather icon-info mr-2"></i>
+                            You have purchased <strong class="text-primary"><?= $additional_branches ?> additional branch(es)</strong> for this billing period.
                             <?php if (!$addon_manager->canAddMoreBranches()): ?>
-                            <br><strong>Maximum capacity reached.</strong> To add more branches, contact support.
+                            <br><strong class="text-danger">Maximum capacity reached.</strong> To add more branches, contact support.
                             <?php endif; ?>
                         </div>
                         <?php endif; ?>
@@ -308,19 +477,22 @@ function logActivity($pdo, $tenant_id, $user_id, $action, $table_name, $record_i
         <!-- Action Buttons -->
         <div class="row mb-4">
             <div class="col-12">
-                <button type="button" class="btn btn-primary <?= !$addon_manager->canAddMoreBranches() ? 'disabled' : '' ?>" 
-                        data-toggle="modal" 
+                <button type="button" class="btn btn-primary btn-lg <?= !$addon_manager->canAddMoreBranches() ? 'disabled' : '' ?>"
+                        data-toggle="modal"
                         data-target="#createBranchModal"
                         <?= !$addon_manager->canAddMoreBranches() ? 'disabled' : '' ?>>
-                    <i class="feather icon-plus"></i> Create New Branch
+                    <i class="feather icon-plus mr-2"></i> Create New Branch
                 </button>
                 <?php if ($current_branches < $max_allowed_branches && $additional_branches == 0): ?>
-                <small class="text-muted d-block mt-2">Available: <?= $max_allowed_branches - $current_branches ?> more branch(es) for your plan</small>
+                <div class="alert alert-light border mt-3 shadow-sm">
+                    <i class="feather icon-info mr-2 text-info"></i>
+                    <strong class="text-info">Available:</strong> <?= $max_allowed_branches - $current_branches ?> more branch(es) for your plan
+                </div>
                 <?php elseif (!$addon_manager->canAddMoreBranches()): ?>
-                <small class="text-danger d-block mt-2">
-                    <i class="feather icon-alert-circle"></i>
-                    You have reached your maximum branches. <a href="../admin/request_branch_addon.php">Request more branches</a>
-                </small>
+                <div class="alert alert-warning border mt-3 shadow-sm">
+                    <i class="feather icon-alert-circle mr-2"></i>
+                    <strong>You have reached your maximum branches.</strong> <a href="request_branch_addon.php" class="alert-link font-weight-bold">Request more branches</a>
+                </div>
                 <?php endif; ?>
             </div>
         </div>
@@ -330,66 +502,69 @@ function logActivity($pdo, $tenant_id, $user_id, $action, $table_name, $record_i
             <div class="col-xl-12 col-md-12">
                 <div class="card">
                     <div class="card-header">
-                        <h5>All Branches</h5>
+                        <h5><i class="feather icon-list mr-2"></i>All Branches</h5>
                     </div>
                     <div class="card-body">
                         <div class="table-responsive">
-                            <table class="table table-striped table-hover">
+                            <table class="table table-hover">
                                 <thead>
                                     <tr>
-                                        <th>Code</th>
-                                        <th>Name</th>
-                                        <th>Manager</th>
-                                        <th>Users</th>
-                                        <th>Status</th>
-                                        <th>Contact</th>
-                                        <th>Created</th>
-                                        <th>Actions</th>
+                                        <th><i class="feather icon-hash mr-1"></i>Code</th>
+                                        <th><i class="feather icon-tag mr-1"></i>Name</th>
+                                        <th><i class="feather icon-user mr-1"></i>Manager</th>
+                                        <th><i class="feather icon-users mr-1"></i>Users</th>
+                                        <th><i class="feather icon-activity mr-1"></i>Status</th>
+                                        <th><i class="feather icon-phone mr-1"></i>Contact</th>
+                                        <th><i class="feather icon-calendar mr-1"></i>Created</th>
+                                        <th><i class="feather icon-settings mr-1"></i>Actions</th>
                                     </tr>
                                 </thead>
                                 <tbody>
                                     <?php foreach ($branches as $branch): ?>
                                     <tr>
-                                        <td><strong><?= htmlspecialchars($branch['code']) ?></strong></td>
-                                        <td><?= htmlspecialchars($branch['name']) ?></td>
+                                        <td><strong class="text-primary font-weight-bold"><?= htmlspecialchars($branch['code']) ?></strong></td>
+                                        <td class="font-weight-bold text-dark"><?= htmlspecialchars($branch['name']) ?></td>
                                         <td>
                                             <?php if ($branch['manager_name']): ?>
-                                                <?= htmlspecialchars($branch['manager_name']) ?>
+                                                <span class="text-success font-weight-bold"><i class="feather icon-user-check mr-1"></i><?= htmlspecialchars($branch['manager_name']) ?></span>
                                             <?php else: ?>
-                                                <span class="text-muted">Not assigned</span>
+                                                <span class="text-muted"><i class="feather icon-user-x mr-1"></i>Not assigned</span>
                                             <?php endif; ?>
                                         </td>
                                         <td>
-                                            <span class="badge badge-info"><?= $branch['user_count'] ?> users</span>
+                                            <span class="badge badge-info badge-pill px-3 py-2 font-weight-bold">
+                                                <i class="feather icon-users mr-1"></i><?= $branch['user_count'] ?> users
+                                            </span>
                                         </td>
                                         <td>
-                                            <span class="badge badge-<?= $branch['status'] === 'active' ? 'success' : 'secondary' ?>">
+                                            <span class="badge badge-<?= $branch['status'] === 'active' ? 'success' : 'secondary' ?> badge-pill px-3 py-1 font-weight-bold">
+                                                <i class="feather icon-<?= $branch['status'] === 'active' ? 'check-circle' : 'x-circle' ?> mr-1"></i>
                                                 <?= ucfirst($branch['status']) ?>
                                             </span>
                                         </td>
                                         <td>
                                             <?php if ($branch['phone'] || $branch['email']): ?>
-                                                <small>
+                                                <div class="small">
                                                     <?php if ($branch['phone']): ?>
-                                                        <i class="feather icon-phone"></i> <?= htmlspecialchars($branch['phone']) ?><br>
+                                                        <div class="mb-1"><i class="feather icon-phone text-primary mr-1"></i><span class="text-dark"><?= htmlspecialchars($branch['phone']) ?></span></div>
                                                     <?php endif; ?>
                                                     <?php if ($branch['email']): ?>
-                                                        <i class="feather icon-mail"></i> <?= htmlspecialchars($branch['email']) ?>
+                                                        <div><i class="feather icon-mail text-info mr-1"></i><span class="text-dark"><?= htmlspecialchars($branch['email']) ?></span></div>
                                                     <?php endif; ?>
-                                                </small>
+                                                </div>
                                             <?php else: ?>
                                                 <span class="text-muted">-</span>
                                             <?php endif; ?>
                                         </td>
-                                        <td>
-                                            <small><?= date('M d, Y', strtotime($branch['created_at'])) ?></small>
+                                        <td class="text-muted">
+                                            <small class="font-weight-bold"><?= date('M d, Y', strtotime($branch['created_at'])) ?></small>
                                         </td>
                                         <td>
                                             <div class="btn-group" role="group">
-                                                <button class="btn btn-sm btn-outline-primary" onclick="editBranch(<?= $branch['id'] ?>)">
+                                                <button class="btn btn-sm btn-outline-primary" onclick="editBranch(<?= $branch['id'] ?>)" title="Edit Branch">
                                                     <i class="feather icon-edit"></i>
                                                 </button>
-                                                <button class="btn btn-sm btn-outline-danger" onclick="deleteBranch(<?= $branch['id'] ?>, '<?= htmlspecialchars($branch['name']) ?>')">
+                                                <button class="btn btn-sm btn-outline-danger" onclick="deleteBranch(<?= $branch['id'] ?>, '<?= htmlspecialchars($branch['name']) ?>')" title="Delete Branch">
                                                     <i class="feather icon-trash"></i>
                                                 </button>
                                             </div>
@@ -398,10 +573,15 @@ function logActivity($pdo, $tenant_id, $user_id, $action, $table_name, $record_i
                                     <?php endforeach; ?>
                                     <?php if (empty($branches)): ?>
                                     <tr>
-                                        <td colspan="8" class="text-center py-4">
-                                            <i class="feather icon-git-branch text-muted" style="font-size: 3rem;"></i>
-                                            <h5 class="text-muted mt-2">No branches found</h5>
-                                            <p class="text-muted">Create your first branch to get started.</p>
+                                        <td colspan="8" class="text-center py-5">
+                                            <div class="mb-4">
+                                                <i class="feather icon-git-branch text-muted" style="font-size: 4rem;"></i>
+                                            </div>
+                                            <h5 class="text-muted font-weight-bold mb-2">No branches found</h5>
+                                            <p class="text-muted mb-4">Create your first branch to get started with branch management.</p>
+                                            <button type="button" class="btn btn-primary btn-lg" data-toggle="modal" data-target="#createBranchModal">
+                                                <i class="feather icon-plus mr-2"></i>Create Your First Branch
+                                            </button>
                                         </td>
                                     </tr>
                                     <?php endif; ?>
@@ -420,7 +600,7 @@ function logActivity($pdo, $tenant_id, $user_id, $action, $table_name, $record_i
     <div class="modal-dialog modal-lg" role="document">
         <div class="modal-content">
             <div class="modal-header">
-                <h5 class="modal-title" id="createBranchModalLabel">Create New Branch</h5>
+                <h5 class="modal-title" id="createBranchModalLabel"><i class="feather icon-plus-circle mr-2"></i>Create New Branch</h5>
                 <button type="button" class="close" data-dismiss="modal" aria-label="Close">
                     <span aria-hidden="true">&times;</span>
                 </button>
@@ -485,7 +665,7 @@ function logActivity($pdo, $tenant_id, $user_id, $action, $table_name, $record_i
     <div class="modal-dialog modal-lg" role="document">
         <div class="modal-content">
             <div class="modal-header">
-                <h5 class="modal-title" id="editBranchModalLabel">Edit Branch</h5>
+                <h5 class="modal-title" id="editBranchModalLabel"><i class="feather icon-edit mr-2"></i>Edit Branch</h5>
                 <button type="button" class="close" data-dismiss="modal" aria-label="Close">
                     <span aria-hidden="true">&times;</span>
                 </button>
@@ -558,7 +738,7 @@ function logActivity($pdo, $tenant_id, $user_id, $action, $table_name, $record_i
     <div class="modal-dialog" role="document">
         <div class="modal-content">
             <div class="modal-header">
-                <h5 class="modal-title" id="deleteBranchModalLabel">Delete Branch</h5>
+                <h5 class="modal-title" id="deleteBranchModalLabel"><i class="feather icon-trash-2 mr-2"></i>Delete Branch</h5>
                 <button type="button" class="close" data-dismiss="modal" aria-label="Close">
                     <span aria-hidden="true">&times;</span>
                 </button>

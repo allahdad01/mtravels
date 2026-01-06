@@ -1,4 +1,10 @@
 <?php
+/**
+ * Manage User Add-ons - Super Admin Interface
+ * 
+ * Allows super admins to approve/reject user addon requests.
+ */
+
 // Start session
 if (session_status() === PHP_SESSION_NONE) {
     session_start();
@@ -23,7 +29,7 @@ $_SESSION['last_activity'] = time();
 
 // Check if user is a super admin
 if (!isset($_SESSION['user_id']) || !isset($_SESSION['role']) || $_SESSION['role'] !== 'super_admin' || !is_null($_SESSION['tenant_id'])) {
-    error_log("Unauthorized access attempt to manage_branch_addons.php: " . ($_SESSION['user_id'] ?? 'unknown') . " - IP: " . $_SERVER['REMOTE_ADDR']);
+    error_log("Unauthorized access attempt to manage_user_addons.php: " . ($_SESSION['user_id'] ?? 'unknown') . " - IP: " . $_SERVER['REMOTE_ADDR']);
     header('Location: ../login.php');
     exit();
 }
@@ -35,9 +41,9 @@ if (!isset($_SESSION['csrf_token'])) {
 
 // Database connection
 require_once '../includes/db.php';
-require_once '../includes/BranchAddonManager.php';
+require_once '../includes/UserAddonManager.php';
 
-$addon_manager = new BranchAddonManager($pdo);
+$addon_manager = new UserAddonManager($pdo);
 
 // Handle approval action
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
@@ -52,10 +58,10 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                  $request_id = intval($_POST['request_id']);
                  $approval_notes = $_POST['approval_notes'] ?? '';
                  
-                 $result = $addon_manager->approveBranchRequest($request_id, $user_id, $approval_notes);
+                 $result = $addon_manager->approveUserRequest($request_id, $user_id, $approval_notes);
                  
                  if ($result['success']) {
-                     $success = 'branch_addon_approved';
+                     $success = 'user_addon_approved';
                  } else {
                      $error = $result['message'];
                  }
@@ -63,28 +69,28 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                  $request_id = intval($_POST['request_id']);
                  $reason = $_POST['rejection_reason'] ?? '';
                  
-                 $result = $addon_manager->rejectBranchRequest($request_id, $user_id, $reason);
+                 $result = $addon_manager->rejectUserRequest($request_id, $user_id, $reason);
                  
                  if ($result['success']) {
-                     $success = 'branch_addon_rejected';
+                     $success = 'user_addon_rejected';
                  } else {
                      $error = $result['message'];
                  }
              } elseif ($_POST['action'] === 'suspend') {
                  $addon_id = intval($_POST['addon_id']);
-                 $result = $addon_manager->suspendBranchAddon($addon_id);
+                 $result = $addon_manager->suspendUserAddon($addon_id);
                  
                  if ($result['success']) {
-                     $success = 'branch_addon_suspended';
+                     $success = 'user_addon_suspended';
                  } else {
                      $error = $result['message'];
                  }
              } elseif ($_POST['action'] === 'reactivate') {
                  $addon_id = intval($_POST['addon_id']);
-                 $result = $addon_manager->reactivateBranchAddon($addon_id);
+                 $result = $addon_manager->reactivateUserAddon($addon_id);
                  
                  if ($result['success']) {
-                     $success = 'branch_addon_reactivated';
+                     $success = 'user_addon_reactivated';
                  } else {
                      $error = $result['message'];
                  }
@@ -101,7 +107,7 @@ $status_filter = $_GET['status'] ?? '';
 
 // Get both pending requests and active addons
 $pending_requests = $addon_manager->getPendingAddonRequests();
-$active_addons = $addon_manager->getAllBranchAddons();
+$active_addons = $addon_manager->getAllUserAddons();
 
 // Merge and combine for display
 $all_items = array_merge($pending_requests, $active_addons);
@@ -144,11 +150,11 @@ $display_items = array_slice(array_values($filtered_items), $offset, $items_per_
                         <div class="row align-items-center">
                             <div class="col-md-12">
                                 <div class="page-header-title">
-                                    <h5 class="m-b-10">Branch Add-on Requests</h5>
+                                    <h5 class="m-b-10">User Add-on Requests</h5>
                                 </div>
                                 <ul class="breadcrumb">
                                     <li class="breadcrumb-item"><a href="dashboard.php"><i class="feather icon-home"></i></a></li>
-                                    <li class="breadcrumb-item"><a href="#!">Branch Add-ons</a></li>
+                                    <li class="breadcrumb-item"><a href="#!">User Add-ons</a></li>
                                 </ul>
                             </div>
                         </div>
@@ -165,17 +171,17 @@ $display_items = array_slice(array_values($filtered_items), $offset, $items_per_
                                     <?php
                                     $msg = '';
                                     switch ($success) {
-                                        case 'branch_addon_approved':
-                                            $msg = 'Branch add-on request approved successfully';
+                                        case 'user_addon_approved':
+                                            $msg = 'User add-on request approved successfully';
                                             break;
-                                        case 'branch_addon_rejected':
-                                            $msg = 'Branch add-on request rejected';
+                                        case 'user_addon_rejected':
+                                            $msg = 'User add-on request rejected';
                                             break;
-                                        case 'branch_addon_suspended':
-                                            $msg = 'Branch add-on suspended successfully';
+                                        case 'user_addon_suspended':
+                                            $msg = 'User add-on suspended successfully';
                                             break;
-                                        case 'branch_addon_reactivated':
-                                            $msg = 'Branch add-on reactivated successfully';
+                                        case 'user_addon_reactivated':
+                                            $msg = 'User add-on reactivated successfully';
                                             break;
                                         default:
                                             $msg = 'Operation completed successfully';
@@ -199,14 +205,14 @@ $display_items = array_slice(array_values($filtered_items), $offset, $items_per_
                                 
                                 <div class="card">
                                      <div class="card-header d-flex justify-content-between align-items-center">
-                                         <h5>Branch Add-ons Management <span class="badge badge-info"><?= $total_items ?> total</span></h5>
-                                         <a href="branch_addon_payments.php" class="btn btn-sm btn-outline-primary">
+                                         <h5>User Add-ons Management <span class="badge badge-info"><?= $total_items ?> total</span></h5>
+                                         <a href="user_addon_payments.php" class="btn btn-sm btn-outline-primary">
                                              <i class="feather icon-credit-card mr-1"></i>View Payments
                                          </a>
                                      </div>
                                      <div class="card-body table-border-style">
                                          <div class="mb-3">
-                                             <form method="GET" action="manage_branch_addons.php" class="form-inline">
+                                             <form method="GET" action="manage_user_addons.php" class="form-inline">
                                                  <input type="text" class="form-control mr-2" name="search" placeholder="Search tenant or plan..." value="<?= htmlspecialchars($search_query) ?>" style="width: 250px;">
                                                  <select class="form-control mr-2" name="status" style="width: 120px;">
                                                      <option value="">All Status</option>
@@ -219,13 +225,13 @@ $display_items = array_slice(array_values($filtered_items), $offset, $items_per_
                                                  </select>
                                                  <button type="submit" class="btn btn-primary mr-2">Search</button>
                                                  <?php if (!empty($search_query) || !empty($status_filter)): ?>
-                                                 <a href="manage_branch_addons.php" class="btn btn-secondary">Clear</a>
+                                                 <a href="manage_user_addons.php" class="btn btn-secondary">Clear</a>
                                                  <?php endif; ?>
                                              </form>
                                          </div>
                                          <?php if (empty($display_items)): ?>
                                          <div class="alert alert-info">
-                                             No branch add-ons found.
+                                             No user add-ons found.
                                          </div>
                                          <?php else: ?>
                                         <div class="table-responsive">
@@ -234,8 +240,8 @@ $display_items = array_slice(array_values($filtered_items), $offset, $items_per_
                                                     <tr>
                                                         <th>Tenant</th>
                                                         <th>Plan</th>
-                                                        <th>Additional Branches</th>
-                                                        <th>Price per Branch</th>
+                                                        <th>Additional Users</th>
+                                                        <th>Price per User</th>
                                                         <th>Total Cost</th>
                                                         <th>Currency</th>
                                                         <th>Status</th>
@@ -250,10 +256,10 @@ $display_items = array_slice(array_values($filtered_items), $offset, $items_per_
                                                         <td><?= htmlspecialchars($item['plan_name'] ?? 'N/A') ?></td>
                                                         <td>
                                                             <span class="badge badge-success">
-                                                                +<?= intval($item['additional_branches'] ?? $item['requested_additional_branches'] ?? 0) ?>
+                                                                +<?= intval($item['additional_users'] ?? $item['requested_additional_users'] ?? 0) ?>
                                                             </span>
                                                         </td>
-                                                        <td><?= isset($item['addon_price_per_branch']) ? number_format($item['addon_price_per_branch'], 2) : '-' ?></td>
+                                                        <td><?= isset($item['addon_price_per_user']) ? number_format($item['addon_price_per_user'], 2) : '-' ?></td>
                                                         <td><?= isset($item['total_addon_cost']) ? number_format($item['total_addon_cost'], 2) : number_format($item['estimated_monthly_cost'] ?? 0, 2) ?></td>
                                                         <td><?= htmlspecialchars($item['currency']) ?></td>
                                                         <td>
@@ -275,7 +281,7 @@ $display_items = array_slice(array_values($filtered_items), $offset, $items_per_
                                                             <button class="btn btn-sm btn-success approve-btn" 
                                                                     data-request-id="<?= $item['id'] ?>"
                                                                     data-tenant-name="<?= htmlspecialchars($item['tenant_name']) ?>"
-                                                                    data-branches="<?= intval($item['requested_additional_branches']) ?>"
+                                                                    data-users="<?= intval($item['requested_additional_users']) ?>"
                                                                     data-cost="<?= number_format($item['estimated_monthly_cost'], 2) ?>">
                                                                 <i class="feather icon-check"></i> Approve
                                                             </button>
@@ -362,7 +368,7 @@ $display_items = array_slice(array_values($filtered_items), $offset, $items_per_
     <div class="modal-dialog modal-dialog-centered" role="document">
         <div class="modal-content">
             <div class="modal-header bg-success text-white">
-                <h5 class="modal-title" id="approveModalLabel">Approve Branch Add-on Request</h5>
+                <h5 class="modal-title" id="approveModalLabel">Approve User Add-on Request</h5>
                 <button type="button" class="close text-white" data-dismiss="modal" aria-label="Close">
                     <span aria-hidden="true">&times;</span>
                 </button>
@@ -375,7 +381,7 @@ $display_items = array_slice(array_values($filtered_items), $offset, $items_per_
                     
                     <div class="alert alert-info">
                         <p><strong>Tenant:</strong> <span id="approve_tenant_name"></span></p>
-                        <p><strong>Additional Branches:</strong> <span id="approve_branches"></span></p>
+                        <p><strong>Additional Users:</strong> <span id="approve_users"></span></p>
                         <p><strong>Estimated Monthly Cost:</strong> <span id="approve_cost"></span></p>
                     </div>
                     
@@ -400,7 +406,7 @@ $display_items = array_slice(array_values($filtered_items), $offset, $items_per_
      <div class="modal-dialog modal-dialog-centered" role="document">
          <div class="modal-content">
              <div class="modal-header bg-danger text-white">
-                 <h5 class="modal-title" id="rejectModalLabel">Reject Branch Add-on Request</h5>
+                 <h5 class="modal-title" id="rejectModalLabel">Reject User Add-on Request</h5>
                  <button type="button" class="close text-white" data-dismiss="modal" aria-label="Close">
                      <span aria-hidden="true">&times;</span>
                  </button>
@@ -436,7 +442,7 @@ $display_items = array_slice(array_values($filtered_items), $offset, $items_per_
      <div class="modal-dialog modal-dialog-centered" role="document">
          <div class="modal-content">
              <div class="modal-header bg-warning text-dark">
-                 <h5 class="modal-title" id="suspendModalLabel">Suspend Branch Add-on</h5>
+                 <h5 class="modal-title" id="suspendModalLabel">Suspend User Add-on</h5>
                  <button type="button" class="close" data-dismiss="modal" aria-label="Close">
                      <span aria-hidden="true">&times;</span>
                  </button>
@@ -449,7 +455,7 @@ $display_items = array_slice(array_values($filtered_items), $offset, $items_per_
                      
                      <div class="alert alert-warning">
                          <p><strong>Tenant:</strong> <span id="suspend_tenant_name"></span></p>
-                         <p class="text-muted"><small>Suspending this add-on will temporarily disable the additional branches for this tenant.</small></p>
+                         <p class="text-muted"><small>Suspending this add-on will temporarily disable the additional users for this tenant.</small></p>
                      </div>
                  </form>
              </div>
@@ -468,7 +474,7 @@ $display_items = array_slice(array_values($filtered_items), $offset, $items_per_
      <div class="modal-dialog modal-dialog-centered" role="document">
          <div class="modal-content">
              <div class="modal-header bg-info text-white">
-                 <h5 class="modal-title" id="reactivateModalLabel">Reactivate Branch Add-on</h5>
+                 <h5 class="modal-title" id="reactivateModalLabel">Reactivate User Add-on</h5>
                  <button type="button" class="close text-white" data-dismiss="modal" aria-label="Close">
                      <span aria-hidden="true">&times;</span>
                  </button>
@@ -481,7 +487,7 @@ $display_items = array_slice(array_values($filtered_items), $offset, $items_per_
                      
                      <div class="alert alert-info">
                          <p><strong>Tenant:</strong> <span id="reactivate_tenant_name"></span></p>
-                         <p class="text-muted"><small>Reactivating this add-on will restore the additional branches for this tenant.</small></p>
+                         <p class="text-muted"><small>Reactivating this add-on will restore the additional users for this tenant.</small></p>
                      </div>
                  </form>
              </div>
@@ -506,12 +512,12 @@ document.querySelectorAll('.approve-btn').forEach(btn => {
     btn.addEventListener('click', function() {
         const requestId = this.getAttribute('data-request-id');
         const tenantName = this.getAttribute('data-tenant-name');
-        const branches = this.getAttribute('data-branches');
+        const users = this.getAttribute('data-users');
         const cost = this.getAttribute('data-cost');
         
         document.getElementById('approve_request_id').value = requestId;
         document.getElementById('approve_tenant_name').textContent = tenantName;
-        document.getElementById('approve_branches').textContent = branches;
+        document.getElementById('approve_users').textContent = users;
         document.getElementById('approve_cost').textContent = cost;
         
         $('#approveModal').modal('show');
@@ -529,7 +535,7 @@ document.querySelectorAll('.reject-btn').forEach(btn => {
          
          $('#rejectModal').modal('show');
      });
- });
+});
 
 // Suspend button click handler
 document.querySelectorAll('.suspend-btn').forEach(btn => {
@@ -542,7 +548,7 @@ document.querySelectorAll('.suspend-btn').forEach(btn => {
          
          $('#suspendModal').modal('show');
      });
- });
+});
 
 // Reactivate button click handler
 document.querySelectorAll('.reactivate-btn').forEach(btn => {
@@ -555,7 +561,7 @@ document.querySelectorAll('.reactivate-btn').forEach(btn => {
          
          $('#reactivateModal').modal('show');
      });
- });
+});
  
  // Clear forms on modal close
  $('#approveModal, #rejectModal, #suspendModal, #reactivateModal').on('hidden.bs.modal', function() {

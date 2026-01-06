@@ -1,6 +1,7 @@
 <?php
 require_once '../includes/language_helpers.php';
 require_once '../includes/db.php';
+require_once '../includes/UserAddonManager.php';
 require_once '../admin/security.php';
 
 // Start session if not already started
@@ -10,6 +11,23 @@ if (session_status() === PHP_SESSION_NONE) {
 
 $tenant_id = $_SESSION['tenant_id'];
 $branch_id = $_SESSION['branch_id'];
+
+// Initialize UserAddonManager
+$userAddonManager = new UserAddonManager($pdo, $tenant_id);
+
+// Check user limits
+$usageStats = $userAddonManager->getUsageStats();
+$canAddUser = $usageStats['can_add_more'];
+
+// Check if user is tenant super admin (can request additional users)
+$isTenantSuperAdmin = isset($_SESSION['role']) && $_SESSION['role'] === 'super_admin';
+
+// Get tenant's currency for pricing display
+$plan = $usageStats['plan'];
+$currency = $plan['currency'] ?? 'USD';
+
+// Get pricing for addon display
+$addonPricing = $userAddonManager->getAddonPricing();
 
 
 // Handle form submission
@@ -28,6 +46,11 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 
         // Validation
         $errors = [];
+
+        // Check if tenant can add more users
+        if (!$canAddUser) {
+            $errors[] = __('user_limit_reached') . ' ' . sprintf(__('max_users_allowed'), $usageStats['max_users']);
+        }
 
         if (empty($name)) {
             $errors[] = __('name_required');
@@ -126,6 +149,42 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 $page_title = __('add_employee');
 include '../includes/header.php';
 ?>
+<style>
+    .page-header.card {
+        background: linear-gradient(135deg, #4099ff 0%, #2ed8b6 100%);
+        color: #ffffff;
+        border: none;
+        margin-bottom: 20px;
+        padding: 20px !important;
+    }
+
+    .page-header.card .row {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+    }
+
+    .page-header.card h5 {
+        color: #ffffff;
+        margin: 0;
+    }
+
+    .page-header.card .text-end {
+        text-align: right;
+    }
+
+    .page-header.card .btn {
+        background: rgba(255,255,255,0.2);
+        color: #ffffff;
+        border: 1px solid rgba(255,255,255,0.3);
+    }
+
+    .page-header.card .btn:hover {
+        background: rgba(255,255,255,0.3);
+        border-color: rgba(255,255,255,0.5);
+    }
+</style>
+  
     <!-- [ Main Content ] start -->
     <div class="pcoded-main-container">
         <div class="pcoded-wrapper">
@@ -135,15 +194,16 @@ include '../includes/header.php';
                         <div class="page-wrapper">
                             <!-- [ Main Content ] start -->
                             <div class="main-content">
-                                <div class="page-header">
-                                    <div class="page-header-content">
-                                        <h1><i class="feather icon-user-plus mr-2"></i><?php echo __('add_employee'); ?></h1>
-                                        <p><?php echo __('add_new_employee_to_system'); ?></p>
-                                    </div>
-                                    <div class="page-header-actions">
-                                        <a href="employee_management.php" class="btn btn-outline-secondary">
-                                            <i class="feather icon-arrow-left mr-1"></i><?php echo __('back_to_employee_management'); ?>
-                                        </a>
+                                <div class="page-header card">
+                                    <div class="row align-items-center">
+                                        <div class="col-md-6">
+                                            <h5 class="mb-0"><i class="feather icon-user-plus mr-2"></i><?php echo __('add_employee'); ?></h5>
+                                        </div>
+                                        <div class="col-md-6 text-end">
+                                            <a href="employee_management.php" class="btn btn-outline-secondary btn-sm">
+                                                <i class="feather icon-arrow-left mr-1"></i><?php echo __('back'); ?>
+                                            </a>
+                                        </div>
                                     </div>
                                 </div>
 
@@ -162,7 +222,25 @@ include '../includes/header.php';
                                                     <div class="alert alert-success"><?php echo $success; ?></div>
                                                 <?php endif; ?>
 
-                                                <form method="POST" action="">
+                                                <?php if (!$canAddUser): ?>
+                                                <div class="alert alert-warning">
+                                                    <h6><i class="feather icon-alert-triangle mr-2"></i><?php echo __('user_limit_reached_title'); ?></h6>
+                                                    <p><?php echo sprintf(__('current_usage_message'), $usageStats['current_users'], $usageStats['max_users']); ?></p>
+                                                    <?php if ($isTenantSuperAdmin): ?>
+                                                    <p class="mb-0">
+                                                        <a href="request_user_addon.php" class="btn btn-sm btn-warning">
+                                                            <i class="feather icon-plus-circle mr-1"></i><?php echo __('request_additional_users'); ?>
+                                                        </a>
+                                                    </p>
+                                                    <?php else: ?>
+                                                    <p class="mb-0">
+                                                        <i class="feather icon-info mr-1"></i><?php echo __('contact_owner_for_more_users'); ?>
+                                                    </p>
+                                                    <?php endif; ?>
+                                                </div>
+                                                <?php endif; ?>
+
+                                                <form method="POST" action=""<?php echo !$canAddUser ? ' style="opacity:0.5;pointer-events:none;"' : ''; ?>>
                                                     <input type="hidden" name="csrf_token" value="<?php echo $_SESSION['csrf_token']; ?>">
 
                                                     <div class="row">
@@ -263,6 +341,39 @@ include '../includes/header.php';
                                                     <li><i class="feather icon-info text-info mr-1"></i><?php echo __('minimum_6_characters'); ?></li>
                                                     <li><i class="feather icon-info text-info mr-1"></i><?php echo __('use_strong_password'); ?></li>
                                                 </ul>
+
+                                                <hr>
+
+                                                <!-- User Usage Card -->
+                                                <h6><?php echo __('user_usage'); ?></h6>
+                                                <div class="user-usage-info">
+                                                    <div class="usage-bar mb-2">
+                                                        <div class="progress" style="height: 20px;">
+                                                            <div class="progress-bar <?php echo $usageStats['usage_percentage'] >= 90 ? 'bg-danger' : ($usageStats['usage_percentage'] >= 75 ? 'bg-warning' : 'bg-success'); ?>" 
+                                                                 role="progressbar" 
+                                                                 style="width: <?php echo $usageStats['usage_percentage']; ?>%;" 
+                                                                 aria-valuenow="<?php echo $usageStats['usage_percentage']; ?>" 
+                                                                 aria-valuemin="0" 
+                                                                 aria-valuemax="100">
+                                                                <?php echo $usageStats['usage_percentage']; ?>%
+                                                            </div>
+                                                        </div>
+                                                    </div>
+                                                    <p class="text-muted small mb-2">
+                                                        <?php echo sprintf(__('usage_of_max_users'), $usageStats['current_users'], $usageStats['max_users']); ?>
+                                                    </p>
+                                                    <?php if ($usageStats['additional_users'] > 0): ?>
+                                                    <p class="text-success small mb-0">
+                                                        <i class="feather icon-plus-circle mr-1"></i>
+                                                        <?php echo sprintf(__('additional_users_from_addons'), $usageStats['additional_users']); ?>
+                                                    </p>
+                                                    <?php endif; ?>
+                                                    <?php if (!$canAddUser): ?>
+                                                    <div class="alert alert-warning text-center">
+                                                        <i class="feather icon-lock mr-1"></i><?php echo __('cannot_add_more_users_contact_owner'); ?>
+                                                    </div>
+                                                    <?php endif; ?>
+                                                </div>
                                             </div>
                                         </div>
                                     </div>

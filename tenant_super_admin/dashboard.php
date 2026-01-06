@@ -1,13 +1,10 @@
 <?php
 include 'header.php';
-include __DIR__ . '/../includes/branch_performance_monitor.php';
 
 // Get tenant ID from session
 $tenant_id = $_SESSION['tenant_id'];
 
-// Initialize performance monitor
-$monitor = initBranchPerformanceMonitor($pdo, $tenant_id);
-$performance_alerts = $monitor->getRecentAlerts(5);
+
 
 // Get branch parameter from URL or session
 $selected_branch_id = isset($_GET['branch']) ? (int)$_GET['branch'] : null;
@@ -315,21 +312,281 @@ $userQuery = "
 ?>
 
 <!-- [ Main Content ] start -->
+<style>
+/* Enhanced custom styles for better layout and design */
+.page-header.card {
+    background: linear-gradient(135deg, #4099ff 0%, #2ed8b6 100%);
+    color: #ffffff;
+    border: none;
+    margin-bottom: 20px;
+    padding: 20px !important;
+    box-shadow: 0 4px 12px rgba(0,0,0,0.15);
+    border-radius: 10px;
+}
+
+.page-header.card .row {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+}
+
+.page-header.card h5 {
+    color: #ffffff;
+    margin: 0;
+    font-weight: 600;
+}
+
+.page-header.card .text-end {
+    text-align: right;
+}
+
+.page-header.card .btn {
+    background: rgba(255,255,255,0.2);
+    color: #ffffff;
+    border: 1px solid rgba(255,255,255,0.3);
+    border-radius: 25px;
+    transition: all 0.3s ease;
+}
+
+.page-header.card .btn:hover {
+    background: rgba(255,255,255,0.3);
+    border-color: rgba(255,255,255,0.5);
+    transform: translateY(-1px);
+}
+
+.page-header-title h5 {
+    color: #007bff;
+    font-weight: 600;
+}
+.card {
+    border-radius: 10px;
+    box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+    transition: transform 0.2s ease-in-out, box-shadow 0.2s ease-in-out;
+    border: none;
+}
+.card:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 4px 16px rgba(0,0,0,0.15);
+}
+.card.border-left-primary {
+    border-left: 4px solid #007bff !important;
+}
+.card-header {
+    background: linear-gradient(135deg, #4099ff 0%, #2ed8b6 100%) !important;
+    color: #ffffff !important;
+    border-radius: 10px 10px 0 0;
+    padding: 1rem 1.5rem;
+    border: none;
+}
+.card-header h5 {
+    margin: 0;
+    font-weight: 600;
+    display: flex;
+    align-items: center;
+    color: #ffffff !important;
+    margin-bottom: 0 !important;
+}
+.card-header .card-header-right {
+    color: #ffffff !important;
+}
+.card-header .card-header-right .btn {
+    color: #ffffff !important;
+    border-color: rgba(255, 255, 255, 0.3) !important;
+}
+.card-header .card-header-right .btn:hover {
+    background: rgba(255, 255, 255, 0.1) !important;
+    border-color: rgba(255, 255, 255, 0.5) !important;
+}
+.badge {
+    font-size: 0.85em;
+    padding: 0.5em 0.75em;
+    border-radius: 20px;
+    font-weight: 500;
+}
+.badge-success {
+    background-color: #28a745;
+}
+.badge-info {
+    background-color: #17a2b8;
+}
+.badge-secondary {
+    background-color: #6c757d;
+}
+.table-responsive {
+    border-radius: 10px;
+    overflow: hidden;
+}
+.table {
+    margin-bottom: 0;
+}
+.table thead th {
+    background-color: #f8f9fa;
+    border-bottom: 2px solid #dee2e6;
+    font-weight: 600;
+    color: #495057;
+    padding: 1rem;
+}
+.table tbody tr:hover {
+    background-color: #f1f3f4;
+}
+.table tbody td {
+    padding: 1rem;
+    vertical-align: middle;
+}
+.btn {
+    border-radius: 25px;
+    font-weight: 600;
+    transition: all 0.3s ease;
+}
+.btn-primary {
+    background: linear-gradient(135deg, #007bff 0%, #0056b3 100%);
+    border: none;
+}
+.btn-primary:hover {
+    transform: translateY(-1px);
+    box-shadow: 0 4px 12px rgba(0,123,255,0.3);
+}
+.btn-outline-primary {
+    border-color: #007bff;
+    color: #007bff;
+}
+.btn-outline-primary:hover {
+    background-color: #007bff;
+    border-color: #007bff;
+}
+.btn-outline-danger {
+    border-color: #dc3545;
+    color: #dc3545;
+}
+.btn-outline-danger:hover {
+    background-color: #dc3545;
+    border-color: #dc3545;
+}
+.btn-sm {
+    padding: 0.375rem 0.75rem;
+    font-size: 0.875rem;
+}
+.alert {
+    border-radius: 10px;
+    border: none;
+    padding: 1rem 1.5rem;
+}
+.alert-success {
+    background: linear-gradient(135deg, #d4edda 0%, #c3e6cb 100%);
+    color: #155724;
+}
+.alert-danger {
+    background: linear-gradient(135deg, #f8d7da 0%, #f5c6cb 100%);
+    color: #721c24;
+}
+.alert-info {
+    background: linear-gradient(135deg, #d1ecf1 0%, #bee5eb 100%);
+    color: #0c5460;
+}
+.modal-content {
+    border-radius: 15px;
+    border: none;
+    box-shadow: 0 10px 30px rgba(0,0,0,0.2);
+}
+.modal-header {
+    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    color: white;
+    border-radius: 15px 15px 0 0;
+    border: none;
+}
+.modal-header .close {
+    color: white;
+    opacity: 0.8;
+}
+.modal-header .close:hover {
+    opacity: 1;
+}
+.form-control {
+    border-radius: 8px;
+    border: 1px solid #ced4da;
+    transition: border-color 0.15s ease-in-out, box-shadow 0.15s ease-in-out;
+    padding: 0.75rem;
+}
+.form-control:focus {
+    border-color: #4099ff;
+    box-shadow: 0 0 0 0.2rem rgba(64, 153, 255, 0.25);
+}
+.btn-group .btn {
+    border-radius: 50% !important;
+    margin: 0 2px;
+}
+.text-primary {
+    color: #007bff !important;
+}
+.text-muted {
+    color: #6c757d !important;
+}
+.progress {
+    border-radius: 15px;
+    overflow: hidden;
+    box-shadow: inset 0 1px 2px rgba(0,0,0,0.1);
+}
+
+.progress-bar {
+    transition: width 0.6s ease;
+}
+
+.badge-warning {
+    background-color: #ffc107;
+    color: #212529;
+}
+
+.pagination .page-link {
+    border-radius: 50%;
+    margin: 0 2px;
+    border: 1px solid #dee2e6;
+    color: #007bff;
+}
+.pagination .page-item.active .page-link {
+    background-color: #007bff;
+    border-color: #007bff;
+}
+.card.bg-light {
+    background: linear-gradient(135deg, #f8f9fa 0%, #e9ecef 100%);
+    border: 1px solid #dee2e6;
+}
+#estimatedCost {
+    color: #28a745;
+    font-weight: bold;
+}
+
+.h2 {
+    font-size: 2.5rem;
+}
+
+.h4 {
+    font-size: 1.5rem;
+}
+
+.h5 {
+    font-size: 1.25rem;
+}
+
+.h6 {
+    font-size: 1rem;
+}
+</style>
 <div class="pcoded-main-container">
     <div class="pcoded-content">
         <!-- [ breadcrumb ] start -->
-        <div class="page-header">
-            <div class="page-block">
-                <div class="row align-items-center">
-                    <div class="col-md-12">
-                        <div class="page-header-title">
-                            <h5 class="m-b-10">Owner Dashboard</h5>
-                        </div>
-                        <ul class="breadcrumb">
-                            <li class="breadcrumb-item"><a href="dashboard.php"><i class="feather icon-home"></i></a></li>
-                            <li class="breadcrumb-item"><a href="javascript:void(0)">Dashboard</a></li>
-                        </ul>
-                    </div>
+        <div class="page-header card">
+            <div class="row align-items-center">
+                <div class="col-md-6">
+                    <h5 class="mb-0"><i class="feather icon-bar-chart-2 mr-2"></i>Owner Dashboard</h5>
+                    <p class="mb-0 mt-1" style="font-size: 14px; opacity: 0.9;">Monitor your business performance and manage your team</p>
+                </div>
+                <div class="col-md-6 text-end">
+                    <button type="button" class="btn btn-outline-light btn-sm" data-toggle="modal" data-target="#profileModal">
+                        <i class="feather icon-user mr-1"></i>Profile
+                    </button>
+                    <button type="button" class="btn btn-outline-light btn-sm" data-toggle="modal" data-target="#settingsModal">
+                        <i class="feather icon-settings mr-1"></i>Settings
+                    </button>
                 </div>
             </div>
         </div>
@@ -394,60 +651,64 @@ $userQuery = "
         <div class="row">
             <!-- Branch Statistics -->
             <div class="col-xl-3 col-md-6">
-                <div class="card card-event">
-                    <div class="card-block">
-                        <div class="row align-items-center justify-content-center">
-                            <div class="col">
-                                <h5 class="m-0"><i class="feather icon-git-branch"></i> Total Branches</h5>
-                                <h2 class="mt-3 mb-3"><?= $branchStats['total_branches'] ?? 0 ?></h2>
-                                <h6 class="text-muted m-b-0">Active branches in your network</h6>
-                            </div>
+                <div class="card">
+                    <div class="card-body text-center">
+                        <div class="mb-4">
+                            <i class="feather icon-git-branch text-primary" style="font-size: 3rem;"></i>
                         </div>
+                        <div class="h2 font-weight-bold text-primary mb-2">
+                            <i class="feather icon-git-branch mr-2"></i><?= $branchStats['total_branches'] ?? 0 ?>
+                        </div>
+                        <p class="text-muted mb-0">Total Branches</p>
+                        <small class="text-muted">Active branches in your network</small>
                     </div>
                 </div>
             </div>
 
             <!-- User Statistics -->
             <div class="col-xl-3 col-md-6">
-                <div class="card card-event">
-                    <div class="card-block">
-                        <div class="row align-items-center justify-content-center">
-                            <div class="col">
-                                <h5 class="m-0"><i class="feather icon-users"></i> Total Users</h5>
-                                <h2 class="mt-3 mb-3"><?= $userStats['total_users'] ?? 0 ?></h2>
-                                <h6 class="text-muted m-b-0">Across all branches</h6>
-                            </div>
+                <div class="card">
+                    <div class="card-body text-center">
+                        <div class="mb-4">
+                            <i class="feather icon-users text-success" style="font-size: 3rem;"></i>
                         </div>
+                        <div class="h2 font-weight-bold text-success mb-2">
+                            <i class="feather icon-users mr-2"></i><?= $userStats['total_users'] ?? 0 ?>
+                        </div>
+                        <p class="text-muted mb-0">Total Users</p>
+                        <small class="text-muted">Across all branches</small>
                     </div>
                 </div>
             </div>
 
             <!-- Admin Users -->
             <div class="col-xl-3 col-md-6">
-                <div class="card card-event">
-                    <div class="card-block">
-                        <div class="row align-items-center justify-content-center">
-                            <div class="col">
-                                <h5 class="m-0"><i class="feather icon-user-check"></i> Branch Admins</h5>
-                                <h2 class="mt-3 mb-3"><?= $userStats['admin_users'] ?? 0 ?></h2>
-                                <h6 class="text-muted m-b-0">Administrative users</h6>
-                            </div>
+                <div class="card">
+                    <div class="card-body text-center">
+                        <div class="mb-4">
+                            <i class="feather icon-user-check text-info" style="font-size: 3rem;"></i>
                         </div>
+                        <div class="h2 font-weight-bold text-info mb-2">
+                            <i class="feather icon-user-check mr-2"></i><?= $userStats['admin_users'] ?? 0 ?>
+                        </div>
+                        <p class="text-muted mb-0">Branch Admins</p>
+                        <small class="text-muted">Administrative users</small>
                     </div>
                 </div>
             </div>
 
             <!-- Operational Users -->
             <div class="col-xl-3 col-md-6">
-                <div class="card card-event">
-                    <div class="card-block">
-                        <div class="row align-items-center justify-content-center">
-                            <div class="col">
-                                <h5 class="m-0"><i class="feather icon-user-plus"></i> Staff Users</h5>
-                                <h2 class="mt-3 mb-3"><?= ($userStats['sales_users'] ?? 0) + ($userStats['finance_users'] ?? 0) + ($userStats['umrah_users'] ?? 0) ?></h2>
-                                <h6 class="text-muted m-b-0">Sales, Finance, Umrah</h6>
-                            </div>
+                <div class="card">
+                    <div class="card-body text-center">
+                        <div class="mb-4">
+                            <i class="feather icon-user-plus text-warning" style="font-size: 3rem;"></i>
                         </div>
+                        <div class="h2 font-weight-bold text-warning mb-2">
+                            <i class="feather icon-user-plus mr-2"></i><?= ($userStats['sales_users'] ?? 0) + ($userStats['finance_users'] ?? 0) + ($userStats['umrah_users'] ?? 0) ?>
+                        </div>
+                        <p class="text-muted mb-0">Staff Users</p>
+                        <small class="text-muted">Sales, Finance, Umrah</small>
                     </div>
                 </div>
             </div>
@@ -647,49 +908,59 @@ $userQuery = "
 
         <!-- Quick Actions -->
         <div class="row">
-        <div class="col-12">
-        <div class="card">
-        <div class="card-header">
-        <h5>Quick Actions</h5>
-        </div>
-        <div class="card-body">
-        <div class="row">
-            <div class="col-md-3">
-                <a href="branches.php" class="btn btn-primary btn-block">
-                    <i class="feather icon-git-branch"></i> Manage Branches
-                </a>
+            <div class="col-12">
+                <div class="card">
+                    <div class="card-header">
+                        <h5><i class="feather icon-zap mr-2"></i>Quick Actions</h5>
+                    </div>
+                    <div class="card-body">
+                        <div class="row">
+                            <div class="col-md-3 mb-3">
+                                <a href="branches.php" class="btn btn-primary btn-lg btn-block">
+                                    <i class="feather icon-git-branch mr-2"></i>Manage Branches
+                                </a>
+                            </div>
+                            <div class="col-md-3 mb-3">
+                                <a href="users.php" class="btn btn-success btn-lg btn-block">
+                                    <i class="feather icon-user-plus mr-2"></i>Manage Users
+                                </a>
+                            </div>
+                            <div class="col-md-3 mb-3">
+                                <a href="reports.php" class="btn btn-info btn-lg btn-block">
+                                    <i class="feather icon-file mr-2"></i>View Reports
+                                </a>
+                            </div>
+                            <div class="col-md-3 mb-3">
+                                <a href="settings.php" class="btn btn-warning btn-lg btn-block">
+                                    <i class="feather icon-settings mr-2"></i>Settings
+                                </a>
+                            </div>
+                        </div>
+                        <div class="row">
+                            <div class="col-md-3 mb-3">
+                                <a href="generate_report.php" class="btn btn-outline-success btn-lg btn-block">
+                                    <i class="feather icon-download mr-2"></i>Generate Report
+                                </a>
+                            </div>
+                            <div class="col-md-3 mb-3">
+                                <a href="report_settings.php" class="btn btn-outline-info btn-lg btn-block">
+                                    <i class="feather icon-mail mr-2"></i>Report Settings
+                                </a>
+                            </div>
+                            <div class="col-md-3 mb-3">
+                                <a href="subscription_payments.php" class="btn btn-outline-primary btn-lg btn-block">
+                                    <i class="feather icon-credit-card mr-2"></i>Payments
+                                </a>
+                            </div>
+                            <div class="col-md-3 mb-3">
+                                <a href="tenant_settings.php" class="btn btn-outline-secondary btn-lg btn-block">
+                                    <i class="feather icon-sliders mr-2"></i>Tenant Settings
+                                </a>
+                            </div>
+                        </div>
+                    </div>
+                </div>
             </div>
-            <div class="col-md-3">
-                <a href="users.php" class="btn btn-success btn-block">
-                    <i class="feather icon-user-plus"></i> Manage Users
-                </a>
-            </div>
-            <div class="col-md-3">
-                <a href="reports.php" class="btn btn-info btn-block">
-                    <i class="feather icon-file"></i> View Reports
-                </a>
-            </div>
-            <div class="col-md-3">
-                <a href="settings.php" class="btn btn-warning btn-block">
-                    <i class="feather icon-settings"></i> Settings
-                </a>
-            </div>
-        </div>
-        <div class="row mt-3">
-            <div class="col-md-3">
-                <a href="generate_report.php" class="btn btn-outline-success btn-block">
-                    <i class="feather icon-download"></i> Generate Report
-                </a>
-            </div>
-            <div class="col-md-3">
-                <a href="report_settings.php" class="btn btn-outline-info btn-block">
-                    <i class="feather icon-mail"></i> Report Settings
-                </a>
-            </div>
-        </div>
-        </div>
-        </div>
-        </div>
         </div>
     </div>
 </div>

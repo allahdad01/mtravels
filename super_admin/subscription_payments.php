@@ -14,6 +14,7 @@ if (!isset($_SESSION['user_id']) || $_SESSION['role'] !== 'super_admin') {
 require_once '../config.php';
 require_once '../includes/db.php';
 require_once '../includes/BranchAddonManager.php';
+require_once '../includes/UserAddonManager.php';
 
 // Check if $pdo is available
 if (!isset($pdo) || !$pdo) {
@@ -167,14 +168,31 @@ try {
     $stmt = $pdo->prepare("
         SELECT ts.*, t.id as tenant_id, t.name as tenant_name, t.identifier as tenant_identifier,
                p.name as plan_name, p.price as plan_price,
-               COUNT(sp.id) as payment_count,
+               COUNT(DISTINCT sp.id) as payment_count,
                COALESCE(SUM(sp.amount), 0) as total_paid,
-               COALESCE(SUM(ba.total_addon_cost), 0) as total_addon_cost
+               COALESCE((
+                   SELECT SUM(ba.total_addon_cost) 
+                   FROM branch_addons ba 
+                   WHERE ba.tenant_id = ts.tenant_id AND ba.status = 'active'
+               ), 0) as branch_addon_cost,
+               COALESCE((
+                   SELECT SUM(ua.total_addon_cost) 
+                   FROM user_addons ua 
+                   WHERE ua.tenant_id = ts.tenant_id AND ua.status = 'active'
+               ), 0) as user_addon_cost,
+               COALESCE((
+                   SELECT SUM(ba.total_addon_cost) 
+                   FROM branch_addons ba 
+                   WHERE ba.tenant_id = ts.tenant_id AND ba.status = 'active'
+               ), 0) + COALESCE((
+                   SELECT SUM(ua.total_addon_cost) 
+                   FROM user_addons ua 
+                   WHERE ua.tenant_id = ts.tenant_id AND ua.status = 'active'
+               ), 0) as total_addon_cost
         FROM tenant_subscriptions ts
         LEFT JOIN tenants t ON ts.tenant_id = t.id
         LEFT JOIN plans p ON ts.plan_id = p.id
         LEFT JOIN subscription_payments sp ON ts.id = sp.subscription_id
-        LEFT JOIN branch_addons ba ON ts.tenant_id = ba.tenant_id AND ba.status = 'active'
         WHERE ts.status IN ('active', 'pending')
         GROUP BY ts.id, t.id, t.name, t.identifier, p.name, p.price
         ORDER BY ts.created_at DESC
@@ -425,8 +443,15 @@ $recent_payments = array_slice(array_values($filtered_payments), $pay_offset, $p
                                                          <td><?= ucfirst(htmlspecialchars($sub['billing_cycle'])) ?></td>
                                                          <td>
                                                              <div><?= $symbol . number_format($sub['amount'], 2) ?></div>
-                                                             <?php if ($sub['total_addon_cost'] > 0): ?>
-                                                             <small class="text-info">+<?= $symbol . number_format($sub['total_addon_cost'], 2) ?> add-ons</small>
+                                                             <?php if ($sub['branch_addon_cost'] > 0 || $sub['user_addon_cost'] > 0): ?>
+                                                             <small class="text-info">
+                                                                 <?php if ($sub['branch_addon_cost'] > 0): ?>
+                                                                 +<?= $symbol . number_format($sub['branch_addon_cost'], 2) ?> branch
+                                                                 <?php endif; ?>
+                                                                 <?php if ($sub['user_addon_cost'] > 0): ?>
+                                                                 +<?= $symbol . number_format($sub['user_addon_cost'], 2) ?> users
+                                                                 <?php endif; ?>
+                                                             </small>
                                                              <?php endif; ?>
                                                          </td>
                                                          <td>
@@ -533,115 +558,115 @@ $recent_payments = array_slice(array_values($filtered_payments), $pay_offset, $p
                                                                         </div>
                                                                     </div>
                                                                 </div>
-                                    <div class="card-body p-0">
-                                        <div class="table-responsive">
-                                            <table class="table table-hover table-striped mb-0">
-                                                <thead class="bg-light">
-                                                    <tr>
-                                                        <th>Date</th>
-                                                        <th>Tenant</th>
-                                                        <th>Plan</th>
-                                                        <th>Amount</th>
-                                                        <th>Method</th>
-                                                        <th>Receipt</th>
-                                                        <th>Processed By</th>
-                                                        <th style="width: 100px; text-align: center;">Actions</th>
-                                                    </tr>
-                                                </thead>
-                                                <tbody>
-                                                    <?php if (empty($recent_payments)): ?>
-                                                    <tr>
-                                                        <td colspan="8" class="text-center py-4">
-                                                            <i class="feather icon-inbox text-muted mb-2" style="font-size: 2rem;"></i>
-                                                            <p class="text-muted">
-                                                                <?php if (!empty($pay_search_query)): ?>
-                                                                No payments found for "<strong><?= htmlspecialchars($pay_search_query) ?></strong>"
-                                                                <?php else: ?>
-                                                                No payments recorded yet
-                                                                <?php endif; ?>
-                                                            </p>
-                                                        </td>
-                                                    </tr>
-                                                    <?php else: ?>
-                                                    <?php foreach ($recent_payments as $payment): ?>
-                                                    <?php $paymentSymbol = getCurrencySymbol($payment['currency'] ?? 'USD'); ?>
-                                                    <tr>
-                                                         <td><?= date('M d, Y', strtotime($payment['payment_date'])) ?></td>
-                                                         <td>
-                                                             <div class="d-flex align-items-center">
-                                                                 <div class="flex-grow-1">
-                                                                     <h6 class="mb-1"><?= htmlspecialchars($payment['tenant_name']) ?></h6>
-                                                                     <small class="text-muted"><?= htmlspecialchars($payment['tenant_identifier']) ?></small>
-                                                                 </div>
-                                                             </div>
-                                                         </td>
-                                                         <td>
-                                                             <span class="badge badge-primary"><?= htmlspecialchars($payment['plan_id']) ?></span>
-                                                         </td>
-                                                         <td><?= $paymentSymbol . number_format($payment['amount'], 2) ?> <?= htmlspecialchars($payment['currency'] ?? 'USD') ?></td>
-                                                        <td><?= htmlspecialchars($payment['payment_method'] ?: 'N/A') ?></td>
-                                                        <td><?= htmlspecialchars($payment['receipt_number'] ?: 'N/A') ?></td>
-                                                        <td><?= htmlspecialchars($payment['processed_by_name'] ?: 'System') ?></td>
-                                                        <td style="text-align: center;">
-                                                            <button class="btn btn-sm btn-info" onclick="downloadInvoice(<?= $payment['id'] ?>)" title="Download Invoice PDF">
-                                                                <i class="feather icon-download"></i>
-                                                            </button>
-                                                        </td>
-                                                        </tr>
-                                                    <?php endforeach; ?>
-                                                    <?php endif; ?>
-                                                    </tbody>
-                                                    </table>
-                                                    </div>
-                                                    
-                                                    <!-- Pagination for Payments -->
-                                                    <?php if ($pay_total_pages > 1): ?>
-                                                    <nav aria-label="Payments pagination" class="mt-3 mb-0">
-                                                    <ul class="pagination justify-content-center mb-0">
-                                                    <li class="page-item <?= $pay_current_page === 1 ? 'disabled' : '' ?>">
-                                                    <a class="page-link" href="subscription_payments.php?pay_page=<?= $pay_current_page - 1 ?><?= !empty($pay_search_query) ? '&pay_search=' . urlencode($pay_search_query) : '' ?>">
-                                                        <i class="feather icon-chevron-left"></i> Previous
-                                                    </a>
-                                                    </li>
-                                                    <?php 
-                                                    $pay_start_page = max(1, $pay_current_page - 2);
-                                                    $pay_end_page = min($pay_total_pages, $pay_current_page + 2);
-                                                    if ($pay_start_page > 1): ?>
-                                                    <li class="page-item">
-                                                    <a class="page-link" href="subscription_payments.php?pay_page=1<?= !empty($pay_search_query) ? '&pay_search=' . urlencode($pay_search_query) : '' ?>">1</a>
-                                                    </li>
-                                                    <?php if ($pay_start_page > 2): ?>
-                                                    <li class="page-item disabled"><span class="page-link">...</span></li>
-                                                    <?php endif; ?>
-                                                    <?php endif; ?>
-                                                    <?php for ($i = $pay_start_page; $i <= $pay_end_page; $i++): ?>
-                                                    <li class="page-item <?= $i === $pay_current_page ? 'active' : '' ?>">
-                                                    <a class="page-link" href="subscription_payments.php?pay_page=<?= $i ?><?= !empty($pay_search_query) ? '&pay_search=' . urlencode($pay_search_query) : '' ?>"><?= $i ?></a>
-                                                    </li>
-                                                    <?php endfor; ?>
-                                                    <?php if ($pay_end_page < $pay_total_pages): ?>
-                                                    <?php if ($pay_end_page < $pay_total_pages - 1): ?>
-                                                    <li class="page-item disabled"><span class="page-link">...</span></li>
-                                                    <?php endif; ?>
-                                                    <li class="page-item">
-                                                    <a class="page-link" href="subscription_payments.php?pay_page=<?= $pay_total_pages ?><?= !empty($pay_search_query) ? '&pay_search=' . urlencode($pay_search_query) : '' ?>"><?= $pay_total_pages ?></a>
-                                                    </li>
-                                                    <?php endif; ?>
-                                                    <li class="page-item <?= $pay_current_page === $pay_total_pages ? 'disabled' : '' ?>">
-                                                    <a class="page-link" href="subscription_payments.php?pay_page=<?= $pay_current_page + 1 ?><?= !empty($pay_search_query) ? '&pay_search=' . urlencode($pay_search_query) : '' ?>">
-                                                        Next <i class="feather icon-chevron-right"></i>
-                                                    </a>
-                                                    </li>
-                                                    </ul>
-                                                    </nav>
-                                                    <div class="text-center mt-2 text-muted small">
-                                                    Page <?= $pay_current_page ?> of <?= $pay_total_pages ?> | Showing <?= count($recent_payments) ?> of <?= $pay_total_items ?> payments
-                                                    </div>
-                                                    <?php endif; ?>
-                                                    </div>
-                                                    </div>
-                                                    </div>
-                                                    </div>
+                                                            <div class="card-body p-0">
+                                                                <div class="table-responsive">
+                                                                    <table class="table table-hover table-striped mb-0">
+                                                                        <thead class="bg-light">
+                                                                            <tr>
+                                                                                <th>Date</th>
+                                                                                <th>Tenant</th>
+                                                                                <th>Plan</th>
+                                                                                <th>Amount</th>
+                                                                                <th>Method</th>
+                                                                                <th>Receipt</th>
+                                                                                <th>Processed By</th>
+                                                                                <th style="width: 100px; text-align: center;">Actions</th>
+                                                                            </tr>
+                                                                        </thead>
+                                                                        <tbody>
+                                                                            <?php if (empty($recent_payments)): ?>
+                                                                            <tr>
+                                                                                <td colspan="8" class="text-center py-4">
+                                                                                    <i class="feather icon-inbox text-muted mb-2" style="font-size: 2rem;"></i>
+                                                                                    <p class="text-muted">
+                                                                                        <?php if (!empty($pay_search_query)): ?>
+                                                                                        No payments found for "<strong><?= htmlspecialchars($pay_search_query) ?></strong>"
+                                                                                        <?php else: ?>
+                                                                                        No payments recorded yet
+                                                                                        <?php endif; ?>
+                                                                                    </p>
+                                                                                </td>
+                                                                            </tr>
+                                                                            <?php else: ?>
+                                                                            <?php foreach ($recent_payments as $payment): ?>
+                                                                            <?php $paymentSymbol = getCurrencySymbol($payment['currency'] ?? 'USD'); ?>
+                                                                            <tr>
+                                                                                 <td><?= date('M d, Y', strtotime($payment['payment_date'])) ?></td>
+                                                                                 <td>
+                                                                                     <div class="d-flex align-items-center">
+                                                                                         <div class="flex-grow-1">
+                                                                                             <h6 class="mb-1"><?= htmlspecialchars($payment['tenant_name']) ?></h6>
+                                                                                             <small class="text-muted"><?= htmlspecialchars($payment['tenant_identifier']) ?></small>
+                                                                                         </div>
+                                                                                     </div>
+                                                                                 </td>
+                                                                                 <td>
+                                                                                     <span class="badge badge-primary"><?= htmlspecialchars($payment['plan_id']) ?></span>
+                                                                                 </td>
+                                                                                 <td><?= $paymentSymbol . number_format($payment['amount'], 2) ?> <?= htmlspecialchars($payment['currency'] ?? 'USD') ?></td>
+                                                                                <td><?= htmlspecialchars($payment['payment_method'] ?: 'N/A') ?></td>
+                                                                                <td><?= htmlspecialchars($payment['receipt_number'] ?: 'N/A') ?></td>
+                                                                                <td><?= htmlspecialchars($payment['processed_by_name'] ?: 'System') ?></td>
+                                                                                <td style="text-align: center;">
+                                                                                    <button class="btn btn-sm btn-info" onclick="downloadInvoice(<?= $payment['id'] ?>)" title="Download Invoice PDF">
+                                                                                        <i class="feather icon-download"></i>
+                                                                                    </button>
+                                                                                </td>
+                                                                                </tr>
+                                                                            <?php endforeach; ?>
+                                                                            <?php endif; ?>
+                                                                        </tbody>
+                                                                        </table>
+                                                                        </div>
+                                                                        
+                                                                        <!-- Pagination for Payments -->
+                                                                        <?php if ($pay_total_pages > 1): ?>
+                                                                        <nav aria-label="Payments pagination" class="mt-3 mb-0">
+                                                                        <ul class="pagination justify-content-center mb-0">
+                                                                        <li class="page-item <?= $pay_current_page === 1 ? 'disabled' : '' ?>">
+                                                                        <a class="page-link" href="subscription_payments.php?pay_page=<?= $pay_current_page - 1 ?><?= !empty($pay_search_query) ? '&pay_search=' . urlencode($pay_search_query) : '' ?>">
+                                                                            <i class="feather icon-chevron-left"></i> Previous
+                                                                        </a>
+                                                                        </li>
+                                                                        <?php 
+                                                                        $pay_start_page = max(1, $pay_current_page - 2);
+                                                                        $pay_end_page = min($pay_total_pages, $pay_current_page + 2);
+                                                                        if ($pay_start_page > 1): ?>
+                                                                        <li class="page-item">
+                                                                        <a class="page-link" href="subscription_payments.php?pay_page=1<?= !empty($pay_search_query) ? '&pay_search=' . urlencode($pay_search_query) : '' ?>">1</a>
+                                                                        </li>
+                                                                        <?php if ($pay_start_page > 2): ?>
+                                                                        <li class="page-item disabled"><span class="page-link">...</span></li>
+                                                                        <?php endif; ?>
+                                                                        <?php endif; ?>
+                                                                        <?php for ($i = $pay_start_page; $i <= $pay_end_page; $i++): ?>
+                                                                        <li class="page-item <?= $i === $pay_current_page ? 'active' : '' ?>">
+                                                                        <a class="page-link" href="subscription_payments.php?pay_page=<?= $i ?><?= !empty($pay_search_query) ? '&pay_search=' . urlencode($pay_search_query) : '' ?>"><?= $i ?></a>
+                                                                        </li>
+                                                                        <?php endfor; ?>
+                                                                        <?php if ($pay_end_page < $pay_total_pages): ?>
+                                                                        <?php if ($pay_end_page < $pay_total_pages - 1): ?>
+                                                                        <li class="page-item disabled"><span class="page-link">...</span></li>
+                                                                        <?php endif; ?>
+                                                                        <li class="page-item">
+                                                                        <a class="page-link" href="subscription_payments.php?pay_page=<?= $pay_total_pages ?><?= !empty($pay_search_query) ? '&pay_search=' . urlencode($pay_search_query) : '' ?>"><?= $pay_total_pages ?></a>
+                                                                        </li>
+                                                                        <?php endif; ?>
+                                                                        <li class="page-item <?= $pay_current_page === $pay_total_pages ? 'disabled' : '' ?>">
+                                                                        <a class="page-link" href="subscription_payments.php?pay_page=<?= $pay_current_page + 1 ?><?= !empty($pay_search_query) ? '&pay_search=' . urlencode($pay_search_query) : '' ?>">
+                                                                            Next <i class="feather icon-chevron-right"></i>
+                                                                        </a>
+                                                                        </li>
+                                                                        </ul>
+                                                                        </nav>
+                                                                        <div class="text-center mt-2 text-muted small">
+                                                                        Page <?= $pay_current_page ?> of <?= $pay_total_pages ?> | Showing <?= count($recent_payments) ?> of <?= $pay_total_items ?> payments
+                                                                        </div>
+                                                                        <?php endif; ?>
+                                                                        </div>
+                                                                        </div>
+                                                                        </div>
+                                                                        </div>
 
                         <!-- [ Main Content ] end -->
                     </div>
@@ -677,7 +702,17 @@ $recent_payments = array_slice(array_values($filtered_payments), $pay_offset, $p
                                      <?php 
                                      $subSymbol = getCurrencySymbol($sub['currency'] ?? 'USD');
                                      $subTotal = floatval($sub['amount']) + floatval($sub['total_addon_cost']);
-                                     $addonsText = $sub['total_addon_cost'] > 0 ? ' + ' . $subSymbol . number_format($sub['total_addon_cost'], 2) . ' addons' : '';
+                                     $addonsText = '';
+                                     if ($sub['branch_addon_cost'] > 0 || $sub['user_addon_cost'] > 0) {
+                                         $addons = [];
+                                         if ($sub['branch_addon_cost'] > 0) {
+                                             $addons[] = $subSymbol . number_format($sub['branch_addon_cost'], 2) . ' branch';
+                                         }
+                                         if ($sub['user_addon_cost'] > 0) {
+                                             $addons[] = $subSymbol . number_format($sub['user_addon_cost'], 2) . ' users';
+                                         }
+                                         $addonsText = ' + ' . implode(', ', $addons);
+                                     }
                                      ?>
                                      <option value="<?= $sub['id'] ?>" data-currency="<?= htmlspecialchars($sub['currency'] ?? 'USD') ?>" data-amount="<?= $subTotal ?>">
                                          <?= htmlspecialchars($sub['tenant_name']) ?> - <?= htmlspecialchars($sub['plan_name']) ?> (<?= $subSymbol . number_format($sub['amount'], 2) ?><?= $addonsText ?>/<?= $sub['billing_cycle'] ?>)

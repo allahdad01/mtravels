@@ -19,7 +19,12 @@ $lang = init_language();
 if (isset($_GET['lang'])) {
     set_language($_GET['lang'], true);
 }
-
+ // Define h() function if not already defined
+ if (!function_exists('h')) {
+    function h($string) {
+        return htmlspecialchars($string, ENT_QUOTES, 'UTF-8');
+    }
+}
 // Database connection
 require_once('../includes/db.php');
 $tenant_id = $_SESSION['tenant_id'];
@@ -1554,7 +1559,13 @@ MOBILE SIDEBAR - CLEAN LAYOUT FIX
                 <li data-username="request_branch_addon" class="nav-item <?php echo basename($_SERVER['PHP_SELF']) == 'request_branch_addon.php' ? 'active' : ''; ?>">
                     <a href="request_branch_addon.php" class="nav-link">
                         <span class="pcoded-micon"><i class="feather icon-package"></i></span>
-                        <span class="pcoded-mtext">Request Branch Addon</span>
+                        <span class="pcoded-mtext">Request Branch</span>
+                    </a>
+                </li>
+                <li data-username="request_user_addon" class="nav-item <?php echo basename($_SERVER['PHP_SELF']) == 'request_user_addon.php' ? 'active' : ''; ?>">
+                    <a href="request_user_addon.php" class="nav-link">
+                        <span class="pcoded-micon"><i class="feather icon-package"></i></span>
+                        <span class="pcoded-mtext">Request Users</span>
                     </a>
                 </li>
                 <li data-username="users" class="nav-item <?php echo basename($_SERVER['PHP_SELF']) == 'users.php' ? 'active' : ''; ?>">
@@ -1764,12 +1775,6 @@ MOBILE SIDEBAR - CLEAN LAYOUT FIX
                     <a href="tenant_settings.php" class="nav-link">
                         <span class="pcoded-micon"><i class="feather icon-settings"></i></span>
                         <span class="pcoded-mtext">Agency Settings</span>
-                    </a>
-                </li>
-                <li data-username="settings" class="nav-item <?php echo basename($_SERVER['PHP_SELF']) == 'settings.php' ? 'active' : ''; ?>">
-                    <a href="settings.php" class="nav-link">
-                        <span class="pcoded-micon"><i class="feather icon-settings"></i></span>
-                        <span class="pcoded-mtext">Profile Settings</span>
                     </a>
                 </li>
 

@@ -1583,7 +1583,7 @@ MOBILE SIDEBAR - CLEAN LAYOUT FIX
                 </li>
                 <?php endif; ?>
                 <?php if (hasFeature('salary', $allowed_features)): ?>
-                <li data-username="hr" class="nav-item pcoded-hasmenu <?php echo (strpos(basename($_SERVER['PHP_SELF']), 'hr') !== false || strpos(basename($_SERVER['PHP_SELF']), 'employee') !== false) ? 'active pcoded-trigger' : ''; ?>">
+                <li data-username="hr" class="nav-item pcoded-hasmenu <?php echo (strpos(basename($_SERVER['PHP_SELF']), 'hr') !== false || strpos(basename($_SERVER['PHP_SELF']), 'employee') !== false || basename($_SERVER['PHP_SELF']) == 'hr_reports.php' || basename($_SERVER['PHP_SELF']) == 'add_employee.php' || basename($_SERVER['PHP_SELF']) == 'edit_employee.php' || basename($_SERVER['PHP_SELF']) == 'employee_details.php') ? 'active pcoded-trigger' : ''; ?>">
                     <a href="javascript:" class="nav-link">
                         <span class="pcoded-micon"><i class="feather icon-users"></i></span>
                         <span class="pcoded-mtext"><?= __('hr_management') ?></span>
@@ -1597,6 +1597,9 @@ MOBILE SIDEBAR - CLEAN LAYOUT FIX
                         </li>
                         <li class="<?php echo basename($_SERVER['PHP_SELF']) == 'employee_performance.php' ? 'active' : ''; ?>">
                             <a href="employee_performance.php"><?= __('performance_reviews') ?></a>
+                        </li>
+                        <li class="<?php echo basename($_SERVER['PHP_SELF']) == 'hr_reports.php' ? 'active' : ''; ?>">
+                            <a href="hr_reports.php">HR Reports</a>
                         </li>
                     </ul>
                 </li>
@@ -1797,12 +1800,6 @@ MOBILE SIDEBAR - CLEAN LAYOUT FIX
                     </a>
                 </li>
 
-                <li data-username="support_tickets" class="nav-item <?php echo basename($_SERVER['PHP_SELF']) == 'support_tickets.php' || basename($_SERVER['PHP_SELF']) == 'support_ticket_create.php' || basename($_SERVER['PHP_SELF']) == 'support_ticket_detail.php' ? 'active' : ''; ?>">
-                    <a href="support_tickets.php" class="nav-link">
-                        <span class="pcoded-micon"><i class="feather icon-headphones"></i></span>
-                        <span class="pcoded-mtext">Support Tickets</span>
-                    </a>
-                </li>
 
                 <li data-username="activity_log" class="nav-item <?php echo basename($_SERVER['PHP_SELF']) == 'activity_log.php' ? 'active' : ''; ?>">
                     <a href="activity_log.php" class="nav-link">
@@ -1816,7 +1813,7 @@ MOBILE SIDEBAR - CLEAN LAYOUT FIX
                         <span class="pcoded-mtext">Email Analytics</span>
                     </a>
                 </li>
-                <li data-username="support_tickets" class="nav-item <?php echo basename($_SERVER['PHP_SELF']) == 'support_ticket_create.php' || basename($_SERVER['PHP_SELF']) == 'support_tickets.php' || basename($_SERVER['PHP_SELF']) == 'support_ticket_detail.php' ? 'active' : ''; ?>">
+                <li data-username="support_tickets" class="nav-item pcoded-hasmenu <?php echo basename($_SERVER['PHP_SELF']) == 'support_ticket_create.php' || basename($_SERVER['PHP_SELF']) == 'support_tickets.php' || basename($_SERVER['PHP_SELF']) == 'support_ticket_detail.php' ? 'active pcoded-trigger' : ''; ?>">
                     <a href="javascript:" class="nav-link">
                         <span class="pcoded-micon"><i class="feather icon-help-circle"></i></span>
                         <span class="pcoded-mtext">Support Tickets</span>

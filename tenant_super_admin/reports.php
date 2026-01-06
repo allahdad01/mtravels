@@ -542,7 +542,7 @@ if (!empty($comparison_period)) {
             <div class="col-12">
                 <div class="card">
                     <div class="card-header">
-                        <h5><i class="feather icon-filter"></i> Advanced Filters</h5>
+                        <h5><i class="feather icon-filter mr-2"></i>Advanced Filters</h5>
                     </div>
                     <div class="card-body">
                         <form method="GET" id="filterForm" class="row">
@@ -669,8 +669,222 @@ if (!empty($comparison_period)) {
             </div>
         </div>
 
-        <!-- Advanced Summary Cards -->
-        <style>
+<style>
+        /* Card Styles - Request User Addon Theme */
+        .page-header.card {
+            background: linear-gradient(135deg, #4099ff 0%, #2ed8b6 100%);
+            color: #ffffff;
+            border: none;
+            margin-bottom: 20px;
+            padding: 20px !important;
+            box-shadow: 0 4px 12px rgba(0,0,0,0.15);
+            border-radius: 10px;
+        }
+        
+        .page-header.card h5 {
+            color: #ffffff;
+            margin: 0;
+            font-weight: 600;
+        }
+        
+        .card {
+            border-radius: 10px;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+            transition: transform 0.2s ease-in-out, box-shadow 0.2s ease-in-out;
+            border: none;
+        }
+        
+        .card:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 4px 16px rgba(0,0,0,0.15);
+        }
+        
+        .card-header {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            border-radius: 10px 10px 0 0;
+            padding: 1rem 1.5rem;
+            border: none;
+        }
+        
+        .card-header h5, .card-header h5.mb-0 {
+            margin: 0;
+            font-weight: 600;
+            display: flex;
+            align-items: center;
+            color: white;
+        }
+        
+        .card-header .btn {
+            background: rgba(255,255,255,0.2);
+            color: #ffffff;
+            border: 1px solid rgba(255,255,255,0.3);
+            border-radius: 25px;
+            transition: all 0.3s ease;
+        }
+        
+        .card-header .btn:hover {
+            background: rgba(255,255,255,0.3);
+            border-color: rgba(255,255,255,0.5);
+        }
+        
+        .card-header .btn.active {
+            background: rgba(255,255,255,0.4);
+            border-color: rgba(255,255,255,0.6);
+        }
+        
+        .card-body {
+            padding: 1.5rem;
+        }
+        
+        /* Form Control Styles */
+        .form-control {
+            border-radius: 8px;
+            border: 1px solid #ced4da;
+            transition: border-color 0.15s ease-in-out, box-shadow 0.15s ease-in-out;
+            padding: 0.75rem;
+        }
+        
+        .form-control:focus {
+            border-color: #4099ff;
+            box-shadow: 0 0 0 0.2rem rgba(64, 153, 255, 0.25);
+        }
+        
+        /* Button Styles */
+        .btn-primary {
+            background: linear-gradient(135deg, #4099ff 0%, #2ed8b6 100%);
+            border: none;
+            border-radius: 25px;
+            padding: 0.75rem 2rem;
+            font-weight: 600;
+            transition: all 0.3s ease;
+        }
+        
+        .btn-primary:hover {
+            transform: translateY(-1px);
+            box-shadow: 0 4px 12px rgba(64, 153, 255, 0.3);
+            background: linear-gradient(135deg, #2ed8b6 0%, #4099ff 100%);
+        }
+        
+        .btn-outline-primary {
+            border-radius: 25px;
+            font-weight: 500;
+            transition: all 0.3s ease;
+        }
+        
+        .btn-outline-primary:hover {
+            transform: translateY(-1px);
+        }
+        
+        .btn-outline-info {
+            border-radius: 25px;
+            font-weight: 500;
+        }
+        
+        .btn-outline-success {
+            border-radius: 25px;
+            font-weight: 500;
+        }
+        
+        .btn-outline-secondary {
+            border-radius: 25px;
+            font-weight: 500;
+        }
+        
+        .btn-outline-warning {
+            border-radius: 25px;
+            font-weight: 500;
+        }
+        
+        /* Table Styles */
+        .table-responsive {
+            border-radius: 10px;
+            overflow: hidden;
+        }
+        
+        .table {
+            margin-bottom: 0;
+        }
+        
+        .table thead th {
+            background-color: #f8f9fa;
+            border-bottom: 2px solid #dee2e6;
+            font-weight: 600;
+            color: #495057;
+            padding: 1rem;
+            white-space: nowrap;
+        }
+        
+        .table tbody tr:hover {
+            background-color: #f1f3f4;
+        }
+        
+        .table tbody td {
+            padding: 1rem;
+            vertical-align: middle;
+        }
+        
+        /* Badge Styles */
+        .badge {
+            font-size: 0.85em;
+            padding: 0.5em 0.75em;
+            border-radius: 20px;
+            font-weight: 500;
+        }
+        
+        .badge-success {
+            background-color: #28a745;
+        }
+        
+        .badge-warning {
+            background-color: #ffc107;
+            color: #212529;
+        }
+        
+        .badge-info {
+            background-color: #17a2b8;
+        }
+        
+        .badge-danger {
+            background-color: #dc3545;
+        }
+        
+        .badge-secondary {
+            background-color: #6c757d;
+        }
+        
+        .badge-primary {
+            background-color: #007bff;
+        }
+        
+        /* Alert Styles */
+        .alert {
+            border-radius: 10px;
+            border: none;
+            padding: 1rem 1.5rem;
+        }
+        
+        .alert-info {
+            background: linear-gradient(135deg, #d1ecf1 0%, #bee5eb 100%);
+            color: #0c5460;
+        }
+        
+        .alert-success {
+            background: linear-gradient(135deg, #d4edda 0%, #c3e6cb 100%);
+            color: #155724;
+        }
+        
+        .alert-danger {
+            background: linear-gradient(135deg, #f8d7da 0%, #f5c6cb 100%);
+            color: #721c24;
+        }
+        
+        .alert-warning {
+            background: linear-gradient(135deg, #fff3cd 0%, #ffeeba 100%);
+            color: #856404;
+        }
+        
+        /* Advanced Summary Card Styles */
         .advanced-summary-card {
             background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
             border: none;
@@ -681,12 +895,12 @@ if (!empty($comparison_period)) {
             position: relative;
             margin-bottom: 20px;
         }
-
+        
         .advanced-summary-card:hover {
             transform: translateY(-5px);
             box-shadow: 0 20px 40px rgba(0,0,0,0.15);
         }
-
+        
         .advanced-summary-card::before {
             content: '';
             position: absolute;
@@ -698,13 +912,13 @@ if (!empty($comparison_period)) {
             background-size: 400% 400%;
             animation: gradientShift 3s ease infinite;
         }
-
+        
         @keyframes gradientShift {
             0% { background-position: 0% 50%; }
             50% { background-position: 100% 50%; }
             100% { background-position: 0% 50%; }
         }
-
+        
         .card-icon {
             width: 60px;
             height: 60px;
@@ -716,7 +930,7 @@ if (!empty($comparison_period)) {
             margin: 0 auto 15px;
             box-shadow: 0 8px 20px rgba(0,0,0,0.15);
         }
-
+        
         .card-title {
             font-size: 14px;
             font-weight: 600;
@@ -725,20 +939,20 @@ if (!empty($comparison_period)) {
             opacity: 0.9;
             margin-bottom: 10px;
         }
-
+        
         .card-value {
             font-size: 28px;
             font-weight: 700;
             margin-bottom: 5px;
             text-shadow: 0 2px 4px rgba(0,0,0,0.1);
         }
-
+        
         .card-subtitle {
             font-size: 12px;
             opacity: 0.8;
             font-weight: 500;
         }
-
+        
         /* Specific card color schemes */
         .card-branches { background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); }
         .card-users { background: linear-gradient(135deg, #f093fb 0%, #f5576c 100%); }
@@ -752,7 +966,7 @@ if (!empty($comparison_period)) {
         .card-refunds { background: linear-gradient(135deg, #ff9a9e 0%, #fecfef 100%); }
         .card-dates { background: linear-gradient(135deg, #a8edea 0%, #fed6e3 100%); }
         .card-revenue { background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); }
-
+        
         /* Icon colors */
         .icon-branches { background: rgba(255,255,255,0.2); color: #fff; }
         .icon-users { background: rgba(255,255,255,0.2); color: #fff; }
@@ -766,13 +980,13 @@ if (!empty($comparison_period)) {
         .icon-refunds { background: rgba(255,255,255,0.2); color: #fff; }
         .icon-dates { background: rgba(255,255,255,0.2); color: #fff; }
         .icon-revenue { background: rgba(255,255,255,0.2); color: #fff; }
-
+        
         /* Hover effects */
         .advanced-summary-card:hover .card-icon {
             transform: scale(1.1);
             transition: transform 0.3s ease;
         }
-
+        
         /* Responsive adjustments */
         @media (max-width: 768px) {
             .card-value {
@@ -783,6 +997,68 @@ if (!empty($comparison_period)) {
                 height: 50px;
                 font-size: 20px;
             }
+        }
+        
+        /* Branch Detail Modal Styles */
+        #branchDetailModal .modal-dialog {
+            max-width: 900px;
+        }
+        #branchDetailModal .modal-body {
+            max-height: 70vh;
+            overflow-y: auto;
+        }
+        #branchDetailChart {
+            max-height: 250px;
+            width: 100% !important;
+        }
+        #branchMetrics .card {
+            margin-bottom: 0.5rem;
+        }
+        #branchActivity {
+            max-height: 300px;
+            overflow-y: auto;
+        }
+        
+        /* Input group styles */
+        .input-group-text {
+            border-radius: 8px 0 0 8px;
+            background: #f8f9fa;
+            border: 1px solid #ced4da;
+        }
+        
+        .input-group .form-control {
+            border-radius: 0 8px 8px 0;
+        }
+        
+        /* Form group label */
+        .form-group label {
+            font-weight: 600;
+            color: #495057;
+            margin-bottom: 0.5rem;
+        }
+        
+        /* Custom checkbox styles */
+        .custom-control-label::before {
+            border-radius: 5px;
+        }
+        
+        /* Breadcrumb override for page-header style */
+        .breadcrumb {
+            background: transparent;
+            padding: 0;
+            margin: 0;
+        }
+        
+        .breadcrumb-item a {
+            color: rgba(255,255,255,0.8);
+        }
+        
+        .breadcrumb-item a:hover {
+            color: #fff;
+        }
+        
+        .breadcrumb-item.active {
+            color: rgba(255,255,255,0.9);
         }
         </style>
 
@@ -979,7 +1255,7 @@ if (!empty($comparison_period)) {
             <div class="col-12">
                 <div class="card border-warning">
                     <div class="card-header bg-warning text-white">
-                        <h5><i class="feather icon-bar-chart-2"></i> Comparison: <?php echo htmlspecialchars($comparisonLabel); ?> (<?php echo date('M d, Y', strtotime($comparison_start_date)); ?> - <?php echo date('M d, Y', strtotime($comparison_end_date)); ?>)</h5>
+                        <h5 class="mb-0"><i class="feather icon-bar-chart-2 mr-2"></i>Comparison: <?php echo htmlspecialchars($comparisonLabel); ?> (<?php echo date('M d, Y', strtotime($comparison_start_date)); ?> - <?php echo date('M d, Y', strtotime($comparison_end_date)); ?>)</h5>
                     </div>
                     <div class="card-body">
                         <div class="row">
@@ -1134,7 +1410,7 @@ if (!empty($comparison_period)) {
             <div class="col-12">
                 <div class="card">
                     <div class="card-header d-flex justify-content-between align-items-center">
-                        <h5><i class="feather icon-bar-chart-2"></i> Analytics Dashboard</h5>
+                        <h5 class="mb-0"><i class="feather icon-bar-chart-2 mr-2"></i>Analytics Dashboard</h5>
                         <div class="btn-group" role="group">
                             <button type="button" class="btn btn-sm btn-outline-primary active" onclick="switchChartView('revenue')">Revenue</button>
                             <button type="button" class="btn btn-sm btn-outline-primary" onclick="switchChartView('bookings')">Bookings</button>
@@ -1204,7 +1480,7 @@ if (!empty($comparison_period)) {
             <div class="col-12">
                 <div class="card">
                     <div class="card-header">
-                        <h5><i class="feather icon-bar-chart-2"></i> Current Period Insights</h5>
+                        <h5 class="mb-0"><i class="feather icon-bar-chart-2 mr-2"></i>Current Period Insights</h5>
                     </div>
                     <div class="card-body">
                         <div class="row" style="min-height: 300px;">
@@ -1263,8 +1539,8 @@ if (!empty($comparison_period)) {
                 <div class="card">
                     <div class="card-header d-flex justify-content-between align-items-center">
                         <div>
-                            <h5><i class="feather icon-table"></i> Branch Performance Report</h5>
-                            <span class="d-block m-t-5 text-muted">Period: <?= date('M d, Y', strtotime($start_date)) ?> - <?= date('M d, Y', strtotime($end_date)) ?></span>
+                            <h5 class="mb-0"><i class="feather icon-table mr-2"></i>Branch Performance Report</h5>
+                            <span class="d-block m-t-5 text-muted" style="font-size: 14px;">Period: <?= date('M d, Y', strtotime($start_date)) ?> - <?= date('M d, Y', strtotime($end_date)) ?></span>
                         </div>
                         <div class="btn-group" role="group">
                             <button type="button" class="btn btn-sm btn-outline-primary" onclick="toggleTableView('summary')">
@@ -1529,7 +1805,7 @@ if (!empty($comparison_period)) {
             <div class="col-lg-8">
                 <div class="card">
                     <div class="card-header">
-                        <h5><i class="feather icon-download"></i> Export Options</h5>
+                        <h5 class="mb-0"><i class="feather icon-download mr-2"></i>Export Options</h5>
                     </div>
                     <div class="card-body">
                         <div class="row">
@@ -1584,7 +1860,7 @@ if (!empty($comparison_period)) {
             <div class="col-lg-4">
                 <div class="card">
                     <div class="card-header">
-                        <h5><i class="feather icon-settings"></i> Custom Reports</h5>
+                        <h5 class="mb-0"><i class="feather icon-settings mr-2"></i>Custom Reports</h5>
                     </div>
                     <div class="card-body">
                         <div class="d-grid gap-2">

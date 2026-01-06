@@ -197,106 +197,231 @@ $summary = $summary_stmt->fetch(PDO::FETCH_ASSOC);
 ?>
 
 <style>
-/* Apply gradient background to card headers matching the sidebar */
-.card-header {
-    background: linear-gradient(135deg, #4099ff 0%, #2ed8b6 100%) !important;
-    color: #ffffff !important;
-    border-bottom: none !important;
-}
+    /* Enhanced custom styles for better layout and design */
+    .page-header.card {
+        background: linear-gradient(135deg, #4099ff 0%, #2ed8b6 100%);
+        color: #ffffff;
+        border: none;
+        margin-bottom: 20px;
+        padding: 20px !important;
+        box-shadow: 0 4px 12px rgba(0,0,0,0.15);
+        border-radius: 10px;
+    }
 
-.card-header h5 {
-    color: #ffffff !important;
-    margin-bottom: 0 !important;
-}
+    .page-header.card .row {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+    }
 
-.card-header .card-header-right {
-    color: #ffffff !important;
-}
+    .page-header.card h5 {
+        color: #ffffff;
+        margin: 0;
+        font-weight: 600;
+    }
 
-.card-header .card-header-right .btn {
-    color: #ffffff !important;
-    border-color: rgba(255, 255, 255, 0.3) !important;
-}
+    .page-header.card .text-end {
+        text-align: right;
+    }
 
-.card-header .card-header-right .btn:hover {
-    background: rgba(255, 255, 255, 0.1) !important;
-    border-color: rgba(255, 255, 255, 0.5) !important;
-}
+    .page-header.card .btn {
+        background: rgba(255,255,255,0.2);
+        color: #ffffff;
+        border: 1px solid rgba(255,255,255,0.3);
+        border-radius: 25px;
+        transition: all 0.3s ease;
+    }
+
+    .page-header.card .btn:hover {
+        background: rgba(255,255,255,0.3);
+        border-color: rgba(255,255,255,0.5);
+        transform: translateY(-1px);
+    }
+
+    .card {
+        border-radius: 10px;
+        box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+        transition: transform 0.2s ease-in-out, box-shadow 0.2s ease-in-out;
+        border: none;
+    }
+
+    .card:hover {
+        transform: translateY(-2px);
+        box-shadow: 0 4px 16px rgba(0,0,0,0.15);
+    }
+
+    .card-header {
+        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        color: white;
+        border-radius: 10px 10px 0 0;
+        padding: 1rem 1.5rem;
+        border: none;
+    }
+
+    .card-header h5 {
+        margin: 0;
+        font-weight: 600;
+        display: flex;
+        align-items: center;
+    }
+
+    .table-responsive {
+        border-radius: 10px;
+        overflow: hidden;
+    }
+
+    .table {
+        margin-bottom: 0;
+    }
+
+    .table thead th {
+        background-color: #f8f9fa;
+        border-bottom: 2px solid #dee2e6;
+        font-weight: 600;
+        color: #495057;
+        padding: 1rem;
+    }
+
+    .table tbody tr:hover {
+        background-color: #f1f3f4;
+    }
+
+    .table tbody td {
+        padding: 1rem;
+        vertical-align: middle;
+    }
+
+    .form-control {
+        border-radius: 8px;
+        border: 1px solid #ced4da;
+        transition: border-color 0.15s ease-in-out, box-shadow 0.15s ease-in-out;
+        padding: 0.75rem;
+    }
+
+    .form-control:focus {
+        border-color: #4099ff;
+        box-shadow: 0 0 0 0.2rem rgba(64, 153, 255, 0.25);
+    }
+
+    .btn-primary {
+        background: linear-gradient(135deg, #4099ff 0%, #2ed8b6 100%);
+        border: none;
+        border-radius: 25px;
+        padding: 0.75rem 2rem;
+        font-weight: 600;
+        transition: all 0.3s ease;
+    }
+
+    .btn-primary:hover {
+        transform: translateY(-1px);
+        box-shadow: 0 4px 12px rgba(64, 153, 255, 0.3);
+    }
+
+    .btn-secondary {
+        border-radius: 25px;
+        padding: 0.75rem 2rem;
+        font-weight: 600;
+        transition: all 0.3s ease;
+    }
+
+    .summary-card {
+        border-radius: 10px;
+        box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+        transition: transform 0.2s ease-in-out, box-shadow 0.2s ease-in-out;
+        border: none;
+    }
+
+    .summary-card:hover {
+        transform: translateY(-2px);
+        box-shadow: 0 4px 16px rgba(0,0,0,0.15);
+    }
+
+    .summary-card .card-body {
+        padding: 1.5rem;
+    }
+
+    .summary-card .h2 {
+        font-size: 2.5rem;
+    }
+
+    .summary-card .h4 {
+        font-size: 1.5rem;
+    }
+
+    .summary-card .text-muted {
+        font-size: 0.875rem;
+    }
+
+    .summary-card i {
+        opacity: 0.8;
+    }
 </style>
 
-<!-- [ Main Content ] start -->
-<div class="pcoded-main-container">
-    <div class="pcoded-wrapper">
-        <div class="pcoded-content">
-            <div class="pcoded-inner-content">
-                <!-- [ breadcrumb ] start -->
-                <div class="page-header">
-                    <div class="page-block">
-                        <div class="row align-items-center">
-                            <div class="col-md-12">
-                                <div class="page-header-title">
-                                    <h5 class="m-b-10">Activity Logs</h5>
+    <!-- [ Main Content ] start -->
+    <div class="pcoded-main-container">
+        <div class="pcoded-wrapper">
+            <div class="pcoded-content">
+                <div class="pcoded-inner-content">
+                    <div class="main-body">
+                        <div class="page-wrapper">
+                            <!-- [ Main Content ] start -->
+                            <div class="main-content">
+                                <div class="page-header card">
+                                    <div class="row align-items-center">
+                                        <div class="col-md-6">
+                                            <h5 class="mb-0"><i class="feather icon-activity mr-2"></i>Activity Logs</h5>
+                                            <p class="mb-0 mt-1" style="font-size: 14px; opacity: 0.9;">View and monitor all system activity logs</p>
+                                        </div>
+                                        <div class="col-md-6 text-end">
+                                            <a href="dashboard.php" class="btn btn-sm">
+                                                <i class="feather icon-home mr-1"></i>Dashboard
+                                            </a>
+                                        </div>
+                                    </div>
                                 </div>
-                                <ul class="breadcrumb">
-                                    <li class="breadcrumb-item"><a href="dashboard.php"><i class="feather icon-home"></i></a></li>
-                                    <li class="breadcrumb-item"><a href="javascript:">Activity Logs</a></li>
-                                </ul>
-                            </div>
-                        </div>
-                    </div>
-                </div>
-                <!-- [ breadcrumb ] end -->
-                <div class="main-body">
-                    <div class="page-wrapper">
-                        <!-- [ Main Content ] start -->
-                        <div class="row">
-                            <!-- Summary Cards -->
-                            <div class="col-xl-4 col-md-6">
-                                <div class="card bg-c-blue text-white">
-                                    <div class="card-body">
-                                        <div class="row align-items-center">
-                                            <div class="col">
-                                                <p class="m-b-5">Total Logs</p>
-                                                <h4 class="m-b-0"><?= number_format($summary['total_logs'] ?? 0) ?></h4>
+
+                                <div class="row">
+                                    <!-- Summary Cards -->
+                                    <div class="col-md-4">
+                                        <div class="card summary-card text-white bg-info">
+                                            <div class="card-body">
+                                                <div class="text-center mb-3">
+                                                    <i class="feather icon-list f-50"></i>
+                                                </div>
+                                                <div class="text-center">
+                                                    <div class="h2 font-weight-bold"><?= number_format($summary['total_logs'] ?? 0) ?></div>
+                                                    <p class="text-white-50 mb-0">Total Logs</p>
+                                                </div>
                                             </div>
-                                            <div class="col col-auto text-right">
-                                                <i class="fas fa-list f-50 text-c-blue"></i>
+                                        </div>
+                                    </div>
+                                    <div class="col-md-4">
+                                        <div class="card summary-card text-white bg-success">
+                                            <div class="card-body">
+                                                <div class="text-center mb-3">
+                                                    <i class="feather icon-users f-50"></i>
+                                                </div>
+                                                <div class="text-center">
+                                                    <div class="h2 font-weight-bold"><?= number_format($summary['unique_users'] ?? 0) ?></div>
+                                                    <p class="text-white-50 mb-0">Active Users</p>
+                                                </div>
+                                            </div>
+                                        </div>
+                                    </div>
+                                    <div class="col-md-4">
+                                        <div class="card summary-card text-white bg-warning">
+                                            <div class="card-body">
+                                                <div class="text-center mb-3">
+                                                    <i class="feather icon-calendar f-50"></i>
+                                                </div>
+                                                <div class="text-center">
+                                                    <div class="h2 font-weight-bold"><?= number_format($summary['active_days'] ?? 0) ?></div>
+                                                    <p class="text-white-50 mb-0">Active Days</p>
+                                                </div>
                                             </div>
                                         </div>
                                     </div>
                                 </div>
-                            </div>
-                            <div class="col-xl-4 col-md-6">
-                                <div class="card bg-c-green text-white">
-                                    <div class="card-body">
-                                        <div class="row align-items-center">
-                                            <div class="col">
-                                                <p class="m-b-5">Active Users</p>
-                                                <h4 class="m-b-0"><?= number_format($summary['unique_users'] ?? 0) ?></h4>
-                                            </div>
-                                            <div class="col col-auto text-right">
-                                                <i class="fas fa-users f-50 text-c-green"></i>
-                                            </div>
-                                        </div>
-                                    </div>
-                                </div>
-                            </div>
-                            <div class="col-xl-4 col-md-6">
-                                <div class="card bg-c-yellow text-white">
-                                    <div class="card-body">
-                                        <div class="row align-items-center">
-                                            <div class="col">
-                                                <p class="m-b-5">Active Days</p>
-                                                <h4 class="m-b-0"><?= number_format($summary['active_days'] ?? 0) ?></h4>
-                                            </div>
-                                            <div class="col col-auto text-right">
-                                                <i class="fas fa-calendar f-50 text-c-yellow"></i>
-                                            </div>
-                                        </div>
-                                    </div>
-                                </div>
-                            </div>
-                        </div>
 
                         <div class="row">
                             <div class="col-sm-12">
@@ -560,7 +685,7 @@ $summary = $summary_stmt->fetch(PDO::FETCH_ASSOC);
 <div class="modal fade" id="detailsModal" tabindex="-1" role="dialog" aria-hidden="true">
     <div class="modal-dialog modal-xl" role="document">
         <div class="modal-content border-0 shadow">
-            <div class="modal-header bg-info text-white border-0">
+            <div class="modal-header" style="background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: white;">
                 <h5 class="modal-title">
                     <i class="feather icon-file-text mr-2"></i>Activity Log Details
                 </h5>

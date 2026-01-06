@@ -86,15 +86,17 @@ include '../includes/header.php';
                         <div class="page-wrapper">
                             <!-- [ Main Content ] start -->
                             <div class="main-content">
-                                <div class="page-header">
-                                    <div class="page-header-content">
-                                        <h1><i class="feather icon-users mr-2"></i><?php echo __('hr_management'); ?></h1>
-                                        <p><?php echo __('manage_employee_lifecycle_and_hr_operations'); ?></p>
-                                    </div>
-                                    <div class="page-header-actions">
-                                        <a href="add_employee.php" class="btn btn-primary">
-                                            <i class="feather icon-user-plus mr-1"></i><?php echo __('add_employee'); ?>
-                                        </a>
+                                <div class="page-header card">
+                                    <div class="row align-items-center">
+                                        <div class="col-md-6">
+                                            <h5 class="mb-0"><i class="feather icon-users mr-2"></i><?php echo __('hr_management'); ?></h5>
+                                            <p class="mb-0 mt-1" style="font-size: 14px; opacity: 0.9;"><?php echo __('manage_employee_lifecycle_and_hr_operations'); ?></p>
+                                        </div>
+                                        <div class="col-md-6 text-end">
+                                            <a href="add_employee.php" class="btn btn-primary btn-sm">
+                                                <i class="feather icon-user-plus mr-1"></i><?php echo __('add_employee'); ?>
+                                            </a>
+                                        </div>
                                     </div>
                                 </div>
 
@@ -214,7 +216,7 @@ include '../includes/header.php';
                                                                     <p class="mb-0">
                                                                         <strong><?php echo htmlspecialchars($activity['name']); ?></strong>
                                                                         <?php echo __('was'); ?>
-                                                                        <span class="badge badge-<?php echo $activity['activity_type'] === 'Terminated' ? 'danger' : ($activity['activity_type'] === 'Hired' ? 'success' : 'primary'); ?>">
+                                                                        <span class="badge-<?php echo $activity['activity_type'] === 'Terminated' ? 'danger' : ($activity['activity_type'] === 'Hired' ? 'success' : 'primary'); ?>">
                                                                             <?php echo __($activity['activity_type'] === 'Terminated' ? 'terminated' : ($activity['activity_type'] === 'Hired' ? 'hired' : 'active')); ?>
                                                                         </span>
                                                                     </p>
@@ -256,6 +258,40 @@ include '../includes/header.php';
         </div>
     </div>
 <style>
+    .page-header.card {
+        background: linear-gradient(135deg, #4099ff 0%, #2ed8b6 100%);
+        color: #ffffff;
+        border: none;
+        margin-bottom: 20px;
+        padding: 20px !important;
+    }
+
+    .page-header.card .row {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+    }
+
+    .page-header.card h5 {
+        color: #ffffff;
+        margin: 0;
+    }
+
+    .page-header.card .text-end {
+        text-align: right;
+    }
+
+    .page-header.card .btn {
+        background: rgba(255,255,255,0.2);
+        color: #ffffff;
+        border: 1px solid rgba(255,255,255,0.3);
+    }
+
+    .page-header.card .btn:hover {
+        background: rgba(255,255,255,0.3);
+        border-color: rgba(255,255,255,0.5);
+    }
+
     .stat-card {
         border: none;
         border-radius: 10px;
@@ -340,6 +376,7 @@ include '../includes/header.php';
     .badge-primary {
         background-color: #007bff;
     }
+
 </style>
 
 <?php include '../includes/admin_footer.php'; ?>

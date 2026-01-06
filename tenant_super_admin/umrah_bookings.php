@@ -1,5 +1,18 @@
 <?php
-include 'header.php';
+/**
+ * Umrah Bookings - Tenant Interface
+ *
+ * Displays list of umrah bookings with search and filter functionality.
+ */
+
+require_once '../includes/language_helpers.php';
+require_once '../includes/db.php';
+require_once '../admin/security.php';
+
+// Start session if not already started
+if (session_status() === PHP_SESSION_NONE) {
+    session_start();
+}
 
 // Get tenant and user info
 $tenant_id = $_SESSION['tenant_id'];
@@ -96,58 +109,230 @@ $branches_query = "SELECT id, name FROM branches WHERE tenant_id = ? AND status 
 $branches_stmt = $pdo->prepare($branches_query);
 $branches_stmt->execute([$tenant_id]);
 $branches = $branches_stmt->fetchAll(PDO::FETCH_ASSOC);
+
+$page_title = __('umrah_bookings');
+include 'header.php';
 ?>
 
-<style>
-/* Apply gradient background to card headers matching the sidebar */
-.card-header {
-    background: linear-gradient(135deg, #4099ff 0%, #2ed8b6 100%) !important;
-    color: #ffffff !important;
-    border-bottom: none !important;
-}
+    <style>
+    /* Enhanced custom styles for better layout and design */
+    .page-header.card {
+        background: linear-gradient(135deg, #4099ff 0%, #2ed8b6 100%);
+        color: #ffffff;
+        border: none;
+        margin-bottom: 20px;
+        padding: 20px !important;
+        box-shadow: 0 4px 12px rgba(0,0,0,0.15);
+        border-radius: 10px;
+    }
 
-.card-header h5 {
-    color: #ffffff !important;
-    margin-bottom: 0 !important;
-}
+    .page-header.card .row {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+    }
 
-.card-header .card-header-right {
-    color: #ffffff !important;
-}
+    .page-header.card h5 {
+        color: #ffffff;
+        margin: 0;
+        font-weight: 600;
+    }
 
-.card-header .card-header-right .btn {
-    color: #ffffff !important;
-    border-color: rgba(255, 255, 255, 0.3) !important;
-}
+    .page-header.card .text-end {
+        text-align: right;
+    }
 
-.card-header .card-header-right .btn:hover {
-    background: rgba(255, 255, 255, 0.1) !important;
-    border-color: rgba(255, 255, 255, 0.5) !important;
-}
-</style>
+    .page-header.card .btn {
+        background: rgba(255,255,255,0.2);
+        color: #ffffff;
+        border: 1px solid rgba(255,255,255,0.3);
+        border-radius: 25px;
+        transition: all 0.3s ease;
+    }
+
+    .page-header.card .btn:hover {
+        background: rgba(255,255,255,0.3);
+        border-color: rgba(255,255,255,0.5);
+        transform: translateY(-1px);
+    }
+
+    .card {
+        border-radius: 10px;
+        box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+        transition: transform 0.2s ease-in-out, box-shadow 0.2s ease-in-out;
+        border: none;
+    }
+
+    .card:hover {
+        transform: translateY(-2px);
+        box-shadow: 0 4px 16px rgba(0,0,0,0.15);
+    }
+
+    .card-header {
+        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        color: white;
+        border-radius: 10px 10px 0 0;
+        padding: 1rem 1.5rem;
+        border: none;
+    }
+
+    .card-header h5 {
+        margin: 0;
+        font-weight: 600;
+        display: flex;
+        align-items: center;
+    }
+
+    .progress {
+        border-radius: 15px;
+        overflow: hidden;
+        box-shadow: inset 0 1px 2px rgba(0,0,0,0.1);
+    }
+
+    .progress-bar {
+        transition: width 0.6s ease;
+    }
+
+    .badge {
+        font-size: 0.85em;
+        padding: 0.5em 0.75em;
+        border-radius: 20px;
+        font-weight: 500;
+    }
+
+    .badge-success {
+        background-color: #28a745;
+    }
+
+    .badge-warning {
+        background-color: #ffc107;
+        color: #212529;
+    }
+
+    .badge-info {
+        background-color: #17a2b8;
+    }
+
+    .table-responsive {
+        border-radius: 10px;
+        overflow: hidden;
+    }
+
+    .table {
+        margin-bottom: 0;
+    }
+
+    .table thead th {
+        background-color: #f8f9fa;
+        border-bottom: 2px solid #dee2e6;
+        font-weight: 600;
+        color: #495057;
+        padding: 1rem;
+    }
+
+    .table tbody tr:hover {
+        background-color: #f1f3f4;
+    }
+
+    .table tbody td {
+        padding: 1rem;
+        vertical-align: middle;
+    }
+
+    .form-control {
+        border-radius: 8px;
+        border: 1px solid #ced4da;
+        transition: border-color 0.15s ease-in-out, box-shadow 0.15s ease-in-out;
+        padding: 0.75rem;
+    }
+
+    .form-control:focus {
+        border-color: #4099ff;
+        box-shadow: 0 0 0 0.2rem rgba(64, 153, 255, 0.25);
+    }
+
+    .btn-primary {
+        background: linear-gradient(135deg, #4099ff 0%, #2ed8b6 100%);
+        border: none;
+        border-radius: 25px;
+        padding: 0.75rem 2rem;
+        font-weight: 600;
+        transition: all 0.3s ease;
+    }
+
+    .btn-primary:hover {
+        transform: translateY(-1px);
+        box-shadow: 0 4px 12px rgba(64, 153, 255, 0.3);
+    }
+
+    .btn-secondary {
+        border-radius: 25px;
+        padding: 0.75rem 2rem;
+        font-weight: 600;
+        transition: all 0.3s ease;
+    }
+
+    .alert {
+        border-radius: 10px;
+        border: none;
+        padding: 1rem 1.5rem;
+    }
+
+    .alert-info {
+        background: linear-gradient(135deg, #d1ecf1 0%, #bee5eb 100%);
+        color: #0c5460;
+    }
+
+    .alert-success {
+        background: linear-gradient(135deg, #d4edda 0%, #c3e6cb 100%);
+        color: #155724;
+    }
+
+    .alert-danger {
+        background: linear-gradient(135deg, #f8d7da 0%, #f5c6cb 100%);
+        color: #721c24;
+    }
+
+    #estimated_cost {
+        color: #28a745;
+        font-weight: bold;
+    }
+
+    .h2 {
+        font-size: 2.5rem;
+    }
+
+    .h4 {
+        font-size: 1.5rem;
+    }
+
+    .h5 {
+        font-size: 1.25rem;
+    }
+
+    .h6 {
+        font-size: 1rem;
+    }
+    </style>
 
 <!-- [ Main Content ] start -->
 <div class="pcoded-main-container">
     <div class="pcoded-wrapper">
         <div class="pcoded-content">
             <div class="pcoded-inner-content">
-                <!-- [ breadcrumb ] start -->
-                <div class="page-header">
-                    <div class="page-block">
-                        <div class="row align-items-center">
-                            <div class="col-md-12">
-                                <div class="page-header-title">
-                                    <h5 class="m-b-10">Umrah Bookings</h5>
+                                <div class="page-header card">
+                                    <div class="row align-items-center">
+                                        <div class="col-md-6">
+                                            <h5 class="mb-0"><i class="feather icon-map-pin mr-2"></i><?php echo __('umrah_bookings'); ?></h5>
+                                            <p class="mb-0 mt-1" style="font-size: 14px; opacity: 0.9;"><?php echo __('manage_umrah_bookings'); ?></p>
+                                        </div>
+                                        <div class="col-md-6 text-end">
+                                            <a href="dashboard.php" class="btn btn-outline-secondary btn-sm">
+                                                <i class="feather icon-arrow-left mr-1"></i><?php echo __('back_to_dashboard'); ?>
+                                            </a>
+                                        </div>
+                                    </div>
                                 </div>
-                                <ul class="breadcrumb">
-                                    <li class="breadcrumb-item"><a href="dashboard.php"><i class="feather icon-home"></i></a></li>
-                                    <li class="breadcrumb-item"><a href="javascript:">Umrah Bookings</a></li>
-                                </ul>
-                            </div>
-                        </div>
-                    </div>
-                </div>
-                <!-- [ breadcrumb ] end -->
                 <div class="main-body">
                     <div class="page-wrapper">
                         <!-- [ Main Content ] start -->
@@ -547,7 +732,11 @@ $branches = $branches_stmt->fetchAll(PDO::FETCH_ASSOC);
     </div>
 </div>
 
-<?php include 'footer.php'; ?>
+    <!-- Required Js -->
+    <script src="../assets/js/vendor-all.min.js"></script>
+    <script src="../assets/plugins/bootstrap/js/bootstrap.min.js"></script>
+    <script src="../assets/js/pcoded.min.js"></script>
+<?php include '../includes/admin_footer.php'; ?>
 
 <script>
 // Handle search functionality

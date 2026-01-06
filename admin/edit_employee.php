@@ -160,6 +160,42 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 $page_title = __('edit_employee');
 include '../includes/header.php';
 ?>
+<style>
+    .page-header.card {
+        background: linear-gradient(135deg, #4099ff 0%, #2ed8b6 100%);
+        color: #ffffff;
+        border: none;
+        margin-bottom: 20px;
+        padding: 20px !important;
+    }
+
+    .page-header.card .row {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+    }
+
+    .page-header.card h5 {
+        color: #ffffff;
+        margin: 0;
+    }
+
+    .page-header.card .text-end {
+        text-align: right;
+    }
+
+    .page-header.card .btn {
+        background: rgba(255,255,255,0.2);
+        color: #ffffff;
+        border: 1px solid rgba(255,255,255,0.3);
+    }
+
+    .page-header.card .btn:hover {
+        background: rgba(255,255,255,0.3);
+        border-color: rgba(255,255,255,0.5);
+    }
+</style>
+  
     <!-- [ Main Content ] start -->
     <div class="pcoded-main-container">
         <div class="pcoded-wrapper">
@@ -169,22 +205,24 @@ include '../includes/header.php';
                         <div class="page-wrapper">
                             <!-- [ Main Content ] start -->
                             <div class="main-content">
-                                <div class="page-header">
-                                    <div class="page-header-content">
-                                        <h1><i class="feather icon-edit mr-2"></i><?php echo __('edit_employee'); ?></h1>
-                                        <p><?php echo __('edit_employee_information'); ?> - <?php echo htmlspecialchars($employee['name']); ?></p>
-                                    </div>
-                                    <div class="page-header-actions">
-                                        <a href="employee_details.php?id=<?php echo $employee['id']; ?>" class="btn btn-outline-primary">
-                                            <i class="feather icon-eye mr-1"></i><?php echo __('view_details'); ?>
-                                        </a>
-                                        <a href="employee_management.php" class="btn btn-outline-secondary">
-                                            <i class="feather icon-arrow-left mr-1"></i><?php echo __('back_to_employee_management'); ?>
-                                        </a>
+                                <div class="page-header card">
+                                    <div class="row align-items-center">
+                                        <div class="col-md-6">
+                                            <h5 class="mb-0"><i class="feather icon-edit mr-2"></i><?php echo __('edit_employee'); ?></h5>
+                                            <p class="mb-0 mt-1" style="font-size: 14px; opacity: 0.9;"><?php echo __('update_employee_information_and_details'); ?></p>
+                                        </div>
+                                        <div class="col-md-6 text-end">
+                                            <a href="employee_details.php?id=<?php echo $employee['id']; ?>" class="btn btn-outline-primary btn-sm">
+                                                <i class="feather icon-eye mr-1"></i><?php echo __('view_details'); ?>
+                                            </a>
+                                            <a href="employee_management.php" class="btn btn-outline-secondary btn-sm">
+                                                <i class="feather icon-arrow-left mr-1"></i><?php echo __('back_to_employee_management'); ?>
+                                            </a>
+                                        </div>
                                     </div>
                                 </div>
 
-                                <div class="row">
+                                <div class="row mt-4">
                                     <div class="col-md-8">
                                         <div class="card">
                                             <div class="card-header">

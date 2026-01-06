@@ -1,8 +1,20 @@
 <?php
 include 'header.php';
 
+// Include UserAddonManager for user limit checks
+require_once '../includes/UserAddonManager.php';
+
 // Get tenant ID from session
 $tenant_id = $_SESSION['tenant_id'];
+
+// Initialize UserAddonManager
+$userAddonManager = new UserAddonManager($pdo, $tenant_id);
+
+// Get usage stats
+$usageStats = $userAddonManager->getUsageStats();
+$canAddMoreUsers = $usageStats['can_add_more'];
+$availableSlots = $usageStats['available_slots'];
+$usagePercentage = $usageStats['usage_percentage'];
 
 // Handle form submissions
 $message = '';
@@ -29,6 +41,9 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                     $messageType = 'danger';
                 } elseif (strlen($password) < 6) {
                     $message = 'Password must be at least 6 characters long.';
+                    $messageType = 'danger';
+                } elseif (!$canAddMoreUsers) {
+                    $message = 'You have reached your user limit (' . $usageStats['max_users'] . ' users). Please request additional user slots.';
                     $messageType = 'danger';
                 } else {
                     try {
@@ -217,6 +232,305 @@ function logActivity($pdo, $tenant_id, $user_id, $action, $table_name, $record_i
 }
 ?>
 
+<style>
+    /* Custom Styles for Users Page */
+    .users-page .page-header {
+        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        padding: 20px 25px;
+        border-radius: 10px;
+        margin-bottom: 25px;
+        color: white;
+    }
+    
+    .users-page .page-header .page-header-title h5 {
+        color: white;
+        font-size: 1.5rem;
+        font-weight: 600;
+    }
+    
+    .users-page .breadcrumb-item a {
+        color: rgba(255,255,255,0.8);
+    }
+    
+    .users-page .breadcrumb-item a:hover {
+        color: white;
+    }
+    
+    .users-page .breadcrumb-item {
+        color: rgba(255,255,255,0.9);
+    }
+    
+    /* Stats Card Styling */
+    .stats-card {
+        border: none;
+        border-radius: 15px;
+        box-shadow: 0 4px 15px rgba(0,0,0,0.08);
+        transition: transform 0.3s ease, box-shadow 0.3s ease;
+        overflow: hidden;
+    }
+    
+    .stats-card:hover {
+        transform: translateY(-5px);
+        box-shadow: 0 8px 25px rgba(0,0,0,0.12);
+    }
+    
+    .stats-card .card-body {
+        padding: 25px;
+    }
+    
+    .stats-card .usage-icon {
+        width: 50px;
+        height: 50px;
+        border-radius: 12px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-size: 1.5rem;
+        margin-bottom: 15px;
+    }
+    
+    .stats-card .usage-icon.primary {
+        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        color: white;
+    }
+    
+    .stats-card .usage-icon.success {
+        background: linear-gradient(135deg, #11998e 0%, #38ef7d 100%);
+        color: white;
+    }
+    
+    .stats-card .usage-icon.warning {
+        background: linear-gradient(135deg, #f093fb 0%, #f5576c 100%);
+        color: white;
+    }
+    
+    .stats-card .stats-number {
+        font-size: 2rem;
+        font-weight: 700;
+        color: #2c3e50;
+    }
+    
+    .stats-card .stats-label {
+        color: #7f8c8d;
+        font-size: 0.875rem;
+        text-transform: uppercase;
+        letter-spacing: 0.5px;
+    }
+    
+    /* Progress Bar Styling */
+    .custom-progress {
+        height: 10px;
+        border-radius: 10px;
+        background: #e9ecef;
+        overflow: hidden;
+    }
+    
+    .custom-progress .progress-bar {
+        border-radius: 10px;
+        transition: width 0.5s ease;
+    }
+    
+    /* Table Styling */
+    .users-table {
+        border-radius: 10px;
+        overflow: hidden;
+        box-shadow: 0 4px 15px rgba(0,0,0,0.08);
+    }
+    
+    .users-table thead th {
+        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        color: white;
+        font-weight: 600;
+        text-transform: uppercase;
+        font-size: 0.75rem;
+        letter-spacing: 1px;
+        padding: 15px 20px;
+        border: none;
+    }
+    
+    .users-table tbody td {
+        padding: 15px 20px;
+        vertical-align: middle;
+        border-bottom: 1px solid #f1f3f4;
+    }
+    
+    .users-table tbody tr {
+        transition: background-color 0.2s ease;
+    }
+    
+    .users-table tbody tr:hover {
+        background-color: #f8f9fa;
+    }
+    
+    .users-table .user-info {
+        display: flex;
+        align-items: center;
+        gap: 12px;
+    }
+    
+    .users-table .user-avatar {
+        width: 40px;
+        height: 40px;
+        border-radius: 50%;
+        object-fit: cover;
+        border: 2px solid #e9ecef;
+    }
+    
+    .users-table .user-name {
+        font-weight: 600;
+        color: #2c3e50;
+    }
+    
+    .users-table .user-email {
+        color: #7f8c8d;
+        font-size: 0.875rem;
+    }
+    
+    /* Badge Styling */
+    .custom-badge {
+        padding: 6px 12px;
+        border-radius: 20px;
+        font-size: 0.75rem;
+        font-weight: 600;
+        text-transform: capitalize;
+    }
+    
+    .custom-badge.role-admin {
+        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        color: white;
+    }
+    
+    .custom-badge.role-sales {
+        background: linear-gradient(135deg, #11998e 0%, #38ef7d 100%);
+        color: white;
+    }
+    
+    .custom-badge.role-finance {
+        background: linear-gradient(135deg, #f093fb 0%, #f5576c 100%);
+        color: white;
+    }
+    
+    .custom-badge.role-umrah {
+        background: linear-gradient(135deg, #4facfe 0%, #00f2fe 100%);
+        color: white;
+    }
+    
+    .custom-badge.role-visa {
+        background: linear-gradient(135deg, #fa709a 0%, #fee140 100%);
+        color: white;
+    }
+    
+    .custom-badge.branch {
+        background: #e9ecef;
+        color: #495057;
+    }
+    
+    /* Button Styling */
+    .btn-action {
+        width: 32px;
+        height: 32px;
+        padding: 0;
+        border-radius: 8px;
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        margin: 0 3px;
+        transition: all 0.2s ease;
+    }
+    
+    .btn-action:hover {
+        transform: scale(1.1);
+    }
+    
+    /* Modal Styling */
+    .modal-header {
+        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        color: white;
+        border-radius: 0;
+        padding: 20px 25px;
+    }
+    
+    .modal-header .modal-title {
+        font-weight: 600;
+    }
+    
+    .modal-header .close {
+        color: white;
+        text-shadow: none;
+        opacity: 0.8;
+    }
+    
+    .modal-header .close:hover {
+        opacity: 1;
+    }
+    
+    .modal-body {
+        padding: 25px;
+    }
+    
+    .modal-footer {
+        border-top: 1px solid #e9ecef;
+        padding: 15px 25px;
+    }
+    
+    /* Form Styling */
+    .form-group label {
+        font-weight: 600;
+        color: #495057;
+        margin-bottom: 8px;
+    }
+    
+    .form-control {
+        border-radius: 8px;
+        padding: 12px 15px;
+        border: 1px solid #e9ecef;
+        transition: border-color 0.2s ease, box-shadow 0.2s ease;
+    }
+    
+    .form-control:focus {
+        border-color: #667eea;
+        box-shadow: 0 0 0 3px rgba(102, 126, 234, 0.1);
+    }
+    
+    /* Alert Styling */
+    .alert {
+        border-radius: 10px;
+        border: none;
+        padding: 15px 20px;
+    }
+    
+    /* Empty State Styling */
+    .empty-state {
+        padding: 60px 20px;
+    }
+    
+    .empty-state i {
+        opacity: 0.3;
+    }
+    
+    /* Action Buttons Container */
+    .action-buttons {
+        display: flex;
+        gap: 8px;
+    }
+    
+    /* Responsive Adjustments */
+    @media (max-width: 768px) {
+        .stats-card .card-body {
+            padding: 20px;
+        }
+        
+        .stats-card .stats-number {
+            font-size: 1.5rem;
+        }
+        
+        .users-table thead th,
+        .users-table tbody td {
+            padding: 12px 15px;
+        }
+    }
+</style>
+
 <!-- [ Main Content ] start -->
 <div class="pcoded-main-container">
     <div class="pcoded-content">
@@ -249,34 +563,103 @@ function logActivity($pdo, $tenant_id, $user_id, $action, $table_name, $record_i
         </div>
         <?php endif; ?>
 
-        <!-- Action Buttons -->
+        <!-- User Usage Stats -->
         <div class="row mb-4">
-            <div class="col-12">
-                <button type="button" class="btn btn-primary" data-toggle="modal" data-target="#createUserModal">
-                    <i class="feather icon-plus"></i> Create New User
-                </button>
+            <div class="col-lg-4 col-md-6 mb-4">
+                <div class="card stats-card">
+                    <div class="card-body">
+                        <div class="usage-icon primary">
+                            <i class="feather icon-users"></i>
+                        </div>
+                        <h6 class="card-title mb-3">User Usage</h6>
+                        <div class="d-flex justify-content-between align-items-center mb-2">
+                            <span class="stats-label">Users</span>
+                            <span class="stats-number">
+                                <?= $usageStats['current_users'] ?> / <?= $usageStats['max_users'] ?>
+                            </span>
+                        </div>
+                        <div class="progress mb-3 custom-progress" style="height: 10px;">
+                            <div class="progress-bar <?= $usagePercentage >= 90 ? 'bg-danger' : ($usagePercentage >= 75 ? 'bg-warning' : 'bg-success') ?>" 
+                                 role="progressbar" 
+                                 style="width: <?= min(100, $usagePercentage) ?>%;">
+                            </div>
+                        </div>
+                        <div class="d-flex justify-content-between text-muted mb-3">
+                            <small><?= $usagePercentage ?>% used</small>
+                            <small><?= $availableSlots ?> slots left</small>
+                        </div>
+                        <div class="row text-center">
+                            <div class="col-6 border-right">
+                                <small class="text-muted">Base Users</small>
+                                <div class="font-weight-bold"><?= $usageStats['base_users'] ?></div>
+                            </div>
+                            <div class="col-6">
+                                <small class="text-success">Addon Users</small>
+                                <div class="font-weight-bold">+<?= $usageStats['additional_users'] ?></div>
+                            </div>
+                        </div>
+                        <?php if (!$canAddMoreUsers): ?>
+                        <div class="alert alert-warning mt-3 mb-0 py-2">
+                            <small><i class="feather icon-alert-triangle mr-1"></i>Limit reached</small>
+                        </div>
+                        <?php endif; ?>
+                    </div>
+                </div>
+            </div>
+            <div class="col-lg-8 col-md-6 mb-4">
+                <div class="card stats-card h-100">
+                    <div class="card-body d-flex flex-column justify-content-center">
+                        <div class="usage-icon success mb-3">
+                            <i class="feather icon-user-plus"></i>
+                        </div>
+                        <h6 class="card-title mb-2">User Management</h6>
+                        <p class="text-muted mb-3">Manage your team members and their access permissions.</p>
+                        <div class="mt-auto">
+                            <?php if ($canAddMoreUsers): ?>
+                            <button type="button" class="btn btn-primary btn-lg" data-toggle="modal" data-target="#createUserModal">
+                                <i class="feather icon-plus"></i> Create New User
+                            </button>
+                            <span class="text-muted ml-3">
+                                <small><?= $availableSlots ?> user<?= $availableSlots != 1 ? 's' : '' ?> available</small>
+                            </span>
+                            <?php else: ?>
+                            <button type="button" class="btn btn-secondary btn-lg" disabled>
+                                <i class="feather icon-plus"></i> Create New User
+                            </button>
+                            <a href="request_user_addon.php" class="btn btn-warning btn-lg ml-2">
+                                <i class="feather icon-plus-circle"></i> Request More Users
+                            </a>
+                            <?php endif; ?>
+                        </div>
+                    </div>
+                </div>
             </div>
         </div>
 
         <!-- Users Table -->
         <div class="row">
             <div class="col-xl-12 col-md-12">
-                <div class="card">
-                    <div class="card-header">
-                        <h5>All Users</h5>
+                <div class="card stats-card">
+                    <div class="card-header border-bottom">
+                        <div class="d-flex justify-content-between align-items-center">
+                            <h5 class="mb-0"><i class="feather icon-users mr-2"></i>All Users</h5>
+                            <div class="search-box">
+                                <input type="text" class="form-control" id="userSearch" placeholder="Search users..." style="max-width: 250px;">
+                            </div>
+                        </div>
                     </div>
-                    <div class="card-body">
+                    <div class="card-body p-0">
                         <div class="table-responsive">
-                            <table class="table table-striped table-hover">
-                                <thead>
+                            <table class="table table-striped table-hover mb-0" id="usersTable">
+                                <thead class="thead-light">
                                     <tr>
-                                        <th>Name</th>
-                                        <th>Email</th>
-                                        <th>Role</th>
-                                        <th>Branch</th>
-                                        <th>Phone</th>
-                                        <th>Created</th>
-                                        <th>Actions</th>
+                                        <th><i class="feather icon-user mr-1"></i>Name</th>
+                                        <th><i class="feather icon-mail mr-1"></i>Email</th>
+                                        <th><i class="feather icon-shield mr-1"></i>Role</th>
+                                        <th><i class="feather icon-git-branch mr-1"></i>Branch</th>
+                                        <th><i class="feather icon-phone mr-1"></i>Phone</th>
+                                        <th><i class="feather icon-calendar mr-1"></i>Created</th>
+                                        <th><i class="feather icon-settings mr-1"></i>Actions</th>
                                     </tr>
                                 </thead>
                                 <tbody>
@@ -285,41 +668,50 @@ function logActivity($pdo, $tenant_id, $user_id, $action, $table_name, $record_i
                                         <td>
                                             <div class="d-flex align-items-center">
                                                 <img src="../assets/images/user/<?= htmlspecialchars($user['profile_pic'] ?: 'default-avatar.jpg') ?>"
-                                                     class="rounded-circle mr-2" width="32" height="32" alt="Profile">
-                                                <strong><?= htmlspecialchars($user['name']) ?></strong>
+                                                     class="rounded-circle mr-2" width="40" height="40" alt="Profile">
+                                                <div>
+                                                    <strong><?= htmlspecialchars($user['name']) ?></strong>
+                                                    <br><small class="text-muted">ID: <?= $user['id'] ?></small>
+                                                </div>
                                             </div>
                                         </td>
-                                        <td><?= htmlspecialchars($user['email']) ?></td>
                                         <td>
-                                            <span class="badge badge-info">
+                                            <a href="mailto:<?= htmlspecialchars($user['email']) ?>" class="text-primary">
+                                                <?= htmlspecialchars($user['email']) ?>
+                                            </a>
+                                        </td>
+                                        <td>
+                                            <span class="badge badge-role badge-<?= $user['role'] ?>">
                                                 <?= htmlspecialchars($userRoles[$user['role']] ?? ucfirst($user['role'])) ?>
                                             </span>
                                         </td>
                                         <td>
                                             <?php if ($user['branch_name']): ?>
                                                 <span class="badge badge-primary">
-                                                    <?= htmlspecialchars($user['branch_name']) ?>
+                                                    <i class="feather icon-git-branch mr-1"></i><?= htmlspecialchars($user['branch_name']) ?>
                                                 </span>
                                             <?php else: ?>
-                                                <span class="text-muted">Not assigned</span>
+                                                <span class="text-muted"><i class="feather icon-minus-circle mr-1"></i>Not assigned</span>
                                             <?php endif; ?>
                                         </td>
                                         <td>
                                             <?php if ($user['phone']): ?>
-                                                <i class="feather icon-phone mr-1"></i><?= htmlspecialchars($user['phone']) ?>
+                                                <a href="tel:<?= htmlspecialchars($user['phone']) ?>" class="text-muted">
+                                                    <i class="feather icon-phone mr-1"></i><?= htmlspecialchars($user['phone']) ?>
+                                                </a>
                                             <?php else: ?>
                                                 <span class="text-muted">-</span>
                                             <?php endif; ?>
                                         </td>
                                         <td>
-                                            <small><?= date('M d, Y', strtotime($user['created_at'])) ?></small>
+                                            <small class="text-muted"><?= date('M d, Y', strtotime($user['created_at'])) ?></small>
                                         </td>
                                         <td>
                                             <div class="btn-group" role="group">
-                                                <button class="btn btn-sm btn-outline-primary" onclick="editUser(<?= $user['id'] ?>)">
+                                                <button class="btn btn-sm btn-outline-primary" onclick="editUser(<?= $user['id'] ?>)" data-toggle="tooltip" title="Edit User">
                                                     <i class="feather icon-edit"></i>
                                                 </button>
-                                                <button class="btn btn-sm btn-outline-warning" onclick="resetPassword(<?= $user['id'] ?>, '<?= htmlspecialchars($user['name']) ?>')">
+                                                <button class="btn btn-sm btn-outline-warning" onclick="resetPassword(<?= $user['id'] ?>, '<?= htmlspecialchars($user['name']) ?>')" data-toggle="tooltip" title="Reset Password">
                                                     <i class="feather icon-key"></i>
                                                 </button>
                                             </div>
@@ -328,10 +720,15 @@ function logActivity($pdo, $tenant_id, $user_id, $action, $table_name, $record_i
                                     <?php endforeach; ?>
                                     <?php if (empty($users)): ?>
                                     <tr>
-                                        <td colspan="7" class="text-center py-4">
-                                            <i class="feather icon-users text-muted" style="font-size: 3rem;"></i>
-                                            <h5 class="text-muted mt-2">No users found</h5>
-                                            <p class="text-muted">Create your first user to get started.</p>
+                                        <td colspan="7" class="text-center py-5">
+                                            <div class="empty-state">
+                                                <i class="feather icon-users text-muted" style="font-size: 4rem;"></i>
+                                                <h5 class="text-muted mt-3">No users found</h5>
+                                                <p class="text-muted">Create your first user to get started.</p>
+                                                <button type="button" class="btn btn-primary" data-toggle="modal" data-target="#createUserModal">
+                                                    <i class="feather icon-plus"></i> Create First User
+                                                </button>
+                                            </div>
                                         </td>
                                     </tr>
                                     <?php endif; ?>
@@ -543,6 +940,26 @@ function logActivity($pdo, $tenant_id, $user_id, $action, $table_name, $record_i
 </div>
 
 <script>
+// Initialize tooltips
+$(document).ready(function() {
+    $('[data-toggle="tooltip"]').tooltip({
+        placement: 'top',
+        trigger: 'hover'
+    });
+    
+    // User search functionality
+    $('#userSearch').on('keyup', function() {
+        const searchTerm = $(this).val().toLowerCase();
+        $('#usersTable tbody tr').each(function() {
+            const rowText = $(this).text().toLowerCase();
+            $(this).toggle(rowText.includes(searchTerm));
+        });
+    });
+});
+
+// Check if user can add more users on page load
+const canAddMoreUsers = <?= $canAddMoreUsers ? 'true' : 'false' ?>;
+
 // Edit user function
 function editUser(userId) {
     // Fetch user data via AJAX
@@ -580,8 +997,15 @@ function resetPassword(userId, userName) {
     $('#resetPasswordModal').modal('show');
 }
 
-// Form validation
+// Form validation for create user
 $('#createUserModal form').on('submit', function(e) {
+    if (!canAddMoreUsers) {
+        e.preventDefault();
+        alert('You have reached your user limit. Please request additional user slots.');
+        $('#createUserModal').modal('hide');
+        return false;
+    }
+    
     const name = $('#userName').val().trim();
     const email = $('#userEmail').val().trim();
     const password = $('#userPassword').val();
@@ -597,6 +1021,14 @@ $('#createUserModal form').on('submit', function(e) {
         e.preventDefault();
         alert('Password must be at least 6 characters long.');
         return false;
+    }
+});
+
+// Disable modal show when limit reached
+$('#createUserModal').on('show.bs.modal', function(e) {
+    if (!canAddMoreUsers) {
+        e.preventDefault();
+        alert('You have reached your user limit. Please request additional user slots.');
     }
 });
 

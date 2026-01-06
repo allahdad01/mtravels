@@ -304,6 +304,11 @@ $imagePath = "../assets/images/user/" . $profilePic;
     <!-- Favicon -->
     <link rel="icon" href="../uploads/logo/<?= htmlspecialchars($settings['platform_logo'] ?? 'default-logo.png') ?>" type="image/x-icon">
 
+    <!-- Page-specific CSS -->
+    <?php if (basename($_SERVER['PHP_SELF']) === 'manage_plans.php'): ?>
+    <link rel="stylesheet" href="../css/super_admin/manage_plans.css">
+    <?php endif; ?>
+
     <!-- RTL support -->
     <?php if (is_rtl()): ?>
     <link rel="stylesheet" href="../assets/css/force-rtl.css">
@@ -1681,6 +1686,18 @@ $imagePath = "../assets/images/user/" . $profilePic;
                     <a href="manage_tenant_addon_pricing.php" class="nav-link">
                         <span class="pcoded-micon"><i class="fas fa-tag"></i></span>
                         <span class="pcoded-mtext">Branch Addon Pricing</span>
+                    </a>
+                </li>
+                <li data-username="manage_user_addon_pricing" class="nav-item <?php echo basename($_SERVER['PHP_SELF']) == 'manage_user_addon_pricing.php' ? 'active' : ''; ?>">
+                    <a href="manage_user_addon_pricing.php" class="nav-link">
+                        <span class="pcoded-micon"><i class="fas fa-users"></i></span>
+                        <span class="pcoded-mtext">User Addon Pricing</span>
+                    </a>
+                </li>
+                <li data-username="manage_user_addons" class="nav-item <?php echo basename($_SERVER['PHP_SELF']) == 'manage_user_addons.php' ? 'active' : ''; ?>">
+                    <a href="manage_user_addons.php" class="nav-link">
+                        <span class="pcoded-micon"><i class="fas fa-user-plus"></i></span>
+                        <span class="pcoded-mtext">User Addons</span>
                     </a>
                 </li>
                 <li data-username="subscription_payments" class="nav-item <?php echo basename($_SERVER['PHP_SELF']) == 'subscription_payments.php' ? 'active' : ''; ?>">

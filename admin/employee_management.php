@@ -87,6 +87,42 @@ $roles = $stmt->fetchAll(PDO::FETCH_COLUMN);
 $page_title = $user_id ? __('manage_employee') : __('employee_management');
 include '../includes/header.php';
 ?>
+<style>
+    .page-header.card {
+        background: linear-gradient(135deg, #4099ff 0%, #2ed8b6 100%);
+        color: #ffffff;
+        border: none;
+        margin-bottom: 20px;
+        padding: 20px !important;
+    }
+
+    .page-header.card .row {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+    }
+
+    .page-header.card h5 {
+        color: #ffffff;
+        margin: 0;
+    }
+
+    .page-header.card .text-end {
+        text-align: right;
+    }
+
+    .page-header.card .btn {
+        background: rgba(255,255,255,0.2);
+        color: #ffffff;
+        border: 1px solid rgba(255,255,255,0.3);
+    }
+
+    .page-header.card .btn:hover {
+        background: rgba(255,255,255,0.3);
+        border-color: rgba(255,255,255,0.5);
+    }
+</style>
+
 
 
 
@@ -99,18 +135,18 @@ include '../includes/header.php';
                         <div class="page-wrapper">
                             <!-- [ Main Content ] start -->
                             <div class="main-content">
-                                <div class="page-header">
-                                    <div class="page-header-content">
-                                        <h1><i class="feather icon-users mr-2"></i><?php echo $user_id ? __('manage_employee') : __('employee_management'); ?></h1>
-                                        <p><?php echo $user_id ? __('manage_specific_employee_information') : __('manage_employee_records_and_information'); ?></p>
-                                    </div>
-                                    <div class="page-header-actions">
-                                        <?php if (!$user_id): ?>
-                                            <a href="add_employee.php" class="btn btn-primary">
-                                                <i class="feather icon-user-plus mr-1"></i><?php echo __('add_employee'); ?>
-                                            </a>
-                                        <?php endif; ?>
-                                        
+                                <div class="page-header card">
+                                    <div class="row align-items-center">
+                                        <div class="col-md-6">
+                                            <h5 class="mb-0"><i class="feather icon-users mr-2"></i><?php echo $user_id ? __('manage_employee') : __('employee_management'); ?></h5>
+                                        </div>
+                                        <div class="col-md-6 text-end">
+                                            <?php if (!$user_id): ?>
+                                                <a href="add_employee.php" class="btn btn-primary btn-sm">
+                                                    <i class="feather icon-user-plus mr-1"></i><?php echo __('add_employee'); ?>
+                                                </a>
+                                            <?php endif; ?>
+                                        </div>
                                     </div>
                                 </div>
 
@@ -198,7 +234,7 @@ include '../includes/header.php';
                                                                 <tr>
                                                                     <td>
                                                                         <img src="../assets/images/user/<?= htmlspecialchars($employee['profile_pic'] ?? 'default-avatar.jpg') ?>"
-                                                                              class="user-avatar" alt="User Avatar">
+                                                                              class="user-avatar" style="width: 40px !important; height: 40px !important;" alt="User Avatar">
                                                                     </td>
                                                                     <td>
                                                                         <div class="font-weight-bold"><?php echo htmlspecialchars($employee['name']); ?></div>
@@ -285,7 +321,7 @@ include '../includes/header.php';
                                                                 <tr class="table-danger">
                                                                     <td>
                                                                         <img src="../assets/images/user/<?= htmlspecialchars($employee['profile_pic'] ?? 'default-avatar.jpg') ?>"
-                                                                              class="user-avatar" alt="User Avatar">
+                                                                              class="user-avatar" style="width: 40px !important; height: 40px !important;" alt="User Avatar">
                                                                     </td>
                                                                     <td>
                                                                         <div class="font-weight-bold"><?php echo htmlspecialchars($employee['name']); ?></div>

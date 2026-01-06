@@ -84,154 +84,99 @@ $summary_stmt->execute([$tenant_id]);
 $summary = $summary_stmt->fetch(PDO::FETCH_ASSOC);
 ?>
 
-<style>
-/* Apply gradient background to card headers matching the sidebar */
-.card-header {
-    background: linear-gradient(135deg, #4099ff 0%, #2ed8b6 100%) !important;
-    color: #ffffff !important;
-    border-bottom: none !important;
-}
-
-.card-header h5 {
-    color: #ffffff !important;
-    margin-bottom: 0 !important;
-}
-
-.card-header .card-header-right {
-    color: #ffffff !important;
-}
-
-.card-header .card-header-right .btn {
-    color: #ffffff !important;
-    border-color: rgba(255, 255, 255, 0.3) !important;
-}
-
-.card-header .card-header-right .btn:hover {
-    background: rgba(255, 255, 255, 0.1) !important;
-    border-color: rgba(255, 255, 255, 0.5) !important;
-}
-</style>
-
 <!-- [ Main Content ] start -->
 <div class="pcoded-main-container">
     <div class="pcoded-wrapper">
         <div class="pcoded-content">
             <div class="pcoded-inner-content">
-                <!-- [ breadcrumb ] start -->
-                <div class="page-header">
-                    <div class="page-block">
-                        <div class="row align-items-center">
-                            <div class="col-md-12">
-                                <div class="page-header-title">
-                                    <h5 class="m-b-10">Clients</h5>
-                                </div>
-                                <ul class="breadcrumb">
-                                    <li class="breadcrumb-item"><a href="dashboard.php"><i class="feather icon-home"></i></a></li>
-                                    <li class="breadcrumb-item"><a href="javascript:">Clients</a></li>
-                                </ul>
-                            </div>
-                        </div>
-                    </div>
-                </div>
-                <!-- [ breadcrumb ] end -->
                 <div class="main-body">
                     <div class="page-wrapper">
                         <!-- [ Main Content ] start -->
-                        <div class="row">
-                            <!-- Summary Cards -->
-                            <div class="col-xl-3 col-md-6">
-                                <div class="card bg-c-blue text-white">
-                                    <div class="card-body">
-                                        <div class="row align-items-center">
-                                            <div class="col">
-                                                <p class="m-b-5">Total Clients</p>
-                                                <h4 class="m-b-0"><?= number_format($summary['total_clients'] ?? 0) ?></h4>
-                                            </div>
-                                            <div class="col col-auto text-right">
-                                                <i class="fas fa-users f-50 text-c-blue"></i>
-                                            </div>
-                                        </div>
+                        <div class="main-content">
+                            <!-- Page Header Card -->
+                            <div class="page-header card">
+                                <div class="row align-items-center">
+                                    <div class="col-md-6">
+                                        <h5 class="mb-0"><i class="feather icon-users mr-2"></i>Clients</h5>
+                                        <p class="mb-0 mt-1" style="font-size: 14px; opacity: 0.9;">Manage and view all your clients</p>
+                                    </div>
+                                    <div class="col-md-6 text-end">
+                                        <a href="dashboard.php" class="btn btn-outline-secondary btn-sm">
+                                            <i class="feather icon-arrow-left mr-1"></i>Back to Dashboard
+                                        </a>
                                     </div>
                                 </div>
                             </div>
-                            <div class="col-xl-3 col-md-6">
-                                <div class="card bg-c-green text-white">
-                                    <div class="card-body">
-                                        <div class="row align-items-center">
-                                            <div class="col">
-                                                <p class="m-b-5">Positive USD Balance</p>
-                                                <h4 class="m-b-0">$<?= number_format($summary['positive_usd_balance'] ?? 0, 2) ?></h4>
-                                            </div>
-                                            <div class="col col-auto text-right">
-                                                <i class="fas fa-dollar-sign f-50 text-c-green"></i>
-                                            </div>
-                                        </div>
-                                    </div>
-                                </div>
-                            </div>
-                            <div class="col-xl-3 col-md-6">
-                                <div class="card bg-c-yellow text-white">
-                                    <div class="card-body">
-                                        <div class="row align-items-center">
-                                            <div class="col">
-                                                <p class="m-b-5">Positive AFS Balance</p>
-                                                <h4 class="m-b-0">؋<?= number_format($summary['positive_afs_balance'] ?? 0, 2) ?></h4>
-                                            </div>
-                                            <div class="col col-auto text-right">
-                                                <i class="fas fa-money-bill-wave f-50 text-c-yellow"></i>
-                                            </div>
-                                        </div>
-                                    </div>
-                                </div>
-                            </div>
-                            <div class="col-xl-3 col-md-6">
-                                <div class="card bg-c-red text-white">
-                                    <div class="card-body">
-                                        <div class="row align-items-center">
-                                            <div class="col">
-                                                <p class="m-b-5">Outstanding Balances</p>
-                                                <h4 class="m-b-0">$<?= number_format(($summary['negative_usd_balance'] ?? 0) + ($summary['negative_afs_balance'] ?? 0), 2) ?></h4>
-                                            </div>
-                                            <div class="col col-auto text-right">
-                                                <i class="fas fa-exclamation-triangle f-50 text-c-red"></i>
-                                            </div>
-                                        </div>
-                                    </div>
-                                </div>
-                            </div>
-                        </div>
 
-                        <div class="row">
-                            <div class="col-sm-12">
-                                <!-- Search Section -->
-                                <div class="card mb-3">
-                                    <div class="card-body">
-                                        <div class="row align-items-center">
-                                            <div class="col-md-12">
-                                                <div class="search-box">
-                                                    <div class="input-group">
-                                                        <input type="text" id="searchInput" class="form-control" placeholder="Search by client name, email, or phone" value="<?= htmlspecialchars($search) ?>">
-                                                        <div class="input-group-append">
-                                                            <button class="btn btn-primary" type="button" id="searchBtn">
-                                                                <i class="feather icon-search"></i> Search
-                                                            </button>
-                                                            <?php if (!empty($search)): ?>
-                                                            <a href="?" class="btn btn-secondary">
-                                                                <i class="feather icon-x"></i> Clear
-                                                            </a>
-                                                            <?php endif; ?>
-                                                        </div>
+                            <div class="row">
+                                <!-- Summary Cards Column -->
+                                <div class="col-md-3">
+                                    <div class="card mb-3">
+                                        <div class="card-body text-center">
+                                            <div class="h2 font-weight-bold text-primary">
+                                                <i class="feather icon-users mr-2"></i><?php echo number_format($summary['total_clients'] ?? 0); ?>
+                                            </div>
+                                            <p class="text-muted mb-0">Total Clients</p>
+                                        </div>
+                                    </div>
+                                    
+                                    <div class="card mb-3">
+                                        <div class="card-body text-center">
+                                            <div class="h4 mb-1 font-weight-bold text-success">
+                                                $<?php echo number_format($summary['positive_usd_balance'] ?? 0, 2); ?>
+                                            </div>
+                                            <small class="text-muted"><i class="feather icon-dollar-sign mr-1"></i>Positive USD Balance</small>
+                                        </div>
+                                    </div>
+                                    
+                                    <div class="card mb-3">
+                                        <div class="card-body text-center">
+                                            <div class="h4 mb-1 font-weight-bold text-info">
+                                                ؋<?php echo number_format($summary['positive_afs_balance'] ?? 0, 2); ?>
+                                            </div>
+                                            <small class="text-muted"><i class="feather icon-money-bill-wave mr-1"></i>Positive AFS Balance</small>
+                                        </div>
+                                    </div>
+                                    
+                                    <div class="card mb-3">
+                                        <div class="card-body text-center">
+                                            <div class="h4 mb-1 font-weight-bold text-danger">
+                                                $<?php echo number_format(($summary['negative_usd_balance'] ?? 0) + ($summary['negative_afs_balance'] ?? 0), 2); ?>
+                                            </div>
+                                            <small class="text-muted"><i class="feather icon-alert-triangle mr-1"></i>Outstanding Balances</small>
+                                        </div>
+                                    </div>
+                                </div>
+
+                                <!-- Main Content Column -->
+                                <div class="col-md-9">
+                                    <!-- Search Section -->
+                                    <div class="card mb-3">
+                                        <div class="card-body">
+                                            <div class="search-box">
+                                                <div class="input-group">
+                                                    <input type="text" id="searchInput" class="form-control" placeholder="Search by client name, email, or phone" value="<?php echo htmlspecialchars($search); ?>">
+                                                    <div class="input-group-append">
+                                                        <button class="btn btn-primary" type="button" id="searchBtn">
+                                                            <i class="feather icon-search"></i> Search
+                                                        </button>
+                                                        <?php if (!empty($search)): ?>
+                                                        <a href="?" class="btn btn-secondary">
+                                                            <i class="feather icon-x"></i> Clear
+                                                        </a>
+                                                        <?php endif; ?>
                                                     </div>
                                                 </div>
                                             </div>
                                         </div>
                                     </div>
-                                </div>
 
-                                <!-- Clients Table Section -->
-                                <div class="card">
-                                    <div class="card-body p-0">
-                                        <div class="table-responsive">
+                                    <!-- Clients Table Section -->
+                                    <div class="card">
+                                        <div class="card-header">
+                                            <h5><i class="feather icon-list mr-2"></i>Clients List</h5>
+                                        </div>
+                                        <div class="card-body table-responsive p-0">
                                             <table class="table table-hover">
                                                 <thead>
                                                     <tr>
@@ -251,17 +196,17 @@ $summary = $summary_stmt->fetch(PDO::FETCH_ASSOC);
                                                     foreach ($clients as $client):
                                                     ?>
                                                     <tr>
-                                                        <td class="text-center"><?= $counter++ ?></td>
+                                                        <td class="text-center"><?php echo $counter++; ?></td>
                                                         <td>
                                                             <div class="dropdown">
                                                                 <button class="btn btn-secondary btn-sm dropdown-toggle" type="button" data-toggle="dropdown">
                                                                     <i class="feather icon-more-vertical"></i>
                                                                 </button>
                                                                 <div class="dropdown-menu dropdown-menu-right">
-                                                                    <button class="dropdown-item view-details" data-client='<?= htmlspecialchars(json_encode($client)) ?>'>
+                                                                    <button class="dropdown-item view-details" data-client='<?php echo htmlspecialchars(json_encode($client)); ?>'>
                                                                         <i class="feather icon-eye text-primary mr-2"></i> View Details
                                                                     </button>
-                                                                    <button class="dropdown-item view-transactions" data-client-id="<?= $client['id'] ?>" data-client-name="<?= htmlspecialchars($client['name']) ?>">
+                                                                    <button class="dropdown-item view-transactions" data-client-id="<?php echo $client['id']; ?>" data-client-name="<?php echo htmlspecialchars($client['name']); ?>">
                                                                         <i class="feather icon-list text-info mr-2"></i> View Transactions
                                                                     </button>
                                                                 </div>
@@ -272,11 +217,11 @@ $summary = $summary_stmt->fetch(PDO::FETCH_ASSOC);
                                                             <div class="client-info">
                                                                 <div class="client-info__details">
                                                                     <div class="client-info__name">
-                                                                        <strong><?= htmlspecialchars($client['name']) ?></strong>
+                                                                        <strong><?php echo htmlspecialchars($client['name']); ?></strong>
                                                                     </div>
                                                                     <div class="client-info__type">
-                                                                        <span class="badge badge-<?= $client['client_type'] === 'agency' ? 'primary' : 'secondary' ?>">
-                                                                            <?= ucfirst(htmlspecialchars($client['client_type'])) ?>
+                                                                        <span class="badge badge-<?php echo $client['client_type'] === 'agency' ? 'primary' : 'secondary'; ?>">
+                                                                            <?php echo ucfirst(htmlspecialchars($client['client_type'])); ?>
                                                                         </span>
                                                                     </div>
                                                                 </div>
@@ -289,13 +234,13 @@ $summary = $summary_stmt->fetch(PDO::FETCH_ASSOC);
                                                                     <?php if (!empty($client['phone'])): ?>
                                                                     <div class="contact-info__phone">
                                                                         <i class="feather icon-phone mr-1"></i>
-                                                                        <?= htmlspecialchars($client['phone']) ?>
+                                                                        <?php echo htmlspecialchars($client['phone']); ?>
                                                                     </div>
                                                                     <?php endif; ?>
                                                                     <?php if (!empty($client['email'])): ?>
                                                                     <div class="contact-info__email">
                                                                         <i class="feather icon-mail mr-1"></i>
-                                                                        <?= htmlspecialchars($client['email']) ?>
+                                                                        <?php echo htmlspecialchars($client['email']); ?>
                                                                     </div>
                                                                     <?php endif; ?>
                                                                     <?php if (empty($client['phone']) && empty($client['email'])): ?>
@@ -310,15 +255,15 @@ $summary = $summary_stmt->fetch(PDO::FETCH_ASSOC);
                                                         <td>
                                                             <div class="balance-info">
                                                                 <div class="balance-info__amount">
-                                                                    <span class="text-<?= $client['usd_balance'] >= 0 ? 'success' : 'danger' ?>">
+                                                                    <span class="text-<?php echo $client['usd_balance'] >= 0 ? 'success' : 'danger'; ?>">
                                                                         <strong>
-                                                                            $<?= number_format($client['usd_balance'], 2) ?>
+                                                                            $<?php echo number_format($client['usd_balance'], 2); ?>
                                                                         </strong>
                                                                     </span>
                                                                 </div>
                                                                 <div class="balance-info__status">
                                                                     <small class="text-muted">
-                                                                        <?= $client['usd_balance'] >= 0 ? 'Credit' : 'Debit' ?>
+                                                                        <?php echo $client['usd_balance'] >= 0 ? 'Credit' : 'Debit'; ?>
                                                                     </small>
                                                                 </div>
                                                             </div>
@@ -327,15 +272,15 @@ $summary = $summary_stmt->fetch(PDO::FETCH_ASSOC);
                                                         <td>
                                                             <div class="balance-info">
                                                                 <div class="balance-info__amount">
-                                                                    <span class="text-<?= $client['afs_balance'] >= 0 ? 'info' : 'danger' ?>">
+                                                                    <span class="text-<?php echo $client['afs_balance'] >= 0 ? 'info' : 'danger'; ?>">
                                                                         <strong>
-                                                                            ؋<?= number_format($client['afs_balance'], 2) ?>
+                                                                            ؋<?php echo number_format($client['afs_balance'], 2); ?>
                                                                         </strong>
                                                                     </span>
                                                                 </div>
                                                                 <div class="balance-info__status">
                                                                     <small class="text-muted">
-                                                                        <?= $client['afs_balance'] >= 0 ? 'Credit' : 'Debit' ?>
+                                                                        <?php echo $client['afs_balance'] >= 0 ? 'Credit' : 'Debit'; ?>
                                                                     </small>
                                                                 </div>
                                                             </div>
@@ -345,20 +290,20 @@ $summary = $summary_stmt->fetch(PDO::FETCH_ASSOC);
                                                             <div class="activity-info">
                                                                 <div class="activity-info__transactions">
                                                                     <i class="feather icon-activity text-muted mr-1"></i>
-                                                                    <?= number_format($client['transaction_count']) ?> transactions
+                                                                    <?php echo number_format($client['transaction_count']); ?> transactions
                                                                 </div>
                                                                 <div class="activity-info__summary">
                                                                     <small class="text-muted">
-                                                                        Credits: $<?= number_format($client['total_credits'], 2) ?><br>
-                                                                        Debits: $<?= number_format($client['total_debits'], 2) ?>
+                                                                        Credits: $<?php echo number_format($client['total_credits'], 2); ?><br>
+                                                                        Debits: $<?php echo number_format($client['total_debits'], 2); ?>
                                                                     </small>
                                                                 </div>
                                                             </div>
                                                         </td>
 
                                                         <td>
-                                                            <span class="badge badge-<?= $client['status'] === 'active' ? 'success' : 'secondary' ?>">
-                                                                <?= ucfirst(htmlspecialchars($client['status'])) ?>
+                                                            <span class="badge badge-<?php echo $client['status'] === 'active' ? 'success' : 'secondary'; ?>">
+                                                                <?php echo ucfirst(htmlspecialchars($client['status'])); ?>
                                                             </span>
                                                         </td>
                                                     </tr>
@@ -371,18 +316,18 @@ $summary = $summary_stmt->fetch(PDO::FETCH_ASSOC);
                                         <div class="card-footer bg-white">
                                             <div class="d-flex justify-content-between align-items-center">
                                                 <div class="text-muted">
-                                                    Showing <?= min(($page - 1) * $results_per_page + 1, $total_clients) ?> to <?= min($page * $results_per_page, $total_clients) ?> of <?= $total_clients ?> clients
+                                                    Showing <?php echo min(($page - 1) * $results_per_page + 1, $total_clients); ?> to <?php echo min($page * $results_per_page, $total_clients); ?> of <?php echo $total_clients; ?> clients
                                                 </div>
                                                 <nav aria-label="Page navigation">
                                                     <ul class="pagination mb-0">
                                                         <?php if ($page > 1): ?>
                                                             <li class="page-item">
-                                                                <a class="page-link" href="?page=1&search=<?= urlencode($search) ?>">
+                                                                <a class="page-link" href="?page=1&search=<?php echo urlencode($search); ?>">
                                                                     <i class="feather icon-chevrons-left"></i>
                                                                 </a>
                                                             </li>
                                                             <li class="page-item">
-                                                                <a class="page-link" href="?page=<?= $page - 1 ?>&search=<?= urlencode($search) ?>">
+                                                                <a class="page-link" href="?page=<?php echo $page - 1; ?>&search=<?php echo urlencode($search); ?>">
                                                                     <i class="feather icon-chevron-left"></i>
                                                                 </a>
                                                             </li>
@@ -415,12 +360,12 @@ $summary = $summary_stmt->fetch(PDO::FETCH_ASSOC);
 
                                                         <?php if ($page < $total_pages): ?>
                                                             <li class="page-item">
-                                                                <a class="page-link" href="?page=<?= $page + 1 ?>&search=<?= urlencode($search) ?>">
+                                                                <a class="page-link" href="?page=<?php echo $page + 1; ?>&search=<?php echo urlencode($search); ?>">
                                                                     <i class="feather icon-chevron-right"></i>
                                                                 </a>
                                                             </li>
                                                             <li class="page-item">
-                                                                <a class="page-link" href="?page=<?= $total_pages ?>&search=<?= urlencode($search) ?>">
+                                                                <a class="page-link" href="?page=<?php echo $total_pages; ?>&search=<?php echo urlencode($search); ?>">
                                                                     <i class="feather icon-chevrons-right"></i>
                                                                 </a>
                                                             </li>
@@ -599,7 +544,185 @@ $summary = $summary_stmt->fetch(PDO::FETCH_ASSOC);
     </div>
 </div>
 
-<?php include 'footer.php'; ?>
+<style>
+/* Enhanced custom styles matching request_user_addon.php */
+.page-header.card {
+    background: linear-gradient(135deg, #4099ff 0%, #2ed8b6 100%);
+    color: #ffffff;
+    border: none;
+    margin-bottom: 20px;
+    padding: 20px !important;
+    box-shadow: 0 4px 12px rgba(0,0,0,0.15);
+    border-radius: 10px;
+}
+
+.page-header.card .row {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+}
+
+.page-header.card h5 {
+    color: #ffffff;
+    margin: 0;
+    font-weight: 600;
+}
+
+.page-header.card .text-end {
+    text-align: right;
+}
+
+.page-header.card .btn {
+    background: rgba(255,255,255,0.2);
+    color: #ffffff;
+    border: 1px solid rgba(255,255,255,0.3);
+    border-radius: 25px;
+    transition: all 0.3s ease;
+}
+
+.page-header.card .btn:hover {
+    background: rgba(255,255,255,0.3);
+    border-color: rgba(255,255,255,0.5);
+    transform: translateY(-1px);
+}
+
+.card {
+    border-radius: 10px;
+    box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+    transition: transform 0.2s ease-in-out, box-shadow 0.2s ease-in-out;
+    border: none;
+}
+
+.card:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 4px 16px rgba(0,0,0,0.15);
+}
+
+.card-header {
+    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    color: white;
+    border-radius: 10px 10px 0 0;
+    padding: 1rem 1.5rem;
+    border: none;
+}
+
+.card-header h5 {
+    margin: 0;
+    font-weight: 600;
+    display: flex;
+    align-items: center;
+}
+
+.badge {
+    font-size: 0.85em;
+    padding: 0.5em 0.75em;
+    border-radius: 20px;
+    font-weight: 500;
+}
+
+.badge-success {
+    background-color: #28a745;
+}
+
+.badge-warning {
+    background-color: #ffc107;
+    color: #212529;
+}
+
+.badge-info {
+    background-color: #17a2b8;
+}
+
+.badge-primary {
+    background-color: #007bff;
+}
+
+.badge-secondary {
+    background-color: #6c757d;
+}
+
+.table-responsive {
+    border-radius: 10px;
+    overflow: hidden;
+}
+
+.table {
+    margin-bottom: 0;
+}
+
+.table thead th {
+    background-color: #f8f9fa;
+    border-bottom: 2px solid #dee2e6;
+    font-weight: 600;
+    color: #495057;
+    padding: 1rem;
+}
+
+.table tbody tr:hover {
+    background-color: #f1f3f4;
+}
+
+.table tbody td {
+    padding: 1rem;
+    vertical-align: middle;
+}
+
+.form-control {
+    border-radius: 8px;
+    border: 1px solid #ced4da;
+    transition: border-color 0.15s ease-in-out, box-shadow 0.15s ease-in-out;
+    padding: 0.75rem;
+}
+
+.form-control:focus {
+    border-color: #4099ff;
+    box-shadow: 0 0 0 0.2rem rgba(64, 153, 255, 0.25);
+}
+
+.btn-primary {
+    background: linear-gradient(135deg, #4099ff 0%, #2ed8b6 100%);
+    border: none;
+    border-radius: 25px;
+    padding: 0.75rem 2rem;
+    font-weight: 600;
+    transition: all 0.3s ease;
+}
+
+.btn-primary:hover {
+    transform: translateY(-1px);
+    box-shadow: 0 4px 12px rgba(64, 153, 255, 0.3);
+}
+
+.btn-secondary {
+    border-radius: 25px;
+    padding: 0.75rem 2rem;
+    font-weight: 600;
+    transition: all 0.3s ease;
+}
+
+.pagination .page-link {
+    border-radius: 50%;
+    margin: 0 2px;
+    border: none;
+    color: #495057;
+}
+
+.pagination .page-item.active .page-link {
+    background: linear-gradient(135deg, #4099ff 0%, #2ed8b6 100%);
+    color: white;
+}
+
+.pagination .page-link:hover {
+    background-color: #e9ecef;
+}
+
+/* Text colors */
+.text-primary { color: #007bff !important; }
+.text-success { color: #28a745 !important; }
+.text-info { color: #17a2b8 !important; }
+.text-danger { color: #dc3545 !important; }
+.text-muted { color: #6c757d !important; }
+</style>
 
 <script>
 // Handle search functionality
@@ -674,3 +797,5 @@ document.querySelectorAll('.view-transactions').forEach(button => {
     });
 });
 </script>
+
+<?php include 'footer.php'; ?>

@@ -121,31 +121,308 @@ $summary = $summary_stmt->fetch(PDO::FETCH_ASSOC);
 ?>
 
 <style>
-/* Apply gradient background to card headers matching the sidebar */
-.card-header {
-    background: linear-gradient(135deg, #4099ff 0%, #2ed8b6 100%) !important;
-    color: #ffffff !important;
-    border-bottom: none !important;
-}
+    /* Page Header - Gradient Background */
+    .page-header.card {
+        background: linear-gradient(135deg, #4099ff 0%, #2ed8b6 100%);
+        color: #ffffff;
+        border: none;
+        margin-bottom: 20px;
+        padding: 20px !important;
+        box-shadow: 0 4px 12px rgba(0,0,0,0.15);
+        border-radius: 10px;
+    }
 
-.card-header h5 {
-    color: #ffffff !important;
-    margin-bottom: 0 !important;
-}
+    .page-header.card .row {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+    }
 
-.card-header .card-header-right {
-    color: #ffffff !important;
-}
+    .page-header.card h5 {
+        color: #ffffff;
+        margin: 0;
+        font-weight: 600;
+    }
 
-.card-header .card-header-right .btn {
-    color: #ffffff !important;
-    border-color: rgba(255, 255, 255, 0.3) !important;
-}
+    .page-header.card .breadcrumb {
+        background: transparent;
+    }
 
-.card-header .card-header-right .btn:hover {
-    background: rgba(255, 255, 255, 0.1) !important;
-    border-color: rgba(255, 255, 255, 0.5) !important;
-}
+    .page-header.card .breadcrumb-item a {
+        color: rgba(255,255,255,0.8);
+    }
+
+    .page-header.card .breadcrumb-item a:hover {
+        color: #ffffff;
+    }
+
+    .page-header.card .breadcrumb-item.active {
+        color: rgba(255,255,255,0.9);
+    }
+
+    .breadcrumb-item + .breadcrumb-item::before {
+        color: rgba(255,255,255,0.7);
+    }
+
+    /* Card Styles */
+    .card {
+        border-radius: 10px;
+        box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+        transition: transform 0.2s ease-in-out, box-shadow 0.2s ease-in-out;
+        border: none;
+        margin-bottom: 20px;
+    }
+
+    .card:hover {
+        transform: translateY(-2px);
+        box-shadow: 0 4px 16px rgba(0,0,0,0.15);
+    }
+
+    .card-header {
+        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        color: white;
+        border-radius: 10px 10px 0 0;
+        padding: 1rem 1.5rem;
+        border: none;
+    }
+
+    .card-header h5 {
+        margin: 0;
+        font-weight: 600;
+        display: flex;
+        align-items: center;
+        color: #ffffff;
+    }
+
+    .card-body {
+        padding: 1.5rem;
+    }
+
+    .card-footer {
+        border-radius: 0 0 10px 10px;
+        background: #f8f9fa;
+        border-top: 1px solid #eee;
+    }
+
+    /* Summary Cards */
+    .card.bg-c-blue, .card.bg-c-green, .card.bg-c-red, .card.bg-c-yellow, .card.bg-c-purple, .card.bg-c-pink {
+        border-radius: 10px;
+        box-shadow: 0 2px 8px rgba(0,0,0,0.15);
+        transition: transform 0.2s ease-in-out;
+    }
+
+    .card.bg-c-blue:hover, .card.bg-c-green:hover, .card.bg-c-red:hover, .card.bg-c-yellow:hover, .card.bg-c-purple:hover, .card.bg-c-pink:hover {
+        transform: translateY(-3px);
+    }
+
+    /* Table Styles */
+    .table-responsive {
+        border-radius: 10px;
+        overflow: hidden;
+    }
+
+    .table {
+        margin-bottom: 0;
+    }
+
+    .table thead th {
+        background-color: #f8f9fa;
+        border-bottom: 2px solid #dee2e6;
+        font-weight: 600;
+        color: #495057;
+        padding: 1rem;
+    }
+
+    .table tbody tr:hover {
+        background-color: #f1f3f4;
+    }
+
+    .table tbody td {
+        padding: 1rem;
+        vertical-align: middle;
+    }
+
+    /* Form Controls */
+    .form-control {
+        border-radius: 8px;
+        border: 1px solid #ced4da;
+        transition: border-color 0.15s ease-in-out, box-shadow 0.15s ease-in-out;
+        padding: 0.75rem;
+    }
+
+    .form-control:focus {
+        border-color: #4099ff;
+        box-shadow: 0 0 0 0.2rem rgba(64, 153, 255, 0.25);
+    }
+
+    /* Buttons */
+    .btn-primary {
+        background: linear-gradient(135deg, #4099ff 0%, #2ed8b6 100%);
+        border: none;
+        border-radius: 25px;
+        padding: 0.75rem 2rem;
+        font-weight: 600;
+        transition: all 0.3s ease;
+    }
+
+    .btn-primary:hover {
+        transform: translateY(-1px);
+        box-shadow: 0 4px 12px rgba(64, 153, 255, 0.3);
+        background: linear-gradient(135deg, #2ed8b6 0%, #4099ff 100%);
+    }
+
+    .btn-secondary {
+        border-radius: 25px;
+        padding: 0.75rem 2rem;
+        font-weight: 600;
+        transition: all 0.3s ease;
+    }
+
+    .btn-secondary:hover {
+        transform: translateY(-1px);
+    }
+
+    .btn {
+        border-radius: 8px;
+    }
+
+    /* Pagination */
+    .pagination .page-link {
+        border-radius: 8px;
+        margin: 0 3px;
+        border: none;
+        color: #495057;
+    }
+
+    .pagination .page-link:hover {
+        background-color: #e9ecef;
+        color: #4099ff;
+    }
+
+    .pagination .page-item.active .page-link {
+        background: linear-gradient(135deg, #4099ff 0%, #2ed8b6 100%);
+        color: white;
+    }
+
+    /* Badge Styles */
+    .badge {
+        font-size: 0.85em;
+        padding: 0.5em 0.75em;
+        border-radius: 20px;
+        font-weight: 500;
+    }
+
+    .badge-success {
+        background-color: #28a745;
+    }
+
+    .badge-warning {
+        background-color: #ffc107;
+        color: #212529;
+    }
+
+    .badge-danger {
+        background-color: #dc3545;
+    }
+
+    .badge-info {
+        background-color: #17a2b8;
+    }
+
+    .badge-primary {
+        background-color: #007bff;
+    }
+
+    .badge-secondary {
+        background-color: #6c757d;
+    }
+
+    /* Modal Styles */
+    .modal-content {
+        border-radius: 15px;
+        border: none;
+        box-shadow: 0 10px 40px rgba(0,0,0,0.2);
+    }
+
+    .modal-header {
+        border-radius: 15px 15px 0 0;
+        padding: 1.5rem;
+    }
+
+    .modal-header.bg-info {
+        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%) !important;
+    }
+
+    .modal-body {
+        padding: 1.5rem;
+    }
+
+    .modal-footer {
+        border-radius: 0 0 15px 15px;
+    }
+
+    /* Input Group */
+    .input-group .form-control {
+        border-radius: 8px 0 0 8px;
+    }
+
+    .input-group-append .btn {
+        border-radius: 0 8px 8px 0;
+    }
+
+    /* Dropdown */
+    .dropdown-menu {
+        border-radius: 10px;
+        border: none;
+        box-shadow: 0 4px 20px rgba(0,0,0,0.15);
+    }
+
+    .dropdown-item {
+        padding: 0.75rem 1.5rem;
+        border-radius: 5px;
+        margin: 0 5px;
+    }
+
+    .dropdown-item:hover {
+        background-color: #f8f9fa;
+    }
+
+    /* Nav Pills */
+    .nav-pills .nav-link {
+        border-radius: 25px;
+        padding: 0.75rem 1.5rem;
+    }
+
+    .nav-pills .nav-link.active {
+        background: linear-gradient(135deg, #4099ff 0%, #2ed8b6 100%);
+    }
+
+    /* Alert Styles */
+    .alert {
+        border-radius: 10px;
+        border: none;
+        padding: 1rem 1.5rem;
+    }
+
+    /* Custom Scrollbar */
+    ::-webkit-scrollbar {
+        width: 8px;
+        height: 8px;
+    }
+
+    ::-webkit-scrollbar-track {
+        background: #f1f1f1;
+        border-radius: 4px;
+    }
+
+    ::-webkit-scrollbar-thumb {
+        background: #c1c1c1;
+        border-radius: 4px;
+    }
+
+    ::-webkit-scrollbar-thumb:hover {
+        background: #a8a8a8;
+    }
 </style>
 
 <!-- [ Main Content ] start -->
@@ -154,124 +431,121 @@ $summary = $summary_stmt->fetch(PDO::FETCH_ASSOC);
         <div class="pcoded-content">
             <div class="pcoded-inner-content">
                 <!-- [ breadcrumb ] start -->
-                <div class="page-header">
-                    <div class="page-block">
-                        <div class="row align-items-center">
-                            <div class="col-md-12">
-                                <div class="page-header-title">
-                                    <h5 class="m-b-10">Sarafi (Money Exchange)</h5>
-                                </div>
-                                <ul class="breadcrumb">
-                                    <li class="breadcrumb-item"><a href="dashboard.php"><i class="feather icon-home"></i></a></li>
-                                    <li class="breadcrumb-item"><a href="javascript:">Sarafi</a></li>
-                                </ul>
-                            </div>
+                <div class="page-header card">
+                    <div class="row align-items-center">
+                        <div class="col-md-12">
+                            <h5 class="m-b-10"><i class="feather icon-exchange mr-2"></i>Sarafi (Money Exchange)</h5>
+                            <ol class="breadcrumb">
+                                <li class="breadcrumb-item"><a href="dashboard.php"><i class="feather icon-home"></i></a></li>
+                                <li class="breadcrumb-item active">Sarafi</li>
+                            </ol>
                         </div>
                     </div>
                 </div>
-                <!-- [ breadcrumb ] end -->
-                <div class="main-body">
-                    <div class="page-wrapper">
-                        <!-- [ Main Content ] start -->
-                        <div class="row">
-                            <!-- Summary Cards -->
-                            <div class="col-xl-2 col-md-6">
-                                <div class="card bg-c-blue text-white">
-                                    <div class="card-body">
-                                        <div class="row align-items-center">
-                                            <div class="col">
-                                                <p class="m-b-5">Total Transactions</p>
-                                                <h4 class="m-b-0"><?= number_format($summary['total_transactions'] ?? 0) ?></h4>
-                                            </div>
-                                            <div class="col col-auto text-right">
-                                                <i class="fas fa-exchange-alt f-50 text-c-blue"></i>
-                                            </div>
+                <!-- [ Main Content ] start -->
+                <div class="main-content">
+                    <!-- Summary Cards -->
+                    <div class="row">
+                        <div class="col-xl-2 col-md-6">
+                            <div class="card bg-c-blue text-white">
+                                <div class="card-body">
+                                    <div class="row align-items-center">
+                                        <div class="col">
+                                            <p class="m-b-5">Total Transactions</p>
+                                            <h4 class="m-b-0"><?= number_format($summary['total_transactions'] ?? 0) ?></h4>
                                         </div>
-                                    </div>
-                                </div>
-                            </div>
-                            <div class="col-xl-2 col-md-6">
-                                <div class="card bg-c-green text-white">
-                                    <div class="card-body">
-                                        <div class="row align-items-center">
-                                            <div class="col">
-                                                <p class="m-b-5">Deposits</p>
-                                                <h4 class="m-b-0"><?= number_format($summary['deposit_count'] ?? 0) ?></h4>
-                                            </div>
-                                            <div class="col col-auto text-right">
-                                                <i class="fas fa-arrow-down f-50 text-c-green"></i>
-                                            </div>
-                                        </div>
-                                    </div>
-                                </div>
-                            </div>
-                            <div class="col-xl-2 col-md-6">
-                                <div class="card bg-c-red text-white">
-                                    <div class="card-body">
-                                        <div class="row align-items-center">
-                                            <div class="col">
-                                                <p class="m-b-5">Withdrawals</p>
-                                                <h4 class="m-b-0"><?= number_format($summary['withdrawal_count'] ?? 0) ?></h4>
-                                            </div>
-                                            <div class="col col-auto text-right">
-                                                <i class="fas fa-arrow-up f-50 text-c-red"></i>
-                                            </div>
-                                        </div>
-                                    </div>
-                                </div>
-                            </div>
-                            <div class="col-xl-2 col-md-6">
-                                <div class="card bg-c-yellow text-white">
-                                    <div class="card-body">
-                                        <div class="row align-items-center">
-                                            <div class="col">
-                                                <p class="m-b-5">Exchanges</p>
-                                                <h4 class="m-b-0"><?= number_format($summary['exchange_count'] ?? 0) ?></h4>
-                                            </div>
-                                            <div class="col col-auto text-right">
-                                                <i class="fas fa-sync f-50 text-c-yellow"></i>
-                                            </div>
-                                        </div>
-                                    </div>
-                                </div>
-                            </div>
-                            <div class="col-xl-2 col-md-6">
-                                <div class="card bg-c-purple text-white">
-                                    <div class="card-body">
-                                        <div class="row align-items-center">
-                                            <div class="col">
-                                                <p class="m-b-5">Total Deposits</p>
-                                                <h4 class="m-b-0">$<?= number_format($summary['total_deposits'] ?? 0, 2) ?></h4>
-                                            </div>
-                                            <div class="col col-auto text-right">
-                                                <i class="fas fa-dollar-sign f-50 text-c-purple"></i>
-                                            </div>
-                                        </div>
-                                    </div>
-                                </div>
-                            </div>
-                            <div class="col-xl-2 col-md-6">
-                                <div class="card bg-c-pink text-white">
-                                    <div class="card-body">
-                                        <div class="row align-items-center">
-                                            <div class="col">
-                                                <p class="m-b-5">Total Withdrawals</p>
-                                                <h4 class="m-b-0">$<?= number_format($summary['total_withdrawals'] ?? 0, 2) ?></h4>
-                                            </div>
-                                            <div class="col col-auto text-right">
-                                                <i class="fas fa-money-bill-wave f-50 text-c-pink"></i>
-                                            </div>
+                                        <div class="col col-auto text-right">
+                                            <i class="fas fa-exchange-alt f-50 text-c-blue"></i>
                                         </div>
                                     </div>
                                 </div>
                             </div>
                         </div>
+                        <div class="col-xl-2 col-md-6">
+                            <div class="card bg-c-green text-white">
+                                <div class="card-body">
+                                    <div class="row align-items-center">
+                                        <div class="col">
+                                            <p class="m-b-5">Deposits</p>
+                                            <h4 class="m-b-0"><?= number_format($summary['deposit_count'] ?? 0) ?></h4>
+                                        </div>
+                                        <div class="col col-auto text-right">
+                                            <i class="fas fa-arrow-down f-50 text-c-green"></i>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="col-xl-2 col-md-6">
+                            <div class="card bg-c-red text-white">
+                                <div class="card-body">
+                                    <div class="row align-items-center">
+                                        <div class="col">
+                                            <p class="m-b-5">Withdrawals</p>
+                                            <h4 class="m-b-0"><?= number_format($summary['withdrawal_count'] ?? 0) ?></h4>
+                                        </div>
+                                        <div class="col col-auto text-right">
+                                            <i class="fas fa-arrow-up f-50 text-c-red"></i>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="col-xl-2 col-md-6">
+                            <div class="card bg-c-yellow text-white">
+                                <div class="card-body">
+                                    <div class="row align-items-center">
+                                        <div class="col">
+                                            <p class="m-b-5">Exchanges</p>
+                                            <h4 class="m-b-0"><?= number_format($summary['exchange_count'] ?? 0) ?></h4>
+                                        </div>
+                                        <div class="col col-auto text-right">
+                                            <i class="fas fa-sync f-50 text-c-yellow"></i>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="col-xl-2 col-md-6">
+                            <div class="card bg-c-purple text-white">
+                                <div class="card-body">
+                                    <div class="row align-items-center">
+                                        <div class="col">
+                                            <p class="m-b-5">Total Deposits</p>
+                                            <h4 class="m-b-0">$<?= number_format($summary['total_deposits'] ?? 0, 2) ?></h4>
+                                        </div>
+                                        <div class="col col-auto text-right">
+                                            <i class="fas fa-dollar-sign f-50 text-c-purple"></i>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="col-xl-2 col-md-6">
+                            <div class="card bg-c-pink text-white">
+                                <div class="card-body">
+                                    <div class="row align-items-center">
+                                        <div class="col">
+                                            <p class="m-b-5">Total Withdrawals</p>
+                                            <h4 class="m-b-0">$<?= number_format($summary['total_withdrawals'] ?? 0, 2) ?></h4>
+                                        </div>
+                                        <div class="col col-auto text-right">
+                                            <i class="fas fa-money-bill-wave f-50 text-c-pink"></i>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
 
-                        <div class="row">
-                            <div class="col-sm-12">
-                                <!-- Branch and Search Section -->
-                                <div class="card mb-3">
-                                    <div class="card-body">
+                    <div class="row">
+                        <div class="col-sm-12">
+                            <!-- Branch and Search Section -->
+                            <div class="card">
+                                <div class="card-header">
+                                    <h5><i class="feather icon-filter mr-2"></i>Filter & Search</h5>
+                                </div>
+                                <div class="card-body">
                                         <div class="row align-items-center">
                                             <div class="col-md-6">
                                                 <div class="branch-selector">
@@ -316,9 +590,12 @@ $summary = $summary_stmt->fetch(PDO::FETCH_ASSOC);
                                     </div>
                                 </div>
 
-                                <!-- Sarafi Transactions Table Section -->
-                                <div class="card">
-                                    <div class="card-body p-0">
+                            <!-- Sarafi Transactions Table Section -->
+                            <div class="card">
+                                <div class="card-header">
+                                    <h5><i class="feather icon-list mr-2"></i>Sarafi Transactions</h5>
+                                </div>
+                                <div class="card-body p-0">
                                         <div class="table-responsive">
                                             <table class="table table-hover">
                                                 <thead>

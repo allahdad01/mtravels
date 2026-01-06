@@ -122,14 +122,19 @@ $summary = $summary_stmt->fetch(PDO::FETCH_ASSOC);
 <style>
 /* Apply gradient background to card headers matching the sidebar */
 .card-header {
-    background: linear-gradient(135deg, #4099ff 0%, #2ed8b6 100%) !important;
-    color: #ffffff !important;
-    border-bottom: none !important;
+    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%) !important;
+    color: white;
+    border-radius: 10px 10px 0 0 !important;
+    padding: 1rem 1.5rem;
+    border: none;
 }
 
 .card-header h5 {
     color: #ffffff !important;
     margin-bottom: 0 !important;
+    font-weight: 600;
+    display: flex;
+    align-items: center;
 }
 
 .card-header .card-header-right {
@@ -145,6 +150,112 @@ $summary = $summary_stmt->fetch(PDO::FETCH_ASSOC);
     background: rgba(255, 255, 255, 0.1) !important;
     border-color: rgba(255, 255, 255, 0.5) !important;
 }
+
+.page-header.card {
+    background: linear-gradient(135deg, #4099ff 0%, #2ed8b6 100%);
+    color: #ffffff;
+    border: none;
+    margin-bottom: 20px;
+    padding: 20px !important;
+    box-shadow: 0 4px 12px rgba(0,0,0,0.15);
+    border-radius: 10px;
+}
+
+.page-header.card h5 {
+    color: #ffffff;
+    margin: 0;
+    font-weight: 600;
+}
+
+.card {
+    border-radius: 10px;
+    box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+    transition: transform 0.2s ease-in-out, box-shadow 0.2s ease-in-out;
+    border: none;
+}
+
+.card:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 4px 16px rgba(0,0,0,0.15);
+}
+
+.btn-primary {
+    background: linear-gradient(135deg, #4099ff 0%, #2ed8b6 100%);
+    border: none;
+    border-radius: 25px;
+    padding: 0.75rem 2rem;
+    font-weight: 600;
+    transition: all 0.3s ease;
+}
+
+.btn-primary:hover {
+    transform: translateY(-1px);
+    box-shadow: 0 4px 12px rgba(64, 153, 255, 0.3);
+}
+
+.btn-secondary {
+    border-radius: 25px;
+    padding: 0.75rem 2rem;
+    font-weight: 600;
+    transition: all 0.3s ease;
+}
+
+.table-responsive {
+    border-radius: 10px;
+    overflow: hidden;
+}
+
+.table {
+    margin-bottom: 0;
+}
+
+.table thead th {
+    background-color: #f8f9fa;
+    border-bottom: 2px solid #dee2e6;
+    font-weight: 600;
+    color: #495057;
+    padding: 1rem;
+}
+
+.table tbody tr:hover {
+    background-color: #f1f3f4;
+}
+
+.table tbody td {
+    padding: 1rem;
+    vertical-align: middle;
+}
+
+.alert {
+    border-radius: 10px;
+    border: none;
+    padding: 1rem 1.5rem;
+}
+
+.alert-info {
+    background: linear-gradient(135deg, #d1ecf1 0%, #bee5eb 100%);
+    color: #0c5460;
+}
+
+.badge {
+    font-size: 0.85em;
+    padding: 0.5em 0.75em;
+    border-radius: 20px;
+    font-weight: 500;
+}
+
+.badge-success {
+    background-color: #28a745;
+}
+
+.badge-warning {
+    background-color: #ffc107;
+    color: #212529;
+}
+
+.badge-info {
+    background-color: #17a2b8;
+}
 </style>
 
 <!-- [ Main Content ] start -->
@@ -153,82 +264,88 @@ $summary = $summary_stmt->fetch(PDO::FETCH_ASSOC);
         <div class="pcoded-content">
             <div class="pcoded-inner-content">
                 <!-- [ breadcrumb ] start -->
-                <div class="page-header">
-                    <div class="page-block">
-                        <div class="row align-items-center">
-                            <div class="col-md-12">
-                                <div class="page-header-title">
-                                    <h5 class="m-b-10">Debtors Management</h5>
-                                </div>
-                                <ul class="breadcrumb">
-                                    <li class="breadcrumb-item"><a href="dashboard.php"><i class="feather icon-home"></i></a></li>
-                                    <li class="breadcrumb-item"><a href="javascript:">Debtors</a></li>
-                                </ul>
-                            </div>
+                <div class="page-header card">
+                    <div class="row align-items-center">
+                        <div class="col-md-6">
+                            <h5 class="mb-0"><i class="feather icon-users mr-2"></i>Debtors Management</h5>
+                            <p class="mb-0 mt-1" style="font-size: 14px; opacity: 0.9;">Manage your debtors and track outstanding balances</p>
+                        </div>
+                        <div class="col-md-6 text-end">
+                            <a href="dashboard.php" class="btn btn-outline-light btn-sm">
+                                <i class="feather icon-home mr-1"></i>Dashboard
+                            </a>
                         </div>
                     </div>
                 </div>
                 <!-- [ breadcrumb ] end -->
-                <div class="main-body">
+                <div class="main-content">
                     <div class="page-wrapper">
                         <!-- [ Main Content ] start -->
                         <div class="row">
                             <!-- Summary Cards -->
                             <div class="col-xl-3 col-md-6">
-                                <div class="card bg-c-blue text-white">
+                                <div class="card">
                                     <div class="card-body">
                                         <div class="row align-items-center">
                                             <div class="col">
-                                                <p class="m-b-5">Total Debtors</p>
-                                                <h4 class="m-b-0"><?= number_format($summary['total_debtors'] ?? 0) ?></h4>
+                                                <p class="text-muted mb-2"><i class="feather icon-users mr-2 text-primary"></i>Total Debtors</p>
+                                                <h4 class="mb-0 font-weight-bold text-primary"><?= number_format($summary['total_debtors'] ?? 0) ?></h4>
                                             </div>
-                                            <div class="col col-auto text-right">
-                                                <i class="fas fa-users f-50 text-c-blue"></i>
+                                            <div class="col col-auto">
+                                                <div class="rounded-circle bg-primary text-white d-flex align-items-center justify-content-center" style="width: 50px; height: 50px;">
+                                                    <i class="fas fa-users"></i>
+                                                </div>
                                             </div>
                                         </div>
                                     </div>
                                 </div>
                             </div>
                             <div class="col-xl-3 col-md-6">
-                                <div class="card bg-c-green text-white">
+                                <div class="card">
                                     <div class="card-body">
                                         <div class="row align-items-center">
                                             <div class="col">
-                                                <p class="m-b-5">Active Debtors</p>
-                                                <h4 class="m-b-0"><?= number_format($summary['active_debtors'] ?? 0) ?></h4>
+                                                <p class="text-muted mb-2"><i class="feather icon-user-check mr-2 text-success"></i>Active Debtors</p>
+                                                <h4 class="mb-0 font-weight-bold text-success"><?= number_format($summary['active_debtors'] ?? 0) ?></h4>
                                             </div>
-                                            <div class="col col-auto text-right">
-                                                <i class="fas fa-user-check f-50 text-c-green"></i>
+                                            <div class="col col-auto">
+                                                <div class="rounded-circle bg-success text-white d-flex align-items-center justify-content-center" style="width: 50px; height: 50px;">
+                                                    <i class="fas fa-user-check"></i>
+                                                </div>
                                             </div>
                                         </div>
                                     </div>
                                 </div>
                             </div>
                             <div class="col-xl-3 col-md-6">
-                                <div class="card bg-c-red text-white">
+                                <div class="card">
                                     <div class="card-body">
                                         <div class="row align-items-center">
                                             <div class="col">
-                                                <p class="m-b-5">Total Outstanding</p>
-                                                <h4 class="m-b-0">$<?= number_format($summary['total_outstanding'] ?? 0, 2) ?></h4>
+                                                <p class="text-muted mb-2"><i class="feather icon-dollar-sign mr-2 text-danger"></i>Total Outstanding</p>
+                                                <h4 class="mb-0 font-weight-bold text-danger">$<?= number_format($summary['total_outstanding'] ?? 0, 2) ?></h4>
                                             </div>
-                                            <div class="col col-auto text-right">
-                                                <i class="fas fa-dollar-sign f-50 text-c-red"></i>
+                                            <div class="col col-auto">
+                                                <div class="rounded-circle bg-danger text-white d-flex align-items-center justify-content-center" style="width: 50px; height: 50px;">
+                                                    <i class="fas fa-dollar-sign"></i>
+                                                </div>
                                             </div>
                                         </div>
                                     </div>
                                 </div>
                             </div>
                             <div class="col-xl-3 col-md-6">
-                                <div class="card bg-c-yellow text-white">
+                                <div class="card">
                                     <div class="card-body">
                                         <div class="row align-items-center">
                                             <div class="col">
-                                                <p class="m-b-5">Average Debt</p>
-                                                <h4 class="m-b-0">$<?= number_format($summary['avg_debt_amount'] ?? 0, 2) ?></h4>
+                                                <p class="text-muted mb-2"><i class="feather icon-trending-up mr-2 text-warning"></i>Average Debt</p>
+                                                <h4 class="mb-0 font-weight-bold text-warning">$<?= number_format($summary['avg_debt_amount'] ?? 0, 2) ?></h4>
                                             </div>
-                                            <div class="col col-auto text-right">
-                                                <i class="fas fa-chart-line f-50 text-c-yellow"></i>
+                                            <div class="col col-auto">
+                                                <div class="rounded-circle bg-warning text-white d-flex align-items-center justify-content-center" style="width: 50px; height: 50px;">
+                                                    <i class="fas fa-chart-line"></i>
+                                                </div>
                                             </div>
                                         </div>
                                     </div>
@@ -240,11 +357,14 @@ $summary = $summary_stmt->fetch(PDO::FETCH_ASSOC);
                             <div class="col-sm-12">
                                 <!-- Branch and Search Section -->
                                 <div class="card mb-3">
+                                    <div class="card-header">
+                                        <h5><i class="feather icon-filter mr-2"></i>Filter Options</h5>
+                                    </div>
                                     <div class="card-body">
                                         <div class="row align-items-center">
                                             <div class="col-md-6">
                                                 <div class="branch-selector">
-                                                    <label for="branchSelect" class="form-label">Select Branch:</label>
+                                                    <label for="branchSelect" class="form-label"><i class="feather icon-home mr-2"></i>Select Branch:</label>
                                                     <select id="branchSelect" class="form-control">
                                                         <option value="all" <?= $selected_branch === 'all' ? 'selected' : '' ?>>All Branches</option>
                                                         <?php
@@ -643,7 +763,11 @@ $summary = $summary_stmt->fetch(PDO::FETCH_ASSOC);
     </div>
 </div>
 
-<?php include 'footer.php'; ?>
+    <!-- Required Js -->
+    <script src="../assets/js/vendor-all.min.js"></script>
+    <script src="../assets/plugins/bootstrap/js/bootstrap.min.js"></script>
+    <script src="../assets/js/pcoded.min.js"></script>
+<?php include '../includes/admin_footer.php'; ?>
 
 <script>
 // Handle search functionality
