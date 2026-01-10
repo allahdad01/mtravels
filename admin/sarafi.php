@@ -480,6 +480,42 @@ foreach ($result as $row) {
     $currency_totals[$row['currency']] = $row['total'];
 }
 
+// Pagination logic
+$limit = 10; // Number of records per page
+$page = isset($_GET['page']) ? (int)$_GET['page'] : 1;
+$offset = ($page - 1) * $limit;
+
+// Get total count for pagination
+$stmt = $pdo->prepare("
+    SELECT COUNT(*) as total
+    FROM sarafi_transactions t
+    JOIN customers c ON t.customer_id = c.id
+    WHERE t.tenant_id = ? AND t.branch_id = ? AND c.branch_id = ?
+");
+$stmt->bindParam(1, $tenant_id, PDO::PARAM_INT);
+$stmt->bindParam(2, $branch_id, PDO::PARAM_INT);
+$stmt->bindParam(3, $branch_id, PDO::PARAM_INT);
+$stmt->execute();
+$total_count = $stmt->fetch(PDO::FETCH_ASSOC)['total'];
+$total_pages = ceil($total_count / $limit);
+
+// Fetch paginated transactions
+$stmt = $pdo->prepare("
+    SELECT t.*, c.name as customer_name
+    FROM sarafi_transactions t
+    JOIN customers c ON t.customer_id = c.id
+    WHERE t.tenant_id = ? AND t.branch_id = ? AND c.branch_id = ?
+    ORDER BY t.created_at DESC
+    LIMIT ? OFFSET ?
+");
+$stmt->bindParam(1, $tenant_id, PDO::PARAM_INT);
+$stmt->bindParam(2, $branch_id, PDO::PARAM_INT);
+$stmt->bindParam(3, $branch_id, PDO::PARAM_INT);
+$stmt->bindParam(4, $limit, PDO::PARAM_INT);
+$stmt->bindParam(5, $offset, PDO::PARAM_INT);
+$stmt->execute();
+$transactions = $stmt->fetchAll(PDO::FETCH_ASSOC);
+
 ?>
 
 
@@ -489,7 +525,6 @@ foreach ($result as $row) {
 <link rel="stylesheet" href="../css/general/modal-styles.css">
 <link rel="stylesheet" href="../css/sarfi/styles.css">
 
-
     <!-- [ Main Content ] start -->
     <div class="pcoded-main-container">
         <div class="pcoded-wrapper">
@@ -498,14 +533,91 @@ foreach ($result as $row) {
                     <div class="main-body">
                         <div class="page-wrapper">
                             <!-- [ Main Content ] start -->
-                            <div class="row">
-                                <!-- [ Sarafi Management ] start -->
-                                <div class="col-sm-12">
-                                    <div class="card">
-                                        <div class="card-header">
-                                            <h5><?= __('sarafi') ?></h5>
+                            <div class="main-content">
+                                <div class="page-header card">
+                                    <div class="row align-items-center">
+                                        <div class="col-md-6">
+                                            <h5 class="mb-0"><i class="feather icon-credit-card mr-2"></i><?= __('sarafi') ?></h5>
+                                            <p class="mb-0 mt-1" style="font-size: 14px; opacity: 0.9;"><?= __('manage_sarafi_transactions') ?></p>
                                         </div>
-                                        <div class="card-body">
+                                        <div class="col-md-6 text-end">
+                                            <a href="customers.php" class="btn btn-outline-secondary btn-sm">
+                                                <i class="feather icon-users mr-1"></i><?= __('view_customers') ?>
+                                            </a>
+                                        </div>
+                                    </div>
+                                </div>
+
+                                <div class="row">
+                                    <!-- Currency Totals Card -->
+                                    <div class="col-md-4">
+                                        <div class="card">
+                                            <div class="card-header">
+                                                <h5><i class="feather icon-bar-chart-2 mr-2"></i><?= __('currency_totals') ?></h5>
+                                            </div>
+                                            <div class="card-body">
+                                                <div class="row">
+                                                    <?php foreach ($currency_totals as $currency => $total): ?>
+                                                    <div class="col-12 mb-3">
+                                                        <div class="currency-card h-100">
+                                                            <div class="d-flex align-items-center">
+                                                                <div class="currency-icon">
+                                                                    <i class="feather icon-credit-card"></i>
+                                                                </div>
+                                                                <div>
+                                                                    <h3 class="mb-1"><?php echo number_format($total, 2); ?></h3>
+                                                                    <p class="mb-0 text-muted"><?php echo __($currency); ?> <?= __('total') ?></p>
+                                                                </div>
+                                                            </div>
+                                                            <div class="mt-3">
+                                                                <div class="progress" style="height: 4px;">
+                                                                    <div class="progress-bar bg-primary" role="progressbar" style="width: 100%"></div>
+                                                                </div>
+                                                            </div>
+                                                        </div>
+                                                    </div>
+                                                    <?php endforeach; ?>
+                                                </div>
+                                            </div>
+                                        </div>
+                                    </div>
+
+                                    <!-- Action Buttons and Transactions -->
+                                    <div class="col-md-8">
+                                        <!-- Action Buttons -->
+                                        <div class="card mb-4">
+                                            <div class="card-header">
+                                                <h5><i class="feather icon-plus-circle mr-2"></i><?= __('quick_actions') ?></h5>
+                                            </div>
+                                            <div class="card-body">
+                                                <div class="row">
+                                                    <div class="col-md-12 action-buttons">
+                                                        <button class="btn btn-success" data-toggle="modal" data-target="#customerModal">
+                                                            <i class="feather icon-user-plus"></i> <?= __('new_customer') ?>
+                                                        </button>
+                                                        <button class="btn btn-info" data-toggle="modal" data-target="#depositModal">
+                                                            <i class="feather icon-plus"></i> <?= __('new_deposit') ?>
+                                                        </button>
+                                                        <button class="btn btn-warning text-white" data-toggle="modal" data-target="#withdrawalModal">
+                                                            <i class="feather icon-minus"></i> <?= __('new_withdrawal') ?>
+                                                        </button>
+                                                        <button class="btn btn-primary" data-toggle="modal" data-target="#hawalaModal">
+                                                            <i class="feather icon-repeat"></i> <?= __('hawala_transfer') ?>
+                                                        </button>
+                                                        <button class="btn btn-success" data-toggle="modal" data-target="#exchangeModal">
+                                                            <i class="feather icon-refresh-cw"></i> <?= __('currency_exchange') ?>
+                                                        </button>
+                                                    </div>
+                                                </div>
+                                            </div>
+                                        </div>
+
+                                        <!-- [ Sarafi Management ] start -->
+                                        <div class="card">
+                                            <div class="card-header">
+                                                <h5><?= __('sarafi') ?></h5>
+                                            </div>
+                                            <div class="card-body">
                                             <!-- Add toast container after opening body tag -->
                                             <div class="toast-container"></div>
 
@@ -518,207 +630,189 @@ foreach ($result as $row) {
                                                 <div class="alert alert-danger"><?php echo htmlspecialchars($error_message); ?></div>
                                             <?php endif; ?>
 
-                                            <!-- Currency Totals -->
-                                            <div class="row mb-4">
-                                                <?php foreach ($currency_totals as $currency => $total): ?>
-                                                <div class="col-md-3 col-sm-6 mb-3">
-                                                    <div class="currency-card h-100">
-                                                        <div class="d-flex align-items-center">
-                                                            <div class="currency-icon">
-                                                                <i class="feather icon-credit-card"></i>
-                                                            </div>
-                                                            <div>
-                                                                <h3 class="mb-1"><?php echo number_format($total, 2); ?></h3>
-                                                                <p class="mb-0 text-muted"><?php echo __($currency); ?> <?= __('total') ?></p>
-                                                            </div>
+                                            <!-- Transactions Table -->
+                                            <div class="card">
+                                                <div class="card-header d-flex justify-content-between align-items-center">
+                                                    <h5 class="mb-0">
+                                                        <i class="feather icon-list mr-2"></i><?= __('recent_transactions') ?>
+                                                    </h5>
+                                                </div>
+                                                <div class="card-body">
+                                                    <div class="table-responsive" style="max-height: 600px; overflow-x: auto; overflow-y: auto;">
+                                                        <table class="table table-hover" id="sarafiTransactionsTable" style="min-width: 100%;">
+                                                            <thead>
+                                                                <tr>
+                                                                    <th><?= __('date') ?></th>
+                                                                    <th><?= __('customer') ?></th>
+                                                                    <th><?= __('type') ?></th>
+                                                                    <th><?= __('amount') ?></th>
+                                                                    <th><?= __('currency') ?></th>
+                                                                    <th><?= __('reference') ?></th>
+                                                                    <th><?= __('status') ?></th>
+                                                                    <th class="no-sort text-center"><?= __('actions') ?></th>
+                                                                </tr>
+                                                            </thead>
+                                                            <tbody>
+                                                                <?php
+                                                                foreach ($transactions as $transaction):
+                                                                    $type_class = '';
+                                                                    $type_icon = '';
+                                                                    switch ($transaction['type']) {
+                                                                        case 'deposit':
+                                                                            $type_class = 'text-success';
+                                                                            $type_icon = 'icon-plus-circle';
+                                                                            break;
+                                                                        case 'withdrawal':
+                                                                            $type_class = 'text-warning';
+                                                                            $type_icon = 'icon-minus-circle';
+                                                                            break;
+                                                                        case 'hawala_send':
+                                                                        case 'hawala_receive':
+                                                                            $type_class = 'text-info';
+                                                                            $type_icon = 'icon-repeat';
+                                                                            break;
+                                                                        case 'exchange':
+                                                                            $type_class = 'text-primary';
+                                                                            $type_icon = 'icon-refresh-cw';
+                                                                            break;
+                                                                    }
+                                                                ?>
+                                                                <tr>
+                                                                    <td>
+                                                                        <div class="d-flex align-items-center">
+                                                                            <i class="feather icon-calendar text-muted mr-2"></i>
+                                                                            <?= date('Y-m-d H:i', strtotime($transaction['created_at'])) ?>
+                                                                        </div>
+                                                                    </td>
+                                                                    <td>
+                                                                        <div class="d-flex align-items-center">
+                                                                            <i class="feather icon-user text-muted mr-2"></i>
+                                                                            <?= htmlspecialchars($transaction['customer_name']) ?>
+                                                                        </div>
+                                                                    </td>
+                                                                    <td>
+                                                                        <div class="d-flex align-items-center <?= $type_class ?>">
+                                                                            <i class="feather <?= $type_icon ?> mr-2"></i>
+                                                                            <?= __($transaction['type']) ?>
+                                                                        </div>
+                                                                    </td>
+                                                                    <td>
+                                                                        <strong><?= number_format($transaction['amount'], 2) ?></strong>
+                                                                    </td>
+                                                                    <td>
+                                                                        <span class="badge-light">
+                                                                            <?= __($transaction['currency']) ?>
+                                                                        </span>
+                                                                    </td>
+                                                                    <td>
+                                                                        <code><?= htmlspecialchars($transaction['reference_number']) ?></code>
+                                                                    </td>
+                                                                    <td>
+                                                                        <span class="badge-<?= $transaction['status'] === 'completed' ? 'success' : ($transaction['status'] === 'pending' ? 'warning' : 'danger') ?>">
+                                                                            <?= __($transaction['status']) ?>
+                                                                        </span>
+                                                                    </td>
+                                                                    <td class="text-center">
+                                                                        <div class="btn-group">
+                                                                            <?php if (!empty($transaction['receipt_path'])): ?>
+                                                                            <a href="../uploads/receipts/<?= htmlspecialchars($transaction['receipt_path']) ?>"
+                                                                               class="btn btn-sm btn-info" data-toggle="tooltip" title="<?= __('view_receipt') ?>" target="_blank">
+                                                                                <i class="feather icon-file"></i>
+                                                                            </a>
+                                                                            <?php endif; ?>
+                                                                            
+                                                                            <a href="#" class="btn btn-sm btn-info view-transaction"
+                                                                               data-id="<?= $transaction['id'] ?>" data-toggle="tooltip"
+                                                                               title="<?= __('view_details') ?>">
+                                                                                <i class="feather icon-eye"></i>
+                                                                            </a>
+
+                                                                            <?php if ($transaction['type'] === 'deposit'): ?>
+                                                                            <button class="btn btn-sm btn-danger"
+                                                                                    onclick="deleteDeposit(<?= $transaction['id'] ?>, <?= $transaction['amount'] ?>)"
+                                                                                    data-toggle="tooltip" title="<?= __('delete') ?>">
+                                                                                <i class="feather icon-trash-2"></i>
+                                                                            </button>
+                                                                            <?php endif; ?>
+
+                                                                            <?php if ($transaction['type'] === 'withdrawal'): ?>
+                                                                            <button class="btn btn-sm btn-danger"
+                                                                                    onclick="deleteWithdrawal(<?= $transaction['id'] ?>, <?= $transaction['amount'] ?>)"
+                                                                                    data-toggle="tooltip" title="<?= __('delete') ?>">
+                                                                                <i class="feather icon-trash-2"></i>
+                                                                            </button>
+                                                                            <?php endif; ?>
+                                                                            
+                                                                            <?php if ($transaction['type'] === 'hawala_send'): ?>
+                                                                            <button class="btn btn-sm btn-danger"
+                                                                                    onclick="deleteHawala(<?= $transaction['id'] ?>, <?= $transaction['amount'] ?>)"
+                                                                                    data-toggle="tooltip" title="<?= __('delete') ?>">
+                                                                                <i class="feather icon-trash-2"></i>
+                                                                            </button>
+                                                                            <?php endif; ?>
+
+                                                                            <?php if ($transaction['type'] === 'exchange'): ?>
+                                                                            <button class="btn btn-sm btn-danger delete-exchange"
+                                                                                    data-id="<?= $transaction['id'] ?>"
+                                                                                    data-toggle="tooltip" title="<?= __('delete') ?>">
+                                                                                <i class="feather icon-trash-2"></i>
+                                                                            </button>
+                                                                            <?php endif; ?>
+                                                                        </div>
+                                                                    </td>
+                                                                </tr>
+                                                                <?php endforeach; ?>
+                                                            </tbody>
+                                                        </table>
+                                                    </div>
+                                                </div>
+                                                
+                                                <!-- Pagination Controls -->
+                                                <?php if ($total_pages > 1): ?>
+                                                <div class="card-footer">
+                                                    <div class="row align-items-center">
+                                                        <div class="col-md-6">
+                                                            <p class="text-muted mb-0">
+                                                                <?= __('showing') ?> <?= $offset + 1 ?> <?= __('to') ?> <?= min($offset + $limit, $total_count) ?> <?= __('of') ?> <?= $total_count ?> <?= __('entries') ?>
+                                                            </p>
                                                         </div>
-                                                        <div class="mt-3">
-                                                            <div class="progress" style="height: 4px;">
-                                                                <div class="progress-bar bg-primary" role="progressbar" style="width: 100%"></div>
-                                                            </div>
+                                                        <div class="col-md-6">
+                                                            <nav aria-label="Page navigation" class="float-md-right">
+                                                                <ul class="pagination justify-content-end mb-0">
+                                                                    <?php if ($page > 1): ?>
+                                                                    <li class="page-item">
+                                                                        <a class="page-link" href="?page=<?= $page - 1 ?>" aria-label="<?= __('previous') ?>">
+                                                                            <span aria-hidden="true">«</span>
+                                                                        </a>
+                                                                    </li>
+                                                                    <?php endif; ?>
+                                                                    
+                                                                    <?php
+                                                                    // Show page numbers (limit to 5 pages for display)
+                                                                    $start_page = max(1, $page - 2);
+                                                                    $end_page = min($total_pages, $page + 2);
+                                                                    
+                                                                    for ($i = $start_page; $i <= $end_page; $i++):
+                                                                    ?>
+                                                                    <li class="page-item <?= $i == $page ? 'active' : '' ?>">
+                                                                        <a class="page-link" href="?page=<?= $i ?>"><?= $i ?></a>
+                                                                    </li>
+                                                                    <?php endfor; ?>
+                                                                    
+                                                                    <?php if ($page < $total_pages): ?>
+                                                                    <li class="page-item">
+                                                                        <a class="page-link" href="?page=<?= $page + 1 ?>" aria-label="<?= __('next') ?>">
+                                                                            <span aria-hidden="true">»</span>
+                                                                        </a>
+                                                                    </li>
+                                                                    <?php endif; ?>
+                                                                </ul>
+                                                            </nav>
                                                         </div>
                                                     </div>
                                                 </div>
-                                                <?php endforeach; ?>
+                                                <?php endif; ?>
                                             </div>
-
-                                            <!-- Action Buttons -->
-                                            <div class="row mb-4">
-                                                <div class="col-md-12 action-buttons">
-                                                    <a href="customers.php" class="btn btn-primary">
-                                                        <i class="feather icon-users"></i> <?= __('view_customers') ?>
-                                                    </a>
-                                                    <button class="btn btn-success" data-toggle="modal" data-target="#customerModal">
-                                                        <i class="feather icon-user-plus"></i> <?= __('new_customer') ?>
-                                                    </button>
-                                                    <button class="btn btn-info" data-toggle="modal" data-target="#depositModal">
-                                                        <i class="feather icon-plus"></i> <?= __('new_deposit') ?>
-                                                    </button>
-                                                    <button class="btn btn-warning text-white" data-toggle="modal" data-target="#withdrawalModal">
-                                                        <i class="feather icon-minus"></i> <?= __('new_withdrawal') ?>
-                                                    </button>
-                                                    <button class="btn btn-primary" data-toggle="modal" data-target="#hawalaModal">
-                                                        <i class="feather icon-repeat"></i> <?= __('hawala_transfer') ?>
-                                                    </button>
-                                                    <button class="btn btn-success" data-toggle="modal" data-target="#exchangeModal">
-                                                        <i class="feather icon-refresh-cw"></i> <?= __('currency_exchange') ?>
-                                                    </button>
-                                                </div>
-                                            </div>
-
-                                            <!-- Transactions Table -->
-                                            <div class="card">
-    <div class="card-header d-flex justify-content-between align-items-center">
-        <h5 class="mb-0">
-            <i class="feather icon-list mr-2"></i><?= __('recent_transactions') ?>
-        </h5>
-    </div>
-    <div class="card-body">
-        <div class="table-responsive">
-            <table class="table table-hover" id="sarafiTransactionsTable">
-                <thead>
-                    <tr>
-                        <th><?= __('date') ?></th>
-                        <th><?= __('customer') ?></th>
-                        <th><?= __('type') ?></th>
-                        <th><?= __('amount') ?></th>
-                        <th><?= __('currency') ?></th>
-                        <th><?= __('reference') ?></th>
-                        <th><?= __('status') ?></th>
-                        <th class="no-sort text-center"><?= __('actions') ?></th>
-                    </tr>
-                </thead>
-                <tbody>
-                    <?php
-                    // Fetch recent transactions
-                    $stmt = $pdo->prepare("
-                        SELECT t.*, c.name as customer_name
-                        FROM sarafi_transactions t
-                        JOIN customers c ON t.customer_id = c.id
-                        WHERE t.tenant_id = ? AND t.branch_id = ? AND c.branch_id = ?
-                        ORDER BY t.created_at DESC
-                        LIMIT 50
-                    ");
-                    $stmt->bindParam(1, $tenant_id, PDO::PARAM_INT);
-                    $stmt->bindParam(2, $branch_id, PDO::PARAM_INT);
-                    $stmt->bindParam(3, $branch_id, PDO::PARAM_INT);
-                    $stmt->execute();
-                    $transactions = $stmt->fetchAll(PDO::FETCH_ASSOC);
-
-                    foreach ($transactions as $transaction):
-                        $type_class = '';
-                        $type_icon = '';
-                        switch ($transaction['type']) {
-                            case 'deposit':
-                                $type_class = 'text-success';
-                                $type_icon = 'icon-plus-circle';
-                                break;
-                            case 'withdrawal':
-                                $type_class = 'text-warning';
-                                $type_icon = 'icon-minus-circle';
-                                break;
-                            case 'hawala_send':
-                            case 'hawala_receive':
-                                $type_class = 'text-info';
-                                $type_icon = 'icon-repeat';
-                                break;
-                            case 'exchange':
-                                $type_class = 'text-primary';
-                                $type_icon = 'icon-refresh-cw';
-                                break;
-                        }
-                    ?>
-                    <tr>
-                        <td>
-                            <div class="d-flex align-items-center">
-                                <i class="feather icon-calendar text-muted mr-2"></i>
-                                <?= date('Y-m-d H:i', strtotime($transaction['created_at'])) ?>
-                            </div>
-                        </td>
-                        <td>
-                            <div class="d-flex align-items-center">
-                                <i class="feather icon-user text-muted mr-2"></i>
-                                <?= htmlspecialchars($transaction['customer_name']) ?>
-                            </div>
-                        </td>
-                        <td>
-                            <div class="d-flex align-items-center <?= $type_class ?>">
-                                <i class="feather <?= $type_icon ?> mr-2"></i>
-                                <?= __($transaction['type']) ?>
-                            </div>
-                        </td>
-                        <td>
-                            <strong><?= number_format($transaction['amount'], 2) ?></strong>
-                        </td>
-                        <td>
-                            <span class="badge-light">
-                                <?= __($transaction['currency']) ?>
-                            </span>
-                        </td>
-                        <td>
-                            <code><?= htmlspecialchars($transaction['reference_number']) ?></code>
-                        </td>
-                        <td>
-                            <span class="badge-<?= $transaction['status'] === 'completed' ? 'success' : ($transaction['status'] === 'pending' ? 'warning' : 'danger') ?>">
-                                <?= __($transaction['status']) ?>
-                            </span>
-                        </td>
-                        <td class="text-center">
-                            <div class="btn-group">
-                                <?php if (!empty($transaction['receipt_path'])): ?>
-                                <a href="../uploads/receipts/<?= htmlspecialchars($transaction['receipt_path']) ?>" 
-                                   class="btn btn-sm btn-info" data-toggle="tooltip" title="<?= __('view_receipt') ?>" target="_blank">
-                                    <i class="feather icon-file"></i>
-                                </a>
-                                <?php endif; ?>
-                                
-                                <a href="#" class="btn btn-sm btn-info view-transaction" 
-                                   data-id="<?= $transaction['id'] ?>" data-toggle="tooltip" 
-                                   title="<?= __('view_details') ?>">
-                                    <i class="feather icon-eye"></i>
-                                </a>
-
-
-                                <?php if ($transaction['type'] === 'deposit'): ?>
-                                <button class="btn btn-sm btn-danger" 
-                                        onclick="deleteDeposit(<?= $transaction['id'] ?>, <?= $transaction['amount'] ?>)" 
-                                        data-toggle="tooltip" title="<?= __('delete') ?>">
-                                    <i class="feather icon-trash-2"></i>
-                                </button>
-                                <?php endif; ?>
-
-                                <?php if ($transaction['type'] === 'withdrawal'): ?>
-                                <button class="btn btn-sm btn-danger" 
-                                        onclick="deleteWithdrawal(<?= $transaction['id'] ?>, <?= $transaction['amount'] ?>)" 
-                                        data-toggle="tooltip" title="<?= __('delete') ?>">
-                                    <i class="feather icon-trash-2"></i>
-                                </button>
-                                <?php endif; ?>
-                                
-                                <?php if ($transaction['type'] === 'hawala_send'): ?>
-                                <button class="btn btn-sm btn-danger" 
-                                        onclick="deleteHawala(<?= $transaction['id'] ?>, <?= $transaction['amount'] ?>)" 
-                                        data-toggle="tooltip" title="<?= __('delete') ?>">
-                                    <i class="feather icon-trash-2"></i>
-                                </button>
-                                <?php endif; ?>
-
-                                <?php if ($transaction['type'] === 'exchange'): ?>
-                                <button class="btn btn-sm btn-danger delete-exchange" 
-                                        data-id="<?= $transaction['id'] ?>" 
-                                        data-toggle="tooltip" title="<?= __('delete') ?>">
-                                    <i class="feather icon-trash-2"></i>
-                                </button>
-                                <?php endif; ?>
-                            </div>
-                        </td>
-                    </tr>
-                    <?php endforeach; ?>
-                </tbody>
-            </table>
-        </div>
-    </div>
-</div>
                                         </div>
                                     </div>
                                 </div>
@@ -737,11 +831,275 @@ foreach ($result as $row) {
     <script src="../assets/plugins/bootstrap/js/bootstrap.min.js"></script>
     <script src="../assets/js/pcoded.min.js"></script>
     
-    <!-- DataTables JS -->
-    <script type="text/javascript" src="https://cdn.datatables.net/1.11.5/js/jquery.dataTables.min.js"></script>
-    <script type="text/javascript" src="https://cdn.datatables.net/1.11.5/js/dataTables.bootstrap4.min.js"></script>
-    <script type="text/javascript" src="https://cdn.datatables.net/responsive/2.2.9/js/dataTables.responsive.min.js"></script>
-    <script type="text/javascript" src="https://cdn.datatables.net/responsive/2.2.9/js/responsive.bootstrap4.min.js"></script>
+    <style>
+    /* Enhanced custom styles for better layout and design */
+    .page-header.card {
+        background: linear-gradient(135deg, #4099ff 0%, #2ed8b6 100%);
+        color: #ffffff;
+        border: none;
+        margin-bottom: 20px;
+        padding: 20px !important;
+        box-shadow: 0 4px 12px rgba(0,0,0,0.15);
+        border-radius: 10px;
+    }
+
+    .page-header.card .row {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+    }
+
+    .page-header.card h5 {
+        color: #ffffff;
+        margin: 0;
+        font-weight: 600;
+    }
+
+    .page-header.card .text-end {
+        text-align: right;
+    }
+
+    .page-header.card .btn {
+        background: rgba(255,255,255,0.2);
+        color: #ffffff;
+        border: 1px solid rgba(255,255,255,0.3);
+        border-radius: 25px;
+        transition: all 0.3s ease;
+    }
+
+    .page-header.card .btn:hover {
+        background: rgba(255,255,255,0.3);
+        border-color: rgba(255,255,255,0.5);
+        transform: translateY(-1px);
+    }
+
+    .card {
+        border-radius: 10px;
+        box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+        transition: transform 0.2s ease-in-out, box-shadow 0.2s ease-in-out;
+        border: none;
+    }
+
+    .card:hover {
+        transform: translateY(-2px);
+        box-shadow: 0 4px 16px rgba(0,0,0,0.15);
+    }
+
+    .card-header {
+        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        color: white;
+        border-radius: 10px 10px 0 0;
+        padding: 1rem 1.5rem;
+        border: none;
+    }
+
+    .card-header h5 {
+        margin: 0;
+        font-weight: 600;
+        display: flex;
+        align-items: center;
+    }
+
+    .progress {
+        border-radius: 15px;
+        overflow: hidden;
+        box-shadow: inset 0 1px 2px rgba(0,0,0,0.1);
+    }
+
+    .progress-bar {
+        transition: width 0.6s ease;
+    }
+
+    .badge {
+        font-size: 0.85em;
+        padding: 0.5em 0.75em;
+        border-radius: 20px;
+        font-weight: 500;
+    }
+
+    .badge-success {
+        background-color: #28a745;
+    }
+
+    .badge-warning {
+        background-color: #ffc107;
+        color: #212529;
+    }
+
+    .badge-info {
+        background-color: #17a2b8;
+    }
+
+    .table-responsive {
+        border-radius: 10px;
+        overflow: hidden;
+    }
+
+    .table {
+        margin-bottom: 0;
+    }
+
+    .table thead th {
+        background-color: #f8f9fa;
+        border-bottom: 2px solid #dee2e6;
+        font-weight: 600;
+        color: #495057;
+        padding: 1rem;
+    }
+
+    .table tbody tr:hover {
+        background-color: #f1f3f4;
+    }
+
+    .table tbody td {
+        padding: 1rem;
+        vertical-align: middle;
+    }
+
+    .form-control {
+        border-radius: 8px;
+        border: 1px solid #ced4da;
+        transition: border-color 0.15s ease-in-out, box-shadow 0.15s ease-in-out;
+        padding: 0.75rem;
+    }
+
+    .form-control:focus {
+        border-color: #4099ff;
+        box-shadow: 0 0 0 0.2rem rgba(64, 153, 255, 0.25);
+    }
+
+    .btn-primary {
+        background: linear-gradient(135deg, #4099ff 0%, #2ed8b6 100%);
+        border: none;
+        border-radius: 25px;
+        padding: 0.75rem 2rem;
+        font-weight: 600;
+        transition: all 0.3s ease;
+    }
+
+    .btn-primary:hover {
+        transform: translateY(-1px);
+        box-shadow: 0 4px 12px rgba(64, 153, 255, 0.3);
+    }
+
+    .btn-secondary {
+        border-radius: 25px;
+        padding: 0.75rem 2rem;
+        font-weight: 600;
+        transition: all 0.3s ease;
+    }
+
+    .alert {
+        border-radius: 10px;
+        border: none;
+        padding: 1rem 1.5rem;
+    }
+
+    .alert-info {
+        background: linear-gradient(135deg, #d1ecf1 0%, #bee5eb 100%);
+        color: #0c5460;
+    }
+
+    .alert-success {
+        background: linear-gradient(135deg, #d4edda 0%, #c3e6cb 100%);
+        color: #155724;
+    }
+
+    .alert-danger {
+        background: linear-gradient(135deg, #f8d7da 0%, #f5c6cb 100%);
+        color: #721c24;
+    }
+
+    .currency-card {
+        background: linear-gradient(135deg, #f8f9fa 0%, #e9ecef 100%);
+        padding: 1.5rem;
+        border-radius: 10px;
+        border: 1px solid #dee2e6;
+        transition: all 0.3s ease;
+    }
+
+    .currency-card:hover {
+        transform: translateY(-2px);
+        box-shadow: 0 4px 12px rgba(0,0,0,0.1);
+    }
+
+    .currency-icon {
+        width: 50px;
+        height: 50px;
+        background: linear-gradient(135deg, #4099ff 0%, #2ed8b6 100%);
+        border-radius: 50%;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        margin-right: 1rem;
+    }
+
+    .currency-icon i {
+        color: white;
+        font-size: 1.5rem;
+    }
+
+    .h2 {
+        font-size: 2.5rem;
+    }
+
+    .h4 {
+        font-size: 1.5rem;
+    }
+
+    .h5 {
+        font-size: 1.25rem;
+    }
+
+    .h6 {
+        font-size: 1rem;
+    }
+    
+    /* Additional responsive table styles */
+    .table-responsive {
+        border-radius: 10px;
+        overflow-x: auto;
+        overflow-y: auto;
+        max-height: 600px;
+        -webkit-overflow-scrolling: touch;
+    }
+    
+    .table-responsive table {
+        min-width: 100%;
+        table-layout: auto;
+    }
+    
+    /* Ensure table headers are sticky */
+    .table thead th {
+        position: sticky;
+        top: 0;
+        z-index: 10;
+        background-color: #f8f9fa;
+        border-bottom: 2px solid #dee2e6;
+    }
+    
+    /* Improve mobile responsiveness */
+    @media (max-width: 768px) {
+        .table-responsive {
+            max-height: 400px;
+        }
+        
+        .table thead th {
+            font-size: 0.85rem;
+            padding: 0.5rem;
+        }
+        
+        .table tbody td {
+            font-size: 0.85rem;
+            padding: 0.5rem;
+        }
+        
+        .btn-group .btn {
+            padding: 0.25rem 0.5rem;
+            font-size: 0.75rem;
+        }
+    }
+    </style>
 
     <script>
     // Initialize Select2 for customer dropdowns
@@ -758,7 +1116,32 @@ foreach ($result as $row) {
         });
     }
 
-    // Initialize DataTable for sarafi transactions
+    // Initialize Select2 for customer dropdowns
+    function initializeSelect2() {
+        // Initialize Select2 for all customer dropdowns
+        $('select[name="customer_id"], select[name="sender_id"]').each(function() {
+            $(this).select2({
+                theme: 'bootstrap-5',
+                width: '100%',
+                dropdownParent: $(this).closest('.modal-body'),
+                placeholder: '<?= __("select_customer") ?>',
+                allowClear: true
+            });
+        });
+    }
+
+    // Initialize tooltips
+    function initTooltips() {
+        // First destroy any existing tooltips to prevent duplicates
+        $('[data-toggle="tooltip"]').tooltip('dispose');
+        // Then initialize tooltips
+        $('[data-toggle="tooltip"]').tooltip({
+            trigger: 'hover',
+            container: 'body'
+        });
+    }
+
+    // Initialize on page load
     $(document).ready(function() {
         // Initialize Select2
         initializeSelect2();
@@ -768,84 +1151,43 @@ foreach ($result as $row) {
             initializeSelect2();
         });
 
-        $('#sarafiTransactionsTable').DataTable({
-            responsive: true,
-            language: {
-                search: "<?= __('search') ?>:",
-                lengthMenu: "<?= __('show') ?> _MENU_ <?= __('entries') ?>",
-                info: "<?= __('showing') ?> _START_ <?= __('to') ?> _END_ <?= __('of') ?> _TOTAL_ <?= __('entries') ?>",
-                infoEmpty: "<?= __('showing') ?> 0 <?= __('to') ?> 0 <?= __('of') ?> 0 <?= __('entries') ?>",
-                infoFiltered: "(<?= __('filtered_from') ?> _MAX_ <?= __('total_entries') ?>)",
-                paginate: {
-                    first: "<?= __('first') ?>",
-                    last: "<?= __('last') ?>",
-                    next: "<?= __('next') ?>",
-                    previous: "<?= __('previous') ?>"
-                }
-            },
-            pageLength: 10,
-            lengthMenu: [[5, 10, 25, 50, -1], [5, 10, 25, 50, "<?= __('all') ?>"]],
-            columnDefs: [
-                { targets: 'no-sort', orderable: false }
-            ],
-            order: [[0, 'desc']], // Sort by date (first column) in descending order
-            drawCallback: function() {
-                // Reinitialize tooltips after DataTable draws
-                initTooltips();
+        // Initialize tooltips
+        initTooltips();
+
+        // Handle delete exchange transaction
+        $(document).on('click', '.delete-exchange', function(e) {
+            e.preventDefault();
+            const transactionId = $(this).data('id');
+            
+            if (confirm('<?= __("confirm_delete_exchange") ?>')) {
+                $.ajax({
+                    url: 'delete_sarafi_exchange.php',
+                    type: 'POST',
+                    data: {
+                        transaction_id: transactionId
+                    },
+                    dataType: 'json',
+                    success: function(response) {
+                        if (response.success) {
+                            alert(response.message);
+                            location.reload();
+                        } else {
+                            alert(response.message || '<?= __("error_deleting_exchange") ?>');
+                        }
+                    },
+                    error: function() {
+                        alert('<?= __("error_deleting_exchange") ?>');
+                    }
+                });
             }
         });
-        
-        // Initialize tooltips
-        function initTooltips() {
-            // First destroy any existing tooltips to prevent duplicates
-            $('[data-toggle="tooltip"]').tooltip('dispose');
-            // Then initialize tooltips
-            $('[data-toggle="tooltip"]').tooltip({
-                trigger: 'hover',
-                container: 'body'
-            });
-        }
-        
-        // Initial tooltip initialization
-        initTooltips();
-        
-        $(document).off('click', '.delete-exchange').on('click', '.delete-exchange', function(e) {
-        e.preventDefault();
-        const $btn = $(this);
-        const transactionId = $btn.data('id');
 
-        if (confirm('<?= __("confirm_delete_exchange") ?>')) {
-            $btn.prop('disabled', true); // disable temporarily
-            $.ajax({
-                url: 'delete_sarafi_exchange.php',
-                type: 'POST',
-                data: { transaction_id: transactionId },
-                dataType: 'json',
-                success: function(response) {
-                    if (response.success) {
-                        alert(response.message);
-                        location.reload();
-                    } else {
-                        alert(response.message || '<?= __("error_deleting_exchange") ?>');
-                    }
-                },
-                error: function() {
-                    alert('<?= __("error_deleting_exchange") ?>');
-                },
-                complete: function() {
-                    $btn.prop('disabled', false);
-                }
-            });
-        }
-    });
-
-    });
-
-    // Handle view transaction click
-    $(document).on('click', '.view-transaction', function(e) {
-        e.preventDefault();
-        const transactionId = $(this).data('id');
-        viewTransaction(transactionId);
+        // Handle view transaction click
+        $(document).on('click', '.view-transaction', function(e) {
+            e.preventDefault();
+            const transactionId = $(this).data('id');
+            viewTransaction(transactionId);
+        });
     });
 
     // Function to view transaction details

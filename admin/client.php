@@ -13,63 +13,36 @@ if (!isset($_SESSION['user_id']) || $_SESSION['role'] !== 'admin' || !isset($_SE
 
 include '../includes/header.php';
 ?>
-<style>
-/* Apply gradient background to card headers matching the sidebar */
-.card-header {
-    background: linear-gradient(135deg, #4099ff 0%, #2ed8b6 100%) !important;
-    color: #ffffff !important;
-    border-bottom: none !important;
-}
-
-.card-header h5 {
-    color: #ffffff !important;
-    margin-bottom: 0 !important;
-}
-
-.card-header .card-header-right {
-    color: #ffffff !important;
-}
-
-.card-header .card-header-right .btn {
-    color: #ffffff !important;
-    border-color: rgba(255, 255, 255, 0.3) !important;
-}
-
-.card-header .card-header-right .btn:hover {
-    background: rgba(255, 255, 255, 0.1) !important;
-    border-color: rgba(255, 255, 255, 0.5) !important;
-}
-</style>
     <div class="pcoded-main-container">
+        <div class="pcoded-wrapper">
             <div class="pcoded-content">
-        <div class="page-header">
-            <div class="page-block">
-                <div class="row align-items-center">
-                    <div class="col-md-6">
-                        <div class="page-header-title">
-                            <h5 class="m-b-10"><?= __('client_management') ?></h5>
-                        </div>
-                        <ul class="breadcrumb">
-                            <li class="breadcrumb-item"><a href="index.php"><i class="feather icon-home"></i></a></li>
-                            <li class="breadcrumb-item"><a href="dashboard.php"><?= __('dashboard') ?></a></li>
-                            <li class="breadcrumb-item"><a href="javascript:"><?= __('client_management') ?></a></li>
-                        </ul>
-                    </div>
-                    <div class="col-md-6 text-right">
-                        <button class="btn btn-primary" data-toggle="modal" data-target="#addClientModal">
-                            <i class="fas fa-plus mr-2"></i><?= __('add_new_client') ?>
-                        </button>
-                    </div>
-                </div>
-            </div>
-        </div>
+                <div class="pcoded-inner-content">
+                    <div class="main-body">
+                        <div class="page-wrapper">
+                            <div class="main-content">
+                                <div class="page-header card">
+                                    <div class="row align-items-center">
+                                        <div class="col-md-6">
+                                            <h5 class="mb-0"><i class="feather icon-users mr-2"></i><?php echo __('client_management'); ?></h5>
+                                            <p class="mb-0 mt-1" style="font-size: 14px; opacity: 0.9;"><?php echo __('manage_clients_here'); ?></p>
+                                        </div>
+                                        <div class="col-md-6 text-end">
+                                            <button class="btn btn-primary" data-toggle="modal" data-target="#addClientModal">
+                                                <i class="fas fa-plus mr-2"></i><?php echo __('add_new_client'); ?>
+                                            </button>
+                                        </div>
+                                    </div>
+                                </div>
 
         <div class="row">
             <div class="col-sm-12">
-                <div class="card">
+                <!-- Statistics Card -->
+                <div class="card mb-4">
+                    <div class="card-header">
+                        <h5><i class="feather icon-bar-chart-2 mr-2"></i><?php echo __('client_statistics'); ?></h5>
+                    </div>
                     <div class="card-body">
-                        <!-- Statistics Cards -->
-                        <div class="row mb-4">
+                        <div class="row">
                             <div class="col-md-3">
                                 <div class="card stat-card">
                                     <div class="card-body">
@@ -115,9 +88,17 @@ include '../includes/header.php';
                                 </div>
                             </div>
                         </div>
+                    </div>
+                </div>
 
+                <!-- Client Management Card -->
+                <div class="card">
+                    <div class="card-header">
+                        <h5><i class="feather icon-users mr-2"></i><?php echo __('client_management'); ?></h5>
+                    </div>
+                    <div class="card-body">
                         <!-- Search and Filter -->
-                <div class="row mb-4">
+                        <div class="row mb-4">
                     <div class="col-md-8">
                         <div class="search-box">
                             <div class="input-group">
@@ -198,18 +179,217 @@ include '../includes/header.php';
                 </div>
                     </div>
                 </div>
+                            </div>
+                        </div>
+                    </div>
+                    </div>
                 </div>
             </div>
-        </div>
-    </div>
-
 
     <?php include '../modals/client/add_client.php'; ?>
     <?php include '../modals/client/edit_client.php'; ?>
 
 
-<!-- Custom CSS -->
-<style>
+    <style>
+    /* Enhanced custom styles for better layout and design */
+    .page-header.card {
+        background: linear-gradient(135deg, #4099ff 0%, #2ed8b6 100%);
+        color: #ffffff;
+        border: none;
+        margin-bottom: 20px;
+        padding: 20px !important;
+        box-shadow: 0 4px 12px rgba(0,0,0,0.15);
+        border-radius: 10px;
+    }
+
+    .page-header.card .row {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+    }
+
+    .page-header.card h5 {
+        color: #ffffff;
+        margin: 0;
+        font-weight: 600;
+    }
+
+    .page-header.card .text-end {
+        text-align: right;
+    }
+
+    .page-header.card .btn {
+        background: rgba(255,255,255,0.2);
+        color: #ffffff;
+        border: 1px solid rgba(255,255,255,0.3);
+        border-radius: 25px;
+        transition: all 0.3s ease;
+    }
+
+    .page-header.card .btn:hover {
+        background: rgba(255,255,255,0.3);
+        border-color: rgba(255,255,255,0.5);
+        transform: translateY(-1px);
+    }
+
+    .card {
+        border-radius: 10px;
+        box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+        transition: transform 0.2s ease-in-out, box-shadow 0.2s ease-in-out;
+        border: none;
+    }
+
+    .card:hover {
+        transform: translateY(-2px);
+        box-shadow: 0 4px 16px rgba(0,0,0,0.15);
+    }
+
+    .card-header {
+        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        color: white;
+        border-radius: 10px 10px 0 0;
+        padding: 1rem 1.5rem;
+        border: none;
+    }
+
+    .card-header h5 {
+        margin: 0;
+        font-weight: 600;
+        display: flex;
+        align-items: center;
+    }
+
+    .progress {
+        border-radius: 15px;
+        overflow: hidden;
+        box-shadow: inset 0 1px 2px rgba(0,0,0,0.1);
+    }
+
+    .progress-bar {
+        transition: width 0.6s ease;
+    }
+
+    .badge {
+        font-size: 0.85em;
+        padding: 0.5em 0.75em;
+        border-radius: 20px;
+        font-weight: 500;
+    }
+
+    .badge-success {
+        background-color: #28a745;
+    }
+
+    .badge-warning {
+        background-color: #ffc107;
+        color: #212529;
+    }
+
+    .badge-info {
+        background-color: #17a2b8;
+    }
+
+    .table-responsive {
+        border-radius: 10px;
+        overflow: hidden;
+    }
+
+    .table {
+        margin-bottom: 0;
+    }
+
+    .table thead th {
+        background-color: #f8f9fa;
+        border-bottom: 2px solid #dee2e6;
+        font-weight: 600;
+        color: #495057;
+        padding: 1rem;
+    }
+
+    .table tbody tr:hover {
+        background-color: #f1f3f4;
+    }
+
+    .table tbody td {
+        padding: 1rem;
+        vertical-align: middle;
+    }
+
+    .form-control {
+        border-radius: 8px;
+        border: 1px solid #ced4da;
+        transition: border-color 0.15s ease-in-out, box-shadow 0.15s ease-in-out;
+        padding: 0.75rem;
+    }
+
+    .form-control:focus {
+        border-color: #4099ff;
+        box-shadow: 0 0 0 0.2rem rgba(64, 153, 255, 0.25);
+    }
+
+    .btn-primary {
+        background: linear-gradient(135deg, #4099ff 0%, #2ed8b6 100%);
+        border: none;
+        border-radius: 25px;
+        padding: 0.75rem 2rem;
+        font-weight: 600;
+        transition: all 0.3s ease;
+    }
+
+    .btn-primary:hover {
+        transform: translateY(-1px);
+        box-shadow: 0 4px 12px rgba(64, 153, 255, 0.3);
+    }
+
+    .btn-secondary {
+        border-radius: 25px;
+        padding: 0.75rem 2rem;
+        font-weight: 600;
+        transition: all 0.3s ease;
+    }
+
+    .alert {
+        border-radius: 10px;
+        border: none;
+        padding: 1rem 1.5rem;
+    }
+
+    .alert-info {
+        background: linear-gradient(135deg, #d1ecf1 0%, #bee5eb 100%);
+        color: #0c5460;
+    }
+
+    .alert-success {
+        background: linear-gradient(135deg, #d4edda 0%, #c3e6cb 100%);
+        color: #155724;
+    }
+
+    .alert-danger {
+        background: linear-gradient(135deg, #f8d7da 0%, #f5c6cb 100%);
+        color: #721c24;
+    }
+
+    #estimated_cost {
+        color: #28a745;
+        font-weight: bold;
+    }
+
+    .h2 {
+        font-size: 2.5rem;
+    }
+
+    .h4 {
+        font-size: 1.5rem;
+    }
+
+    .h5 {
+        font-size: 1.25rem;
+    }
+
+    .h6 {
+        font-size: 1rem;
+    }
+
     /* Preloader Styles */
     .loader-bg {
         position: fixed;
@@ -219,7 +399,7 @@ include '../includes/header.php';
         height: 100%;
         transition: opacity 0.3s ease-out, visibility 0.3s ease-out;
     }
-    
+
     .loader-bg.fade-out {
         opacity: 0;
         visibility: hidden;
@@ -229,20 +409,20 @@ include '../includes/header.php';
     .colored-toast.swal2-icon-success {
         background-color: #a5dc86 !important;
     }
-    
+
     .colored-toast .swal2-title,
     .colored-toast .swal2-content {
         color: #fff !important;
     }
-    
+
     .colored-toast .swal2-success {
         border-color: #fff !important;
     }
-    
+
     .colored-toast .swal2-success [class^='swal2-success-line'] {
         background-color: #fff !important;
     }
-    
+
     .colored-toast .swal2-success-ring {
         border-color: #fff !important;
     }
@@ -339,7 +519,7 @@ include '../includes/header.php';
             height: 28px;
         }
     }
-</style>
+    </style>
 
 <!-- Required Scripts -->
 <script src="../assets/js/vendor-all.min.js"></script>

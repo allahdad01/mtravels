@@ -362,8 +362,18 @@ if (count($assets) > 0) {
                             <!-- [ Main Content ] start -->
                             <div class="row">
                                 <div class="col-md-12">
-                                    <div class="page-header-title">
-                                        <h5 class="m-b-10"><?= __('company_assets_management') ?></h5>
+                                    <div class="page-header card">
+                                        <div class="row align-items-center">
+                                            <div class="col-md-6">
+                                                <h5 class="mb-0"><i class="feather icon-package mr-2"></i><?php echo __('company_assets_management'); ?></h5>
+                                                <p class="mb-0 mt-1" style="font-size: 14px; opacity: 0.9;"><?php echo __('manage_and_track_company_assets'); ?></p>
+                                            </div>
+                                            <div class="col-md-6 text-end">
+                                                <a href="dashboard.php" class="btn btn-outline-secondary btn-sm">
+                                                    <i class="feather icon-arrow-left mr-1"></i><?php echo __('back_to_dashboard'); ?>
+                                                </a>
+                                            </div>
+                                        </div>
                                     </div>
                                     <ul class="breadcrumb">
                                         <li class="breadcrumb-item"><a href="dashboard.php"><i class="feather icon-home"></i></a></li>
@@ -1271,6 +1281,208 @@ if (count($assets) > 0) {
             </div>
         </div>
     <?php endforeach; ?>
+
+    <style>
+    /* Enhanced custom styles for better layout and design */
+    .page-header.card {
+        background: linear-gradient(135deg, #4099ff 0%, #2ed8b6 100%) !important;
+        color: #ffffff !important;
+        border: none !important;
+        margin-bottom: 20px;
+        padding: 20px !important;
+        box-shadow: 0 4px 12px rgba(0,0,0,0.15) !important;
+        border-radius: 10px !important;
+    }
+
+    .page-header.card .row {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+    }
+
+    .page-header.card h5 {
+        color: #ffffff !important;
+        margin: 0;
+        font-weight: 600;
+    }
+
+    .page-header.card .text-end {
+        text-align: right;
+    }
+
+    .page-header.card .btn {
+        background: rgba(255,255,255,0.2) !important;
+        color: #ffffff !important;
+        border: 1px solid rgba(255,255,255,0.3) !important;
+        border-radius: 25px;
+        transition: all 0.3s ease;
+    }
+
+    .page-header.card .btn:hover {
+        background: rgba(255,255,255,0.3) !important;
+        border-color: rgba(255,255,255,0.5) !important;
+        transform: translateY(-1px);
+    }
+
+    .card {
+        border-radius: 10px !important;
+        box-shadow: 0 2px 8px rgba(0,0,0,0.1) !important;
+        transition: transform 0.2s ease-in-out, box-shadow 0.2s ease-in-out;
+        border: none !important;
+    }
+
+    .card:hover {
+        transform: translateY(-2px);
+        box-shadow: 0 4px 16px rgba(0,0,0,0.15) !important;
+    }
+
+    .card-header {
+        background: linear-gradient(135deg, #667eea 0%, #2ed8b6 100%) !important;
+        color: white !important;
+        border-radius: 10px 10px 0 0 !important;
+        padding: 1rem 1.5rem !important;
+        border: none !important;
+    }
+
+    .card-header h5 {
+        margin: 0;
+        font-weight: 600;
+        display: flex;
+        align-items: center;
+    }
+
+    .progress {
+        border-radius: 15px !important;
+        overflow: hidden;
+        box-shadow: inset 0 1px 2px rgba(0,0,0,0.1) !important;
+    }
+
+    .progress-bar {
+        transition: width 0.6s ease;
+    }
+
+    .badge {
+        font-size: 0.85em;
+        padding: 0.5em 0.75em;
+        border-radius: 20px;
+        font-weight: 500;
+    }
+
+    .badge-success {
+        background-color: #28a745 !important;
+    }
+
+    .badge-warning {
+        background-color: #ffc107 !important;
+        color: #212529 !important;
+    }
+
+    .badge-info {
+        background-color: #17a2b8 !important;
+    }
+
+    .table-responsive {
+        border-radius: 10px;
+        overflow-x: auto;
+        overflow-y: hidden;
+    }
+
+    .table {
+        margin-bottom: 0;
+    }
+
+    .table thead th {
+        background-color: #f8f9fa !important;
+        border-bottom: 2px solid #dee2e6 !important;
+        font-weight: 600;
+        color: #495057 !important;
+        padding: 1rem !important;
+    }
+
+    .table tbody tr:hover {
+        background-color: #f1f3f4 !important;
+    }
+
+    .table tbody td {
+        padding: 1rem !important;
+        vertical-align: middle;
+    }
+
+    .form-control {
+        border-radius: 8px !important;
+        border: 1px solid #ced4da !important;
+        transition: border-color 0.15s ease-in-out, box-shadow 0.15s ease-in-out;
+        padding: 0.75rem !important;
+    }
+
+    .form-control:focus {
+        border-color: #4099ff !important;
+        box-shadow: 0 0 0 0.2rem rgba(64, 153, 255, 0.25) !important;
+    }
+
+    .btn-primary {
+        background: linear-gradient(135deg, #4099ff 0%, #2ed8b6 100%) !important;
+        border: none !important;
+        border-radius: 25px !important;
+        padding: 0.75rem 2rem !important;
+        font-weight: 600;
+        transition: all 0.3s ease;
+    }
+
+    .btn-primary:hover {
+        transform: translateY(-1px);
+        box-shadow: 0 4px 12px rgba(64, 153, 255, 0.3) !important;
+    }
+
+    .btn-secondary {
+        border-radius: 25px !important;
+        padding: 0.75rem 2rem !important;
+        font-weight: 600;
+        transition: all 0.3s ease;
+    }
+
+    .alert {
+        border-radius: 10px !important;
+        border: none !important;
+        padding: 1rem 1.5rem !important;
+    }
+
+    .alert-info {
+        background: linear-gradient(135deg, #d1ecf1 0%, #bee5eb 100%) !important;
+        color: #0c5460 !important;
+    }
+
+    .alert-success {
+        background: linear-gradient(135deg, #d4edda 0%, #c3e6cb 100%) !important;
+        color: #155724 !important;
+    }
+
+    .alert-danger {
+        background: linear-gradient(135deg, #f8d7da 0%, #f5c6cb 100%) !important;
+        color: #721c24 !important;
+    }
+
+    #estimated_cost {
+        color: #28a745 !important;
+        font-weight: bold;
+    }
+
+    .h2 {
+        font-size: 2.5rem !important;
+    }
+
+    .h4 {
+        font-size: 1.5rem !important;
+    }
+
+    .h5 {
+        font-size: 1.25rem !important;
+    }
+
+    .h6 {
+        font-size: 1rem !important;
+    }
+    </style>
 
     <!-- Required Js -->
     <script src="../assets/js/vendor-all.min.js"></script>

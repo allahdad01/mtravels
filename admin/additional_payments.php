@@ -126,223 +126,204 @@ $total_pages = ceil($total_records / $items_per_page);
 ?>
 
     <style>
-        /* Modern Card Styling */
-        .card {
-            border-radius: 15px;
-            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
-            transition: all 0.3s ease;
-            margin-bottom: 20px;
-            border: none;
-        }
-        
-        .card:hover {
-            transform: translateY(-5px);
-            box-shadow: 0 8px 15px rgba(0, 0, 0, 0.1);
-        }
+    /* Enhanced custom styles for better layout and design */
+    .page-header.card {
+        background: linear-gradient(135deg, #4099ff 0%, #2ed8b6 100%);
+        color: #ffffff;
+        border: none;
+        margin-bottom: 20px;
+        padding: 20px !important;
+        box-shadow: 0 4px 12px rgba(0,0,0,0.15);
+        border-radius: 10px;
+    }
 
-        .card-header {
-            background: linear-gradient(45deg, #007bff, #0056b3);
-            color: white;
-            border-radius: 15px 15px 0 0 !important;
-            padding: 1.5rem;
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-            border: none;
-        }
+    .page-header.card .row {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+    }
 
-        .card-header h5 {
-            margin: 0;
-            font-weight: 600;
-        }
+    .page-header.card h5 {
+        color: #ffffff;
+        margin: 0;
+        font-weight: 600;
+    }
 
-        /* Form Styling */
-        .form-control, .form-select {
-            border-radius: 8px;
-            padding: 12px;
-            border: 1px solid #e0e0e0;
-            transition: all 0.3s ease;
-        }
+    .page-header.card .text-end {
+        text-align: right;
+    }
 
-        .form-control:focus, .form-select:focus {
-            border-color: #007bff;
-            box-shadow: 0 0 0 0.2rem rgba(0, 123, 255, 0.25);
-        }
+    .page-header.card .btn {
+        background: rgba(255,255,255,0.2);
+        color: #ffffff;
+        border: 1px solid rgba(255,255,255,0.3);
+        border-radius: 25px;
+        transition: all 0.3s ease;
+    }
 
-        /* Button Styling */
-        .btn {
-            border-radius: 8px;
-            padding: 10px 20px;
-            font-weight: 500;
-            transition: all 0.3s ease;
-        }
+    .page-header.card .btn:hover {
+        background: rgba(255,255,255,0.3);
+        border-color: rgba(255,255,255,0.5);
+        transform: translateY(-1px);
+    }
 
-        .btn-primary {
-            background: linear-gradient(45deg, #007bff, #0056b3);
-            border: none;
-        }
+    .card {
+        border-radius: 10px;
+        box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+        transition: transform 0.2s ease-in-out, box-shadow 0.2s ease-in-out;
+        border: none;
+    }
 
-        .btn-primary:hover {
-            transform: translateY(-2px);
-            box-shadow: 0 4px 8px rgba(0, 123, 255, 0.3);
-        }
+    .card:hover {
+        transform: translateY(-2px);
+        box-shadow: 0 4px 16px rgba(0,0,0,0.15);
+    }
 
-        .btn-danger {
-            background: linear-gradient(45deg, #dc3545, #c82333);
-            border: none;
-        }
+    .card-header {
+        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        color: white;
+        border-radius: 10px 10px 0 0;
+        padding: 1rem 1.5rem;
+        border: none;
+    }
 
-        .btn-success {
-            background: linear-gradient(45deg, #28a745, #218838);
-            border: none;
-        }
+    .card-header h5 {
+        margin: 0;
+        font-weight: 600;
+        display: flex;
+        align-items: center;
+    }
 
-        /* Table Styling */
-        .table-responsive {
-            border-radius: 15px;
-            overflow-x: auto;
-            -webkit-overflow-scrolling: touch;
-            margin-bottom: 1rem;
-            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
-        }
+    .progress {
+        border-radius: 15px;
+        overflow: hidden;
+        box-shadow: inset 0 1px 2px rgba(0,0,0,0.1);
+    }
 
-        .table {
-            margin-bottom: 0;
-            min-width: 1000px; /* Ensures table doesn't shrink too much */
-            white-space: nowrap;
-        }
+    .progress-bar {
+        transition: width 0.6s ease;
+    }
 
-        .table th {
-            background-color: #f8f9fa;
-            border-bottom: 2px solid #dee2e6;
-            font-weight: 600;
-            color: #495057;
-            padding: 15px;
-        }
+    .badge {
+        font-size: 0.85em;
+        padding: 0.5em 0.75em;
+        border-radius: 20px;
+        font-weight: 500;
+    }
 
-        .table td {
-            padding: 12px 15px;
-            vertical-align: middle;
-        }
+    .badge-success {
+        background-color: #28a745;
+    }
 
-        .table tr:hover {
-            background-color: rgba(0, 123, 255, 0.05);
-        }
+    .badge-warning {
+        background-color: #ffc107;
+        color: #212529;
+    }
 
-        /* Modal Styling */
-        .modal-content {
-            border-radius: 15px;
-            border: none;
-            box-shadow: 0 10px 20px rgba(0, 0, 0, 0.1);
-        }
+    .badge-info {
+        background-color: #17a2b8;
+    }
 
-        .modal-header {
-            background: linear-gradient(45deg, #007bff, #0056b3);
-            color: white;
-            border-radius: 15px 15px 0 0;
-            border: none;
-        }
+    .table-responsive {
+        border-radius: 10px;
+        overflow: hidden;
+    }
 
-        .modal-footer {
-            border-top: 1px solid #e0e0e0;
-            padding: 1.5rem;
-        }
+    .table {
+        margin-bottom: 0;
+    }
 
-        /* Alert Styling */
-        .alert {
-            border-radius: 10px;
-            border: none;
-            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
-        }
+    .table thead th {
+        background-color: #f8f9fa;
+        border-bottom: 2px solid #dee2e6;
+        font-weight: 600;
+        color: #495057;
+        padding: 1rem;
+    }
 
-        .alert-success {
-            background: linear-gradient(45deg, #28a745, #218838);
-            color: white;
-        }
+    .table tbody tr:hover {
+        background-color: #f1f3f4;
+    }
 
-        .alert-danger {
-            background: linear-gradient(45deg, #dc3545, #c82333);
-            color: white;
-        }
+    .table tbody td {
+        padding: 1rem;
+        vertical-align: middle;
+    }
 
-        /* Action Buttons */
-        .action-buttons {
-            display: flex;
-            gap: 5px;
-            justify-content: center;
-            align-items: center;
-        }
+    .form-control {
+        border-radius: 8px;
+        border: 1px solid #ced4da;
+        transition: border-color 0.15s ease-in-out, box-shadow 0.15s ease-in-out;
+        padding: 0.75rem;
+    }
 
-        .action-buttons .btn {
-            padding: 6px 10px;
-            font-size: 14px;
-            min-width: 32px;
-            height: 32px;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-        }
+    .form-control:focus {
+        border-color: #4099ff;
+        box-shadow: 0 0 0 0.2rem rgba(64, 153, 255, 0.25);
+    }
 
-        .action-buttons .btn i {
-            margin: 0;
-            font-size: 14px;
-        }
+    .btn-primary {
+        background: linear-gradient(135deg, #4099ff 0%, #2ed8b6 100%);
+        border: none;
+        border-radius: 25px;
+        padding: 0.75rem 2rem;
+        font-weight: 600;
+        transition: all 0.3s ease;
+    }
 
-        .action-buttons .btn-primary {
-            background: linear-gradient(45deg, #007bff, #0056b3);
-        }
+    .btn-primary:hover {
+        transform: translateY(-1px);
+        box-shadow: 0 4px 12px rgba(64, 153, 255, 0.3);
+    }
 
-        .action-buttons .btn-danger {
-            background: linear-gradient(45deg, #dc3545, #c82333);
-        }
+    .btn-secondary {
+        border-radius: 25px;
+        padding: 0.75rem 2rem;
+        font-weight: 600;
+        transition: all 0.3s ease;
+    }
 
-        .action-buttons .btn-success {
-            background: linear-gradient(45deg, #28a745, #218838);
-        }
+    .alert {
+        border-radius: 10px;
+        border: none;
+        padding: 1rem 1.5rem;
+    }
 
-        .action-buttons .btn:hover {
-            transform: translateY(-2px);
-            box-shadow: 0 4px 8px rgba(0, 0, 0, 0.2);
-        }
+    .alert-info {
+        background: linear-gradient(135deg, #d1ecf1 0%, #bee5eb 100%);
+        color: #0c5460;
+    }
 
-        @media (max-width: 768px) {
-            .action-buttons {
-                flex-direction: row;
-                gap: 3px;
-            }
-            
-            .action-buttons .btn {
-                padding: 4px 8px;
-                min-width: 28px;
-                height: 28px;
-            }
-        }
+    .alert-success {
+        background: linear-gradient(135deg, #d4edda 0%, #c3e6cb 100%);
+        color: #155724;
+    }
 
-        /* Apply gradient background to card headers matching the sidebar */
-        .card-header {
-            background: linear-gradient(135deg, #4099ff 0%, #2ed8b6 100%) !important;
-            color: #ffffff !important;
-            border-bottom: none !important;
-        }
+    .alert-danger {
+        background: linear-gradient(135deg, #f8d7da 0%, #f5c6cb 100%);
+        color: #721c24;
+    }
 
-        .card-header h5 {
-            color: #ffffff !important;
-            margin-bottom: 0 !important;
-        }
+    #estimated_cost {
+        color: #28a745;
+        font-weight: bold;
+    }
 
-        .card-header .card-header-right {
-            color: #ffffff !important;
-        }
+    .h2 {
+        font-size: 2.5rem;
+    }
 
-        .card-header .card-header-right .btn {
-            color: #ffffff !important;
-            border-color: rgba(255, 255, 255, 0.3) !important;
-        }
+    .h4 {
+        font-size: 1.5rem;
+    }
 
-        .card-header .card-header-right .btn:hover {
-            background: rgba(255, 255, 255, 0.1) !important;
-            border-color: rgba(255, 255, 255, 0.5) !important;
-        }
+    .h5 {
+        font-size: 1.25rem;
+    }
+
+    .h6 {
+        font-size: 1rem;
+    }
     </style>
     <?php include '../includes/header.php'; ?>
     <link rel="stylesheet" href="../css/general/modal-styles.css">
@@ -354,13 +335,27 @@ $total_pages = ceil($total_records / $items_per_page);
                     <div class="main-body">
                         <div class="page-wrapper">
                             <!-- [ Main Content ] start -->
-                            <div class="row">
+                            <div class="main-content">
+                                <div class="page-header card">
+                                    <div class="row align-items-center">
+                                        <div class="col-md-6">
+                                            <h5><i class="feather icon-plus-circle mr-2"></i><?= __('additional_payments') ?></h5>
+                                            <p class="mb-0 mt-1" style="font-size: 14px; opacity: 0.9;"><?php echo __('manage_additional_payments'); ?></p>
+                                        </div>
+                                        <div class="col-md-6 text-end">
+                                            <a href="dashboard.php" class="btn btn-outline-secondary btn-sm">
+                                                <i class="feather icon-arrow-left mr-1"></i><?php echo __('back_to_dashboard'); ?>
+                                            </a>
+                                        </div>
+                                    </div>
+                                </div>
+                                <div class="row">
                                 <div class="col-md-12">
                                     <div class="card">
                                          <div class="card-header">
-                                             <h5><?= __('additional_payments') ?></h5>
+                                             <h5><?php echo __('payment_list'); ?></h5>
                                              <button type="button" class="btn btn-primary" data-toggle="modal" data-target="#addPaymentModal">
-                                                 <i class="feather icon-plus"></i> <?= __('add_new_payment') ?>
+                                                 <i class="feather icon-plus mr-1"></i> <?= __('add_new_payment') ?>
                                              </button>
                                          </div>
 

@@ -174,11 +174,13 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
                                 // Store user information for TOTP verification
                                 $_SESSION["totp_verification"] = true;
                                 $_SESSION["pending_user_id"] = $id;
+                                $_SESSION["pending_user_tenant_id"] = $tenant_id;
+                                $_SESSION["pending_user_branch_id"] = $branch_id;
                                 $_SESSION["pending_user_name"] = $name;
                                 $_SESSION["pending_user_email"] = $email;
                                 $_SESSION["pending_user_role"] = $role;
                                 $_SESSION["pending_user_type"] = "staff";
-                                
+                                 
                                 // Redirect to same page to show TOTP form
                                 header("Location: " . $_SERVER["PHP_SELF"]);
                                 exit;
@@ -253,12 +255,14 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
                                             // Store user information for TOTP verification
                                             $_SESSION["totp_verification"] = true;
                                             $_SESSION["pending_user_id"] = $id;
+                                            $_SESSION["pending_user_tenant_id"] = $tenant_id;
+                                            $_SESSION["pending_user_branch_id"] = $branch_id;
                                             $_SESSION["pending_user_name"] = $name;
                                             $_SESSION["pending_user_email"] = $email;
                                             $_SESSION["pending_user_role"] = "client";
                                             $_SESSION["pending_user_client_type"] = $client_type;
                                             $_SESSION["pending_user_type"] = "client";
-                                            
+                                             
                                             // Redirect to same page to show TOTP form
                                             header("Location: " . $_SERVER["PHP_SELF"]);
                                             exit;

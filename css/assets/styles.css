@@ -165,68 +165,8 @@
     box-shadow: 0 0 0 0.2rem rgba(64, 153, 255, 0.25);
 }
 
-/* Table Styles */
-.asset-table {
-    background: white;
-    border-radius: var(--border-radius);
-    overflow: hidden;
-}
 
-.asset-table thead th {
-    background: linear-gradient(45deg, #f8f9fa, #e9ecef);
-    border: none;
-    font-weight: 600;
-    color: var(--dark-color);
-    padding: 15px;
-    font-size: 0.85rem;
-    text-transform: uppercase;
-    letter-spacing: 0.5px;
-}
 
-.asset-table tbody tr {
-    transition: all 0.2s;
-    border-bottom: 1px solid #f1f3f4;
-}
-
-.asset-table tbody tr:hover {
-    background: linear-gradient(45deg, rgba(64, 153, 255, 0.02), rgba(46, 216, 182, 0.02));
-}
-
-.asset-table tbody td {
-    padding: 15px;
-    vertical-align: middle;
-    border: none;
-}
-
-/* Asset Name Cell */
-.asset-name-cell {
-    display: flex;
-    align-items: center;
-}
-
-.asset-icon {
-    width: 40px;
-    height: 40px;
-    border-radius: 10px;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    background: linear-gradient(45deg, var(--primary-color), var(--secondary-color));
-    color: white;
-    margin-right: 12px;
-    font-size: 1.2rem;
-}
-
-.asset-details h6 {
-    margin: 0;
-    font-weight: 600;
-    color: var(--dark-color);
-}
-
-.asset-details small {
-    color: #6c757d;
-    font-size: 0.8rem;
-}
 
 /* Category Badge */
 .category-badge {
@@ -426,19 +366,6 @@
         margin-bottom: 20px;
     }
 
-    .asset-table {
-        font-size: 0.85rem;
-    }
-
-    .asset-table th,
-    .asset-table td {
-        padding: 10px 8px;
-    }
-
-    .asset-name-cell {
-        flex-direction: column;
-        align-items: flex-start;
-    }
 
     .asset-icon {
         margin-bottom: 8px;
@@ -514,11 +441,6 @@
         height: 250px;
     }
 
-    .asset-table th,
-    .asset-table td {
-        padding: 8px 6px;
-        font-size: 0.8rem;
-    }
 
     .action-btn {
         width: 30px;
@@ -545,25 +467,6 @@
 
 .animated-card {
     animation: fadeInUp 0.6s ease-out;
-}
-
-/* Custom Scrollbar */
-.table-responsive::-webkit-scrollbar {
-    height: 8px;
-}
-
-.table-responsive::-webkit-scrollbar-track {
-    background: #f1f1f1;
-    border-radius: 4px;
-}
-
-.table-responsive::-webkit-scrollbar-thumb {
-    background: linear-gradient(45deg, var(--primary-color), var(--secondary-color));
-    border-radius: 4px;
-}
-
-.table-responsive::-webkit-scrollbar-thumb:hover {
-    background: linear-gradient(45deg, var(--secondary-color), var(--primary-color));
 }
 
 .text-gradient {

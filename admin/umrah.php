@@ -63,40 +63,73 @@ require_once('../includes/db.php');
                                             $page = isset($_GET['page']) ? (int)$_GET['page'] : 1;
                                             $search = isset($_GET['search']) ? trim($_GET['search']) : '';
                                             $visaStatus = isset($_GET['visa_status']) ? trim($_GET['visa_status']) : '';
+                                            $filter = isset($_GET['filter']) ? trim($_GET['filter']) : '';
                                             $offset = ($page - 1) * $resultsPerPage;
 
                                             // ---------- COUNT QUERY ----------
-                                            $countSql = "SELECT COUNT(DISTINCT f.family_id) as total
-                                                        FROM families f
-                                                        LEFT JOIN users u ON f.created_by = u.id
-                                                        WHERE 1=1 AND f.tenant_id = ? AND f.branch_id = ?";
+                                            if ($filter === 'refunded' || $filter === 'cancelled') {
+                                                $statusFilter = $filter === 'refunded' ? 'refunded' : 'cancelled';
+                                                $countSql = "SELECT COUNT(DISTINCT f.family_id) as total
+                                                            FROM families f
+                                                            LEFT JOIN users u ON f.created_by = u.id
+                                                            LEFT JOIN umrah_bookings ub ON f.family_id = ub.family_id
+                                                            WHERE 1=1 AND f.tenant_id = ? AND f.branch_id = ?";
+                                                $countParams = [$tenant_id, $branch_id];
+                                                $countTypes = "ii";
 
-                                            $countParams = [$tenant_id, $branch_id];
-                                            $countTypes = "ii";
+                                                if (!empty($search)) {
+                                                    $countSql .= " AND (
+                                                        f.head_of_family LIKE ? OR
+                                                        f.contact LIKE ? OR
+                                                        f.address LIKE ? OR
+                                                        f.package_type LIKE ? OR
+                                                        f.location LIKE ? OR
+                                                        u.name LIKE ? OR
+                                                        EXISTS (SELECT 1 FROM umrah_bookings ub2 WHERE ub2.family_id = f.family_id AND ub2.tenant_id = ? AND ub2.branch_id = ? AND (
+                                                            ub2.name LIKE ? OR
+                                                            ub2.passport_number LIKE ?
+                                                        ))
+                                                    )";
+                                                    $searchTerm = "%$search%";
+                                                    $countParams = array_merge($countParams, [$searchTerm, $searchTerm, $searchTerm, $searchTerm, $searchTerm, $searchTerm, $tenant_id, $branch_id, $searchTerm, $searchTerm]);
+                                                    $countTypes .= "ssssssiiiss";
+                                                }
 
-                                            // Add filters for count
-                                            if (!empty($visaStatus)) {
-                                                $countSql .= " AND f.visa_status = ?";
-                                                $countParams[] = $visaStatus;
-                                                $countTypes .= "s";
-                                            }
+                                                $countSql .= " GROUP BY f.family_id
+                                                            HAVING COUNT(ub.booking_id) > 0 AND COUNT(ub.booking_id) = SUM(CASE WHEN ub.status = '$statusFilter' THEN 1 ELSE 0 END)";
+                                            } else {
+                                                $countSql = "SELECT COUNT(DISTINCT f.family_id) as total
+                                                            FROM families f
+                                                            LEFT JOIN users u ON f.created_by = u.id
+                                                            WHERE 1=1 AND f.tenant_id = ? AND f.branch_id = ?";
 
-                                            if (!empty($search)) {
-                                                $countSql .= " AND (
-                                                    f.head_of_family LIKE ? OR
-                                                    f.contact LIKE ? OR
-                                                    f.address LIKE ? OR
-                                                    f.package_type LIKE ? OR
-                                                    f.location LIKE ? OR
-                                                    u.name LIKE ? OR
-                                                    EXISTS (SELECT 1 FROM umrah_bookings ub WHERE ub.family_id = f.family_id AND ub.tenant_id = ? AND ub.branch_id = ? AND (
-                                                        ub.name LIKE ? OR
-                                                        ub.passport_number LIKE ?
-                                                    ))
-                                                )";
-                                                $searchTerm = "%$search%";
-                                                $countParams = array_merge($countParams, [$searchTerm, $searchTerm, $searchTerm, $searchTerm, $searchTerm, $searchTerm, $tenant_id, $branch_id, $searchTerm, $searchTerm]);
-                                                $countTypes .= "ssssssiiiss";
+                                                $countParams = [$tenant_id, $branch_id];
+                                                $countTypes = "ii";
+
+                                                // Add filters for count
+                                                if (!empty($visaStatus)) {
+                                                    $countSql .= " AND f.visa_status = ?";
+                                                    $countParams[] = $visaStatus;
+                                                    $countTypes .= "s";
+                                                }
+
+                                                if (!empty($search)) {
+                                                    $countSql .= " AND (
+                                                        f.head_of_family LIKE ? OR
+                                                        f.contact LIKE ? OR
+                                                        f.address LIKE ? OR
+                                                        f.package_type LIKE ? OR
+                                                        f.location LIKE ? OR
+                                                        u.name LIKE ? OR
+                                                        EXISTS (SELECT 1 FROM umrah_bookings ub WHERE ub.family_id = f.family_id AND ub.tenant_id = ? AND ub.branch_id = ? AND (
+                                                            ub.name LIKE ? OR
+                                                            ub.passport_number LIKE ?
+                                                        ))
+                                                    )";
+                                                    $searchTerm = "%$search%";
+                                                    $countParams = array_merge($countParams, [$searchTerm, $searchTerm, $searchTerm, $searchTerm, $searchTerm, $searchTerm, $tenant_id, $branch_id, $searchTerm, $searchTerm]);
+                                                    $countTypes .= "ssssssiiiss";
+                                                }
                                             }
 
                                             $countStmt = $pdo->prepare($countSql);
@@ -120,7 +153,7 @@ require_once('../includes/db.php');
                                             $familiesTypes = "ii";
 
                                             // Add filters for main query
-                                            if (!empty($visaStatus)) {
+                                            if (($filter !== 'refunded' && $filter !== 'cancelled') && !empty($visaStatus)) {
                                                 $sqlFamilies .= " AND f.visa_status = ?";
                                                 $familiesParams[] = $visaStatus;
                                                 $familiesTypes .= "s";
@@ -145,8 +178,12 @@ require_once('../includes/db.php');
                                             }
 
                                             // Group by family and order newest first
-                                            $sqlFamilies .= " GROUP BY f.family_id
-                                            ORDER BY f.created_at DESC LIMIT ? OFFSET ?";
+                                            $sqlFamilies .= " GROUP BY f.family_id";
+                                            if ($filter === 'refunded' || $filter === 'cancelled') {
+                                                $statusFilter = $filter === 'refunded' ? 'refunded' : 'cancelled';
+                                                $sqlFamilies .= " HAVING COUNT(ub.booking_id) > 0 AND COUNT(ub.booking_id) = SUM(CASE WHEN ub.status = '$statusFilter' THEN 1 ELSE 0 END)";
+                                            }
+                                            $sqlFamilies .= " ORDER BY f.created_at DESC LIMIT ? OFFSET ?";
                                             $familiesParams[] = $resultsPerPage;
                                             $familiesParams[] = $offset;
                                             $familiesTypes .= "ii";
@@ -185,31 +222,45 @@ require_once('../includes/db.php');
                                                             <div class="bg-light rounded-pill p-1">
                                                                 <ul class="nav nav-pills nav-fill">
                                                                     <li class="nav-item">
-                                                                        <a class="nav-link py-1 px-3<?= empty($visaStatus) ? ' active' : '' ?>"
+                                                                        <a class="nav-link py-1 px-3<?= empty($filter) && empty($visaStatus) ? ' active' : '' ?>"
                                                                            href="?visa_status="
                                                                            style="border-radius: 50px;">
                                                                             <?= __('all') ?>
                                                                         </a>
                                                                     </li>
                                                                     <li class="nav-item">
-                                                                        <a class="nav-link py-1 px-3<?= $visaStatus === 'Not Applied' ? ' active' : '' ?>"
+                                                                        <a class="nav-link py-1 px-3<?= empty($filter) && $visaStatus === 'Not Applied' ? ' active' : '' ?>"
                                                                            href="?visa_status=Not Applied"
                                                                            style="border-radius: 50px;">
                                                                             <?= __('not_applied') ?>
                                                                         </a>
                                                                     </li>
                                                                     <li class="nav-item">
-                                                                        <a class="nav-link py-1 px-3<?= $visaStatus === 'Applied' ? ' active' : '' ?>"
+                                                                        <a class="nav-link py-1 px-3<?= empty($filter) && $visaStatus === 'Applied' ? ' active' : '' ?>"
                                                                            href="?visa_status=Applied"
                                                                            style="border-radius: 50px;">
                                                                             <?= __('applied') ?>
                                                                         </a>
                                                                     </li>
                                                                     <li class="nav-item">
-                                                                        <a class="nav-link py-1 px-3<?= $visaStatus === 'Issued' ? ' active' : '' ?>"
+                                                                        <a class="nav-link py-1 px-3<?= empty($filter) && $visaStatus === 'Issued' ? ' active' : '' ?>"
                                                                            href="?visa_status=Issued"
                                                                            style="border-radius: 50px;">
                                                                             <?= __('issued') ?>
+                                                                        </a>
+                                                                    </li>
+                                                                    <li class="nav-item">
+                                                                        <a class="nav-link py-1 px-3<?= $filter === 'refunded' ? ' active' : '' ?>"
+                                                                           href="?filter=refunded"
+                                                                           style="border-radius: 50px;">
+                                                                            <?= __('refunded') ?>
+                                                                        </a>
+                                                                    </li>
+                                                                    <li class="nav-item">
+                                                                        <a class="nav-link py-1 px-3<?= $filter === 'cancelled' ? ' active' : '' ?>"
+                                                                           href="?filter=cancelled"
+                                                                           style="border-radius: 50px;">
+                                                                            <?= __('cancelled') ?>
                                                                         </a>
                                                                     </li>
                                                                 </ul>
@@ -227,6 +278,8 @@ require_once('../includes/db.php');
                                                                                name="search"
                                                                                value="<?= htmlspecialchars($search) ?>"
                                                                                aria-label="Search families">
+                                                                        <input type="hidden" name="visa_status" value="<?= htmlspecialchars($visaStatus) ?>">
+                                                                        <input type="hidden" name="filter" value="<?= htmlspecialchars($filter) ?>">
                                                                         <div class="input-group-append">
                                                                             <button class="btn btn-outline-secondary" type="submit">
                                                                                 <i class="feather icon-search"></i>
@@ -636,33 +689,42 @@ require_once('../includes/db.php');
                                             <!-- Pagination -->
                                             <nav aria-label="Family list pagination" class="p-3">
                                                 <ul class="pagination justify-content-center mb-0">
-                                                    <?php 
-                                                    // Preserve search parameter in pagination links
-                                                    $searchParam = !empty($search) ? "&search=" . urlencode($search) : "";
-                                                    
+                                                    <?php
+                                                    // Preserve search, visa_status, and filter parameters in pagination links
+                                                    $queryString = "";
+                                                    if (!empty($search)) {
+                                                        $queryString .= "&search=" . urlencode($search);
+                                                    }
+                                                    if (!empty($visaStatus)) {
+                                                        $queryString .= "&visa_status=" . urlencode($visaStatus);
+                                                    }
+                                                    if (!empty($filter)) {
+                                                        $queryString .= "&filter=" . urlencode($filter);
+                                                    }
+
                                                     if ($page > 1): ?>
                                                         <li class="page-item">
-                                                            <a class="page-link" href="?page=<?= $page - 1 . $searchParam ?>" aria-label="Previous">
+                                                            <a class="page-link" href="?page=<?= $page - 1 . $queryString ?>" aria-label="Previous">
                                                                 <span aria-hidden="true">&laquo;</span>
                                                                 <span class="sr-only"><?= __('previous') ?></span>
                                                             </a>
                                                         </li>
                                                     <?php endif; ?>
 
-                                                    <?php 
+                                                    <?php
                                                     // Show page numbers
                                                     $startPage = max(1, $page - 2);
                                                     $endPage = min($totalPages, $page + 2);
-                                                    
+
                                                     for ($i = $startPage; $i <= $endPage; $i++): ?>
                                                         <li class="page-item <?= $i == $page ? 'active' : '' ?>">
-                                                            <a class="page-link" href="?page=<?= $i . $searchParam ?>"><?= $i ?></a>
+                                                            <a class="page-link" href="?page=<?= $i . $queryString ?>"><?= $i ?></a>
                                                         </li>
                                                     <?php endfor; ?>
 
                                                     <?php if ($page < $totalPages): ?>
                                                         <li class="page-item">
-                                                            <a class="page-link" href="?page=<?= $page + 1 . $searchParam ?>" aria-label="Next">
+                                                            <a class="page-link" href="?page=<?= $page + 1 . $queryString ?>" aria-label="Next">
                                                                 <span aria-hidden="true">&raquo;</span>
                                                                 <span class="sr-only"><?= __('next') ?></span>
                                                             </a>
@@ -776,6 +838,9 @@ require_once('../includes/db.php');
     <script src="../js/umrah/umrah-forms.js"></script>
 
     <script>
+        // Set CSRF token for JS use
+        window.csrfToken = '<?php echo $_SESSION['csrf_token']; ?>';
+
         // Auto-expand family members when searching
         if (window.location.search.includes('search=')) {
             document.querySelectorAll('[id^="family-members-"]').forEach(row => {

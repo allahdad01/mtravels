@@ -276,7 +276,9 @@ include '../includes/header.php';
                                                                     <option value="admin" <?php echo ($role ?? '') === 'admin' ? 'selected' : ''; ?>><?php echo __('admin'); ?></option>
                                                                     <option value="finance" <?php echo ($role ?? '') === 'finance' ? 'selected' : ''; ?>><?php echo __('finance'); ?></option>
                                                                     <option value="sales" <?php echo ($role ?? '') === 'sales' ? 'selected' : ''; ?>><?php echo __('sales'); ?></option>
+                                                                    <?php if (hasFeature('umrah_bookings', $allowed_features ?? [])): ?>
                                                                     <option value="umrah" <?php echo ($role ?? '') === 'umrah' ? 'selected' : ''; ?>><?php echo __('umrah'); ?></option>
+                                                                    <?php endif; ?>
                                                                     <option value="staff" <?php echo ($role ?? '') === 'staff' ? 'selected' : ''; ?>><?php echo __('staff'); ?></option>
                                                                 </select>
                                                             </div>

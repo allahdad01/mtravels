@@ -65,12 +65,15 @@ require_once '../includes/header_super_admin.php';
 ?>
 
 <style>
+/* Enhanced custom styles for better layout and design */
 .page-header.card {
     background: linear-gradient(135deg, #4099ff 0%, #2ed8b6 100%);
     color: #ffffff;
     border: none;
     margin-bottom: 20px;
     padding: 20px !important;
+    box-shadow: 0 4px 12px rgba(0,0,0,0.15);
+    border-radius: 10px;
 }
 
 .page-header.card .row {
@@ -82,6 +85,7 @@ require_once '../includes/header_super_admin.php';
 .page-header.card h5 {
     color: #ffffff;
     margin: 0;
+    font-weight: 600;
 }
 
 .page-header.card .text-end {
@@ -92,11 +96,132 @@ require_once '../includes/header_super_admin.php';
     background: rgba(255,255,255,0.2);
     color: #ffffff;
     border: 1px solid rgba(255,255,255,0.3);
+    border-radius: 25px;
+    transition: all 0.3s ease;
 }
 
 .page-header.card .btn:hover {
     background: rgba(255,255,255,0.3);
     border-color: rgba(255,255,255,0.5);
+    transform: translateY(-1px);
+}
+
+.card {
+    border-radius: 10px;
+    box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+    transition: transform 0.2s ease-in-out, box-shadow 0.2s ease-in-out;
+    border: none;
+}
+
+.card:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 4px 16px rgba(0,0,0,0.15);
+}
+
+.card-header {
+    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    color: white;
+    border-radius: 10px 10px 0 0;
+    padding: 1rem 1.5rem;
+    border: none;
+}
+
+.card-header h5 {
+    margin: 0;
+    font-weight: 600;
+    display: flex;
+    align-items: center;
+}
+
+.stats-card {
+    border-radius: 10px;
+    box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+    transition: transform 0.2s ease-in-out, box-shadow 0.2s ease-in-out;
+    border: none;
+    height: 100%;
+}
+
+.stats-card:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 4px 16px rgba(0,0,0,0.15);
+}
+
+.stats-card .card-body {
+    padding: 1.5rem;
+}
+
+.table-responsive {
+    border-radius: 10px;
+    overflow: hidden;
+}
+
+.table {
+    margin-bottom: 0;
+}
+
+.table thead th {
+    background-color: #f8f9fa;
+    border-bottom: 2px solid #dee2e6;
+    font-weight: 600;
+    color: #495057;
+    padding: 1rem;
+}
+
+.table tbody tr:hover {
+    background-color: #f1f3f4;
+}
+
+.table tbody td {
+    padding: 1rem;
+    vertical-align: middle;
+}
+
+.form-control {
+    border-radius: 8px;
+    border: 1px solid #ced4da;
+    transition: border-color 0.15s ease-in-out, box-shadow 0.15s ease-in-out;
+    padding: 0.75rem;
+}
+
+.form-control:focus {
+    border-color: #4099ff;
+    box-shadow: 0 0 0 0.2rem rgba(64, 153, 255, 0.25);
+}
+
+.btn {
+    border-radius: 25px;
+    padding: 0.5rem 1.25rem;
+    font-weight: 500;
+    transition: all 0.3s ease;
+}
+
+.btn-primary {
+    background: linear-gradient(135deg, #4099ff 0%, #2ed8b6 100%);
+    border: none;
+}
+
+.btn-primary:hover {
+    transform: translateY(-1px);
+    box-shadow: 0 4px 12px rgba(64, 153, 255, 0.3);
+}
+
+.badge {
+    font-size: 0.85em;
+    padding: 0.5em 0.75em;
+    border-radius: 20px;
+    font-weight: 500;
+}
+
+.h3 {
+    font-size: 2rem;
+}
+
+.h5 {
+    font-size: 1.25rem;
+}
+
+.text-muted {
+    font-size: 0.9rem;
 }
 </style>
 
@@ -119,50 +244,50 @@ require_once '../includes/header_super_admin.php';
             <!-- Statistics Cards -->
             <div class="row mb-4">
                 <div class="col-md-2">
-                    <div class="card text-center">
+                    <div class="card stats-card text-center">
                         <div class="card-body">
                             <h3 class="text-primary"><?php echo $stats['total'] ?? 0; ?></h3>
-                            <p class="text-muted mb-0">Total</p>
+                            <p class="text-muted mb-0"><i class="feather icon-list mr-1"></i>Total</p>
                         </div>
                     </div>
                 </div>
                 <div class="col-md-2">
-                    <div class="card text-center">
+                    <div class="card stats-card text-center">
                         <div class="card-body">
                             <h3 class="text-info"><?php echo $stats['open'] ?? 0; ?></h3>
-                            <p class="text-muted mb-0">Open</p>
+                            <p class="text-muted mb-0"><i class="feather icon-inbox mr-1"></i>Open</p>
                         </div>
                     </div>
                 </div>
                 <div class="col-md-2">
-                    <div class="card text-center">
+                    <div class="card stats-card text-center">
                         <div class="card-body">
                             <h3 class="text-warning"><?php echo $stats['in_progress'] ?? 0; ?></h3>
-                            <p class="text-muted mb-0">In Progress</p>
+                            <p class="text-muted mb-0"><i class="feather icon-clock mr-1"></i>In Progress</p>
                         </div>
                     </div>
                 </div>
                 <div class="col-md-2">
-                    <div class="card text-center">
+                    <div class="card stats-card text-center">
                         <div class="card-body">
                             <h3 class="text-success"><?php echo $stats['resolved'] ?? 0; ?></h3>
-                            <p class="text-muted mb-0">Resolved</p>
+                            <p class="text-muted mb-0"><i class="feather icon-check-circle mr-1"></i>Resolved</p>
                         </div>
                     </div>
                 </div>
                 <div class="col-md-2">
-                    <div class="card text-center">
+                    <div class="card stats-card text-center">
                         <div class="card-body">
                             <h3 class="text-danger"><?php echo $stats['breached'] ?? 0; ?></h3>
-                            <p class="text-muted mb-0">SLA Breached</p>
+                            <p class="text-muted mb-0"><i class="feather icon-alert-triangle mr-1"></i>SLA Breached</p>
                         </div>
                     </div>
                 </div>
                 <div class="col-md-2">
-                    <div class="card text-center">
+                    <div class="card stats-card text-center">
                         <div class="card-body">
                             <h3 class="text-danger"><?php echo $stats['at_risk'] ?? 0; ?></h3>
-                            <p class="text-muted mb-0">At Risk</p>
+                            <p class="text-muted mb-0"><i class="feather icon-alert-circle mr-1"></i>At Risk</p>
                         </div>
                     </div>
                 </div>
@@ -170,6 +295,9 @@ require_once '../includes/header_super_admin.php';
 
             <!-- Filters -->
             <div class="card mb-3">
+                <div class="card-header">
+                    <h5><i class="feather icon-filter mr-2"></i>Filter Tickets</h5>
+                </div>
                 <div class="card-body">
                     <form method="GET" class="row g-3">
                         <div class="col-md-2">
@@ -209,7 +337,7 @@ require_once '../includes/header_super_admin.php';
                             </select>
                         </div>
                         <div class="col-md-3">
-                            <a href="support_tickets_manage.php" class="btn btn-secondary btn-block btn-sm">Reset Filters</a>
+                            <a href="support_tickets_manage.php" class="btn btn-secondary btn-block btn-sm"><i class="feather icon-refresh-cw mr-1"></i>Reset Filters</a>
                         </div>
                     </form>
                 </div>
@@ -217,19 +345,22 @@ require_once '../includes/header_super_admin.php';
 
             <!-- Tickets Table -->
             <div class="card">
+                <div class="card-header">
+                    <h5><i class="feather icon-ticket mr-2"></i>Support Tickets</h5>
+                </div>
                 <div class="table-responsive">
-                    <table class="table table-hover mb-0 table-sm">
-                        <thead class="table-light">
+                    <table class="table table-hover mb-0">
+                        <thead>
                             <tr>
-                                <th>Ticket #</th>
-                                <th>Title</th>
-                                <th>Tenant</th>
-                                <th>Priority</th>
-                                <th>Status</th>
-                                <th>SLA Status</th>
-                                <th>Created</th>
-                                <th>Time Left</th>
-                                <th>Action</th>
+                                <th><i class="feather icon-hash mr-1"></i>Ticket #</th>
+                                <th><i class="feather icon-file-text mr-1"></i>Title</th>
+                                <th><i class="feather icon-home mr-1"></i>Tenant</th>
+                                <th><i class="feather icon-alert-octagon mr-1"></i>Priority</th>
+                                <th><i class="feather icon-info mr-1"></i>Status</th>
+                                <th><i class="feather icon-clock mr-1"></i>SLA Status</th>
+                                <th><i class="feather icon-calendar mr-1"></i>Created</th>
+                                <th><i class="feather icon-hourglass mr-1"></i>Time Left</th>
+                                <th><i class="feather icon Settings mr-1"></i>Action</th>
                             </tr>
                         </thead>
                         <tbody>

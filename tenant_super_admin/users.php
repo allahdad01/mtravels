@@ -203,11 +203,12 @@ try {
 $userRoles = [
     'admin' => 'Branch Admin',
     'sales' => 'Sales',
-    'finance' => 'Finance',
-    'umrah' => 'Umrah',
-    'visa' => 'Visa'
+    'finance' => 'Finance'
 ];
 
+if (hasFeature('umrah_bookings', $allowed_features ?? [])) {
+    $userRoles['umrah'] = 'Umrah';
+}
 // Helper function to log activity
 function logActivity($pdo, $tenant_id, $user_id, $action, $table_name, $record_id, $old_values, $new_values) {
     try {

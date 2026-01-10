@@ -154,7 +154,7 @@ if ($isAjax) {
             background: #d4edda;
         }
         .template-download {
-            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            background: linear-gradient(135deg, #4099ff 0%, #2ed8b6 100%);
             color: white;
             padding: 15px;
             border-radius: 8px;

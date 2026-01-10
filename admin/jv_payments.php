@@ -111,6 +111,208 @@ try {
     <link rel="stylesheet" href="../css/general/modal-styles.css">
     <link rel="stylesheet" href="../css/jv_payment/styles.css">
 
+    <style>
+    /* Enhanced custom styles for better layout and design */
+    .page-header.card {
+        background: linear-gradient(135deg, #4099ff 0%, #2ed8b6 100%);
+        color: #ffffff;
+        border: none;
+        margin-bottom: 20px;
+        padding: 20px !important;
+        box-shadow: 0 4px 12px rgba(0,0,0,0.15);
+        border-radius: 10px;
+    }
+
+    .page-header.card .row {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+    }
+
+    .page-header.card h5 {
+        color: #ffffff;
+        margin: 0;
+        font-weight: 600;
+    }
+
+    .page-header.card .text-end {
+        text-align: right;
+    }
+
+    .page-header.card .btn {
+        background: rgba(255,255,255,0.2);
+        color: #ffffff;
+        border: 1px solid rgba(255,255,255,0.3);
+        border-radius: 25px;
+        transition: all 0.3s ease;
+    }
+
+    .page-header.card .btn:hover {
+        background: rgba(255,255,255,0.3);
+        border-color: rgba(255,255,255,0.5);
+        transform: translateY(-1px);
+    }
+
+    .card {
+        border-radius: 10px;
+        box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+        transition: transform 0.2s ease-in-out, box-shadow 0.2s ease-in-out;
+        border: none;
+    }
+
+    .card:hover {
+        transform: translateY(-2px);
+        box-shadow: 0 4px 16px rgba(0,0,0,0.15);
+    }
+
+    .card-header {
+        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        color: white;
+        border-radius: 10px 10px 0 0;
+        padding: 1rem 1.5rem;
+        border: none;
+    }
+
+    .card-header h5 {
+        margin: 0;
+        font-weight: 600;
+        display: flex;
+        align-items: center;
+    }
+
+    .progress {
+        border-radius: 15px;
+        overflow: hidden;
+        box-shadow: inset 0 1px 2px rgba(0,0,0,0.1);
+    }
+
+    .progress-bar {
+        transition: width 0.6s ease;
+    }
+
+    .badge {
+        font-size: 0.85em;
+        padding: 0.5em 0.75em;
+        border-radius: 20px;
+        font-weight: 500;
+    }
+
+    .badge-success {
+        background-color: #28a745;
+    }
+
+    .badge-warning {
+        background-color: #ffc107;
+        color: #212529;
+    }
+
+    .badge-info {
+        background-color: #17a2b8;
+    }
+
+    .table-responsive {
+        border-radius: 10px;
+        overflow-x: auto;
+        overflow-y: hidden;
+    }
+
+    .table {
+        margin-bottom: 0;
+    }
+
+    .table thead th {
+        background-color: #f8f9fa;
+        border-bottom: 2px solid #dee2e6;
+        font-weight: 600;
+        color: #495057;
+        padding: 1rem;
+    }
+
+    .table tbody tr:hover {
+        background-color: #f1f3f4;
+    }
+
+    .table tbody td {
+        padding: 1rem;
+        vertical-align: middle;
+    }
+
+    .form-control {
+        border-radius: 8px;
+        border: 1px solid #ced4da;
+        transition: border-color 0.15s ease-in-out, box-shadow 0.15s ease-in-out;
+        padding: 0.75rem;
+    }
+
+    .form-control:focus {
+        border-color: #4099ff;
+        box-shadow: 0 0 0 0.2rem rgba(64, 153, 255, 0.25);
+    }
+
+    .btn-primary {
+        background: linear-gradient(135deg, #4099ff 0%, #2ed8b6 100%);
+        border: none;
+        border-radius: 25px;
+        padding: 0.75rem 2rem;
+        font-weight: 600;
+        transition: all 0.3s ease;
+    }
+
+    .btn-primary:hover {
+        transform: translateY(-1px);
+        box-shadow: 0 4px 12px rgba(64, 153, 255, 0.3);
+    }
+
+    .btn-secondary {
+        border-radius: 25px;
+        padding: 0.75rem 2rem;
+        font-weight: 600;
+        transition: all 0.3s ease;
+    }
+
+    .alert {
+        border-radius: 10px;
+        border: none;
+        padding: 1rem 1.5rem;
+    }
+
+    .alert-info {
+        background: linear-gradient(135deg, #d1ecf1 0%, #bee5eb 100%);
+        color: #0c5460;
+    }
+
+    .alert-success {
+        background: linear-gradient(135deg, #d4edda 0%, #c3e6cb 100%);
+        color: #155724;
+    }
+
+    .alert-danger {
+        background: linear-gradient(135deg, #f8d7da 0%, #f5c6cb 100%);
+        color: #721c24;
+    }
+
+    #estimated_cost {
+        color: #28a745;
+        font-weight: bold;
+    }
+
+    .h2 {
+        font-size: 2.5rem;
+    }
+
+    .h4 {
+        font-size: 1.5rem;
+    }
+
+    .h5 {
+        font-size: 1.25rem;
+    }
+
+    .h6 {
+        font-size: 1rem;
+    }
+    </style>
+
     <div class="pcoded-main-container">
         <div class="pcoded-wrapper">
             <div class="pcoded-content">
@@ -120,77 +322,71 @@ try {
                             <!-- [ Main Content ] start -->
                             <div class="row">
                                 <div class="col-sm-12">
-                                    <div class="card">
-                                        <div class="card-header">
-                                            <h5><?= __('jv_payments_management') ?></h5>
+                                    <div class="page-header card">
+                                        <div class="row align-items-center">
+                                            <div class="col-md-6">
+                                                <h5 class="mb-0"><i class="feather icon-credit-card mr-2"></i><?php echo __('jv_payments_management'); ?></h5>
+                                                <p class="mb-0 mt-1" style="font-size: 14px; opacity: 0.9;"><?php echo __('client_to_supplier_payment_management'); ?></p>
+                                            </div>
+                                            <div class="col-md-6 text-end">
+                                                <button type="button" class="btn btn-outline-secondary btn-sm" data-toggle="modal" data-target="#addClientSupplierModal">
+                                                    <i class="feather icon-plus-circle mr-1"></i><?php echo __('add_new_payment'); ?>
+                                                </button>
+                                            </div>
                                         </div>
-                                        <div class="card-body">
-                                            <?php if ($success_message): ?>
-                                                <div class="alert alert-success alert-dismissible fade show" role="alert">
-                                                    <?php echo $success_message; ?>
-                                                    <button type="button" class="close" data-dismiss="alert" aria-label="Close">
-                                                        <span aria-hidden="true">&times;</span>
-                                                    </button>
-                                                </div>
-                                            <?php endif; ?>
-                                            
-                                            <?php if ($error_message): ?>
-                                                <div class="alert alert-danger alert-dismissible fade show" role="alert">
-                                                    <?php echo $error_message; ?>
-                                                    <button type="button" class="close" data-dismiss="alert" aria-label="Close">
-                                                        <span aria-hidden="true">&times;</span>
-                                                    </button>
-                                                </div>
-                                            <?php endif; ?>
+                                    </div>
 
-                                            <!-- Modern Header Section -->
-                                            <div class="modern-header mb-4">
-                                                <div class="header-content">
-                                                    <div class="header-text">
-                                                        <h4 class="mb-2">
-                                                            <i class="feather icon-credit-card mr-2"></i>
-                                                            <?= __('client_to_supplier_payment_management') ?>
-                                                        </h4>
-                                                        <p class="text-muted mb-0">Manage direct payments between clients and suppliers</p>
-                                                    </div>
-                                                    <div class="header-actions">
-                                                        <button type="button" class="btn btn-primary btn-lg" data-toggle="modal" data-target="#addClientSupplierModal">
-                                                            <i class="feather icon-plus-circle mr-2"></i>
-                                                            <span class="btn-text"><?= __('add_new_payment') ?></span>
-                                                        </button>
-                                                    </div>
+                                    <div class="row">
+                                        <!-- Current Usage Card -->
+                                        <div class="col-md-4">
+                                            <div class="card">
+                                                <div class="card-header">
+                                                    <h5><i class="feather icon-bar-chart-2 mr-2"></i><?php echo __('current_usage'); ?></h5>
                                                 </div>
-                                                <div class="header-stats">
-                                                    <div class="stat-card">
-                                                        <div class="stat-icon">
-                                                            <i class="feather icon-users"></i>
+                                                <div class="card-body">
+                                                    <div class="text-center mb-4">
+                                                        <div class="h2 font-weight-bold text-primary">
+                                                            <i class="feather icon-activity mr-2"></i><?php echo isset($csPayments) ? count($csPayments) : 0; ?>
                                                         </div>
-                                                        <div class="stat-info">
-                                                            <span class="stat-number"><?php echo count($clients); ?></span>
-                                                            <span class="stat-label">Active Clients</span>
-                                                        </div>
+                                                        <p class="text-muted mb-0"><?php echo __('total_payments'); ?></p>
                                                     </div>
-                                                    <div class="stat-card">
-                                                        <div class="stat-icon">
-                                                            <i class="feather icon-shopping-bag"></i>
+
+                                                    <hr class="my-4">
+
+                                                    <div class="row text-center">
+                                                        <div class="col-6">
+                                                            <div class="h4 mb-1 font-weight-bold text-info"><?php echo count($clients); ?></div>
+                                                            <small class="text-muted"><i class="feather icon-users mr-1"></i><?php echo __('active_clients'); ?></small>
                                                         </div>
-                                                        <div class="stat-info">
-                                                            <span class="stat-number"><?php echo count($suppliers); ?></span>
-                                                            <span class="stat-label">Active Suppliers</span>
-                                                        </div>
-                                                    </div>
-                                                    <div class="stat-card">
-                                                        <div class="stat-icon">
-                                                            <i class="feather icon-activity"></i>
-                                                        </div>
-                                                        <div class="stat-info">
-                                                            <span class="stat-number"><?php echo isset($csPayments) ? count($csPayments) : 0; ?></span>
-                                                            <span class="stat-label">Total Payments</span>
+                                                        <div class="col-6">
+                                                            <div class="h4 mb-1 font-weight-bold text-success"><?php echo count($suppliers); ?></div>
+                                                            <small class="text-muted"><i class="feather icon-shopping-bag mr-1"></i><?php echo __('active_suppliers'); ?></small>
                                                         </div>
                                                     </div>
                                                 </div>
                                             </div>
-                                            
+                                        </div>
+
+                                        <!-- Main Content -->
+                                        <div class="col-md-8">
+                                            <?php if ($success_message): ?>
+                                            <div class="alert alert-success alert-dismissible fade show" role="alert">
+                                                <?php echo $success_message; ?>
+                                                <button type="button" class="close" data-dismiss="alert" aria-label="Close">
+                                                    <span aria-hidden="true">&times;</span>
+                                                </button>
+                                            </div>
+                                            <?php endif; ?>
+
+                                            <?php if ($error_message): ?>
+                                            <div class="alert alert-danger alert-dismissible fade show" role="alert">
+                                                <?php echo $error_message; ?>
+                                                <button type="button" class="close" data-dismiss="alert" aria-label="Close">
+                                                    <span aria-hidden="true">&times;</span>
+                                                </button>
+                                            </div>
+                                            <?php endif; ?>
+
                                             <!-- Client to Supplier Payment Content -->
                                             <div class="card">
                                                 <div class="card-header">
@@ -218,23 +414,23 @@ try {
                                             </div>
 
                                             <!-- Modern Payment History Table -->
-                                             <div class="card">
-                                                 <div class="card-header">
-                                                     <div class="d-flex justify-content-between align-items-center">
-                                                         <div>
-                                                             <h5 class="mb-0">
-                                                                 <i class="feather icon-list mr-2"></i>
-                                                                 <?= __('payment_history') ?>
-                                                             </h5>
-                                                             <small class="text-muted">View and manage all client-supplier payments</small>
-                                                         </div>
-                                                         <div class="table-actions">
-                                                             <button class="btn btn-outline-primary btn-sm" onclick="window.location.reload()">
-                                                                 <i class="feather icon-refresh-cw mr-1"></i> Refresh
-                                                             </button>
-                                                         </div>
-                                                     </div>
-                                                 </div>
+                                            <div class="card">
+                                                <div class="card-header">
+                                                    <div class="d-flex justify-content-between align-items-center">
+                                                        <div>
+                                                            <h5 class="mb-0">
+                                                                <i class="feather icon-list mr-2"></i>
+                                                                <?= __('payment_history') ?>
+                                                            </h5>
+                                                            <small class="text-muted">View and manage all client-supplier payments</small>
+                                                        </div>
+                                                        <div class="table-actions">
+                                                            <button class="btn btn-outline-primary btn-sm" onclick="window.location.reload()">
+                                                                <i class="feather icon-refresh-cw mr-1"></i> Refresh
+                                                            </button>
+                                                        </div>
+                                                    </div>
+                                                </div>
 
                                                  <!-- Search Bar -->
                                                  <div class="card-body border-bottom pb-3">
@@ -259,54 +455,21 @@ try {
                                                      </form>
                                                  </div>
 
-                                                 <div class="card-body p-0">
-                                                     <!-- Pagination Info -->
-                                                     <div class="row mb-3 p-3">
-                                                         <div class="col-md-6">
-                                                             <small class="text-muted">
-                                                                 Showing <?= $offset + 1 ?> to <?= min($offset + $items_per_page, $total_records) ?> of <?= $total_records ?> entries
-                                                             </small>
-                                                         </div>
-                                                     </div>
-                                                    <div class="table-responsive">
-                                                        <table class="table table-hover" id="clientSupplierTable">
-                                                            <thead>
-                                                                <tr>
-                                                                    <th>
-                                                                        <i class="feather icon-calendar mr-1"></i>
-                                                                        <?= __('date') ?>
-                                                                    </th>
-                                                                    <th>
-                                                                        <i class="feather icon-file-text mr-1"></i>
-                                                                        <?= __('jv_name') ?>
-                                                                    </th>
-                                                                    <th>
-                                                                        <i class="feather icon-user mr-1"></i>
-                                                                        <?= __('client') ?>
-                                                                    </th>
-                                                                    <th>
-                                                                        <i class="feather icon-shopping-bag mr-1"></i>
-                                                                        <?= __('supplier') ?>
-                                                                    </th>
-                                                                    <th>
-                                                                        <i class="feather icon-dollar-sign mr-1"></i>
-                                                                        <?= __('amount') ?>
-                                                                    </th>
-                                                                    <th>
-                                                                        <i class="feather icon-globe mr-1"></i>
-                                                                        <?= __('currency') ?>
-                                                                    </th>
-                                                                    <th>
-                                                                        <i class="feather icon-hash mr-1"></i>
-                                                                        <?= __('receipt') ?>
-                                                                    </th>
-                                                                    <th>
-                                                                        <i class="feather icon-settings mr-1"></i>
-                                                                        <?= __('actions') ?>
-                                                                    </th>
-                                                                </tr>
-                                                            </thead>
-                                                            <tbody>
+                                                 <div class="card-body table-responsive">
+                                                     <table class="table table-hover" id="clientSupplierTable">
+                                                         <thead>
+                                                             <tr>
+                                                                 <th><i class="feather icon-calendar mr-1"></i><?= __('date') ?></th>
+                                                                 <th><i class="feather icon-file-text mr-1"></i><?= __('jv_name') ?></th>
+                                                                 <th><i class="feather icon-user mr-1"></i><?= __('client') ?></th>
+                                                                 <th><i class="feather icon-shopping-bag mr-1"></i><?= __('supplier') ?></th>
+                                                                 <th><i class="feather icon-dollar-sign mr-1"></i><?= __('amount') ?></th>
+                                                                 <th><i class="feather icon-globe mr-1"></i><?= __('currency') ?></th>
+                                                                 <th><i class="feather icon-hash mr-1"></i><?= __('receipt') ?></th>
+                                                                 <th><i class="feather icon-settings mr-1"></i><?= __('actions') ?></th>
+                                                             </tr>
+                                                         </thead>
+                                                         <tbody>
                                                                 <?php
                                                                  // Get client-supplier JV payments with pagination and search
                                                                  $csQuery = "SELECT jp.*, c.name as client_name, s.name as supplier_name
@@ -345,46 +508,35 @@ try {
                                                                 <?php else:
                                                                     foreach ($csPayments as $payment): ?>
                                                                     <tr>
-                                                                        <td>
-                                                                            <div class="date-cell">
-                                                                                <strong><?= date('M d, Y', strtotime($payment['created_at'])) ?></strong>
-                                                                                <br>
-                                                                                <small class="text-muted"><?= date('H:i', strtotime($payment['created_at'])) ?></small>
-                                                                            </div>
+                                                                        <td class="text-muted">
+                                                                            <i class="feather icon-calendar mr-1"></i>
+                                                                            <?= date('M d, Y', strtotime($payment['created_at'])) ?>
+                                                                            <br>
+                                                                            <small class="text-muted"><?= date('H:i', strtotime($payment['created_at'])) ?></small>
                                                                         </td>
                                                                         <td>
-                                                                            <div class="jv-name-cell">
-                                                                                <span class="mb-1">JV</span>
-                                                                                <br>
-                                                                                <strong><?= htmlspecialchars($payment['jv_name']) ?></strong>
-                                                                            </div>
+                                                                            <span class="badge-primary badge-pill px-3 py-1">
+                                                                                <?= htmlspecialchars($payment['jv_name']) ?>
+                                                                            </span>
                                                                         </td>
                                                                         <td>
-                                                                            <div class="client-cell">
-                                                                                <i class="feather icon-user text-primary mr-1"></i>
-                                                                                <?= htmlspecialchars($payment['client_name'] ?? 'N/A') ?>
-                                                                            </div>
+                                                                            <i class="feather icon-user text-primary mr-1"></i>
+                                                                            <?= htmlspecialchars($payment['client_name'] ?? 'N/A') ?>
                                                                         </td>
                                                                         <td>
-                                                                            <div class="supplier-cell">
-                                                                                <i class="feather icon-shopping-bag text-success mr-1"></i>
-                                                                                <?= htmlspecialchars($payment['supplier_name'] ?? 'N/A') ?>
-                                                                            </div>
+                                                                            <i class="feather icon-shopping-bag text-success mr-1"></i>
+                                                                            <?= htmlspecialchars($payment['supplier_name'] ?? 'N/A') ?>
+                                                                        </td>
+                                                                        <td class="text-success font-weight-bold h6">
+                                                                            <?= number_format($payment['total_amount'], 2) ?>
                                                                         </td>
                                                                         <td>
-                                                                            <div class="amount-cell">
-                                                                                <strong class="text-success">
-                                                                                    <?= number_format($payment['total_amount'], 2) ?>
-                                                                                </strong>
-                                                                            </div>
-                                                                        </td>
-                                                                        <td>
-                                                                            <span class="<?= $payment['currency'] === 'USD' ? 'info' : 'warning' ?>">
+                                                                            <span class="badge-<?= $payment['currency'] === 'USD' ? 'info' : 'warning' ?> badge-pill px-2 py-1">
                                                                                 <?= htmlspecialchars($payment['currency']) ?>
                                                                             </span>
                                                                         </td>
                                                                         <td>
-                                                                            <code class="receipt-code">
+                                                                            <code class="text-muted">
                                                                                 <?= htmlspecialchars($payment['receipt']) ?>
                                                                             </code>
                                                                         </td>

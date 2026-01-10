@@ -39,10 +39,19 @@ include '../api/debtor/debtors_handler.php';
 $status_filter = isset($_GET['status']) && $_GET['status'] === 'inactive' ? 'inactive' : 'active';
 
 try {
-     // Get total count
+     // Get total count for current status
      $countStmt = $pdo->prepare("SELECT COUNT(*) as total FROM debtors WHERE status = ? AND tenant_id = ? AND branch_id = ?");
      $countStmt->execute([$status_filter, $tenant_id, $branch_id]);
      $total_count = $countStmt->fetch(PDO::FETCH_ASSOC)['total'];
+     
+     // Get counts for both active and inactive debtors
+     $activeCountStmt = $pdo->prepare("SELECT COUNT(*) as count FROM debtors WHERE status = 'active' AND tenant_id = ? AND branch_id = ?");
+     $activeCountStmt->execute([$tenant_id, $branch_id]);
+     $active_count = $activeCountStmt->fetch(PDO::FETCH_ASSOC)['count'];
+     
+     $inactiveCountStmt = $pdo->prepare("SELECT COUNT(*) as count FROM debtors WHERE status = 'inactive' AND tenant_id = ? AND branch_id = ?");
+     $inactiveCountStmt->execute([$tenant_id, $branch_id]);
+     $inactive_count = $inactiveCountStmt->fetch(PDO::FETCH_ASSOC)['count'];
      
      // Pagination
      $items_per_page = 10;
@@ -75,6 +84,8 @@ try {
      $total_pages = 0;
      $main_accounts = [];
      $currency_totals = [];
+     $active_count = 0;
+     $inactive_count = 0;
  }
 ?>
 
@@ -99,17 +110,15 @@ try {
                             <!-- [ Main Content ] start -->
                             <div class="container-fluid">
                                 <!-- Page Header -->
-                                <div class="row mb-4">
-                                    <div class="col-12">
-                                        <div class="d-flex flex-column flex-sm-row justify-content-between align-items-start align-items-sm-center py-3 py-md-4">
-                                            <div class="mb-3 mb-sm-0">
-                                                <h2 class="h3 h-md-2 mb-1"><?= __('debtors_management') ?></h2>
-                                                <p class="text-muted small mb-0">Manage your debtors and track payments</p>
-                                            </div>
+                                <div class="page-header card">
+                                    <div class="row align-items-center">
+                                        <div class="col-md-6">
+                                            <h5 class="mb-0"><i class="feather icon-users mr-2"></i><?= __('debtors_management') ?></h5>
+                                            <p class="mb-0 mt-1" style="font-size: 14px; opacity: 0.9;">Manage your debtors and track payments</p>
+                                        </div>
+                                        <div class="col-md-6 text-end">
                                             <button type="button" class="btn btn-success" data-toggle="modal" data-target="#addDebtorModal">
-                                                <i class="feather icon-plus mr-1"></i>
-                                                <span class="d-none d-sm-inline"><?= __('add_new_debtor') ?></span>
-                                                <span class="d-sm-none">Add</span>
+                                                <i class="feather icon-plus mr-1"></i><?= __('add_new_debtor') ?>
                                             </button>
                                         </div>
                                     </div>
@@ -126,23 +135,26 @@ try {
                                 <!-- Total Debts by Currency Section -->
                                 <?php if (!empty($currency_totals)): ?>
                                 <div class="row mb-4">
-                                    <div class="col-12">
-                                        <div class="card shadow-sm border-0">
-                                            <div class="card-header bg-white border-bottom">
-                                                <h5 class="mb-0 text-primary">
-                                                    <i class="feather icon-bar-chart-2 mr-2"></i><?= __('total_debts_summary') ?>
-                                                </h5>
+                                    <div class="col-md-12">
+                                        <div class="card">
+                                            <div class="card-header">
+                                                <h5><i class="feather icon-dollar-sign mr-2"></i><?= __('total_debts_by_currency') ?></h5>
                                             </div>
-                                            <div class="card-body p-3 p-md-4">
-                                                <div class="row">
-                                                    <?php foreach ($currency_totals as $currency => $total): ?>
-                                                    <div class="col-lg-3 col-md-4 col-sm-6 mb-3 mb-md-0">
-                                                        <div class="text-center p-3 bg-light rounded h-100">
-                                                            <h3 class="h4 text-primary mb-1"><?php echo number_format($total, 2); ?></h3>
-                                                            <p class="mb-0 font-weight-bold small"><?php echo htmlspecialchars($currency); ?></p>
-                                                        </div>
-                                                    </div>
-                                                    <?php endforeach; ?>
+                                            <div class="card-body">
+                                                <table class="table table-borderless">
+                                                    <tbody>
+                                                        <?php foreach ($currency_totals as $currency => $total): ?>
+                                                        <tr>
+                                                            <td class="py-3"><i class="feather icon-credit-card mr-2 text-primary"></i><?php echo htmlspecialchars($currency); ?></td>
+                                                            <td class="text-right py-3 font-weight-bold text-success h5"><?php echo number_format($total, 2); ?> <?php echo htmlspecialchars($currency); ?></td>
+                                                        </tr>
+                                                        <?php endforeach; ?>
+                                                    </tbody>
+                                                </table>
+                                                <div class="alert alert-light border mt-3">
+                                                    <p class="text-muted mb-0 text-center">
+                                                        <i class="feather icon-info mr-2"></i><?= __('total_debts_across_all_debtors') ?>
+                                                    </p>
                                                 </div>
                                             </div>
                                         </div>
@@ -150,22 +162,76 @@ try {
                                 </div>
                                 <?php endif; ?>
                                 
+                                <!-- Debtors Summary Section -->
+                                <div class="row mb-4">
+                                    <div class="col-md-12">
+                                        <div class="card">
+                                            <div class="card-header">
+                                                <h5><i class="feather icon-bar-chart-2 mr-2"></i><?= __('debtors_summary') ?></h5>
+                                            </div>
+                                            <div class="card-body">
+                                                <div class="text-center mb-4">
+                                                    <div class="h2 font-weight-bold text-primary">
+                                                        <i class="feather icon-users mr-2"></i><?php echo $active_count; ?>
+                                                        <span class="text-muted h4">/ <?php echo $active_count + $inactive_count; ?></span>
+                                                    </div>
+                                                    <p class="text-muted mb-0"><?= __('total_debtors') ?></p>
+                                                </div>
+
+                                                <div class="progress mb-4" style="height: 30px; border-radius: 15px;">
+                                                    <div class="progress-bar <?php echo $active_count >= ($active_count + $inactive_count) * 0.9 ? 'bg-danger' : ($active_count >= ($active_count + $inactive_count) * 0.75 ? 'bg-warning' : 'bg-success'); ?>"
+                                                         role="progressbar"
+                                                         style="width: <?php echo ($active_count + $inactive_count) > 0 ? min(100, ($active_count / ($active_count + $inactive_count)) * 100) : 0; ?>%; border-radius: 15px;">
+                                                        <span class="font-weight-bold"><?php echo ($active_count + $inactive_count) > 0 ? round(($active_count / ($active_count + $inactive_count)) * 100) : 0; ?>%</span>
+                                                    </div>
+                                                </div>
+
+                                                <hr class="my-4">
+
+                                                <div class="row text-center">
+                                                    <div class="col-6">
+                                                        <div class="h4 mb-1 font-weight-bold text-info"><?php echo $active_count; ?></div>
+                                                        <small class="text-muted"><i class="feather icon-user-check mr-1"></i><?= __('active_debtors') ?></small>
+                                                    </div>
+                                                    <div class="col-6">
+                                                        <div class="h4 mb-1 font-weight-bold text-success"><?php echo $inactive_count; ?></div>
+                                                        <small class="text-muted"><i class="feather icon-user-minus mr-1"></i><?= __('inactive_debtors') ?></small>
+                                                    </div>
+                                                </div>
+
+                                                <hr class="my-4">
+
+                                                <div class="text-center">
+                                                    <span class="badge badge-info badge-pill px-3 py-2 h6">
+                                                        <i class="feather icon-package mr-1"></i><?= __('status') ?>: <?= ucfirst($status_filter) ?>
+                                                    </span>
+                                                </div>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+
                                 <!-- Status Toggle Tabs -->
                                 <div class="row mb-4">
                                     <div class="col-12">
-                                        <div class="card shadow-sm border-0">
-                                            <div class="card-body p-2 p-md-3">
-                                                <ul class="nav nav-tabs card-header-tabs flex-column flex-sm-row" id="debtorTabs" role="tablist">
-                                                    <li class="nav-item">
-                                                        <a class="nav-link <?php echo h($status_filter) === 'active' ? 'active' : ''; ?>" href="debtors.php">
-                                                            <i class="feather icon-user-check mr-1 d-none d-sm-inline"></i>
-                                                            <span class="small"><?= __('active_debtors') ?></span>
+                                        <div class="card">
+                                            <div class="card-header">
+                                                <h5><i class="feather icon-filter mr-2"></i><?= __('status_filter') ?></h5>
+                                            </div>
+                                            <div class="card-body">
+                                                <ul class="nav nav-pills card-header-pills flex-column flex-sm-row" id="debtorTabs" role="tablist">
+                                                    <li class="nav-item flex-fill text-center">
+                                                        <a class="nav-link <?php echo h($status_filter) === 'active' ? 'active' : ''; ?> rounded-pill" href="debtors.php">
+                                                            <i class="feather icon-user-check mr-2"></i>
+                                                            <span><?= __('active_debtors') ?></span>
+                                                            <span class="badge badge-light ml-2"><?php echo $active_count; ?></span>
                                                         </a>
                                                     </li>
-                                                    <li class="nav-item">
-                                                        <a class="nav-link <?php echo h($status_filter) === 'inactive' ? 'active' : ''; ?>" href="debtors.php?status=inactive">
-                                                            <i class="feather icon-user-minus mr-1 d-none d-sm-inline"></i>
-                                                            <span class="small"><?= __('inactive_debtors') ?></span>
+                                                    <li class="nav-item flex-fill text-center">
+                                                        <a class="nav-link <?php echo h($status_filter) === 'inactive' ? 'active' : ''; ?> rounded-pill" href="debtors.php?status=inactive">
+                                                            <i class="feather icon-user-minus mr-2"></i>
+                                                            <span><?= __('inactive_debtors') ?></span>
+                                                            <span class="badge badge-light ml-2"><?php echo $inactive_count; ?></span>
                                                         </a>
                                                     </li>
                                                 </ul>
@@ -175,15 +241,13 @@ try {
                                 </div>
 
                         
-                                <div class="card shadow-sm border-0">
-                                    <div class="card-header bg-white border-bottom">
-                                        <h5 class="mb-0 text-primary">
-                                            <i class="feather icon-users mr-2"></i><?= __(ucfirst($status_filter ?? 'active') . '_debtors') ?>
-                                        </h5>
+                                <div class="card">
+                                    <div class="card-header">
+                                        <h5><i class="feather icon-users mr-2"></i><?= __(ucfirst($status_filter ?? 'active') . '_debtors') ?></h5>
                                     </div>
-                                    <div class="card-body p-3 p-md-4">
+                                    <div class="card-body">
                                         <div class="table-responsive">
-                                            <table class="table table-hover table-striped" id="debtorsTable" width="100%">
+                                            <table class="table table-hover table-striped">
                                                 <thead class="thead-light">
                                                     <tr>
                                                         <th>
@@ -191,17 +255,17 @@ try {
                                                                 <i class="feather icon-user mr-2 text-muted"></i><?= __('name') ?>
                                                             </div>
                                                         </th>
-                                                        <th class="d-none d-md-table-cell">
+                                                        <th>
                                                             <div class="d-flex align-items-center">
                                                                 <i class="feather icon-mail mr-2 text-muted"></i><?= __('email') ?>
                                                             </div>
                                                         </th>
-                                                        <th class="d-none d-lg-table-cell">
+                                                        <th>
                                                             <div class="d-flex align-items-center">
                                                                 <i class="feather icon-phone mr-2 text-muted"></i><?= __('phone') ?>
                                                             </div>
                                                         </th>
-                                                        <th class="d-none d-xl-table-cell">
+                                                        <th>
                                                             <div class="d-flex align-items-center">
                                                                 <i class="feather icon-map-pin mr-2 text-muted"></i><?= __('address') ?>
                                                             </div>
@@ -230,7 +294,7 @@ try {
                                                                         </div>
                                                                     </div>
                                                                 </td>
-                                                                <td class="d-none d-md-table-cell">
+                                                                <td>
                                                                     <?php if (!empty($debtor['email'])): ?>
                                                                         <a href="mailto:<?php echo htmlspecialchars($debtor['email']); ?>" class="text-body">
                                                                             <?php echo htmlspecialchars($debtor['email']); ?>
@@ -239,7 +303,7 @@ try {
                                                                         <span class="text-muted"><?= __('not_provided') ?></span>
                                                                     <?php endif; ?>
                                                                 </td>
-                                                                <td class="d-none d-lg-table-cell">
+                                                                <td>
                                                                     <?php if (!empty($debtor['phone'])): ?>
                                                                         <a href="tel:<?php echo htmlspecialchars($debtor['phone']); ?>" class="text-body">
                                                                             <?php echo htmlspecialchars($debtor['phone']); ?>
@@ -248,7 +312,7 @@ try {
                                                                         <span class="text-muted"><?= __('not_provided') ?></span>
                                                                     <?php endif; ?>
                                                                 </td>
-                                                                <td class="d-none d-xl-table-cell">
+                                                                <td>
                                                                     <?php if (!empty($debtor['address'])): ?>
                                                                         <span class="text-truncate d-inline-block" style="max-width: 150px;" title="<?php echo htmlspecialchars($debtor['address']); ?>">
                                                                             <?php echo htmlspecialchars($debtor['address']); ?>
@@ -438,7 +502,7 @@ try {
                                         <div class="modal-content">
                                             
                                             <!-- Header styled like creditor -->
-                                            <div class="modal-header bg-success text-white">
+                                            <div class="modal-header bg-gradient-success text-white border-0">
                                                 <h5 class="modal-title">
                                                     <i class="feather icon-user-plus mr-2"></i><?= __("add_new_debtor") ?>
                                                 </h5>
@@ -553,7 +617,7 @@ try {
                                                 </div>
 
                                                 <!-- Footer styled like creditor -->
-                                                <div class="modal-footer bg-light">
+                                                <div class="modal-footer bg-light border-0">
                                                     <button type="button" class="btn btn-link" data-dismiss="modal">
                                                         <i class="feather icon-x mr-2"></i><?= __("cancel") ?>
                                                     </button>
@@ -571,7 +635,7 @@ try {
                                     <div class="modal fade" id="paymentModal<?php echo h($debtor['id']); ?>" tabindex="-1" role="dialog" aria-labelledby="paymentModalLabel<?php echo h($debtor['id']); ?>" aria-hidden="true">
                                         <div class="modal-dialog" role="document">
                                             <div class="modal-content">
-                                                <div class="modal-header">
+                                                <div class="modal-header bg-gradient-primary text-white border-0">
                                                     <h5 class="modal-title" id="paymentModalLabel<?php echo h($debtor['id']); ?>"><?= __('process_payment') ?></h5>
                                                     <button type="button" class="close" data-dismiss="modal" aria-label="Close">
                                                         <span aria-hidden="true">&times;</span>
@@ -642,7 +706,7 @@ try {
                                                             </select>
                                                         </div>
                                                     </div>
-                                                    <div class="modal-footer">
+                                                    <div class="modal-footer bg-light border-0">
                                                         <button type="button" class="btn btn-secondary" data-dismiss="modal"><?= __('cancel') ?></button>
                                                         <button type="submit" name="pay" class="btn btn-primary"><?= __('process_payment') ?></button>
                                                     </div>
@@ -655,7 +719,7 @@ try {
                                     <div class="modal fade" id="transactionsModal<?php echo h($debtor['id']); ?>" tabindex="-1" role="dialog" aria-hidden="true">
                                         <div class="modal-dialog modal-lg" role="document">
                                             <div class="modal-content">
-                                                <div class="modal-header">
+                                                <div class="modal-header bg-gradient-info text-white border-0">
                                                     <h5 class="modal-title"><?= __('transactions') ?> - <?php echo htmlspecialchars($debtor['name']); ?></h5>
                                                     <button type="button" class="close" data-dismiss="modal" aria-label="Close">
                                                         <span aria-hidden="true">&times;</span>
@@ -729,7 +793,7 @@ try {
                                                         </table>
                                                     </div>
                                                 </div>
-                                                <div class="modal-footer">
+                                                <div class="modal-footer bg-light border-0">
                                                     <button type="button" class="btn btn-secondary" data-dismiss="modal"><?= __('close') ?></button>
                                                 </div>
                                             </div>
@@ -740,7 +804,7 @@ try {
                                     <div class="modal fade" id="editDebtorModal<?php echo h($debtor['id']); ?>" tabindex="-1" role="dialog" aria-hidden="true">
                                         <div class="modal-dialog" role="document">
                                             <div class="modal-content">
-                                                <div class="modal-header">
+                                                <div class="modal-header bg-gradient-warning text-white border-0">
                                                     <h5 class="modal-title"><?= __('edit_debtor') ?> - <?php echo htmlspecialchars($debtor['name']); ?></h5>
                                                     <button type="button" class="close" data-dismiss="modal" aria-label="Close">
                                                         <span aria-hidden="true">&times;</span>
@@ -807,7 +871,7 @@ try {
                                                             <small class="text-muted"><?= __('these_terms_will_appear_on_the_printed_agreement') ?></small>
                                                         </div>
                                                     </div>
-                                                    <div class="modal-footer">
+                                                    <div class="modal-footer bg-light border-0">
                                                         <button type="button" class="btn btn-secondary" data-dismiss="modal"><?= __('cancel') ?></button>
                                                         <button type="submit" name="edit_debtor" class="btn btn-warning"><?= __('update_debtor') ?></button>
                                                     </div>
@@ -836,12 +900,6 @@ try {
 <script src="../assets/js/pcoded.min.js"></script>
 <!-- SweetAlert2 JS -->
 <script src="../assets/plugins/sweetalert2/sweetalert2.min.js"></script>
-
-<!-- DataTables JS -->
-<script type="text/javascript" src="https://cdn.datatables.net/1.11.5/js/jquery.dataTables.min.js"></script>
-<script type="text/javascript" src="https://cdn.datatables.net/1.11.5/js/dataTables.bootstrap4.min.js"></script>
-<script type="text/javascript" src="https://cdn.datatables.net/responsive/2.2.9/js/dataTables.responsive.min.js"></script>
-<script type="text/javascript" src="https://cdn.datatables.net/responsive/2.2.9/js/responsive.bootstrap4.min.js"></script>
 
 <!-- Custom JS for Debtors Page -->
 
@@ -926,6 +984,229 @@ try {
         </div>
     </div>
 </div>
+
+    <style>
+        /* Enhanced custom styles for better layout and design */
+        .page-header.card {
+            background: linear-gradient(135deg, #4099ff 0%, #2ed8b6 100%);
+            color: #ffffff;
+            border: none;
+            margin-bottom: 20px;
+            padding: 20px !important;
+            box-shadow: 0 4px 12px rgba(0,0,0,0.15);
+            border-radius: 10px;
+        }
+
+        .page-header.card .row {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .page-header.card h5 {
+            color: #ffffff;
+            margin: 0;
+            font-weight: 600;
+        }
+
+        .page-header.card .text-end {
+            text-align: right;
+        }
+
+        .page-header.card .btn {
+            background: rgba(255,255,255,0.2);
+            color: #ffffff;
+            border: 1px solid rgba(255,255,255,0.3);
+            border-radius: 25px;
+            transition: all 0.3s ease;
+        }
+
+        .page-header.card .btn:hover {
+            background: rgba(255,255,255,0.3);
+            border-color: rgba(255,255,255,0.5);
+            transform: translateY(-1px);
+        }
+
+        .card {
+            border-radius: 10px;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+            transition: transform 0.2s ease-in-out, box-shadow 0.2s ease-in-out;
+            border: none;
+        }
+
+        .card:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 4px 16px rgba(0,0,0,0.15);
+        }
+
+        .card-header {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            border-radius: 10px 10px 0 0;
+            padding: 1rem 1.5rem;
+            border: none;
+        }
+
+        .card-header h5 {
+            margin: 0;
+            font-weight: 600;
+            display: flex;
+            align-items: center;
+        }
+
+        .progress {
+            border-radius: 15px;
+            overflow: hidden;
+            box-shadow: inset 0 1px 2px rgba(0,0,0,0.1);
+        }
+
+        .progress-bar {
+            transition: width 0.6s ease;
+        }
+
+        .badge {
+            font-size: 0.85em;
+            padding: 0.5em 0.75em;
+            border-radius: 20px;
+            font-weight: 500;
+        }
+
+        .badge-success {
+            background-color: #28a745;
+        }
+
+        .bg-gradient-success {
+            background: linear-gradient(135deg, #28a745 0%, #2ed8b6 100%);
+        }
+
+        .bg-gradient-primary {
+            background: linear-gradient(135deg, #4099ff 0%, #2ed8b6 100%);
+        }
+
+        .bg-gradient-info {
+            background: linear-gradient(135deg, #17a2b8 0%, #2ed8b6 100%);
+        }
+
+        .bg-gradient-warning {
+            background: linear-gradient(135deg, #ffc107 0%, #2ed8b6 100%);
+        }
+
+        .badge-warning {
+            background-color: #ffc107;
+            color: #212529;
+        }
+
+        .badge-info {
+            background-color: #17a2b8;
+        }
+
+        .table-responsive {
+            border-radius: 10px;
+            overflow-x: auto;
+            -webkit-overflow-scrolling: touch;
+        }
+        
+        .table-responsive table {
+            min-width: 100%;
+            table-layout: auto;
+        }
+
+        .table {
+            margin-bottom: 0;
+        }
+
+        .table thead th {
+            background-color: #f8f9fa;
+            border-bottom: 2px solid #dee2e6;
+            font-weight: 600;
+            color: #495057;
+            padding: 1rem;
+        }
+
+        .table tbody tr:hover {
+            background-color: #f1f3f4;
+        }
+
+        .table tbody td {
+            padding: 1rem;
+            vertical-align: middle;
+        }
+
+        .form-control {
+            border-radius: 8px;
+            border: 1px solid #ced4da;
+            transition: border-color 0.15s ease-in-out, box-shadow 0.15s ease-in-out;
+            padding: 0.75rem;
+        }
+
+        .form-control:focus {
+            border-color: #4099ff;
+            box-shadow: 0 0 0 0.2rem rgba(64, 153, 255, 0.25);
+        }
+
+        .btn-primary {
+            background: linear-gradient(135deg, #4099ff 0%, #2ed8b6 100%);
+            border: none;
+            border-radius: 25px;
+            padding: 0.75rem 2rem;
+            font-weight: 600;
+            transition: all 0.3s ease;
+        }
+
+        .btn-primary:hover {
+            transform: translateY(-1px);
+            box-shadow: 0 4px 12px rgba(64, 153, 255, 0.3);
+        }
+
+        .btn-secondary {
+            border-radius: 25px;
+            padding: 0.75rem 2rem;
+            font-weight: 600;
+            transition: all 0.3s ease;
+        }
+
+        .alert {
+            border-radius: 10px;
+            border: none;
+            padding: 1rem 1.5rem;
+        }
+
+        .alert-info {
+            background: linear-gradient(135deg, #d1ecf1 0%, #bee5eb 100%);
+            color: #0c5460;
+        }
+
+        .alert-success {
+            background: linear-gradient(135deg, #d4edda 0%, #c3e6cb 100%);
+            color: #155724;
+        }
+
+        .alert-danger {
+            background: linear-gradient(135deg, #f8d7da 0%, #f5c6cb 100%);
+            color: #721c24;
+        }
+
+        #estimated_cost {
+            color: #28a745;
+            font-weight: bold;
+        }
+
+        .h2 {
+            font-size: 2.5rem;
+        }
+
+        .h4 {
+            font-size: 1.5rem;
+        }
+
+        .h5 {
+            font-size: 1.25rem;
+        }
+
+        .h6 {
+            font-size: 1rem;
+        }
+    </style>
 
 </body>
 </html>

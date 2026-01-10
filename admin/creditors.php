@@ -30,10 +30,303 @@ $branch_id = $_SESSION['branch_id'];
 require_once '../includes/db.php';
 include '../api/creditor/creditor_handler.php';
 ?>
+ 
+<?php
+// Fetch creditors list
+$status_filter = isset($_GET['status']) && $_GET['status'] === 'inactive' ? 'inactive' : 'active';
+
+try {
+     // Get total count for current status
+     $countStmt = $pdo->prepare("SELECT COUNT(*) as total FROM creditors WHERE status = ? AND tenant_id = ? AND branch_id = ?");
+     $countStmt->execute([$status_filter, $tenant_id, $branch_id]);
+     $total_count = $countStmt->fetch(PDO::FETCH_ASSOC)['total'];
+     
+     // Get counts for both active and inactive creditors
+     $activeCountStmt = $pdo->prepare("SELECT COUNT(*) as count FROM creditors WHERE status = 'active' AND tenant_id = ? AND branch_id = ?");
+     $activeCountStmt->execute([$tenant_id, $branch_id]);
+     $active_count = $activeCountStmt->fetch(PDO::FETCH_ASSOC)['count'];
+     
+     $inactiveCountStmt = $pdo->prepare("SELECT COUNT(*) as count FROM creditors WHERE status = 'inactive' AND tenant_id = ? AND branch_id = ?");
+     $inactiveCountStmt->execute([$tenant_id, $branch_id]);
+     $inactive_count = $inactiveCountStmt->fetch(PDO::FETCH_ASSOC)['count'];
+     
+     // Pagination
+     $items_per_page = 10;
+     $current_page = isset($_GET['page']) ? max(1, intval($_GET['page'])) : 1;
+     $offset = ($current_page - 1) * $items_per_page;
+     $total_pages = ceil($total_count / $items_per_page);
+     
+     // Fetch creditors with pagination
+     $stmt = $pdo->prepare("SELECT * FROM creditors WHERE status = ? AND tenant_id = ? AND branch_id = ? ORDER BY name ASC LIMIT ? OFFSET ?");
+     $stmt->execute([$status_filter, $tenant_id, $branch_id, $items_per_page, $offset]);
+     $creditors = $stmt->fetchAll(PDO::FETCH_ASSOC);
+     
+     // Fetch total credits by currency
+     $currencyStmt = $pdo->prepare("SELECT currency, SUM(balance) as total FROM creditors WHERE status = ? AND tenant_id = ? AND branch_id = ? GROUP BY currency");
+     $currencyStmt->execute([$status_filter, $tenant_id, $branch_id]);
+     $currency_results = $currencyStmt->fetchAll(PDO::FETCH_ASSOC);
+     $currency_totals = [];
+     foreach ($currency_results as $row) {
+         $currency_totals[$row['currency']] = $row['total'];
+     }
+     
+     // Fetch main accounts for the dropdown
+     $mainAcctStmt = $pdo->prepare("SELECT id, name FROM main_account WHERE tenant_id = ? AND branch_id = ? ORDER BY name ASC");
+     $mainAcctStmt->execute([$tenant_id, $branch_id]);
+     $main_accounts = $mainAcctStmt->fetchAll(PDO::FETCH_ASSOC);
+ } catch (PDOException $e) {
+     error_log("Error fetching creditors: " . $e->getMessage());
+     $creditors = [];
+     $total_count = 0;
+     $total_pages = 0;
+     $main_accounts = [];
+     $currency_totals = [];
+     $active_count = 0;
+     $inactive_count = 0;
+ }
+?>
 
 <?php include '../includes/header.php'; ?>
 <link rel="stylesheet" href="../css/general/modal-styles.css">
 <link rel="stylesheet" href="../css/creditors/styles.css">
+
+<style>
+/* Enhanced custom styles for better layout and design */
+.page-header.card {
+    background: linear-gradient(135deg, #4099ff 0%, #2ed8b6 100%);
+    color: #ffffff;
+    border: none;
+    margin-bottom: 20px;
+    padding: 20px !important;
+    box-shadow: 0 4px 12px rgba(0,0,0,0.15);
+    border-radius: 10px;
+}
+
+.page-header.card .row {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+}
+
+.page-header.card h5 {
+    color: #ffffff;
+    margin: 0;
+    font-weight: 600;
+}
+
+.page-header.card .text-end {
+    text-align: right;
+}
+
+.page-header.card .btn {
+    background: rgba(255,255,255,0.2);
+    color: #ffffff;
+    border: 1px solid rgba(255,255,255,0.3);
+    border-radius: 25px;
+    transition: all 0.3s ease;
+}
+
+.page-header.card .btn:hover {
+    background: rgba(255,255,255,0.3);
+    border-color: rgba(255,255,255,0.5);
+    transform: translateY(-1px);
+}
+
+.card {
+    border-radius: 10px;
+    box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+    transition: transform 0.2s ease-in-out, box-shadow 0.2s ease-in-out;
+    border: none;
+}
+
+.card:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 4px 16px rgba(0,0,0,0.15);
+}
+
+.card-header {
+    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    color: white;
+    border-radius: 10px 10px 0 0;
+    padding: 1rem 1.5rem;
+    border: none;
+}
+
+.card-header h5 {
+    margin: 0;
+    font-weight: 600;
+    display: flex;
+    align-items: center;
+}
+
+.progress {
+    border-radius: 15px;
+    overflow: hidden;
+    box-shadow: inset 0 1px 2px rgba(0,0,0,0.1);
+}
+
+.progress-bar {
+    transition: width 0.6s ease;
+}
+
+.badge {
+    font-size: 0.85em;
+    padding: 0.5em 0.75em;
+    border-radius: 20px;
+    font-weight: 500;
+}
+
+.badge-success {
+    background-color: #28a745;
+}
+
+.badge-warning {
+    background-color: #ffc107;
+    color: #212529;
+}
+
+.badge-info {
+    background-color: #17a2b8;
+}
+
+.table-responsive {
+    border-radius: 10px;
+    overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
+}
+
+.table-responsive table {
+    min-width: 100%;
+    table-layout: auto;
+}
+
+.table {
+    margin-bottom: 0;
+}
+
+.table thead th {
+    background-color: #f8f9fa;
+    border-bottom: 2px solid #dee2e6;
+    font-weight: 600;
+    color: #495057;
+    padding: 1rem;
+}
+
+.table tbody tr:hover {
+    background-color: #f1f3f4;
+}
+
+.table tbody td {
+    padding: 1rem;
+    vertical-align: middle;
+}
+
+.form-control {
+    border-radius: 8px;
+    border: 1px solid #ced4da;
+    transition: border-color 0.15s ease-in-out, box-shadow 0.15s ease-in-out;
+    padding: 0.75rem;
+}
+
+.form-control:focus {
+    border-color: #4099ff;
+    box-shadow: 0 0 0 0.2rem rgba(64, 153, 255, 0.25);
+}
+
+.btn-primary {
+    background: linear-gradient(135deg, #4099ff 0%, #2ed8b6 100%);
+    border: none;
+    border-radius: 25px;
+    padding: 0.75rem 2rem;
+    font-weight: 600;
+    transition: all 0.3s ease;
+}
+
+.btn-primary:hover {
+    transform: translateY(-1px);
+    box-shadow: 0 4px 12px rgba(64, 153, 255, 0.3);
+}
+
+.btn-secondary {
+    border-radius: 25px;
+    padding: 0.75rem 2rem;
+    font-weight: 600;
+    transition: all 0.3s ease;
+}
+
+.alert {
+    border-radius: 10px;
+    border: none;
+    padding: 1rem 1.5rem;
+}
+
+.alert-info {
+    background: linear-gradient(135deg, #d1ecf1 0%, #bee5eb 100%);
+    color: #0c5460;
+}
+
+.alert-success {
+    background: linear-gradient(135deg, #d4edda 0%, #c3e6cb 100%);
+    color: #155724;
+}
+
+.alert-danger {
+    background: linear-gradient(135deg, #f8d7da 0%, #f5c6cb 100%);
+    color: #721c24;
+}
+
+.nav-pills .nav-link {
+    border-radius: 25px;
+    padding: 0.75rem 1.5rem;
+    font-weight: 600;
+    transition: all 0.3s ease;
+    border: 1px solid transparent;
+}
+
+.nav-pills .nav-link.active {
+    background: linear-gradient(135deg, #4099ff 0%, #2ed8b6 100%);
+    color: white;
+    border: none;
+    box-shadow: 0 4px 12px rgba(64, 153, 255, 0.3);
+}
+
+.nav-pills .nav-link:hover {
+    background-color: #f8f9fa;
+    border-color: #dee2e6;
+}
+
+.bg-gradient-success {
+    background: linear-gradient(135deg, #28a745 0%, #20c997 100%);
+}
+
+.bg-gradient-primary {
+    background: linear-gradient(135deg, #007bff 0%, #6610f2 100%);
+}
+
+.bg-gradient-info {
+    background: linear-gradient(135deg, #17a2b8 0%, #20c997 100%);
+}
+
+.bg-gradient-warning {
+    background: linear-gradient(135deg, #ffc107 0%, #fd7e14 100%);
+}
+
+.h2 {
+    font-size: 2.5rem;
+}
+
+.h4 {
+    font-size: 1.5rem;
+}
+
+.h5 {
+    font-size: 1.25rem;
+}
+
+.h6 {
+    font-size: 1rem;
+}
+</style>
 <!-- Add this right before the closing </body> tag -->
 <!-- Toast Container -->
 <div class="toast-container"></div>
@@ -51,9 +344,6 @@ include '../api/creditor/creditor_handler.php';
     <?php endif; ?>
 </script>
 
-    <!-- DataTables CSS -->
-    <link rel="stylesheet" href="https://cdn.datatables.net/1.11.5/css/dataTables.bootstrap4.min.css">
-    <link rel="stylesheet" href="https://cdn.datatables.net/responsive/2.2.9/css/responsive.bootstrap4.min.css">
 
     <!-- [ Main Content ] start -->
     <div class="pcoded-main-container">
@@ -62,9 +352,19 @@ include '../api/creditor/creditor_handler.php';
                     <div class="main-body">
                         <div class="page-wrapper">
                             <div class="container mt-4">
-                                <div class="d-flex justify-content-between align-items-center mb-4">
-                                    <h2><?= __("creditors_management") ?></h2>
-                                    
+                                <!-- Page Header -->
+                                <div class="page-header card">
+                                    <div class="row align-items-center">
+                                        <div class="col-md-6">
+                                            <h5 class="mb-0"><i class="feather icon-users mr-2"></i><?= __('creditors_management') ?></h5>
+                                            <p class="mb-0 mt-1" style="font-size: 14px; opacity: 0.9;">Manage your creditors and track payments</p>
+                                        </div>
+                                        <div class="col-md-6 text-end">
+                                            <button type="button" class="btn btn-success" data-toggle="modal" data-target="#addCreditorModal">
+                                                <i class="feather icon-plus mr-1"></i><?= __('add_new_creditor') ?>
+                                            </button>
+                                        </div>
+                                    </div>
                                 </div>
                                 
                                 <?php if (isset($success_message)): ?>
@@ -75,47 +375,108 @@ include '../api/creditor/creditor_handler.php';
                                     <div class="alert alert-danger"><?php echo h($error_message); ?></div>
                                 <?php endif; ?>
                                 
-                                <!-- Total Credits by Currency Section -->
+                                <!-- Creditors Summary Section -->
                                 <?php if (!empty($currency_totals)): ?>
-                                <div class="row">
-                                    <?php foreach ($currency_totals as $currency => $total): ?>
-                                    <div class="col-md-3 col-sm-6 mb-4">
-                                        <div class="summary-card h-100">
-                                            <div class="d-flex align-items-center">
-                                                <div class="currency-icon me-3">
-                                                    <i class="feather icon-credit-card" style="font-size: 2rem;"></i>
-                                                </div>
-                                                <div>
-                                                    <h3 class="mb-1"><?php echo number_format($total, 2); ?></h3>
-                                                    <p class="mb-0 text-white-50"><?php echo htmlspecialchars($currency); ?> Total</p>
-                                                </div>
+                                <div class="row mb-4">
+                                    <div class="col-md-4">
+                                        <div class="card">
+                                            <div class="card-header">
+                                                <h5><i class="feather icon-bar-chart-2 mr-2"></i><?= __('creditors_summary') ?></h5>
                                             </div>
-                                            <div class="mt-3">
-                                                <div class="progress" style="height: 4px; background: rgba(255,255,255,0.2);">
-                                                    <div class="progress-bar bg-white" role="progressbar" style="width: 100%" aria-valuenow="100" aria-valuemin="0" aria-valuemax="100"></div>
+                                            <div class="card-body">
+                                                <div class="text-center mb-4">
+                                                    <div class="h2 font-weight-bold text-primary">
+                                                        <i class="feather icon-users mr-2"></i><?php echo $active_count; ?>
+                                                        <span class="text-muted h4">/ <?php echo $active_count + $inactive_count; ?></span>
+                                                    </div>
+                                                    <p class="text-muted mb-0"><?= __('creditors_count') ?></p>
+                                                </div>
+
+                                                <div class="progress mb-4" style="height: 30px; border-radius: 15px;">
+                                                    <div class="progress-bar <?php echo $active_count >= ($active_count + $inactive_count) * 0.9 ? 'bg-danger' : ($active_count >= ($active_count + $inactive_count) * 0.75 ? 'bg-warning' : 'bg-success'); ?>"
+                                                         role="progressbar"
+                                                         style="width: <?php echo ($active_count + $inactive_count) > 0 ? min(100, ($active_count / ($active_count + $inactive_count)) * 100) : 0; ?>%; border-radius: 15px;">
+                                                        <span class="font-weight-bold"><?php echo ($active_count + $inactive_count) > 0 ? round(($active_count / ($active_count + $inactive_count)) * 100) : 0; ?>%</span>
+                                                    </div>
+                                                </div>
+
+                                                <hr class="my-4">
+
+                                                <div class="row text-center">
+                                                    <div class="col-6">
+                                                        <div class="h4 mb-1 font-weight-bold text-info"><?php echo $active_count; ?></div>
+                                                        <small class="text-muted"><i class="feather icon-user-check mr-1"></i><?= __('active_creditors') ?></small>
+                                                    </div>
+                                                    <div class="col-6">
+                                                        <div class="h4 mb-1 font-weight-bold text-success"><?php echo $inactive_count; ?></div>
+                                                        <small class="text-muted"><i class="feather icon-user-minus mr-1"></i><?= __('inactive_creditors') ?></small>
+                                                    </div>
+                                                </div>
+
+                                                <hr class="my-4">
+
+                                                <div class="text-center">
+                                                    <span class="badge badge-info badge-pill px-3 py-2 h6">
+                                                        <i class="feather icon-package mr-1"></i><?= __('status') ?>: <?= ucfirst($status_filter) ?>
+                                                    </span>
                                                 </div>
                                             </div>
                                         </div>
                                     </div>
-                                    <?php endforeach; ?>
+
+                                    <div class="col-md-8">
+                                        <div class="card">
+                                            <div class="card-header">
+                                                <h5><i class="feather icon-dollar-sign mr-2"></i><?= __('total_credits_by_currency') ?></h5>
+                                            </div>
+                                            <div class="card-body">
+                                                <table class="table table-borderless">
+                                                    <tbody>
+                                                        <?php foreach ($currency_totals as $currency => $total): ?>
+                                                        <tr>
+                                                            <td class="py-3"><i class="feather icon-credit-card mr-2 text-primary"></i><?php echo htmlspecialchars($currency); ?></td>
+                                                            <td class="text-right py-3 font-weight-bold text-success h5"><?php echo number_format($total, 2); ?> <?php echo htmlspecialchars($currency); ?></td>
+                                                        </tr>
+                                                        <?php endforeach; ?>
+                                                    </tbody>
+                                                </table>
+                                                <div class="alert alert-light border mt-3">
+                                                    <p class="text-muted mb-0 text-center">
+                                                        <i class="feather icon-info mr-2"></i><?= __('total_credits_across_all_creditors') ?>
+                                                    </p>
+                                                </div>
+                                            </div>
+                                        </div>
+                                    </div>
                                 </div>
                                 <?php endif; ?>
                                 
                                 <!-- Status Toggle Tabs -->
-                                <div class="card mb-4">
-                                    <div class="card-body p-0">
-                                        <ul class="nav nav-tabs nav-fill">
-                                            <li class="nav-item">
-                                                <a class="nav-link <?php echo h($status_filter) === 'active' ? 'active' : ''; ?>" href="creditors.php">
-                                                    <i class="feather icon-user-check mr-2"></i><?= __("active_creditors") ?>
-                                                </a>
-                                            </li>
-                                            <li class="nav-item">
-                                                <a class="nav-link <?php echo h($status_filter) === 'inactive' ? 'active' : ''; ?>" href="creditors.php?status=inactive">
-                                                    <i class="feather icon-user-minus mr-2"></i><?= __("inactive_creditors") ?>
-                                                </a>
-                                            </li>
-                                        </ul>
+                                <div class="row mb-4">
+                                    <div class="col-12">
+                                        <div class="card">
+                                            <div class="card-header">
+                                                <h5><i class="feather icon-filter mr-2"></i><?= __('status_filter') ?></h5>
+                                            </div>
+                                            <div class="card-body">
+                                                <ul class="nav nav-pills card-header-pills flex-column flex-sm-row" id="creditorTabs" role="tablist">
+                                                    <li class="nav-item flex-fill text-center">
+                                                        <a class="nav-link <?php echo h($status_filter) === 'active' ? 'active' : ''; ?> rounded-pill" href="creditors.php">
+                                                            <i class="feather icon-user-check mr-2"></i>
+                                                            <span><?= __('active_creditors') ?></span>
+                                                            <span class="badge badge-light ml-2"><?php echo $active_count; ?></span>
+                                                        </a>
+                                                    </li>
+                                                    <li class="nav-item flex-fill text-center">
+                                                        <a class="nav-link <?php echo h($status_filter) === 'inactive' ? 'active' : ''; ?> rounded-pill" href="creditors.php?status=inactive">
+                                                            <i class="feather icon-user-minus mr-2"></i>
+                                                            <span><?= __('inactive_creditors') ?></span>
+                                                            <span class="badge badge-light ml-2"><?php echo $inactive_count; ?></span>
+                                                        </a>
+                                                    </li>
+                                                </ul>
+                                            </div>
+                                        </div>
                                     </div>
                                 </div>
                                 
@@ -131,7 +492,7 @@ include '../api/creditor/creditor_handler.php';
                                     </div>
                                     <div class="card-body">
                                         <div class="table-responsive">
-                                            <table class="table table-hover" id="creditorsTable" width="100%">
+                                            <table class="table table-hover">
                                                 <thead>
                                                     <tr>
                                                         <th><?= __("name") ?></th>
@@ -140,7 +501,7 @@ include '../api/creditor/creditor_handler.php';
                                                         <th><?= __("address") ?></th>
                                                         <th><?= __("balance") ?></th>
                                                         <th><?= __("currency") ?></th>
-                                                        <th class="text-center no-sort"><?= __("actions") ?></th>
+                                                        <th class="text-center"><?= __("actions") ?></th>
                                                     </tr>
                                                 </thead>
                                                 <tbody>
@@ -263,6 +624,82 @@ include '../api/creditor/creditor_handler.php';
                                                     <?php endif; ?>
                                                 </tbody>
                                             </table>
+                                        </div>
+                                        
+                                        <!-- Pagination -->
+                                        <div class="mt-3 mt-md-4">
+                                            <nav aria-label="Page navigation">
+                                                <ul class="pagination pagination-sm justify-content-center flex-wrap">
+                                                    <?php
+                                                    // Previous button
+                                                    if ($current_page > 1): ?>
+                                                        <li class="page-item">
+                                                            <a class="page-link" href="?page=<?= $current_page - 1 ?><?= $status_filter === 'inactive' ? '&status=inactive' : '' ?>" aria-label="Previous">
+                                                                <span aria-hidden="true">«</span>
+                                                            </a>
+                                                        </li>
+                                                    <?php else: ?>
+                                                        <li class="page-item disabled">
+                                                            <a class="page-link" href="#" aria-label="Previous">
+                                                                <span aria-hidden="true">«</span>
+                                                            </a>
+                                                        </li>
+                                                    <?php endif;
+                                                    
+                                                    // Page numbers
+                                                    $start_page = max(1, $current_page - 2);
+                                                    $end_page = min($total_pages, $current_page + 2);
+                                                    
+                                                    if ($start_page > 1): ?>
+                                                        <li class="page-item">
+                                                            <a class="page-link" href="?page=1<?= $status_filter === 'inactive' ? '&status=inactive' : '' ?>">1</a>
+                                                        </li>
+                                                        <?php if ($start_page > 2): ?>
+                                                            <li class="page-item disabled">
+                                                                <a class="page-link" href="#">...</a>
+                                                            </li>
+                                                        <?php endif;
+                                                    endif;
+                                                    
+                                                    for ($i = $start_page; $i <= $end_page; $i++): ?>
+                                                        <li class="page-item <?= $i === $current_page ? 'active' : '' ?>">
+                                                            <a class="page-link" href="?page=<?= $i ?><?= $status_filter === 'inactive' ? '&status=inactive' : '' ?>"><?= $i ?></a>
+                                                        </li>
+                                                    <?php endfor;
+                                                    
+                                                    if ($end_page < $total_pages):
+                                                        if ($end_page < $total_pages - 1): ?>
+                                                            <li class="page-item disabled">
+                                                                <a class="page-link" href="#">...</a>
+                                                            </li>
+                                                        <?php endif; ?>
+                                                        <li class="page-item">
+                                                            <a class="page-link" href="?page=<?= $total_pages ?><?= $status_filter === 'inactive' ? '&status=inactive' : '' ?>"><?= $total_pages ?></a>
+                                                        </li>
+                                                    <?php endif;
+                                                    
+                                                    // Next button
+                                                    if ($current_page < $total_pages): ?>
+                                                        <li class="page-item">
+                                                            <a class="page-link" href="?page=<?= $current_page + 1 ?><?= $status_filter === 'inactive' ? '&status=inactive' : '' ?>" aria-label="Next">
+                                                                <span aria-hidden="true">»</span>
+                                                            </a>
+                                                        </li>
+                                                    <?php else: ?>
+                                                        <li class="page-item disabled">
+                                                            <a class="page-link" href="#" aria-label="Next">
+                                                                <span aria-hidden="true">»</span>
+                                                            </a>
+                                                        </li>
+                                                    <?php endif; ?>
+                                                </ul>
+                                            </nav>
+                                            <div class="text-center mt-2">
+                                                <small class="text-muted">
+                                                    <?= __('showing') ?> <?= count($creditors) ?> <?= __('of') ?> <?= $total_count ?> <?= __('creditors') ?> |
+                                                    <?= __('page') ?> <?= $current_page ?> <?= __('of') ?> <?= $total_pages ?>
+                                                </small>
+                                            </div>
                                         </div>
                                     </div>
                                 </div>
@@ -400,67 +837,6 @@ include '../api/creditor/creditor_handler.php';
     <script src="../assets/plugins/bootstrap/js/bootstrap.min.js"></script>
     <script src="../assets/js/pcoded.min.js"></script>
     
-    <!-- DataTables JS -->
-    <script type="text/javascript" src="https://cdn.datatables.net/1.11.5/js/jquery.dataTables.min.js"></script>
-    <script type="text/javascript" src="https://cdn.datatables.net/1.11.5/js/dataTables.bootstrap4.min.js"></script>
-    <script type="text/javascript" src="https://cdn.datatables.net/responsive/2.2.9/js/dataTables.responsive.min.js"></script>
-    <script type="text/javascript" src="https://cdn.datatables.net/responsive/2.2.9/js/responsive.bootstrap4.min.js"></script>
-    
-    <script>
-    $(document).ready(function() {
-        // Initialize DataTable for creditors
-        $('#creditorsTable').DataTable({
-            responsive: true,
-            language: {
-                search: "<?= __('search') ?>:",
-                lengthMenu: "<?= __('show') ?> _MENU_ <?= __('entries') ?>",
-                info: "<?= __('showing') ?> _START_ <?= __('to') ?> _END_ <?= __('of') ?> _TOTAL_ <?= __('entries') ?>",
-                infoEmpty: "<?= __('showing') ?> 0 <?= __('to') ?> 0 <?= __('of') ?> 0 <?= __('entries') ?>",
-                infoFiltered: "(<?= __('filtered_from') ?> _MAX_ <?= __('total_entries') ?>)",
-                paginate: {
-                    first: "<?= __('first') ?>",
-                    last: "<?= __('last') ?>",
-                    next: "<?= __('next') ?>",
-                    previous: "<?= __('previous') ?>"
-                }
-            },
-            pageLength: 10,
-            lengthMenu: [[5, 10, 25, 50, -1], [5, 10, 25, 50, "<?= __('all') ?>"]],
-            columnDefs: [
-                { targets: 'no-sort', orderable: false }
-            ],
-            order: [[0, 'asc']]
-        });
-
-        // Initialize DataTables for transaction tables
-        $('.transaction-table').each(function() {
-            $(this).DataTable({
-                responsive: true,
-                language: {
-                    search: "<?= __('search') ?>:",
-                    lengthMenu: "<?= __('show') ?> _MENU_",
-                    info: "<?= __('showing') ?> _START_ <?= __('to') ?> _END_ <?= __('of') ?> _TOTAL_",
-                    infoEmpty: "<?= __('no_records') ?>",
-                    paginate: {
-                        next: "<?= __('next') ?>",
-                        previous: "<?= __('previous') ?>"
-                    }
-                },
-                pageLength: 5,
-                lengthMenu: [[5, 10, 25, -1], [5, 10, 25, "<?= __('all') ?>"]],
-                columnDefs: [
-                    { targets: 'no-sort', orderable: false }
-                ],
-                order: [[0, 'desc']]
-            });
-        });
-
-        // Handle modal open events to fix DataTables layout issues
-        $('body').on('shown.bs.modal', function(e) {
-            $($.fn.dataTable.tables(true)).DataTable().columns.adjust().responsive.recalc();
-        });
-    });
-    </script>
 
 
     <script src="../js/creditor/modal_init.js"></script>
@@ -480,7 +856,7 @@ include '../api/creditor/creditor_handler.php';
                 </div>
                 <div class="modal-body">
                     <div class="table-responsive">
-                        <table class="table table-bordered table-striped transaction-table">
+                        <table class="table table-bordered table-striped">
                             <thead>
                                 <tr>
                                     <th><?= __("date") ?></th>
@@ -488,7 +864,7 @@ include '../api/creditor/creditor_handler.php';
                                     <th><?= __("type") ?></th>
                                     <th><?= __("description") ?></th>
                                     <th><?= __("receipt") ?></th>
-                                    <th class="no-sort"><?= __("actions") ?></th>
+                                    <th><?= __("actions") ?></th>
                                 </tr>
                             </thead>
                             <tbody>

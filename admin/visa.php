@@ -540,18 +540,21 @@ foreach ($visas as $key => $visa) {
             </div>
         </div>
     </div>
-
+    <?php include '../includes/admin_footer.php'; ?>
+    <?php include '../modals/visa/details_modal.php'; ?>
     <?php include '../modals/visa/add_visa_modal.php'; ?>
     <?php include '../modals/visa/edit_visa_modal.php'; ?>
-    <?php include '../modals/visa/transaction_modal.php'; ?>
-    <?php include '../modals/visa/edit_transaction_modal.php'; ?>
     <?php include '../modals/visa/refund_modal.php'; ?>
-    <?php include '../modals/visa/details_modal.php'; ?>
     <?php include '../modals/visa/cancellation_modal.php'; ?>
     <?php include '../modals/visa/reapply_modal.php'; ?>
     <?php include '../modals/visa/multi_visa_modal.php'; ?>
+    <?php include '../modals/visa/transaction_modal.php'; ?>
+    <?php include '../modals/visa/edit_transaction_modal.php'; ?>
+    
+    
 
-    <?php include '../includes/admin_footer.php'; ?>
+
+    
 
 
 

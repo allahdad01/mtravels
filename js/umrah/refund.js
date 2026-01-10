@@ -47,10 +47,10 @@ function toggleRefundAmount() {
 
 // Handle refund processing
 $(document).ready(function() {
-    
+
     // Direct click handler
     $(document).on('click', '#processRefundBtn', function() {
-        
+
         // Get form data
         const bookingId = $('#refund_booking_id').val();
         const refundType = $('#refund_type').val();
@@ -59,6 +59,7 @@ $(document).ready(function() {
         const reason = $('#refund_reason').val();
         const currency = $('#refund_currency').val();
         const originalProfit = parseFloat($('#refund_original_profit').val());
+        const csrfToken = $('#refundForm input[name="csrf_token"]').val();
         
         
         // Validate required fields
@@ -93,7 +94,8 @@ $(document).ready(function() {
                 refund_amount: refundAmount,
                 reason: reason,
                 currency: currency,
-                original_profit: originalProfit
+                original_profit: originalProfit,
+                csrf_token: csrfToken
             },
             success: function(response) {
                 console.log('AJAX success response:', response);

@@ -168,6 +168,75 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['add_debtor'])) {
     }
 }
 
+// Handle debtor deactivation
+if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['deactivate_debtor'])) {
+    $debtor_id = $_POST['debtor_id'];
+    
+    try {
+        // Check if debtor exists and belongs to current tenant/branch
+        $stmt = $pdo->prepare("SELECT * FROM debtors WHERE id = ? AND tenant_id = ? AND branch_id = ?");
+        $stmt->execute([$debtor_id, $tenant_id, $branch_id]);
+        $debtor = $stmt->fetch(PDO::FETCH_ASSOC);
+        
+        if (!$debtor) {
+            throw new Exception("Debtor not found");
+        }
+        
+        if ($debtor['status'] === 'inactive') {
+            throw new Exception("Debtor is already inactive");
+        }
+        
+        // Check if debtor has zero balance (required for deactivation)
+        if ($debtor['balance'] > 0) {
+            throw new Exception("Cannot deactivate debtor with outstanding balance. Please settle the balance first.");
+        }
+        
+        // Deactivate the debtor
+        $updateStmt = $pdo->prepare("UPDATE debtors SET status = 'inactive' WHERE id = ? AND tenant_id = ? AND branch_id = ?");
+        $updateStmt->execute([$debtor_id, $tenant_id, $branch_id]);
+        
+        $_SESSION['success_message'] = "Debtor deactivated successfully!";
+        header('Location: ' . $redirect_url);
+        exit();
+    } catch (Exception $e) {
+        $_SESSION['error_message'] = "Error deactivating debtor: " . $e->getMessage();
+        header('Location: ' . $redirect_url);
+        exit();
+    }
+}
+
+// Handle debtor reactivation
+if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['reactivate_debtor'])) {
+    $debtor_id = $_POST['debtor_id'];
+    
+    try {
+        // Check if debtor exists and belongs to current tenant/branch
+        $stmt = $pdo->prepare("SELECT * FROM debtors WHERE id = ? AND tenant_id = ? AND branch_id = ?");
+        $stmt->execute([$debtor_id, $tenant_id, $branch_id]);
+        $debtor = $stmt->fetch(PDO::FETCH_ASSOC);
+        
+        if (!$debtor) {
+            throw new Exception("Debtor not found");
+        }
+        
+        if ($debtor['status'] === 'active') {
+            throw new Exception("Debtor is already active");
+        }
+        
+        // Reactivate the debtor
+        $updateStmt = $pdo->prepare("UPDATE debtors SET status = 'active' WHERE id = ? AND tenant_id = ? AND branch_id = ?");
+        $updateStmt->execute([$debtor_id, $tenant_id, $branch_id]);
+        
+        $_SESSION['success_message'] = "Debtor reactivated successfully!";
+        header('Location: ' . $redirect_url);
+        exit();
+    } catch (Exception $e) {
+        $_SESSION['error_message'] = "Error reactivating debtor: " . $e->getMessage();
+        header('Location: ' . $redirect_url);
+        exit();
+    }
+}
+
 // Handle payment submission
 if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['pay'])) {
     $debtor_id = $_POST['debtor_id'];

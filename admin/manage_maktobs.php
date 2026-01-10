@@ -272,346 +272,484 @@ include '../includes/header.php';
 
 ?>
     <link rel="stylesheet" href="../css/general/modal-styles.css">
-<style>
-/* Apply gradient background to card headers matching the sidebar */
-.card-header {
-    background: linear-gradient(135deg, #4099ff 0%, #2ed8b6 100%) !important;
-    color: #ffffff !important;
-    border-bottom: none !important;
-}
-
-.card-header h5 {
-    color: #ffffff !important;
-    margin-bottom: 0 !important;
-}
-
-.card-header .card-header-right {
-    color: #ffffff !important;
-}
-
-.card-header .card-header-right .btn {
-    color: #ffffff !important;
-    border-color: rgba(255, 255, 255, 0.3) !important;
-}
-
-.card-header .card-header-right .btn:hover {
-    background: rgba(255, 255, 255, 0.1) !important;
-    border-color: rgba(255, 255, 255, 0.5) !important;
-}
-</style>
 <div class="pcoded-main-container">
-    <div class="pcoded-content">
-        <div class="page-header">
-            <div class="page-block">
-                <div class="row align-items-center">
-                    <div class="col-md-12">
-                        <div class="page-header-title">
-                            <h5 class="m-b-10"><?= __('manage_letters') ?></h5>
-                        </div>
-                        <ul class="breadcrumb">
-                            <li class="breadcrumb-item"><a href="index.php"><i class="feather icon-home"></i></a></li>
-                            <li class="breadcrumb-item"><a href="dashboard.php"><?= __('dashboard') ?></a></li>
-                            <li class="breadcrumb-item"><a href="javascript:"><?= __('manage_letters') ?></a></li>
-                        </ul>
-                    </div>
-                </div>
-            </div>
-        </div>
+    <div class="pcoded-wrapper">
+        <div class="pcoded-content">
+            <div class="pcoded-inner-content">
+                <div class="main-body">
+                    <div class="page-wrapper">
+                        <!-- [ Main Content ] start -->
+                        <div class="main-content">
+                            <div class="page-header card">
+                                <div class="row align-items-center">
+                                    <div class="col-md-6">
+                                        <h5 class="mb-0"><i class="feather icon-file-text mr-2"></i><?php echo __('manage_letters'); ?></h5>
+                                        <p class="mb-0 mt-1" style="font-size: 14px; opacity: 0.9;"><?php echo __('manage_and_view_all_letters'); ?></p>
+                                    </div>
+                                    <div class="col-md-6 text-end">
+                                        <a href="dashboard.php" class="btn btn-outline-secondary btn-sm">
+                                            <i class="feather icon-arrow-left mr-1"></i><?php echo __('back_to_dashboard'); ?>
+                                        </a>
+                                    </div>
+                                </div>
+                            </div>
 
-        <div class="row">
-            <div class="col-md-12">
-                <?php if (isset($error_message)): ?>
-                    <div class="alert alert-danger alert-dismissible fade show" role="alert">
-                        <strong>Error:</strong> <?php echo htmlspecialchars($error_message); ?>
-                        <button type="button" class="close" data-dismiss="alert" aria-label="Close">
-                            <span aria-hidden="true">&times;</span>
-                        </button>
-                    </div>
-                <?php endif; ?>
-                <?php if (isset($success_message)): ?>
-                    <div class="alert alert-success alert-dismissible fade show" role="alert">
-                        <strong>Success:</strong> <?php echo nl2br(htmlspecialchars($success_message)); ?>
-                        <button type="button" class="close" data-dismiss="alert" aria-label="Close">
-                            <span aria-hidden="true">&times;</span>
-                        </button>
-                    </div>
-                <?php endif; ?>
-
-                <!-- Create Maktob Card -->
-                <div class="card">
-                    <div class="card-header">
-                        <h5>
-                            <i class="feather icon-file-text mr-2"></i>
-                            <?= __('create_new_letter') ?>
-                        </h5>
-                    </div>
-                    <div class="card-body">
-                        <form method="POST">
                             <div class="row">
-                                <div class="col-md-6">
-                                    <div class="form-group">
-                                        <label for="maktob_number"><?= __('letter_number') ?></label>
-                                        <input type="text" class="form-control" id="maktob_number" name="maktob_number" required>
-                                    </div>
-                                    <div class="form-group">
-                                        <label for="maktob_date"><?= __('letter_date') ?></label>
-                                        <input type="date" class="form-control" id="maktob_date" name="maktob_date" required>
-                                    </div>
-                                    <div class="form-group">
-                                        <label for="company_name"><?= __('company_name') ?></label>
-                                        <input type="text" class="form-control" id="company_name" name="company_name" required>
-                                    </div>
-                                    <div class="form-group">
-                                        <label for="language"><?= __('language') ?></label>
-                                        <select class="form-control" id="language" name="language" required>
-                                            <option value="english"><?= __('english') ?></option>
-                                            <option value="dari"><?= __('dari') ?></option>
-                                            <option value="pashto"><?= __('pashto') ?></option>
-                                        </select>
-                                    </div>
-                                </div>
-                                <div class="col-md-6">
-                                    <div class="form-group">
-                                        <label for="subject"><?= __('subject') ?></label>
-                                        <input type="text" class="form-control" id="subject" name="subject" required>
-                                    </div>
-                                    <div class="form-group">
-                                        <label for="content"><?= __('content') ?></label>
-                                        <textarea class="form-control" id="content" name="content" rows="5" required></textarea>
-                                    </div>
-                                    <button type="submit" class="btn btn-primary float-right">
-                                        <i class="feather icon-save mr-2"></i><?= __('create_letter') ?>
-                                    </button>
-                                </div>
-                            </div>
-                        </form>
-                    </div>
-                </div>
-
-                <!-- Recent Maktobs Card -->
-                <div class="card">
-                    <div class="card-header">
-                        <div class="d-flex justify-content-between align-items-center">
-                            <div>
-                                <h5 class="mb-0"><i class="feather icon-clock mr-2"></i><?= __('recent_letters') ?></h5>
-                                <small class="text-muted">Manage and view all your letters</small>
-                            </div>
-                        </div>
-                    </div>
-
-                    <!-- Search Bar -->
-                    <div class="card-body border-bottom pb-3">
-                        <form method="GET" class="form-inline">
-                            <div class="form-group mb-0 flex-grow-1">
-                                <input 
-                                    type="text" 
-                                    name="search" 
-                                    class="form-control w-100" 
-                                    placeholder="Search by letter number, subject, company..." 
-                                    value="<?= htmlspecialchars($search_query) ?>"
-                                >
-                            </div>
-                            <button type="submit" class="btn btn-info ml-2">
-                                <i class="feather icon-search"></i> <?= __('search') ?>
-                            </button>
-                            <?php if (!empty($search_query)): ?>
-                                <a href="manage_maktobs.php" class="btn btn-secondary ml-2">
-                                    <i class="feather icon-x"></i> <?= __('clear') ?>
-                                </a>
-                            <?php endif; ?>
-                        </form>
-                    </div>
-
-                    <div class="card-body p-0">
-                        <!-- Pagination Info -->
-                        <div class="row mb-3 p-3">
-                            <div class="col-md-6">
-                                <small class="text-muted">
-                                    <?php if ($total_records > 0): ?>
-                                        Showing <?= $offset + 1 ?> to <?= min($offset + $items_per_page, $total_records) ?> of <?= $total_records ?> entries
-                                    <?php else: ?>
-                                        <?= __('no_letters_found') ?>
+                                <div class="col-md-12">
+                                    <?php if (isset($error_message)): ?>
+                                        <div class="alert alert-danger alert-dismissible fade show" role="alert">
+                                            <strong>Error:</strong> <?php echo htmlspecialchars($error_message); ?>
+                                            <button type="button" class="close" data-dismiss="alert" aria-label="Close">
+                                                <span aria-hidden="true">&times;</span>
+                                            </button>
+                                        </div>
                                     <?php endif; ?>
-                                </small>
-                            </div>
-                        </div>
+                                    <?php if (isset($success_message)): ?>
+                                        <div class="alert alert-success alert-dismissible fade show" role="alert">
+                                            <strong>Success:</strong> <?php echo nl2br(htmlspecialchars($success_message)); ?>
+                                            <button type="button" class="close" data-dismiss="alert" aria-label="Close">
+                                                <span aria-hidden="true">&times;</span>
+                                            </button>
+                                        </div>
+                                    <?php endif; ?>
 
-                        <div class="table-responsive">
-                            <table class="table table-hover">
-                                <thead>
-                                    <tr>
-                                        <th><?= __('letter_number') ?></th>
-                                        <th><?= __('date') ?></th>
-                                        <th><?= __('subject') ?></th>
-                                        <th><?= __('company_name') ?></th>
-                                        <th><?= __('status') ?></th>
-                                        <th><?= __('language') ?></th>
-                                        <th><?= __('created_by') ?></th>
-                                        <th><?= __('actions') ?></th>
-                                    </tr>
-                                </thead>
-                                <tbody>
-                                    <?php if ($recent_maktobs_result !== null && $total_records > 0): ?>
-                                        <?php while ($row = $recent_maktobs_result->fetch_assoc()): ?>
-                                    <tr>
-                                        <td><?php echo htmlspecialchars($row['maktob_number']); ?></td>
-                                        <td><?php echo date('Y-m-d', strtotime($row['maktob_date'])); ?></td>
-                                        <td><?php echo htmlspecialchars($row['subject']); ?></td>
-                                        <td><?php echo htmlspecialchars($row['company_name']); ?></td>
-                                        <td>
-                                            <?php if ($row['status'] === 'sent'): ?>
-                                                <span class="badge-success">
-                                                    <i class="feather icon-check mr-1"></i> <?= __('sent') ?>
-                                                </span>
-                                            <?php else: ?>
-                                                <span class="badge-warning">
-                                                    <i class="feather icon-clock mr-1"></i> <?= __('draft') ?>
-                                                </span>
-                                            <?php endif; ?>
-                                        </td>
-                                        <td>
-                                            <?php 
-                                            $langBadgeClass = 'primary';
-                                            if ($row['language'] === 'dari') $langBadgeClass = 'info';
-                                            if ($row['language'] === 'pashto') $langBadgeClass = 'warning';
-                                            ?>
-                                            <span class="badge-<?php echo $langBadgeClass; ?>">
-                                                <?= __($row['language'] ?? 'english') ?>
-                                            </span>
-                                        </td>
-                                        <td><?php echo htmlspecialchars($row['sender_name']); ?></td>
-                                        <td>
-                                            <div class="dropdown">
-                                                <button class="btn btn-sm btn-outline-primary dropdown-toggle" type="button" id="dropdownMaktob<?php echo $row['id']; ?>" data-toggle="dropdown" aria-haspopup="true" aria-expanded="false">
-                                                    <i class="feather icon-more-vertical"></i> Actions
-                                                </button>
-                                                <div class="dropdown-menu" aria-labelledby="dropdownMaktob<?php echo $row['id']; ?>">
-                                                    <a class="dropdown-item view-maktob" href="#"
-                                                        data-id="<?php echo $row['id']; ?>"
-                                                        data-subject="<?php echo htmlspecialchars($row['subject']); ?>"
-                                                        data-content="<?php echo htmlspecialchars($row['content']); ?>"
-                                                        data-company="<?php echo htmlspecialchars($row['company_name']); ?>"
-                                                        data-number="<?php echo htmlspecialchars($row['maktob_number']); ?>"
-                                                        data-date="<?php echo date('F j, Y', strtotime($row['maktob_date'])); ?>"
-                                                        data-status="<?php echo $row['status']; ?>"
-                                                        data-language="<?php echo htmlspecialchars($row['language'] ?? 'english'); ?>"
-                                                        data-file-path="<?php echo htmlspecialchars($row['file_path'] ?? ''); ?>"
-                                                        data-pdf-path="<?php echo htmlspecialchars($row['pdf_path'] ?? ''); ?>">
-                                                        <i class="feather icon-eye mr-2"></i><?= __('view') ?>
-                                                    </a>
-                                                    <a class="dropdown-item edit-maktob" href="#"
-                                                        data-id="<?php echo $row['id']; ?>"
-                                                        data-subject="<?php echo htmlspecialchars($row['subject']); ?>"
-                                                        data-content="<?php echo htmlspecialchars($row['content']); ?>"
-                                                        data-company="<?php echo htmlspecialchars($row['company_name']); ?>"
-                                                        data-number="<?php echo htmlspecialchars($row['maktob_number']); ?>"
-                                                        data-date="<?php echo $row['maktob_date']; ?>"
-                                                        data-language="<?php echo htmlspecialchars($row['language'] ?? 'english'); ?>">
-                                                        <i class="feather icon-edit-2 mr-2"></i><?= __('edit') ?>
-                                                    </a>
-                                                    <a class="dropdown-item" href="../api/maktob/download_maktob.php?id=<?php echo $row['id']; ?>" target="_blank">
-                                                        <i class="feather icon-download mr-2"></i><?= __('download_pdf') ?>
-                                                    </a>
-                                                    <div class="dropdown-divider"></div>
-                                                    <a class="dropdown-item delete-maktob" href="#"
-                                                        data-id="<?php echo $row['id']; ?>">
-                                                        <i class="feather icon-trash-2 mr-2"></i><?= __('delete') ?>
-                                                    </a>
+                                    <!-- Create Maktob Card -->
+                                    <div class="card">
+                                        <div class="card-header">
+                                            <h5>
+                                                <i class="feather icon-file-text mr-2"></i>
+                                                <?= __('create_new_letter') ?>
+                                            </h5>
+                                        </div>
+                                        <div class="card-body">
+                                            <form method="POST">
+                                                <div class="row">
+                                                    <div class="col-md-6">
+                                                        <div class="form-group">
+                                                            <label for="maktob_number"><?= __('letter_number') ?></label>
+                                                            <input type="text" class="form-control" id="maktob_number" name="maktob_number" required>
+                                                        </div>
+                                                        <div class="form-group">
+                                                            <label for="maktob_date"><?= __('letter_date') ?></label>
+                                                            <input type="date" class="form-control" id="maktob_date" name="maktob_date" required>
+                                                        </div>
+                                                        <div class="form-group">
+                                                            <label for="company_name"><?= __('company_name') ?></label>
+                                                            <input type="text" class="form-control" id="company_name" name="company_name" required>
+                                                        </div>
+                                                        <div class="form-group">
+                                                            <label for="language"><?= __('language') ?></label>
+                                                            <select class="form-control" id="language" name="language" required>
+                                                                <option value="english"><?= __('english') ?></option>
+                                                                <option value="dari"><?= __('dari') ?></option>
+                                                                <option value="pashto"><?= __('pashto') ?></option>
+                                                            </select>
+                                                        </div>
+                                                    </div>
+                                                    <div class="col-md-6">
+                                                        <div class="form-group">
+                                                            <label for="subject"><?= __('subject') ?></label>
+                                                            <input type="text" class="form-control" id="subject" name="subject" required>
+                                                        </div>
+                                                        <div class="form-group">
+                                                            <label for="content"><?= __('content') ?></label>
+                                                            <textarea class="form-control" id="content" name="content" rows="5" required></textarea>
+                                                        </div>
+                                                        <button type="submit" class="btn btn-primary float-right">
+                                                            <i class="feather icon-save mr-2"></i><?= __('create_letter') ?>
+                                                        </button>
+                                                    </div>
+                                                </div>
+                                            </form>
+                                        </div>
+                                    </div>
+
+                                    <!-- Recent Maktobs Card -->
+                                    <div class="card">
+                                        <div class="card-header">
+                                            <div class="d-flex justify-content-between align-items-center">
+                                                <div>
+                                                    <h5 class="mb-0"><i class="feather icon-clock mr-2"></i><?= __('recent_letters') ?></h5>
+                                                    <small class="text-muted">Manage and view all your letters</small>
                                                 </div>
                                             </div>
-                                        </td>
-                                    </tr>
-                                    <?php endwhile; ?>
-                                        <?php else: ?>
-                                            <tr>
-                                                <td colspan="9" class="text-center text-muted"><?= __('no_letters_found') ?></td>
-                                            </tr>
-                                        <?php endif; ?>
-                                </tbody>
-                            </table>
-                        </div>
+                                        </div>
 
-                        <!-- Pagination Controls -->
-                        <?php if ($total_pages > 1): ?>
-                        <div class="card-footer d-flex justify-content-between align-items-center">
-                            <div>
-                                <small class="text-muted">Page <?= $current_page ?> of <?= $total_pages ?></small>
+                                        <!-- Search Bar -->
+                                        <div class="card-body border-bottom pb-3">
+                                            <form method="GET" class="form-inline">
+                                                <div class="form-group mb-0 flex-grow-1">
+                                                    <input 
+                                                        type="text" 
+                                                        name="search" 
+                                                        class="form-control w-100" 
+                                                        placeholder="Search by letter number, subject, company..." 
+                                                        value="<?= htmlspecialchars($search_query) ?>"
+                                                    >
+                                                </div>
+                                                <button type="submit" class="btn btn-info ml-2">
+                                                    <i class="feather icon-search"></i> <?= __('search') ?>
+                                                </button>
+                                                <?php if (!empty($search_query)): ?>
+                                                    <a href="manage_maktobs.php" class="btn btn-secondary ml-2">
+                                                        <i class="feather icon-x"></i> <?= __('clear') ?>
+                                                    </a>
+                                                <?php endif; ?>
+                                            </form>
+                                        </div>
+
+                                        <div class="card-body p-0">
+                                            <!-- Pagination Info -->
+                                            <div class="row mb-3 p-3">
+                                                <div class="col-md-6">
+                                                    <small class="text-muted">
+                                                        <?php if ($total_records > 0): ?>
+                                                            Showing <?= $offset + 1 ?> to <?= min($offset + $items_per_page, $total_records) ?> of <?= $total_records ?> entries
+                                                        <?php else: ?>
+                                                            <?= __('no_letters_found') ?>
+                                                        <?php endif; ?>
+                                                    </small>
+                                                </div>
+                                            </div>
+
+                                            <div class="table-responsive">
+                                                <table class="table table-hover">
+                                                    <thead>
+                                                        <tr>
+                                                            <th><?= __('letter_number') ?></th>
+                                                            <th><?= __('date') ?></th>
+                                                            <th><?= __('subject') ?></th>
+                                                            <th><?= __('company_name') ?></th>
+                                                            <th><?= __('status') ?></th>
+                                                            <th><?= __('language') ?></th>
+                                                            <th><?= __('created_by') ?></th>
+                                                            <th><?= __('actions') ?></th>
+                                                        </tr>
+                                                    </thead>
+                                                    <tbody>
+                                                        <?php if ($recent_maktobs_result !== null && $total_records > 0): ?>
+                                                            <?php while ($row = $recent_maktobs_result->fetch_assoc()): ?>
+                                                        <tr>
+                                                            <td><?php echo htmlspecialchars($row['maktob_number']); ?></td>
+                                                            <td><?php echo date('Y-m-d', strtotime($row['maktob_date'])); ?></td>
+                                                            <td><?php echo htmlspecialchars($row['subject']); ?></td>
+                                                            <td><?php echo htmlspecialchars($row['company_name']); ?></td>
+                                                            <td>
+                                                                <?php if ($row['status'] === 'sent'): ?>
+                                                                    <span class="badge-success">
+                                                                        <i class="feather icon-check mr-1"></i> <?= __('sent') ?>
+                                                                    </span>
+                                                                <?php else: ?>
+                                                                    <span class="badge-warning">
+                                                                        <i class="feather icon-clock mr-1"></i> <?= __('draft') ?>
+                                                                    </span>
+                                                                <?php endif; ?>
+                                                            </td>
+                                                            <td>
+                                                                <?php 
+                                                                $langBadgeClass = 'primary';
+                                                                if ($row['language'] === 'dari') $langBadgeClass = 'info';
+                                                                if ($row['language'] === 'pashto') $langBadgeClass = 'warning';
+                                                                ?>
+                                                                <span class="badge-<?php echo $langBadgeClass; ?>">
+                                                                    <?= __($row['language'] ?? 'english') ?>
+                                                                </span>
+                                                            </td>
+                                                            <td><?php echo htmlspecialchars($row['sender_name']); ?></td>
+                                                            <td>
+                                                                <div class="dropdown">
+                                                                    <button class="btn btn-sm btn-outline-primary dropdown-toggle" type="button" id="dropdownMaktob<?php echo $row['id']; ?>" data-toggle="dropdown" aria-haspopup="true" aria-expanded="false">
+                                                                        <i class="feather icon-more-vertical"></i> Actions
+                                                                    </button>
+                                                                    <div class="dropdown-menu" aria-labelledby="dropdownMaktob<?php echo $row['id']; ?>">
+                                                                        <a class="dropdown-item view-maktob" href="#"
+                                                                            data-id="<?php echo $row['id']; ?>"
+                                                                            data-subject="<?php echo htmlspecialchars($row['subject']); ?>"
+                                                                            data-content="<?php echo htmlspecialchars($row['content']); ?>"
+                                                                            data-company="<?php echo htmlspecialchars($row['company_name']); ?>"
+                                                                            data-number="<?php echo htmlspecialchars($row['maktob_number']); ?>"
+                                                                            data-date="<?php echo date('F j, Y', strtotime($row['maktob_date'])); ?>"
+                                                                            data-status="<?php echo $row['status']; ?>"
+                                                                            data-language="<?php echo htmlspecialchars($row['language'] ?? 'english'); ?>"
+                                                                            data-file-path="<?php echo htmlspecialchars($row['file_path'] ?? ''); ?>"
+                                                                            data-pdf-path="<?php echo htmlspecialchars($row['pdf_path'] ?? ''); ?>">
+                                                                            <i class="feather icon-eye mr-2"></i><?= __('view') ?>
+                                                                        </a>
+                                                                        <a class="dropdown-item edit-maktob" href="#"
+                                                                            data-id="<?php echo $row['id']; ?>"
+                                                                            data-subject="<?php echo htmlspecialchars($row['subject']); ?>"
+                                                                            data-content="<?php echo htmlspecialchars($row['content']); ?>"
+                                                                            data-company="<?php echo htmlspecialchars($row['company_name']); ?>"
+                                                                            data-number="<?php echo htmlspecialchars($row['maktob_number']); ?>"
+                                                                            data-date="<?php echo $row['maktob_date']; ?>"
+                                                                            data-language="<?php echo htmlspecialchars($row['language'] ?? 'english'); ?>">
+                                                                            <i class="feather icon-edit-2 mr-2"></i><?= __('edit') ?>
+                                                                        </a>
+                                                                        <a class="dropdown-item" href="../api/maktob/download_maktob.php?id=<?php echo $row['id']; ?>" target="_blank">
+                                                                            <i class="feather icon-download mr-2"></i><?= __('download_pdf') ?>
+                                                                        </a>
+                                                                        <div class="dropdown-divider"></div>
+                                                                        <a class="dropdown-item delete-maktob" href="#"
+                                                                            data-id="<?php echo $row['id']; ?>">
+                                                                            <i class="feather icon-trash-2 mr-2"></i><?= __('delete') ?>
+                                                                        </a>
+                                                                    </div>
+                                                                </div>
+                                                            </td>
+                                                        </tr>
+                                                        <?php endwhile; ?>
+                                                            <?php else: ?>
+                                                                <tr>
+                                                                    <td colspan="9" class="text-center text-muted"><?= __('no_letters_found') ?></td>
+                                                                </tr>
+                                                            <?php endif; ?>
+                                                    </tbody>
+                                                </table>
+                                            </div>
+
+                                            <!-- Pagination Controls -->
+                                            <?php if ($total_pages > 1): ?>
+                                            <div class="card-footer d-flex justify-content-between align-items-center">
+                                                <div>
+                                                    <small class="text-muted">Page <?= $current_page ?> of <?= $total_pages ?></small>
+                                                </div>
+                                                <nav aria-label="Page navigation">
+                                                    <ul class="pagination pagination-sm mb-0">
+                                                        <?php if ($current_page > 1): ?>
+                                                            <li class="page-item">
+                                                                <a class="page-link" href="manage_maktobs.php?page=1<?= !empty($search_query) ? '&search=' . urlencode($search_query) : '' ?>">
+                                                                    <i class="feather icon-chevrons-left"></i> <?= __('first') ?>
+                                                                </a>
+                                                            </li>
+                                                            <li class="page-item">
+                                                                <a class="page-link" href="manage_maktobs.php?page=<?= $current_page - 1 ?><?= !empty($search_query) ? '&search=' . urlencode($search_query) : '' ?>">
+                                                                    <i class="feather icon-chevron-left"></i> <?= __('previous') ?>
+                                                                </a>
+                                                            </li>
+                                                        <?php endif; ?>
+
+                                                        <?php 
+                                                        $start = max(1, $current_page - 2);
+                                                        $end = min($total_pages, $current_page + 2);
+                                                        
+                                                        for ($i = $start; $i <= $end; $i++): 
+                                                        ?>
+                                                            <li class="page-item <?= $i === $current_page ? 'active' : '' ?>">
+                                                                <a class="page-link" href="manage_maktobs.php?page=<?= $i ?><?= !empty($search_query) ? '&search=' . urlencode($search_query) : '' ?>">
+                                                                    <?= $i ?>
+                                                                </a>
+                                                            </li>
+                                                        <?php endfor; ?>
+
+                                                        <?php if ($current_page < $total_pages): ?>
+                                                            <li class="page-item">
+                                                                <a class="page-link" href="manage_maktobs.php?page=<?= $current_page + 1 ?><?= !empty($search_query) ? '&search=' . urlencode($search_query) : '' ?>">
+                                                                    <?= __('next') ?> <i class="feather icon-chevron-right"></i>
+                                                                </a>
+                                                            </li>
+                                                            <li class="page-item">
+                                                                <a class="page-link" href="manage_maktobs.php?page=<?= $total_pages ?><?= !empty($search_query) ? '&search=' . urlencode($search_query) : '' ?>">
+                                                                    <?= __('last') ?> <i class="feather icon-chevrons-right"></i>
+                                                                </a>
+                                                            </li>
+                                                        <?php endif; ?>
+                                                    </ul>
+                                                </nav>
+                                            </div>
+                                            <?php endif; ?>
+                                        </div>
+                                    </div>
+                                </div>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
                             </div>
-                            <nav aria-label="Page navigation">
-                                <ul class="pagination pagination-sm mb-0">
-                                    <?php if ($current_page > 1): ?>
-                                        <li class="page-item">
-                                            <a class="page-link" href="manage_maktobs.php?page=1<?= !empty($search_query) ? '&search=' . urlencode($search_query) : '' ?>">
-                                                <i class="feather icon-chevrons-left"></i> <?= __('first') ?>
-                                            </a>
-                                        </li>
-                                        <li class="page-item">
-                                            <a class="page-link" href="manage_maktobs.php?page=<?= $current_page - 1 ?><?= !empty($search_query) ? '&search=' . urlencode($search_query) : '' ?>">
-                                                <i class="feather icon-chevron-left"></i> <?= __('previous') ?>
-                                            </a>
-                                        </li>
-                                    <?php endif; ?>
-
-                                    <?php 
-                                    $start = max(1, $current_page - 2);
-                                    $end = min($total_pages, $current_page + 2);
-                                    
-                                    for ($i = $start; $i <= $end; $i++): 
-                                    ?>
-                                        <li class="page-item <?= $i === $current_page ? 'active' : '' ?>">
-                                            <a class="page-link" href="manage_maktobs.php?page=<?= $i ?><?= !empty($search_query) ? '&search=' . urlencode($search_query) : '' ?>">
-                                                <?= $i ?>
-                                            </a>
-                                        </li>
-                                    <?php endfor; ?>
-
-                                    <?php if ($current_page < $total_pages): ?>
-                                        <li class="page-item">
-                                            <a class="page-link" href="manage_maktobs.php?page=<?= $current_page + 1 ?><?= !empty($search_query) ? '&search=' . urlencode($search_query) : '' ?>">
-                                                <?= __('next') ?> <i class="feather icon-chevron-right"></i>
-                                            </a>
-                                        </li>
-                                        <li class="page-item">
-                                            <a class="page-link" href="manage_maktobs.php?page=<?= $total_pages ?><?= !empty($search_query) ? '&search=' . urlencode($search_query) : '' ?>">
-                                                <?= __('last') ?> <i class="feather icon-chevrons-right"></i>
-                                            </a>
-                                        </li>
-                                    <?php endif; ?>
-                                </ul>
-                            </nav>
                         </div>
-                        <?php endif; ?>
-                    </div>
-                </div>
-            </div>
-        </div>
-    </div>
-</div>
 
+    <style>
+    /* Enhanced custom styles for better layout and design */
+    .page-header.card {
+        background: linear-gradient(135deg, #4099ff 0%, #2ed8b6 100%);
+        color: #ffffff;
+        border: none;
+        margin-bottom: 20px;
+        padding: 20px !important;
+        box-shadow: 0 4px 12px rgba(0,0,0,0.15);
+        border-radius: 10px;
+    }
 
-<?php include '../modals/maktob/view_modal.php'; ?>
-<?php include '../modals/maktob/edit_modal.php'; ?>
-<?php include '../modals/maktob/delete_modal.php'; ?>
+    .page-header.card .row {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+    }
 
+    .page-header.card h5 {
+        color: #ffffff;
+        margin: 0;
+        font-weight: 600;
+    }
 
+    .page-header.card .text-end {
+        text-align: right;
+    }
 
-<style>
-.maktob-info p {
-    margin-bottom: 0.5rem;
-}
+    .page-header.card .btn {
+        background: rgba(255,255,255,0.2);
+        color: #ffffff;
+        border: 1px solid rgba(255,255,255,0.3);
+        border-radius: 25px;
+        transition: all 0.3s ease;
+    }
 
-.maktob-content {
-    background-color: #f8f9fa;
-    padding: 1.5rem;
-    border-radius: 0.5rem;
-    white-space: pre-wrap;
-}
+    .page-header.card .btn:hover {
+        background: rgba(255,255,255,0.3);
+        border-color: rgba(255,255,255,0.5);
+        transform: translateY(-1px);
+    }
 
-.table tbody tr:hover {
-    background-color: rgba(0, 123, 255, 0.05);
-    transition: background-color 0.2s ease;
-}
-</style>
+    .card {
+        border-radius: 10px;
+        box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+        transition: transform 0.2s ease-in-out, box-shadow 0.2s ease-in-out;
+        border: none;
+    }
+
+    .card:hover {
+        transform: translateY(-2px);
+        box-shadow: 0 4px 16px rgba(0,0,0,0.15);
+    }
+
+    .card-header {
+        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        color: white;
+        border-radius: 10px 10px 0 0;
+        padding: 1rem 1.5rem;
+        border: none;
+    }
+
+    .card-header h5 {
+        margin: 0;
+        font-weight: 600;
+        display: flex;
+        align-items: center;
+    }
+
+    .badge {
+        font-size: 0.85em;
+        padding: 0.5em 0.75em;
+        border-radius: 20px;
+        font-weight: 500;
+    }
+
+    .badge-success {
+        background-color: #28a745;
+    }
+
+    .badge-warning {
+        background-color: #ffc107;
+        color: #212529;
+    }
+
+    .badge-info {
+        background-color: #17a2b8;
+    }
+
+    .table-responsive {
+        border-radius: 10px;
+    }
+
+    .table {
+        margin-bottom: 0;
+    }
+
+    .table thead th {
+        background-color: #f8f9fa;
+        border-bottom: 2px solid #dee2e6;
+        font-weight: 600;
+        color: #495057;
+        padding: 1rem;
+    }
+
+    .table tbody tr:hover {
+        background-color: #f1f3f4;
+    }
+
+    .table tbody td {
+        padding: 1rem;
+        vertical-align: middle;
+    }
+
+    .form-control {
+        border-radius: 8px;
+        border: 1px solid #ced4da;
+        transition: border-color 0.15s ease-in-out, box-shadow 0.15s ease-in-out;
+        padding: 0.75rem;
+    }
+
+    .form-control:focus {
+        border-color: #4099ff;
+        box-shadow: 0 0 0 0.2rem rgba(64, 153, 255, 0.25);
+    }
+
+    .btn-primary {
+        background: linear-gradient(135deg, #4099ff 0%, #2ed8b6 100%);
+        border: none;
+        border-radius: 25px;
+        padding: 0.75rem 2rem;
+        font-weight: 600;
+        transition: all 0.3s ease;
+    }
+
+    .btn-primary:hover {
+        transform: translateY(-1px);
+        box-shadow: 0 4px 12px rgba(64, 153, 255, 0.3);
+    }
+
+    .btn-secondary {
+        border-radius: 25px;
+        padding: 0.75rem 2rem;
+        font-weight: 600;
+        transition: all 0.3s ease;
+    }
+
+    .alert {
+        border-radius: 10px;
+        border: none;
+        padding: 1rem 1.5rem;
+    }
+
+    .alert-info {
+        background: linear-gradient(135deg, #d1ecf1 0%, #bee5eb 100%);
+        color: #0c5460;
+    }
+
+    .alert-success {
+        background: linear-gradient(135deg, #d4edda 0%, #c3e6cb 100%);
+        color: #155724;
+    }
+
+    .alert-danger {
+        background: linear-gradient(135deg, #f8d7da 0%, #f5c6cb 100%);
+        color: #721c24;
+    }
+
+    .maktob-info p {
+        margin-bottom: 0.5rem;
+    }
+
+    .maktob-content {
+        background-color: #f8f9fa;
+        padding: 1.5rem;
+        border-radius: 0.5rem;
+        white-space: pre-wrap;
+    }
+    </style>
+
+    <?php include '../modals/maktob/view_modal.php'; ?>
+    <?php include '../modals/maktob/edit_modal.php'; ?>
+    <?php include '../modals/maktob/delete_modal.php'; ?>
 
 <!-- Required Js -->
 <script src="../assets/js/vendor-all.min.js"></script>

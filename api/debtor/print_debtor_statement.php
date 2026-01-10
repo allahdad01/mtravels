@@ -73,7 +73,6 @@ $transactions = $stmt->fetchAll(PDO::FETCH_ASSOC);
 
 // Calculate total paid amount
 $total_paid = 0;
-$initial_balance = 0;
 
 foreach ($transactions as $transaction) {
     if ($transaction['transaction_type'] == 'credit') {

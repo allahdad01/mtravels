@@ -1583,7 +1583,7 @@ MOBILE SIDEBAR - CLEAN LAYOUT FIX
                 </li>
                 <?php endif; ?>
                 <?php if (hasFeature('salary', $allowed_features)): ?>
-                <li data-username="hr" class="nav-item pcoded-hasmenu <?php echo (strpos(basename($_SERVER['PHP_SELF']), 'hr') !== false || strpos(basename($_SERVER['PHP_SELF']), 'employee') !== false || basename($_SERVER['PHP_SELF']) == 'hr_reports.php' || basename($_SERVER['PHP_SELF']) == 'add_employee.php' || basename($_SERVER['PHP_SELF']) == 'edit_employee.php' || basename($_SERVER['PHP_SELF']) == 'employee_details.php') ? 'active pcoded-trigger' : ''; ?>">
+                <li data-username="hr" class="nav-item pcoded-hasmenu <?php echo (strpos(basename($_SERVER['PHP_SELF']), 'hr') !== false || strpos(basename($_SERVER['PHP_SELF']), 'employee') !== false || strpos(basename($_SERVER['PHP_SELF']), 'attendance') !== false || basename($_SERVER['PHP_SELF']) == 'hr_reports.php' || basename($_SERVER['PHP_SELF']) == 'add_employee.php' || basename($_SERVER['PHP_SELF']) == 'edit_employee.php' || basename($_SERVER['PHP_SELF']) == 'employee_details.php') ? 'active pcoded-trigger' : ''; ?>">
                     <a href="javascript:" class="nav-link">
                         <span class="pcoded-micon"><i class="feather icon-users"></i></span>
                         <span class="pcoded-mtext"><?= __('hr_management') ?></span>
@@ -1597,6 +1597,15 @@ MOBILE SIDEBAR - CLEAN LAYOUT FIX
                         </li>
                         <li class="<?php echo basename($_SERVER['PHP_SELF']) == 'employee_performance.php' ? 'active' : ''; ?>">
                             <a href="employee_performance.php"><?= __('performance_reviews') ?></a>
+                        </li>
+                        <li class="<?php echo basename($_SERVER['PHP_SELF']) == 'attendance.php' ? 'active' : ''; ?>">
+                            <a href="attendance.php"><i class="feather icon-clock mr-2"></i>My Attendance</a>
+                        </li>
+                        <li class="<?php echo basename($_SERVER['PHP_SELF']) == 'manage_attendance.php' ? 'active' : ''; ?>">
+                            <a href="manage_attendance.php"><i class="feather icon-calendar mr-2"></i>Manage Attendance</a>
+                        </li>
+                        <li class="<?php echo basename($_SERVER['PHP_SELF']) == 'attendance_settings.php' ? 'active' : ''; ?>">
+                            <a href="attendance_settings.php"><i class="feather icon-settings mr-2"></i>Attendance Settings</a>
                         </li>
                         <li class="<?php echo basename($_SERVER['PHP_SELF']) == 'hr_reports.php' ? 'active' : ''; ?>">
                             <a href="hr_reports.php">HR Reports</a>

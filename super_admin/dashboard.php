@@ -157,9 +157,6 @@ foreach ($activity_data as $data) {
 
 <?php include '../includes/header_super_admin.php'; ?>
 
-<!-- Custom Dashboard CSS -->
-<link rel="stylesheet" href="../css/super_admin/dashboard.css">
-
 <!-- [ Main Content ] start -->
 <div class="pcoded-main-container">
     <div class="pcoded-wrapper">
@@ -188,66 +185,69 @@ foreach ($activity_data as $data) {
                     <div class="page-wrapper">
                         <!-- [ Main Content ] start -->
                         
-                        <!-- Dashboard Header -->
-                        <div class="dashboard-header">
-                            <div class="dashboard-header-content">
-                                <div class="dashboard-welcome">
-                                    <h3 class="dashboard-title"><?= __('welcome_back') ?>, <?= htmlspecialchars($user['name']) ?></h3>
-                                    <p class="dashboard-subtitle"><?= __('manage_tenants_and_platform') ?></p>
+                        <!-- Dashboard Header Card -->
+                        <div class="page-header card dashboard-header-card">
+                            <div class="row align-items-center">
+                                <div class="col-md-6">
+                                    <h5 class="mb-0"><i class="feather icon-home mr-2"></i><?= __('welcome_back') ?>, <?= htmlspecialchars($user['name']) ?></h5>
+                                    <p class="mb-0 mt-1" style="font-size: 14px; opacity: 0.9;"><?= __('manage_tenants_and_platform') ?></p>
                                 </div>
-                                <div class="dashboard-actions">
+                                <div class="col-md-6 text-end">
                                     <button class="btn btn-primary" data-toggle="modal" data-target="#profileModal">
                                         <i class="feather icon-user mr-2"></i><?= __('my_profile') ?>
                                     </button>
                                     <button class="btn btn-secondary" data-toggle="modal" data-target="#settingsModal">
                                         <i class="feather icon-settings mr-2"></i><?= __('settings') ?>
                                     </button>
-                                    <button id="themeToggle" class="btn btn-outline-secondary">
-                                        <i class="feather icon-moon mr-2"></i>Dark Mode
-                                    </button>
                                 </div>
                             </div>
                         </div>
 
                         <!-- Platform Overview Section -->
-                        <section class="metrics-section">
-                            <div class="metrics-section-header">
-                                <h4 class="metrics-section-title"><?= __('platform_overview') ?></h4>
+                        <section class="mb-4">
+                            <div class="mb-3">
+                                <h4 class="section-title"><i class="feather icon-bar-chart-2 mr-2"></i><?= __('platform_overview') ?></h4>
                             </div>
-                            <div class="metrics-grid">
+                            <div class="row">
                                 <div class="col-xl-3 col-md-6">
-                                    <div class="statustic-card metric-card metric-tenants">
-                                        <div class="metric-icon">
-                                            <i class="feather icon-users"></i>
-                                        </div>
-                                        <div class="metric-content">
-                                            <h5 class="metric-value"><?= $total_tenants ?></h5>
-                                            <span class="metric-label"><?= __('total_tenants') ?></span>
-                                            <a href="manage_tenants.php" class="metric-link"><?= __('view_all') ?> <i class="feather icon-arrow-right"></i></a>
+                                    <div class="card metric-card">
+                                        <div class="card-body text-center">
+                                            <div class="metric-icon-container mb-3">
+                                                <i class="feather icon-users metric-icon"></i>
+                                            </div>
+                                            <h3 class="metric-value"><?= $total_tenants ?></h3>
+                                            <p class="text-muted mb-3"><?= __('total_tenants') ?></p>
+                                            <a href="manage_tenants.php" class="btn btn-outline-primary btn-sm">
+                                                <i class="feather icon-arrow-right mr-1"></i><?= __('view_all') ?>
+                                            </a>
                                         </div>
                                     </div>
                                 </div>
                                 <div class="col-xl-3 col-md-6">
-                                    <div class="statustic-card metric-card metric-subscriptions">
-                                        <div class="metric-icon">
-                                            <i class="feather icon-credit-card"></i>
-                                        </div>
-                                        <div class="metric-content">
-                                            <h5 class="metric-value"><?= $active_subscriptions ?></h5>
-                                            <span class="metric-label"><?= __('active_subscriptions') ?></span>
-                                            <a href="manage_subscriptions.php" class="metric-link"><?= __('view_all') ?> <i class="feather icon-arrow-right"></i></a>
+                                    <div class="card metric-card">
+                                        <div class="card-body text-center">
+                                            <div class="metric-icon-container mb-3">
+                                                <i class="feather icon-credit-card metric-icon"></i>
+                                            </div>
+                                            <h3 class="metric-value"><?= $active_subscriptions ?></h3>
+                                            <p class="text-muted mb-3"><?= __('active_subscriptions') ?></p>
+                                            <a href="manage_subscriptions.php" class="btn btn-outline-primary btn-sm">
+                                                <i class="feather icon-arrow-right mr-1"></i><?= __('view_all') ?>
+                                            </a>
                                         </div>
                                     </div>
                                 </div>
                                 <div class="col-xl-3 col-md-6">
-                                    <div class="statustic-card metric-card metric-users">
-                                        <div class="metric-icon">
-                                            <i class="feather icon-user-check"></i>
-                                        </div>
-                                        <div class="metric-content">
-                                            <h5 class="metric-value"><?= $total_users ?></h5>
-                                            <span class="metric-label"><?= __('total_users') ?></span>
-                                            <a href="manage_users.php" class="metric-link"><?= __('view_all') ?> <i class="feather icon-arrow-right"></i></a>
+                                    <div class="card metric-card">
+                                        <div class="card-body text-center">
+                                            <div class="metric-icon-container mb-3">
+                                                <i class="feather icon-user-check metric-icon"></i>
+                                            </div>
+                                            <h3 class="metric-value"><?= $total_users ?></h3>
+                                            <p class="text-muted mb-3"><?= __('total_users') ?></p>
+                                            <a href="manage_users.php" class="btn btn-outline-primary btn-sm">
+                                                <i class="feather icon-arrow-right mr-1"></i><?= __('view_all') ?>
+                                            </a>
                                         </div>
                                     </div>
                                 </div>
@@ -255,38 +255,31 @@ foreach ($activity_data as $data) {
                         </section>
 
                         <!-- Financial Overview Section -->
-                        <section class="metrics-section metrics-section-financial">
-                            <div class="metrics-section-header">
-                                <h4 class="metrics-section-title"><?= __('financial_overview') ?></h4>
-                                <span class="metrics-period"><?= date('F Y') ?></span>
+                        <section class="mb-4">
+                            <div class="mb-3 d-flex justify-content-between align-items-center">
+                                <h4 class="section-title mb-0"><i class="feather icon-dollar-sign mr-2"></i><?= __('financial_overview') ?></h4>
+                                <span class="badge badge-info badge-pill px-3 py-2"><?= date('F Y') ?></span>
                             </div>
-                            <div class="metrics-grid">
+                            <div class="row">
                                 <?php foreach ($monthly_data as $currency => $data): 
                                     $symbol = $currency === 'AFS' ? '؋' : '$';
                                     $profit = $data['profit'];
                                     $is_positive = $profit >= 0;
                                 ?>
                                 <div class="col-xl-3 col-md-6">
-                                    <div class="statustic-card metric-card metric-revenue">
-                                        <div class="metric-icon">
-                                            <i class="fas fa-dollar-sign"></i>
-                                        </div>
-                                        <div class="metric-content">
-                                            <h5 class="metric-value"><?= $symbol . number_format($data['revenue'], 2) ?></h5>
-                                            <span class="metric-label"><?= __('current_month_revenue') ?> (<?= htmlspecialchars($currency) ?>)</span>
-                                            <a href="profit_loss_dashboard.php?period=<?= date('Y-m') ?>" class="metric-link metric-link-revenue"><?= __('view_details') ?> <i class="feather icon-arrow-right"></i></a>
-                                        </div>
-                                    </div>
-                                </div>
-                                <div class="col-xl-3 col-md-6">
-                                    <div class="statustic-card metric-card metric-profit <?= $is_positive ? 'metric-profit-positive' : 'metric-profit-negative' ?>">
-                                        <div class="metric-icon">
-                                            <i class="fas <?= $is_positive ? 'fa-arrow-up' : 'fa-arrow-down' ?>"></i>
-                                        </div>
-                                        <div class="metric-content">
-                                            <h5 class="metric-value"><?= $symbol . number_format($profit, 2) ?></h5>
-                                            <span class="metric-label"><?= __('monthly_profit_loss') ?> (<?= htmlspecialchars($currency) ?>)</span>
-                                            <a href="profit_loss_dashboard.php?period=<?= date('Y-m') ?>" class="metric-link <?= $is_positive ? 'metric-link-positive' : 'metric-link-negative' ?>"><?= __('view_report') ?> <i class="feather icon-arrow-right"></i></a>
+                                    <div class="card metric-card">
+                                        <div class="card-body text-center">
+                                            <div class="metric-icon-container mb-3 <?= $is_positive ? 'metric-icon-success' : 'metric-icon-danger' ?>">
+                                                <i class="fas <?= $is_positive ? 'fa-arrow-up' : 'fa-arrow-down' ?>"></i>
+                                            </div>
+                                            <h3 class="metric-value <?= $is_positive ? 'text-success' : 'text-danger' ?>"><?= $symbol . number_format($data['revenue'], 2) ?></h3>
+                                            <p class="text-muted mb-2"><?= __('current_month_revenue') ?> (<?= htmlspecialchars($currency) ?>)</p>
+                                            <hr class="my-3">
+                                            <h4 class="metric-value <?= $is_positive ? 'text-success' : 'text-danger' ?>"><?= $symbol . number_format($profit, 2) ?></h4>
+                                            <p class="text-muted mb-0"><?= __('monthly_profit_loss') ?></p>
+                                            <a href="profit_loss_dashboard.php?period=<?= date('Y-m') ?>" class="btn btn-outline-primary btn-sm mt-3">
+                                                <i class="feather icon-arrow-right mr-1"></i><?= __('view_details') ?>
+                                            </a>
                                         </div>
                                     </div>
                                 </div>
@@ -300,51 +293,54 @@ foreach ($activity_data as $data) {
                         </section>
 
                         <!-- Charts Section -->
-                        <section class="charts-section">
-                            <div class="charts-grid">
+                        <section class="mb-4">
+                            <div class="row">
                                 <!-- Tenant Growth Chart -->
-                                <div class="chart-card">
-                                    <div class="chart-header">
-                                        <h5 class="chart-title"><?= __('tenant_growth') ?></h5>
-                                        <span class="chart-badge chart-badge-green">Last 6 months</span>
-                                    </div>
-                                    <div class="chart-body">
-                                        <canvas id="tenantGrowthChart"></canvas>
+                                <div class="col-xl-6">
+                                    <div class="card">
+                                        <div class="card-header">
+                                            <h5 class="mb-0"><i class="feather icon-trending-up mr-2"></i><?= __('tenant_growth') ?></h5>
+                                        </div>
+                                        <div class="card-body">
+                                            <canvas id="tenantGrowthChart" style="height: 300px;"></canvas>
+                                        </div>
                                     </div>
                                 </div>
                                 <!-- Subscription Status Chart -->
-                                <div class="chart-card">
-                                    <div class="chart-header">
-                                        <h5 class="chart-title"><?= __('subscription_status') ?></h5>
-                                        <span class="chart-badge chart-badge-purple">Current</span>
-                                    </div>
-                                    <div class="chart-body">
-                                        <canvas id="subscriptionStatusChart"></canvas>
-                                    </div>
-                                </div>
-                                <!-- Activity by Action Type -->
-                                <div class="chart-card chart-card-full">
-                                    <div class="chart-header">
-                                        <h5 class="chart-title"><?= __('recent_activity_by_action') ?></h5>
-                                        <span class="chart-badge chart-badge-yellow">Last 30 days</span>
-                                    </div>
-                                    <div class="chart-body">
-                                        <div class="activity-chart-container">
-                                            <canvas id="activityChart"></canvas>
+                                <div class="col-xl-6">
+                                    <div class="card">
+                                        <div class="card-header">
+                                            <h5 class="mb-0"><i class="feather icon-pie-chart mr-2"></i><?= __('subscription_status') ?></h5>
+                                        </div>
+                                        <div class="card-body">
+                                            <canvas id="subscriptionStatusChart" style="height: 300px;"></canvas>
                                         </div>
                                     </div>
                                 </div>
                             </div>
                         </section>
 
-                        <!-- Recent Activity Section -->
-                        <section class="activity-section">
-                            <div class="activity-card">
-                                <div class="activity-header">
-                                    <h5 class="activity-title"><?= __('recent_activity') ?></h5>
-                                    <span class="activity-badge">Last 7 days</span>
+                        <!-- Activity Chart Section -->
+                        <section class="mb-4">
+                            <div class="card">
+                                <div class="card-header">
+                                    <h5 class="mb-0"><i class="feather icon-activity mr-2"></i><?= __('recent_activity_by_action') ?></h5>
                                 </div>
-                                <div class="activity-body">
+                                <div class="card-body">
+                                    <canvas id="activityChart" style="height: 250px;"></canvas>
+                                </div>
+                            </div>
+                        </section>
+
+                        <!-- Recent Activity Section -->
+                        <section class="mb-4">
+                            <div class="card">
+                                <div class="card-header d-flex justify-content-between align-items-center">
+                                    <h5 class="mb-0"><i class="feather icon-clock mr-2"></i><?= __('recent_activity') ?></h5>
+                                    <span class="badge badge-info badge-pill">Last 7 days</span>
+                                </div>
+                                <div class="card-body">
+                                    <?php if (!empty($recent_audit_logs)): ?>
                                     <div class="activity-timeline">
                                         <?php foreach ($recent_audit_logs as $log): ?>
                                         <div class="timeline-item">
@@ -352,23 +348,27 @@ foreach ($activity_data as $data) {
                                                 <i class="feather <?= $log['action'] === 'create_tenant' ? 'icon-plus' : 'icon-edit' ?>"></i>
                                             </div>
                                             <div class="timeline-content">
-                                                <p class="timeline-title">
+                                                <p class="timeline-title mb-1">
                                                     <?= htmlspecialchars($log['action']) ?> on 
                                                     <?= htmlspecialchars($log['entity_type']) ?>
                                                     (ID: <?= htmlspecialchars($log['entity_id']) ?>)
                                                 </p>
-                                                <small class="timeline-date">
+                                                <small class="text-muted">
                                                     <?= date('M d, Y H:i A', strtotime($log['created_at'])) ?>
                                                     | Details: <?= htmlspecialchars($log['details']) ?>
                                                 </small>
                                             </div>
                                         </div>
                                         <?php endforeach; ?>
-                                        <?php if (empty($recent_audit_logs)): ?>
-                                        <p class="activity-empty"><?= __('no_recent_activity') ?></p>
-                                        <?php endif; ?>
                                     </div>
-                                    <a href="audit_logs.php" class="btn btn-outline-primary activity-view-all"><?= __('view_all_logs') ?></a>
+                                    <?php else: ?>
+                                    <p class="text-center text-muted py-4"><?= __('no_recent_activity') ?></p>
+                                    <?php endif; ?>
+                                    <div class="text-end mt-3">
+                                        <a href="audit_logs.php" class="btn btn-outline-primary btn-sm">
+                                            <i class="feather icon-list mr-1"></i><?= __('view_all_logs') ?>
+                                        </a>
+                                    </div>
                                 </div>
                             </div>
                         </section>
@@ -386,41 +386,30 @@ foreach ($activity_data as $data) {
                                         </button>
                                     </div>
                                     <div class="modal-body">
-                                        <div class="profile-header">
-                                            <div class="profile-avatar-container">
-                                                <img src="<?= $imagePath ?>" class="profile-avatar" alt="User Profile Image">
-                                                <span class="profile-status"></span>
+                                        <div class="text-center mb-4">
+                                            <div class="profile-avatar-container mb-3">
+                                                <img src="<?= $imagePath ?>" class="profile-avatar" alt="User Profile Image" style="width: 100px; height: 100px; border-radius: 50%; object-fit: cover;">
                                             </div>
-                                            <h5 class="profile-name"><?= htmlspecialchars($user['name']) ?></h5>
-                                            <p class="profile-role"><?= htmlspecialchars($_SESSION['role']) ?></p>
+                                            <h5 class="mb-1"><?= htmlspecialchars($user['name']) ?></h5>
+                                            <span class="badge badge-primary badge-pill px-3"><?= htmlspecialchars($_SESSION['role']) ?></span>
                                         </div>
-                                        <div class="profile-info-grid">
-                                            <div class="profile-info-item">
-                                                <label class="profile-info-label"><?= __('email') ?></label>
-                                                <p class="profile-info-value"><?= htmlspecialchars($user['email']) ?></p>
+                                        <div class="row text-center">
+                                            <div class="col-4">
+                                                <p class="text-muted mb-1 small"><?= __('email') ?></p>
+                                                <p class="font-weight-bold mb-0"><?= htmlspecialchars($user['email']) ?></p>
                                             </div>
-                                            <div class="profile-info-item">
-                                                <label class="profile-info-label"><?= __('role') ?></label>
-                                                <p class="profile-info-value"><?= htmlspecialchars($_SESSION['role']) ?></p>
+                                            <div class="col-4">
+                                                <p class="text-muted mb-1 small"><?= __('role') ?></p>
+                                                <p class="font-weight-bold mb-0"><?= htmlspecialchars($_SESSION['role']) ?></p>
                                             </div>
-                                            <div class="profile-info-item">
-                                                <label class="profile-info-label"><?= __('join_date') ?></label>
-                                                <p class="profile-info-value"><?= date('M d, Y', strtotime($user['created_at'])) ?></p>
+                                            <div class="col-4">
+                                                <p class="text-muted mb-1 small"><?= __('join_date') ?></p>
+                                                <p class="font-weight-bold mb-0"><?= date('M d, Y', strtotime($user['created_at'])) ?></p>
                                             </div>
                                         </div>
-                                        <div class="profile-account-info">
-                                            <h6 class="profile-section-title"><i class="feather icon-info mr-2"></i><?= __('account_information') ?></h6>
-                                            <div class="activity-timeline">
-                                                <div class="timeline-item">
-                                                    <div class="timeline-icon timeline-icon-info">
-                                                        <i class="feather icon-clock"></i>
-                                                    </div>
-                                                    <div class="timeline-content">
-                                                        <p class="timeline-title"><?= __('account_created') ?></p>
-                                                        <small class="timeline-date"><?= date('M d, Y H:i A', strtotime($user['created_at'])) ?></small>
-                                                    </div>
-                                                </div>
-                                            </div>
+                                        <hr class="my-4">
+                                        <div class="alert alert-info mb-0">
+                                            <i class="feather icon-info mr-2"></i><?= __('account_created') ?>: <?= date('M d, Y H:i A', strtotime($user['created_at'])) ?>
                                         </div>
                                     </div>
                                     <div class="modal-footer">
@@ -443,22 +432,22 @@ foreach ($activity_data as $data) {
                                             <button type="button" class="close" data-dismiss="modal">&times;</button>
                                         </div>
                                         <div class="modal-body">
-                                            <div class="settings-grid">
+                                            <div class="row">
                                                 <!-- Profile Picture -->
-                                                <div class="settings-profile-picture">
-                                                    <div class="profile-picture-container">
-                                                        <img src="<?= $imagePath ?>" alt="Profile Picture" class="profile-upload-preview" id="profilePreview">
-                                                        <label for="profileImage" class="profile-picture-upload">
+                                                <div class="col-md-4 text-center">
+                                                    <div class="profile-picture-container mb-3">
+                                                        <img src="<?= $imagePath ?>" alt="Profile Picture" class="profile-upload-preview" id="profilePreview" style="width: 150px; height: 150px; border-radius: 50%; object-fit: cover; border: 3px solid #667eea;">
+                                                        <label for="profileImage" class="profile-picture-upload" style="position: absolute; bottom: 10px; right: 10px; background: #667eea; color: white; width: 40px; height: 40px; border-radius: 50%; display: flex; align-items: center; justify-content: center; cursor: pointer;">
                                                             <i class="feather icon-camera"></i>
                                                         </label>
                                                         <input type="file" class="hidden" id="profileImage" name="image" accept="image/*" onchange="previewImage(this)">
                                                     </div>
-                                                    <small class="profile-picture-hint"><?= __('click_to_change_profile_picture') ?></small>
+                                                    <small class="text-muted"><?= __('click_to_change_profile_picture') ?></small>
                                                 </div>
                                                 <!-- Form Fields -->
-                                                <div class="settings-form-fields">
-                                                    <div class="form-section">
-                                                        <h6 class="form-section-title"><i class="feather icon-user mr-2"></i><?= __('personal_information') ?></h6>
+                                                <div class="col-md-8">
+                                                    <div class="form-section mb-4">
+                                                        <h6 class="form-section-title mb-3"><i class="feather icon-user mr-2"></i><?= __('personal_information') ?></h6>
                                                         <div class="form-group">
                                                             <input type="text" class="form-control" id="updateName" name="name" value="<?= htmlspecialchars($user['name']) ?>" required>
                                                             <label for="updateName" class="form-label"><?= __('full_name') ?></label>
@@ -469,19 +458,23 @@ foreach ($activity_data as $data) {
                                                         </div>
                                                     </div>
                                                     <div class="form-section">
-                                                        <h6 class="form-section-title"><i class="feather icon-lock mr-2"></i><?= __('change_password') ?></h6>
+                                                        <h6 class="form-section-title mb-3"><i class="feather icon-lock mr-2"></i><?= __('change_password') ?></h6>
                                                         <div class="form-group">
                                                             <input type="password" class="form-control" id="currentPassword" name="current_password">
                                                             <label for="currentPassword" class="form-label"><?= __('current_password') ?></label>
                                                         </div>
                                                         <div class="form-row">
-                                                            <div class="form-group">
-                                                                <input type="password" class="form-control" id="newPassword" name="new_password">
-                                                                <label for="newPassword" class="form-label"><?= __('new_password') ?></label>
+                                                            <div class="col-6">
+                                                                <div class="form-group">
+                                                                    <input type="password" class="form-control" id="newPassword" name="new_password">
+                                                                    <label for="newPassword" class="form-label"><?= __('new_password') ?></label>
+                                                                </div>
                                                             </div>
-                                                            <div class="form-group">
-                                                                <input type="password" class="form-control" id="confirmPassword" name="confirm_password">
-                                                                <label for="confirmPassword" class="form-label"><?= __('confirm_password') ?></label>
+                                                            <div class="col-6">
+                                                                <div class="form-group">
+                                                                    <input type="password" class="form-control" id="confirmPassword" name="confirm_password">
+                                                                    <label for="confirmPassword" class="form-label"><?= __('confirm_password') ?></label>
+                                                                </div>
                                                             </div>
                                                         </div>
                                                     </div>
@@ -514,6 +507,324 @@ foreach ($activity_data as $data) {
 <script src="../assets/js/pcoded.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/chart.js@3.9.1/dist/chart.min.js"></script>
 
+<style>
+/* Enhanced custom styles matching request_user_addon.php style */
+.page-header.card {
+    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    color: #ffffff;
+    border: none;
+    margin-bottom: 20px;
+    padding: 20px !important;
+    box-shadow: 0 4px 12px rgba(0,0,0,0.15);
+    border-radius: 10px;
+}
+
+.page-header.card .row {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+}
+
+.page-header.card h5 {
+    color: #ffffff;
+    margin: 0;
+    font-weight: 600;
+}
+
+.page-header.card .text-end {
+    text-align: right;
+}
+
+.page-header.card .btn {
+    background: rgba(255,255,255,0.2);
+    color: #ffffff;
+    border: 1px solid rgba(255,255,255,0.3);
+    border-radius: 25px;
+    transition: all 0.3s ease;
+}
+
+.page-header.card .btn:hover {
+    background: rgba(255,255,255,0.3);
+    border-color: rgba(255,255,255,0.5);
+    transform: translateY(-1px);
+}
+
+.card {
+    border-radius: 10px;
+    box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+    transition: transform 0.2s ease-in-out, box-shadow 0.2s ease-in-out;
+    border: none;
+}
+
+.card:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 4px 16px rgba(0,0,0,0.15);
+}
+
+.card-header {
+    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    color: white;
+    border-radius: 10px 10px 0 0 !important;
+    padding: 1rem 1.5rem;
+    border: none;
+}
+
+.card-header h5 {
+    margin: 0;
+    font-weight: 600;
+    display: flex;
+    align-items: center;
+}
+
+.card-body {
+    padding: 1.5rem;
+}
+
+.metric-card .card-body {
+    padding: 2rem 1.5rem;
+}
+
+.metric-icon-container {
+    width: 70px;
+    height: 70px;
+    border-radius: 50%;
+    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    margin: 0 auto;
+}
+
+.metric-icon {
+    font-size: 28px;
+    color: white;
+}
+
+.metric-icon-success {
+    background: linear-gradient(135deg, #10B981 0%, #059669 100%);
+}
+
+.metric-icon-danger {
+    background: linear-gradient(135deg, #EF4444 0%, #DC2626 100%);
+}
+
+.metric-value {
+    font-size: 2.5rem;
+    font-weight: 700;
+    color: #333;
+    margin: 0.5rem 0;
+}
+
+.section-title {
+    font-weight: 600;
+    color: #333;
+    margin: 0;
+    display: flex;
+    align-items: center;
+}
+
+.badge {
+    font-size: 0.85em;
+    padding: 0.5em 0.75em;
+    border-radius: 20px;
+    font-weight: 500;
+}
+
+.badge-primary {
+    background-color: #667eea;
+}
+
+.badge-success {
+    background-color: #10B981;
+}
+
+.badge-info {
+    background-color: #667eea;
+}
+
+.badge-warning {
+    background-color: #F59E0B;
+    color: #212529;
+}
+
+.btn-primary {
+    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    border: none;
+    border-radius: 25px;
+    padding: 0.75rem 1.5rem;
+    font-weight: 600;
+    transition: all 0.3s ease;
+}
+
+.btn-primary:hover {
+    transform: translateY(-1px);
+    box-shadow: 0 4px 12px rgba(102, 126, 234, 0.4);
+    background: linear-gradient(135deg, #764ba2 0%, #667eea 100%);
+}
+
+.btn-secondary {
+    border-radius: 25px;
+    padding: 0.75rem 1.5rem;
+    font-weight: 600;
+    transition: all 0.3s ease;
+}
+
+.btn-outline-primary {
+    border-radius: 25px;
+    padding: 0.5rem 1rem;
+    font-weight: 500;
+    transition: all 0.3s ease;
+}
+
+.btn-outline-primary:hover {
+    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    border-color: #667eea;
+    transform: translateY(-1px);
+}
+
+.alert {
+    border-radius: 10px;
+    border: none;
+    padding: 1rem 1.5rem;
+}
+
+.alert-info {
+    background: linear-gradient(135deg, #d1ecf1 0%, #bee5eb 100%);
+    color: #0c5460;
+}
+
+.form-control {
+    border-radius: 8px;
+    border: 1px solid #ced4da;
+    transition: border-color 0.15s ease-in-out, box-shadow 0.15s ease-in-out;
+    padding: 0.75rem 1rem;
+}
+
+.form-control:focus {
+    border-color: #667eea;
+    box-shadow: 0 0 0 0.2rem rgba(102, 126, 234, 0.25);
+}
+
+.form-label {
+    font-weight: 500;
+    color: #667eea;
+}
+
+.form-section-title {
+    font-weight: 600;
+    color: #667eea;
+    display: flex;
+    align-items: center;
+}
+
+/* Timeline styles */
+.activity-timeline {
+    position: relative;
+    padding-left: 30px;
+}
+
+.activity-timeline::before {
+    content: '';
+    position: absolute;
+    left: 10px;
+    top: 0;
+    bottom: 0;
+    width: 2px;
+    background: #e0e0e0;
+}
+
+.timeline-item {
+    position: relative;
+    padding-bottom: 1.5rem;
+}
+
+.timeline-item:last-child {
+    padding-bottom: 0;
+}
+
+.timeline-icon {
+    position: absolute;
+    left: -30px;
+    width: 24px;
+    height: 24px;
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 12px;
+    color: white;
+}
+
+.timeline-icon-primary {
+    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+}
+
+.timeline-icon-success {
+    background: linear-gradient(135deg, #10B981 0%, #059669 100%);
+}
+
+.timeline-icon-info {
+    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+}
+
+.timeline-content {
+    background: #f8f9fa;
+    padding: 1rem;
+    border-radius: 8px;
+}
+
+.timeline-title {
+    font-weight: 600;
+    color: #333;
+}
+
+.timeline-date {
+    color: #6c757d;
+}
+
+/* Profile avatar */
+.profile-avatar-container {
+    position: relative;
+    display: inline-block;
+}
+
+.profile-avatar {
+    border: 4px solid #667eea;
+}
+
+.profile-picture-upload {
+    transition: all 0.3s ease;
+}
+
+.profile-picture-upload:hover {
+    background: #764ba2 !important;
+    transform: scale(1.1);
+}
+
+/* Modal styles */
+.modal-header {
+    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    color: white;
+    border-radius: 0;
+}
+
+.modal-header .close {
+    color: white;
+    text-shadow: none;
+    opacity: 0.8;
+}
+
+.modal-header .close:hover {
+    opacity: 1;
+}
+
+.modal-title {
+    font-weight: 600;
+    display: flex;
+    align-items: center;
+}
+</style>
+
 <script>
 // Preview profile image
 function previewImage(input) {
@@ -526,21 +837,6 @@ function previewImage(input) {
     }
 }
 
-// Dark mode toggle
-document.getElementById('themeToggle').addEventListener('click', function() {
-    document.documentElement.classList.toggle('dark');
-    this.innerHTML = document.documentElement.classList.contains('dark') 
-        ? '<i class="feather icon-sun mr-2"></i>Light Mode' 
-        : '<i class="feather icon-moon mr-2"></i>Dark Mode';
-    localStorage.setItem('theme', document.documentElement.classList.contains('dark') ? 'dark' : 'light');
-});
-
-// Load saved theme
-if (localStorage.getItem('theme') === 'dark') {
-    document.documentElement.classList.add('dark');
-    document.getElementById('themeToggle').innerHTML = '<i class="feather icon-sun mr-2"></i>Light Mode';
-}
-
 // Tenant Growth Chart
 const tenantGrowthChart = new Chart(document.getElementById('tenantGrowthChart'), {
     type: 'line',
@@ -549,16 +845,16 @@ const tenantGrowthChart = new Chart(document.getElementById('tenantGrowthChart')
         datasets: [{
             label: '<?= __('tenants') ?>',
             data: <?= json_encode($tenant_growth) ?>,
-            borderColor: '#3B82F6',
-            backgroundColor: 'rgba(59, 130, 246, 0.2)',
+            borderColor: '#667eea',
+            backgroundColor: 'rgba(102, 126, 234, 0.2)',
             fill: true,
             tension: 0.4,
-            pointBackgroundColor: '#3B82F6',
-            pointRadius: 4,
-            pointHoverRadius: 7,
+            pointBackgroundColor: '#667eea',
+            pointRadius: 5,
+            pointHoverRadius: 8,
             pointHoverBackgroundColor: '#fff',
-            pointHoverBorderColor: '#3B82F6',
-            pointHoverBorderWidth: 2,
+            pointHoverBorderColor: '#667eea',
+            pointHoverBorderWidth: 3,
             borderWidth: 3
         }]
     },
@@ -570,26 +866,20 @@ const tenantGrowthChart = new Chart(document.getElementById('tenantGrowthChart')
             tooltip: { 
                 mode: 'index', 
                 intersect: false,
-                backgroundColor: 'rgba(255, 255, 255, 0.9)',
+                backgroundColor: 'rgba(255, 255, 255, 0.95)',
                 titleColor: '#333',
                 bodyColor: '#666',
                 borderColor: '#e1e1e1',
                 borderWidth: 1,
-                padding: 10,
-                cornerRadius: 4,
+                padding: 12,
+                cornerRadius: 8,
                 displayColors: true,
-                boxShadow: '0 2px 10px rgba(0,0,0,0.1)',
-                callbacks: {
-                    label: function(context) {
-                        return `${context.dataset.label}: ${context.raw}`;
-                    }
-                }
+                boxShadow: '0 4px 12px rgba(0,0,0,0.15)'
             }
         },
         scales: {
             y: { 
-                beginAtZero: true, 
-                title: { display: true, text: '<?= __('number_of_tenants') ?>', font: { weight: 'bold' } },
+                beginAtZero: true,
                 grid: {
                     color: 'rgba(200, 200, 200, 0.2)',
                     borderDash: [5, 5]
@@ -600,7 +890,6 @@ const tenantGrowthChart = new Chart(document.getElementById('tenantGrowthChart')
                 }
             },
             x: { 
-                title: { display: true, text: '<?= __('month') ?>', font: { weight: 'bold' } },
                 grid: {
                     display: false
                 },
@@ -618,18 +907,13 @@ const tenantGrowthChart = new Chart(document.getElementById('tenantGrowthChart')
         animation: {
             duration: 1000,
             easing: 'easeOutQuart'
-        },
-        elements: {
-            line: {
-                tension: 0.4
-            }
         }
     }
 });
 
 // Subscription Status Chart
 const subscriptionStatusChart = new Chart(document.getElementById('subscriptionStatusChart'), {
-    type: 'pie',
+    type: 'doughnut',
     data: {
         labels: ['<?= __('active') ?>', '<?= __('expired') ?>', '<?= __('pending') ?>'],
         datasets: [{
@@ -640,11 +924,8 @@ const subscriptionStatusChart = new Chart(document.getElementById('subscriptionS
             ],
             backgroundColor: ['#10B981', '#EF4444', '#F59E0B'],
             borderColor: '#fff',
-            borderWidth: 2,
-            hoverBackgroundColor: ['rgba(16, 185, 129, 0.8)', 'rgba(239, 68, 68, 0.8)', 'rgba(245, 158, 11, 0.8)'],
-            hoverBorderColor: '#fff',
-            hoverBorderWidth: 3,
-            hoverOffset: 5
+            borderWidth: 3,
+            hoverOffset: 8
         }]
     },
     options: {
@@ -657,7 +938,7 @@ const subscriptionStatusChart = new Chart(document.getElementById('subscriptionS
                 labels: {
                     usePointStyle: true,
                     pointStyle: 'circle',
-                    padding: 15,
+                    padding: 20,
                     font: {
                         size: 12,
                         weight: 'bold'
@@ -665,18 +946,15 @@ const subscriptionStatusChart = new Chart(document.getElementById('subscriptionS
                 }
             },
             tooltip: { 
-                backgroundColor: 'rgba(255, 255, 255, 0.9)',
+                backgroundColor: 'rgba(255, 255, 255, 0.95)',
                 titleColor: '#333',
                 bodyColor: '#666',
                 borderColor: '#e1e1e1',
                 borderWidth: 1,
-                padding: 10,
-                cornerRadius: 4,
+                padding: 12,
+                cornerRadius: 8,
                 displayColors: true,
-                boxShadow: '0 2px 10px rgba(0,0,0,0.1)',
-                callbacks: { 
-                    label: context => `${context.label}: ${context.raw} (${(context.raw / context.chart.data.datasets[0].data.reduce((a, b) => a + b, 0) * 100).toFixed(1)}%)` 
-                }
+                boxShadow: '0 4px 12px rgba(0,0,0,0.15)'
             }
         },
         animation: {
@@ -684,11 +962,6 @@ const subscriptionStatusChart = new Chart(document.getElementById('subscriptionS
             animateScale: true,
             duration: 1000,
             easing: 'easeOutQuart'
-        },
-        elements: {
-            arc: {
-                borderWidth: 2
-            }
         }
     }
 });
@@ -701,12 +974,12 @@ const activityChart = new Chart(document.getElementById('activityChart'), {
         datasets: [{
             label: '<?= __('actions') ?>',
             data: <?= json_encode($activity_counts) ?>,
-            backgroundColor: 'rgba(139, 92, 246, 0.8)',
-            borderColor: '#7C3AED',
+            backgroundColor: 'rgba(102, 126, 234, 0.8)',
+            borderColor: '#667eea',
             borderWidth: 1,
             borderRadius: 6,
-            hoverBackgroundColor: '#8B5CF6',
-            hoverBorderColor: '#6D28D9',
+            hoverBackgroundColor: '#764ba2',
+            hoverBorderColor: '#764ba2',
             hoverBorderWidth: 2,
             barPercentage: 0.7,
             categoryPercentage: 0.8
@@ -720,26 +993,20 @@ const activityChart = new Chart(document.getElementById('activityChart'), {
             tooltip: { 
                 mode: 'index', 
                 intersect: false,
-                backgroundColor: 'rgba(255, 255, 255, 0.9)',
+                backgroundColor: 'rgba(255, 255, 255, 0.95)',
                 titleColor: '#333',
                 bodyColor: '#666',
                 borderColor: '#e1e1e1',
                 borderWidth: 1,
-                padding: 10,
-                cornerRadius: 4,
+                padding: 12,
+                cornerRadius: 8,
                 displayColors: true,
-                boxShadow: '0 2px 10px rgba(0,0,0,0.1)',
-                callbacks: {
-                    label: function(context) {
-                        return `${context.dataset.label}: ${context.raw}`;
-                    }
-                }
+                boxShadow: '0 4px 12px rgba(0,0,0,0.15)'
             }
         },
         scales: {
             y: { 
-                beginAtZero: true, 
-                title: { display: true, text: '<?= __('number_of_actions') ?>', font: { weight: 'bold' } },
+                beginAtZero: true,
                 grid: {
                     color: 'rgba(200, 200, 200, 0.2)',
                     borderDash: [5, 5]
@@ -751,7 +1018,6 @@ const activityChart = new Chart(document.getElementById('activityChart'), {
                 }
             },
             x: { 
-                title: { display: true, text: '<?= __('action_type') ?>', font: { weight: 'bold' } },
                 grid: {
                     display: false
                 },

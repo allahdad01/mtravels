@@ -1574,6 +1574,12 @@ MOBILE SIDEBAR - CLEAN LAYOUT FIX
                         <span class="pcoded-mtext">Users</span>
                     </a>
                 </li>
+                <li data-username="branch_attendance" class="nav-item <?php echo basename($_SERVER['PHP_SELF']) == 'branch_attendance.php' ? 'active' : ''; ?>">
+                    <a href="branch_attendance.php" class="nav-link">
+                        <span class="pcoded-micon"><i class="feather icon-calendar"></i></span>
+                        <span class="pcoded-mtext">Branch Attendance</span>
+                    </a>
+                </li>
 
                 <?php
                 $ticketPages = ['ticket_bookings.php', 'ticket_reservations.php', 'refunded_tickets.php', 'date_change_tickets.php', 'ticket_weights.php'];
