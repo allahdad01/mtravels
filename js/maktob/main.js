@@ -47,11 +47,11 @@ jQuery(document).ready(function($) {
 
         // Display file links if available
         var fileLinksHtml = '';
-        if (filePath) {
-            fileLinksHtml += '<p><strong>Original file :</strong> <a href="../' + filePath + '" target="_blank">View file</a></p>';
-        }
         if (pdfPath) {
-            fileLinksHtml += '<p><strong>pdf version:</strong> <a href="../' + pdfPath + '" target="_blank">View_pdf</a></p>';
+            fileLinksHtml += '<p><strong>📄 Letter PDF:</strong> <a href="../' + pdfPath + '" target="_blank">View Letter Document</a></p>';
+        }
+        if (filePath) {
+            fileLinksHtml += '<p><strong>📎 Supporting Document:</strong> <a href="../' + filePath + '" target="_blank">View Attachment</a></p>';
         }
         $('#fileLinks').html(fileLinksHtml);
         

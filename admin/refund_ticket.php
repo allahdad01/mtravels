@@ -544,15 +544,6 @@ $version = '?v=' . time();
         }
     }
 
-    #floatingActionButton {
-        right: 30px;
-    }
-
-    /* RTL support - position on left side instead */
-    html[dir="rtl"] #floatingActionButton {
-        right: auto;
-        left: 30px;
-    }
 </style>
 
 <!-- SweetAlert2 CSS and JS -->

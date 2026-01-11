@@ -6,6 +6,9 @@ if (!$currentUserId) {
     exit;
 }
 
+// Allow embedding in iframes from same origin
+header('X-Frame-Options: SAMEORIGIN');
+
 // Generate or retrieve CSRF token
 if (empty($_SESSION['csrf_token'])) {
     $_SESSION['csrf_token'] = bin2hex(random_bytes(32));

@@ -1599,16 +1599,16 @@ MOBILE SIDEBAR - CLEAN LAYOUT FIX
                             <a href="employee_performance.php"><?= __('performance_reviews') ?></a>
                         </li>
                         <li class="<?php echo basename($_SERVER['PHP_SELF']) == 'attendance.php' ? 'active' : ''; ?>">
-                            <a href="attendance.php"><i class="feather icon-clock mr-2"></i>My Attendance</a>
+                            <a href="attendance.php"><i class="feather icon-clock mr-2"></i><?= __('my_attendance') ?></a>
                         </li>
                         <li class="<?php echo basename($_SERVER['PHP_SELF']) == 'manage_attendance.php' ? 'active' : ''; ?>">
-                            <a href="manage_attendance.php"><i class="feather icon-calendar mr-2"></i>Manage Attendance</a>
+                            <a href="manage_attendance.php"><i class="feather icon-calendar mr-2"></i><?= __('manage_attendance') ?></a>
                         </li>
                         <li class="<?php echo basename($_SERVER['PHP_SELF']) == 'attendance_settings.php' ? 'active' : ''; ?>">
-                            <a href="attendance_settings.php"><i class="feather icon-settings mr-2"></i>Attendance Settings</a>
+                            <a href="attendance_settings.php"><i class="feather icon-settings mr-2"></i><?= __('attendance_settings') ?></a>
                         </li>
                         <li class="<?php echo basename($_SERVER['PHP_SELF']) == 'hr_reports.php' ? 'active' : ''; ?>">
-                            <a href="hr_reports.php">HR Reports</a>
+                            <a href="hr_reports.php"><?= __('hr_reports') ?></a>
                         </li>
                     </ul>
                 </li>
@@ -1627,7 +1627,7 @@ MOBILE SIDEBAR - CLEAN LAYOUT FIX
                 <li data-username="ticket_management" class="nav-item pcoded-hasmenu <?php echo $isTicketActive ? 'active pcoded-trigger' : ''; ?>">
                     <a href="javascript:" class="nav-link">
                         <span class="pcoded-micon"><i class="feather icon-calendar"></i></span>
-                        <span class="pcoded-mtext">Ticket Management</span>
+                        <span class="pcoded-mtext"><?= __('ticket_management') ?></span>
                     </a>
                     <ul class="pcoded-submenu">
                         <?php if (hasFeature('ticket_bookings', $allowed_features)): ?>
@@ -1667,17 +1667,17 @@ MOBILE SIDEBAR - CLEAN LAYOUT FIX
                 <li data-username="hotel_management" class="nav-item pcoded-hasmenu <?php echo $isHotelActive ? 'active pcoded-trigger' : ''; ?>">
                     <a href="javascript:" class="nav-link">
                         <span class="pcoded-micon"><i class="feather icon-home"></i></span>
-                        <span class="pcoded-mtext">Hotel Management</span>
+                        <span class="pcoded-mtext"><?= __('hotel_management') ?></span>
                     </a>
                     <ul class="pcoded-submenu">
                         <?php if (hasFeature('hotel_bookings', $allowed_features)): ?>
                         <li class="<?php echo basename($_SERVER['PHP_SELF']) == 'hotel.php' ? 'active' : ''; ?>">
-                            <a href="hotel.php">Hotel Bookings</a>
+                            <a href="hotel.php"><?= __('hotel_bookings') ?></a>
                         </li>
                         <?php endif; ?>
                         <?php if (hasFeature('hotel_refunds', $allowed_features)): ?>
                         <li class="<?php echo basename($_SERVER['PHP_SELF']) == 'hotel_refund.php' ? 'active' : ''; ?>">
-                            <a href="hotel_refunds.php">Hotel Refund</a>
+                            <a href="hotel_refunds.php"><?= __('hotel_refund') ?></a>
                         </li>
                         <?php endif; ?>
                     </ul>
@@ -1716,17 +1716,17 @@ MOBILE SIDEBAR - CLEAN LAYOUT FIX
                 <li data-username="visa_management" class="nav-item pcoded-hasmenu <?php echo $isVisaActive ? 'active pcoded-trigger' : ''; ?>">
                     <a href="javascript:" class="nav-link">
                         <span class="pcoded-micon"><i class="feather icon-globe"></i></span>
-                        <span class="pcoded-mtext">Visa Management</span>
+                        <span class="pcoded-mtext"><?= __('visa_management') ?></span>
                     </a>
                     <ul class="pcoded-submenu">
                         <?php if (hasFeature('visa_applications', $allowed_features)): ?>
                         <li class="<?php echo basename($_SERVER['PHP_SELF']) == 'visa.php' ? 'active' : ''; ?>">
-                            <a href="visa.php">Visa Bookings</a>
+                            <a href="visa.php"><?= __('visa_bookings') ?></a>
                         </li>
                         <?php endif; ?>
                         <?php if (hasFeature('visa_refunds', $allowed_features)): ?>
                         <li class="<?php echo basename($_SERVER['PHP_SELF']) == 'visa_refunds.php' ? 'active' : ''; ?>">
-                            <a href="visa_refunds.php">Visa Refund</a>
+                            <a href="visa_refunds.php"><?= __('visa_refund') ?></a>
                         </li>
                         <?php endif; ?>
                     </ul>
@@ -1793,7 +1793,7 @@ MOBILE SIDEBAR - CLEAN LAYOUT FIX
                 <li data-username="excel_import" class="nav-item <?php echo basename($_SERVER['PHP_SELF']) == 'excel_import.php' ? 'active' : ''; ?>">
                     <a href="excel_import.php" class="nav-link">
                         <span class="pcoded-micon"><i class="fas fa-file-excel"></i></span>
-                        <span class="pcoded-mtext">Excel Import</span>
+                        <span class="pcoded-mtext"><?= __('excel_import') ?></span>
                     </a>
                 </li>
                 <li data-username="2fa" class="nav-item <?php echo basename($_SERVER['PHP_SELF']) == 'totp.php' ? 'active' : ''; ?>">
@@ -1819,27 +1819,27 @@ MOBILE SIDEBAR - CLEAN LAYOUT FIX
                 <li data-username="email_analytics" class="nav-item <?php echo basename($_SERVER['PHP_SELF']) == 'email_analytics.php' ? 'active' : ''; ?>">
                     <a href="email_analytics.php" class="nav-link">
                         <span class="pcoded-micon"><i class="feather icon-mail"></i></span>
-                        <span class="pcoded-mtext">Email Analytics</span>
+                        <span class="pcoded-mtext"><?= __('email_analytics') ?></span>
                     </a>
                 </li>
                 <li data-username="support_tickets" class="nav-item pcoded-hasmenu <?php echo basename($_SERVER['PHP_SELF']) == 'support_ticket_create.php' || basename($_SERVER['PHP_SELF']) == 'support_tickets.php' || basename($_SERVER['PHP_SELF']) == 'support_ticket_detail.php' ? 'active pcoded-trigger' : ''; ?>">
                     <a href="javascript:" class="nav-link">
                         <span class="pcoded-micon"><i class="feather icon-help-circle"></i></span>
-                        <span class="pcoded-mtext">Support Tickets</span>
+                        <span class="pcoded-mtext"><?= __('support_tickets') ?></span>
                     </a>
                     <ul class="pcoded-submenu">
                         <li class="<?php echo basename($_SERVER['PHP_SELF']) == 'support_tickets.php' || basename($_SERVER['PHP_SELF']) == 'support_ticket_detail.php' ? 'active' : ''; ?>">
-                            <a href="support_tickets.php">My Tickets</a>
+                            <a href="support_tickets.php"><?= __('my_tickets') ?></a>
                         </li>
                         <li class="<?php echo basename($_SERVER['PHP_SELF']) == 'support_ticket_create.php' ? 'active' : ''; ?>">
-                            <a href="support_ticket_create.php">Submit New Ticket</a>
+                            <a href="support_ticket_create.php"><?= __('submit_new_ticket') ?></a>
                         </li>
                     </ul>
                 </li>
                 <li data-username="tutorial" class="nav-item <?php echo basename($_SERVER['PHP_SELF']) == 'tutorial.php' ? 'active' : ''; ?>">
                     <a href="tutorial.php" class="nav-link">
                         <span class="pcoded-micon"><i class="feather icon-book"></i></span>
-                        <span class="pcoded-mtext">Tutorials</span>
+                        <span class="pcoded-mtext"><?= __('tutorials') ?></span>
                     </a>
                 </li>
             </ul>

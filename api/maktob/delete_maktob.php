@@ -50,29 +50,29 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                     unlink("../{$pdf_path}");
                 }
                 
-                // Log the activity
+                // Log the deletion
                 $old_values = json_encode([
-                    'maktob_id' => $maktob_id
+                    'maktob_id' => $maktob_id,
+                    'file_path' => $file_path,
+                    'pdf_path' => $pdf_path
                 ]);
                 $new_values = json_encode([]);
-                
+
                 $user_id = $_SESSION['user_id'] ?? 0;
                 $ip_address = $_SERVER['REMOTE_ADDR'] ?? '';
-                $user_agent = $_SERVER['HTTP_USER_AGENT'] ?? '';
-                
-                $log_query = "INSERT INTO activity_log
-                              (user_id, action, table_name, record_id, old_values, new_values, ip_address, user_agent, created_at, tenant_id, branch_id)
-                              VALUES (?, 'delete', 'maktobs', ?, ?, ?, ?, ?, NOW(), ?, ?)";
+
+                $log_query = "INSERT INTO maktob_logs
+                              (tenant_id, maktob_id, user_id, action, old_values, new_values, ip_address, branch_id)
+                              VALUES (?, ?, ?, 'delete', ?, ?, ?, ?)";
 
                 $stmt_log = $pdo->prepare($log_query);
-                $stmt_log->bindParam(1, $user_id, PDO::PARAM_INT);
+                $stmt_log->bindParam(1, $tenant_id, PDO::PARAM_INT);
                 $stmt_log->bindParam(2, $maktob_id, PDO::PARAM_INT);
-                $stmt_log->bindParam(3, $old_values, PDO::PARAM_STR);
-                $stmt_log->bindParam(4, $new_values, PDO::PARAM_STR);
-                $stmt_log->bindParam(5, $ip_address, PDO::PARAM_STR);
-                $stmt_log->bindParam(6, $user_agent, PDO::PARAM_STR);
-                $stmt_log->bindParam(7, $tenant_id, PDO::PARAM_INT);
-                $stmt_log->bindParam(8, $branch_id, PDO::PARAM_INT);
+                $stmt_log->bindParam(3, $user_id, PDO::PARAM_INT);
+                $stmt_log->bindParam(4, $old_values, PDO::PARAM_STR);
+                $stmt_log->bindParam(5, $new_values, PDO::PARAM_STR);
+                $stmt_log->bindParam(6, $ip_address, PDO::PARAM_STR);
+                $stmt_log->bindParam(7, $branch_id, PDO::PARAM_INT);
                 $stmt_log->execute();
                 
                 $_SESSION['success_message'] = "Maktob deleted successfully!";

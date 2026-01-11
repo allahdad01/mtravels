@@ -40,7 +40,6 @@ $paginationPattern = empty($search)
 <?php include '../includes/header.php'; ?>
 
 <link rel="stylesheet" href="../css/general/modal-styles.css">
-<link rel="stylesheet" href="../css/hotel/styles.css">
 
 
 <!-- Main Content -->
@@ -775,15 +774,6 @@ $paginationPattern = empty($search)
         }
     }
 
-    #floatingActionButton {
-        right: 30px;
-    }
-    
-    /* RTL support - position on left side instead */
-    html[dir="rtl"] #floatingActionButton {
-        right: auto;
-        left: 30px;
-    }
 
     /* Refund Modal Styles */
     .btn-group-toggle .btn {
@@ -930,6 +920,12 @@ $paginationPattern = empty($search)
         padding: 0.5rem 1rem;
         box-shadow: 0 0.125rem 0.25rem rgba(0, 0, 0, 0.075);
     }
+    #floatingActionButton .btn {
+  width: 56px;
+  height: 56px;
+  border-radius: 50%;
+
+}
 </style>
 
 <script>

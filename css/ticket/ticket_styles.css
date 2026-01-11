@@ -243,24 +243,13 @@
   border-radius: var(--border-radius) 0 0 var(--border-radius);
 }
 
-/* Floating Action Button */
-#floatingActionButton {
-  right: 30px;
-    z-index: 1050;
-}
+
 
 #floatingActionButton .btn {
   width: 56px;
   height: 56px;
-    border-radius: 50%;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-  box-shadow: var(--shadow-lg);
-}
+  border-radius: 50%;
 
-#floatingActionButton .btn i {
-    font-size: 24px;
 }
 
 /* Toast Notifications */

@@ -136,7 +136,7 @@ include '../includes/header.php';
     transition: width 0.6s ease;
 }
 
-.badge {
+.badge-primary {
     font-size: 0.85em;
     padding: 0.5em 0.75em;
     border-radius: 20px;
@@ -145,6 +145,22 @@ include '../includes/header.php';
 
 .badge-success {
     background-color: #28a745;
+}
+
+.status-present{
+    background-color: #28a745;
+    font-size: 0.85em;
+    padding: 0.5em 0.75em;
+    border-radius: 20px;
+    font-weight: 500;
+}
+
+.status-absent{
+    background-color: #f44336;
+    font-size: 0.85em;
+    padding: 0.5em 0.75em;
+    border-radius: 20px;
+    font-weight: 500;
 }
 
 .badge-warning {
@@ -343,7 +359,7 @@ include '../includes/header.php';
                                         <h5 class="mb-0"><i class="feather icon-clock mr-2"></i><?php echo __('attendance_system'); ?></h5>
                                     </div>
                                     <div class="col-md-6 text-end">
-                                        <span class="badge badge-primary"><?php echo date('l, F j, Y'); ?></span>
+                                        <span class="badge-primary"><?php echo date('l, F j, Y'); ?></span>
                                     </div>
                                 </div>
                             </div>
@@ -360,12 +376,12 @@ include '../includes/header.php';
                                             <div class="mt-3">
                                                 <?php if ($today_attendance): ?>
                                                     <?php if ($today_attendance['check_out_time']): ?>
-                                                        <span class="badge status-present"><?php echo __('checked_out'); ?></span>
+                                                        <span class="status-present"><?php echo __('checked_out'); ?></span>
                                                     <?php else: ?>
-                                                        <span class="badge status-present"><?php echo __('checked_in'); ?></span>
+                                                        <span class="status-present"><?php echo __('checked_in'); ?></span>
                                                     <?php endif; ?>
                                                 <?php else: ?>
-                                                    <span class="badge status-absent"><?php echo __('not_checked_in'); ?></span>
+                                                    <span class="status-absent"><?php echo __('not_checked_in'); ?></span>
                                                 <?php endif; ?>
                                             </div>
                                         </div>
@@ -427,7 +443,7 @@ include '../includes/header.php';
                                                     <p><?php echo __('check_in'); ?>: <?php echo date('H:i:s', strtotime($today_attendance['check_in_time'])); ?></p>
                                                     <p><?php echo __('check_out'); ?>: <?php echo date('H:i:s', strtotime($today_attendance['check_out_time'])); ?></p>
                                                     <p><?php echo __('working_minutes'); ?>: <?php echo $today_attendance['working_minutes']; ?> <?php echo __('minutes'); ?></p>
-                                                    <span class="badge status-<?php echo strtolower($today_attendance['status']); ?>"><?php echo __($today_attendance['status']); ?></span>
+                                                    <span class="status-<?php echo strtolower($today_attendance['status']); ?>"><?php echo __($today_attendance['status']); ?></span>
                                                 </div>
                                             <?php endif; ?>
                                         </div>

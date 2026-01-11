@@ -24,6 +24,58 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     $maktob_date = $_POST['maktob_date'];
     $language = $_POST['language'];
 
+    // Handle file uploads
+    $file_path = null;
+    $pdf_path = null;
+
+    // Handle PDF file upload
+    if (isset($_FILES['pdf_file']) && $_FILES['pdf_file']['error'] === UPLOAD_ERR_OK) {
+        $upload_dir = '../../uploads/maktobs/';
+        if (!is_dir($upload_dir)) {
+            mkdir($upload_dir, 0755, true);
+        }
+
+        $file_extension = strtolower(pathinfo($_FILES['pdf_file']['name'], PATHINFO_EXTENSION));
+        if ($file_extension !== 'pdf') {
+            $_SESSION['error_message'] = 'Only PDF files are allowed for PDF file.';
+            header('Location: ../../admin/manage_maktobs.php');
+            exit();
+        }
+
+        $file_name = 'maktob_pdf_' . time() . '_' . uniqid() . '.pdf';
+        $pdf_path = 'uploads/maktobs/' . $file_name;
+
+        if (!move_uploaded_file($_FILES['pdf_file']['tmp_name'], '../../' . $pdf_path)) {
+            $_SESSION['error_message'] = 'Failed to upload PDF file.';
+            header('Location: ../../admin/manage_maktobs.php');
+            exit();
+        }
+    }
+
+    // Handle attachment upload
+    if (isset($_FILES['attachment']) && $_FILES['attachment']['error'] === UPLOAD_ERR_OK) {
+        $upload_dir = '../../uploads/maktobs/';
+        if (!is_dir($upload_dir)) {
+            mkdir($upload_dir, 0755, true);
+        }
+
+        $file_extension = strtolower(pathinfo($_FILES['attachment']['name'], PATHINFO_EXTENSION));
+        if ($file_extension !== 'pdf') {
+            $_SESSION['error_message'] = 'Only PDF files are allowed for attachment.';
+            header('Location: ../../admin/manage_maktobs.php');
+            exit();
+        }
+
+        $file_name = 'maktob_attachment_' . time() . '_' . uniqid() . '.pdf';
+        $file_path = 'uploads/maktobs/' . $file_name;
+
+        if (!move_uploaded_file($_FILES['attachment']['tmp_name'], '../../' . $file_path)) {
+            $_SESSION['error_message'] = 'Failed to upload attachment.';
+            header('Location: ../../admin/manage_maktobs.php');
+            exit();
+        }
+    }
+
     // Validate maktob_id
     if ($maktob_id > 0) {
         // Check if maktob exists
@@ -35,26 +87,36 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         $check_stmt->execute();
 
         if ($check_stmt->fetch(PDO::FETCH_ASSOC)) {
-            // Update maktob
-            $query = "UPDATE maktobs SET
-                      subject = ?,
-                      content = ?,
-                      company_name = ?,
-                      maktob_number = ?,
-                      maktob_date = ?,
-                      language = ?
-                      WHERE id = ? AND tenant_id = ? AND branch_id = ?";
+            // Build dynamic update query
+            $update_fields = [
+                'subject = ?',
+                'content = ?',
+                'company_name = ?',
+                'maktob_number = ?',
+                'maktob_date = ?',
+                'language = ?'
+            ];
+            $params = [$subject, $content, $company_name, $maktob_number, $maktob_date, $language];
+
+            if ($file_path !== null) {
+                $update_fields[] = 'file_path = ?';
+                $params[] = $file_path;
+            }
+
+            if ($pdf_path !== null) {
+                $update_fields[] = 'pdf_path = ?';
+                $params[] = $pdf_path;
+            }
+
+            $query = "UPDATE maktobs SET " . implode(', ', $update_fields) . " WHERE id = ? AND tenant_id = ? AND branch_id = ?";
+            $params[] = $maktob_id;
+            $params[] = $tenant_id;
+            $params[] = $branch_id;
 
             $update_stmt = $pdo->prepare($query);
-            $update_stmt->bindParam(1, $subject, PDO::PARAM_STR);
-            $update_stmt->bindParam(2, $content, PDO::PARAM_STR);
-            $update_stmt->bindParam(3, $company_name, PDO::PARAM_STR);
-            $update_stmt->bindParam(4, $maktob_number, PDO::PARAM_STR);
-            $update_stmt->bindParam(5, $maktob_date, PDO::PARAM_STR);
-            $update_stmt->bindParam(6, $language, PDO::PARAM_STR);
-            $update_stmt->bindParam(7, $maktob_id, PDO::PARAM_INT);
-            $update_stmt->bindParam(8, $tenant_id, PDO::PARAM_INT);
-            $update_stmt->bindParam(9, $branch_id, PDO::PARAM_INT);
+            foreach ($params as $index => $param) {
+                $update_stmt->bindValue($index + 1, $param, is_int($param) ? PDO::PARAM_INT : PDO::PARAM_STR);
+            }
 
             if ($update_stmt->execute()) {
                 // Add activity logging
@@ -79,10 +141,12 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                         'company_name' => $original_data['company_name'],
                         'maktob_number' => $original_data['maktob_number'],
                         'maktob_date' => $original_data['maktob_date'],
-                        'language' => $original_data['language']
+                        'language' => $original_data['language'],
+                        'file_path' => $original_data['file_path'],
+                        'pdf_path' => $original_data['pdf_path']
                     ];
                 }
-                
+
                 // Prepare new values
                 $new_values = [
                     'subject' => $subject,
@@ -90,23 +154,22 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                     'company_name' => $company_name,
                     'maktob_number' => $maktob_number,
                     'maktob_date' => $maktob_date,
-                    'language' => $language
+                    'language' => $language,
+                    'file_path' => $file_path !== null ? $file_path : $original_data['file_path'],
+                    'pdf_path' => $pdf_path !== null ? $pdf_path : $original_data['pdf_path']
                 ];
-                
-                // Insert activity log using PDO connection
-                $activity_log_stmt = $pdo->prepare("INSERT INTO activity_log
-                    (user_id, action, table_name, record_id, old_values, new_values, ip_address, user_agent, tenant_id, branch_id)
-                    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)");
-                $activity_log_stmt->execute([
-                    $user_id,
-                    'update',
-                    'maktobs',
+
+                // Insert maktob log
+                $log_stmt = $pdo->prepare("INSERT INTO maktob_logs
+                    (tenant_id, maktob_id, user_id, action, old_values, new_values, ip_address, branch_id)
+                    VALUES (?, ?, ?, 'edit', ?, ?, ?, ?)");
+                $log_stmt->execute([
+                    $tenant_id,
                     $maktob_id,
+                    $user_id,
                     json_encode($old_values),
                     json_encode($new_values),
                     $ip_address,
-                    $user_agent,
-                    $tenant_id,
                     $branch_id
                 ]);
                 

@@ -108,7 +108,7 @@
 </div>
 
 <!-- Add a floating action button for launching the multi-ticket invoice modal -->
-<div id="floatingActionButton" class="position-fixed" style="bottom: 80px; z-index: 1050;">
+<div id="floatingActionButton" class="position-fixed" style="bottom: 80px; <?php echo is_rtl() ? 'left' : 'right'; ?>: 30px; z-index: 1050;">
     <button type="button" class="btn btn-primary btn-lg shadow" id="launchMultiTicketInvoice" title="<?= __('generate_multi_ticket_invoice') ?>">
         <i class="feather icon-file-text"></i>
     </button>

@@ -76,49 +76,13 @@ if (!$settings) {
     ];
 }
 
-// Include Composer autoloader (adjust path as needed)
-require_once '../../vendor/autoload.php';
-
 // Set language from maktob data
 $lang = isset($maktob['language']) ? strtolower($maktob['language']) : 'english';
 
-// Create new mPDF instance with different settings based on language
-if ($lang == 'dari' || $lang == 'pashto') {
-    // For Dari and Pashto, use XW Zar font with RTL support
-    $mpdf = new \Mpdf\Mpdf([
-        'mode' => 'utf-8',
-        'format' => 'A4',
-        'margin_left' => 15,
-        'margin_right' => 15,
-        'margin_top' => 15,
-        'margin_bottom' => 15,
-        'margin_footer' => 5,
-        'default_font' => 'xwzar',
-        'fontDir' => ['../assets/fonts/'],
-        'fontdata' => [
-            'xwzar' => [
-                'R' => 'XW Zar Bd_0.ttf',
-                'useOTL' => 0xFF,
-            ]
-        ]
-    ]);
-    
-    // Set right-to-left direction
-    $mpdf->SetDirectionality('rtl');
-} else {
-    // For English, use default Arial font
-    $mpdf = new \Mpdf\Mpdf([
-        'mode' => 'utf-8',
-        'format' => 'A4',
-        'margin_left' => 15,
-        'margin_right' => 15,
-        'margin_top' => 15,
-        'margin_bottom' => 15,
-        'margin_footer' => 5
-    ]);
-}
+// Set headers for HTML display
+header('Content-Type: text/html; charset=utf-8');
 
-// Define the HTML content with styling to match the agreement layout
+// Define the HTML content with professional A4 styling
 $html = '
 <!DOCTYPE html>
 <html ' . (($lang == 'dari' || $lang == 'pashto') ? 'dir="rtl"' : '') . '>
@@ -126,201 +90,475 @@ $html = '
     <meta charset="UTF-8">
     <title>Maktob ' . htmlspecialchars($maktob['maktob_number']) . '</title>
     <style>
+        @page {
+            size: A4;
+            margin: 0;
+        }
+
+        * {
+            box-sizing: border-box;
+        }
+
         body {
-            font-family: ' . (($lang == 'dari' || $lang == 'pashto') ? 'xwzar' : 'Arial, Helvetica, sans-serif') . ';
+            font-family: ' . (($lang == 'dari' || $lang == 'pashto') ? 'xwzar, Tahoma, Arial, serif' : 'Arial, Helvetica, sans-serif') . ';
+            font-size: 11pt;
             line-height: 1.6;
             margin: 0;
             padding: 0;
-            color: #333;
+            color: #1a1a1a;
+            background: #f5f5f5;
         }
-        .container {
+
+        .letter-container {
+            width: 210mm;
+            min-height: 297mm;
+            margin: 0 auto;
+            background: white;
+            box-shadow: 0 0 10px rgba(0,0,0,0.1);
             position: relative;
-            padding-bottom: 30px;
+            padding: 0;
         }
-        .header {
-            margin-bottom: 20px;
-            border-bottom: 1px solid #333;
-            padding-bottom: 10px;
+
+        /* Professional Letterhead */
+        .letterhead {
+            background: linear-gradient(135deg, #1e3a8a 0%, #3b82f6 100%);
+            padding: 12mm 20mm 10mm 20mm;
+            color: white;
+            position: relative;
+            overflow: hidden;
         }
-        .header-table {
-            width: 100%;
-            border-collapse: collapse;
+
+        .letterhead::before {
+            content: "";
+            position: absolute;
+            top: -50%;
+            right: -10%;
+            width: 300px;
+            height: 300px;
+            background: rgba(255,255,255,0.05);
+            border-radius: 50%;
         }
-        .logo-section {
-            width: 20%;
-            text-align: left;
-            vertical-align: top;
+
+        .letterhead-content {
+            display: flex;
+            align-items: center;
+            gap: 15pt;
+            position: relative;
+            z-index: 1;
         }
-        .logo {
-            max-height: 80px;
+
+        .company-logo {
+            width: 60pt;
+            height: 60pt;
+            object-fit: contain;
+            background: white;
+            padding: 6pt;
+            border-radius: 6pt;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+            flex-shrink: 0;
         }
-        .company-section {
-            width: 60%;
-            text-align: center;
-            vertical-align: top;
-        }
-        .company-section h1 {
-            margin: 0;
-            color: #333;
-            font-size: 18px;
-            white-space: nowrap;
-        }
+
         .company-info {
-            font-size: 12px;
-            margin-top: 5px;
+            flex: 1;
         }
-        .date-section {
-            width: 20%;
-            text-align: ' . (($lang == 'dari' || $lang == 'pashto') ? 'left' : 'right') . ';
-            font-size: 12px;
-            line-height: 1.4;
-            vertical-align: top;
-        }
-        .title-row {
-            margin: 10px 0;
-            text-align: center;
-        }
-        .document-title {
-            font-size: 16px;
-            font-weight: bold;
+
+        .company-name {
+            font-size: 16pt;
+            font-weight: 700;
+            margin: 0 0 4pt 0;
             text-transform: uppercase;
-            color: #d32f2f;
+            letter-spacing: 1pt;
+            text-shadow: 1px 1px 2px rgba(0,0,0,0.2);
         }
-        .content-section {
-            margin-bottom: 20px;
+
+        .company-tagline {
+            font-size: 8.5pt;
+            margin: 0 0 6pt 0;
+            opacity: 0.9;
+            font-style: italic;
+            letter-spacing: 0.3pt;
         }
-        .content-section h2 {
-            font-size: 16px;
-            margin-bottom: 10px;
-            padding-bottom: 5px;
-            color: #333;
+
+        .company-details {
+            font-size: 8pt;
+            line-height: 1.4;
+            opacity: 0.95;
         }
-        .detail-row {
-            margin-bottom: 8px;
+
+        .company-details-row {
+            display: flex;
+            gap: 20pt;
+            margin-top: 4pt;
         }
-        .detail-label {
-            font-weight: bold;
-            ' . (($lang == 'dari' || $lang == 'pashto') ? 'text-align: right;' : '') . '
+
+        .company-details-item {
+            display: flex;
+            align-items: center;
+            gap: 4pt;
         }
-        .maktob-body {
-            margin: 20px 0;
+
+        .company-details-icon {
+            width: 10pt;
+            height: 10pt;
+            display: inline-block;
+        }
+
+        /* Branch info badge */
+        .branch-badge {
+            position: absolute;
+            top: 12mm;
+            right: 20mm;
+            background: rgba(255,255,255,0.2);
+            backdrop-filter: blur(10px);
+            padding: 6pt 12pt;
+            border-radius: 15pt;
+            border: 1px solid rgba(255,255,255,0.3);
+            font-size: 8pt;
+            font-weight: 600;
+            letter-spacing: 0.5pt;
+        }
+
+        /* Main content area */
+        .letter-content {
+            padding: 10mm 20mm 5mm 20mm;
+        }
+
+        /* Document metadata */
+        .document-meta {
+            display: flex;
+            justify-content: flex-start;
+            align-items: flex-start;
+            margin-bottom: 15pt;
+            gap: 15pt;
+        }
+
+        .meta-item {
+            font-size: 9pt;
+            flex: none;
+        }
+
+        .meta-label {
+            font-weight: 600;
+            color: #64748b;
+            margin-bottom: 3pt;
+            font-size: 8pt;
+            text-transform: uppercase;
+            letter-spacing: 0.5pt;
+        }
+
+        .meta-value {
+            color: #1e293b;
+            font-weight: 600;
+            font-size: 9.5pt;
+        }
+
+        /* Letter title */
+        .letter-title {
+            text-align: center;
+            font-size: 15pt;
+            font-weight: 700;
+            text-transform: uppercase;
+            margin: 25pt 0;
+            padding: 12pt 0;
+            color: #1e3a8a;
+            letter-spacing: 2pt;
+            position: relative;
+        }
+
+        .letter-title::after {
+            content: "";
+            display: block;
+            width: 80pt;
+            height: 3pt;
+            background: linear-gradient(90deg, #3b82f6, #60a5fa);
+            margin: 10pt auto 0;
+            border-radius: 2pt;
+        }
+
+        /* Recipient section */
+        .recipient-section {
+            margin-bottom: 25pt;
+            padding: 15pt;
+            background: linear-gradient(to right, #f0f9ff 0%, #ffffff 100%);
+            border-left: 4px solid #3b82f6;
+            border-radius: 4pt;
+        }
+
+        .recipient-field {
+            margin-bottom: 12pt;
+        }
+
+        .recipient-field:last-child {
+            margin-bottom: 0;
+        }
+
+        .recipient-label {
+            font-weight: 700;
+            font-size: 10pt;
+            color: #1e3a8a;
+            margin-bottom: 4pt;
+            text-transform: uppercase;
+            letter-spacing: 0.5pt;
+        }
+
+        .recipient-value {
+            font-size: 11pt;
+            color: #1e293b;
+            font-weight: 500;
+        }
+
+        /* Letter body */
+        .letter-body {
+            margin: 30pt 0;
             text-align: justify;
-            line-height: 1.5;
+            font-size: 11pt;
+            line-height: 1.8;
+            color: #1e293b;
         }
+
+        .letter-body p {
+            margin-bottom: 12pt;
+            text-indent: 30pt;
+        }
+
+        .letter-body p:first-child {
+            margin-top: 0;
+        }
+
+        /* Signature section */
         .signature-section {
-            margin-top: 30px;
-            text-align: ' . (($lang == 'dari' || $lang == 'pashto') ? 'left' : 'right') . ';
+            margin-top: 40pt;
+            display: flex;
+            justify-content: flex-end;
         }
-        .signature-box {
-            width: 40%;
-            float: ' . (($lang == 'dari' || $lang == 'pashto') ? 'left' : 'right') . ';
+
+        .signature-block {
+            width: 220pt;
+            text-align: center;
         }
+
+        .complimentary-close {
+            font-size: 11pt;
+            font-weight: 600;
+            margin-bottom: 35pt;
+            color: #1e293b;
+        }
+
         .signature-line {
-            border-top: 1px solid #333;
-            padding-top: 5px;
+            border-top: 2px solid #1e3a8a;
+            padding-top: 10pt;
+            margin-bottom: 8pt;
+        }
+
+        .signature-name {
+            font-weight: 700;
+            font-size: 12pt;
+            color: #1e3a8a;
+            margin-bottom: 4pt;
+        }
+
+        .signature-title {
+            font-size: 10pt;
+            color: #64748b;
+            font-weight: 500;
+            margin-bottom: 6pt;
+        }
+
+        .signature-branch {
+            font-size: 9pt;
+            color: #94a3b8;
+            font-style: italic;
+        }
+
+        /* Professional Footer */
+        .letter-footer {
+            position: absolute;
+            bottom: 0;
+            left: 0;
+            right: 0;
+            background: linear-gradient(135deg, #1e3a8a 0%, #3b82f6 100%);
+            color: white;
+            padding: 8mm 20mm;
+        }
+
+        .footer-content {
+            font-size: 8pt;
+            line-height: 1.4;
             text-align: center;
         }
-        .footer {
+
+        .footer-section h4 {
+            font-size: 8.5pt;
+            font-weight: 700;
+            margin: 0 0 4pt 0;
+            text-transform: uppercase;
+            letter-spacing: 0.8pt;
+        }
+
+        .footer-item {
+            margin-bottom: 2pt;
+            opacity: 0.95;
+        }
+
+        .footer-divider {
+            height: 1px;
+            background: rgba(255,255,255,0.2);
+            margin: 6pt 0;
+        }
+
+        .footer-bottom {
             text-align: center;
-            font-size: 10px;
-            color: #555;
-            border-top: 1px solid #eee;
-            padding-top: 5px;
+            font-size: 7.5pt;
+            margin-top: 6pt;
+            opacity: 0.85;
+        }
+
+        /* Print button */
+        .print-button {
+            position: fixed;
+            top: 20px;
+            right: 20px;
+            background: linear-gradient(135deg, #1e3a8a 0%, #3b82f6 100%);
+            color: white;
+            border: none;
+            padding: 12px 24px;
+            border-radius: 6px;
+            cursor: pointer;
+            font-size: 13px;
+            font-weight: 600;
+            z-index: 1000;
+            box-shadow: 0 4px 6px rgba(0,0,0,0.1);
+            transition: all 0.3s ease;
+        }
+
+        .print-button:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 6px 12px rgba(0,0,0,0.15);
+        }
+
+        @media print {
+            body {
+                background: white;
+            }
+
+            .letter-container {
+                box-shadow: none;
+                margin: 0;
+            }
+
+            .no-print {
+                display: none !important;
+            }
+
+            .letter-footer {
+                position: fixed;
+                bottom: 0;
+            }
         }
     </style>
 </head>
 <body>
-    <div class="container">
-        <div class="header">
-            <table class="header-table">
-                <tr>
-                    <td class="' . (($lang == 'dari' || $lang == 'pashto') ? 'date-section' : 'logo-section') . '">
-                        ' . (($lang == 'dari' || $lang == 'pashto') ? 
-                          '<div>Date: ' . date('M j, Y', strtotime($maktob['maktob_date'])) . '</div>
-                           <div>Ref: MAKTOB-' . htmlspecialchars($maktob['maktob_number']) . '</div>' : 
-                          '<img src="../uploads/logo/' . htmlspecialchars($settings['logo']) . '" alt="Company Logo" class="logo">') . '
-                    </td>
-                    <td class="company-section">
-                        <h1>' . htmlspecialchars($settings['title']) . '</h1>
-                        <div class="company-info">
-                            ' . htmlspecialchars($settings['address']) . '<br>
-                            Tel: ' . htmlspecialchars($settings['phone']) . ' | Email: ' . 
-                            htmlspecialchars($settings['email']) . '
+    <button class="print-button no-print" onclick="window.print()">🖨️ Print Letter</button>
+
+    <div class="letter-container">
+        <!-- Professional Letterhead -->
+        <div dir="ltr">
+        <div class="letterhead">
+            ' . ($branch ? '<div class="branch-badge">BRANCH: ' . htmlspecialchars($branch['code'] ?? '') . '</div>' : '') . '
+            <div class="letterhead-content">
+                ' . ((!empty($settings['logo'])) ? '<img src="../../uploads/logo/' . htmlspecialchars($settings['logo']) . '" alt="Company Logo" class="company-logo">' : '') . '
+                <div class="company-info">
+                    <h1 class="company-name">' . htmlspecialchars($settings['title'] ?? 'AL MOQADAS TRAVEL & TOURS') . '</h1>
+                    <p class="company-tagline">Your Trusted Travel Partner</p>
+                    <div class="company-details">
+                        <div>' . htmlspecialchars($settings['address'] ?? 'End of Jadayi Maiwand Road [Pashtoon Tower, Kabul Afghanistan]') . '</div>
+                        <div class="company-details-row">
+                            <div class="company-details-item">
+                                <span>📞</span> ' . htmlspecialchars($settings['phone'] ?? '+93 785 555 551') . '
+                            </div>
+                            <div class="company-details-item">
+                                <span>✉️</span> ' . htmlspecialchars($settings['email'] ?? 'Almoqadas_travel@yahoo.com') . '
+                            </div>
                         </div>
-                    </td>
-                    <td class="' . (($lang == 'dari' || $lang == 'pashto') ? 'logo-section' : 'date-section') . '">
-                        ' . (($lang == 'dari' || $lang == 'pashto') ? 
-                          '<img src="../uploads/' . htmlspecialchars($settings['logo']) . '" alt="Company Logo" class="logo">' : 
-                          '<div>Date: ' . date('M j, Y', strtotime($maktob['maktob_date'])) . '</div>
-                           <div>Ref: Letter-' . htmlspecialchars($maktob['maktob_number']) . '</div>') . '
-                    </td>
-                </tr>
-            </table>
-            <div class="title-row">
-                <div class="document-title">' . (($lang == 'dari' || $lang == 'pashto') ? 'مکتوب رسمی' : 'OFFICIAL LETTER') . '</div>
+                    </div>
+                </div>
             </div>
         </div>
-        
-        <div class="content-section">
-            <h2>' . (($lang == 'dari' || $lang == 'pashto') ? 'معلوماتی دریافت کننده' : 'Recipient Information') . '</h2>
-            <div class="detail-row">
-                <div class="detail-label">' . (($lang == 'dari' || $lang == 'pashto') ? 'به:' : 'To:') . '</div>
-                <div class="detail-value">' . htmlspecialchars($maktob['company_name']) . '</div>
+        </div>
+
+        <!-- Main Content -->
+        <div class="letter-content">
+            <!-- Document Metadata -->
+            <div class="document-meta">
+                <div class="meta-item">
+                    <div class="meta-label">Reference Number</div>
+                    <div class="meta-value">' . htmlspecialchars($maktob['maktob_number']) . '</div>
+                </div>
+                <div class="meta-item">
+                    <div class="meta-label">Date</div>
+                    <div class="meta-value">' . date('F j, Y', strtotime($maktob['maktob_date'])) . '</div>
+                </div>
             </div>
-            <div class="detail-row">
-                <div class="detail-label">' . (($lang == 'dari' || $lang == 'pashto') ? 'موضوع:' : 'Subject:') . '</div>
-                <div class="detail-value">' . htmlspecialchars($maktob['subject']) . '</div>
+
+            <!-- Letter Title -->
+            <div class="letter-title">
+                ' . (($lang == 'dari' || $lang == 'pashto') ? 'مکتوب رسمی' : 'OFFICIAL COMMUNICATION') . '
             </div>
-            <div class="detail-row">
-                <div class="detail-label">' . (($lang == 'dari' || $lang == 'pashto') ? 'نمبر مکتوب:' : 'Reference:') . '</div>
-                <div class="detail-value">Al Moqadas/' . htmlspecialchars($maktob['maktob_number']) . '/' . date('Y', strtotime($maktob['maktob_date'])) . '</div>
+
+            <!-- Recipient Section -->
+            <div class="recipient-section">
+                <div class="recipient-field">
+                    <div class="recipient-label">' . (($lang == 'dari' || $lang == 'pashto') ? 'به' : 'To') . '</div>
+                    <div class="recipient-value">' . htmlspecialchars($maktob['company_name']) . '</div>
+                </div>
+
+                <div class="recipient-field">
+                    <div class="recipient-label">' . (($lang == 'dari' || $lang == 'pashto') ? 'موضوع' : 'Subject') . '</div>
+                    <div class="recipient-value">' . htmlspecialchars($maktob['subject']) . '</div>
+                </div>
+            </div>
+
+            <!-- Letter Body -->
+            <div class="letter-body">
+                ' . nl2br(htmlspecialchars($maktob['content'])) . '
+            </div>
+
+            <!-- Signature Section -->
+            <div class="signature-section">
+                <div class="signature-block">
+                    <div class="complimentary-close">
+                        ' . (($lang == 'dari' || $lang == 'pashto') ? 'با احترام' : 'Yours faithfully,') . '
+                    </div>
+                    <div class="signature-line">
+                        <div class="signature-name">' . htmlspecialchars($maktob['sender_name']) . '</div>
+                        <div class="signature-title">Authorized Signatory</div>
+                        ' . ($branch ? '<div class="signature-branch">' . htmlspecialchars($branch['name'] ?? '') . '</div>' : '') . '
+                    </div>
+                </div>
             </div>
         </div>
-        
-        <div class="maktob-body">
-            ' . nl2br(htmlspecialchars($maktob['content'])) . '
-        </div>
-        
-        <div class="signature-section">
-            <div class="signature-box">
-                <div class="signature-line">' . htmlspecialchars($maktob['sender_name']) . '</div>
-                <div style="text-align: center; margin-top: 5px;">Authorized Signatory</div>
+
+        <!-- Professional Footer -->
+        <div class="letter-footer">
+            ' . ($branch ? '
+            <div class="footer-content">
+                <div class="footer-section">
+                    <h4>Branch Office Information</h4>
+                    <div class="footer-item">' . htmlspecialchars($branch['name'] ?? '') . ' (Code: ' . htmlspecialchars($branch['code'] ?? '') . ')</div>
+                    <div class="footer-item">' . htmlspecialchars($branch['address'] ?? '') . '</div>
+                    <div class="footer-item">Phone: ' . htmlspecialchars($branch['phone'] ?? '') . '</div>
+                </div>
+            </div>
+            <div class="footer-divider"></div>
+            ' : '') . '
+            <div class="footer-bottom">
+                Document Reference: ' . htmlspecialchars($maktob['maktob_number']) . ' | Issued: ' . date('F j, Y', strtotime($maktob['maktob_date'])) . ' | Confidential Business Communication
             </div>
         </div>
     </div>
-';
+</body>
+</html>';
 
-// Define the footer HTML
-$footerHTML = '
-<div class="footer">
-    <p>' . htmlspecialchars($branch['name']) . ' | ' . htmlspecialchars($branch['address']) . ' | Tel: ' . htmlspecialchars($branch['phone']) . ' | Email: ' . htmlspecialchars($branch['email']) . '</p>
-    <p>This document is officially issued on ' . date('M j, Y', strtotime($maktob['maktob_date'])) . ' | Ref: LETTER-' . htmlspecialchars($maktob['maktob_number']) . '</p>
-</div>
-';
-
-// Set the footer
-$mpdf->SetHTMLFooter($footerHTML);
-
-// Write the HTML content to the PDF
-$mpdf->WriteHTML($html);
-
-// Create letters directory if it doesn't exist
-$letters_dir = "../uploads/letters";
-if (!is_dir($letters_dir)) {
-    mkdir($letters_dir, 0755, true);
-}
-
-// Generate filename with timestamp to ensure uniqueness
-$timestamp = date('Y-m-d_His');
-$filename = "letter_{$maktob['maktob_number']}_ {$maktob['company_name']}_{$maktob['subject']}_ {$timestamp}.pdf";
-$file_path = "{$letters_dir}/{$filename}";
-
-// Save a copy to the letters folder
-$mpdf->Output($file_path, 'F');
-
-// Update database with PDF file path if it doesn't already have one
-$file_path_db = "uploads/letters/{$filename}";
-
-// Output the PDF for download
-$mpdf->Output('Maktob_' . $maktob['maktob_number'] . '.pdf', 'I');
-exit; 
+// Output the HTML
+echo $html;
+exit;

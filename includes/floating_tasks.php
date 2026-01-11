@@ -492,6 +492,22 @@ $tenant_id = isset($_SESSION['tenant_id']) ? $_SESSION['tenant_id'] : 1;
         50% { box-shadow: 0 2px 15px rgba(239, 68, 68, 0.6); }
     }
 
+    /* RTL Support */
+    html[dir="rtl"] .floating-tasks-widget {
+        right: auto;
+        left: 20px;
+    }
+
+    html[dir="rtl"] .floating-tasks-toggle {
+        right: auto;
+        left: 20px;
+    }
+
+    html[dir="rtl"] .badge {
+        right: auto;
+        left: -6px;
+    }
+
     /* Responsive */
     @media (max-width: 768px) {
         .floating-tasks-widget {

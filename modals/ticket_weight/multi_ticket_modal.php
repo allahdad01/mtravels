@@ -1,5 +1,5 @@
     <!-- Floating Action Button for Multi-Weight Invoice -->
-    <div id="floatingActionButton" class="position-fixed" style="bottom: 80px; right: 20px; z-index: 1050;">
+    <div id="floatingActionButton" class="position-fixed" style="bottom: 80px; <?php echo is_rtl() ? 'left' : 'right'; ?>: 20px; z-index: 1050;">
         <button type="button" class="btn btn-primary btn-lg shadow" id="launchMultiWeightInvoice" title="<?= __('generate_multi_weight_invoice') ?>">
             <i class="feather icon-file-text"></i>
         </button>

@@ -147,7 +147,16 @@ class WhatsAppManager {
                     WHERE tb.id = ? AND tb.tenant_id = ?
                 ");
                 break;
-                
+
+            case 'maktob':
+                $stmt = $this->pdo->prepare("
+                    SELECT m.*, u.name as sender_name, u.email as sender_email
+                    FROM maktobs m
+                    LEFT JOIN users u ON m.sender_id = u.id
+                    WHERE m.id = ? AND m.tenant_id = ?
+                ");
+                break;
+
             default:
                 throw new Exception("Invalid booking type: $type");
         }
@@ -220,6 +229,16 @@ class WhatsAppManager {
                     'departure_time' => $booking['departure_time'] ?? 'N/A',
                     'destination' => $booking['destination'] ?? $booking['to_airport'],
                     'amount' => $booking['sold'] . ' ' . $booking['currency']
+                ]);
+                break;
+
+            case 'maktob':
+                $template_data = array_merge($template_data, [
+                    'maktob_number' => $booking['maktob_number'],
+                    'subject' => $booking['subject'],
+                    'company_name' => $booking['company_name'],
+                    'sender_name' => $booking['sender_name'],
+                    'maktob_date' => $booking['maktob_date']
                 ]);
                 break;
         }
@@ -314,7 +333,7 @@ Thank you for choosing {{agency_name}}!
 📞 Contact: {{contact_info}}",
 
             'ticket' => "✈️ *Flight Ticket Confirmation*
-            
+
 Hello {{client_name}},
 
 Your flight ticket has been confirmed:
@@ -330,6 +349,23 @@ Your flight ticket has been confirmed:
 📅 Booking Date: {{booking_date}}
 
 Have a safe journey!
+📞 Contact: {{contact_info}}",
+
+            'maktob' => "📄 *Official Letter Sent*
+
+Hello,
+
+An official letter has been sent:
+
+📋 Letter Number: {{maktob_number}}
+📝 Subject: {{subject}}
+🏢 Company: {{company_name}}
+👤 Sender: {{sender_name}}
+📅 Date: {{maktob_date}}
+
+📅 Sent Date: {{booking_date}}
+
+Please check your email for the complete document.
 📞 Contact: {{contact_info}}"
         ];
         

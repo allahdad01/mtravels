@@ -558,17 +558,6 @@ foreach ($visas as $key => $visa) {
 
 
 
-<style>
-    #floatingActionButton {
-        right: 30px;
-    }
-    
-    /* RTL support - position on left side instead */
-    html[dir="rtl"] #floatingActionButton {
-        right: auto;
-        left: 30px;
-    }
-</style>
 
                                 <?php
                                 function getStatusBadgeClass($status) {

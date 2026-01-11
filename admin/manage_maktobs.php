@@ -48,6 +48,58 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     $language = $_POST['language'] ?? 'english';
     $sender_id = $_SESSION['user_id'];
 
+    // Handle file uploads
+    $file_path = null;
+    $pdf_path = null;
+
+    // Handle PDF file upload
+    if (isset($_FILES['pdf_file']) && $_FILES['pdf_file']['error'] === UPLOAD_ERR_OK) {
+        $upload_dir = 'uploads/maktobs/';
+        if (!is_dir($upload_dir)) {
+            mkdir($upload_dir, 0755, true);
+        }
+
+        $file_extension = strtolower(pathinfo($_FILES['pdf_file']['name'], PATHINFO_EXTENSION));
+        if ($file_extension !== 'pdf') {
+            $_SESSION['error_message'] = 'Only PDF files are allowed for PDF file.';
+            header('Location: ' . $_SERVER['PHP_SELF']);
+            exit();
+        }
+
+        $file_name = 'maktob_pdf_' . time() . '_' . uniqid() . '.pdf';
+        $pdf_path = $upload_dir . $file_name;
+
+        if (!move_uploaded_file($_FILES['pdf_file']['tmp_name'], $pdf_path)) {
+            $_SESSION['error_message'] = 'Failed to upload PDF file.';
+            header('Location: ' . $_SERVER['PHP_SELF']);
+            exit();
+        }
+    }
+
+    // Handle attachment upload
+    if (isset($_FILES['attachment']) && $_FILES['attachment']['error'] === UPLOAD_ERR_OK) {
+        $upload_dir = 'uploads/maktobs/';
+        if (!is_dir($upload_dir)) {
+            mkdir($upload_dir, 0755, true);
+        }
+
+        $file_extension = strtolower(pathinfo($_FILES['attachment']['name'], PATHINFO_EXTENSION));
+        if ($file_extension !== 'pdf') {
+            $_SESSION['error_message'] = 'Only PDF files are allowed for attachment.';
+            header('Location: ' . $_SERVER['PHP_SELF']);
+            exit();
+        }
+
+        $file_name = 'maktob_attachment_' . time() . '_' . uniqid() . '.pdf';
+        $file_path = $upload_dir . $file_name;
+
+        if (!move_uploaded_file($_FILES['attachment']['tmp_name'], $file_path)) {
+            $_SESSION['error_message'] = 'Failed to upload attachment.';
+            header('Location: ' . $_SERVER['PHP_SELF']);
+            exit();
+        }
+    }
+
     error_log("Session info - tenant_id: $tenant_id, branch_id: $branch_id, user_id: $sender_id");
 
     // Validate required fields
@@ -72,8 +124,44 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         exit();
     }
 
+    // Auto-generate maktob_number if empty
+    if (empty($maktob_number) && !empty($maktob_date)) {
+        try {
+            $formattedDate = str_replace('-', '', $maktob_date);
+            $baseNumber = $tenant_id . '-' . $branch_id . '-' . $formattedDate . '-';
+
+            // Get next sequence number
+            $stmt = $pdo->prepare("SELECT maktob_number FROM maktobs
+                                  WHERE tenant_id = ? AND branch_id = ? AND maktob_number LIKE ?
+                                  ORDER BY CAST(SUBSTRING_INDEX(maktob_number, '-', -1) AS UNSIGNED) DESC
+                                  LIMIT 1");
+            $stmt->execute([$tenant_id, $branch_id, $baseNumber . '%']);
+            $result = $stmt->fetch(PDO::FETCH_ASSOC);
+
+            $next_sequence = 1;
+            if ($result) {
+                $existing_number = $result['maktob_number'];
+                $parts = explode('-', $existing_number);
+                if (count($parts) >= 4) {
+                    $last_part = end($parts);
+                    if (is_numeric($last_part)) {
+                        $next_sequence = intval($last_part) + 1;
+                    }
+                }
+            }
+
+            $formatted_sequence = str_pad($next_sequence, 3, '0', STR_PAD_LEFT);
+            $maktob_number = $baseNumber . $formatted_sequence;
+        } catch (Exception $e) {
+            error_log("Error auto-generating maktob number: " . $e->getMessage());
+            $_SESSION['error_message'] = 'Error generating maktob number';
+            header('Location: ' . $_SERVER['PHP_SELF']);
+            exit();
+        }
+    }
+
     if (empty($maktob_number)) {
-        error_log("VALIDATION FAILED: maktob_number is empty");
+        error_log("VALIDATION FAILED: maktob_number is empty after auto-generation");
         $_SESSION['error_message'] = __('all_fields_required');
         header('Location: ' . $_SERVER['PHP_SELF']);
         exit();
@@ -105,12 +193,12 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 
     // Insert new maktob directly
     try {
-        $query = "INSERT INTO maktobs (tenant_id, branch_id, subject, content, company_name, maktob_number, maktob_date, sender_id, status, language)
-                  VALUES (?, ?, ?, ?, ?, ?, ?, ?, 'draft', ?)";
+        $query = "INSERT INTO maktobs (tenant_id, branch_id, subject, content, company_name, maktob_number, maktob_date, sender_id, status, language, file_path, pdf_path)
+                  VALUES (?, ?, ?, ?, ?, ?, ?, ?, 'draft', ?, ?, ?)";
 
         error_log("Preparing statement: $query");
         $stmt = $pdo->prepare($query);
-        
+
         if (!$stmt) {
             error_log("PREPARE ERROR: " . json_encode($pdo->errorInfo()));
             $_SESSION['error_message'] = 'Database prepare error: ' . $pdo->errorInfo()[2];
@@ -128,6 +216,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         $stmt->bindParam(7, $maktob_date, PDO::PARAM_STR);
         $stmt->bindParam(8, $sender_id, PDO::PARAM_INT);
         $stmt->bindParam(9, $language, PDO::PARAM_STR);
+        $stmt->bindParam(10, $file_path, PDO::PARAM_STR);
+        $stmt->bindParam(11, $pdf_path, PDO::PARAM_STR);
 
         error_log("Parameters bound. Execution details:");
         error_log("  tenant_id: $tenant_id (int)");
@@ -143,6 +233,27 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         if ($stmt->execute()) {
             $insert_id = $pdo->lastInsertId();
             error_log("=== MAKTOB CREATE SUCCESS: ID=$insert_id ===");
+
+            // Log the create action
+            try {
+                $log_query = "INSERT INTO maktob_logs (tenant_id, maktob_id, user_id, action, new_values, ip_address, branch_id)
+                             VALUES (?, ?, ?, 'create', ?, ?, ?)";
+                $log_stmt = $pdo->prepare($log_query);
+                $new_values = json_encode([
+                    'subject' => $subject,
+                    'content' => $content,
+                    'company_name' => $company_name,
+                    'maktob_number' => $maktob_number,
+                    'maktob_date' => $maktob_date,
+                    'language' => $language,
+                    'file_path' => $file_path,
+                    'pdf_path' => $pdf_path
+                ]);
+                $log_stmt->execute([$tenant_id, $insert_id, $sender_id, $new_values, $_SERVER['REMOTE_ADDR'], $branch_id]);
+            } catch (Exception $e) {
+                error_log("Failed to log maktob creation: " . $e->getMessage());
+            }
+
             $_SESSION['success_message'] = __('letter_created');
         } else {
             $errorInfo = $stmt->errorInfo();
@@ -174,13 +285,44 @@ $offset = ($current_page - 1) * $items_per_page;
 
 // Search functionality
 $search_query = isset($_GET['search']) ? trim($_GET['search']) : '';
+$status_filter = isset($_GET['status']) ? $_GET['status'] : '';
+$language_filter = isset($_GET['language']) ? $_GET['language'] : '';
+$sender_filter = isset($_GET['sender']) ? $_GET['sender'] : '';
+$date_from = isset($_GET['date_from']) ? $_GET['date_from'] : '';
+$date_to = isset($_GET['date_to']) ? $_GET['date_to'] : '';
+
 $search_condition = '';
 $search_params = [];
 
 if (!empty($search_query)) {
-    $search_condition = "AND (maktob_number LIKE ? OR subject LIKE ? OR company_name LIKE ?)";
+    $search_condition .= " AND (m.maktob_number LIKE ? OR m.subject LIKE ? OR m.company_name LIKE ?)";
     $search_param = '%' . $search_query . '%';
-    $search_params = array_fill(0, 3, $search_param);
+    $search_params = array_merge($search_params, [$search_param, $search_param, $search_param]);
+}
+
+if (!empty($status_filter)) {
+    $search_condition .= " AND m.status = ?";
+    $search_params[] = $status_filter;
+}
+
+if (!empty($language_filter)) {
+    $search_condition .= " AND m.language = ?";
+    $search_params[] = $language_filter;
+}
+
+if (!empty($sender_filter)) {
+    $search_condition .= " AND m.sender_id = ?";
+    $search_params[] = $sender_filter;
+}
+
+if (!empty($date_from)) {
+    $search_condition .= " AND m.maktob_date >= ?";
+    $search_params[] = $date_from;
+}
+
+if (!empty($date_to)) {
+    $search_condition .= " AND m.maktob_date <= ?";
+    $search_params[] = $date_to;
 }
 
 // Fetch maktobs directly from database
@@ -199,15 +341,13 @@ try {
         FROM maktobs m
         JOIN users u ON m.sender_id = u.id
         WHERE m.tenant_id = ? AND m.branch_id = ?";
-    
+
     $params = [$tenant_id, $branch_id];
-    
-    // Apply search filter if needed
-    if (!empty($search_query)) {
-        error_log("Applying search filter: $search_query");
-        $query .= " AND (m.maktob_number LIKE ? OR m.subject LIKE ? OR m.company_name LIKE ?)";
-        $searchParam = '%' . $search_query . '%';
-        $params = array_merge($params, [$searchParam, $searchParam, $searchParam]);
+
+    // Apply search filters
+    if (!empty($search_condition)) {
+        $query .= $search_condition;
+        $params = array_merge($params, $search_params);
     }
     
     $query .= " ORDER BY m.maktob_date DESC";
@@ -313,6 +453,95 @@ include '../includes/header.php';
                                         </div>
                                     <?php endif; ?>
 
+                                    <!-- Dashboard Widget -->
+                                    <?php
+                                    // Get maktob statistics
+                                    try {
+                                        $stats_query = "SELECT
+                                            COUNT(*) as total,
+                                            SUM(CASE WHEN status = 'draft' THEN 1 ELSE 0 END) as drafts,
+                                            SUM(CASE WHEN status = 'sent' THEN 1 ELSE 0 END) as sent,
+                                            SUM(CASE WHEN status = 'archived' THEN 1 ELSE 0 END) as archived
+                                            FROM maktobs WHERE tenant_id = ? AND branch_id = ?";
+                                        $stats_stmt = $pdo->prepare($stats_query);
+                                        $stats_stmt->execute([$tenant_id, $branch_id]);
+                                        $stats = $stats_stmt->fetch(PDO::FETCH_ASSOC);
+
+                                        // Get recent 5 maktobs
+                                        $recent_query = "SELECT m.*, u.name as sender_name
+                                                        FROM maktobs m
+                                                        JOIN users u ON m.sender_id = u.id
+                                                        WHERE m.tenant_id = ? AND m.branch_id = ?
+                                                        ORDER BY m.created_at DESC LIMIT 5";
+                                        $recent_stmt = $pdo->prepare($recent_query);
+                                        $recent_stmt->execute([$tenant_id, $branch_id]);
+                                        $recent_maktobs = $recent_stmt->fetchAll(PDO::FETCH_ASSOC);
+                                    } catch (Exception $e) {
+                                        $stats = ['total' => 0, 'drafts' => 0, 'sent' => 0, 'archived' => 0];
+                                        $recent_maktobs = [];
+                                    }
+                                    ?>
+                                    <div class="row mb-4">
+                                        <div class="col-md-12">
+                                            <div class="card">
+                                                <div class="card-header">
+                                                    <h5><i class="feather icon-bar-chart-2 mr-2"></i>Maktob Statistics</h5>
+                                                </div>
+                                                <div class="card-body">
+                                                    <div class="row">
+                                                        <div class="col-md-3">
+                                                            <div class="text-center">
+                                                                <h3 class="text-primary"><?php echo $stats['total'] ?? 0; ?></h3>
+                                                                <p class="mb-0">Total Maktobs</p>
+                                                            </div>
+                                                        </div>
+                                                        <div class="col-md-3">
+                                                            <div class="text-center">
+                                                                <h3 class="text-warning"><?php echo $stats['drafts'] ?? 0; ?></h3>
+                                                                <p class="mb-0">Drafts</p>
+                                                            </div>
+                                                        </div>
+                                                        <div class="col-md-3">
+                                                            <div class="text-center">
+                                                                <h3 class="text-success"><?php echo $stats['sent'] ?? 0; ?></h3>
+                                                                <p class="mb-0">Sent</p>
+                                                            </div>
+                                                        </div>
+                                                        <div class="col-md-3">
+                                                            <div class="text-center">
+                                                                <h3 class="text-secondary"><?php echo $stats['archived'] ?? 0; ?></h3>
+                                                                <p class="mb-0">Archived</p>
+                                                            </div>
+                                                        </div>
+                                                    </div>
+                                                    <?php if (!empty($recent_maktobs)): ?>
+                                                    <hr>
+                                                    <h6>Recent Maktobs</h6>
+                                                    <div class="list-group list-group-flush">
+                                                        <?php foreach ($recent_maktobs as $maktob): ?>
+                                                        <div class="list-group-item px-0">
+                                                            <div class="d-flex justify-content-between align-items-center">
+                                                                <div>
+                                                                    <strong><?php echo htmlspecialchars($maktob['maktob_number']); ?></strong>
+                                                                    <br><small class="text-muted"><?php echo htmlspecialchars($maktob['subject']); ?></small>
+                                                                </div>
+                                                                <div class="text-right">
+                                                                    <span class="badge-<?php
+                                                                        echo $maktob['status'] === 'sent' ? 'success' :
+                                                                             ($maktob['status'] === 'draft' ? 'warning' : 'secondary');
+                                                                    ?>"><?php echo ucfirst($maktob['status']); ?></span>
+                                                                    <br><small class="text-muted"><?php echo date('M d', strtotime($maktob['created_at'])); ?></small>
+                                                                </div>
+                                                            </div>
+                                                        </div>
+                                                        <?php endforeach; ?>
+                                                    </div>
+                                                    <?php endif; ?>
+                                                </div>
+                                            </div>
+                                        </div>
+                                    </div>
+
                                     <!-- Create Maktob Card -->
                                     <div class="card">
                                         <div class="card-header">
@@ -322,7 +551,7 @@ include '../includes/header.php';
                                             </h5>
                                         </div>
                                         <div class="card-body">
-                                            <form method="POST">
+                                            <form method="POST" enctype="multipart/form-data">
                                                 <div class="row">
                                                     <div class="col-md-6">
                                                         <div class="form-group">
@@ -331,7 +560,7 @@ include '../includes/header.php';
                                                         </div>
                                                         <div class="form-group">
                                                             <label for="maktob_date"><?= __('letter_date') ?></label>
-                                                            <input type="date" class="form-control" id="maktob_date" name="maktob_date" required>
+                                                            <input type="date" class="form-control" id="maktob_date" name="maktob_date" value="<?php echo date('Y-m-d'); ?>" required>
                                                         </div>
                                                         <div class="form-group">
                                                             <label for="company_name"><?= __('company_name') ?></label>
@@ -344,6 +573,11 @@ include '../includes/header.php';
                                                                 <option value="dari"><?= __('dari') ?></option>
                                                                 <option value="pashto"><?= __('pashto') ?></option>
                                                             </select>
+                                                        </div>
+                                                        <div class="form-group">
+                                                            <label for="attachment">Supporting Documents (PDF)</label>
+                                                            <input type="file" class="form-control" id="attachment" name="attachment" accept=".pdf">
+                                                            <small class="form-text text-muted">Upload additional PDF attachments/supporting documents (optional)</small>
                                                         </div>
                                                     </div>
                                                     <div class="col-md-6">
@@ -377,24 +611,89 @@ include '../includes/header.php';
 
                                         <!-- Search Bar -->
                                         <div class="card-body border-bottom pb-3">
-                                            <form method="GET" class="form-inline">
-                                                <div class="form-group mb-0 flex-grow-1">
-                                                    <input 
-                                                        type="text" 
-                                                        name="search" 
-                                                        class="form-control w-100" 
-                                                        placeholder="Search by letter number, subject, company..." 
-                                                        value="<?= htmlspecialchars($search_query) ?>"
-                                                    >
+                                            <form method="GET" class="mb-3">
+                                                <div class="row">
+                                                    <div class="col-md-6">
+                                                        <div class="form-group">
+                                                            <input
+                                                                type="text"
+                                                                name="search"
+                                                                class="form-control"
+                                                                placeholder="Search by letter number, subject, company..."
+                                                                value="<?= htmlspecialchars($search_query) ?>"
+                                                            >
+                                                        </div>
+                                                    </div>
+                                                    <div class="col-md-6">
+                                                        <div class="row">
+                                                            <div class="col-md-3">
+                                                                <div class="form-group">
+                                                                    <select name="status" class="form-control">
+                                                                        <option value="">All Status</option>
+                                                                        <option value="draft" <?= $status_filter === 'draft' ? 'selected' : '' ?>>Draft</option>
+                                                                        <option value="sent" <?= $status_filter === 'sent' ? 'selected' : '' ?>>Sent</option>
+                                                                        <option value="archived" <?= $status_filter === 'archived' ? 'selected' : '' ?>>Archived</option>
+                                                                    </select>
+                                                                </div>
+                                                            </div>
+                                                            <div class="col-md-2">
+                                                                <div class="form-group">
+                                                                    <select name="language" class="form-control">
+                                                                        <option value="">All Languages</option>
+                                                                        <option value="english" <?= $language_filter === 'english' ? 'selected' : '' ?>>English</option>
+                                                                        <option value="dari" <?= $language_filter === 'dari' ? 'selected' : '' ?>>Dari</option>
+                                                                        <option value="pashto" <?= $language_filter === 'pashto' ? 'selected' : '' ?>>Pashto</option>
+                                                                    </select>
+                                                                </div>
+                                                            </div>
+                                                            <div class="col-md-2">
+                                                                <div class="form-group">
+                                                                    <select name="sender" class="form-control">
+                                                                        <option value="">All Senders</option>
+                                                                        <?php
+                                                                        try {
+                                                                            $sender_query = "SELECT DISTINCT u.id, u.name FROM users u
+                                                                                            JOIN maktobs m ON u.id = m.sender_id
+                                                                                            WHERE m.tenant_id = ? AND m.branch_id = ?
+                                                                                            ORDER BY u.name";
+                                                                            $sender_stmt = $pdo->prepare($sender_query);
+                                                                            $sender_stmt->execute([$tenant_id, $branch_id]);
+                                                                            while ($sender = $sender_stmt->fetch(PDO::FETCH_ASSOC)) {
+                                                                                $selected = $sender_filter == $sender['id'] ? 'selected' : '';
+                                                                                echo "<option value='{$sender['id']}' {$selected}>{$sender['name']}</option>";
+                                                                            }
+                                                                        } catch (Exception $e) {
+                                                                            // Ignore errors
+                                                                        }
+                                                                        ?>
+                                                                    </select>
+                                                                </div>
+                                                            </div>
+                                                            <div class="col-md-2">
+                                                                <div class="form-group">
+                                                                    <input type="date" name="date_from" class="form-control" value="<?= htmlspecialchars($date_from) ?>" placeholder="From Date">
+                                                                </div>
+                                                            </div>
+                                                            <div class="col-md-2">
+                                                                <div class="form-group">
+                                                                    <input type="date" name="date_to" class="form-control" value="<?= htmlspecialchars($date_to) ?>" placeholder="To Date">
+                                                                </div>
+                                                            </div>
+                                                        </div>
+                                                    </div>
                                                 </div>
-                                                <button type="submit" class="btn btn-info ml-2">
-                                                    <i class="feather icon-search"></i> <?= __('search') ?>
-                                                </button>
-                                                <?php if (!empty($search_query)): ?>
-                                                    <a href="manage_maktobs.php" class="btn btn-secondary ml-2">
-                                                        <i class="feather icon-x"></i> <?= __('clear') ?>
-                                                    </a>
-                                                <?php endif; ?>
+                                                <div class="row">
+                                                    <div class="col-12">
+                                                        <button type="submit" class="btn btn-info">
+                                                            <i class="feather icon-search"></i> <?= __('search') ?>
+                                                        </button>
+                                                        <?php if (!empty($search_query) || !empty($status_filter) || !empty($language_filter) || !empty($sender_filter) || !empty($date_from) || !empty($date_to)): ?>
+                                                            <a href="manage_maktobs.php" class="btn btn-secondary ml-2">
+                                                                <i class="feather icon-x"></i> Clear Filters
+                                                            </a>
+                                                        <?php endif; ?>
+                                                    </div>
+                                                </div>
                                             </form>
                                         </div>
 
@@ -438,6 +737,10 @@ include '../includes/header.php';
                                                                 <?php if ($row['status'] === 'sent'): ?>
                                                                     <span class="badge-success">
                                                                         <i class="feather icon-check mr-1"></i> <?= __('sent') ?>
+                                                                    </span>
+                                                                <?php elseif ($row['status'] === 'archived'): ?>
+                                                                    <span class="badge-secondary">
+                                                                        <i class="feather icon-archive mr-1"></i> Archived
                                                                     </span>
                                                                 <?php else: ?>
                                                                     <span class="badge-warning">
@@ -485,8 +788,20 @@ include '../includes/header.php';
                                                                             data-language="<?php echo htmlspecialchars($row['language'] ?? 'english'); ?>">
                                                                             <i class="feather icon-edit-2 mr-2"></i><?= __('edit') ?>
                                                                         </a>
+                                                                        <?php if ($row['status'] === 'draft'): ?>
+                                                                        <a class="dropdown-item send-maktob" href="#"
+                                                                            data-id="<?php echo $row['id']; ?>">
+                                                                            <i class="feather icon-send mr-2"></i>Send to Branch
+                                                                        </a>
+                                                                        <?php endif; ?>
+                                                                        <?php if ($row['status'] !== 'archived'): ?>
+                                                                        <a class="dropdown-item archive-maktob" href="#"
+                                                                            data-id="<?php echo $row['id']; ?>">
+                                                                            <i class="feather icon-archive mr-2"></i>Archive
+                                                                        </a>
+                                                                        <?php endif; ?>
                                                                         <a class="dropdown-item" href="../api/maktob/download_maktob.php?id=<?php echo $row['id']; ?>" target="_blank">
-                                                                            <i class="feather icon-download mr-2"></i><?= __('download_pdf') ?>
+                                                                            <i class="feather icon-eye mr-2"></i>View Letter
                                                                         </a>
                                                                         <div class="dropdown-divider"></div>
                                                                         <a class="dropdown-item delete-maktob" href="#"
@@ -515,27 +830,39 @@ include '../includes/header.php';
                                                 </div>
                                                 <nav aria-label="Page navigation">
                                                     <ul class="pagination pagination-sm mb-0">
+                                                        <?php
+                                                        // Build query string for pagination
+                                                        $query_params = [];
+                                                        if (!empty($search_query)) $query_params[] = 'search=' . urlencode($search_query);
+                                                        if (!empty($status_filter)) $query_params[] = 'status=' . urlencode($status_filter);
+                                                        if (!empty($language_filter)) $query_params[] = 'language=' . urlencode($language_filter);
+                                                        if (!empty($sender_filter)) $query_params[] = 'sender=' . urlencode($sender_filter);
+                                                        if (!empty($date_from)) $query_params[] = 'date_from=' . urlencode($date_from);
+                                                        if (!empty($date_to)) $query_params[] = 'date_to=' . urlencode($date_to);
+                                                        $query_string = !empty($query_params) ? '&' . implode('&', $query_params) : '';
+                                                        ?>
+
                                                         <?php if ($current_page > 1): ?>
                                                             <li class="page-item">
-                                                                <a class="page-link" href="manage_maktobs.php?page=1<?= !empty($search_query) ? '&search=' . urlencode($search_query) : '' ?>">
+                                                                <a class="page-link" href="manage_maktobs.php?page=1<?= $query_string ?>">
                                                                     <i class="feather icon-chevrons-left"></i> <?= __('first') ?>
                                                                 </a>
                                                             </li>
                                                             <li class="page-item">
-                                                                <a class="page-link" href="manage_maktobs.php?page=<?= $current_page - 1 ?><?= !empty($search_query) ? '&search=' . urlencode($search_query) : '' ?>">
+                                                                <a class="page-link" href="manage_maktobs.php?page=<?= $current_page - 1 ?><?= $query_string ?>">
                                                                     <i class="feather icon-chevron-left"></i> <?= __('previous') ?>
                                                                 </a>
                                                             </li>
                                                         <?php endif; ?>
 
-                                                        <?php 
+                                                        <?php
                                                         $start = max(1, $current_page - 2);
                                                         $end = min($total_pages, $current_page + 2);
-                                                        
-                                                        for ($i = $start; $i <= $end; $i++): 
+
+                                                        for ($i = $start; $i <= $end; $i++):
                                                         ?>
                                                             <li class="page-item <?= $i === $current_page ? 'active' : '' ?>">
-                                                                <a class="page-link" href="manage_maktobs.php?page=<?= $i ?><?= !empty($search_query) ? '&search=' . urlencode($search_query) : '' ?>">
+                                                                <a class="page-link" href="manage_maktobs.php?page=<?= $i ?><?= $query_string ?>">
                                                                     <?= $i ?>
                                                                 </a>
                                                             </li>
@@ -543,12 +870,12 @@ include '../includes/header.php';
 
                                                         <?php if ($current_page < $total_pages): ?>
                                                             <li class="page-item">
-                                                                <a class="page-link" href="manage_maktobs.php?page=<?= $current_page + 1 ?><?= !empty($search_query) ? '&search=' . urlencode($search_query) : '' ?>">
+                                                                <a class="page-link" href="manage_maktobs.php?page=<?= $current_page + 1 ?><?= $query_string ?>">
                                                                     <?= __('next') ?> <i class="feather icon-chevron-right"></i>
                                                                 </a>
                                                             </li>
                                                             <li class="page-item">
-                                                                <a class="page-link" href="manage_maktobs.php?page=<?= $total_pages ?><?= !empty($search_query) ? '&search=' . urlencode($search_query) : '' ?>">
+                                                                <a class="page-link" href="manage_maktobs.php?page=<?= $total_pages ?><?= $query_string ?>">
                                                                     <?= __('last') ?> <i class="feather icon-chevrons-right"></i>
                                                                 </a>
                                                             </li>
@@ -567,7 +894,7 @@ include '../includes/header.php';
                             </div>
                         </div>
 
-    <style>
+<style>
     /* Enhanced custom styles for better layout and design */
     .page-header.card {
         background: linear-gradient(135deg, #4099ff 0%, #2ed8b6 100%);
@@ -745,7 +1072,95 @@ include '../includes/header.php';
         border-radius: 0.5rem;
         white-space: pre-wrap;
     }
-    </style>
+
+    /* Mobile responsive styles */
+    @media (max-width: 768px) {
+        .page-header.card .row {
+            flex-direction: column;
+            text-align: center;
+        }
+
+        .page-header.card .text-end {
+            text-align: center;
+            margin-top: 10px;
+        }
+
+        .card-body .row .col-md-3 {
+            margin-bottom: 1rem;
+        }
+
+        .search-filters .row .col-md-3 {
+            margin-bottom: 0.5rem;
+        }
+
+        .table-responsive {
+            font-size: 0.875rem;
+        }
+
+        .table thead th,
+        .table tbody td {
+            padding: 0.5rem;
+        }
+
+        .btn {
+            padding: 0.5rem 1rem;
+            font-size: 0.875rem;
+        }
+
+        .form-control {
+            font-size: 0.875rem;
+            padding: 0.5rem;
+        }
+
+        .card-header h5 {
+            font-size: 1rem;
+        }
+
+        .dropdown-menu {
+            min-width: 150px;
+        }
+
+        .pagination {
+            flex-wrap: wrap;
+        }
+
+        .pagination .page-link {
+            padding: 0.375rem 0.5rem;
+        }
+    }
+
+    @media (max-width: 576px) {
+        .container-fluid {
+            padding-left: 10px;
+            padding-right: 10px;
+        }
+
+        .card-body {
+            padding: 1rem 0.5rem;
+        }
+
+        .search-filters .row {
+            flex-direction: column;
+        }
+
+        .search-filters .row .col-md-6 {
+            margin-bottom: 1rem;
+        }
+
+        .table-responsive {
+            border: none;
+        }
+
+        .table {
+            font-size: 0.75rem;
+        }
+
+        .badge {
+            font-size: 0.7rem;
+            padding: 0.25rem 0.5rem;
+        }
+    }
+</style>
 
     <?php include '../modals/maktob/view_modal.php'; ?>
     <?php include '../modals/maktob/edit_modal.php'; ?>
@@ -758,7 +1173,98 @@ include '../includes/header.php';
 <script src="../js/maktob/main.js"></script>
 
 <script>
+// Handle send maktob action
+$(document).on('click', '.send-maktob', function(e) {
+    e.preventDefault();
+    var maktobId = $(this).data('id');
 
+    if (confirm('Are you sure you want to send this maktob to branch?')) {
+        $.ajax({
+            url: '../api/maktob/update_status.php',
+            method: 'POST',
+            data: {
+                id: maktobId,
+                action: 'send'
+            },
+            success: function(response) {
+                if (response.success) {
+                    location.reload();
+                } else {
+                    alert('Error: ' + response.message);
+                }
+            },
+            error: function() {
+                alert('Error updating maktob status');
+            }
+        });
+    }
+});
+
+// Handle archive maktob action
+$(document).on('click', '.archive-maktob', function(e) {
+    e.preventDefault();
+    var maktobId = $(this).data('id');
+
+    if (confirm('Are you sure you want to archive this maktob?')) {
+        $.ajax({
+            url: '../api/maktob/update_status.php',
+            method: 'POST',
+            data: {
+                id: maktobId,
+                action: 'archive'
+            },
+            success: function(response) {
+                if (response.success) {
+                    location.reload();
+                } else {
+                    alert('Error: ' + response.message);
+                }
+            },
+            error: function() {
+                alert('Error updating maktob status');
+            }
+        });
+    }
+});
+
+// Auto-generate maktob number
+$(document).ready(function() {
+    function generateMaktobNumber() {
+        var date = $('#maktob_date').val();
+        if (date && $('#maktob_number').val() === '') {
+            // Generate number in format: TENANT-BRANCH-YYYYMMDD-001
+            var tenantId = <?php echo $tenant_id; ?>;
+            var branchId = <?php echo $branch_id; ?>;
+            var formattedDate = date.replace(/-/g, '');
+            var baseNumber = tenantId + '-' + branchId + '-' + formattedDate + '-';
+
+            // Get next sequence number
+            $.ajax({
+                url: '../api/maktob/get_next_number.php',
+                method: 'POST',
+                data: { base_number: baseNumber },
+                success: function(response) {
+                    if (response.number) {
+                        $('#maktob_number').val(response.number);
+                    }
+                }
+            });
+        }
+    }
+
+    // Generate on date change
+    $('#maktob_date').on('change', generateMaktobNumber);
+
+    // Generate on date input/blur if number is empty
+    $('#maktob_date').on('blur input', function() {
+        setTimeout(generateMaktobNumber, 500); // Small delay to avoid too many requests
+    });
+
+    // Generate on page load if date is set and number is empty
+    if ($('#maktob_date').val() && $('#maktob_number').val() === '') {
+        generateMaktobNumber();
+    }
+});
 </script>
 
-<?php include '../includes/admin_footer.php'; ?> 
+<?php include '../includes/admin_footer.php'; ?>

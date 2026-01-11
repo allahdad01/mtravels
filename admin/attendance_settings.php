@@ -238,9 +238,9 @@ include '../includes/header.php';
                                         <div class="card-body">
                                             <div class="summary-item mb-3">
                                                 <strong><?php echo __('office_hours'); ?>:</strong><br>
-                                                <span class="badge badge-primary">
+                                                <span class="badge-primary">
                                                     <?php echo date('H:i', strtotime($attendance_settings['office_start_time'] ?? '09:00')); ?> -
-                                                    <?php echo date('H:i', strtotime($attendance_settings['office_end_time'] ?? '17:00')); ?>
+                                                    <?php echo date('H:i', strtotime($attendance_settings['office_end_time'] ?? '18:00')); ?>
                                                 </span>
                                             </div>
 
@@ -380,7 +380,7 @@ include '../includes/header.php';
     transition: width 0.6s ease;
 }
 
-.badge {
+.badge-primary {
     font-size: 0.85em;
     padding: 0.5em 0.75em;
     border-radius: 20px;

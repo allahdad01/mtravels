@@ -56,8 +56,8 @@ include '../includes/header.php';
 }
 
 .card-header .card-header-right .btn:hover {
-    background: rgba(255, 255, 255, 0.1) !important;
-    border-color: rgba(255, 255, 255, 0.5) !important;
+background: rgba(255, 255, 255, 0.1) !important;
+border-color: rgba(255, 255, 255, 0.5) !important;
 }
 </style>
 <!-- [ Main Content ] start -->
@@ -480,7 +480,7 @@ include '../includes/header.php';
         </div>
     </div>
         <!-- Add a floating action button for launching the multi-ticket invoice modal -->
-        <div id="floatingActionButton" class="position-fixed" style="bottom: 80px; right: 15px; z-index: 1050;">
+        <div id="floatingActionButton" class="position-fixed" style="bottom: 80px; <?php echo is_rtl() ? 'left' : 'right'; ?>: 20px; z-index: 1050;">
     <button type="button" class="btn btn-primary btn-lg shadow" id="launchMultiTicketInvoice" title="<?= __('generate_multi_ticket_invoice') ?>">
         <i class="feather icon-file-text"></i>
     </button>

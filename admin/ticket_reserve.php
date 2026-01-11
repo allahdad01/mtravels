@@ -812,16 +812,6 @@ foreach ($suppliers as $supplier) {
 
 
 <style>
-    /* Add styles for the floating button */
-    #floatingActionButton {
-        right: 30px;
-    }
-    
-    /* RTL support - position on left side instead */
-    html[dir="rtl"] #floatingActionButton {
-        right: auto;
-        left: 30px;
-    }
     
     .position-fixed .btn-lg {
         width: 60px;

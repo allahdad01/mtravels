@@ -19,7 +19,8 @@ if (!isset($_SESSION['user_id'])) {
     }
 }
 $tenant_id = $_SESSION['tenant_id'];
-$branch_id = $_SESSION['branch_id'];
+$role = $_SESSION['role'] ?? '';
+$branch_id = $_SESSION['branch_id'] ?? null;
 
 $id = isset($_GET['id']) ? (int)$_GET['id'] : 0;
 
@@ -28,14 +29,31 @@ if (!$id) {
     exit();
 }
 
-// Get attendance details
-$stmt = $pdo->prepare("
-    SELECT a.*, u.name as user_name, u.email, u.profile_pic
-    FROM attendance a
-    JOIN users u ON a.user_id = u.id
-    WHERE a.id = ? AND a.tenant_id = ? AND a.branch_id = ?
-");
-$stmt->execute([$id, $tenant_id, $branch_id]);
+// Build query based on role
+if ($role === 'tenant_super_admin') {
+    // Tenant super admin can see all attendance in their tenant
+    $stmt = $pdo->prepare("
+        SELECT a.*, u.name as user_name, u.email, u.profile_pic
+        FROM attendance a
+        JOIN users u ON a.user_id = u.id
+        WHERE a.id = ? AND a.tenant_id = ?
+    ");
+    $stmt->execute([$id, $tenant_id]);
+} else {
+    // Regular users are restricted to their branch
+    if (!$branch_id) {
+        echo 'Branch access denied';
+        exit();
+    }
+    $stmt = $pdo->prepare("
+        SELECT a.*, u.name as user_name, u.email, u.profile_pic
+        FROM attendance a
+        JOIN users u ON a.user_id = u.id
+        WHERE a.id = ? AND a.tenant_id = ? AND a.branch_id = ?
+    ");
+    $stmt->execute([$id, $tenant_id, $branch_id]);
+}
+
 $attendance = $stmt->fetch(PDO::FETCH_ASSOC);
 
 if (!$attendance) {
@@ -44,11 +62,21 @@ if (!$attendance) {
 }
 
 // Get attendance settings for context
-$stmt = $pdo->prepare("
-    SELECT * FROM attendance_settings
-    WHERE tenant_id = ? AND branch_id = ?
-");
-$stmt->execute([$tenant_id, $branch_id]);
+if ($role === 'tenant_super_admin') {
+    // For tenant super admin, get settings for the specific branch of the attendance record
+    $stmt = $pdo->prepare("
+        SELECT * FROM attendance_settings
+        WHERE tenant_id = ? AND branch_id = ?
+    ");
+    $stmt->execute([$tenant_id, $attendance['branch_id']]);
+} else {
+    // For regular users, use their branch settings
+    $stmt = $pdo->prepare("
+        SELECT * FROM attendance_settings
+        WHERE tenant_id = ? AND branch_id = ?
+    ");
+    $stmt->execute([$tenant_id, $branch_id]);
+}
 $settings = $stmt->fetch(PDO::FETCH_ASSOC);
 ?>
 
@@ -81,7 +109,7 @@ $settings = $stmt->fetch(PDO::FETCH_ASSOC);
                     <div class="h4 mb-2 font-weight-bold text-primary">
                         <?php echo date('l, F j, Y', strtotime($attendance['date'])); ?>
                     </div>
-                    <span class="badge badge-<?php echo strtolower($attendance['status']) === 'present' ? 'success' : (strtolower($attendance['status']) === 'absent' ? 'danger' : 'warning'); ?> badge-pill px-3 py-2">
+                    <span class="badge-<?php echo strtolower($attendance['status']) === 'present' ? 'success' : (strtolower($attendance['status']) === 'absent' ? 'danger' : 'warning'); ?> badge-pill px-3 py-2">
                         <i class="feather icon-<?php echo strtolower($attendance['status']) === 'present' ? 'check-circle' : (strtolower($attendance['status']) === 'absent' ? 'x-circle' : 'clock'); ?> mr-1"></i>
                         <?php echo __($attendance['status']); ?>
                     </span>
@@ -111,9 +139,9 @@ $settings = $stmt->fetch(PDO::FETCH_ASSOC);
 
                         if ($check_in_time > $late_threshold) {
                             $late_minutes = round(($check_in_time - $office_start) / 60);
-                            echo '<span class="badge badge-danger badge-pill px-3 py-1"><i class="feather icon-clock mr-1"></i>' . __('late_by') . ' ' . $late_minutes . ' ' . __('minutes') . '</span>';
+                            echo '<span class="badge-danger badge-pill px-3 py-1"><i class="feather icon-clock mr-1"></i>' . __('late_by') . ' ' . $late_minutes . ' ' . __('minutes') . '</span>';
                         } else {
-                            echo '<span class="badge badge-success badge-pill px-3 py-1"><i class="feather icon-check mr-1"></i>' . __('on_time') . '</span>';
+                            echo '<span class="badge-success badge-pill px-3 py-1"><i class="feather icon-check mr-1"></i>' . __('on_time') . '</span>';
                         }
                         ?>
                     <?php endif; ?>
