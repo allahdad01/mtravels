@@ -28,13 +28,19 @@ function hasFeature($feature, $allowed_features) {
 
 // Fetch settings data
 try {
-    $settingStmt = $pdo->query("SELECT * FROM settings WHERE tenant_id = ?");
+    $settingStmt = $pdo->prepare("SELECT * FROM settings WHERE tenant_id = ?");
     $settingStmt->execute([$tenant_id]);
     $settings = $settingStmt->fetch(PDO::FETCH_ASSOC);
 } catch (PDOException $e) {
     error_log("Settings Error: " . $e->getMessage());
     $settings = ['agency_name' => 'Default Name'];
 }
+
+// Fetch branch info
+$branchQuery = "SELECT name FROM branches WHERE id = ? AND tenant_id = ?";
+$branchStmt = $pdo->prepare($branchQuery);
+$branchStmt->execute([$branch_id, $tenant_id]);
+$branch = $branchStmt->fetch(PDO::FETCH_ASSOC);
 
 // Define variables
 $month = isset($_GET['month']) ? $_GET['month'] : date('m');
@@ -214,13 +220,13 @@ foreach ($employees as &$employee) {
         @media print {
             @page {
                 size: A4;
-                margin: 0.5cm;
+                margin: 0.2cm;
             }
             body {
                 margin: 0;
                 padding: 0;
                 font-family: Arial, sans-serif;
-                font-size: 12pt;
+                font-size: 9pt;
             }
             .no-print {
                 display: none !important;
@@ -238,19 +244,19 @@ foreach ($employees as &$employee) {
             top: 50%;
             left: 50%;
             transform: translate(-50%, -50%) rotate(-30deg);
-            font-size: 72px;
+            font-size: 50px;
             color: #28a745;
-            border: 10px solid #28a745;
-            padding: 10px 20px;
-            border-radius: 10px;
+            border: 5px solid #28a745;
+            padding: 5px 10px;
+            border-radius: 5px;
             opacity: 0.3;
             pointer-events: none;
             z-index: 1000;
         }
         
         .payment-info {
-            margin-top: 10px;
-            padding: 10px;
+            margin-top: 5px;
+            padding: 5px;
             background-color: #f8f9fa;
             border: 1px solid #ddd;
             border-radius: 4px;
@@ -279,62 +285,91 @@ foreach ($employees as &$employee) {
         
         body {
             font-family: Arial, sans-serif;
-            line-height: 1.6;
+            line-height: 1.3;
             color: #333;
             margin: 0;
-            padding: 20px;
+            padding: 10px;
             background-color: #f9f9f9;
         }
-        
+
         .container {
-            max-width: 1000px;
+            max-width: 100%;
             margin: 0 auto;
             background: #fff;
-            padding: 20px;
+            padding: 10px;
             box-shadow: 0 0 10px rgba(0, 0, 0, 0.1);
         }
-        
+
         .header {
-            text-align: center;
-            margin-bottom: 20px;
-            border-bottom: 2px solid #333;
-            padding-bottom: 10px;
+            margin-bottom: 10px;
+            border-bottom: 1px solid #333;
+            padding-bottom: 5px;
         }
-        
+
+        .header-table {
+            width: 100%;
+            border-collapse: collapse;
+        }
+
+        .header-table td {
+            padding: 0;
+            vertical-align: top;
+        }
+
+        .header-left {
+            text-align: left;
+        }
+
+        .header-right {
+            text-align: right;
+        }
+
         .title {
-            font-size: 24px;
+            font-size: 16px;
             font-weight: bold;
-            margin: 5px 0;
+            margin: 2px 0;
         }
-        
+
         .subtitle {
-            font-size: 18px;
-            margin: 5px 0;
+            font-size: 14px;
+            margin: 2px 0;
         }
-        
+
         .company-name {
-            font-size: 20px;
+            font-size: 14px;
             font-weight: bold;
-            margin: 5px 0;
+            margin: 2px 0;
         }
-        
+
+        .branch-name {
+            font-size: 12px;
+            font-weight: bold;
+            margin: 2px 0;
+        }
+
+        .company-address, .company-phone, .company-email {
+            font-size: 10px;
+            margin: 1px 0;
+        }
+
         .employee-info {
-            margin-bottom: 30px;
-            padding: 15px;
+            margin-bottom: 10px;
+            padding: 5px;
             border: 1px solid #ddd;
             background-color: #f5f5f5;
         }
-        
+
         .payroll-table {
             width: 100%;
             border-collapse: collapse;
-            margin-bottom: 20px;
+            margin-bottom: 10px;
         }
-        
+
         .payroll-table th, .payroll-table td {
-            padding: 10px;
+            padding: 4px;
             border: 1px solid #ddd;
             text-align: left;
+            font-size: 8px;
         }
         
         .payroll-table th {
@@ -345,9 +380,21 @@ foreach ($employees as &$employee) {
         .payroll-table tr:nth-child(even) {
             background-color: #f9f9f9;
         }
+
+        .employee-info table {
+            font-size: 8px;
+        }
+
+        .payment-info table {
+            font-size: 8px;
+        }
+
+        .attendance-summary table {
+            font-size: 8px;
+        }
         
         .earnings, .deductions {
-            margin-bottom: 20px;
+            margin-bottom: 10px;
         }
         
         .total-row {
@@ -356,7 +403,7 @@ foreach ($employees as &$employee) {
         }
         
         .signature-section {
-            margin-top: 40px;
+            margin-top: 15px;
             display: flex;
             justify-content: space-between;
         }
@@ -489,9 +536,27 @@ foreach ($employees as &$employee) {
         
         <!-- Header -->
         <div class="header">
-            <div class="company-name"><?php echo htmlspecialchars($settings['agency_name']); ?></div>
-            <div class="title"><?php echo $title; ?></div>
-            <div class="subtitle"><?php echo $subtitle; ?></div>
+            <table class="header-table">
+                <tr>
+                    <td class="header-left">
+                        <div class="company-name"><?php echo htmlspecialchars($settings['agency_name']); ?></div>
+                        <div class="branch-name">Branch: <?php echo htmlspecialchars($branch['name'] ?? 'N/A'); ?></div>
+                        <?php if (!empty($settings['address'])): ?>
+                            <div class="company-address"><?php echo htmlspecialchars($settings['address']); ?></div>
+                        <?php endif; ?>
+                        <?php if (!empty($settings['phone'])): ?>
+                            <div class="company-phone">Phone: <?php echo htmlspecialchars($settings['phone']); ?></div>
+                        <?php endif; ?>
+                        <?php if (!empty($settings['email'])): ?>
+                            <div class="company-email">Email: <?php echo htmlspecialchars($settings['email']); ?></div>
+                        <?php endif; ?>
+                    </td>
+                    <td class="header-right">
+                        <div class="title"><?php echo $title; ?></div>
+                        <div class="subtitle"><?php echo $subtitle; ?></div>
+                    </td>
+                </tr>
+            </table>
         </div>
         
         <!-- For each employee -->
@@ -612,26 +677,26 @@ foreach ($employees as &$employee) {
 
                     <?php if ($employee['attendance_summary'] && $employee['attendance_summary']['total_days'] > 0): ?>
                     <!-- Attendance Summary -->
-                    <div class="attendance-summary" style="margin-top: 20px; padding: 15px; border: 1px solid #ddd; background-color: #f0f8ff;">
-                        <h4 style="margin-bottom: 10px; color: #333;">Attendance Summary for <?php echo $monthName . ' ' . $year; ?></h4>
+                    <div class="attendance-summary" style="margin-top: 10px; padding: 5px; border: 1px solid #ddd; background-color: #f0f8ff;">
+                        <h4 style="margin-bottom: 5px; color: #333; font-size: 12px;">Attendance Summary for <?php echo $monthName . ' ' . $year; ?></h4>
                         <table width="100%" style="border-collapse: collapse;">
                             <tr>
-                                <td style="padding: 5px; border: 1px solid #ddd;"><strong>Total Working Days:</strong></td>
-                                <td style="padding: 5px; border: 1px solid #ddd;"><?php echo $employee['attendance_summary']['total_days']; ?></td>
-                                <td style="padding: 5px; border: 1px solid #ddd;"><strong>Present Days:</strong></td>
-                                <td style="padding: 5px; border: 1px solid #ddd; color: #28a745;"><?php echo $employee['attendance_summary']['present_days']; ?></td>
+                                <td style="padding: 3px; border: 1px solid #ddd;"><strong>Total Working Days:</strong></td>
+                                <td style="padding: 3px; border: 1px solid #ddd;"><?php echo $employee['attendance_summary']['total_days']; ?></td>
+                                <td style="padding: 3px; border: 1px solid #ddd;"><strong>Present Days:</strong></td>
+                                <td style="padding: 3px; border: 1px solid #ddd; color: #28a745;"><?php echo $employee['attendance_summary']['present_days']; ?></td>
                             </tr>
                             <tr>
-                                <td style="padding: 5px; border: 1px solid #ddd;"><strong>Absent Days:</strong></td>
-                                <td style="padding: 5px; border: 1px solid #ddd; color: #dc3545;"><?php echo $employee['attendance_summary']['absent_days']; ?></td>
-                                <td style="padding: 5px; border: 1px solid #ddd;"><strong>Late Days:</strong></td>
-                                <td style="padding: 5px; border: 1px solid #ddd; color: #ffc107;"><?php echo $employee['attendance_summary']['late_days']; ?></td>
+                                <td style="padding: 3px; border: 1px solid #ddd;"><strong>Absent Days:</strong></td>
+                                <td style="padding: 3px; border: 1px solid #ddd; color: #dc3545;"><?php echo $employee['attendance_summary']['absent_days']; ?></td>
+                                <td style="padding: 3px; border: 1px solid #ddd;"><strong>Late Days:</strong></td>
+                                <td style="padding: 3px; border: 1px solid #ddd; color: #ffc107;"><?php echo $employee['attendance_summary']['late_days']; ?></td>
                             </tr>
                             <tr>
-                                <td style="padding: 5px; border: 1px solid #ddd;"><strong>Half Day Days:</strong></td>
-                                <td style="padding: 5px; border: 1px solid #ddd; color: #fd7e14;"><?php echo $employee['attendance_summary']['half_day_days']; ?></td>
-                                <td style="padding: 5px; border: 1px solid #ddd;"><strong>Total Working Minutes:</strong></td>
-                                <td style="padding: 5px; border: 1px solid #ddd;"><?php echo number_format($employee['attendance_summary']['total_working_minutes']); ?> min</td>
+                                <td style="padding: 3px; border: 1px solid #ddd;"><strong>Half Day Days:</strong></td>
+                                <td style="padding: 3px; border: 1px solid #ddd; color: #fd7e14;"><?php echo $employee['attendance_summary']['half_day_days']; ?></td>
+                                <td style="padding: 3px; border: 1px solid #ddd;"><strong>Total Working Minutes:</strong></td>
+                                <td style="padding: 3px; border: 1px solid #ddd;"><?php echo number_format($employee['attendance_summary']['total_working_minutes']); ?> min</td>
                             </tr>
                         </table>
                     </div>
