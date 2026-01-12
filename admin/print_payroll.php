@@ -6,6 +6,25 @@ $branch_id = $_SESSION['branch_id'];
 // Include config file
 require_once "../includes/db.php";
 
+// Fetch allowed features
+$query = "
+    SELECT p.features
+    FROM tenant_subscriptions ts
+    JOIN plans p ON ts.plan_id = p.id
+    WHERE ts.tenant_id = ? AND ts.status = 'active'
+    ORDER BY ts.start_date DESC
+    LIMIT 1
+";
+$stmt = $pdo->prepare($query);
+$stmt->execute([$tenant_id]);
+$row = $stmt->fetch(PDO::FETCH_ASSOC);
+$allowed_features = $row ? json_decode($row['features'], true) : [];
+
+// Helper function
+function hasFeature($feature, $allowed_features) {
+    return in_array($feature, $allowed_features);
+}
+
 
 // Fetch settings data
 try {
@@ -164,6 +183,24 @@ foreach ($employees as &$employee) {
     $paymentDetailsStmt = $pdo->prepare($paymentDetailsQuery);
     $paymentDetailsStmt->execute([$employee['user_id'], $paymentForMonth, $tenant_id, $branch_id]);
     $employee['payment_details'] = $paymentDetailsStmt->fetchAll(PDO::FETCH_ASSOC);
+
+    // Get attendance summary if feature is enabled
+    $employee['attendance_summary'] = null;
+    if (hasFeature('attendance', $allowed_features)) {
+        $attendanceQuery = "SELECT
+                            COUNT(*) as total_days,
+                            SUM(CASE WHEN status = 'present' THEN 1 ELSE 0 END) as present_days,
+                            SUM(CASE WHEN status = 'absent' THEN 1 ELSE 0 END) as absent_days,
+                            SUM(CASE WHEN status = 'late' THEN 1 ELSE 0 END) as late_days,
+                            SUM(CASE WHEN status = 'half_day' THEN 1 ELSE 0 END) as half_day_days,
+                            SUM(working_minutes) as total_working_minutes
+                           FROM attendance
+                           WHERE user_id = ? AND tenant_id = ? AND branch_id = ?
+                           AND MONTH(date) = ? AND YEAR(date) = ?";
+        $attendanceStmt = $pdo->prepare($attendanceQuery);
+        $attendanceStmt->execute([$employee['user_id'], $tenant_id, $branch_id, $month, $year]);
+        $employee['attendance_summary'] = $attendanceStmt->fetch(PDO::FETCH_ASSOC);
+    }
 }
 ?>
 
@@ -572,8 +609,35 @@ foreach ($employees as &$employee) {
                         </div>
                         <?php endif; ?>
                     </div>
+
+                    <?php if ($employee['attendance_summary'] && $employee['attendance_summary']['total_days'] > 0): ?>
+                    <!-- Attendance Summary -->
+                    <div class="attendance-summary" style="margin-top: 20px; padding: 15px; border: 1px solid #ddd; background-color: #f0f8ff;">
+                        <h4 style="margin-bottom: 10px; color: #333;">Attendance Summary for <?php echo $monthName . ' ' . $year; ?></h4>
+                        <table width="100%" style="border-collapse: collapse;">
+                            <tr>
+                                <td style="padding: 5px; border: 1px solid #ddd;"><strong>Total Working Days:</strong></td>
+                                <td style="padding: 5px; border: 1px solid #ddd;"><?php echo $employee['attendance_summary']['total_days']; ?></td>
+                                <td style="padding: 5px; border: 1px solid #ddd;"><strong>Present Days:</strong></td>
+                                <td style="padding: 5px; border: 1px solid #ddd; color: #28a745;"><?php echo $employee['attendance_summary']['present_days']; ?></td>
+                            </tr>
+                            <tr>
+                                <td style="padding: 5px; border: 1px solid #ddd;"><strong>Absent Days:</strong></td>
+                                <td style="padding: 5px; border: 1px solid #ddd; color: #dc3545;"><?php echo $employee['attendance_summary']['absent_days']; ?></td>
+                                <td style="padding: 5px; border: 1px solid #ddd;"><strong>Late Days:</strong></td>
+                                <td style="padding: 5px; border: 1px solid #ddd; color: #ffc107;"><?php echo $employee['attendance_summary']['late_days']; ?></td>
+                            </tr>
+                            <tr>
+                                <td style="padding: 5px; border: 1px solid #ddd;"><strong>Half Day Days:</strong></td>
+                                <td style="padding: 5px; border: 1px solid #ddd; color: #fd7e14;"><?php echo $employee['attendance_summary']['half_day_days']; ?></td>
+                                <td style="padding: 5px; border: 1px solid #ddd;"><strong>Total Working Minutes:</strong></td>
+                                <td style="padding: 5px; border: 1px solid #ddd;"><?php echo number_format($employee['attendance_summary']['total_working_minutes']); ?> min</td>
+                            </tr>
+                        </table>
+                    </div>
+                    <?php endif; ?>
                 </div>
-                
+
                 <!-- Earnings -->
                 <div class="earnings">
                     <h3>Earnings</h3>

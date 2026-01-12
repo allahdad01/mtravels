@@ -725,9 +725,10 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
                 var userId = selectedOption.val();
                 var baseSalary = parseFloat(selectedOption.data('base-salary')) || 0;
                 var currency = selectedOption.data('currency');
-                
-                // Clear previous breakdown
+
+                // Clear previous breakdown and absence info
                 $('.salary-breakdown').remove();
+                $('.absence-info').remove();
                 
                 if (baseSalary && userId) {
                     // Get advances, deductions, and bonuses via AJAX
@@ -750,7 +751,10 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
                             var totalAdvances = parseFloat(data.totalAdvances) || 0;
                             var totalDeductions = parseFloat(data.totalDeductions) || 0;
                             var totalBonuses = parseFloat(data.totalBonuses) || 0;
-                            
+                            var hasAttendanceFeature = data.has_attendance_feature || false;
+                            var absentDays = parseInt(data.absent_days) || 0;
+                            var absenceAlreadyDeducted = data.absence_already_deducted || false;
+
                             // Calculate remaining amount
                             var remainingAmount = baseSalary - totalAdvances - totalDeductions + totalBonuses;
                             remainingAmount = Math.max(0, remainingAmount); // Ensure it's not negative
@@ -815,7 +819,25 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
                             // Remove any existing breakdown and add new one
                             $('.salary-breakdown').remove();
                             $('#amount').parent().after(breakdownHtml);
-                            
+
+                            // Handle attendance deduction if feature is enabled
+                            $('.absence-info').remove(); // Remove any existing
+                            if (data.has_attendance_feature && data.absent_days > 0 && !data.absence_already_deducted) {
+                                var deductionAmount = (baseSalary / 30) * data.absent_days;
+                                var absenceHtml = '<div class="alert alert-warning mt-2 absence-info">';
+                                absenceHtml += '<i class="feather icon-alert-triangle mr-2"></i>';
+                                absenceHtml += 'Employee has ' + data.absent_days + ' absent days this month. ';
+                                absenceHtml += 'Potential deduction: ' + deductionAmount.toFixed(2) + ' ' + currency + ' ';
+                                absenceHtml += '<button type="button" class="btn btn-sm btn-danger ml-2" id="deduct-absence-btn" ';
+                                absenceHtml += 'data-absent-days="' + data.absent_days + '" ';
+                                absenceHtml += 'data-base-salary="' + baseSalary + '" ';
+                                absenceHtml += 'data-currency="' + currency + '" ';
+                                absenceHtml += 'data-payment-month="' + $('#payment_for_month').val() + '" ';
+                                absenceHtml += 'data-user-id="' + userId + '">Deduct for Absence</button>';
+                                absenceHtml += '</div>';
+                                $('.salary-breakdown').after(absenceHtml);
+                            }
+
                             // Store the values for validation
                             $('#amount').data('max-amount', remainingAmount);
                         },
@@ -905,6 +927,53 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
                     description.val('<?= __('salary_advance') ?>');
                 } else {
                     description.val('');
+                }
+            });
+
+            // Handle deduct absence
+            $(document).on('click', '#deduct-absence-btn', function() {
+                var btn = $(this);
+                var absentDays = btn.data('absent-days');
+                var baseSalary = btn.data('base-salary');
+                var currency = btn.data('currency');
+                var paymentMonth = btn.data('payment-month');
+                var userId = btn.data('user-id');
+
+                if (confirm('Are you sure you want to deduct for ' + absentDays + ' absent days?')) {
+                    // Disable button
+                    btn.prop('disabled', true).html('<i class="feather icon-loader"></i> Processing...');
+
+                    $.ajax({
+                        url: 'deduct_absence.php',
+                        type: 'POST',
+                        data: {
+                            user_id: userId,
+                            payment_for_month: paymentMonth,
+                            absent_days: absentDays,
+                            base_salary: baseSalary,
+                            currency: currency
+                        },
+                        success: function(response) {
+                            try {
+                                var res = JSON.parse(response);
+                                if (res.success) {
+                                    alert('Deduction created successfully for ' + res.deducted_amount + ' ' + currency);
+                                    // Refresh the breakdown
+                                    $('#user_id').trigger('change');
+                                } else {
+                                    alert(res.message || 'Failed to create deduction');
+                                    btn.prop('disabled', false).html('Deduct for Absence');
+                                }
+                            } catch(e) {
+                                alert('Error processing response');
+                                btn.prop('disabled', false).html('Deduct for Absence');
+                            }
+                        },
+                        error: function() {
+                            alert('Error creating deduction');
+                            btn.prop('disabled', false).html('Deduct for Absence');
+                        }
+                    });
                 }
             });
 

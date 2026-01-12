@@ -94,36 +94,6 @@ if ($tenant_id) {
      error_log("Tenant ID is empty or null");
  }
 
-// Temporary fix: If no features found, assign default features for testing
-if (empty($allowed_features)) {
-    error_log("No features found, using default feature set");
-    $allowed_features = [
-        "ticket_bookings",
-        "ticket_reservations",
-        "refunded_tickets",
-        "date_change_tickets",
-        "ticket_weights",
-        "hotel_bookings",
-        "hotel_refunds",
-        "visa_applications",
-        "visa_refunds",
-        "visa_transactions",
-        "inter_tenant_chat",
-        "umrah_bookings",
-        "umrah_refunds",
-        "debtors",
-        "creditors",
-        "sarafi",
-        "salary",
-        "additional_payments",
-        "jv_payments",
-        "manage_maktobs",
-        "assets",
-        "financial_statements",
-        "expense_management"
-    ];
-}
-
 // Helper function to check if a feature is allowed
 function hasFeature($feature, $allowed_features) {
     $hasIt = in_array($feature, $allowed_features);
@@ -1574,13 +1544,14 @@ MOBILE SIDEBAR - CLEAN LAYOUT FIX
                         <span class="pcoded-mtext">Users</span>
                     </a>
                 </li>
+                <?php if (hasFeature('attendance', $allowed_features)): ?>
                 <li data-username="branch_attendance" class="nav-item <?php echo basename($_SERVER['PHP_SELF']) == 'branch_attendance.php' ? 'active' : ''; ?>">
                     <a href="branch_attendance.php" class="nav-link">
                         <span class="pcoded-micon"><i class="feather icon-calendar"></i></span>
                         <span class="pcoded-mtext">Branch Attendance</span>
                     </a>
                 </li>
-
+                <?php endif; ?>
                 <?php
                 $ticketPages = ['ticket_bookings.php', 'ticket_reservations.php', 'refunded_tickets.php', 'date_change_tickets.php', 'ticket_weights.php'];
                 $isTicketActive = in_array(basename($_SERVER['PHP_SELF']), $ticketPages);

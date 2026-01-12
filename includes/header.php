@@ -1598,6 +1598,7 @@ MOBILE SIDEBAR - CLEAN LAYOUT FIX
                         <li class="<?php echo basename($_SERVER['PHP_SELF']) == 'employee_performance.php' ? 'active' : ''; ?>">
                             <a href="employee_performance.php"><?= __('performance_reviews') ?></a>
                         </li>
+                        <?php if (hasFeature('attendance', $allowed_features)): ?>
                         <li class="<?php echo basename($_SERVER['PHP_SELF']) == 'attendance.php' ? 'active' : ''; ?>">
                             <a href="attendance.php"><i class="feather icon-clock mr-2"></i><?= __('my_attendance') ?></a>
                         </li>
@@ -1607,6 +1608,7 @@ MOBILE SIDEBAR - CLEAN LAYOUT FIX
                         <li class="<?php echo basename($_SERVER['PHP_SELF']) == 'attendance_settings.php' ? 'active' : ''; ?>">
                             <a href="attendance_settings.php"><i class="feather icon-settings mr-2"></i><?= __('attendance_settings') ?></a>
                         </li>
+                        <?php endif; ?>
                         <li class="<?php echo basename($_SERVER['PHP_SELF']) == 'hr_reports.php' ? 'active' : ''; ?>">
                             <a href="hr_reports.php"><?= __('hr_reports') ?></a>
                         </li>
