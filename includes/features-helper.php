@@ -6,20 +6,21 @@
 
 // Define default features as constant
 define('DEFAULT_FEATURES', [
-    ['icon' => '✈️', 'title' => 'Ticket Management', 'description' => 'Manage ticket bookings, reservations, refunds, and date changes with automated workflows and airline integration.'],
-    ['icon' => '⚖️', 'title' => 'Baggage & Ticket Weights', 'description' => 'Track baggage allowances, weight limits, and related pricing with profit monitoring.'],
-    ['icon' => '🏨', 'title' => 'Hotel Management', 'description' => 'Complete hotel booking and refund system with dynamic pricing, room management, and global integrations.'],
-    ['icon' => '🛂', 'title' => 'Visa Management', 'description' => 'Comprehensive visa applications, refunds, and multi-currency transactions with compliance tracking.'],
-    ['icon' => '🕋', 'title' => 'Umrah Services', 'description' => 'Specialized Umrah pilgrimage bookings, refunds, and package management with compliance handling.'],
-    ['icon' => '💰', 'title' => 'Financial Management', 'description' => 'Multi-currency accounting, expense tracking, salary processing, JV payments, and financial reporting with export support.'],
-    ['icon' => '📑', 'title' => 'Document & Maktob Management', 'description' => 'Manage official letters, agreements, and administrative paperwork with version tracking.'],
-    ['icon' => '👥', 'title' => 'Customer & Supplier Management', 'description' => 'Advanced CRM with booking history, preferences, and supplier coordination for smooth operations.'],
-    ['icon' => '💬', 'title' => 'Inter-Tenant Communication', 'description' => 'Real-time messaging and collaboration tools for tenant coordination and customer support.'],
-    ['icon' => '🏢', 'title' => 'Assets & Expense Management', 'description' => 'Track company assets, calculate depreciation, schedule maintenance, and manage categorized expenses.'],
-    ['icon' => '📊', 'title' => 'Analytics & Reporting', 'description' => 'Interactive dashboards, KPIs, compliance reports, activity logs, and strategic insights.'],
-    ['icon' => '🧾', 'title' => 'Invoice & Payment Processing', 'description' => 'Automated invoice generation, additional payments, multi-currency receipts, and digital delivery.'],
-    ['icon' => '👤', 'title' => 'User & Role Management', 'description' => 'Role-based access control with permissions, security, and activity logging.'],
-    ['icon' => '👥', 'title' => 'HR Management', 'description' => 'Complete human resources management including employee records, payroll, attendance, performance reviews, and organizational structure.']
+    ['icon' => '🧳', 'title' => 'Ticketing & Reservations', 'description' => 'Complete ticket booking system with reservations, refunds, date changes, weight management, and automated profit calculation.'],
+    ['icon' => '🕋', 'title' => 'Umrah & Family Management', 'description' => 'Family-based Umrah bookings, member management, individual payments, refunds, agreements, and ID card generation.'],
+    ['icon' => '🛂', 'title' => 'Visa Management', 'description' => 'Visa applications, transactions, refunds, cancellations, and automated client notifications with status tracking.'],
+    ['icon' => '🏨', 'title' => 'Hotel Management', 'description' => 'Hotel bookings, refunds, client & supplier account linkage with automated financial impact tracking.'],
+    ['icon' => '💰', 'title' => 'Finance & Accounting', 'description' => 'Multi-currency support, real-time P&L, main accounts, client/supplier tracking, JV payments, and comprehensive financial statements.'],
+    ['icon' => '🤖', 'title' => 'Automation & Intelligence', 'description' => 'Automated profit calculation, real-time analytics, interactive charts, email/WhatsApp automation, and OCR auto-fill features.'],
+    ['icon' => '📊', 'title' => 'Dashboards & Reporting', 'description' => 'Admin dashboard with multi-currency charts, profit breakdowns, outstanding dues, and exportable reports in Excel/PDF.'],
+    ['icon' => '🏢', 'title' => 'Multi-Tenant & Multi-Branch', 'description' => 'Full SaaS architecture with multi-branch support, separate data per tenant, and branch-level operations management.'],
+    ['icon' => '👥', 'title' => 'Roles & Access Control', 'description' => 'Role-based access with Super Admin, Admin, Finance, Sales, and Umrah roles, plus branch-based user visibility.'],
+    ['icon' => '🧾', 'title' => 'Maktob Management', 'description' => 'Official letter management with multi-language support, PDF generation, numbering system, and audit logging.'],
+    ['icon' => '🕒', 'title' => 'HR & Attendance', 'description' => 'Employee attendance tracking, integration with salary module, and performance-based reporting per branch.'],
+    ['icon' => '👤', 'title' => 'Client Portal', 'description' => 'Client login access to view tickets, visas, Umrah records, balance tracking, and transparent transaction history.'],
+    ['icon' => '🔐', 'title' => 'Security & Compliance', 'description' => 'Authentication enforcement, role-based access, audit logs, tenant isolation, and secure document handling.'],
+    ['icon' => '💬', 'title' => 'Communication & Collaboration', 'description' => 'Inter-tenant chat, business collaboration, shared agreements, and ticket/visa selling between tenants.'],
+    ['icon' => '🎓', 'title' => 'Onboarding, Support & UX', 'description' => 'Video tutorials, in-app guides, support ticket system, demo requests, and comprehensive landing pages.']
 ]);
 
 /**

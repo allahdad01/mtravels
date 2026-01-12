@@ -271,19 +271,6 @@ $platform_settings = $landingData['settings'];
             flex-wrap: wrap;
         }
 
-        .btn-primary {
-            padding: 0.9rem 2rem;
-            background: linear-gradient(135deg, #4099ff, #2ed8b6);
-            color: white;
-            border: none;
-            border-radius: 8px;
-            font-weight: 600;
-            cursor: pointer;
-            text-decoration: none;
-            transition: all 0.3s ease;
-            display: inline-block;
-        }
-
         .btn-primary:hover {
             transform: translateY(-3px);
             box-shadow: 0 10px 25px rgba(64, 153, 255, 0.3);

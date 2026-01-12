@@ -419,37 +419,7 @@ $platform_settings = $landingData['settings'];
             flex-wrap: wrap;
         }
 
-        .btn-primary, .btn-secondary {
-            padding: 1rem 2.5rem;
-            border: 2px solid transparent;
-            border-radius: 8px;
-            font-size: 1rem;
-            font-weight: 600;
-            cursor: pointer;
-            text-decoration: none;
-            transition: all 0.3s ease;
-            display: inline-block;
-        }
-
-        .btn-primary {
-            background: linear-gradient(135deg, #4099ff, #2ed8b6);
-            color: white;
-        }
-
-        .btn-primary:hover {
-            transform: translateY(-3px);
-            box-shadow: 0 10px 25px rgba(64, 153, 255, 0.3);
-        }
-
-        .btn-secondary {
-            background: transparent;
-            color: #4099ff;
-            border-color: #4099ff;
-        }
-
-        .btn-secondary:hover {
-            background: rgba(64, 153, 255, 0.1);
-        }
+        
 
         /* Responsive */
         @media (max-width: 768px) {

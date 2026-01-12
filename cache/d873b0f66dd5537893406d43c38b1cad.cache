@@ -30,7 +30,7 @@ a:4:{i:0;a:7:{s:2:"id";i:1;s:4:"name";s:5:"basic";s:11:"description";s:337:"Basi
     "expense_management",
     "inter_tenant_chat"
   ]
-";s:5:"price";s:7:"2500.00";s:9:"max_users";i:15;s:10:"trial_days";i:14;}i:3;a:7:{s:2:"id";i:3;s:4:"name";s:10:"enterprise";s:11:"description";s:486:"Enterprise plan: The complete solution for large or multi-branch agencies. Includes all Pro features, plus full Umrah management, HR & payroll automation (salaries, JV payments, additional staff payments), debtor/creditor tracking, Sarafi/currency management, assets management, and manage maktobs. Unlimited inter-tenant collaboration allows multiple agencies to trade services seamlessly, while real-time financial statements give you complete control over your agency’s operations.";s:8:"features";s:504:"[
+";s:5:"price";s:7:"2500.00";s:9:"max_users";i:15;s:10:"trial_days";i:14;}i:3;a:7:{s:2:"id";i:3;s:4:"name";s:10:"enterprise";s:11:"description";s:486:"Enterprise plan: The complete solution for large or multi-branch agencies. Includes all Pro features, plus full Umrah management, HR & payroll automation (salaries, JV payments, additional staff payments), debtor/creditor tracking, Sarafi/currency management, assets management, and manage maktobs. Unlimited inter-tenant collaboration allows multiple agencies to trade services seamlessly, while real-time financial statements give you complete control over your agency’s operations.";s:8:"features";s:518:"[
     "ticket_bookings",
     "ticket_reservations", 
     "refunded_tickets",
@@ -53,5 +53,6 @@ a:4:{i:0;a:7:{s:2:"id";i:1;s:4:"name";s:5:"basic";s:11:"description";s:337:"Basi
     "manage_maktobs",
     "assets",
     "financial_statements",
-    "expense_management"
+    "expense_management",
+"attendance"
 ]";s:5:"price";s:7:"4500.00";s:9:"max_users";i:30;s:10:"trial_days";i:14;}}

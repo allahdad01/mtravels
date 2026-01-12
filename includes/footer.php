@@ -48,12 +48,6 @@ if (!isset($platform_settings)) {
                 <p style="color: var(--gray-300); line-height: 1.6;">
                     <?php echo getSetting($platform_settings, 'platform_description', 'Professional travel agency management platform providing comprehensive solutions for booking management, financial operations, customer service, and business intelligence.'); ?>
                 </p>
-                <p style="color: var(--gray-300); margin-top: 1rem;">
-                    <strong>Contact:</strong><br>
-                    Email: <?php echo getSetting($platform_settings, 'contact_email', 'support@mtravels.com'); ?><br>
-                    Phone: <?php echo getSetting($platform_settings, 'support_phone', '+93780310431'); ?><br>
-                    Address: <?php echo getSetting($platform_settings, 'contact_address', 'Kabul, Afghanistan'); ?>
-                </p>
             </div>
             <div class="footer-section">
                 <h3><?php echo getSetting($platform_settings, 'footer_product_title', 'Product'); ?></h3>

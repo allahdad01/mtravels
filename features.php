@@ -673,6 +673,9 @@ $platform_settings = $landingData['settings'];
             <button class="nav-tab" data-category="dashboards">📊 Dashboards</button>
             <button class="nav-tab" data-category="automation">🤖 Automation</button>
             <button class="nav-tab" data-category="multibranch">🏢 Multi-Branch</button>
+            <button class="nav-tab" data-category="maktob">🧾 Maktob</button>
+            <button class="nav-tab" data-category="hr">🕒 HR & Attendance</button>
+            <button class="nav-tab" data-category="communication">💬 Communication</button>
             <button class="nav-tab" data-category="security">🔐 Security</button>
             <button class="nav-tab" data-category="portal">👥 Portal</button>
             <button class="nav-tab" data-category="learning">🎓 Learning</button>
@@ -685,63 +688,64 @@ $platform_settings = $landingData['settings'];
             <section class="feature-category" data-category="ticketing">
                 <div class="category-header">
                     <div class="category-title">
-                        <div class="category-icon">🎫</div>
-                        <h2>Ticketing & Reservations</h2>
+                        <div class="category-icon">🧳</div>
+                        <h2>Ticketing & Reservations (Core Engine)</h2>
                     </div>
 
                     <div class="problem-solution">
                         <h3>The Problem</h3>
                         <p class="problem-text">Travel agencies struggle with scattered ticket records, manual tracking across different suppliers, unclear profitability per ticket, and difficulty managing date changes and refunds.</p>
-                        
+
                         <h3 class="solution-heading">Our Solution</h3>
-                        <p class="solution-text">We centralize the full ticket lifecycle — booking, date changes, refunds, and cancellations — with automatic profit calculation, document handling, and complete supplier reconciliation in one unified interface.</p>
+                        <p class="solution-text">Complete ticket booking system with reservations, refunds, date changes, weight management, and automated profit calculation. Includes supplier, client, and internal account tracking with OCR document handling.</p>
                     </div>
                 </div>
 
                 <div class="capabilities-grid">
                     <div class="capability-card">
-                        <div class="capability-icon">📝</div>
-                        <h4>Ticket Management</h4>
-                        <p>Complete ticket booking, date change, refund tracking, weight, and cancellation management in one place</p>
-                    </div>
-                    <div class="capability-card">
-                        <div class="capability-icon">💵</div>
-                        <h4>Multi-Currency Pricing</h4>
-                        <p>Manage ticket pricing in AFN, USD, AED, EUR — real-time conversion & margin tracking</p>
-                    </div>
-                    <div class="capability-card">
-                        <div class="capability-icon">🔗</div>
-                        <h4>Supplier Linking</h4>
-                        <p>Connect & reconcile with multiple suppliers instantly for accurate inventory</p>
-                    </div>
-                    <div class="capability-card">
-                        <div class="capability-icon">🤖</div>
-                        <h4>OCR PDF Reader</h4>
-                        <p>Upload ticket PDFs — AI automatically extracts ticket details & fills your system</p>
+                        <div class="capability-icon">🎫</div>
+                        <h4>Ticket Bookings</h4>
+                        <p>Complete ticket booking system with real-time availability</p>
                     </div>
                     <div class="capability-card">
                         <div class="capability-icon">📅</div>
-                        <h4>Departure Tracking</h4>
-                        <p>View departures by today, weekly, or monthly for better operational planning</p>
+                        <h4>Ticket Reservations</h4>
+                        <p>On-hold sales with automatic expiration and follow-up</p>
+                    </div>
+                    <div class="capability-card">
+                        <div class="capability-icon">🔄</div>
+                        <h4>Refunded Tickets</h4>
+                        <p>Complete refund processing with financial reconciliation</p>
+                    </div>
+                    <div class="capability-card">
+                        <div class="capability-icon">📆</div>
+                        <h4>Date Change Tickets</h4>
+                        <p>Manage date changes with penalty calculations and notifications</p>
+                    </div>
+                    <div class="capability-card">
+                        <div class="capability-icon">⚖️</div>
+                        <h4>Ticket Weight Management</h4>
+                        <p>Track baggage allowances and weight limits with pricing</p>
                     </div>
                     <div class="capability-card">
                         <div class="capability-icon">💰</div>
-                        <h4>Reserve & Payment Tracking</h4>
-                        <p>Track ticket reserves and outstanding payments with automatic reminders</p>
+                        <h4>Automatic Profit Calculation</h4>
+                        <p>Real-time profit calculation per ticket with margin tracking</p>
                     </div>
                 </div>
 
                 <div class="features-list">
                     <h4>Key Capabilities Include:</h4>
                     <ul>
-                        <li><span>Ticket booking, date changes, weight & refund management</span></li>
-                        <li><span>Multi-currency ticket pricing (AFN, USD, AED, EUR)</span></li>
-                        <li><span>Supplier linking and reconciliation</span></li>
-                        <li><span>OCR-powered ticket PDF reader auto-fills ticket details</span></li>
-                        <li><span>Departure tracking (today, weekly, monthly views)</span></li>
-                        <li><span>Ticket reserve & outstanding payment tracking</span></li>
+                        <li><span>Ticket bookings and reservations</span></li>
+                        <li><span>Refunded tickets processing</span></li>
+                        <li><span>Date change tickets with penalty management</span></li>
+                        <li><span>Ticket weight management and baggage tracking</span></li>
                         <li><span>Automatic profit calculation per ticket</span></li>
-                        <li><span>Document handling & storage</span></li>
+                        <li><span>Supplier, client, and internal account tracking</span></li>
+                        <li><span>Ticket PDF reader with auto-extract passenger & flight data</span></li>
+                        <li><span>Passport OCR reader for auto-fill passenger details</span></li>
+                        <li><span>Ticket-wise and period-wise reporting</span></li>
                     </ul>
                 </div>
             </section>
@@ -757,56 +761,58 @@ $platform_settings = $landingData['settings'];
                     <div class="problem-solution">
                         <h3>The Problem</h3>
                         <p class="problem-text">Managing Umrah families, individual member tracking, separate payments per traveler, and handling cancellations is complex, error-prone, and impossible to do properly in spreadsheets.</p>
-                        
+
                         <h3 class="solution-heading">Our Solution</h3>
-                        <p class="solution-text">A complete Umrah workflow built specifically for family-based travel management, with individual member tracking, automatic family totals, and passport OCR for pilgrim data auto-fill.</p>
+                        <p class="solution-text">Complete Umrah pilgrimage booking system with family-based management, member tracking, individual payments, refunds, agreements generation, ID card creation, and passport OCR for pilgrims.</p>
                     </div>
                 </div>
 
                 <div class="capabilities-grid">
                     <div class="capability-card">
                         <div class="capability-icon">👨‍👩‍👧‍👦</div>
-                        <h4>Family-Based Bookings</h4>
-                        <p>Group families and track all members with individual preferences and payment statuses</p>
+                        <h4>Family-Based Umrah Booking</h4>
+                        <p>Group families and manage all members with individual preferences</p>
                     </div>
                     <div class="capability-card">
                         <div class="capability-icon">👤</div>
-                        <h4>Individual Member Tracking</h4>
+                        <h4>Member Management</h4>
                         <p>Track each traveler within families with their own tickets, visas, and accommodations</p>
                     </div>
                     <div class="capability-card">
                         <div class="capability-icon">💳</div>
-                        <h4>Separate Payments Per Traveler</h4>
-                        <p>Collect & track payments individually while maintaining family-level financial visibility</p>
+                        <h4>Individual Payments & Receipts</h4>
+                        <p>Collect and track payments individually while maintaining family-level financial visibility</p>
                     </div>
                     <div class="capability-card">
                         <div class="capability-icon">📊</div>
-                        <h4>Automatic Family Totals</h4>
-                        <p>Automatic calculation of family price, paid amount, and outstanding due</p>
+                        <h4>Family Transaction Tracking</h4>
+                        <p>Complete financial tracking for each family unit</p>
                     </div>
                     <div class="capability-card">
-                        <div class="capability-icon">📱</div>
-                        <h4>Passport OCR</h4>
-                        <p>Scan pilgrim passports — AI auto-fills names, dates, passport numbers</p>
+                        <div class="capability-icon">❌</div>
+                        <h4>Umrah Cancellations & Refunds</h4>
+                        <p>Manage cancellations and process refunds with automatic calculations</p>
                     </div>
                     <div class="capability-card">
-                        <div class="capability-icon">🏦</div>
-                        <h4>Bank Receipt Tracking</h4>
-                        <p>Track bank receipts per family member for accurate payment verification</p>
+                        <div class="capability-icon">📄</div>
+                        <h4>Agreements & ID Cards</h4>
+                        <p>Generate Umrah agreements and ID cards automatically</p>
                     </div>
                 </div>
 
                 <div class="features-list">
                     <h4>Key Capabilities Include:</h4>
                     <ul>
-                        <li><span>Family-based Umrah bookings with hierarchical structure</span></li>
-                        <li><span>Individual member tracking within families</span></li>
-                        <li><span>Separate payments per traveler with consolidated view</span></li>
-                        <li><span>Automatic family totals (price, paid, due)</span></li>
-                        <li><span>Umrah cancellations & refunds management</span></li>
-                        <li><span>Passport OCR reader auto-fills pilgrim data</span></li>
-                        <li><span>Bank receipt tracking per member</span></li>
-                        <li><span>Family financial summaries</span></li>
+                        <li><span>Family-based Umrah booking system</span></li>
+                        <li><span>Member management per family</span></li>
+                        <li><span>Individual member payments & receipts</span></li>
+                        <li><span>Family transaction tracking</span></li>
+                        <li><span>Umrah cancellations and refunds</span></li>
+                        <li><span>Umrah agreements generation</span></li>
+                        <li><span>ID card generation for pilgrims</span></li>
+                        <li><span>Passport OCR for Umrah pilgrims</span></li>
+                        <li><span>Multi-currency Umrah payments</span></li>
+                        <li><span>Bank receipt & payment tracking</span></li>
                     </ul>
                 </div>
             </section>
@@ -816,327 +822,595 @@ $platform_settings = $landingData['settings'];
                 <div class="category-header">
                     <div class="category-title">
                         <div class="category-icon">🛂</div>
-                        <h2>Visa & Hotel Management</h2>
+                        <h2>Visa Management</h2>
                     </div>
 
                     <div class="problem-solution">
                         <h3>The Problem</h3>
-                        <p class="problem-text">Visa and hotel processes are often handled outside the system, causing data gaps, missed deadlines, and unclear financial impact on agency accounts.</p>
-                        
+                        <p class="problem-text">Visa processes are often handled outside the system, causing data gaps, missed deadlines, and unclear financial impact on agency accounts.</p>
+
                         <h3 class="solution-heading">Our Solution</h3>
-                        <p class="solution-text">Fully integrated visa and hotel workflows inside the same platform with application tracking, document management, unified financial impact, and status notifications.</p>
+                        <p class="solution-text">Complete visa management system with applications, transactions, refunds, cancellations, client and supplier tracking, status tracking, and automated client notifications.</p>
                     </div>
                 </div>
 
                 <div class="capabilities-grid">
                     <div class="capability-card">
                         <div class="capability-icon">📋</div>
-                        <h4>Visa Application Management</h4>
-                        <p>Track visa applications from submission to approval with automated status updates</p>
-                    </div>
-                    <div class="capability-card">
-                        <div class="capability-icon">❌</div>
-                        <h4>Visa Cancellation Handling</h4>
-                        <p>Process visa cancellations with automatic financial adjustments</p>
-                    </div>
-                    <div class="capability-card">
-                        <div class="capability-icon">🏨</div>
-                        <h4>Hotel Booking Records</h4>
-                        <p>Complete hotel booking history with rates, check-in/out dates, and amenities</p>
-                    </div>
-                    <div class="capability-card">
-                        <div class="capability-icon">🔔</div>
-                        <h4>Status Tracking & Notifications</h4>
-                        <p>Client notifications on visa approvals and hotel confirmations automatically sent</p>
-                    </div>
-                    <div class="capability-card">
-                        <div class="capability-icon">📄</div>
-                        <h4>Document Management</h4>
-                        <p>Secure storage of all visa & hotel documents with compliance checks</p>
+                        <h4>Visa Applications</h4>
+                        <p>Complete visa application management with document tracking</p>
                     </div>
                     <div class="capability-card">
                         <div class="capability-icon">💰</div>
-                        <h4>Unified Financial Impact</h4>
-                        <p>Automatically reflect visa & hotel costs on agency accounts</p>
+                        <h4>Visa Transactions</h4>
+                        <p>Track all visa-related financial transactions</p>
+                    </div>
+                    <div class="capability-card">
+                        <div class="capability-icon">🔄</div>
+                        <h4>Visa Refunds</h4>
+                        <p>Process visa refunds with automatic financial reconciliation</p>
+                    </div>
+                    <div class="capability-card">
+                        <div class="capability-icon">❌</div>
+                        <h4>Visa Cancellations</h4>
+                        <p>Manage visa cancellations with status updates</p>
+                    </div>
+                    <div class="capability-card">
+                        <div class="capability-icon">👥</div>
+                        <h4>Client & Supplier Tracking</h4>
+                        <p>Track clients and suppliers for each visa application</p>
+                    </div>
+                    <div class="capability-card">
+                        <div class="capability-icon">📊</div>
+                        <h4>Visa Status Tracking</h4>
+                        <p>Monitor visa status with automated updates</p>
                     </div>
                 </div>
 
                 <div class="features-list">
                     <h4>Key Capabilities Include:</h4>
                     <ul>
-                        <li><span>Visa application management & tracking</span></li>
-                        <li><span>Visa cancellation handling with automatic refunds</span></li>
-                        <li><span>Hotel booking records & management</span></li>
-                        <li><span>Status tracking & client notifications</span></li>
-                        <li><span>Unified financial impact on accounts</span></li>
-                        <li><span>Document storage & compliance checks</span></li>
-                        <li><span>Multi-property hotel inventory management</span></li>
-                        <li><span>Automated deadline reminders</span></li>
+                        <li><span>Visa applications management</span></li>
+                        <li><span>Visa transactions tracking</span></li>
+                        <li><span>Visa refunds processing</span></li>
+                        <li><span>Visa cancellations management</span></li>
+                        <li><span>Client and supplier tracking</span></li>
+                        <li><span>Visa status tracking</span></li>
+                        <li><span>Automated client notifications</span></li>
                     </ul>
                 </div>
             </section>
 
-            <!-- 4. Finance & Accounting -->
+            <!-- 4. Hotel Management -->
+            <section class="feature-category hidden" data-category="hotel">
+                <div class="category-header">
+                    <div class="category-title">
+                        <div class="category-icon">🏨</div>
+                        <h2>Hotel Management</h2>
+                    </div>
+
+                    <div class="problem-solution">
+                        <h3>The Problem</h3>
+                        <p class="problem-text">Hotel bookings are often managed separately, causing reconciliation issues and unclear financial impact.</p>
+
+                        <h3 class="solution-heading">Our Solution</h3>
+                        <p class="solution-text">Complete hotel booking and refund system with client & supplier account linkage and automated financial impact tracking.</p>
+                    </div>
+                </div>
+
+                <div class="capabilities-grid">
+                    <div class="capability-card">
+                        <div class="capability-icon">🏨</div>
+                        <h4>Hotel Bookings</h4>
+                        <p>Complete hotel booking management with room types and rates</p>
+                    </div>
+                    <div class="capability-card">
+                        <div class="capability-icon">🔄</div>
+                        <h4>Hotel Refunds</h4>
+                        <p>Process hotel refunds with automatic financial reconciliation</p>
+                    </div>
+                    <div class="capability-card">
+                        <div class="capability-icon">👥</div>
+                        <h4>Client & Supplier Accounts</h4>
+                        <p>Link hotel bookings to client and supplier accounts</p>
+                    </div>
+                    <div class="capability-card">
+                        <div class="capability-icon">💰</div>
+                        <h4>Automated Financial Impact</h4>
+                        <p>Automatically update accounts based on hotel transactions</p>
+                    </div>
+                </div>
+
+                <div class="features-list">
+                    <h4>Key Capabilities Include:</h4>
+                    <ul>
+                        <li><span>Hotel bookings management</span></li>
+                        <li><span>Hotel refunds processing</span></li>
+                        <li><span>Client & supplier account linkage</span></li>
+                        <li><span>Automated financial impact on accounts</span></li>
+                    </ul>
+                </div>
+            </section>
+
+            <!-- 5. Finance & Accounting -->
             <section class="feature-category hidden" data-category="finance">
                 <div class="category-header">
                     <div class="category-title">
                         <div class="category-icon">💰</div>
-                        <h2>Finance & Accounting (Core Strength)</h2>
+                        <h2>Finance & Accounting (Very Strong)</h2>
                     </div>
 
                     <div class="problem-solution">
                         <h3>The Problem</h3>
                         <p class="problem-text">Agencies lose money due to poor visibility into cash flow, profit sources, outstanding dues, supplier reconciliation, and manual accounting errors that compound over time.</p>
-                        
+
                         <h3 class="solution-heading">Our Solution</h3>
-                        <p class="solution-text">A real-time financial engine designed specifically for travel agencies with multi-currency accounting, automatic profit calculation, comprehensive due tracking, and complete supplier reconciliation.</p>
+                        <p class="solution-text">Complete financial management system with multi-currency support, real-time P&L calculation, main accounts, client/supplier tracking, JV payments, salary management, asset management, expense management, and comprehensive financial statements.</p>
                     </div>
                 </div>
 
                 <div class="capabilities-grid">
                     <div class="capability-card">
                         <div class="capability-icon">🌍</div>
-                        <h4>Multi-Currency Accounting</h4>
-                        <p>Handle AFN, USD, AED, EUR simultaneously with automatic conversions</p>
+                        <h4>Multi-Currency Support</h4>
+                        <p>Support for AFN, USD, AED, EUR with real-time conversion</p>
+                    </div>
+                    <div class="capability-card">
+                        <div class="capability-icon">📊</div>
+                        <h4>Real-Time P&L Calculation</h4>
+                        <p>Automatic profit and loss calculation across all operations</p>
                     </div>
                     <div class="capability-card">
                         <div class="capability-icon">🏦</div>
                         <h4>Main Accounts</h4>
-                        <p>Manage Safe, Bank, Bourse, and Internal accounts in one place</p>
+                        <p>Manage Safe, Bank, Sarafi accounts with complete tracking</p>
                     </div>
                     <div class="capability-card">
-                        <div class="capability-icon">📊</div>
-                        <h4>Client & Supplier Ledgers</h4>
-                        <p>Complete financial ledgers for every client and supplier relationship</p>
+                        <div class="capability-icon">👥</div>
+                        <h4>Client & Supplier Accounts</h4>
+                        <p>Complete ledgers for clients and suppliers</p>
                     </div>
                     <div class="capability-card">
-                        <div class="capability-icon">📈</div>
-                        <h4>Profit Calculation</h4>
-                        <p>Automated daily, monthly, and yearly profit calculation from all sources</p>
-                    </div>
-                    <div class="capability-card">
-                        <div class="capability-icon">📋</div>
-                        <h4>Outstanding Dues Tracking</h4>
-                        <p>Track overdue: tickets, hotels, refunds, date changes, visas, Umrah</p>
+                        <div class="capability-icon">💰</div>
+                        <h4>Debtors & Creditors</h4>
+                        <p>Track outstanding amounts and manage collections</p>
                     </div>
                     <div class="capability-card">
                         <div class="capability-icon">🔄</div>
-                        <h4>Supplier Reconciliation</h4>
-                        <p>Automatic payment reconciliation with suppliers for accuracy</p>
+                        <h4>Sarafi Management</h4>
+                        <p>Money exchange management with rate tracking</p>
                     </div>
                 </div>
 
                 <div class="features-list">
                     <h4>Key Capabilities Include:</h4>
                     <ul>
-                        <li><span>Multi-currency accounting (AFN, USD, AED, EUR)</span></li>
-                        <li><span>Main accounts: Safe, Bank, Bourse, Internal</span></li>
-                        <li><span>Client & supplier ledgers with complete history</span></li>
-                        <li><span>Automated profit calculation (daily, monthly, yearly)</span></li>
-                        <li><span>Outstanding dues tracking: tickets, hotels, refunds, date changes, visas, Umrah</span></li>
-                        <li><span>Supplier payment reconciliation</span></li>
-                        <li><span>Family-level Umrah financial tracking</span></li>
-                        <li><span>Currency conversion with margin handling</span></li>
+                        <li><span>Multi-currency support (AFN, USD, AED, EUR)</span></li>
+                        <li><span>Real-time profit & loss calculation</span></li>
+                        <li><span>Main accounts (Safe, Bank, Sarafi)</span></li>
+                        <li><span>Client accounts management</span></li>
+                        <li><span>Supplier accounts management</span></li>
+                        <li><span>Debtors management</span></li>
+                        <li><span>Creditors management</span></li>
+                        <li><span>Sarafi (money exchange) management</span></li>
+                        <li><span>JV (Joint Voucher) payments</span></li>
+                        <li><span>Additional service payments</span></li>
+                        <li><span>Salary management</span></li>
+                        <li><span>Asset management</span></li>
+                        <li><span>Expense management</span></li>
+                        <li><span>Financial statements (monthly, yearly, custom period)</span></li>
+                        <li><span>Cash flow analysis</span></li>
+                        <li><span>Outstanding dues tracking</span></li>
+                        <li><span>Automatic balance reconciliation</span></li>
                     </ul>
                 </div>
             </section>
 
-            <!-- 5. Interactive Dashboards & Reports -->
+            <!-- 6. Dashboards & Reporting -->
             <section class="feature-category hidden" data-category="dashboards">
                 <div class="category-header">
                     <div class="category-title">
                         <div class="category-icon">📊</div>
-                        <h2>Interactive Dashboards & Reports</h2>
+                        <h2>Dashboards & Reporting</h2>
                     </div>
 
                     <div class="problem-solution">
                         <h3>The Problem</h3>
                         <p class="problem-text">Static reports don't help owners make fast decisions. Managers need real-time insights into what's making or losing money.</p>
-                        
+
                         <h3 class="solution-heading">Our Solution</h3>
-                        <p class="solution-text">Interactive dashboards with drill-down insights — click from profit card → see sources → dig into individual transactions.</p>
+                        <p class="solution-text">Complete dashboard and reporting system with admin dashboard, multi-currency charts, profit breakdowns, outstanding dues, and exportable reports.</p>
                     </div>
                 </div>
 
                 <div class="capabilities-grid">
                     <div class="capability-card">
-                        <div class="capability-icon">📈</div>
-                        <h4>Cash Flow Charts</h4>
-                        <p>Real-time cash flow visualization by currency and period</p>
+                        <div class="capability-icon">📊</div>
+                        <h4>Admin Dashboard</h4>
+                        <p>Comprehensive admin dashboard with all key metrics</p>
+                    </div>
+                    <div class="capability-card">
+                        <div class="capability-icon">💰</div>
+                        <h4>Multi-Currency Cash Flow</h4>
+                        <p>Cash flow charts with multi-currency support</p>
+                    </div>
+                    <div class="capability-card">
+                        <div class="capability-icon">📅</div>
+                        <h4>Daily/Monthly/Yearly Filters</h4>
+                        <p>Filter data by different time periods</p>
                     </div>
                     <div class="capability-card">
                         <div class="capability-icon">💎</div>
                         <h4>Profit Cards</h4>
-                        <p>Profit cards with source breakdown — see where money comes from</p>
+                        <p>Profit cards showing today, month, and year performance</p>
                     </div>
                     <div class="capability-card">
                         <div class="capability-icon">🔍</div>
-                        <h4>Drill-Down Insights</h4>
-                        <p>Click profit → source → individual item for complete transparency</p>
+                        <h4>Drill-Down Profit View</h4>
+                        <p>Drill down from profit sources to individual items</p>
                     </div>
                     <div class="capability-card">
-                        <div class="capability-icon">👤</div>
-                        <h4>User Performance</h4>
-                        <p>Sales contribution & performance metrics per team member</p>
-                    </div>
-                    <div class="capability-card">
-                        <div class="capability-icon">🎯</div>
-                        <h4>Ticket Analytics</h4>
-                        <p>Ticket sales periods and departure insights with trends</p>
-                    </div>
-                    <div class="capability-card">
-                        <div class="capability-icon">📥</div>
-                        <h4>Advanced Exports</h4>
-                        <p>Export all reports to PDF and Excel for presentations</p>
+                        <div class="capability-icon">📄</div>
+                        <h4>Outstanding Dues</h4>
+                        <p>Track client pending payments and outstanding dues</p>
                     </div>
                 </div>
 
                 <div class="features-list">
                     <h4>Key Capabilities Include:</h4>
                     <ul>
-                        <li><span>Cash flow charts by currency & period</span></li>
-                        <li><span>Profit cards with source breakdown</span></li>
-                        <li><span>Drill-down from profit → source → individual item</span></li>
-                        <li><span>User performance & sales contribution tracking</span></li>
-                        <li><span>Ticket sales periods & departure insights</span></li>
-                        <li><span>Advanced exportable reports (PDF / Excel)</span></li>
-                        <li><span>Real-time dashboard updates</span></li>
-                        <li><span>Custom date range filtering</span></li>
+                        <li><span>Admin Dashboard with comprehensive metrics</span></li>
+                        <li><span>Multi-currency cash flow charts</span></li>
+                        <li><span>Daily/monthly/yearly filters</span></li>
+                        <li><span>Profit cards (today, month, year)</span></li>
+                        <li><span>Drill-down profit source view</span></li>
+                        <li><span>Item-level profit printing</span></li>
+                        <li><span>Outstanding dues overview</span></li>
+                        <li><span>Client pending payments tracking</span></li>
+                        <li><span>Ticket booking periods overview</span></li>
+                        <li><span>Today's departures tracking</span></li>
+                        <li><span>User performance & sales tracking</span></li>
+                        <li><span>Notifications on money in/out</span></li>
+                        <li><span>Reports (airline sales, financial, branch-wise, user performance)</span></li>
+                        <li><span>Exportable data (Excel/PDF)</span></li>
                     </ul>
                 </div>
             </section>
 
-            <!-- 6. Automation & Smart Features -->
+            <!-- 7. Automation & Intelligence -->
             <section class="feature-category hidden" data-category="automation">
                 <div class="category-header">
                     <div class="category-title">
                         <div class="category-icon">🤖</div>
-                        <h2>Automation & Smart Features</h2>
+                        <h2>Automation & Intelligence</h2>
                     </div>
 
                     <div class="problem-solution">
                         <h3>The Problem</h3>
                         <p class="problem-text">Manual communication and data entry waste hours every day. Staff spend time copying/pasting passenger data, sending repetitive emails, and following up manually.</p>
-                        
+
                         <h3 class="solution-heading">Our Solution</h3>
-                        <p class="solution-text">Automation at every critical point — from OCR data extraction to email campaigns, WhatsApp messaging, and intelligent reminders.</p>
+                        <p class="solution-text">Complete automation system with profit calculation, real-time analytics, interactive charts, email/WhatsApp automation, OCR auto-fill, and reminder system.</p>
                     </div>
                 </div>
 
                 <div class="capabilities-grid">
                     <div class="capability-card">
+                        <div class="capability-icon">💰</div>
+                        <h4>Automated Profit Calculation</h4>
+                        <p>Automatic profit calculation for tickets, visas, hotels, and Umrah</p>
+                    </div>
+                    <div class="capability-card">
+                        <div class="capability-icon">📊</div>
+                        <h4>Real-Time Analytics</h4>
+                        <p>Interactive dashboard with real-time data visualization</p>
+                    </div>
+                    <div class="capability-card">
+                        <div class="capability-icon">📈</div>
+                        <h4>Interactive Charts</h4>
+                        <p>Visual charts for financial and operational data</p>
+                    </div>
+                    <div class="capability-card">
+                        <div class="capability-icon">📊</div>
+                        <h4>Source-Wise Profit Breakdown</h4>
+                        <p>Detailed profit analysis by source</p>
+                    </div>
+                    <div class="capability-card">
                         <div class="capability-icon">📧</div>
                         <h4>Email Automation</h4>
-                        <p>Automated emails for tickets, visas, hotels, Umrah with branded templates</p>
-                    </div>
-                    <div class="capability-card">
-                        <div class="capability-icon">📎</div>
-                        <h4>Email with Attachments</h4>
-                        <p>PDF attachments automatically generated and sent to clients</p>
-                    </div>
-                    <div class="capability-card">
-                        <div class="capability-icon">📋</div>
-                        <h4>Email Delivery Logs</h4>
-                        <p>Track every email sent, delivery status, and opens</p>
+                        <p>Automated emails for tickets, visas, hotels, Umrah, and invoices</p>
                     </div>
                     <div class="capability-card">
                         <div class="capability-icon">💬</div>
                         <h4>WhatsApp Automation</h4>
-                        <p>Send messages directly via WhatsApp (tenant-controlled & compliant)</p>
-                    </div>
-                    <div class="capability-card">
-                        <div class="capability-icon">🤖</div>
-                        <h4>OCR Document Reader</h4>
-                        <p>Upload tickets & passports — AI auto-extracts data, saves 80% manual entry</p>
-                    </div>
-                    <div class="capability-card">
-                        <div class="capability-icon">⏰</div>
-                        <h4>Smart Reminders</h4>
-                        <p>To-do reminders & follow-ups at the perfect time</p>
+                        <p>Tenant-configurable WhatsApp messaging with templates</p>
                     </div>
                 </div>
 
                 <div class="features-list">
                     <h4>Key Capabilities Include:</h4>
                     <ul>
-                        <li><span>Email automation (tickets, visas, hotels, Umrah)</span></li>
-                        <li><span>Branded email templates with PDF attachments</span></li>
-                        <li><span>Email delivery logs & analytics</span></li>
-                        <li><span>WhatsApp automation (tenant-controlled)</span></li>
-                        <li><span>WhatsApp templates & delivery tracking</span></li>
-                        <li><span>WhatsApp analytics & webhook logging</span></li>
-                        <li><span>OCR document reader (tickets & passports)</span></li>
-                        <li><span>To-do reminders & follow-ups</span></li>
+                        <li><span>Automated profit calculation (ticket, visa, hotel, Umrah)</span></li>
+                        <li><span>Real-time analytics dashboard</span></li>
+                        <li><span>Interactive financial charts</span></li>
+                        <li><span>Source-wise profit breakdown</span></li>
+                        <li><span>Automated email notifications (tickets, visas, hotels, Umrah, invoices)</span></li>
+                        <li><span>Branded email templates</span></li>
+                        <li><span>PDF attachments in emails</span></li>
+                        <li><span>Email delivery logs</span></li>
+                        <li><span>WhatsApp automation (tenant-configurable)</span></li>
+                        <li><span>WhatsApp message templates</span></li>
+                        <li><span>WhatsApp delivery status tracking</span></li>
+                        <li><span>WhatsApp analytics</span></li>
+                        <li><span>Reminder & to-do system</span></li>
+                        <li><span>OCR auto-fill (tickets & passports)</span></li>
                     </ul>
                 </div>
             </section>
 
-            <!-- 7. Multi-Branch Architecture -->
+            <!-- 8. Multi-Tenant & Multi-Branch System -->
             <section class="feature-category hidden" data-category="multibranch">
                 <div class="category-header">
                     <div class="category-title">
                         <div class="category-icon">🏢</div>
-                        <h2>Multi-Branch Architecture</h2>
+                        <h2>Multi-Tenant & Multi-Branch System</h2>
                     </div>
 
                     <div class="problem-solution">
                         <h3>The Problem</h3>
                         <p class="problem-text">Agencies with multiple branches lack centralized control, duplicate data, inconsistent processes, and no way to compare branch performance.</p>
-                        
+
                         <h3 class="solution-heading">Our Solution</h3>
-                        <p class="solution-text">True multi-branch SaaS architecture — independent branch data with shared global settings, unified reporting, and branch comparison capabilities.</p>
+                        <p class="solution-text">Full SaaS multi-tenant architecture with multi-branch support, separate data per tenant, branch-level operations, and tenant Super Admin dashboard for performance comparison.</p>
                     </div>
                 </div>
 
                 <div class="capabilities-grid">
                     <div class="capability-card">
-                        <div class="capability-icon">🔐</div>
-                        <h4>Independent Branch Data</h4>
-                        <p>Each branch operates independently with separate user access</p>
+                        <div class="capability-icon">🏢</div>
+                        <h4>Full SaaS Multi-Tenant</h4>
+                        <p>Complete multi-tenant architecture with data isolation</p>
                     </div>
                     <div class="capability-card">
-                        <div class="capability-icon">🔗</div>
-                        <h4>Shared Global Settings</h4>
-                        <p>SMTP, WhatsApp, and branding shared across all branches</p>
+                        <div class="capability-icon">🌐</div>
+                        <h4>Multi-Branch Support</h4>
+                        <p>Support multiple branches per tenant</p>
                     </div>
                     <div class="capability-card">
-                        <div class="capability-icon">🏷️</div>
-                        <h4>Branch-Level Branding</h4>
-                        <p>Communications tagged by branch automatically</p>
+                        <div class="capability-icon">🔒</div>
+                        <h4>Separate Data Per Tenant</h4>
+                        <p>Complete data isolation between tenants</p>
+                    </div>
+                    <div class="capability-card">
+                        <div class="capability-icon">🏢</div>
+                        <h4>Branch-Level Operations</h4>
+                        <p>Manage operations at branch level</p>
                     </div>
                     <div class="capability-card">
                         <div class="capability-icon">📊</div>
-                        <h4>Branch-Wise Reporting</h4>
-                        <p>Reports filtered by branch automatically</p>
+                        <h4>Tenant Super Admin Dashboard</h4>
+                        <p>Compare branch performance and export reports</p>
                     </div>
                     <div class="capability-card">
-                        <div class="capability-icon">📈</div>
-                        <h4>Branch Comparison</h4>
-                        <p>Compare performance, revenue, and KPIs across branches</p>
-                    </div>
-                    <div class="capability-card">
-                        <div class="capability-icon">👥</div>
-                        <h4>Central User Management</h4>
-                        <p>Create users and assign to branches from headquarters</p>
+                        <div class="capability-icon">📧</div>
+                        <h4>Shared SMTP & WhatsApp</h4>
+                        <p>Shared communication channels with branch-specific branding</p>
                     </div>
                 </div>
 
                 <div class="features-list">
                     <h4>Key Capabilities Include:</h4>
                     <ul>
-                        <li><span>Independent branch data & separate user access</span></li>
-                        <li><span>Shared global SMTP & WhatsApp settings</span></li>
-                        <li><span>Branch-level branding in communications</span></li>
-                        <li><span>Branch auto-tagging across all operations</span></li>
-                        <li><span>Branch-wise reporting & comparison</span></li>
-                        <li><span>Centralized settings management</span></li>
-                        <li><span>Multi-branch financial consolidation</span></li>
-                        <li><span>Branch performance benchmarking</span></li>
+                        <li><span>Full SaaS multi-tenant architecture</span></li>
+                        <li><span>Multi-branch support per tenant</span></li>
+                        <li><span>Separate data per tenant</span></li>
+                        <li><span>Branch-level operations</span></li>
+                        <li><span>Tenant Super Admin dashboard</span></li>
+                        <li><span>Compare branch performance</span></li>
+                        <li><span>Export branch reports</span></li>
+                        <li><span>Shared SMTP & WhatsApp with branch-specific branding</span></li>
+                        <li><span>Branch name, address, phone appended automatically</span></li>
                     </ul>
                 </div>
             </section>
 
-            <!-- 8. Security & Audit Logs -->
+            <!-- 8. Maktob Management -->
+            <section class="feature-category hidden" data-category="maktob">
+                <div class="category-header">
+                    <div class="category-title">
+                        <div class="category-icon">🧾</div>
+                        <h2>Maktob (Official Letter) Management</h2>
+                    </div>
+
+                    <div class="problem-solution">
+                        <h3>The Problem</h3>
+                        <p class="problem-text">Travel agencies struggle with managing official letters, agreements, and correspondence. Manual tracking leads to lost documents, version confusion, and compliance issues.</p>
+
+                        <h3 class="solution-heading">Our Solution</h3>
+                        <p class="solution-text">Complete Maktob management system with numbering, multi-language support, PDF generation, and audit logging for all official correspondence.</p>
+                    </div>
+                </div>
+
+                <div class="capabilities-grid">
+                    <div class="capability-card">
+                        <div class="capability-icon">📝</div>
+                        <h4>Issued & Received Letters</h4>
+                        <p>Track both incoming and outgoing official correspondence</p>
+                    </div>
+                    <div class="capability-card">
+                        <div class="capability-icon">🔢</div>
+                        <h4>Automatic Numbering</h4>
+                        <p>Systematic Maktob numbering for easy reference and tracking</p>
+                    </div>
+                    <div class="capability-card">
+                        <div class="capability-icon">🌐</div>
+                        <h4>Multi-Language Support</h4>
+                        <p>Create letters in English, Dari, and Pashto</p>
+                    </div>
+                    <div class="capability-card">
+                        <div class="capability-icon">📄</div>
+                        <h4>PDF Generation</h4>
+                        <p>Generate professional PDF documents with preview capability</p>
+                    </div>
+                    <div class="capability-card">
+                        <div class="capability-icon">📁</div>
+                        <h4>Status Management</h4>
+                        <p>Track letters through Draft, Sent, and Archived statuses</p>
+                    </div>
+                    <div class="capability-card">
+                        <div class="capability-icon">🏢</div>
+                        <h4>Branch-Aware Handling</h4>
+                        <p>Manage letters with branch-specific context and access</p>
+                    </div>
+                </div>
+
+                <div class="features-list">
+                    <h4>Key Capabilities Include:</h4>
+                    <ul>
+                        <li><span>Issued and received official letters management</span></li>
+                        <li><span>Automatic Maktob numbering system</span></li>
+                        <li><span>Multi-language support (English, Dari, Pashto)</span></li>
+                        <li><span>PDF generation and download functionality</span></li>
+                        <li><span>PDF preview within the system</span></li>
+                        <li><span>Draft/Sent/Archived status tracking</span></li>
+                        <li><span>Branch-aware Maktob handling</span></li>
+                        <li><span>Search, pagination, and filtering capabilities</span></li>
+                        <li><span>Audit logging for all Maktob actions</span></li>
+                    </ul>
+                </div>
+            </section>
+
+            <!-- 9. HR & Attendance Management -->
+            <section class="feature-category hidden" data-category="hr">
+                <div class="category-header">
+                    <div class="category-title">
+                        <div class="category-icon">🕒</div>
+                        <h2>HR & Attendance Management</h2>
+                    </div>
+
+                    <div class="problem-solution">
+                        <h3>The Problem</h3>
+                        <p class="problem-text">Tracking employee attendance, calculating payroll, and managing performance across multiple branches is time-consuming and error-prone.</p>
+
+                        <h3 class="solution-heading">Our Solution</h3>
+                        <p class="solution-text">Complete HR management system with attendance tracking, payroll integration, and performance reporting for all branches.</p>
+                    </div>
+                </div>
+
+                <div class="capabilities-grid">
+                    <div class="capability-card">
+                        <div class="capability-icon">📅</div>
+                        <h4>Employee Attendance</h4>
+                        <p>Track attendance per employee with check-in/check-out times</p>
+                    </div>
+                    <div class="capability-card">
+                        <div class="capability-icon">🏢</div>
+                        <h4>Branch-Level Tracking</h4>
+                        <p>Manage attendance separately for each branch location</p>
+                    </div>
+                    <div class="capability-card">
+                        <div class="capability-icon">💰</div>
+                        <h4>Salary Integration</h4>
+                        <p>Automatic salary calculation based on attendance and performance</p>
+                    </div>
+                    <div class="capability-card">
+                        <div class="capability-icon">📊</div>
+                        <h4>Performance Reporting</h4>
+                        <p>Generate performance reports based on attendance and KPIs</p>
+                    </div>
+                    <div class="capability-card">
+                        <div class="capability-icon">👤</div>
+                        <h4>Employee Records</h4>
+                        <p>Complete employee profiles with attendance history</p>
+                    </div>
+                    <div class="capability-card">
+                        <div class="capability-icon">📈</div>
+                        <h4>Productivity Analytics</h4>
+                        <p>Analyze attendance patterns and productivity trends</p>
+                    </div>
+                </div>
+
+                <div class="features-list">
+                    <h4>Key Capabilities Include:</h4>
+                    <ul>
+                        <li><span>Employee attendance tracking system</span></li>
+                        <li><span>Branch-level attendance management</span></li>
+                        <li><span>Integration with salary calculation module</span></li>
+                        <li><span>Performance-based reporting</span></li>
+                        <li><span>Complete employee records management</span></li>
+                        <li><span>Attendance analytics and trends</span></li>
+                        <li><span>Leave management and approvals</span></li>
+                        <li><span>Overtime tracking and calculation</span></li>
+                    </ul>
+                </div>
+            </section>
+
+            <!-- 10. Communication & Collaboration -->
+            <section class="feature-category hidden" data-category="communication">
+                <div class="category-header">
+                    <div class="category-title">
+                        <div class="category-icon">💬</div>
+                        <h2>Communication & Collaboration</h2>
+                    </div>
+
+                    <div class="problem-solution">
+                        <h3>The Problem</h3>
+                        <p class="problem-text">Agencies need seamless communication between branches and with other agencies. Manual coordination leads to delays and miscommunication.</p>
+
+                        <h3 class="solution-heading">Our Solution</h3>
+                        <p class="solution-text">Built-in inter-tenant chat and collaboration tools for ticket/visa selling between agencies with controlled access.</p>
+                    </div>
+                </div>
+
+                <div class="capabilities-grid">
+                    <div class="capability-card">
+                        <div class="capability-icon">💬</div>
+                        <h4>Inter-Tenant Chat</h4>
+                        <p>Real-time messaging between different agencies</p>
+                    </div>
+                    <div class="capability-card">
+                        <div class="capability-icon">🤝</div>
+                        <h4>Business Collaboration</h4>
+                        <p>Coordinate ticket, visa, and Umrah sales between agencies</p>
+                    </div>
+                    <div class="capability-card">
+                        <div class="capability-icon">📄</div>
+                        <h4>Shared Agreements</h4>
+                        <p>Create and manage shared agreements with controlled access</p>
+                    </div>
+                    <div class="capability-card">
+                        <div class="capability-icon">🔒</div>
+                        <h4>Controlled Access</h4>
+                        <p>Manage permissions for shared documents and communications</p>
+                    </div>
+                    <div class="capability-card">
+                        <div class="capability-icon">📊</div>
+                        <h4>Collaboration Analytics</h4>
+                        <p>Track collaboration activities and outcomes</p>
+                    </div>
+                    <div class="capability-card">
+                        <div class="capability-icon">📱</div>
+                        <h4>Mobile Collaboration</h4>
+                        <p>Access collaboration tools from mobile devices</p>
+                    </div>
+                </div>
+
+                <div class="features-list">
+                    <h4>Key Capabilities Include:</h4>
+                    <ul>
+                        <li><span>Inter-tenant chat functionality</span></li>
+                        <li><span>Tenant-to-tenant business collaboration</span></li>
+                        <li><span>Ticket, visa, and Umrah selling between tenants</span></li>
+                        <li><span>Shared agreements with controlled access</span></li>
+                        <li><span>Real-time communication tools</span></li>
+                        <li><span>Collaboration activity tracking</span></li>
+                        <li><span>Mobile-friendly collaboration interface</span></li>
+                        <li><span>Document sharing with access control</span></li>
+                    </ul>
+                </div>
+            </section>
+
+            <!-- 11. Security & Audit Logs -->
             <section class="feature-category hidden" data-category="security">
                 <div class="category-header">
                     <div class="category-title">
@@ -1147,7 +1421,7 @@ $platform_settings = $landingData['settings'];
                     <div class="problem-solution">
                         <h3>The Problem</h3>
                         <p class="problem-text">Financial systems need complete accountability. Staff changes, financial adjustments, and critical operations must be traceable for compliance and fraud investigation.</p>
-                        
+
                         <h3 class="solution-heading">Our Solution</h3>
                         <p class="solution-text">Full auditability built into every transaction — track who changed what, when, and from where. Enterprise-grade security for sensitive data.</p>
                     </div>
@@ -1197,6 +1471,8 @@ $platform_settings = $landingData['settings'];
                         <li><span>Point-in-time recovery</span></li>
                         <li><span>Compliance reports for audits</span></li>
                         <li><span>GDPR-compliant data handling</span></li>
+                        <li><span>Tenant isolation and data protection</span></li>
+                        <li><span>Secure document handling and storage</span></li>
                     </ul>
                 </div>
             </section>

@@ -208,32 +208,6 @@ $blog_posts = getBlogPosts($pdo);
             gap: 1rem;
         }
 
-        .btn {
-            padding: 0.75rem 2rem;
-            border: none;
-            border-radius: 50px;
-            font-weight: 600;
-            text-decoration: none;
-            display: inline-flex;
-            align-items: center;
-            gap: 0.5rem;
-            transition: all 0.3s;
-            cursor: pointer;
-            position: relative;
-            overflow: hidden;
-        }
-
-        .btn-primary {
-            background: linear-gradient(135deg, #4099ff 0%, #2ed8b6 100%) !important;
-            color: #ffffff !important;
-            border-bottom: none !important;
-        }
-
-        .btn-primary:hover {
-            transform: translateY(-3px);
-            box-shadow: 0 15px 35px rgba(64, 153, 255, 0.4);
-        }
-
         /* Hero Section */
         .hero {
             padding: 12rem 0 8rem;
