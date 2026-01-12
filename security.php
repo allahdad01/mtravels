@@ -46,7 +46,8 @@ $platform_settings = getPlatformSettings($pdo);
     <meta name="description" content="Learn about MTravels security measures, data protection, compliance standards, and how we keep your travel business data safe.">
         <!-- Favicon -->
         <link rel="icon" href="uploads/logo/<?= htmlspecialchars(getSetting($platform_settings, 'platform_logo') ?? 'default-logo.png') ?>" type="image/x-icon">
-    <?php renderThemeStyles(); ?>
+        <link rel="stylesheet" href="assets/css/index.css">
+        <?php renderThemeStyles(); ?>
     <style>
         * {
             margin: 0;
@@ -489,32 +490,16 @@ $platform_settings = getPlatformSettings($pdo);
     </style>
 </head>
 <body>
-    <!-- Navigation -->
-    <nav class="navbar" id="navbar">
-        <div class="container">
-            <div class="nav-content">
-                <a href="index.php" class="logo">
-                    <img src="uploads/logo/<?= htmlspecialchars(getSetting($platform_settings, 'platform_logo') ?? 'logo.png') ?>" alt="Logo" style="height: 40px;">
-                    <span class="logo-text"><?= htmlspecialchars(getSetting($platform_settings, 'platform_name') ?? 'MTravels') ?></span>
-                </a>
-                <div class="nav-menu">
-                    <ul class="nav-links">
-                        <li><a href="index.php">Home</a></li>
-                        <li><a href="index.php#features">Features</a></li>
-                        <li><a href="index.php#pricing">Pricing</a></li>
-                        <li><a href="about.php">About</a></li>
-                        <li><a href="index.php#contact">Contact</a></li>
-                    </ul>
-                    <div class="nav-actions">
-                        <a href="login.php" class="nav-login-link" style="color: var(--primary); text-decoration: none; font-weight: 600; transition: color 0.3s;">Login</a>
-                        <a href="book-demo.php" class="btn btn-primary">
-                            <span>Book a Demo</span>
-                        </a>
-                    </div>
-                </div>
-            </div>
-        </div>
-    </nav>
+<?php 
+    $nav_links = [
+        ['href' => 'index.php', 'label' => 'Home'],
+        ['href' => '#features', 'label' => 'Features'],
+        ['href' => '#pricing', 'label' => 'Pricing'],
+        ['href' => '#testimonials', 'label' => 'Reviews'],
+        ['href' => '#contact', 'label' => 'Contact']
+    ];
+    require_once 'includes/navbar.php'; 
+    ?>
 
     <!-- Hero Section -->
     <section class="hero">
@@ -721,6 +706,26 @@ $platform_settings = getPlatformSettings($pdo);
                 });
                 });
                 </script>
+                <script>
+    // Mobile menu functionality
+    document.addEventListener('DOMContentLoaded', function() {
+        const hamburger = document.getElementById('hamburger');
+        const navMenu = document.querySelector('.nav-menu');
+
+        if (hamburger && navMenu) {
+            hamburger.addEventListener('click', function() {
+                navMenu.classList.toggle('open');
+            });
+
+            // Close menu when clicking outside
+            document.addEventListener('click', function(event) {
+                if (!hamburger.contains(event.target) && !navMenu.contains(event.target)) {
+                    navMenu.classList.remove('open');
+                }
+            });
+        }
+    });
+</script>
                 <?php renderThemeScript(); ?>
                 </body>
                 </html>

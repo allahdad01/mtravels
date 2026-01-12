@@ -46,7 +46,8 @@ $platform_settings = getPlatformSettings($pdo);
     <meta name="description" content="Real-time system status and uptime monitoring for MTravels platform. Check service availability and incident history.">
         <!-- Favicon -->
         <link rel="icon" href="uploads/logo/<?= htmlspecialchars(getSetting($platform_settings, 'platform_logo') ?? 'default-logo.png') ?>" type="image/x-icon">
-    <?php renderThemeStyles(); ?>
+        <link rel="stylesheet" href="assets/css/index.css">
+        <?php renderThemeStyles(); ?>
     <style>
         * {
             margin: 0;
@@ -94,81 +95,6 @@ $platform_settings = getPlatformSettings($pdo);
             padding: 0 20px;
         }
 
-        /* Advanced Navbar */
-        .navbar {
-            position: fixed;
-            top: 30px;
-            left: 100px;
-            right: 100px;
-            padding: 1.5rem 2rem;
-            background: rgba(255, 255, 255, 0.9);
-            backdrop-filter: blur(20px);
-            border-radius: 50px;
-            box-shadow: 0 10px 40px rgba(0, 0, 0, 0.15);
-            z-index: 1000;
-            transition: all 0.3s ease;
-        }
-
-        .navbar.scrolled {
-            background: rgba(255, 255, 255, 0.95);
-            padding: 1rem 2rem;
-            border-radius: 50px;
-            box-shadow: 0 15px 50px rgba(0, 0, 0, 0.2);
-        }
-
-        .nav-content {
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-        }
-
-        .logo {
-            display: flex;
-            align-items: center;
-            text-decoration: none;
-        }
-
-        .logo img {
-            max-height: 40px;
-            width: auto;
-        }
-
-        .logo-text {
-            font-size: 1.8rem;
-            font-weight: 800;
-            text-decoration: none;
-            color: var(--primary);
-        }
-
-        .nav-menu {
-            display: flex;
-            align-items: center;
-            gap: 2rem;
-        }
-
-        .nav-links {
-            display: flex;
-            gap: 2rem;
-            list-style: none;
-        }
-
-        .nav-links a {
-            color: var(--gray-700);
-            text-decoration: none;
-            font-weight: 600;
-            position: relative;
-            transition: color 0.3s;
-        }
-
-        .nav-links a:hover {
-            color: var(--primary);
-        }
-
-        .nav-actions {
-            display: flex;
-            align-items: center;
-            gap: 1rem;
-        }
 
         .btn-primary:hover {
             transform: translateY(-3px);
@@ -574,12 +500,6 @@ $platform_settings = getPlatformSettings($pdo);
 
         /* Mobile Responsive */
         @media (max-width: 768px) {
-            .navbar {
-                left: 20px;
-                right: 20px;
-                padding: 1rem 1.5rem;
-            }
-
             .hero h1 {
                 font-size: 2.5rem;
             }
@@ -607,31 +527,7 @@ $platform_settings = getPlatformSettings($pdo);
 </head>
 <body>
     <!-- Navigation -->
-    <nav class="navbar" id="navbar">
-        <div class="container">
-            <div class="nav-content">
-                <a href="index.php" class="logo">
-                    <img src="uploads/logo/<?= htmlspecialchars(getSetting($platform_settings, 'platform_logo') ?? 'logo.png') ?>" alt="Logo" style="height: 40px;">
-                    <span class="logo-text"><?= htmlspecialchars(getSetting($platform_settings, 'platform_name') ?? 'MTravels') ?></span>
-                </a>
-                <div class="nav-menu">
-                    <ul class="nav-links">
-                        <li><a href="index.php">Home</a></li>
-                        <li><a href="index.php#features">Features</a></li>
-                        <li><a href="index.php#pricing">Pricing</a></li>
-                        <li><a href="about.php">About</a></li>
-                        <li><a href="index.php#contact">Contact</a></li>
-                    </ul>
-                    <div class="nav-actions">
-                        <a href="login.php" class="nav-login-link" style="color: var(--primary); text-decoration: none; font-weight: 600; transition: color 0.3s;">Login</a>
-                        <a href="book-demo.php" class="btn btn-primary">
-                            <span>Book a Demo</span>
-                        </a>
-                    </div>
-                </div>
-            </div>
-        </div>
-    </nav>
+    <?php require_once 'includes/navbar.php'; ?>
 
     <!-- Hero Section -->
     <section class="hero">
@@ -884,6 +780,26 @@ $platform_settings = getPlatformSettings($pdo);
                 });
                 }, 30000); // Update every 30 seconds
                 </script>
+                <script>
+    // Mobile menu functionality
+    document.addEventListener('DOMContentLoaded', function() {
+        const hamburger = document.getElementById('hamburger');
+        const navMenu = document.querySelector('.nav-menu');
+
+        if (hamburger && navMenu) {
+            hamburger.addEventListener('click', function() {
+                navMenu.classList.toggle('open');
+            });
+
+            // Close menu when clicking outside
+            document.addEventListener('click', function(event) {
+                if (!hamburger.contains(event.target) && !navMenu.contains(event.target)) {
+                    navMenu.classList.remove('open');
+                }
+            });
+        }
+    });
+</script>
                 <?php renderThemeScript(); ?>
                 </body>
                 </html>

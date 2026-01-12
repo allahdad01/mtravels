@@ -132,81 +132,31 @@ $blog_posts = getBlogPosts($pdo);
             padding: 0 20px;
         }
 
-        /* Advanced Navbar */
-        .navbar {
-            position: fixed;
-            top: 30px;
-            left: 100px;
-            right: 100px;
-            padding: 1.5rem 2rem;
-            background: rgba(255, 255, 255, 0.9);
-            backdrop-filter: blur(20px);
-            border-radius: 50px;
-            box-shadow: 0 10px 40px rgba(0, 0, 0, 0.15);
-            z-index: 1000;
+        /* Theme Toggle Button */
+        .theme-toggle {
+            background: transparent;
+            border: 2px solid var(--primary);
+            border-radius: 50%;
+            width: 40px;
+            height: 40px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            cursor: pointer;
             transition: all 0.3s ease;
-        }
-
-        .navbar.scrolled {
-            background: rgba(255, 255, 255, 0.95);
-            padding: 1rem 2rem;
-            border-radius: 50px;
-            box-shadow: 0 15px 50px rgba(0, 0, 0, 0.2);
-        }
-
-        .nav-content {
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-        }
-
-        .logo {
-            display: flex;
-            align-items: center;
-            text-decoration: none;
-        }
-
-        .logo img {
-            max-height: 40px;
-            width: auto;
-        }
-
-        .logo-text {
-            font-size: 1.8rem;
-            font-weight: 800;
-            text-decoration: none;
+            font-size: 1.2rem;
             color: var(--primary);
         }
 
-        .nav-menu {
-            display: flex;
-            align-items: center;
-            gap: 2rem;
+        .theme-toggle:hover {
+            background: rgba(64, 153, 255, 0.1);
+            transform: scale(1.1);
         }
 
-        .nav-links {
-            display: flex;
-            gap: 2rem;
-            list-style: none;
+        .theme-toggle:active {
+            transform: scale(0.95);
         }
 
-        .nav-links a {
-            color: var(--gray-700);
-            text-decoration: none;
-            font-weight: 600;
-            position: relative;
-            transition: color 0.3s;
-        }
-
-        .nav-links a:hover {
-            color: var(--primary);
-        }
-
-        .nav-actions {
-            display: flex;
-            align-items: center;
-            gap: 1rem;
-        }
 
         /* Hero Section */
         .hero {
@@ -525,14 +475,42 @@ $blog_posts = getBlogPosts($pdo);
             color: var(--gray-600);
         }
 
+        /* Dark Mode Styles */
+        html.dark-mode .hero {
+            background: linear-gradient(135deg, #1e293b 0%, #0f172a 100%);
+        }
+
+        html.dark-mode .blog-content {
+            background: var(--bg-primary);
+        }
+
+        html.dark-mode .blog-card {
+            background: var(--bg-surface);
+            border-color: rgba(64, 153, 255, 0.1);
+        }
+
+        html.dark-mode .featured-card {
+            background: var(--bg-surface);
+            border-color: rgba(64, 153, 255, 0.1);
+        }
+
+        html.dark-mode .newsletter {
+            background: var(--bg-secondary);
+        }
+
+        html.dark-mode .newsletter-input {
+            background: var(--bg-primary);
+            border-color: var(--gray-700);
+            color: var(--text-primary);
+        }
+
+        html.dark-mode .newsletter-input:focus {
+            border-color: var(--primary);
+            box-shadow: 0 0 0 3px rgba(183, 197, 240, 0.2);
+        }
+
         /* Mobile Responsive */
         @media (max-width: 768px) {
-            .navbar {
-                left: 20px;
-                right: 20px;
-                padding: 1rem 1.5rem;
-            }
-
             .hero h1 {
                 font-size: 2.5rem;
             }
@@ -573,32 +551,7 @@ $blog_posts = getBlogPosts($pdo);
 </head>
 <body>
     <!-- Navigation -->
-    <nav class="navbar" id="navbar">
-        <div class="container">
-            <div class="nav-content">
-                <a href="index.php" class="logo">
-                    <img src="uploads/logo/<?= htmlspecialchars(getSetting($platform_settings, 'platform_logo') ?? 'logo.png') ?>" alt="Logo" style="height: 40px;">
-                    <span class="logo-text"><?= htmlspecialchars(getSetting($platform_settings, 'platform_name') ?? 'MTravels') ?></span>
-                </a>
-                <div class="nav-menu">
-                    <ul class="nav-links">
-                        <li><a href="index.php">Home</a></li>
-                        <li><a href="index.php#features">Features</a></li>
-                        <li><a href="index.php#pricing">Pricing</a></li>
-                        <li><a href="about.php">About</a></li>
-                        <li><a href="blog.php">Blog</a></li>
-                        <li><a href="index.php#contact">Contact</a></li>
-                    </ul>
-                    <div class="nav-actions">
-                        <a href="login.php" class="nav-login-link" style="color: var(--primary); text-decoration: none; font-weight: 600; transition: color 0.3s;">Login</a>
-                        <a href="book-demo.php" class="btn btn-primary">
-                            <span>Book a Demo</span>
-                        </a>
-                    </div>
-                </div>
-            </div>
-        </div>
-    </nav>
+    <?php require_once 'includes/navbar.php'; ?>
 
     <!-- Hero Section -->
     <section class="hero">
@@ -634,14 +587,14 @@ $blog_posts = getBlogPosts($pdo);
                                  <?php endif; ?>
                              </div>
                             <h2 class="featured-title">
-                                <a href="#"><?php echo htmlspecialchars($featured_post['title']); ?></a>
+                                <a href="article.php?slug=<?php echo htmlspecialchars($featured_post['slug']); ?>"><?php echo htmlspecialchars($featured_post['title']); ?></a>
                             </h2>
                             <p class="featured-excerpt"><?php echo htmlspecialchars($featured_post['excerpt']); ?></p>
                             <div class="blog-tags">
                                 <span class="blog-tag">Featured</span>
                                 <span class="blog-tag">Travel Tech</span>
                             </div>
-                            <a href="#" class="read-more">Read Full Article →</a>
+                            <a href="article.php?slug=<?php echo htmlspecialchars($featured_post['slug']); ?>" class="read-more">Read Full Article →</a>
                         </div>
                     </div>
                 </div>
@@ -668,14 +621,14 @@ $blog_posts = getBlogPosts($pdo);
                                  <?php endif; ?>
                              </div>
                             <h3 class="blog-title">
-                                <a href="#"><?php echo htmlspecialchars($post['title']); ?></a>
+                                <a href="article.php?slug=<?php echo htmlspecialchars($post['slug']); ?>"><?php echo htmlspecialchars($post['title']); ?></a>
                             </h3>
                             <p class="blog-excerpt"><?php echo htmlspecialchars($post['excerpt']); ?></p>
                             <div class="blog-tags">
                                 <span class="blog-tag">Travel</span>
                                 <span class="blog-tag">Technology</span>
                             </div>
-                            <a href="#" class="read-more">Read More →</a>
+                            <a href="article.php?slug=<?php echo htmlspecialchars($post['slug']); ?>" class="read-more">Read More →</a>
                         </div>
                     </div>
                     <?php endforeach; ?>
@@ -692,7 +645,7 @@ $blog_posts = getBlogPosts($pdo);
                                 <div class="blog-read-time">5 min read</div>
                             </div>
                             <h2 class="featured-title">
-                                <a href="#">The Future of Travel Agency Management: AI and Automation</a>
+                                <a href="article.php?slug=future-of-travel-agency-management">The Future of Travel Agency Management: AI and Automation</a>
                             </h2>
                             <p class="featured-excerpt">Discover how artificial intelligence and automation are transforming the travel industry, making operations more efficient and customer experiences more personalized.</p>
                             <div class="blog-tags">
@@ -700,7 +653,7 @@ $blog_posts = getBlogPosts($pdo);
                                 <span class="blog-tag">AI</span>
                                 <span class="blog-tag">Automation</span>
                             </div>
-                            <a href="#" class="read-more">Read Full Article →</a>
+                            <a href="article.php?slug=future-of-travel-agency-management" class="read-more">Read Full Article →</a>
                         </div>
                     </div>
                 </div>
@@ -715,14 +668,14 @@ $blog_posts = getBlogPosts($pdo);
                                 <div class="blog-read-time">4 min read</div>
                             </div>
                             <h3 class="blog-title">
-                                <a href="#">Maximizing Profit Margins in Travel Agencies</a>
+                                <a href="article.php?slug=maximizing-profit-margins">Maximizing Profit Margins in Travel Agencies</a>
                             </h3>
                             <p class="blog-excerpt">Learn proven strategies for improving profitability through better pricing, cost management, and operational efficiency.</p>
                             <div class="blog-tags">
                                 <span class="blog-tag">Finance</span>
                                 <span class="blog-tag">Strategy</span>
                             </div>
-                            <a href="#" class="read-more">Read More →</a>
+                            <a href="article.php?slug=maximizing-profit-margins" class="read-more">Read More →</a>
                         </div>
                     </div>
 
@@ -735,14 +688,14 @@ $blog_posts = getBlogPosts($pdo);
                                 <div class="blog-read-time">3 min read</div>
                             </div>
                             <h3 class="blog-title">
-                                <a href="#">Digital Transformation in Travel: What You Need to Know</a>
+                                <a href="article.php?slug=digital-transformation-in-travel">Digital Transformation in Travel: What You Need to Know</a>
                             </h3>
                             <p class="blog-excerpt">Explore the digital tools and technologies that are reshaping how travel agencies interact with customers and manage operations.</p>
                             <div class="blog-tags">
                                 <span class="blog-tag">Digital</span>
                                 <span class="blog-tag">Technology</span>
                             </div>
-                            <a href="#" class="read-more">Read More →</a>
+                            <a href="article.php?slug=digital-transformation-in-travel" class="read-more">Read More →</a>
                         </div>
                     </div>
 
@@ -755,14 +708,14 @@ $blog_posts = getBlogPosts($pdo);
                                 <div class="blog-read-time">4 min read</div>
                             </div>
                             <h3 class="blog-title">
-                                <a href="#">Building Strong Customer Relationships in Travel</a>
+                                <a href="article.php?slug=building-customer-relationships">Building Strong Customer Relationships in Travel</a>
                             </h3>
                             <p class="blog-excerpt">Discover strategies for creating lasting customer relationships and improving satisfaction in the competitive travel market.</p>
                             <div class="blog-tags">
                                 <span class="blog-tag">Customer Service</span>
                                 <span class="blog-tag">Strategy</span>
                             </div>
-                            <a href="#" class="read-more">Read More →</a>
+                            <a href="article.php?slug=building-customer-relationships" class="read-more">Read More →</a>
                         </div>
                     </div>
 
@@ -775,14 +728,14 @@ $blog_posts = getBlogPosts($pdo);
                                 <div class="blog-read-time">3 min read</div>
                             </div>
                             <h3 class="blog-title">
-                                <a href="#">Data-Driven Decision Making for Travel Agencies</a>
+                                <a href="article.php?slug=data-driven-decision-making">Data-Driven Decision Making for Travel Agencies</a>
                             </h3>
                             <p class="blog-excerpt">Learn how to leverage data analytics to make informed decisions and optimize your travel agency's performance.</p>
                             <div class="blog-tags">
                                 <span class="blog-tag">Analytics</span>
                                 <span class="blog-tag">Strategy</span>
                             </div>
-                            <a href="#" class="read-more">Read More →</a>
+                            <a href="article.php?slug=data-driven-decision-making" class="read-more">Read More →</a>
                         </div>
                     </div>
 
@@ -795,14 +748,14 @@ $blog_posts = getBlogPosts($pdo);
                                 <div class="blog-read-time">4 min read</div>
                             </div>
                             <h3 class="blog-title">
-                                <a href="#">Travel Agency Security: Protecting Your Business and Customers</a>
+                                <a href="article.php?slug=travel-agency-security">Travel Agency Security: Protecting Your Business and Customers</a>
                             </h3>
                             <p class="blog-excerpt">Essential security practices and technologies to protect sensitive customer data and maintain trust in your travel business.</p>
                             <div class="blog-tags">
                                 <span class="blog-tag">Security</span>
                                 <span class="blog-tag">Technology</span>
                             </div>
-                            <a href="#" class="read-more">Read More →</a>
+                            <a href="article.php?slug=travel-agency-security" class="read-more">Read More →</a>
                         </div>
                     </div>
                 </div>
@@ -858,7 +811,27 @@ $blog_posts = getBlogPosts($pdo);
             alert('Thank you for subscribing! We\'ll keep you updated with the latest travel tech insights.');
             this.reset();
         });
-        </script>
-        <?php renderThemeScript(); ?>
-        </body>
-        </html>
+    </script>
+    <script>
+    // Mobile menu functionality
+    document.addEventListener('DOMContentLoaded', function() {
+        const hamburger = document.getElementById('hamburger');
+        const navMenu = document.querySelector('.nav-menu');
+
+        if (hamburger && navMenu) {
+            hamburger.addEventListener('click', function() {
+                navMenu.classList.toggle('open');
+            });
+
+            // Close menu when clicking outside
+            document.addEventListener('click', function(event) {
+                if (!hamburger.contains(event.target) && !navMenu.contains(event.target)) {
+                    navMenu.classList.remove('open');
+                }
+            });
+        }
+    });
+</script>
+    <?php renderThemeScript(); ?>
+    </body>
+    </html>

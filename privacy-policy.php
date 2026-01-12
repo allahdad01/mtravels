@@ -528,10 +528,15 @@ $platform_settings = $landingData['settings'];
                 <h3>Need Legal Documentation?</h3>
                 <p>Review our Terms & Conditions and Data Protection Policy for complete legal information.</p>
                 <div class="cta-buttons">
-                    <a href="terms-conditions.php" class="btn-primary">Terms & Conditions</a>
-                    <a href="data-protection.php" class="btn-primary">Data Protection Policy</a>
+                    <a href="terms-conditions.php" class="btn btn-primary">
+                    <?php echo getSetting($platform_settings, 'final_cta_primary', 'Terms & Conditions'); ?>
+                </a>
+                <a href="data-protection.php" class="btn btn-outline">
+                    <?php echo getSetting($platform_settings, 'final_cta_secondary', 'Data Protection Policy'); ?>
+                </a>
                 </div>
             </div>
+              
         </div>
     </div>
 

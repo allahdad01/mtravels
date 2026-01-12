@@ -799,18 +799,21 @@ $platform_settings = $landingData['settings'];
                 </p>
             </div>
         </div>
-
-        <!-- CTA Section -->
-        <div class="hiw-container">
-            <div class="hiw-cta">
-                <h3>Ready to Transform Your Travel Agency?</h3>
-                <p>Start today and see why thousands of travel agencies trust MTravels for their operations.</p>
-                <div class="cta-buttons">
-                    <a href="book-demo.php" class="btn-primary">Schedule Your Demo</a>
-                    <a href="features.php" class="btn-secondary">Explore All Features</a>
-                </div>
+            <!-- CTA Section -->
+    <section class="cta">
+        <div class="container">
+            <h2><?php echo getSetting($platform_settings, 'cta_title', 'Ready to Optimize Your Travel Operations?'); ?></h2>
+            <p><?php echo getSetting($platform_settings, 'cta_subtitle', 'Join industry-leading travel agencies who have improved efficiency, reduced errors, and enhanced customer satisfaction with our comprehensive management platform.'); ?></p>
+            <div class="cta-buttons">
+                <a href="book-demo.php" class="btn btn-primary">
+                    <?php echo getSetting($platform_settings, 'final_cta_primary', 'Get Started Today'); ?>
+                </a>
+                <a href="features.php" class="btn btn-outline">
+                    <?php echo getSetting($platform_settings, 'final_cta_secondary', 'Explore All Features'); ?>
+                </a>
             </div>
         </div>
+    </section>
 
     </div>
 

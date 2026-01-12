@@ -574,8 +574,12 @@ $platform_settings = $landingData['settings'];
                 <h3>Complete Legal Documentation</h3>
                 <p>Review our other legal documents to fully understand your privacy rights and platform usage.</p>
                 <div class="cta-buttons">
-                    <a href="privacy-policy.php" class="btn-primary">Privacy Policy</a>
-                    <a href="terms-conditions.php" class="btn-primary">Terms & Conditions</a>
+                    <a href="terms-conditions.php" class="btn btn-primary">
+                    <?php echo getSetting($platform_settings, 'final_cta_primary', 'Terms & Conditions'); ?>
+                </a>
+                <a href="privacy-policy.php" class="btn btn-outline">
+                    <?php echo getSetting($platform_settings, 'final_cta_secondary', 'Privacy Policy'); ?>
+                </a>
                 </div>
             </div>
         </div>

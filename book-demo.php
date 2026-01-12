@@ -4,6 +4,7 @@ session_start();
 // Database connection and security
 require_once 'includes/db.php';
 require_once 'includes/helpers.php';
+require_once 'includes/theme-helper.php';
 
 // Handle form submission
 if ($_POST) {
@@ -62,6 +63,7 @@ try {
     <link rel="icon" href="uploads/logo/<?= htmlspecialchars(getSetting($platform_settings, 'platform_logo') ?? 'default-logo.png') ?>" type="image/x-icon">
     <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600;700;800;900&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="assets/css/index.css">
+    <?php renderThemeStyles(); ?>
 
     <style>
         * {
@@ -94,6 +96,12 @@ try {
             --gray-700: #334155;
             --gray-800: #1e293b;
             --gray-900: #0f172a;
+            /* Theme variables */
+            --bg-primary: #ffffff;
+            --bg-secondary: #f8fafc;
+            --text-primary: #0f172a;
+            --text-secondary: #475569;
+            --bg-surface: #ffffff;
         }
 
         body {
@@ -129,7 +137,7 @@ try {
             left: 100px;
             right: 100px;
             padding: 1.5rem 2rem;
-            background: rgba(var(--bg-surface-rgb), 0.9);
+            background: rgba(255, 255, 255, 0.9);
             backdrop-filter: blur(20px);
             border-radius: 50px;
             box-shadow: 0 10px 40px rgba(0, 0, 0, 0.15);
@@ -141,6 +149,7 @@ try {
             display: flex;
             justify-content: space-between;
             align-items: center;
+            gap: 1rem;
         }
 
         .logo {
@@ -512,8 +521,44 @@ try {
             color: var(--text-secondary);
         }
 
+        /* Dark Mode Support */
+        html.dark-mode .header {
+            background: rgba(30, 41, 59, 0.9);
+        }
+
+        html.dark-mode .back-link {
+            color: #cbd5e1;
+        }
+
+        html.dark-mode .back-link:hover {
+            color: #4099ff;
+        }
+
+        html.dark-mode .theme-toggle {
+            border-color: #4099ff;
+            color: #4099ff;
+        }
+
+        html.dark-mode .theme-toggle:hover {
+            background: rgba(64, 153, 255, 0.2);
+        }
+
         /* Responsive Design */
         @media (max-width: 768px) {
+            .header {
+                left: 20px;
+                right: 20px;
+                padding: 1rem;
+            }
+
+            .logo-text {
+                font-size: 1.5rem;
+            }
+
+            .back-link {
+                font-size: 0.9rem;
+            }
+
             .demo-container {
                 grid-template-columns: 1fr;
                 gap: 0;
@@ -554,9 +599,14 @@ try {
                     <img src="uploads/logo/<?= htmlspecialchars(getSetting($platform_settings, 'platform_logo') ?? 'logo.png') ?>" alt="Logo">
                     <span class="logo-text"><?= htmlspecialchars(getSetting($platform_settings, 'platform_name') ?? 'MTravels') ?></span>
                 </a>
-                <a href="index.php" class="back-link">
-                    ← Back to Home
-                </a>
+                <div style="display: flex; align-items: center; gap: 1rem;">
+                    <button class="theme-toggle" id="themeToggle" title="Toggle Dark Mode">
+                        <span class="theme-icon">🌙</span>
+                    </button>
+                    <a href="index.php" class="back-link">
+                        ← Back to Home
+                    </a>
+                </div>
             </div>
         </div>
     </header>
@@ -719,52 +769,9 @@ try {
             }
         });
     </script>
+    <?php renderThemeScript(); ?>
 
     <!-- Footer -->
-    <footer class="footer">
-        <div class="container">
-            <div class="footer-content">
-                <div class="footer-section">
-                    <h3><?php echo getSetting($platform_settings, 'platform_name', 'MTravels'); ?></h3>
-                    <p style="color: var(--gray-300); line-height: 1.6;">
-                        <?php echo getSetting($platform_settings, 'platform_description', 'Professional travel agency management platform providing comprehensive solutions for booking management, financial operations, customer service, and business intelligence.'); ?>
-                    </p>
-                </div>
-                <div class="footer-section">
-                    <h3><?php echo getSetting($platform_settings, 'footer_product_title', 'Product'); ?></h3>
-                    <ul>
-                        <li><a href="#"><?php echo getSetting($platform_settings, 'footer_features', 'Features'); ?></a></li>
-                        <li><a href="#"><?php echo getSetting($platform_settings, 'footer_pricing', 'Pricing'); ?></a></li>
-                        <li><a href="#"><?php echo getSetting($platform_settings, 'footer_integrations', 'Integrations'); ?></a></li>
-                        <li><a href="#"><?php echo getSetting($platform_settings, 'footer_api', 'API Documentation'); ?></a></li>
-                        <li><a href="#"><?php echo getSetting($platform_settings, 'footer_security', 'Security'); ?></a></li>
-                    </ul>
-                </div>
-                <div class="footer-section">
-                    <h3><?php echo getSetting($platform_settings, 'footer_company_title', 'Company'); ?></h3>
-                    <ul>
-                        <li><a href="#"><?php echo getSetting($platform_settings, 'footer_about', 'About Us'); ?></a></li>
-                        <li><a href="#"><?php echo getSetting($platform_settings, 'footer_careers', 'Careers'); ?></a></li>
-                        <li><a href="#"><?php echo getSetting($platform_settings, 'footer_press', 'Press'); ?></a></li>
-                        <li><a href="#"><?php echo getSetting($platform_settings, 'footer_blog', 'Blog'); ?></a></li>
-                        <li><a href="#"><?php echo getSetting($platform_settings, 'footer_partners', 'Partners'); ?></a></li>
-                    </ul>
-                </div>
-                <div class="footer-section">
-                    <h3><?php echo getSetting($platform_settings, 'footer_support_title', 'Support'); ?></h3>
-                    <ul>
-                        <li><a href="#"><?php echo getSetting($platform_settings, 'footer_help', 'Help Center'); ?></a></li>
-                        <li><a href="#"><?php echo getSetting($platform_settings, 'footer_contact', 'Contact Support'); ?></a></li>
-                        <li><a href="#"><?php echo getSetting($platform_settings, 'footer_status', 'System Status'); ?></a></li>
-                        <li><a href="#"><?php echo getSetting($platform_settings, 'footer_community', 'Community'); ?></a></li>
-                        <li><a href="#"><?php echo getSetting($platform_settings, 'footer_training', 'Training'); ?></a></li>
-                    </ul>
-                </div>
-            </div>
-            <div class="footer-bottom">
-                <p>&copy; <?php echo date('Y'); ?> <?php echo getSetting($platform_settings, 'platform_name', 'MTravels'); ?>. <?php echo getSetting($platform_settings, 'footer_copyright', 'All rights reserved. | Privacy Policy | Terms of Service'); ?></p>
-            </div>
-        </div>
-    </footer>
+    <?php require_once 'includes/footer.php'; ?>
 </body>
 </html>
