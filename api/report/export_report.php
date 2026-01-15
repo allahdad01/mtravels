@@ -549,18 +549,19 @@ try {
                      f.tazmin,
                      u.remarks,
                      f.visa_status,
-                     s.name as supplier_name,
                      c.name as client_name,
                      m.name as account_name,
                      u.created_at,
                      f.contact,
-                     ur.refund_type as refund_status
+                     ur.refund_type as refund_status,
+                     GROUP_CONCAT(DISTINCT s.name SEPARATOR ', ') as supplier_name
                      FROM umrah_bookings u
                      LEFT JOIN families f ON u.family_id = f.family_id
-                     LEFT JOIN suppliers s ON u.supplier = s.id
                      LEFT JOIN clients c ON u.sold_to = c.id
                      LEFT JOIN main_account m ON u.paid_to = m.id
                      LEFT JOIN umrah_refunds ur ON u.booking_id = ur.booking_id
+                     LEFT JOIN umrah_booking_services ubs ON u.booking_id = ubs.booking_id
+                     LEFT JOIN suppliers s ON ubs.supplier_id = s.id
                      WHERE u.entry_date BETWEEN ? AND ? AND u.tenant_id = ? AND u.branch_id = ?"
                      . ($umrahFamilyType === 'specific' && $specificFamily ? " AND u.family_id = ?" : "") .
                      " GROUP BY u.booking_id
@@ -659,7 +660,6 @@ try {
                     vr.refund_type,
                     vr.refund_amount,
                     vr.currency,
-                    vr.exchange_rate,
                     vr.refund_date,
                     vr.reason,
                     s.name as supplier_name,
@@ -1253,7 +1253,7 @@ try {
                         break;
         
                     case 'umrah':
-                        $query = "SELECT 
+                        $query = "SELECT
                             u.booking_id,
                             u.name,
                             u.passport_number,
@@ -1262,30 +1262,35 @@ try {
                             u.return_date,
                             u.duration,
                             u.room_type,
+                            u.price,
+                            u.sold_price,
+                            u.profit,
+                            u.received_bank_payment,
+                            u.bank_receipt_number,
+                            u.paid, u.due,
                             u.currency,
-                            u.price, u.sold_price, u.profit,
-                            u.received_bank_payment, u.bank_receipt_number,
-                            u.paid, u.due, f.tazmin, u.remarks, f.visa_status,
                             f.head_of_family,
-                            s.name as supplier_name,
+                            f.tazmin,
+                            u.remarks,
+                            f.visa_status,
                             c.name as client_name,
                             m.name as account_name,
                             u.created_at,
-                            f.tazmin,
-                            u.remarks,
                             f.contact,
                             ur.refund_type as refund_status,
-                            f.visa_status
+                            GROUP_CONCAT(DISTINCT s.name SEPARATOR ', ') as supplier_name
                             FROM umrah_bookings u
                             LEFT JOIN families f ON u.family_id = f.family_id
-                            LEFT JOIN suppliers s ON u.supplier = s.id
                             LEFT JOIN clients c ON u.sold_to = c.id
                             LEFT JOIN main_account m ON u.paid_to = m.id
                             LEFT JOIN umrah_refunds ur ON u.booking_id = ur.booking_id
-                            WHERE u.entry_date BETWEEN ? AND ? AND u.tenant_id = ? u.branch_id = ?"
+                            LEFT JOIN umrah_booking_services ubs ON u.booking_id = ubs.booking_id
+                            LEFT JOIN suppliers s ON ubs.supplier_id = s.id
+                            WHERE u.entry_date BETWEEN ? AND ? AND u.tenant_id = ? AND u.branch_id = ? AND ubs.supplier_id = ?"
                             . ($umrahFamilyType === 'specific' && $specificFamily ? " AND u.family_id = ?" : "") .
-                            " ORDER BY u.entry_date DESC";
-                        $params = [$startDate, $endDate, $tenant_id, $branch_id];
+                            " GROUP BY u.booking_id
+                            ORDER BY u.entry_date DESC";
+                        $params = [$startDate, $endDate, $tenant_id, $branch_id, $entity];
                         if ($umrahFamilyType === 'specific' && $specificFamily) {
                             $params[] = $specificFamily;
                         }
@@ -1692,27 +1697,43 @@ try {
                         break;
 
                     case 'umrah':
-                        $query = "SELECT 
-                            u.name, u.passport_number, u.dob,
-                            u.entry_date, u.flight_date, u.return_date,
-                            u.duration, u.room_type,
-                            u.price, u.sold_price, u.profit,
-                            u.received_bank_payment, u.bank_receipt_number,
-                            u.paid, u.due, f.tazmin, u.remarks, f.visa_status,
-                            s.name as supplier_name,
-                            c.name as sold_to_name,
+                        $query = "SELECT
+                            u.booking_id,
+                            u.name,
+                            u.passport_number,
+                            u.dob,
+                            u.flight_date,
+                            u.return_date,
+                            u.duration,
+                            u.room_type,
+                            u.price,
+                            u.sold_price,
+                            u.profit,
+                            u.received_bank_payment,
+                            u.bank_receipt_number,
+                            u.paid, u.due,
+                            u.currency,
+                            f.head_of_family,
+                            f.tazmin,
+                            u.remarks,
+                            f.visa_status,
+                            c.name as client_name,
+                            m.name as account_name,
+                            u.created_at,
+                            f.contact,
                             ur.refund_type as refund_status,
-                            m.name as paid_to_name
+                            GROUP_CONCAT(DISTINCT s.name SEPARATOR ', ') as supplier_name
                             FROM umrah_bookings u
-                            LEFT JOIN suppliers s ON u.supplier = s.id
+                            LEFT JOIN families f ON u.family_id = f.family_id
                             LEFT JOIN clients c ON u.sold_to = c.id
                             LEFT JOIN main_account m ON u.paid_to = m.id
-                            LEFT JOIN main_account_transactions mat ON u.booking_id = mat.reference_id and mat.transaction_of = 'umrah'
-                            Left join families f on u.family_id = f.family_id
                             LEFT JOIN umrah_refunds ur ON u.booking_id = ur.booking_id
+                            LEFT JOIN umrah_booking_services ubs ON u.booking_id = ubs.booking_id
+                            LEFT JOIN suppliers s ON ubs.supplier_id = s.id
                             WHERE u.sold_to = ? AND u.entry_date BETWEEN ? AND ? AND u.tenant_id = ? AND u.branch_id = ?"
                             . ($umrahFamilyType === 'specific' && $specificFamily ? " AND u.family_id = ?" : "") .
-                            " GROUP BY u.booking_id";
+                            " GROUP BY u.booking_id
+                            ORDER BY u.entry_date DESC";
                         $params = [$entity, $startDate, $endDate, $tenant_id, $branch_id];
                         if ($umrahFamilyType === 'specific' && $specificFamily) {
                             $params[] = $specificFamily;
@@ -2128,32 +2149,52 @@ try {
                         break;
 
                     case 'umrah':
-                        $query = "SELECT 
-                            u.name, u.passport_number, u.dob,
-                            u.entry_date, u.flight_date, u.return_date,
-                            u.duration, u.room_type,
-                            u.price, u.sold_price, u.profit,
-                            u.received_bank_payment, u.bank_receipt_number,
-                            u.paid, u.due, f.tazmin, u.remarks, f.visa_status,
-                            s.name as supplier_name,
-                            c.name as sold_to_name,
+                        $query = "SELECT
+                            u.booking_id,
+                            u.name,
+                            u.passport_number,
+                            u.dob,
+                            u.flight_date,
+                            u.return_date,
+                            u.duration,
+                            u.room_type,
+                            u.price,
+                            u.sold_price,
+                            u.profit,
+                            u.received_bank_payment,
+                            u.bank_receipt_number,
+                            u.paid, u.due,
+                            u.currency,
+                            f.head_of_family,
+                            f.tazmin,
+                            u.remarks,
+                            f.visa_status,
+                            c.name as client_name,
+                            m.name as account_name,
+                            u.created_at,
+                            f.contact,
                             ur.refund_type as refund_status,
-                            m.name as paid_to_name
+                            GROUP_CONCAT(DISTINCT s.name SEPARATOR ', ') as supplier_name
                             FROM umrah_bookings u
-                            LEFT JOIN suppliers s ON u.supplier = s.id
-                            LEFT JOIN  families f on u.family_id = f.family_id
+                            LEFT JOIN families f ON u.family_id = f.family_id
                             LEFT JOIN clients c ON u.sold_to = c.id
                             LEFT JOIN main_account m ON u.paid_to = m.id
-                            LEFT JOIN main_account_transactions mat ON u.booking_id = mat.reference_id and mat.transaction_of = 'umrah'
                             LEFT JOIN umrah_refunds ur ON u.booking_id = ur.booking_id
-                            WHERE u.sold_to = ? AND u.entry_date BETWEEN ? AND ? AND u.tenant_id = ? and u.branch_id = ?
-                            GROUP BY u.booking_id";
+                            LEFT JOIN umrah_booking_services ubs ON u.booking_id = ubs.booking_id
+                            LEFT JOIN suppliers s ON ubs.supplier_id = s.id
+                            WHERE u.paid_to = ? AND u.entry_date BETWEEN ? AND ? AND u.tenant_id = ? AND u.branch_id = ?"
+                            . ($umrahFamilyType === 'specific' && $specificFamily ? " AND u.family_id = ?" : "") .
+                            " GROUP BY u.booking_id
+                            ORDER BY u.entry_date DESC";
                         $params = [$entity, $startDate, $endDate, $tenant_id, $branch_id];
+                        if ($umrahFamilyType === 'specific' && $specificFamily) {
+                            $params[] = $specificFamily;
+                        }
                         // Base headers (shown to everyone)
                         $headers = [
                             'Head of Family',
-                            'Name', 
-                            'Passport Number', 
+                            'Name',
+                            'Passport Number',
                             'Date of Birth',
                             'Phone',
                             'Created At',
@@ -2177,11 +2218,18 @@ try {
 
                         // Add sensitive headers only if admin
                         if ($user_role === 'admin') {
-                            // Insert Price + Profit right before Sold Price
                             $insertIndex = array_search('Sold Price', $headers);
-                            if ($insertIndex !== false) {
-                                array_splice($headers, $insertIndex, 0, ['Price', 'Profit']);
-                            }
+                        if ($insertIndex !== false) {
+                            // Insert Price before Sold Price
+                            array_splice($headers, $insertIndex, 0, ['Price']);
+
+                            // Recalculate index of Sold Price (it shifted by +1 after insertion)
+                            $soldPriceIndex = array_search('Sold Price', $headers);
+
+                            // Insert Profit right after Sold Price
+                            array_splice($headers, $soldPriceIndex + 1, 0, ['Profit']);
+                        }
+
 
                             // Add Supplier at the end
                             $headers[] = 'Supplier';
@@ -2405,10 +2453,8 @@ try {
     }
 
     if ($format === 'pdf') {
-        // Use mPDF with a simpler approach similar to Word/Excel
-        require_once('../vendor/autoload.php');
+        require_once('../../vendor/autoload.php');
         
-        // Simple configuration - let the system handle fonts like Word/Excel do
         $mpdfConfig = [
             'mode' => 'utf-8',
             'format' => 'A4-L',
@@ -2421,82 +2467,216 @@ try {
         ];
         
         try {
-            // Create mPDF instance
             $pdf = new \Mpdf\Mpdf($mpdfConfig);
             
-            // Create HTML content
+            // Enhanced HTML with modern styling
             $html = '
             <html>
             <head>
                 <meta http-equiv="Content-Type" content="text/html; charset=utf-8"/>
                 <style>
+                    @page {
+                        margin-header: 5mm;
+                        margin-footer: 5mm;
+                    }
+                    
                     body {
-                        font-family: Arial, sans-serif;
-                        font-size: 10pt;
+                        font-family: "DejaVu Sans", Arial, sans-serif;
+                        font-size: 9pt;
+                        color: #333;
+                        line-height: 1.4;
                     }
+                    
+                    /* Header Styling */
+                    .report-header {
+                        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+                        padding: 20px;
+                        margin: -15px -10px 20px -10px;
+                        border-radius: 0 0 8px 8px;
+                    }
+                    
                     .report-title { 
+                        color: #ffffff;
                         text-align: center; 
-                        font-size: 16pt; 
+                        font-size: 18pt; 
                         font-weight: bold; 
-                        margin-bottom: 10px; 
+                        margin: 0 0 8px 0;
+                        text-transform: uppercase;
+                        letter-spacing: 1px;
                     }
+                    
                     .date-range { 
+                        color: #f0f0f0;
                         text-align: center; 
-                        font-size: 12pt; 
-                        margin-bottom: 20px; 
+                        font-size: 11pt;
+                        font-weight: normal;
+                        margin: 0;
                     }
+                    
+                    /* Table Container */
+                    .table-wrapper {
+                        margin-top: 10px;
+                        box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+                    }
+                    
+                    /* Table Styling */
                     table { 
                         width: 100%; 
-                        border-collapse: collapse; 
+                        border-collapse: collapse;
+                        background: #ffffff;
                     }
+                    
+                    /* Header Row */
+                    thead tr {
+                        background: linear-gradient(180deg, #4a5568 0%, #2d3748 100%);
+                    }
+                    
                     th { 
-                        background-color: #f2f2f2; 
-                        padding: 8px; 
+                        color: #ffffff;
+                        padding: 10px 8px;
                         text-align: left; 
                         font-weight: bold; 
-                        font-size: 10pt; 
+                        font-size: 9pt;
+                        border: 1px solid #2d3748;
+                        text-transform: uppercase;
+                        letter-spacing: 0.5px;
                     }
+                    
+                    /* Data Rows */
+                    tbody tr {
+                        background-color: #ffffff;
+                    }
+                    
+                    tbody tr:nth-child(even) {
+                        background-color: #f7fafc;
+                    }
+                    
+                    tbody tr:hover {
+                        background-color: #edf2f7;
+                    }
+                    
                     td { 
-                        padding: 6px; 
-                        border: 1px solid #ddd; 
-                        font-size: 10pt; 
+                        padding: 8px;
+                        border: 1px solid #e2e8f0;
+                        font-size: 9pt;
+                        color: #2d3748;
                     }
-                    tr.refund { 
-                        background-color: #ffcccc; 
+                    
+                    /* Special Row Types */
+                    tr.refund {
+                        background-color: #fed7d7 !important;
+                        border-left: 4px solid #fc8181;
                     }
-                    tr.date-change { 
-                        background-color: #ffffcc; 
+                    
+                    tr.refund td {
+                        border-color: #fc8181;
                     }
+                    
+                    tr.date-change {
+                        background-color: #fefcbf !important;
+                        border-left: 4px solid #f6e05e;
+                    }
+                    
+                    tr.date-change td {
+                        border-color: #f6e05e;
+                    }
+                    
                     tr.umrah-refunded {
-                        background-color: #ffcccc;
+                        background-color: #fbb6ce !important;
+                        border-left: 4px solid #ed64a6;
                     }
+                    
+                    tr.umrah-refunded td {
+                        border-color: #ed64a6;
+                    }
+                    
+                    /* Indentation */
                     .indented { 
-                        padding-left: 20px; 
+                        padding-left: 25px;
+                        font-style: italic;
+                        color: #4a5568;
                     }
+                    
+                    /* Total Rows */
                     tr.total-row { 
-                        background-color: #f2f2f2; 
-                        font-weight: bold; 
+                        background: linear-gradient(180deg, #edf2f7 0%, #e2e8f0 100%) !important;
+                        font-weight: bold;
+                        border-top: 3px solid #4a5568;
+                        border-bottom: 3px solid #4a5568;
                     }
+                    
                     tr.total-row td { 
-                        border-top: 2px solid #888; 
+                        font-size: 10pt;
+                        color: #1a202c;
+                        border-color: #cbd5e0;
+                        padding: 10px 8px;
+                    }
+                    
+                    /* Numeric Values */
+                    .numeric {
+                        text-align: right;
+                        font-family: "Courier New", monospace;
+                        font-weight: 500;
+                    }
+                    
+                    /* Status Badges */
+                    .status-paid {
+                        color: #22543d;
+                        background-color: #c6f6d5;
+                        padding: 2px 8px;
+                        border-radius: 4px;
+                        font-size: 8pt;
+                        font-weight: bold;
+                    }
+                    
+                    .status-pending {
+                        color: #744210;
+                        background-color: #feebc8;
+                        padding: 2px 8px;
+                        border-radius: 4px;
+                        font-size: 8pt;
+                        font-weight: bold;
+                    }
+                    
+                    .status-unpaid {
+                        color: #742a2a;
+                        background-color: #fed7d7;
+                        padding: 2px 8px;
+                        border-radius: 4px;
+                        font-size: 8pt;
+                        font-weight: bold;
+                    }
+                    
+                    /* Footer Info */
+                    .report-footer {
+                        margin-top: 20px;
+                        padding-top: 10px;
+                        border-top: 2px solid #e2e8f0;
+                        font-size: 8pt;
+                        color: #718096;
+                        text-align: center;
                     }
                 </style>
             </head>
             <body>
-                <div class="report-title">' . $reportTitle . '</div>
-                <div class="date-range">' . $dateRange . '</div>
-                <table border="1">
-                    <thead>
-                        <tr>';
+                <div class="report-header">
+                    <div class="report-title">' . htmlspecialchars($reportTitle) . '</div>
+                    <div class="date-range">' . htmlspecialchars($dateRange) . '</div>
+                </div>
+                
+                <div class="table-wrapper">
+                    <table>
+                        <thead>
+                            <tr>';
             
             // Add headers
             foreach ($headers as $header) {
-                $html .= '<th>' . $header . '</th>';
+                $html .= '<th>' . htmlspecialchars($header) . '</th>';
             }
             
             $html .= '</tr></thead><tbody>';
             
-            // Add data rows - just like in Excel and Word exports
+            // Add data rows
             foreach ($data as $rowData) {
                 $rowClass = '';
                 $isChild = false;
@@ -2505,7 +2685,6 @@ try {
                     $isChild = true;
                 }
                 
-                // Determine row class for umrah records
                 if ($reportCategory === 'umrah') {
                     if (isset($rowData['refund_status']) && !empty($rowData['refund_status'])) {
                         $rowClass = 'umrah-refunded';
@@ -2516,81 +2695,102 @@ try {
                 
                 foreach ($headers as $headerIdx => $header) {
                     $value = '';
+                    $cellClass = '';
+                    
                     switch($header) {
                         case 'Supplier':
-                            $value = isset($rowData['supplier_name']) ? $rowData['supplier_name'] : '';
+                            $value = isset($rowData['supplier_name']) ? htmlspecialchars($rowData['supplier_name']) : '';
                             break;
                         case 'Sold To':
                         case 'Client':
-                            $value = isset($rowData['client_name']) ? $rowData['client_name'] : 
-                                    (isset($rowData['sold_to_name']) ? $rowData['sold_to_name'] : '');
+                            $value = isset($rowData['client_name']) ? htmlspecialchars($rowData['client_name']) : 
+                                    (isset($rowData['sold_to_name']) ? htmlspecialchars($rowData['sold_to_name']) : '');
                             break;
                         case 'Paid To':
                         case 'Account':
-                            $value = isset($rowData['paid_to_name']) ? $rowData['paid_to_name'] : 
-                                    (isset($rowData['account_name']) ? $rowData['account_name'] : '');
+                            $value = isset($rowData['paid_to_name']) ? htmlspecialchars($rowData['paid_to_name']) : 
+                                    (isset($rowData['account_name']) ? htmlspecialchars($rowData['account_name']) : '');
                             break;
                         case 'Creditor':
-                            $value = isset($rowData['creditor_name']) ? $rowData['creditor_name'] : '';
+                            $value = isset($rowData['creditor_name']) ? htmlspecialchars($rowData['creditor_name']) : '';
                             break;
                         case 'Debtor':
-                            $value = isset($rowData['debtor_name']) ? $rowData['debtor_name'] : '';
+                            $value = isset($rowData['debtor_name']) ? htmlspecialchars($rowData['debtor_name']) : '';
                             break;
                         case 'Paid Amount':
                             $value = isset($rowData['paid_amount']) ? number_format($rowData['paid_amount'], 2) : '0.00';
+                            $cellClass = 'numeric';
                             break;
                         case 'Received Amount':
                             $value = isset($rowData['received_amount']) ? number_format($rowData['received_amount'], 2) : '0.00';
+                            $cellClass = 'numeric';
                             break;
                         case 'Balance':
                             $value = isset($rowData['balance']) ? number_format($rowData['balance'], 2) : '0.00';
+                            $cellClass = 'numeric';
                             break;
                         case 'Status':
-                            $value = isset($rowData['status']) ? $rowData['status'] : '';
+                        case 'Paid Status':
+                            $statusValue = isset($rowData['status']) ? $rowData['status'] : 
+                                          (isset($rowData['paid_status']) ? $rowData['paid_status'] : '');
+                            $statusLower = strtolower($statusValue);
+                            
+                            if (in_array($statusLower, ['paid', 'complete', 'completed'])) {
+                                $value = '<span class="status-paid">' . strtoupper($statusValue) . '</span>';
+                            } elseif (in_array($statusLower, ['pending', 'partial'])) {
+                                $value = '<span class="status-pending">' . strtoupper($statusValue) . '</span>';
+                            } elseif (in_array($statusLower, ['unpaid', 'outstanding'])) {
+                                $value = '<span class="status-unpaid">' . strtoupper($statusValue) . '</span>';
+                            } else {
+                                $value = htmlspecialchars($statusValue);
+                            }
                             break;
                         case 'Address':
-                            $value = isset($rowData['address']) ? $rowData['address'] : '';
+                            $value = isset($rowData['address']) ? htmlspecialchars($rowData['address']) : '';
                             break;
                         case 'Base':
-                            $value = isset($rowData['base']) ? $rowData['base'] : '';
+                            $value = isset($rowData['base']) ? htmlspecialchars($rowData['base']) : '';
                             break;
                         case 'Refund Amount':
                             $value = isset($rowData['refund_amount']) ? number_format($rowData['refund_amount'], 2) : 
                                     (isset($rowData['refund_to_passenger']) ? number_format($rowData['refund_to_passenger'], 2) : '0.00');
+                            $cellClass = 'numeric';
                             break;
                         case 'Sold Amount':
                             $value = isset($rowData['sold_amount']) ? number_format($rowData['sold_amount'], 2) : 
                                     (isset($rowData['sold']) ? number_format($rowData['sold'], 2) : '0.00');
+                            $cellClass = 'numeric';
                             break;
                         case 'Total Penalty':
-                            $value = isset($rowData['total_penalty']) ? $rowData['total_penalty'] : '';
+                            $value = isset($rowData['total_penalty']) ? htmlspecialchars($rowData['total_penalty']) : '';
                             break;
                         case 'Date of Birth':
-                            $value = isset($rowData['dob']) ? $rowData['dob'] : '';
+                            $value = isset($rowData['dob']) ? htmlspecialchars($rowData['dob']) : '';
                             break;
                         case 'Guest Name':
-                            $value = isset($rowData['guest_name']) ? $rowData['guest_name'] : '';
+                            $value = isset($rowData['guest_name']) ? htmlspecialchars($rowData['guest_name']) : '';
                             break;
                         case 'Reference Number':
-                            $value = isset($rowData['reference_number']) ? $rowData['reference_number'] : '';
-                            break;
-                        case 'Paid Status':
-                            $value = isset($rowData['paid_status']) ? $rowData['paid_status'] : '';
+                            $value = isset($rowData['reference_number']) ? htmlspecialchars($rowData['reference_number']) : '';
                             break;
                         case 'Base Amount':
                             $value = isset($rowData['base_amount']) ? number_format($rowData['base_amount'], 2) : '0.00';
+                            $cellClass = 'numeric';
                             break;
                         case 'Profit':
                             $value = isset($rowData['profit']) ? number_format($rowData['profit'], 2) : '0.00';
+                            $cellClass = 'numeric';
                             break;
                         case 'Bank Payment':
                             $value = isset($rowData['received_bank_payment']) ? number_format($rowData['received_bank_payment'], 2) : '0.00';
+                            $cellClass = 'numeric';
                             break;
-                            case 'Bank Receipt':
-                                $value = isset($rowData['bank_receipt_number']) ? $rowData['bank_receipt_number'] : '';
-                                break;
+                        case 'Bank Receipt':
+                            $value = isset($rowData['bank_receipt_number']) ? htmlspecialchars($rowData['bank_receipt_number']) : '';
+                            break;
                         case 'Weight (kg)':
                             $value = isset($rowData['weight']) ? number_format($rowData['weight'], 2) . ' kg' : '';
+                            $cellClass = 'numeric';
                             break;
                         case 'Date':
                             $value = isset($rowData['created_at']) ? date('Y-m-d', strtotime($rowData['created_at'])) : '';
@@ -2598,36 +2798,35 @@ try {
                         case 'Refund Date':
                             $value = isset($rowData['created_at']) ? date('Y-m-d', strtotime($rowData['created_at'])) : '';
                             break;
-                            case 'Phone':
-                                $value = isset($rowData['contact']) ? $rowData['contact'] : '';
-                                break;
+                        case 'Phone':
+                            $value = isset($rowData['phone']) ? htmlspecialchars($rowData['phone']) : (isset($rowData['contact']) ? htmlspecialchars($rowData['contact']) : '');
+                            break;
                         case 'Contact':
-                            $value = isset($rowData['contact_no']) ? $rowData['contact_no'] : '';
+                            $value = isset($rowData['contact_no']) ? htmlspecialchars($rowData['contact_no']) : '';
                             break;
                         case 'Sector':
                             if (isset($rowData['origin']) && isset($rowData['destination'])) {
-                                $value = $rowData['origin'] . ' - ' . $rowData['destination'];
-                                // Add return destination if trip_type is 'round_trip' or 'round trip'
+                                $value = htmlspecialchars($rowData['origin']) . ' → ' . htmlspecialchars($rowData['destination']);
                                 if (isset($rowData['trip_type']) && (strtolower($rowData['trip_type']) == 'round_trip' || strtolower($rowData['trip_type']) == 'round trip') && !empty($rowData['return_destination'])) {
-                                    $value .= ' - ' . $rowData['return_destination'];
+                                    $value .= ' → ' . htmlspecialchars($rowData['return_destination']);
                                 }
                             } else {
                                 $value = '';
                             }
                             break;
                         case 'Processed By':
-                            $value = isset($rowData['processed_by_name']) ? $rowData['processed_by_name'] : '';
+                            $value = isset($rowData['processed_by_name']) ? htmlspecialchars($rowData['processed_by_name']) : '';
                             break;
                         default:
                             $fieldName = strtolower(str_replace(' ', '_', $header));
-                            $value = isset($rowData[$fieldName]) ? $rowData[$fieldName] : '';
+                            $value = isset($rowData[$fieldName]) ? htmlspecialchars($rowData[$fieldName]) : '';
                     }
                     
-                    // Add indentation for child records in the first column
+                    // Add indentation for child records
                     if ($isChild && $headerIdx === 0) {
-                        $html .= '<td class="indented">' . $value . '</td>';
+                        $html .= '<td class="indented ' . $cellClass . '">' . $value . '</td>';
                     } else {
-                        $html .= '<td>' . $value . '</td>';
+                        $html .= '<td class="' . $cellClass . '">' . $value . '</td>';
                     }
                 }
                 $html .= '</tr>';
@@ -2637,9 +2836,8 @@ try {
             if ($reportCategory === 'expense' && !empty($expenseTotals)) {
                 foreach ($expenseTotals as $currency => $total) {
                     $html .= '<tr class="total-row">';
-
-                    // Add empty cells until we reach the Amount column
                     $amountColumnIndex = array_search('Amount', $headers);
+                    
                     for ($i = 0; $i < $amountColumnIndex; $i++) {
                         if ($i === 0) {
                             $html .= '<td><strong>TOTAL</strong></td>';
@@ -2647,57 +2845,49 @@ try {
                             $html .= '<td></td>';
                         }
                     }
-
-                    // Add the total amount
-                    $html .= '<td><strong>' . number_format($total, 2) . '</strong></td>';
-
-                    // Add the currency column
-                    $html .= '<td><strong>' . $currency . '</strong></td>';
-
-                    // Fill the remaining columns
+                    
+                    $html .= '<td class="numeric"><strong>' . number_format($total, 2) . '</strong></td>';
+                    $html .= '<td><strong>' . htmlspecialchars($currency) . '</strong></td>';
+                    
                     for ($i = $amountColumnIndex + 2; $i < count($headers); $i++) {
                         $html .= '<td></td>';
                     }
-
                     $html .= '</tr>';
                 }
             }
-
+    
             // Add total rows for umrah reports
             if ($reportCategory === 'umrah' && !empty($umrahTotals) && $user_role === 'admin') {
-                // Total Price row
                 $html .= '<tr class="total-row">';
                 foreach ($headers as $index => $header) {
                     if ($index === 0) {
                         $html .= '<td><strong>TOTAL PRICE</strong></td>';
                     } elseif ($header === 'Price') {
-                        $html .= '<td><strong>' . number_format($umrahTotals['price'], 2) . '</strong></td>';
+                        $html .= '<td class="numeric"><strong>' . number_format($umrahTotals['price'], 2) . '</strong></td>';
                     } else {
                         $html .= '<td></td>';
                     }
                 }
                 $html .= '</tr>';
-
-                // Total Sold Price row
+    
                 $html .= '<tr class="total-row">';
                 foreach ($headers as $index => $header) {
                     if ($index === 0) {
                         $html .= '<td><strong>TOTAL SOLD PRICE</strong></td>';
                     } elseif ($header === 'Sold Price') {
-                        $html .= '<td><strong>' . number_format($umrahTotals['sold_price'], 2) . '</strong></td>';
+                        $html .= '<td class="numeric"><strong>' . number_format($umrahTotals['sold_price'], 2) . '</strong></td>';
                     } else {
                         $html .= '<td></td>';
                     }
                 }
                 $html .= '</tr>';
-
-                // Total Profit row
+    
                 $html .= '<tr class="total-row">';
                 foreach ($headers as $index => $header) {
                     if ($index === 0) {
                         $html .= '<td><strong>TOTAL PROFIT</strong></td>';
                     } elseif ($header === 'Profit') {
-                        $html .= '<td><strong>' . number_format($umrahTotals['profit'], 2) . '</strong></td>';
+                        $html .= '<td class="numeric"><strong>' . number_format($umrahTotals['profit'], 2) . '</strong></td>';
                     } else {
                         $html .= '<td></td>';
                     }
@@ -2705,7 +2895,13 @@ try {
                 $html .= '</tr>';
             }
             
-            $html .= '</tbody></table></body></html>';
+            $html .= '</tbody></table>
+                </div>
+                
+                <div class="report-footer">
+                    Generated on ' . date('F d, Y \a\t H:i:s') . ' | Page {PAGENO} of {nbpg}
+                </div>
+            </body></html>';
             
             // Write HTML to PDF
             $pdf->WriteHTML($html);
@@ -2716,17 +2912,16 @@ try {
             echo $pdf->Output('report.pdf', \Mpdf\Output\Destination::STRING_RETURN);
             
         } catch (\Exception $e) {
-            // Log any errors for debugging
             error_log('PDF Generation Error: ' . $e->getMessage());
             echo 'Error generating PDF: ' . $e->getMessage();
         }
-    } 
+    }
     elseif ($format === 'word') {
         $phpWord = new \PhpOffice\PhpWord\PhpWord();
         
         // Set default font
         $phpWord->setDefaultFontName('Arial');
-        $phpWord->setDefaultFontSize(10);
+        $phpWord->setDefaultFontSize(6);
         
         // Add new section with specific page settings
         $section = $phpWord->addSection([
@@ -2880,7 +3075,7 @@ try {
                         $value = isset($rowData['created_at']) ? date('Y-m-d', strtotime($rowData['created_at'])) : '';
                         break;
                         case 'Phone':
-                            $value = isset($rowData['contact']) ? $rowData['contact'] : '';
+                            $value = isset($rowData['phone']) ? $rowData['phone'] : (isset($rowData['contact']) ? $rowData['contact'] : '');
                             break;
                     case 'Contact':
                         $value = isset($rowData['contact_no']) ? $rowData['contact_no'] : '';
@@ -3143,7 +3338,7 @@ try {
                         $value = isset($rowData['created_at']) ? date('Y-m-d', strtotime($rowData['created_at'])) : '';
                         break;
                         case 'Phone':
-                            $value = isset($rowData['contact']) ? $rowData['contact'] : '';
+                            $value = isset($rowData['phone']) ? $rowData['phone'] : (isset($rowData['contact']) ? $rowData['contact'] : '');
                             break;
                     case 'Contact':
                         $value = isset($rowData['contact_no']) ? $rowData['contact_no'] : '';

@@ -109,10 +109,9 @@ try {
                 $query = "SELECT u.passport_number as pnr, u.name as passenger_name,
                           u.entry_date as issue_date, u.sold_price as total_amount,
                           u.duration as status, u.currency,
-                          c.name as client_name, s.name as supplier_name
+                          c.name as client_name
                           FROM umrah_bookings u
                           LEFT JOIN clients c ON u.sold_to = c.id
-                          LEFT JOIN suppliers s ON u.supplier = s.id
                           WHERE u.entry_date BETWEEN ? AND ? AND u.tenant_id = ?";
                 $params = [$startDate, $endDate, $tenant_id];
 
@@ -122,7 +121,7 @@ try {
                     $params[] = $specificFamily;
                 }
 
-                $headers = ['Passport Number', 'Pilgrim Name', 'Entry Date', 'Package Price', 'Duration', 'Currency', 'Client', 'Supplier'];
+                $headers = ['Passport Number', 'Pilgrim Name', 'Entry Date', 'Package Price', 'Duration', 'Currency', 'Client'];
                 break;
                 
             case 'hotel':
@@ -285,18 +284,16 @@ try {
                 break;
 
             case 'umrah_refund':
-                $query = "SELECT ub.passport_number as pnr, ub.name as passenger_name, 
-                         ur.created_at as issue_date, ur.refund_amount as total_amount, 
-                         ur.refund_type as status, ur.currency, c.name as client_name, 
-                         s.name as supplier_name 
+                $query = "SELECT ub.passport_number as pnr, ub.name as passenger_name,
+                         ur.created_at as issue_date, ur.refund_amount as total_amount,
+                         ur.refund_type as status, ur.currency, c.name as client_name
                          FROM umrah_refunds ur
                          INNER JOIN umrah_bookings ub ON ur.booking_id = ub.booking_id
                          LEFT JOIN clients c ON ub.sold_to = c.id
-                         LEFT JOIN suppliers s ON ub.supplier = s.id
                          WHERE ur.created_at BETWEEN ? AND ? AND ur.tenant_id = ?
                          ORDER BY ur.created_at DESC";
                 $params = [$startDate, $endDate, $tenant_id];
-                $headers = ['Passport Number', 'Pilgrim Name', 'Refund Date', 'Refund Amount', 'Refund Type', 'Currency', 'Client', 'Supplier'];
+                $headers = ['Passport Number', 'Pilgrim Name', 'Refund Date', 'Refund Amount', 'Refund Type', 'Currency', 'Client'];
                 break;
         }
     } else {
@@ -410,7 +407,8 @@ try {
                         $query = "SELECT u.passport_number as pnr, u.name as passenger_name,
                                   u.entry_date as issue_date, u.sold_price as total_amount, u.duration as status
                                   FROM umrah_bookings u
-                                  WHERE u.supplier = ? AND u.entry_date BETWEEN ? AND ? AND u.tenant_id = ?";
+                                  INNER JOIN umrah_booking_services ubs ON u.id = ubs.booking_id
+                                  WHERE ubs.supplier_id = ? AND u.entry_date BETWEEN ? AND ? AND u.tenant_id = ?";
                         $params = [$entity, $startDate, $endDate, $tenant_id];
 
                         // Add family filter if specific family is selected
@@ -479,12 +477,13 @@ try {
                         break;
 
                     case 'umrah_refund':
-                        $query = "SELECT ub.passport_number as pnr, ub.name as passenger_name, 
-                                 ur.created_at as issue_date, ur.refund_amount as total_amount, 
-                                 ur.refund_type as status 
+                        $query = "SELECT ub.passport_number as pnr, ub.name as passenger_name,
+                                 ur.created_at as issue_date, ur.refund_amount as total_amount,
+                                 ur.refund_type as status
                                  FROM umrah_refunds ur
                                  LEFT JOIN umrah_bookings ub ON ur.booking_id = ub.booking_id
-                                 WHERE ub.supplier = ? AND ur.created_at BETWEEN ? AND ? AND ub.tenant_id = ?";
+                                 INNER JOIN umrah_booking_services ubs ON ub.id = ubs.booking_id
+                                 WHERE ubs.supplier_id = ? AND ur.created_at BETWEEN ? AND ? AND ub.tenant_id = ?";
                         $params = [$entity, $startDate, $endDate, $tenant_id];
                         $headers = ['Passport Number', 'Pilgrim Name', 'Refund Date', 'Refund Amount', 'Refund Type'];
                         break;

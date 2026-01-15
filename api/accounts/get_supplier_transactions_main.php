@@ -38,6 +38,7 @@ $query = "SELECT st.*,
                             WHEN st.transaction_of = 'visa_sale' THEN CONCAT(vs.applicant_name)
                             WHEN st.transaction_of = 'visa_refund' THEN CONCAT(va.applicant_name)
                             WHEN st.transaction_of = 'umrah' THEN CONCAT(ub.name)
+                            WHEN st.transaction_of = 'umrah_transaction' THEN CONCAT(ub_ut.name)
                             WHEN st.transaction_of = 'umrah_refund' THEN CONCAT(ubr.name)
                             WHEN st.transaction_of = 'hotel' THEN CONCAT(hb.title,hb.first_name, hb.last_name)
                             WHEN st.transaction_of = 'hotel_refund' THEN CONCAT(hbr.title,hbr.first_name, hbr.last_name)
@@ -56,9 +57,10 @@ $query = "SELECT st.*,
           LEFT JOIN visa_applications va ON va.id = vr.visa_id
           LEFT JOIN refunded_tickets rt ON st.reference_id = rt.id AND st.transaction_of = 'ticket_refund'
           LEFT JOIN date_change_tickets dc ON st.reference_id = dc.id AND st.transaction_of = 'date_change'
-          LEFT JOIN umrah_transactions ut ON st.reference_id = ut.id AND st.transaction_of = 'umrah'
-          LEFT JOIN umrah_bookings ub ON (ut.umrah_booking_id = ub.booking_id OR (ut.id IS NULL AND st.reference_id = ub.booking_id))
-          LEFT JOIN umrah_refunds ur ON st.reference_id = ur.id AND st.transaction_of = 'umrah_refund'
+          LEFT JOIN umrah_bookings ub ON st.transaction_of = 'umrah' AND st.reference_id = ub.booking_id
+          LEFT JOIN umrah_transactions ut ON st.transaction_of = 'umrah_transaction' AND st.reference_id = ut.id
+          LEFT JOIN umrah_bookings ub_ut ON ut.umrah_booking_id = ub_ut.booking_id
+          LEFT JOIN umrah_refunds ur ON st.transaction_of = 'umrah_refund' AND st.reference_id = ur.id
           LEFT JOIN umrah_bookings ubr ON ur.booking_id = ubr.booking_id
           LEFT JOIN hotel_bookings hb ON st.reference_id = hb.id AND st.transaction_of = 'hotel'
           LEFT JOIN hotel_refunds hr ON st.reference_id = hr.id AND st.transaction_of = 'hotel_refund'

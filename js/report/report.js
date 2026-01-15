@@ -485,7 +485,7 @@ function filterResults() {
             },
             dataType: "json",
             success: function(response) {
-                if (response.success && response.data.length > 0) {
+                if (response.success) {
                     // Show export section
                     exportSection.style.display = "block";
 

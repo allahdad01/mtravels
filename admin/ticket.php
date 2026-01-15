@@ -222,7 +222,7 @@ border-color: rgba(255, 255, 255, 0.5) !important;
                                                                         <i class="feather icon-more-vertical"></i>
                                                                     </button>
                                                                     <div class="dropdown-menu dropdown-menu-right">
-                                                                        <button class="dropdown-item view-details" data-ticket='<?= htmlspecialchars(json_encode($ticket)) ?>'>
+                                                                        <button class="dropdown-item view-details" data-ticket='<?= json_encode($ticket) ?>'>
                                                                             <i class="feather icon-eye text-primary mr-2"></i> <?= __('view_details') ?>
                                                                         </button>
                                                                         <button class="dropdown-item" onclick="editTicket(<?= $ticket['ticket']['id'] ?>)">

@@ -14,41 +14,41 @@ $(document).on('click', '.view-details', function() {
 
     if (ticketData) {
         // Populate fields...
-        $('#passenger-name').text(ticketData.ticket.passenger_name || 'N/A');
-        $('#pnr').text(ticketData.ticket.pnr || 'N/A');
-        $('#supplier-name').text(ticketData.ticket.supplier_name || 'N/A');
-        $('#sold-to').text(ticketData.ticket.sold_to || 'N/A');
-        $('#paid-to').text(ticketData.ticket.paid_to || 'N/A');
-        $('#created-by').text(ticketData.ticket.created_by_name || 'N/A');
-        $('#sold-price').text(ticketData.ticket.sold || 'N/A');
-        $('#base-price').text(ticketData.ticket.price || 'N/A');
-        $('#discount').text(ticketData.ticket.discount || 'N/A');
-        $('#profit').text(ticketData.ticket.profit || 'N/A');
-        $('#payment-amount').text(ticketData.ticket.paymentAmount || 'N/A');
-        $('#currency').text(ticketData.ticket.currency || 'N/A');
-        $('#exchangeRate').text(ticketData.ticket.exchangeRate || 'N/A');
-        $('#marketExchangeRate').text(ticketData.ticket.marketExchangeRate || 'N/A');
-        $('#phone').text(ticketData.ticket.phone || 'N/A');
-        $('#gender').text(ticketData.ticket.gender || 'N/A');
-        $('#description').text(ticketData.ticket.description || 'N/A');
+        $('#detailsModal #passenger-name').text(ticketData.ticket.passenger_name || 'N/A');
+        $('#detailsModal #pnr').text(ticketData.ticket.pnr || 'N/A');
+        $('#detailsModal #supplier-name').text(ticketData.ticket.supplier_name || 'N/A');
+        $('#detailsModal #sold-to').text(ticketData.ticket.sold_to || 'N/A');
+        $('#detailsModal #paid-to').text(ticketData.ticket.paid_to || 'N/A');
+        $('#detailsModal #created-by').text(ticketData.ticket.created_by_name || 'N/A');
+        $('#detailsModal #sold-price').text(ticketData.ticket.sold || 'N/A');
+        $('#detailsModal #base-price').text(ticketData.ticket.price || 'N/A');
+        $('#detailsModal #discount').text(ticketData.ticket.discount || 'N/A');
+        $('#detailsModal #profit').text(ticketData.ticket.profit || 'N/A');
+        $('#detailsModal #payment-amount').text(ticketData.ticket.paymentAmount || 'N/A');
+        $('#detailsModal #currency').text(ticketData.ticket.currency || 'N/A');
+        $('#detailsModal #exchangeRate').text(ticketData.ticket.exchangeRate || 'N/A');
+        $('#detailsModal #marketExchangeRate').text(ticketData.ticket.marketExchangeRate || 'N/A');
+        $('#detailsModal #phone').text(ticketData.ticket.phone || 'N/A');
+        $('#detailsModal #gender').text(ticketData.ticket.gender || 'N/A');
+        $('#detailsModal #description').text(ticketData.ticket.description || 'N/A');
         
         // Handle refund data...
         if (ticketData.refund_data) {
-            $('#refund-supplier-penalty').text(ticketData.refund_data.supplier_penalty || 'N/A');
-            $('#refund-service-penalty').text(ticketData.refund_data.service_penalty || 'N/A');
-            $('#refund-to-passenger').text(ticketData.refund_data.refund_to_passenger || 'N/A');
-            $('#refund-status').text(ticketData.refund_data.status || 'N/A');
-            $('#refund-remarks').text(ticketData.refund_data.remarks || 'N/A');
+            $('#detailsModal #refund-supplier-penalty').text(ticketData.refund_data.supplier_penalty || 'N/A');
+            $('#detailsModal #refund-service-penalty').text(ticketData.refund_data.service_penalty || 'N/A');
+            $('#detailsModal #refund-to-passenger').text(ticketData.refund_data.refund_to_passenger || 'N/A');
+            $('#detailsModal #refund-status').text(ticketData.refund_data.status || 'N/A');
+            $('#detailsModal #refund-remarks').text(ticketData.refund_data.remarks || 'N/A');
         }
 
         // Handle date change data...
         if (ticketData.date_change_data) {
-            $('#date-change-departure-date').text(ticketData.date_change_data.departure_date || 'N/A');
-            $('#date-change-currency').text(ticketData.date_change_data.currency || 'N/A');
-            $('#date-change-supplier-penalty').text(ticketData.date_change_data.supplier_penalty || 'N/A');
-            $('#date-change-service-penalty').text(ticketData.date_change_data.service_penalty || 'N/A');
-            $('#date-change-status').text(ticketData.date_change_data.status || 'N/A');
-            $('#date-change-remarks').text(ticketData.date_change_data.remarks || 'N/A');
+            $('#detailsModal #date-change-departure-date').text(ticketData.date_change_data.departure_date || 'N/A');
+            $('#detailsModal #date-change-currency').text(ticketData.date_change_data.currency || 'N/A');
+            $('#detailsModal #date-change-supplier-penalty').text(ticketData.date_change_data.supplier_penalty || 'N/A');
+            $('#detailsModal #date-change-service-penalty').text(ticketData.date_change_data.service_penalty || 'N/A');
+            $('#detailsModal #date-change-status').text(ticketData.date_change_data.status || 'N/A');
+            $('#detailsModal #date-change-remarks').text(ticketData.date_change_data.remarks || 'N/A');
         }
 
         $('#detailsModal').modal('show');  // Show the modal with details
@@ -73,9 +73,9 @@ $(document).ready(function () {
         $('#dateChangeTicketId').val(ticketId);  // Set ticketId in the hidden field for the date change form
 
         // Populate fields (fetch dynamically or mock data)
-        $('#dateChangeSold').val($('#sold-price').text());
-        $('#dateChangeBase').val($('#base-price').text());
-        $('#dateChangeDescription').val($('#description').text());
+        $('#dateChangeSold').val($('#detailsModal #sold-price').text());
+        $('#dateChangeBase').val($('#detailsModal #base-price').text());
+        $('#dateChangeDescription').val($('#detailsModal #description').text());
         $('#dateChangeDepartureDate').val('');  // Empty the departure date for the user to enter
 
         $('#dateChangeModal').modal('show');
@@ -103,9 +103,9 @@ $(document).ready(function () {
 
                 if (data.status === 'success') {
                     // Populate refund form fields
-                    $('#refundSold').val($('#sold-price').text());
-                    $('#refundBase').val($('#base-price').text());
-                    $('#refundDescription').val($('#description').text());
+                    $('#refundSold').val($('#detailsModal #sold-price').text());
+                    $('#refundBase').val($('#detailsModal #base-price').text());
+                    $('#refundDescription').val($('#detailsModal #description').text());
 
                     // Helper function to calculate refund amount based on selected method
                     function calculateRefundAmount() {

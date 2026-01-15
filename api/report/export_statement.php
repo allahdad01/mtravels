@@ -313,26 +313,14 @@ try {
                         WHEN st.transaction_of = 'visa_sale' THEN DATE(vs.receive_date)
                         WHEN st.transaction_of = 'visa_refund' THEN DATE(vr.refund_date)
                         WHEN st.transaction_of = 'hotel' THEN DATE(hb.issue_date)
-                        WHEN st.transaction_of = 'umrah' THEN DATE(um.entry_date)
+                        WHEN st.transaction_of = 'umrah' THEN DATE(ub.entry_date)
+                        WHEN st.transaction_of = 'umrah_transaction' THEN DATE(ut.created_at)
+                        WHEN st.transaction_of = 'umrah_refund' THEN DATE(ur.created_at)
                         WHEN st.transaction_of = 'fund' THEN DATE(st.transaction_date)
                         ELSE DATE(st.transaction_date)
                     END as transaction_date,
                     st.transaction_type as type,
                     st.amount,
-                    COALESCE(
-                        (CASE 
-                            WHEN st.transaction_of = 'fund' THEN CONCAT(st.remarks)
-                            WHEN st.transaction_of = 'ticket_sale' THEN CONCAT(tb.description)
-                            WHEN st.transaction_of = 'weight_sale' THEN CONCAT('Weight: ', tw.weight, 'kg - Base Price: ', tw.base_price, ' - Sold Price: ', tw.sold_price, ' - Profit: ', tw.profit, ' - Exchange Rate: ', tw.exchange_rate, ' - Market Rate: ', tw.market_exchange_rate, ' - ', tw.remarks)
-                            WHEN st.transaction_of = 'ticket_reserve' THEN CONCAT(tr.description)
-                            WHEN st.transaction_of = 'ticket_refund' THEN CONCAT(rt.remarks)
-                            WHEN st.transaction_of = 'date_change' THEN CONCAT(dc.remarks)
-                            WHEN st.transaction_of = 'visa_sale' THEN CONCAT(vs.remarks)
-                            WHEN st.transaction_of = 'visa_refund' THEN CONCAT(vr.reason)
-                            WHEN st.transaction_of = 'hotel' THEN CONCAT(hb.remarks)
-                            ELSE ''
-                        END), 'N/A'
-                    ) AS remark,
                     st.transaction_of,
                     st.reference_id,
                     st.balance, -- Simply include the balance field from supplier_transactions
@@ -347,8 +335,11 @@ try {
                             WHEN st.transaction_of = 'visa_sale' THEN CONCAT(vs.applicant_name)
                             WHEN st.transaction_of = 'visa_refund' THEN CONCAT(vsa.applicant_name)
                             WHEN st.transaction_of = 'hotel' THEN CONCAT(hb.title,hb.first_name, hb.last_name)
-                            WHEN st.transaction_of = 'umrah' THEN CONCAT(um.name)
+                            WHEN st.transaction_of = 'umrah' THEN CONCAT(ub.name)
+                            WHEN st.transaction_of = 'umrah_transaction' THEN CONCAT(ub_ut.name)
+                            WHEN st.transaction_of = 'umrah_refund' THEN CONCAT(ubr.name)
                             WHEN st.transaction_of = 'fund' THEN CONCAT(usr.name)
+                            WHEN st.transaction_of = 'fund_withdrawal' THEN CONCAT(usr.name)
                             WHEN st.transaction_of = 'hotel_refund' THEN CONCAT(hb.title,hb.first_name, hb.last_name)
                             ELSE ''
                         END), 'N/A'
@@ -363,7 +354,9 @@ try {
                             WHEN st.transaction_of = 'visa_sale' THEN CONCAT(vs.passport_number)
                             WHEN st.transaction_of = 'visa_refund' THEN CONCAT(vsa.passport_number)
                             WHEN st.transaction_of = 'hotel' THEN CONCAT(hb.order_id)
-                            WHEN st.transaction_of = 'umrah' THEN CONCAT(um.passport_number)
+                            WHEN st.transaction_of = 'umrah' THEN CONCAT(ub.passport_number)
+                            WHEN st.transaction_of = 'umrah_transaction' THEN CONCAT(ub_ut.passport_number)
+                            WHEN st.transaction_of = 'umrah_refund' THEN CONCAT(ubr.passport_number)
                             WHEN st.transaction_of = 'fund' THEN CONCAT(usr.role)
                             WHEN st.transaction_of = 'hotel_refund' THEN CONCAT(hb.order_id)
                             ELSE ''
@@ -380,8 +373,11 @@ try {
                             WHEN st.transaction_of = 'visa_refund' THEN CONCAT(vsa.status, ' - ', st.transaction_of)
                             WHEN st.transaction_of = 'hotel' THEN st.transaction_of
                             WHEN st.transaction_of = 'umrah' THEN st.transaction_of
+                            WHEN st.transaction_of = 'umrah_transaction' THEN st.transaction_of
+                            WHEN st.transaction_of = 'umrah_refund' THEN st.transaction_of
                             WHEN st.transaction_of = 'fund' THEN st.transaction_of
                             WHEN st.transaction_of = 'hotel_refund' THEN CONCAT(st.transaction_of)
+                            WHEN st.transaction_of = 'umrah_transaction' THEN CONCAT(st.transaction_of)
                             ELSE ''
                         END), 'N/A'
                     ) AS details,
@@ -395,7 +391,9 @@ try {
                             WHEN st.transaction_of = 'visa_sale' THEN vs.applied_date
                             WHEN st.transaction_of = 'visa_refund' THEN vr.refund_date
                             WHEN st.transaction_of = 'hotel' THEN hb.check_in_date
-                            WHEN st.transaction_of = 'umrah' THEN um.flight_date
+                            WHEN st.transaction_of = 'umrah' THEN ub.flight_date
+                            WHEN st.transaction_of = 'umrah_transaction' THEN ub_ut.flight_date
+                            WHEN st.transaction_of = 'umrah_refund' THEN ubr.flight_date
                             WHEN st.transaction_of = 'fund' THEN ' '
                             ELSE NULL
                         END), 'N/A'
@@ -416,7 +414,9 @@ try {
                             WHEN st.transaction_of = 'date_change' THEN CONCAT(dc.origin, '-', dc.destination)
                             WHEN st.transaction_of = 'visa_sale' THEN CONCAT(vs.country, '-', vs.visa_type)
                             WHEN st.transaction_of = 'visa_refund' THEN CONCAT(vsa.country, '-', vsa.visa_type)
-                            WHEN st.transaction_of = 'umrah' THEN CONCAT(um.room_type, '-', um.duration)
+                            WHEN st.transaction_of = 'umrah' THEN CONCAT(ub.room_type, '-', ub.duration)
+                            WHEN st.transaction_of = 'umrah_transaction' THEN CONCAT(ub_ut.room_type, '-', ub_ut.duration)
+                            WHEN st.transaction_of = 'umrah_refund' THEN CONCAT(ubr.room_type, '-', ubr.duration)
                             WHEN st.transaction_of = 'hotel' THEN CONCAT(hb.accommodation_details)
                             ELSE ''
                         END), 'N/A'
@@ -432,6 +432,9 @@ try {
                             WHEN st.transaction_of = 'visa_sale' THEN st.remarks
                             WHEN st.transaction_of = 'visa_refund' THEN st.remarks
                             WHEN st.transaction_of = 'hotel' THEN st.remarks
+                            WHEN st.transaction_of = 'umrah' THEN st.remarks
+                            WHEN st.transaction_of = 'umrah_transaction' THEN st.remarks
+                            WHEN st.transaction_of = 'fund_withdrawal' THEN st.remarks
                             ELSE ''
                         END), 'N/A'
                     ) AS remark
@@ -446,8 +449,13 @@ try {
                 LEFT JOIN visa_refunds vr ON vr.id = st.reference_id AND st.transaction_of = 'visa_refund'
                 LEFT JOIN visa_applications vsa ON vsa.id = vr.visa_id AND st.transaction_of = 'visa_refund'
                 LEFT JOIN hotel_bookings hb ON hb.id = st.reference_id AND st.transaction_of = 'hotel'
-                LEFT JOIN umrah_bookings um ON um.booking_id = st.reference_id AND st.transaction_of = 'umrah'
+                LEFT JOIN umrah_bookings ub ON st.transaction_of = 'umrah' AND st.reference_id = ub.booking_id
+                LEFT JOIN umrah_transactions ut ON st.transaction_of = 'umrah_transaction' AND st.reference_id = ut.id
+                LEFT JOIN umrah_bookings ub_ut ON ut.umrah_booking_id = ub_ut.booking_id
+                LEFT JOIN umrah_refunds ur ON st.transaction_of = 'umrah_refund' AND st.reference_id = ur.id
+                LEFT JOIN umrah_bookings ubr ON ur.booking_id = ubr.booking_id
                 LEFT JOIN users usr ON usr.id = st.reference_id AND st.transaction_of = 'fund'
+                LEFT JOIN users usrf ON usrf.id = st.reference_id AND st.transaction_of = 'fund_withdrawal'
                 WHERE st.supplier_id = ?
                 AND st.tenant_id = ?
                 AND st.branch_id = ?
@@ -641,6 +649,22 @@ $stmt = $pdo->prepare($settingsQuery);
 $stmt->execute([':tenant_id' => $tenant_id]);
 $companySettings = $stmt->fetch(PDO::FETCH_ASSOC);
 
+// Get branch details for the current branch
+$branchQuery = "SELECT * FROM branches WHERE tenant_id = ? AND id = ?";
+$stmt = $pdo->prepare($branchQuery);
+$stmt->execute([$tenant_id, $branch_id]);
+$branchDetails = $stmt->fetch(PDO::FETCH_ASSOC);
+
+// Fetch bank accounts from main_account table
+try {
+    $bankAccountsQuery = "SELECT name, bank_name, bank_account_number, bank_account_afs_number FROM main_account WHERE tenant_id = ? AND branch_id = ? AND status = 'active' AND account_type = 'bank' AND bank_account_number IS NOT NULL AND bank_account_number <> '' ORDER BY name";
+    $stmt = $pdo->prepare($bankAccountsQuery);
+    $stmt->execute([$tenant_id, $branch_id]);
+    $bankAccounts = $stmt->fetchAll(PDO::FETCH_ASSOC);
+} catch (Exception $e) {
+    $bankAccounts = [];
+}
+
 
     // Calculate totals for transactions in date range (for display in transactions table)
     $periodDebit = 0;
@@ -764,16 +788,16 @@ $companySettings = $stmt->fetch(PDO::FETCH_ASSOC);
 
             // Set document information
             $pdf->SetCreator(PDF_CREATOR);
-            $pdf->SetAuthor($companySettings['agency_name']);
+            $pdf->SetAuthor($branchDetails['name'] ?? $companySettings['agency_name']);
             $pdf->SetTitle($title);
 
                 // Remove default header but use custom footer
             $pdf->setPrintHeader(false);
                 $pdf->setPrintFooter(true);
 
-            // Add a page with consistent margins
-            $pdf->SetMargins(12, 12, 12);
-            $pdf->SetAutoPageBreak(true, 20);
+            // Add a page with narrow margins for full page utilization
+            $pdf->SetMargins(5, 5, 5);
+            $pdf->SetAutoPageBreak(true, 10);
             $pdf->AddPage('L', 'A4');
 
             // Professional styling colors
@@ -797,26 +821,28 @@ $companySettings = $stmt->fetch(PDO::FETCH_ASSOC);
             $pdf->SetFillColor(...$colors['lightBg']);
             $pdf->RoundedRect($margins, 5, $pageWidth - (2 * $margins), 38, 4, '1111', 'F');
             
-            // Left column - Professional company details
+            // Left column - Agency and branch details
             $pdf->SetXY($margins + 2, 8);
-            $pdf->SetFont('helvetica', 'B', 18);
+            $pdf->SetFont('helvetica', 'B', 14);
             $pdf->SetTextColor(...$colors['primary']);
-            $pdf->Cell($columnWidth, 9, strtoupper($companySettings['agency_name']), 0, 1, 'L');
-            
-            // Company info with professional icons and spacing
+            $pdf->Cell($columnWidth, 5, strtoupper($companySettings['agency_name']), 0, 1, 'L');
+            $pdf->SetFont('helvetica', 'B', 12);
+            $pdf->Cell($columnWidth, 4, strtoupper($branchDetails['name'] ?? ''), 0, 1, 'L');
+
+            // Branch info with professional icons and spacing
             $pdf->SetFont('helvetica', '', 9.5);
             $pdf->SetTextColor(...$colors['text']);
-            
+
             // Address
             $pdf->SetX($margins + 2);
             $pdf->SetFont('helvetica', '', 9.5);
-            $pdf->MultiCell($columnWidth - 6, 5, 'Address: ' . $companySettings['address'], 0, 'L');
-            
+            $pdf->MultiCell($columnWidth - 6, 5, 'Address: ' . ($branchDetails['address'] ?? $companySettings['address']), 0, 'L');
+
             // Contact info with better spacing
             $contactInfo = [
-                'Cell' => $companySettings['phone'],
-                'Email' => $companySettings['email'],
-                'CC' => $companySettings['cc_email'] ?? ''
+                'Cell' => $branchDetails['phone'] ?? $companySettings['phone'],
+                'Email' => $branchDetails['email'] ?? $companySettings['email'],
+                'CC' => $branchDetails['cc_email'] ?? $companySettings['cc_email'] ?? ''
             ];
             
             foreach ($contactInfo as $label => $value) {
@@ -826,8 +852,8 @@ $companySettings = $stmt->fetch(PDO::FETCH_ASSOC);
             }
 
             // Centered Logo with enhanced quality
-            $logoPath = '../uploads/logo' . $companySettings['logo'];
-            if (file_exists($logoPath)) {
+            $logoPath = '../../uploads/logo/' . ($branchDetails['logo'] ?? $companySettings['logo']);
+            if (file_exists($logoPath) && !empty($branchDetails['logo'] ?? $companySettings['logo'])) {
                 $imgSize = getimagesize($logoPath);
                 if ($imgSize !== false) {
                     $imgRatio = $imgSize[1] / $imgSize[0];
@@ -885,10 +911,10 @@ $companySettings = $stmt->fetch(PDO::FETCH_ASSOC);
             $pdf->SetFont('helvetica', 'B', 11);
             // Align with Excel format
             $headers = ['Issue Date', 'Remarks', 'Inv.', 'Details', 'Dep Date', 'Debit', 'Credit', 'Balance'];
-            
+
             // Calculate total available width
             $availableWidth = $pageWidth - (2 * $margins);
-            
+
             // Adjusted column widths for 8-column layout with proportional distribution
             // The total should add up to exactly the available width
             $widths = array(
@@ -901,23 +927,9 @@ $companySettings = $stmt->fetch(PDO::FETCH_ASSOC);
                 $availableWidth * 0.11,  // Credit (11%)
                 $availableWidth * 0.11   // Balance (11%)
             );
-            
-            // Draw headers
-            $startX = $margins;
-            $pdf->SetFillColor(...$colors['primary']);
-            foreach ($headers as $i => $header) {
-                $pdf->SetX($startX);
-                $pdf->SetTextColor(255, 255, 255);
-                $pdf->Cell($widths[$i], 10, $header, 1, 0, 'C', true);
-                $startX += $widths[$i];
-            }
-            $pdf->Ln();
-
-            // Reset text color
-            $pdf->SetTextColor(0, 0, 0);
 
                         // Use TCPDF's built-in table functionality for more reliable multi-page handling
-            $pdf->SetFont('helvetica', '', 9);
+                        $pdf->SetFont('helvetica', '', 8);
             
             // Prepare table data for better pagination
             $tableData = [];
@@ -947,7 +959,7 @@ $companySettings = $stmt->fetch(PDO::FETCH_ASSOC);
             $drawTableHeader = function($pdf, $margins, $widths, $headers, $colors) {
                 $startX = $margins;
                 $pdf->SetFillColor(...$colors['primary']);
-                $pdf->SetFont('helvetica', 'B', 10);
+                $pdf->SetFont('helvetica', 'B', 9);
                 $pdf->SetTextColor(255, 255, 255);
                 
                 foreach ($headers as $i => $header) {
@@ -971,16 +983,16 @@ $companySettings = $stmt->fetch(PDO::FETCH_ASSOC);
                 
                 // Check if we need a new page before drawing this row
                 // Calculate approximate row height (more conservative estimate)
-                $estimatedRowHeight = 8; // Default minimum height
-                
+                $estimatedRowHeight = 6; // Default minimum height
+
                 // Check for longer text that might wrap
                 if (strlen($row[1]) > 30 || strlen($row[3]) > 30) {
-                    $estimatedRowHeight = 12;
+                    $estimatedRowHeight = 10;
                 }
-                
+
                 // Add extra for very long text
                 if (strlen($row[1]) > 50 || strlen($row[3]) > 50) {
-                    $estimatedRowHeight = 16;
+                    $estimatedRowHeight = 14;
                 }
                 
                 // If this row won't fit on the current page, add a new page
@@ -1034,9 +1046,9 @@ $companySettings = $stmt->fetch(PDO::FETCH_ASSOC);
                     $pdf->SetXY($startX, $currentY);
                     // Handle wrapping text columns differently
                     if ($i == 1 || $i == 3) { // Remarks and Details columns
-                        $pdf->MultiCell($widths[$i], 5, $text, 0, $alignments[$i]);
+                        $pdf->MultiCell($widths[$i], 4, $text, 0, $alignments[$i]);
                     } else {
-                        $pdf->Cell($widths[$i], 5, $text, 0, 0, $alignments[$i]);
+                        $pdf->Cell($widths[$i], 4, $text, 0, 0, $alignments[$i]);
                     }
                     if ($i == 1 || $i == 3) {
                         $cellHeight = $pdf->GetY() - $currentY;
@@ -1058,11 +1070,11 @@ $companySettings = $stmt->fetch(PDO::FETCH_ASSOC);
                     // Add text with proper alignment
                     if ($i == 1 || $i == 3) { // Remarks and Details columns that may need wrapping
                         $pdf->SetXY($startX, $currentY);
-                        $pdf->MultiCell($widths[$i], 5, $text, 0, $alignments[$i]);
+                        $pdf->MultiCell($widths[$i], 4, $text, 0, $alignments[$i]);
                     } else {
                         // Center text vertically for single line cells
-                        $pdf->SetXY($startX, $currentY + ($maxHeight - 5) / 2);
-                        $pdf->Cell($widths[$i], 5, $text, 0, 0, $alignments[$i]);
+                        $pdf->SetXY($startX, $currentY + ($maxHeight - 4) / 2);
+                        $pdf->Cell($widths[$i], 4, $text, 0, 0, $alignments[$i]);
                     }
                     $startX += $widths[$i];
                 }
@@ -1120,16 +1132,33 @@ $companySettings = $stmt->fetch(PDO::FETCH_ASSOC);
             $pdf->SetTextColor(255, 255, 255);
             $pdf->SetFillColor(...$colors['primary']);
             $pdf->SetX(($pageWidth - $summaryWidth) / 2);
-            $pdf->Cell($summaryWidth / 2, 8, 'AUB Bank Account Details:', 1, 1, 'L', true);
-            
-            $pdf->SetX(($pageWidth - $summaryWidth) / 2);
+            $pdf->Cell($summaryWidth, 8, 'Bank Account Details:', 1, 1, 'L', true);
+
             $pdf->SetTextColor(0, 0, 0);
             $pdf->SetFillColor(...$colors['lightBg']);
-            $pdf->Cell($summaryWidth / 2, 8, 'AFN Account: 125502AFS2114097', 1, 1, 'L', true);
-            
-            $pdf->SetX(($pageWidth - $summaryWidth) / 2);
-            $pdf->SetFillColor(...$colors['lightBg']);
-            $pdf->Cell($summaryWidth / 2, 8, 'USD Account: 125502USD2112388', 1, 1, 'L', true);
+            if (!empty($bankAccounts)) {
+                foreach ($bankAccounts as $bank) {
+                    $label = !empty($bank['bank_name']) ? $bank['bank_name'] : $bank['name'];
+                    $usd = trim((string)($bank['bank_account_number'] ?? ''));
+                    $afs = trim((string)($bank['bank_account_afs_number'] ?? ''));
+
+                    $pdf->SetX(($pageWidth - $summaryWidth) / 2);
+                    $pdf->Cell($summaryWidth, 8, $label, 1, 1, 'L', true);
+
+                    if ($usd !== '') {
+                        $pdf->SetX(($pageWidth - $summaryWidth) / 2);
+                        $pdf->Cell($summaryWidth, 8, 'USD Account: ' . $usd, 1, 1, 'L', true);
+                    }
+
+                    if ($afs !== '') {
+                        $pdf->SetX(($pageWidth - $summaryWidth) / 2);
+                        $pdf->Cell($summaryWidth, 8, 'AFS Account: ' . $afs, 1, 1, 'L', true);
+                    }
+                }
+            } else {
+                $pdf->SetX(($pageWidth - $summaryWidth) / 2);
+                $pdf->Cell($summaryWidth, 8, 'No bank accounts found.', 1, 1, 'L', true);
+            }
 
                 // Clean any output buffers again before output
                 while (ob_get_level()) {
@@ -1169,7 +1198,7 @@ $companySettings = $stmt->fetch(PDO::FETCH_ASSOC);
 
                     // Set document properties and basic setup
                     $spreadsheet->getProperties()
-                        ->setCreator($companySettings['agency_name'])
+                        ->setCreator($branchDetails['name'] ?? $companySettings['agency_name'])
                         ->setTitle('Statement');
 
                     // Set column widths
@@ -1191,11 +1220,11 @@ $companySettings = $stmt->fetch(PDO::FETCH_ASSOC);
                     }
 
                     // Enhanced Header Section with Logo
-                    if (file_exists('../uploads/' . $companySettings['logo'])) {
+                    if (file_exists('../../uploads/logo/' . ($branchDetails['logo'] ?? $companySettings['logo']))) {
                         $drawing = new \PhpOffice\PhpSpreadsheet\Worksheet\Drawing();
                         $drawing->setName('Logo')
                                ->setDescription('Company Logo')
-                               ->setPath('../uploads/' . $companySettings['logo'])
+                               ->setPath('../../uploads/logo/' . $companySettings['logo'])
                                ->setCoordinates('D1')
                                ->setWidth(220)
                                ->setHeight(180)
@@ -1204,13 +1233,13 @@ $companySettings = $stmt->fetch(PDO::FETCH_ASSOC);
                                ->setWorksheet($sheet);
                     }
 
-                    // Company Details (Left Side) with enhanced styling
+                    // Agency and Branch Details (Left Side) with enhanced styling
                     $sheet->setCellValue('A1', strtoupper($companySettings['agency_name']));
-                    $sheet->mergeCells('A1:D2');
+                    $sheet->mergeCells('A1:D1');
                     $sheet->getStyle('A1')->applyFromArray([
                         'font' => [
-                            'bold' => true, 
-                            'size' => 16, 
+                            'bold' => true,
+                            'size' => 14,
                             'color' => ['rgb' => $styles['colors']['primary']]
                         ],
                         'alignment' => [
@@ -1218,13 +1247,26 @@ $companySettings = $stmt->fetch(PDO::FETCH_ASSOC);
                             'horizontal' => \PhpOffice\PhpSpreadsheet\Style\Alignment::HORIZONTAL_LEFT
                         ]
                     ]);
-                    
-                    // Company contact details with enhanced styling
+                    $sheet->setCellValue('A2', strtoupper($branchDetails['name'] ?? ''));
+                    $sheet->mergeCells('A2:D2');
+                    $sheet->getStyle('A2')->applyFromArray([
+                        'font' => [
+                            'bold' => true,
+                            'size' => 12,
+                            'color' => ['rgb' => $styles['colors']['primary']]
+                        ],
+                        'alignment' => [
+                            'vertical' => \PhpOffice\PhpSpreadsheet\Style\Alignment::VERTICAL_CENTER,
+                            'horizontal' => \PhpOffice\PhpSpreadsheet\Style\Alignment::HORIZONTAL_LEFT
+                        ]
+                    ]);
+
+                    // Branch contact details with enhanced styling
                     $contactInfo = [
-                        'A3' => ['Address: ' . $companySettings['address']],
-                        'A4' => ['Cell: ' . $companySettings['phone']],
-                        'A5' => ['Email: ' . $companySettings['email']],
-                        'A6' => ['CC: ' . ($companySettings['cc_email'] ?? '')]
+                        'A3' => ['Address: ' . ($branchDetails['address'] ?? $companySettings['address'])],
+                        'A4' => ['Cell: ' . ($branchDetails['phone'] ?? $companySettings['phone'])],
+                        'A5' => ['Email: ' . ($branchDetails['email'] ?? $companySettings['email'])],
+                        'A6' => ['CC: ' . ($branchDetails['cc_email'] ?? $companySettings['cc_email'] ?? '')]
                     ];
 
                     foreach ($contactInfo as $cell => $value) {
@@ -1445,10 +1487,10 @@ $companySettings = $stmt->fetch(PDO::FETCH_ASSOC);
                     
                     // Add bank account details with proper formatting
                     $totalRow += 2; // Add some space
-                    
+
                     // Merge cells for bank details header
                     $sheet->mergeCells("A$totalRow:C$totalRow");
-                    $sheet->setCellValue("A$totalRow", "AUB Bank Account Details:");
+                    $sheet->setCellValue("A$totalRow", "Bank Account Details:");
                     $sheet->getStyle("A$totalRow:C$totalRow")->applyFromArray([
                         'font' => ['bold' => true, 'size' => 11],
                         'fill' => [
@@ -1462,36 +1504,75 @@ $companySettings = $stmt->fetch(PDO::FETCH_ASSOC);
                             'horizontal' => \PhpOffice\PhpSpreadsheet\Style\Alignment::HORIZONTAL_LEFT
                         ]
                     ]);
-                    
-                    // AFN Account - Merge cells for better display
-                    $totalRow++;
-                    $sheet->mergeCells("A$totalRow:C$totalRow");
-                    $sheet->setCellValue("A$totalRow", "AFN Account: 125502AFS2114097");
-                    $sheet->getStyle("A$totalRow:C$totalRow")->applyFromArray([
-                        'font' => ['bold' => true, 'size' => 10],
-                        'fill' => [
-                            'fillType' => \PhpOffice\PhpSpreadsheet\Style\Fill::FILL_SOLID,
-                            'startColor' => ['rgb' => 'E8F1EE']
-                        ],
-                        'alignment' => [
-                            'horizontal' => \PhpOffice\PhpSpreadsheet\Style\Alignment::HORIZONTAL_LEFT
-                        ]
-                    ]);
-                    
-                    // USD Account - Merge cells for better display
-                    $totalRow++;
-                    $sheet->mergeCells("A$totalRow:C$totalRow");
-                    $sheet->setCellValue("A$totalRow", "USD Account: 125502USD2112388");
-                    $sheet->getStyle("A$totalRow:C$totalRow")->applyFromArray([
-                        'font' => ['bold' => true, 'size' => 10],
-                        'fill' => [
-                            'fillType' => \PhpOffice\PhpSpreadsheet\Style\Fill::FILL_SOLID,
-                            'startColor' => ['rgb' => 'E8F1EE']
-                        ],
-                        'alignment' => [
-                            'horizontal' => \PhpOffice\PhpSpreadsheet\Style\Alignment::HORIZONTAL_LEFT
-                        ]
-                    ]);
+
+                    if (!empty($bankAccounts)) {
+                        foreach ($bankAccounts as $bank) {
+                            $label = !empty($bank['bank_name']) ? $bank['bank_name'] : $bank['name'];
+                            $usd = trim((string)($bank['bank_account_number'] ?? ''));
+                            $afs = trim((string)($bank['bank_account_afs_number'] ?? ''));
+
+                            // Bank name
+                            $totalRow++;
+                            $sheet->mergeCells("A$totalRow:C$totalRow");
+                            $sheet->setCellValue("A$totalRow", $label);
+                            $sheet->getStyle("A$totalRow:C$totalRow")->applyFromArray([
+                                'font' => ['bold' => true, 'size' => 10],
+                                'fill' => [
+                                    'fillType' => \PhpOffice\PhpSpreadsheet\Style\Fill::FILL_SOLID,
+                                    'startColor' => ['rgb' => 'E8F1EE']
+                                ],
+                                'alignment' => [
+                                    'horizontal' => \PhpOffice\PhpSpreadsheet\Style\Alignment::HORIZONTAL_LEFT
+                                ]
+                            ]);
+
+                            if ($usd !== '') {
+                                $totalRow++;
+                                $sheet->mergeCells("A$totalRow:C$totalRow");
+                                $sheet->setCellValue("A$totalRow", "USD Account: " . $usd);
+                                $sheet->getStyle("A$totalRow:C$totalRow")->applyFromArray([
+                                    'font' => ['size' => 10],
+                                    'fill' => [
+                                        'fillType' => \PhpOffice\PhpSpreadsheet\Style\Fill::FILL_SOLID,
+                                        'startColor' => ['rgb' => 'E8F1EE']
+                                    ],
+                                    'alignment' => [
+                                        'horizontal' => \PhpOffice\PhpSpreadsheet\Style\Alignment::HORIZONTAL_LEFT
+                                    ]
+                                ]);
+                            }
+
+                            if ($afs !== '') {
+                                $totalRow++;
+                                $sheet->mergeCells("A$totalRow:C$totalRow");
+                                $sheet->setCellValue("A$totalRow", "AFS Account: " . $afs);
+                                $sheet->getStyle("A$totalRow:C$totalRow")->applyFromArray([
+                                    'font' => ['size' => 10],
+                                    'fill' => [
+                                        'fillType' => \PhpOffice\PhpSpreadsheet\Style\Fill::FILL_SOLID,
+                                        'startColor' => ['rgb' => 'E8F1EE']
+                                    ],
+                                    'alignment' => [
+                                        'horizontal' => \PhpOffice\PhpSpreadsheet\Style\Alignment::HORIZONTAL_LEFT
+                                    ]
+                                ]);
+                            }
+                        }
+                    } else {
+                        $totalRow++;
+                        $sheet->mergeCells("A$totalRow:C$totalRow");
+                        $sheet->setCellValue("A$totalRow", "No bank accounts found.");
+                        $sheet->getStyle("A$totalRow:C$totalRow")->applyFromArray([
+                            'font' => ['size' => 10],
+                            'fill' => [
+                                'fillType' => \PhpOffice\PhpSpreadsheet\Style\Fill::FILL_SOLID,
+                                'startColor' => ['rgb' => 'E8F1EE']
+                            ],
+                            'alignment' => [
+                                'horizontal' => \PhpOffice\PhpSpreadsheet\Style\Alignment::HORIZONTAL_LEFT
+                            ]
+                        ]);
+                    }
 
                     // Set row height for bank details
                     $sheet->getRowDimension($totalRow-2)->setRowHeight(25);
@@ -1523,389 +1604,461 @@ $companySettings = $stmt->fetch(PDO::FETCH_ASSOC);
                 }
                 break;
 
-        case 'word':
-            // For Word export, we'll use HTML format that MS Word can open
-            // First, clean output buffer
-            if (ob_get_length() > 0) {
-                ob_end_clean();
-            }
-            
-            // Start fresh output buffer
-            ob_start();
-            
-            try {
-                // File name for download
-                $filename = 'Statement_' . preg_replace('/[^A-Za-z0-9\-]/', '', $entityDetails['name']) . '_' . date('Y-m-d') . '.doc';
-                
-                // Create enhanced HTML document with improved styling
-                $html = '<!DOCTYPE html>
-                <html>
-                <head>
-                    <meta charset="UTF-8">
-                    <title>' . $title . '</title>
-                    <style>
-                        body {
-                            font-family: Arial, Helvetica, sans-serif;
-                            margin: 20px;
-                            color: #333333;
-                            background-color: #ffffff;
-                        }
-                        
-                        /* Enhanced Header Styling */
-                        .header-container {
-                            width: 100%;
-                            background-color: #F7F9F9;
-                            border-radius: 10px;
-                            padding: 15px;
-                            margin-bottom: 25px;
-                            border: 1px solid #e0e0e0;
-                            box-shadow: 0 2px 5px rgba(0,0,0,0.05);
-                        }
-                        
-                        .header {
-                            width: 100%;
-                            display: table;
-                        }
-                        
-                        .header-left {
-                            display: table-cell;
-                            width: 33%;
-                            vertical-align: top;
-                            padding-right: 15px;
-                        }
-                        
-                        .header-center {
-                            display: table-cell;
-                            width: 34%;
-                            text-align: center;
-                            vertical-align: middle;
-                        }
-                        
-                        .header-right {
-                            display: table-cell;
-                            width: 33%;
-                            text-align: right;
-                            vertical-align: top;
-                            padding-left: 15px;
-                        }
-                        
-                        .company-name {
-                            font-size: 22px;
-                            font-weight: bold;
-                            color: #0F5132;
-                            margin-bottom: 15px;
-                            padding-bottom: 5px;
-                            border-bottom: 2px solid #0F5132;
-                            display: inline-block;
-                        }
-                        
-                        .client-name {
-                            font-size: 18px;
-                            font-weight: bold;
-                            color: #0F5132;
-                            margin-bottom: 15px;
-                            padding-bottom: 5px;
-                            border-bottom: 2px solid #0F5132;
-                            display: inline-block;
-                        }
-                        
-                        .info-text {
-                            font-size: 12px;
-                            margin: 6px 0;
-                            color: #555555;
-                        }
-                        
-                        .label {
-                            font-weight: bold;
-                            color: #333333;
-                        }
-                        
-                        .statement-title {
-                            text-align: center;
-                            font-size: 18px;
-                            font-weight: bold;
-                            color: #0F5132;
-                            margin: 20px 0;
-                            padding: 5px;
-                            background-color: #f0f5f1;
-                            border-radius: 5px;
-                        }
-                        
-                        .period {
-                            text-align: center;
-                            margin-bottom: 15px;
-                            font-style: italic;
-                            font-size: 14px;
-                            color: #666666;
-                        }
-                        
-                        /* Enhanced Table Styling */
-                        table.data-table {
-                            width: 100%;
-                            border-collapse: collapse;
-                            margin-bottom: 25px;
-                            border: 1px solid #ccc;
-                            box-shadow: 0 2px 3px rgba(0,0,0,0.1);
-                        }
-                        
-                        table.data-table th {
-                            background-color: #0F5132;
-                            color: white;
-                            font-weight: bold;
-                            padding: 10px;
-                            text-align: center;
-                            border: 1px solid #0a3e26;
-                            font-size: 13px;
-                        }
-                        
-                        table.data-table td {
-                            padding: 8px;
-                            border: 1px solid #ddd;
-                            font-size: 12px;
-                        }
-                        
-                        .text-center {
-                            text-align: center;
-                        }
-                        
-                        .text-right {
-                            text-align: right;
-                        }
-                        
-                        .alt-row {
-                            background-color: #f2f7f4;
-                        }
-                        
-                        .numeric-cell {
-                            font-family: "Courier New", Courier, monospace;
-                            font-weight: normal;
-                        }
-                        
-                        /* Enhanced Summary Table Styling */
-                        .summary-container {
-                            background-color: #f7f9f9;
-                            padding: 15px;
-                            border-radius: 8px;
-                            margin: 25px 0;
-                            border: 1px solid #e0e0e0;
-                        }
-                        
-                        .summary-table {
-                            width: 60%;
-                            margin: 0 auto;
-                            border-collapse: collapse;
-                            box-shadow: 0 2px 3px rgba(0,0,0,0.1);
-                        }
-                        
-                        .summary-header {
-                            background-color: #0F5132;
-                            color: white;
-                            text-align: center;
-                            font-weight: bold;
-                            padding: 10px;
-                            border: 1px solid #0a3e26;
-                            font-size: 14px;
-                        }
-                        
-                        .summary-label {
-                            font-weight: bold;
-                            text-align: right;
-                            padding: 8px;
-                            border: 1px solid #ddd;
-                            background-color: #f9f9f9;
-                        }
-                        
-                        .summary-value {
-                            text-align: right;
-                            padding: 8px;
-                            border: 1px solid #ddd;
-                            font-family: "Courier New", Courier, monospace;
-                        }
-                        
-                        .balance-row .summary-label {
-                            background-color: #e8f1ee;
-                        }
-                        
-                        .balance-row .summary-value {
-                            background-color: #e8f1ee;
-                            font-weight: bold;
-                        }
-                        
-                        /* Enhanced Bank Details Styling */
-                        .bank-details {
-                            width: 40%;
-                            margin: 20px auto;
-                        }
-                        
-                        .bank-header {
-                            background-color: #0F5132;
-                            color: white;
-                            text-align: center;
-                            font-weight: bold;
-                            padding: 8px;
-                            border: 1px solid #0a3e26;
-                            border-radius: 5px 5px 0 0;
-                        }
-                        
-                        .bank-content {
-                            border: 1px solid #ddd;
-                            border-top: none;
-                            padding: 10px;
-                            background-color: #f9f9f9;
-                            border-radius: 0 0 5px 5px;
-                        }
-                        
-                        .account-info {
-                            padding: 5px 10px;
-                            font-family: "Courier New", Courier, monospace;
-                        }
-                        
-                        /* Page Footer */
-                        .footer {
-                            margin-top: 30px;
-                            text-align: center;
-                            font-size: 11px;
-                            color: #777;
-                            padding-top: 5px;
-                            border-top: 1px solid #ddd;
-                        }
-                    </style>
-                </head>
-                <body>
-                    <div class="header-container">
-                        <div class="header">
-                            <div class="header-left">
-                                <div class="company-name">' . strtoupper($companySettings['agency_name']) . '</div>
-                                <div class="info-text"><span class="label">Address:</span> ' . $companySettings['address'] . '</div>
-                                <div class="info-text"><span class="label">Phone:</span> ' . $companySettings['phone'] . '</div>
-                                <div class="info-text"><span class="label">Email:</span> ' . $companySettings['email'] . '</div>';
-                            
-                if (!empty($companySettings['cc_email'])) {
-                    $html .= '<div class="info-text"><span class="label">CC:</span> ' . $companySettings['cc_email'] . '</div>';
-                }
-                
-                $html .= '</div>
-                            <div class="header-center">
-                                <!-- Logo position -->
-                            </div>
-                            <div class="header-right">
-                                <div class="client-name">CLIENT: ' . strtoupper($entityDetails['name'] ?? 'N/A') . '</div>
-                                <div class="info-text"><span class="label">Address:</span> ' . ($entityDetails['address'] ?? 'N/A') . '</div>
-                                <div class="info-text"><span class="label">Contact#:</span> ' . ($entityDetails['contact'] ?? $entityDetails['phone'] ?? 'N/A') . '</div>
-                                <div class="info-text"><span class="label">Email:</span> ' . ($entityDetails['email'] ?? 'N/A') . '</div>
-                                <div class="info-text"><span class="label">Currency:</span> ' . $currency . '</div>
-                            </div>
-                        </div>
-                    </div>
-                    
-                    <div class="statement-title">' . $title . '</div>
-                    <div class="period">Period: ' . date('d M Y', strtotime($startDate)) . ' - ' . date('d M Y', strtotime($endDate)) . '</div>
-                    
-                    <table class="data-table">
-                        <thead>
-                            <tr>
-                                <th style="width: 9%">Date</th>
-                                <th style="width: 20%">Remarks</th>
-                                <th style="width: 8%">Inv.</th>
-                                <th style="width: 20%">Details</th>
-                                <th style="width: 9%">Dep Date</th>
-                                <th style="width: 11%">Debit</th>
-                                <th style="width: 11%">Credit</th>
-                                <th style="width: 12%">Balance</th>
-                            </tr>
-                        </thead>
-                        <tbody>';
-                
-                // Add table rows with transaction data
-                $rowCount = 0;
-                foreach ($transactions as $transaction) {
-                    $rowCount++;
-                    $rowClass = ($rowCount % 2 == 0) ? 'class="alt-row"' : '';
-                    
-                    // Format the date values properly
-                    $transactionDate = date('d-M-Y', strtotime($transaction['transaction_date']));
-                    
-                    // Format departure date if it's a valid date
-                    $depDate = $transaction['departure_date'];
-                    if ($depDate != 'N/A' && strtotime($depDate)) {
-                        $depDate = date('d-M-Y', strtotime($depDate));
+                case 'word':
+                    // For Word export, we'll use HTML format that MS Word can open
+                    // First, clean output buffer
+                    if (ob_get_length() > 0) {
+                        ob_end_clean();
                     }
                     
-                    $html .= '<tr ' . $rowClass . '>';
-                    $html .= '<td class="text-center">' . $transactionDate . '</td>';
-                    $html .= '<td>' . htmlspecialchars(substr($transaction['remark'], 0, 100)) . '</td>';
-                    $html .= '<td class="text-center">' . htmlspecialchars($transaction['receipt']) . '</td>';
-                    $html .= '<td>' . htmlspecialchars(substr($transaction['name'], 0, 100)) . '</td>';
-                    $html .= '<td class="text-center">' . htmlspecialchars($depDate) . '</td>';
-                    $html .= '<td class="text-right numeric-cell">' . (strtolower($transaction['type']) == 'debit' ? number_format($transaction['amount'], 2) : '') . '</td>';
-                    $html .= '<td class="text-right numeric-cell">' . (strtolower($transaction['type']) == 'credit' ? number_format($transaction['amount'], 2) : '') . '</td>';
-                    $html .= '<td class="text-right numeric-cell">' . number_format($transaction['balance'], 2) . '</td>';
-                    $html .= '</tr>';
-                }
-                
-                $html .= '</tbody>
-                    </table>
+                    // Start fresh output buffer
+                    ob_start();
                     
-                    <div class="summary-container">
-                        <table class="summary-table">
-                            <thead>
-                                <tr>
-                                    <th colspan="2" class="summary-header">STATEMENT SUMMARY</th>
-                                </tr>
-                            </thead>
-                            <tbody>
-                                <tr>
-                                    <td class="summary-label">Period Debit:</td>
-                                    <td class="summary-value">' . number_format($periodDebit, 2) . ' ' . $currency . '</td>
-                                </tr>
-                                <tr>
-                                    <td class="summary-label">Period Credit:</td>
-                                    <td class="summary-value">' . number_format($periodCredit, 2) . ' ' . $currency . '</td>
-                                </tr>
-                                <tr>
-                                    <td class="summary-label">Total Debit:</td>
-                                    <td class="summary-value">' . number_format($totalDebit, 2) . ' ' . $currency . '</td>
-                                </tr>
-                                <tr>
-                                    <td class="summary-label">Total Credit:</td>
-                                    <td class="summary-value">' . number_format($totalCredit, 2) . ' ' . $currency . '</td>
-                                </tr>
-                                <tr class="balance-row">
-                                    <td class="summary-label">Current Balance:</td>
-                                    <td class="summary-value">' . number_format($finalBalance, 2) . ' ' . $currency . '</td>
-                                </tr>
-                            </tbody>
-                        </table>
-                    </div>
-                    
-                    <div class="bank-details">
-                        <div class="bank-header">AUB Bank Account Details</div>
-                        <div class="bank-content">
-                            <div class="account-info">AFN Account: 125502AFS2114097</div>
-                            <div class="account-info">USD Account: 125502USD2112388</div>
-                        </div>
-                    </div>
-                    
-                    <div class="footer">
-                        Generated on ' . date('d F Y') . ' | ' . $companySettings['agency_name'] . ' | This is a computer generated document.
-                    </div>
-                </body>
-                </html>';
-                
-                // Output the HTML as a Word document
-                header('Content-Type: application/msword');
-                header('Content-Disposition: attachment; filename="' . $filename . '"');
-                header('Cache-Control: max-age=0');
-                echo $html;
-                
-                exit();
-
-            } catch (Exception $e) {
-                error_log('Word Export Error: ' . $e->getMessage());
-                throw new Exception('Error generating Word file: ' . $e->getMessage());
-            }
-            break;
-
+                    try {
+                        // Build bank details HTML
+                        $bankDetailsHtml = '';
+                        if (!empty($bankAccounts)) {
+                            foreach ($bankAccounts as $bank) {
+                                $label = !empty($bank['bank_name']) ? $bank['bank_name'] : $bank['name'];
+                                $usd = trim((string)($bank['bank_account_number'] ?? ''));
+                                $afs = trim((string)($bank['bank_account_afs_number'] ?? ''));
+        
+                                $bankDetailsHtml .= '<div class="account-info" style="font-weight: bold; margin-bottom: 5px;">' . htmlspecialchars($label) . '</div>';
+                                if ($usd !== '') {
+                                    $bankDetailsHtml .= '<div class="account-info">USD Account: ' . htmlspecialchars($usd) . '</div>';
+                                }
+                                if ($afs !== '') {
+                                    $bankDetailsHtml .= '<div class="account-info">AFS Account: ' . htmlspecialchars($afs) . '</div>';
+                                }
+                            }
+                        } else {
+                            $bankDetailsHtml = '<div class="account-info">No bank accounts found.</div>';
+                        }
+        
+                        // Prepare logo for embedding in Word document with FIXED dimensions
+                        $logoHtml = '';
+                        if (!empty($branchDetails['logo'] ?? $companySettings['logo'])) {
+                            $logoPath = '../../uploads/logo/' . ($branchDetails['logo'] ?? $companySettings['logo']);
+                            if (file_exists($logoPath)) {
+                                $imageData = file_get_contents($logoPath);
+                                $mimeType = mime_content_type($logoPath);
+                                $base64 = base64_encode($imageData);
+                                // Use FIXED pixel dimensions that Word will respect
+                                $logoHtml = '<img src="data:' . $mimeType . ';base64,' . $base64 . '" width="100" height="60" alt="Logo">';
+                            }
+                        }
+                        
+                        // File name for download
+                        $filename = 'Statement_' . preg_replace('/[^A-Za-z0-9\-]/', '', $entityDetails['name']) . '_' . date('Y-m-d') . '.doc';
+        
+                        // Create HTML document with Word XML namespace for better compatibility
+                        $html = '<html xmlns:o="urn:schemas-microsoft-com:office:office" 
+                               xmlns:w="urn:schemas-microsoft-com:office:word"
+                               xmlns="http://www.w3.org/TR/REC-html40">
+                        <head>
+                            <meta charset="UTF-8">
+                            <title>' . $title . '</title>
+                            <!--[if gte mso 9]>
+                            <xml>
+                                <w:WordDocument>
+                                    <w:View>Print</w:View>
+                                    <w:Zoom>100</w:Zoom>
+                                    <w:DoNotOptimizeForBrowser/>
+                                </w:WordDocument>
+                            </xml>
+                            <![endif]-->
+                            <style>
+                                @page Section1 {
+                                    size: 11.69in 8.27in;
+                                    mso-page-orientation: landscape;
+                                    margin: 0.5in 0.5in 0.5in 0.5in;
+                                    mso-header-margin: 0.5in;
+                                    mso-footer-margin: 0.5in;
+                                }
+                                
+                                div.Section1 {
+                                    page: Section1;
+                                }
+                                
+                                body {
+                                    font-family: Arial, Helvetica, sans-serif;
+                                    margin: 0;
+                                    padding: 0;
+                                    color: #333333;
+                                    background-color: #ffffff;
+                                }
+                                
+                                /* Enhanced Header Styling */
+                                .header-container {
+                                    width: 100%;
+                                    background-color: #F7F9F9;
+                                    border-radius: 10px;
+                                    padding: 15px;
+                                    margin-bottom: 20px;
+                                    border: 1px solid #e0e0e0;
+                                }
+                                
+                                .header {
+                                    width: 100%;
+                                }
+                                
+                                .header-left {
+                                    float: left;
+                                    width: 32%;
+                                    vertical-align: top;
+                                }
+                                
+                                .header-center {
+                                    float: left;
+                                    width: 33%;
+                                    text-align: center;
+                                    vertical-align: middle;
+                                }
+                                
+                                .header-center img {
+                                    width: 100px !important;
+                                    height: 60px !important;
+                                    max-width: 100px !important;
+                                    max-height: 60px !important;
+                                }
+                                
+                                .header-right {
+                                    float: right;
+                                    width: 32%;
+                                    text-align: right;
+                                    vertical-align: top;
+                                }
+                                
+                                .clear {
+                                    clear: both;
+                                }
+                                
+                                .company-name {
+                                    font-size: 16px;
+                                    font-weight: bold;
+                                    color: #0F5132;
+                                    margin-bottom: 5px;
+                                    padding-bottom: 3px;
+                                    border-bottom: 2px solid #0F5132;
+                                }
+        
+                                .branch-name {
+                                    font-size: 14px;
+                                    font-weight: bold;
+                                    color: #0F5132;
+                                    margin-bottom: 12px;
+                                    padding-bottom: 3px;
+                                    border-bottom: 1px solid #0F5132;
+                                }
+                                
+                                .client-name {
+                                    font-size: 16px;
+                                    font-weight: bold;
+                                    color: #0F5132;
+                                    margin-bottom: 12px;
+                                    padding-bottom: 3px;
+                                    border-bottom: 2px solid #0F5132;
+                                }
+                                
+                                .info-text {
+                                    font-size: 11px;
+                                    margin: 4px 0;
+                                    color: #555555;
+                                }
+                                
+                                .label {
+                                    font-weight: bold;
+                                    color: #333333;
+                                }
+                                
+                                .statement-title {
+                                    text-align: center;
+                                    font-size: 16px;
+                                    font-weight: bold;
+                                    color: #0F5132;
+                                    margin: 15px 0;
+                                    padding: 5px;
+                                    background-color: #f0f5f1;
+                                    border-radius: 5px;
+                                }
+                                
+                                .period {
+                                    text-align: center;
+                                    margin-bottom: 12px;
+                                    font-style: italic;
+                                    font-size: 12px;
+                                    color: #666666;
+                                }
+                                
+                                /* Enhanced Table Styling */
+                                table.data-table {
+                                    width: 100%;
+                                    border-collapse: collapse;
+                                    margin-bottom: 20px;
+                                    border: 1px solid #ccc;
+                                }
+                                
+                                table.data-table th {
+                                    background-color: #0F5132;
+                                    color: white;
+                                    font-weight: bold;
+                                    padding: 8px;
+                                    text-align: center;
+                                    border: 1px solid #0a3e26;
+                                    font-size: 11px;
+                                }
+                                
+                                table.data-table td {
+                                    padding: 6px;
+                                    border: 1px solid #ddd;
+                                    font-size: 10px;
+                                }
+                                
+                                .text-center {
+                                    text-align: center;
+                                }
+                                
+                                .text-right {
+                                    text-align: right;
+                                }
+                                
+                                .alt-row {
+                                    background-color: #f2f7f4;
+                                }
+                                
+                                .numeric-cell {
+                                    font-family: "Courier New", Courier, monospace;
+                                    font-weight: normal;
+                                }
+                                
+                                /* Enhanced Summary Table Styling */
+                                .summary-container {
+                                    background-color: #f7f9f9;
+                                    padding: 12px;
+                                    border-radius: 8px;
+                                    margin: 20px 0;
+                                    border: 1px solid #e0e0e0;
+                                }
+                                
+                                .summary-table {
+                                    width: 50%;
+                                    margin: 0 auto;
+                                    border-collapse: collapse;
+                                }
+                                
+                                .summary-header {
+                                    background-color: #0F5132;
+                                    color: white;
+                                    text-align: center;
+                                    font-weight: bold;
+                                    padding: 8px;
+                                    border: 1px solid #0a3e26;
+                                    font-size: 12px;
+                                }
+                                
+                                .summary-label {
+                                    font-weight: bold;
+                                    text-align: right;
+                                    padding: 6px;
+                                    border: 1px solid #ddd;
+                                    background-color: #f9f9f9;
+                                    font-size: 11px;
+                                }
+                                
+                                .summary-value {
+                                    text-align: right;
+                                    padding: 6px;
+                                    border: 1px solid #ddd;
+                                    font-family: "Courier New", Courier, monospace;
+                                    font-size: 11px;
+                                }
+                                
+                                .balance-row .summary-label {
+                                    background-color: #e8f1ee;
+                                }
+                                
+                                .balance-row .summary-value {
+                                    background-color: #e8f1ee;
+                                    font-weight: bold;
+                                }
+                                
+                                /* Enhanced Bank Details Styling */
+                                .bank-details {
+                                    width: 40%;
+                                    margin: 15px auto;
+                                }
+                                
+                                .bank-header {
+                                    background-color: #0F5132;
+                                    color: white;
+                                    text-align: center;
+                                    font-weight: bold;
+                                    padding: 6px;
+                                    border: 1px solid #0a3e26;
+                                    border-radius: 5px 5px 0 0;
+                                    font-size: 11px;
+                                }
+                                
+                                .bank-content {
+                                    border: 1px solid #ddd;
+                                    border-top: none;
+                                    padding: 8px;
+                                    background-color: #f9f9f9;
+                                    border-radius: 0 0 5px 5px;
+                                }
+                                
+                                .account-info {
+                                    padding: 4px 8px;
+                                    font-family: "Courier New", Courier, monospace;
+                                    font-size: 10px;
+                                }
+                                
+                                /* Page Footer */
+                                .footer {
+                                    margin-top: 20px;
+                                    text-align: center;
+                                    font-size: 9px;
+                                    color: #777;
+                                    padding-top: 5px;
+                                    border-top: 1px solid #ddd;
+                                }
+                            </style>
+                        </head>
+                        <body>
+                            <div class="Section1">
+                                <div class="header-container">
+                                    <div class="header">
+                                        <div class="header-left">
+                                            <div class="company-name">' . strtoupper($companySettings['agency_name']) . '</div>
+                                            <div class="branch-name">' . strtoupper($branchDetails['name'] ?? '') . '</div>
+                                            <div class="info-text"><span class="label">Address:</span> ' . ($branchDetails['address'] ?? $companySettings['address']) . '</div>
+                                            <div class="info-text"><span class="label">Phone:</span> ' . ($branchDetails['phone'] ?? $companySettings['phone']) . '</div>
+                                            <div class="info-text"><span class="label">Email:</span> ' . ($branchDetails['email'] ?? $companySettings['email']) . '</div>';
+        
+                        if (!empty($branchDetails['cc_email'] ?? $companySettings['cc_email'])) {
+                            $html .= '<div class="info-text"><span class="label">CC:</span> ' . ($branchDetails['cc_email'] ?? $companySettings['cc_email']) . '</div>';
+                        }
+                        
+                        $html .= '</div>
+                                     
+                                        <div class="header-right">
+                                            <div class="client-name">CLIENT: ' . strtoupper($entityDetails['name'] ?? 'N/A') . '</div>
+                                            <div class="info-text"><span class="label">Address:</span> ' . ($entityDetails['address'] ?? 'N/A') . '</div>
+                                            <div class="info-text"><span class="label">Contact#:</span> ' . ($entityDetails['contact'] ?? $entityDetails['phone'] ?? 'N/A') . '</div>
+                                            <div class="info-text"><span class="label">Email:</span> ' . ($entityDetails['email'] ?? 'N/A') . '</div>
+                                            <div class="info-text"><span class="label">Currency:</span> ' . $currency . '</div>
+                                        </div>
+                                        <div class="clear"></div>
+                                    </div>
+                                </div>
+                                
+                                <div class="statement-title">' . $title . '</div>
+                                <div class="period">Period: ' . date('d M Y', strtotime($startDate)) . ' - ' . date('d M Y', strtotime($endDate)) . '</div>
+                                
+                                <table class="data-table">
+                                    <thead>
+                                        <tr>
+                                            <th style="width: 9%">Date</th>
+                                            <th style="width: 20%">Remarks</th>
+                                            <th style="width: 8%">Inv.</th>
+                                            <th style="width: 20%">Details</th>
+                                            <th style="width: 9%">Dep Date</th>
+                                            <th style="width: 11%">Debit</th>
+                                            <th style="width: 11%">Credit</th>
+                                            <th style="width: 12%">Balance</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody>';
+                        
+                        // Add table rows with transaction data
+                        $rowCount = 0;
+                        foreach ($transactions as $transaction) {
+                            $rowCount++;
+                            $rowClass = ($rowCount % 2 == 0) ? 'class="alt-row"' : '';
+                            
+                            // Format the date values properly
+                            $transactionDate = date('d-M-Y', strtotime($transaction['transaction_date']));
+                            
+                            // Format departure date if it's a valid date
+                            $depDate = $transaction['departure_date'];
+                            if ($depDate != 'N/A' && strtotime($depDate)) {
+                                $depDate = date('d-M-Y', strtotime($depDate));
+                            }
+                            
+                            $html .= '<tr ' . $rowClass . '>';
+                            $html .= '<td class="text-center">' . $transactionDate . '</td>';
+                            $html .= '<td>' . htmlspecialchars(substr($transaction['remark'], 0, 100)) . '</td>';
+                            $html .= '<td class="text-center">' . htmlspecialchars($transaction['receipt']) . '</td>';
+                            $html .= '<td>' . htmlspecialchars(substr($transaction['name'], 0, 100)) . '</td>';
+                            $html .= '<td class="text-center">' . htmlspecialchars($depDate) . '</td>';
+                            $html .= '<td class="text-right numeric-cell">' . (strtolower($transaction['type']) == 'debit' ? number_format($transaction['amount'], 2) : '') . '</td>';
+                            $html .= '<td class="text-right numeric-cell">' . (strtolower($transaction['type']) == 'credit' ? number_format($transaction['amount'], 2) : '') . '</td>';
+                            $html .= '<td class="text-right numeric-cell">' . number_format($transaction['balance'], 2) . '</td>';
+                            $html .= '</tr>';
+                        }
+                        
+                        $html .= '</tbody>
+                                </table>
+                                
+                                <div class="summary-container">
+                                    <table class="summary-table">
+                                        <thead>
+                                            <tr>
+                                                <th colspan="2" class="summary-header">STATEMENT SUMMARY</th>
+                                            </tr>
+                                        </thead>
+                                        <tbody>
+                                            <tr>
+                                                <td class="summary-label">Period Debit:</td>
+                                                <td class="summary-value">' . number_format($periodDebit, 2) . ' ' . $currency . '</td>
+                                            </tr>
+                                            <tr>
+                                                <td class="summary-label">Period Credit:</td>
+                                                <td class="summary-value">' . number_format($periodCredit, 2) . ' ' . $currency . '</td>
+                                            </tr>
+                                            <tr>
+                                                <td class="summary-label">Total Debit:</td>
+                                                <td class="summary-value">' . number_format($totalDebit, 2) . ' ' . $currency . '</td>
+                                            </tr>
+                                            <tr>
+                                                <td class="summary-label">Total Credit:</td>
+                                                <td class="summary-value">' . number_format($totalCredit, 2) . ' ' . $currency . '</td>
+                                            </tr>
+                                            <tr class="balance-row">
+                                                <td class="summary-label">Current Balance:</td>
+                                                <td class="summary-value">' . number_format($finalBalance, 2) . ' ' . $currency . '</td>
+                                            </tr>
+                                        </tbody>
+                                    </table>
+                                </div>
+                                
+                                <div class="bank-details">
+                                    <div class="bank-header">Bank Account Details</div>
+                                    <div class="bank-content">
+                                        ' . $bankDetailsHtml . '
+                                    </div>
+                                </div>
+                                
+                                <div class="footer">
+                                    Generated on ' . date('d F Y') . ' | ' . ($branchDetails['name'] ?? $companySettings['agency_name']) . ' | This is a computer generated document.
+                                </div>
+                            </div>
+                        </body>
+                        </html>';
+                        
+                        // Output the HTML as a Word document
+                        header('Content-Type: application/msword');
+                        header('Content-Disposition: attachment; filename="' . $filename . '"');
+                        header('Cache-Control: max-age=0');
+                        echo $html;
+                        
+                        exit();
+        
+                    } catch (Exception $e) {
+                        error_log('Word Export Error: ' . $e->getMessage());
+                        throw new Exception('Error generating Word file: ' . $e->getMessage());
+                    }
+                    break;
         default:
             throw new Exception('Invalid format specified');
     }
