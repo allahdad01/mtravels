@@ -407,7 +407,7 @@ try {
                         $query = "SELECT u.passport_number as pnr, u.name as passenger_name,
                                   u.entry_date as issue_date, u.sold_price as total_amount, u.duration as status
                                   FROM umrah_bookings u
-                                  INNER JOIN umrah_booking_services ubs ON u.id = ubs.booking_id
+                                  INNER JOIN umrah_booking_services ubs ON u.booking_id = ubs.booking_id
                                   WHERE ubs.supplier_id = ? AND u.entry_date BETWEEN ? AND ? AND u.tenant_id = ?";
                         $params = [$entity, $startDate, $endDate, $tenant_id];
 
