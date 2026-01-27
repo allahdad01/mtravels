@@ -21,6 +21,7 @@ $ticketId = isset($_GET['id']) ? intval($_GET['id']) : 0;
 $ticketData = null;
 $refundData = null;
 $dateChangeData = null;
+$weightData = null;
 $clientTransactions = [];
 $supplierTransactions = [];
 $mainAccountTransactions = [];
@@ -64,6 +65,12 @@ if (!$ticketId) {
         $stmt = $pdo->prepare($dateChangeQuery);
         $stmt->execute([$ticketId, $tenant_id, $branch_id]);
         $dateChangeData = $stmt->fetch(PDO::FETCH_ASSOC);
+
+        // Get weight information if exists
+        $weightQuery = "SELECT * FROM ticket_weights WHERE ticket_id = ? AND tenant_id = ? AND branch_id = ? LIMIT 1";
+        $stmt = $pdo->prepare($weightQuery);
+        $stmt->execute([$ticketId, $tenant_id, $branch_id]);
+        $weightData = $stmt->fetch(PDO::FETCH_ASSOC);
         
         // Get main account transactions related to this ticket
         $mainAccountTransQuery = "SELECT
@@ -77,7 +84,7 @@ if (!$ticketId) {
                 mat.created_at AS transaction_date
             FROM main_account_transactions mat
             WHERE (mat.reference_id = ? AND mat.tenant_id = ? AND mat.branch_id = ? AND (mat.transaction_of = 'ticket_sale' OR
-                  mat.transaction_of = 'ticket_refund' OR mat.transaction_of = 'date_change'))
+                  mat.transaction_of = 'ticket_refund' OR mat.transaction_of = 'date_change' OR mat.transaction_of = 'weight'))
             ORDER BY mat.created_at DESC";
 
         $stmt = $pdo->prepare($mainAccountTransQuery);
@@ -96,7 +103,7 @@ if (!$ticketId) {
                 ct.created_at AS transaction_date
             FROM client_transactions ct
             WHERE (ct.reference_id = ? AND ct.tenant_id = ? AND ct.branch_id = ? AND (ct.transaction_of = 'ticket_sale' OR
-                  ct.transaction_of = 'ticket_refund' OR ct.transaction_of = 'date_change'))
+                  ct.transaction_of = 'ticket_refund' OR ct.transaction_of = 'date_change' OR ct.transaction_of = 'weight'))
             ORDER BY ct.created_at DESC";
 
         $stmt = $pdo->prepare($clientTransQuery);
@@ -114,7 +121,7 @@ if (!$ticketId) {
                 st.transaction_date
             FROM supplier_transactions st
             WHERE (st.reference_id = ? AND st.tenant_id = ? AND st.branch_id = ? AND (st.transaction_of = 'ticket_sale' OR
-                  st.transaction_of = 'ticket_refund' OR st.transaction_of = 'date_change'))
+                  st.transaction_of = 'ticket_refund' OR st.transaction_of = 'date_change' OR st.transaction_of = 'weight'))
             ORDER BY st.transaction_date DESC";
 
         $stmt = $pdo->prepare($supplierTransQuery);
@@ -127,56 +134,229 @@ if (!$ticketId) {
 include '../includes/header.php';
 ?>
 <style>
-/* Apply gradient background to card headers matching the sidebar */
+/* Enhanced custom styles for better layout and design */
+.page-header.card {
+    background: linear-gradient(135deg, #4099ff 0%, #2ed8b6 100%);
+    color: #ffffff;
+    border: none;
+    margin-bottom: 20px;
+    padding: 20px !important;
+    box-shadow: 0 4px 12px rgba(0,0,0,0.15);
+    border-radius: 10px;
+}
+
+.page-header.card .row {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+}
+
+.page-header.card h5 {
+    color: #ffffff;
+    margin: 0;
+    font-weight: 600;
+}
+
+.page-header.card .text-end {
+    text-align: right;
+}
+
+.page-header.card .btn {
+    background: rgba(255,255,255,0.2);
+    color: #ffffff;
+    border: 1px solid rgba(255,255,255,0.3);
+    border-radius: 25px;
+    transition: all 0.3s ease;
+}
+
+.page-header.card .btn:hover {
+    background: rgba(255,255,255,0.3);
+    border-color: rgba(255,255,255,0.5);
+    transform: translateY(-1px);
+}
+
+.card {
+    border-radius: 10px;
+    box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+    transition: transform 0.2s ease-in-out, box-shadow 0.2s ease-in-out;
+    border: none;
+}
+
+.card:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 4px 16px rgba(0,0,0,0.15);
+}
+
 .card-header {
-    background: linear-gradient(135deg, #4099ff 0%, #2ed8b6 100%) !important;
-    color: #ffffff !important;
-    border-bottom: none !important;
+    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    color: white;
+    border-radius: 10px 10px 0 0;
+    padding: 1rem 1.5rem;
+    border: none;
 }
 
 .card-header h5 {
-    color: #ffffff !important;
-    margin-bottom: 0 !important;
+    margin: 0;
+    font-weight: 600;
+    display: flex;
+    align-items: center;
 }
 
-.card-header .card-header-right {
-    color: #ffffff !important;
+.progress {
+    border-radius: 15px;
+    overflow: hidden;
+    box-shadow: inset 0 1px 2px rgba(0,0,0,0.1);
 }
 
-.card-header .card-header-right .btn {
-    color: #ffffff !important;
-    border-color: rgba(255, 255, 255, 0.3) !important;
+.progress-bar {
+    transition: width 0.6s ease;
 }
 
-.card-header .card-header-right .btn:hover {
-    background: rgba(255, 255, 255, 0.1) !important;
-    border-color: rgba(255, 255, 255, 0.5) !important;
+.t {
+    font-size: 0.85em;
+    padding: 0.5em 0.75em;
+    border-radius: 20px;
+    font-weight: 500;
+}
+
+.badge-success {
+    background-color: #28a745;
+}
+
+.badge-warning {
+    background-color: #ffc107;
+    color: #212529;
+}
+
+.badge-info {
+    background-color: #17a2b8;
+}
+
+.badge-danger {
+    background-color: #dc3545;
+}
+
+.badge-primary {
+    background-color: #007bff;
+}
+
+.table-responsive {
+    border-radius: 10px;
+
+}
+
+.table {
+    margin-bottom: 0;
+}
+
+.table thead th {
+    background-color: #f8f9fa;
+    border-bottom: 2px solid #dee2e6;
+    font-weight: 600;
+    color: #495057;
+    padding: 1rem;
+}
+
+.table tbody tr:hover {
+    background-color: #f1f3f4;
+}
+
+.table tbody td {
+    padding: 1rem;
+    vertical-align: middle;
+}
+
+.form-control {
+    border-radius: 8px;
+    border: 1px solid #ced4da;
+    transition: border-color 0.15s ease-in-out, box-shadow 0.15s ease-in-out;
+    padding: 0.75rem;
+}
+
+.form-control:focus {
+    border-color: #4099ff;
+    box-shadow: 0 0 0 0.2rem rgba(64, 153, 255, 0.25);
+}
+
+.btn-primary {
+    background: linear-gradient(135deg, #4099ff 0%, #2ed8b6 100%);
+    border: none;
+    border-radius: 25px;
+    padding: 0.75rem 2rem;
+    font-weight: 600;
+    transition: all 0.3s ease;
+}
+
+.btn-primary:hover {
+    transform: translateY(-1px);
+    box-shadow: 0 4px 12px rgba(64, 153, 255, 0.3);
+}
+
+.btn-secondary {
+    border-radius: 25px;
+    padding: 0.75rem 2rem;
+    font-weight: 600;
+    transition: all 0.3s ease;
+}
+
+.alert {
+    border-radius: 10px;
+    border: none;
+    padding: 1rem 1.5rem;
+}
+
+.alert-danger {
+    background: linear-gradient(135deg, #f8d7da 0%, #f5c6cb 100%);
+    color: #721c24;
+}
+
+.alert-info {
+    background: linear-gradient(135deg, #d1ecf1 0%, #bee5eb 100%);
+    color: #0c5460;
+}
+
+.h2 {
+    font-size: 2.5rem;
+}
+
+.h4 {
+    font-size: 1.5rem;
+}
+
+.h5 {
+    font-size: 1.25rem;
+}
+
+.h6 {
+    font-size: 1rem;
 }
 </style>
 <div class="pcoded-main-container">
-    <div class="pcoded-content">
-        <div class="page-header">
-            <div class="page-block">
-                <div class="row align-items-center">
-                    <div class="col-md-12">
-                        <div class="page-header-title">
-                            <h5 class="m-b-10"><?= __('ticket_details') ?></h5>
-                        </div>
-                        <ul class="breadcrumb">
-                            <li class="breadcrumb-item"><a href="index.php"><i class="feather icon-home"></i></a></li>
-                            <li class="breadcrumb-item"><a href="search.php"><?= __('search') ?></a></li>
-                            <li class="breadcrumb-item"><a href="javascript:"><?= __('ticket_details') ?></a></li>
-                        </ul>
-                    </div>
-                </div>
-            </div>
-        </div>
+    <div class="pcoded-wrapper">
+        <div class="pcoded-content">
+            <div class="pcoded-inner-content">
+                <div class="main-body">
+                    <div class="page-wrapper">
+                        <!-- [ Main Content ] start -->
+                        <div class="main-content">
+                            <div class="page-header card">
+                                <div class="row align-items-center">
+                                    <div class="col-md-6">
+                                        <h5 class="mb-0"><i class="feather icon-file-text mr-2"></i><?php echo __('ticket_details'); ?></h5>
+                                        <p class="mb-0 mt-1" style="font-size: 14px; opacity: 0.9;"><?php echo __('view_ticket_information'); ?></p>
+                                    </div>
+                                    <div class="col-md-6 text-end">
+                                        <a href="search.php" class="btn btn-outline-secondary btn-sm">
+                                            <i class="feather icon-arrow-left mr-1"></i><?php echo __('back_to_search'); ?>
+                                        </a>
+                                    </div>
+                                </div>
+                            </div>
 
         <div class="row">
             <div class="col-md-12">
                 <?php if ($error): ?>
                     <div class="alert alert-danger"><?php echo h($error); ?></div>
-                    <a href="search.php" class="btn btn-primary"><?= __('back_to_search') ?></a>
                 <?php else: ?>
                     <!-- Ticket Information Card -->
                     <div class="card">
@@ -185,11 +365,11 @@ include '../includes/header.php';
                                 <i class="feather icon-file-text mr-2"></i>
                                 <?= __('ticket_information') ?>
                                 <span class="float-right">
-                                    <span class="badge-<?php 
-                                        if ($ticketData['status'] == 'Paid') echo 'success';
-                                        elseif ($ticketData['status'] == 'Borrowed') echo 'warning';
-                                        elseif ($ticketData['status'] == 'Date Changed') echo 'primary';
-                                        elseif ($ticketData['status'] == 'Refunded') echo 'danger';
+                                    <span class="t <?php
+                                        if ($ticketData['status'] == 'Paid') echo 'badge-success';
+                                        elseif ($ticketData['status'] == 'Borrowed') echo 'badge-warning';
+                                        elseif ($ticketData['status'] == 'Date Changed') echo 'badge-primary';
+                                        elseif ($ticketData['status'] == 'Refunded') echo 'badge-danger';
                                     ?>">
                                         <?php echo h($ticketData['status']); ?>
                                     </span>
@@ -204,7 +384,7 @@ include '../includes/header.php';
                                             <th><?= __('passenger_name') ?></th>
                                             <td>
                                                 <?php echo htmlspecialchars($ticketData['title'] . ' ' . $ticketData['passenger_name']); ?>
-                                                <span class="badge-info"><?php echo h($ticketData['gender']); ?></span>
+                                                <span class="t badge-info"><?php echo h($ticketData['gender']); ?></span>
                                             </td>
                                         </tr>
                                         <tr>
@@ -327,9 +507,9 @@ include '../includes/header.php';
                                         <tr>
                                             <th><?= __('status') ?></th>
                                             <td>
-                                                <span class="badge-<?php 
-                                                    echo ($refundData['status'] == 'Refunded') ? 'success' : 
-                                                        (($refundData['status'] == 'Pending') ? 'warning' : 'danger'); 
+                                                <span class="t badge-<?php
+                                                    echo ($refundData['status'] == 'Refunded') ? 'success' :
+                                                        (($refundData['status'] == 'Pending') ? 'warning' : 'danger');
                                                 ?>">
                                                     <?php echo h($refundData['status']); ?>
                                                 </span>
@@ -389,9 +569,9 @@ include '../includes/header.php';
                                         <tr>
                                             <th><?= __('status') ?></th>
                                             <td>
-                                                <span class="badge-<?php 
-                                                    echo ($dateChangeData['status'] == 'Refunded') ? 'success' : 
-                                                        (($dateChangeData['status'] == 'Pending') ? 'warning' : 'danger'); 
+                                                <span class="t badge-<?php
+                                                    echo ($dateChangeData['status'] == 'Refunded') ? 'success' :
+                                                        (($dateChangeData['status'] == 'Pending') ? 'warning' : 'danger');
                                                 ?>">
                                                     <?php echo h($dateChangeData['status']); ?>
                                                 </span>
@@ -419,6 +599,61 @@ include '../includes/header.php';
                                 <div class="col-md-12 mt-2">
                                     <div class="alert alert-secondary">
                                         <strong><?= __('remarks') ?>:</strong> <?php echo nl2br(htmlspecialchars($dateChangeData['remarks'])); ?>
+                                    </div>
+                                </div>
+                                <?php endif; ?>
+                            </div>
+                        </div>
+                    </div>
+                    <?php endif; ?>
+
+                    <?php if ($weightData): ?>
+                    <div class="card border-info">
+                        <div class="card-header bg-info text-white">
+                            <h5 class="mb-0"><i class="feather icon-package mr-2"></i><?php echo __('weight_information'); ?></h5>
+                        </div>
+                        <div class="card-body">
+                            <div class="row">
+                                <div class="col-md-6">
+                                    <table class="table table-sm">
+                                        <tr>
+                                            <th><?php echo __('weight'); ?></th>
+                                            <td><?php echo number_format($weightData['weight'] ?? 0, 2); ?> kg</td>
+                                        </tr>
+                                        <tr>
+                                            <th><?php echo __('base_price'); ?></th>
+                                            <td><?php echo htmlspecialchars($ticketData['currency'] ?? 'N/A'); ?> <?php echo number_format($weightData['base_price'] ?? 0, 2); ?></td>
+                                        </tr>
+                                        <tr>
+                                            <th><?php echo __('sold_price'); ?></th>
+                                            <td><?php echo htmlspecialchars($ticketData['currency'] ?? 'N/A'); ?> <?php echo number_format($weightData['sold_price'] ?? 0, 2); ?></td>
+                                        </tr>
+                                    </table>
+                                </div>
+                                <div class="col-md-6">
+                                    <table class="table table-sm">
+                                        <tr>
+                                            <th><?php echo __('profit'); ?></th>
+                                            <td><?php echo htmlspecialchars($ticketData['currency'] ?? 'N/A'); ?> <?php echo number_format($weightData['profit'] ?? 0, 2); ?></td>
+                                        </tr>
+                                        <?php if (!empty($weightData['exchange_rate'])): ?>
+                                        <tr>
+                                            <th><?php echo __('exchange_rate'); ?></th>
+                                            <td><?php echo number_format($weightData['exchange_rate'], 2); ?></td>
+                                        </tr>
+                                        <?php endif; ?>
+                                        <?php if (!empty($weightData['market_exchange_rate'])): ?>
+                                        <tr>
+                                            <th><?php echo __('market_exchange_rate'); ?></th>
+                                            <td><?php echo number_format($weightData['market_exchange_rate'], 2); ?></td>
+                                        </tr>
+                                        <?php endif; ?>
+                                    </table>
+                                </div>
+                                <?php if (!empty($weightData['remarks'])): ?>
+                                <div class="col-md-12 mt-2">
+                                    <div class="alert alert-secondary">
+                                        <strong><?php echo __('remarks'); ?>:</strong> <?php echo nl2br(htmlspecialchars($weightData['remarks'])); ?>
                                     </div>
                                 </div>
                                 <?php endif; ?>
@@ -464,16 +699,18 @@ include '../includes/header.php';
                                                 <tr>
                                                     <td><?php echo date('Y-m-d', strtotime($transaction['transaction_date'])); ?></td>
                                                     <td>
-                                                        <span class="badge-<?php 
+                                                        <span class="t badge-<?php
                                                         if ($transaction['transaction_of'] == 'ticket_sale') echo 'info';
                                                         elseif ($transaction['transaction_of'] == 'ticket_refund') echo 'warning';
                                                         elseif ($transaction['transaction_of'] == 'date_change') echo 'dark';
+                                                        elseif ($transaction['transaction_of'] == 'weight') echo 'primary';
                                                         else echo 'secondary';
                                                         ?>">
                                                             <?php 
                                                             if ($transaction['transaction_of'] == 'ticket_sale') echo __('sale');
                                                             elseif ($transaction['transaction_of'] == 'ticket_refund') echo __('refund');
                                                             elseif ($transaction['transaction_of'] == 'date_change') echo __('date_change');
+                                                            elseif ($transaction['transaction_of'] == 'weight') echo __('weight');
                                                             else echo ucfirst($transaction['transaction_of']);
                                                             ?>
                                                         </span>
@@ -514,16 +751,17 @@ include '../includes/header.php';
                                                 <tr>
                                                     <td><?php echo date('Y-m-d', strtotime($transaction['transaction_date'])); ?></td>
                                                     <td>
-                                                        <span class="badge-<?php 
+                                                        <span class="t badge-<?php
                                                         if ($transaction['transaction_of'] == 'ticket_sale') echo 'info';
                                                         elseif ($transaction['transaction_of'] == 'ticket_refund') echo 'warning';
                                                         elseif ($transaction['transaction_of'] == 'date_change') echo 'dark';
                                                         else echo 'secondary';
                                                         ?>">
-                                                            <?php 
+                                                            <?php
                                                             if ($transaction['transaction_of'] == 'ticket_sale') echo __('sale');
                                                             elseif ($transaction['transaction_of'] == 'ticket_refund') echo __('refund');
                                                             elseif ($transaction['transaction_of'] == 'date_change') echo __('date_change');
+                                                            elseif ($transaction['transaction_of'] == 'weight') echo __('weight');
                                                             else echo ucfirst($transaction['transaction_of']);
                                                             ?>
                                                         </span>
@@ -564,16 +802,17 @@ include '../includes/header.php';
                                                 <tr>
                                                     <td><?php echo date('Y-m-d', strtotime($transaction['transaction_date'])); ?></td>
                                                     <td>
-                                                        <span class="badge-<?php 
+                                                        <span class="t badge-<?php
                                                         if ($transaction['transaction_of'] == 'ticket_sale') echo 'info';
                                                         elseif ($transaction['transaction_of'] == 'ticket_refund') echo 'warning';
                                                         elseif ($transaction['transaction_of'] == 'date_change') echo 'dark';
                                                         else echo 'secondary';
                                                         ?>">
-                                                            <?php 
+                                                            <?php
                                                             if ($transaction['transaction_of'] == 'ticket_sale') echo __('sale');
                                                             elseif ($transaction['transaction_of'] == 'ticket_refund') echo __('refund');
                                                             elseif ($transaction['transaction_of'] == 'date_change') echo __('date_change');
+                                                            elseif ($transaction['transaction_of'] == 'weight') echo __('weight');
                                                             else echo ucfirst($transaction['transaction_of']);
                                                             ?>
                                                         </span>
@@ -597,31 +836,25 @@ include '../includes/header.php';
                             </div>
                         </div>
                     </div>
-                    
-                    <!-- Action Buttons -->
-                    <div class="row mb-4">
-                        <div class="col-md-12">
-                            <a href="search.php" class="btn btn-secondary">
-                                <i class="feather icon-arrow-left mr-1"></i> <?= __('back_to_search') ?>
-                            </a>
-                            
+
+                <?php endif; ?>
+            </div>
+        </div>
+                            </div>
                         </div>
                     </div>
-                    
-                    
-                <?php endif; ?>
+                </div>
             </div>
         </div>
     </div>
 </div>
 
-                            <!-- Required Js -->
-    <script src="../assets/js/vendor-all.min.js"></script>
-    <script src="../assets/plugins/bootstrap/js/bootstrap.min.js"></script>
-    <script src="../assets/js/pcoded.min.js"></script>
-
+<!-- Required Js -->
+<script src="../assets/js/vendor-all.min.js"></script>
+<script src="../assets/plugins/bootstrap/js/bootstrap.min.js"></script>
+<script src="../assets/js/pcoded.min.js"></script>
 
 <?php
 // Include the footer
 include '../includes/admin_footer.php';
-?> 
+?>

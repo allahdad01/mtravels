@@ -224,11 +224,11 @@ try {
         $sold = floatval($row['total_amount']);
         // Query transactions
         if ($transactionOf) {
-            $transStmt = $pdo->prepare("SELECT * FROM $transactionTable WHERE $referenceField = ? AND transaction_of = ?");
-            $transStmt->execute([$row['id'], $transactionOf]);
+            $transStmt = $pdo->prepare("SELECT * FROM $transactionTable WHERE $referenceField = ? AND transaction_of = ? AND tenant_id = ? AND branch_id = ?");
+            $transStmt->execute([$row['id'], $transactionOf, $tenant_id, $branch_id]);
         } else {
-            $transStmt = $pdo->prepare("SELECT * FROM $transactionTable WHERE $referenceField = ?");
-            $transStmt->execute([$row['id']]);
+            $transStmt = $pdo->prepare("SELECT * FROM $transactionTable WHERE $referenceField = ? AND tenant_id = ? AND branch_id = ?");
+            $transStmt->execute([$row['id'], $tenant_id, $branch_id]);
         }
         $transactions = $transStmt->fetchAll(PDO::FETCH_ASSOC);
         // Collect rates

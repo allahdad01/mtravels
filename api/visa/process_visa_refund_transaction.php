@@ -144,11 +144,11 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 
         $notifStmt = $pdo->prepare("
             INSERT INTO notifications 
-            (tenant_id, transaction_id, transaction_type, message, recipient_role, status, created_at) 
-            VALUES (?, ?, 'visa_refund', ?, 'Admin', 'Unread', NOW())
+            (tenant_id, transaction_id, transaction_type, message, recipient_role, status, created_at, branch_id) 
+            VALUES (?, ?, 'visa_refund', ?, 'Admin', 'Unread', NOW(), ?)
         ");
        
-        if (!$notifStmt->execute([$tenant_id, $transaction_id, $notificationMessage])) {
+        if (!$notifStmt->execute([$tenant_id, $transaction_id, $notificationMessage, $branch_id])) {
             throw new Exception("Failed to create notification");
         }
 

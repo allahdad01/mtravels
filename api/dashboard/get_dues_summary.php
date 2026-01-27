@@ -154,8 +154,8 @@ try {
             $baseCurrency = $row['currency'];
             $sold = floatval($row['sold']);
             // Query transactions
-            $transStmt = $pdo->prepare("SELECT * FROM main_account_transactions WHERE transaction_of = 'ticket_sale' AND reference_id = ?");
-            $transStmt->execute([$row['id']]);
+            $transStmt = $pdo->prepare("SELECT * FROM main_account_transactions WHERE transaction_of = 'ticket_sale' AND reference_id = ? AND tenant_id = ? AND branch_id = ?");
+            $transStmt->execute([$row['id'], $tenant_id, $branch_id]);
             $transactions = $transStmt->fetchAll(PDO::FETCH_ASSOC);
             // Collect rates
             $rates = ['AFS' => 1.0, 'USD' => 1.0, 'EUR' => 1.0, 'DARHAM' => 1.0, 'DAR' => 1.0];
@@ -200,8 +200,8 @@ try {
             $baseCurrency = $row['currency'];
             $sold = floatval($row['sold']);
             // Query transactions
-            $transStmt = $pdo->prepare("SELECT * FROM main_account_transactions WHERE transaction_of = 'ticket_reserve' AND reference_id = ?");
-            $transStmt->execute([$row['id']]);
+            $transStmt = $pdo->prepare("SELECT * FROM main_account_transactions WHERE transaction_of = 'ticket_reserve' AND reference_id = ? AND tenant_id = ? AND branch_id = ?");
+            $transStmt->execute([$row['id'], $tenant_id, $branch_id]);
             $transactions = $transStmt->fetchAll(PDO::FETCH_ASSOC);
             // Collect rates
             $rates = ['AFS' => 1.0, 'USD' => 1.0, 'EUR' => 1.0, 'DARHAM' => 1.0, 'DAR' => 1.0];
@@ -247,8 +247,8 @@ try {
             $baseCurrency = $row['currency'];
             $sold = floatval($row['sold_price']);
             // Query transactions
-            $transStmt = $pdo->prepare("SELECT * FROM main_account_transactions WHERE transaction_of = 'weight' AND reference_id = ?");
-            $transStmt->execute([$row['id']]);
+            $transStmt = $pdo->prepare("SELECT * FROM main_account_transactions WHERE transaction_of = 'weight' AND reference_id = ? AND tenant_id = ? AND branch_id = ?");
+            $transStmt->execute([$row['id'], $tenant_id, $branch_id]);
             $transactions = $transStmt->fetchAll(PDO::FETCH_ASSOC);
             // Collect rates
             $rates = ['AFS' => 1.0, 'USD' => 1.0, 'EUR' => 1.0, 'DARHAM' => 1.0, 'DAR' => 1.0];
@@ -294,8 +294,8 @@ try {
             $baseCurrency = $row['currency'];
             $sold = floatval($row['total_amount']);
             // Query transactions
-            $transStmt = $pdo->prepare("SELECT * FROM main_account_transactions WHERE transaction_of = 'date_change' AND reference_id = ?");
-            $transStmt->execute([$row['id']]);
+            $transStmt = $pdo->prepare("SELECT * FROM main_account_transactions WHERE transaction_of = 'date_change' AND reference_id = ? AND tenant_id = ? AND branch_id = ?");
+            $transStmt->execute([$row['id'], $tenant_id, $branch_id]);
             $transactions = $transStmt->fetchAll(PDO::FETCH_ASSOC);
             // Collect rates
             $rates = ['AFS' => 1.0, 'USD' => 1.0, 'EUR' => 1.0, 'DARHAM' => 1.0, 'DAR' => 1.0];
@@ -341,8 +341,8 @@ try {
             $baseCurrency = $row['currency'];
             $sold = floatval($row['total_amount']);
             // Query transactions
-            $transStmt = $pdo->prepare("SELECT * FROM main_account_transactions WHERE transaction_of = 'ticket_refund' AND reference_id = ?");
-            $transStmt->execute([$row['id']]);
+            $transStmt = $pdo->prepare("SELECT * FROM main_account_transactions WHERE transaction_of = 'ticket_refund' AND reference_id = ? AND tenant_id = ? AND branch_id = ?");
+            $transStmt->execute([$row['id'], $tenant_id, $branch_id]);
             $transactions = $transStmt->fetchAll(PDO::FETCH_ASSOC);
             // Collect rates
             $rates = ['AFS' => 1.0, 'USD' => 1.0, 'EUR' => 1.0, 'DARHAM' => 1.0, 'DAR' => 1.0];
@@ -388,8 +388,8 @@ try {
             $baseCurrency = $row['currency'];
             $sold = floatval($row['sold_price']);
             // Query transactions
-            $transStmt = $pdo->prepare("SELECT * FROM umrah_transactions WHERE umrah_booking_id = ?");
-            $transStmt->execute([$row['booking_id']]);
+            $transStmt = $pdo->prepare("SELECT * FROM umrah_transactions WHERE umrah_booking_id = ? AND tenant_id = ? AND branch_id = ?");
+            $transStmt->execute([$row['booking_id'], $tenant_id, $branch_id]);
             $transactions = $transStmt->fetchAll(PDO::FETCH_ASSOC);
             // Collect rates
             $rates = ['AFS' => 1.0, 'USD' => 1.0, 'EUR' => 1.0, 'DARHAM' => 1.0, 'DAR' => 1.0];
@@ -435,8 +435,8 @@ try {
             $baseCurrency = $row['currency'];
             $sold = floatval($row['sold']);
             // Query transactions
-            $transStmt = $pdo->prepare("SELECT * FROM main_account_transactions WHERE transaction_of = 'visa_sale' AND reference_id = ?");
-            $transStmt->execute([$row['id']]);
+            $transStmt = $pdo->prepare("SELECT * FROM main_account_transactions WHERE transaction_of = 'visa_sale' AND reference_id = ? AND tenant_id = ? AND branch_id = ?");
+            $transStmt->execute([$row['id'], $tenant_id, $branch_id]);
             $transactions = $transStmt->fetchAll(PDO::FETCH_ASSOC);
             // Collect rates
             $rates = ['AFS' => 1.0, 'USD' => 1.0, 'EUR' => 1.0, 'DARHAM' => 1.0, 'DAR' => 1.0];
@@ -482,8 +482,8 @@ try {
             $baseCurrency = $row['currency'];
             $sold = floatval($row['sold_amount']);
             // Query transactions
-            $transStmt = $pdo->prepare("SELECT * FROM main_account_transactions WHERE transaction_of = 'hotel' AND reference_id = ?");
-            $transStmt->execute([$row['id']]);
+            $transStmt = $pdo->prepare("SELECT * FROM main_account_transactions WHERE transaction_of = 'hotel' AND reference_id = ? AND tenant_id = ? AND branch_id = ?");
+            $transStmt->execute([$row['id'], $tenant_id, $branch_id]);
             $transactions = $transStmt->fetchAll(PDO::FETCH_ASSOC);
             // Collect rates
             $rates = ['AFS' => 1.0, 'USD' => 1.0, 'EUR' => 1.0, 'DARHAM' => 1.0, 'DAR' => 1.0];
@@ -529,8 +529,8 @@ try {
             $baseCurrency = $row['currency'];
             $sold = floatval($row['sold_amount']);
             // Query transactions
-            $transStmt = $pdo->prepare("SELECT * FROM main_account_transactions WHERE transaction_of = 'additional_payment' AND reference_id = ?");
-            $transStmt->execute([$row['id']]);
+            $transStmt = $pdo->prepare("SELECT * FROM main_account_transactions WHERE transaction_of = 'additional_payment' AND reference_id = ? AND tenant_id = ? AND branch_id = ?");
+            $transStmt->execute([$row['id'], $tenant_id, $branch_id]);
             $transactions = $transStmt->fetchAll(PDO::FETCH_ASSOC);
             // Collect rates
             $rates = ['AFS' => 1.0, 'USD' => 1.0, 'EUR' => 1.0, 'DARHAM' => 1.0, 'DAR' => 1.0];

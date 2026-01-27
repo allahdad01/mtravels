@@ -104,9 +104,11 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             throw new Exception("Adjustment would result in negative debtor balance");
         }
         
-        $stmt = $pdo->prepare("UPDATE debtors SET balance = ? WHERE id = ?");
+        $stmt = $pdo->prepare("UPDATE debtors SET balance = ? WHERE id = ? AND tenant_id = ? AND branch_id = ?");
         $stmt->bindParam(1, $newDebtorBalance, PDO::PARAM_STR);
         $stmt->bindParam(2, $debtorId, PDO::PARAM_INT);
+        $stmt->bindParam(3, $tenant_id, PDO::PARAM_INT);
+        $stmt->bindParam(4, $branch_id, PDO::PARAM_INT);
         $stmt->execute();
         
         // Update the debtor transaction

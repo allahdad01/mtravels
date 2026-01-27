@@ -303,12 +303,15 @@ $plans = $stmt->fetchAll();
                                                         <td><?= htmlspecialchars($tenant['billing_email']) ?></td>
                                                         <td><?= date('M d, Y', strtotime($tenant['created_at'])) ?></td>
                                                         <td>
-                                                            <button type="button" class="btn btn-sm btn-primary edit-tenant-btn" 
-                                                                    data-tenant-id="<?= $tenant['id'] ?>" 
-                                                                    data-toggle="modal" 
+                                                            <button type="button" class="btn btn-sm btn-primary edit-tenant-btn"
+                                                                    data-tenant-id="<?= $tenant['id'] ?>"
+                                                                    data-toggle="modal"
                                                                     data-target="#editTenantModal">
                                                                 <i class="feather icon-edit"></i>
                                                             </button>
+                                                            <a href="generate_agreement.php?id=<?= $tenant['id'] ?>" class="btn btn-sm btn-info" target="_blank">
+                                                                <i class="feather icon-file-text"></i> Agreement
+                                                            </a>
                                                             <button class="btn btn-sm btn-danger delete-tenant" data-id="<?= $tenant['id'] ?>">
                                                                 <i class="feather icon-trash-2"></i>
                                                             </button>
@@ -615,7 +618,6 @@ $plans = $stmt->fetchAll();
 
     .table-responsive {
         border-radius: 10px;
-        overflow: hidden;
     }
 
     .table {

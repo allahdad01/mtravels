@@ -873,23 +873,31 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['delete_creditor'])) {
                 AND currency = ?
                 AND id > ?
                 AND id != ?
+                AND tenant_id = ?
+                AND branch_id = ?
             ");
             $stmt->bindParam(1, $creditor_balance, PDO::PARAM_STR);
             $stmt->bindParam(2, $initial_transaction['main_account_id'], PDO::PARAM_INT);
             $stmt->bindParam(3, $creditor_currency, PDO::PARAM_STR);
             $stmt->bindParam(4, $initial_transaction['id'], PDO::PARAM_INT);
             $stmt->bindParam(5, $initial_transaction['id'], PDO::PARAM_INT);
+            $stmt->bindParam(6, $tenant_id, PDO::PARAM_INT);
+            $stmt->bindParam(7, $branch_id, PDO::PARAM_INT);
             $stmt->execute();
 
             // Update main account balance
-            $stmt = $pdo->prepare("UPDATE main_account SET $balance_column = $balance_column - ? WHERE id = ?");
+            $stmt = $pdo->prepare("UPDATE main_account SET $balance_column = $balance_column - ? WHERE id = ? AND tenant_id = ? AND branch_id = ?");
             $stmt->bindParam(1, $creditor_balance, PDO::PARAM_STR);
             $stmt->bindParam(2, $initial_transaction['main_account_id'], PDO::PARAM_INT);
+            $stmt->bindParam(3, $tenant_id, PDO::PARAM_INT);
+            $stmt->bindParam(4, $branch_id, PDO::PARAM_INT);
             $stmt->execute();
 
             // Delete all transactions related to this creditor
-            $stmt = $pdo->prepare("DELETE FROM main_account_transactions WHERE transaction_of = 'creditor' AND reference_id = ?");
+            $stmt = $pdo->prepare("DELETE FROM main_account_transactions WHERE transaction_of = 'creditor' AND reference_id = ? AND tenant_id = ? AND branch_id = ?");
             $stmt->bindParam(1, $creditor_id, PDO::PARAM_INT);
+            $stmt->bindParam(2, $tenant_id, PDO::PARAM_INT);
+            $stmt->bindParam(3, $branch_id, PDO::PARAM_INT);
             $stmt->execute();
         }
 

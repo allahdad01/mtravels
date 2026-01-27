@@ -498,46 +498,218 @@ if (isset($_POST['search'])) {
 include '../includes/header.php';
 ?>
 <style>
-/* Apply gradient background to card headers matching the sidebar */
+/* Enhanced custom styles for better layout and design */
+.page-header.card {
+    background: linear-gradient(135deg, #4099ff 0%, #2ed8b6 100%);
+    color: #ffffff;
+    border: none;
+    margin-bottom: 20px;
+    padding: 20px !important;
+    box-shadow: 0 4px 12px rgba(0,0,0,0.15);
+    border-radius: 10px;
+}
+
+.page-header.card .row {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+}
+
+.page-header.card h5 {
+    color: #ffffff;
+    margin: 0;
+    font-weight: 600;
+}
+
+.page-header.card .text-end {
+    text-align: right;
+}
+
+.page-header.card .btn {
+    background: rgba(255,255,255,0.2);
+    color: #ffffff;
+    border: 1px solid rgba(255,255,255,0.3);
+    border-radius: 25px;
+    transition: all 0.3s ease;
+}
+
+.page-header.card .btn:hover {
+    background: rgba(255,255,255,0.3);
+    border-color: rgba(255,255,255,0.5);
+    transform: translateY(-1px);
+}
+
+.card {
+    border-radius: 10px;
+    box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+    transition: transform 0.2s ease-in-out, box-shadow 0.2s ease-in-out;
+    border: none;
+}
+
+.card:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 4px 16px rgba(0,0,0,0.15);
+}
+
 .card-header {
-    background: linear-gradient(135deg, #4099ff 0%, #2ed8b6 100%) !important;
-    color: #ffffff !important;
-    border-bottom: none !important;
+    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    color: white;
+    border-radius: 10px 10px 0 0;
+    padding: 1rem 1.5rem;
+    border: none;
 }
 
 .card-header h5 {
-    color: #ffffff !important;
-    margin-bottom: 0 !important;
+    margin: 0;
+    font-weight: 600;
+    display: flex;
+    align-items: center;
 }
 
-.card-header .card-header-right {
-    color: #ffffff !important;
+.progress {
+    border-radius: 15px;
+    overflow: hidden;
+    box-shadow: inset 0 1px 2px rgba(0,0,0,0.1);
 }
 
-.card-header .card-header-right .btn {
-    color: #ffffff !important;
-    border-color: rgba(255, 255, 255, 0.3) !important;
+.progress-bar {
+    transition: width 0.6s ease;
 }
 
-.card-header .card-header-right .btn:hover {
-    background: rgba(255, 255, 255, 0.1) !important;
-    border-color: rgba(255, 255, 255, 0.5) !important;
+.t {
+    font-size: 0.85em;
+    padding: 0.5em 0.75em;
+    border-radius: 20px;
+    font-weight: 500;
+}
+
+.badge-success {
+    background-color: #28a745;
+}
+
+.badge-warning {
+    background-color: #ffc107;
+    color: #212529;
+}
+
+.badge-info {
+    background-color: #17a2b8;
+}
+
+.table-responsive {
+    border-radius: 10px;
+
+}
+
+.table {
+    margin-bottom: 0;
+}
+
+.table thead th {
+    background-color: #f8f9fa;
+    border-bottom: 2px solid #dee2e6;
+    font-weight: 600;
+    color: #495057;
+    padding: 1rem;
+}
+
+.table tbody tr:hover {
+    background-color: #f1f3f4;
+}
+
+.table tbody td {
+    padding: 1rem;
+    vertical-align: middle;
+}
+
+.form-control {
+    border-radius: 8px;
+    border: 1px solid #ced4da;
+    transition: border-color 0.15s ease-in-out, box-shadow 0.15s ease-in-out;
+    padding: 0.75rem;
+}
+
+.form-control:focus {
+    border-color: #4099ff;
+    box-shadow: 0 0 0 0.2rem rgba(64, 153, 255, 0.25);
+}
+
+.btn-primary {
+    background: linear-gradient(135deg, #4099ff 0%, #2ed8b6 100%);
+    border: none;
+    border-radius: 25px;
+    padding: 0.75rem 2rem;
+    font-weight: 600;
+    transition: all 0.3s ease;
+}
+
+.btn-primary:hover {
+    transform: translateY(-1px);
+    box-shadow: 0 4px 12px rgba(64, 153, 255, 0.3);
+}
+
+.btn-secondary {
+    border-radius: 25px;
+    padding: 0.75rem 2rem;
+    font-weight: 600;
+    transition: all 0.3s ease;
+}
+
+.alert {
+    border-radius: 10px;
+    border: none;
+    padding: 1rem 1.5rem;
+}
+
+.alert-info {
+    background: linear-gradient(135deg, #d1ecf1 0%, #bee5eb 100%);
+    color: #0c5460;
+}
+
+.alert-success {
+    background: linear-gradient(135deg, #d4edda 0%, #c3e6cb 100%);
+    color: #155724;
+}
+
+.alert-danger {
+    background: linear-gradient(135deg, #f8d7da 0%, #f5c6cb 100%);
+    color: #721c24;
+}
+
+#estimated_cost {
+    color: #28a745;
+    font-weight: bold;
+}
+
+.h2 {
+    font-size: 2.5rem;
+}
+
+.h4 {
+    font-size: 1.5rem;
+}
+
+.h5 {
+    font-size: 1.25rem;
+}
+
+.h6 {
+    font-size: 1rem;
 }
 </style>
 <div class="pcoded-main-container">
     <div class="pcoded-content">
-        <div class="page-header">
-            <div class="page-block">
-                <div class="row align-items-center">
-                    <div class="col-md-12">
-                        <div class="page-header-title">
-                            <h5 class="m-b-10"><?= __('search') ?></h5>
-                        </div>
-                        <ul class="breadcrumb">
-                            <li class="breadcrumb-item"><a href="index.php"><i class="feather icon-home"></i></a></li>
-                            <li class="breadcrumb-item"><a href="javascript:"><?= __('search') ?></a></li>
-                        </ul>
+        <div class="page-header card">
+            <div class="row align-items-center">
+                <div class="col-md-12">
+                    <div class="page-header-title">
+                        <h5 class="m-b-10"><i class="feather icon-search mr-2"></i><?= __('search') ?></h5>
+                        <p class="mb-0 mt-1" style="font-size: 14px; opacity: 0.9;"><?= __('search_for_people') ?></p>
                     </div>
+                    <ul class="breadcrumb">
+                        <li class="breadcrumb-item"><a href="index.php"><i class="feather icon-home"></i></a></li>
+                        <li class="breadcrumb-item"><a href="javascript:"><?= __('search') ?></a></li>
+                    </ul>
                 </div>
             </div>
         </div>
@@ -546,25 +718,33 @@ include '../includes/header.php';
             <div class="col-md-12">
                 <div class="card">
                     <div class="card-header">
-                        <h5><?= __('search_for_people') ?></h5>
+                        <h5><i class="feather icon-search mr-2"></i><?= __('search_for_people') ?></h5>
                         <p class="text-muted"><?= __('search_by_name_passport_number_phone_number_or_any_other_identifier') ?></p>
                     </div>
                     <div class="card-body">
                         <form method="POST" action="">
-    <!-- CSRF Protection -->
-    <input type="hidden" name="csrf_token" value="<?php echo h($_SESSION['csrf_token']); ?>">
-    
-                            <div class="input-group mb-3">
-                                <input type="text" class="form-control" name="searchTerm" placeholder="Enter name, passport number, phone number..." value="<?php echo htmlspecialchars($searchTerm); ?>">
-                                <div class="input-group-append">
-                                    <button class="btn btn-primary" type="submit" name="search"><?= __('search') ?></button>
-                                </div>
+                            <input type="hidden" name="csrf_token" value="<?php echo $_SESSION['csrf_token']; ?>">
+
+                            <div class="form-group">
+                                <label for="searchTerm"><i class="feather icon-search mr-2"></i><?= __('search_term') ?> <span class="text-danger">*</span></label>
+                                <input type="text" class="form-control form-control-lg" id="searchTerm" name="searchTerm" placeholder="Enter name, passport number, phone number..." value="<?php echo htmlspecialchars($searchTerm); ?>" required>
+                            </div>
+
+                            <div class="form-group mb-0 mt-4">
+                                <button type="submit" class="btn btn-primary btn-lg mr-3" name="search">
+                                    <i class="feather icon-search mr-2"></i><?= __('search') ?>
+                                </button>
                             </div>
                         </form>
                         
                         <?php if ($searchPerformed): ?>
                             <?php if (!empty($resultMessage)): ?>
-                                <div class="alert alert-info mt-3"><?php echo h($resultMessage); ?></div>
+                                <div class="alert alert-info alert-dismissible fade show mt-3" role="alert">
+                                    <?php echo h($resultMessage); ?>
+                                    <button type="button" class="close" data-dismiss="alert" aria-label="Close">
+                                        <span aria-hidden="true">&times;</span>
+                                    </button>
+                                </div>
                             <?php endif; ?>
                             
                             <?php if (!empty($searchResults)): ?>
@@ -572,30 +752,30 @@ include '../includes/header.php';
                                     <table class="table table-hover">
                                         <thead>
                                             <tr>
-                                                <th style="width: 10%"><?= __('type') ?></th>
-                                                <th style="width: 15%"><?= __('name') ?> / <?= __('reference') ?></th>
-                                                <th style="width: 15%" class="d-none d-md-table-cell"><?= __('contact') ?></th>
-                                                <th style="width: 15%" class="d-none d-lg-table-cell"><?= __('client') ?> / <?= __('supplier') ?></th>
-                                                <th style="width: 20%"><?= __('details') ?></th>
-                                                <th style="width: 10%" class="d-none d-md-table-cell"><?= __('date') ?></th>
-                                                <th style="width: 15%"><?= __('actions') ?></th>
+                                                <th style="width: 10%"><i class="feather icon-tag mr-1"></i><?= __('type') ?></th>
+                                                <th style="width: 15%"><i class="feather icon-user mr-1"></i><?= __('name') ?> / <?= __('reference') ?></th>
+                                                <th style="width: 15%" class="d-none d-md-table-cell"><i class="feather icon-phone mr-1"></i><?= __('contact') ?></th>
+                                                <th style="width: 15%" class="d-none d-lg-table-cell"><i class="feather icon-users mr-1"></i><?= __('client') ?> / <?= __('supplier') ?></th>
+                                                <th style="width: 20%"><i class="feather icon-info mr-1"></i><?= __('details') ?></th>
+                                                <th style="width: 10%" class="d-none d-md-table-cell"><i class="feather icon-calendar mr-1"></i><?= __('date') ?></th>
+                                                <th style="width: 15%"><i class="feather icon-settings mr-1"></i><?= __('actions') ?></th>
                                             </tr>
                                         </thead>
                                         <tbody>
                                             <?php foreach ($searchResults as $index => $result): ?>
                                                 <tr>
                                                     <td>
-                                                        <span class="badge-<?php 
-                                                        if ($result['record_type'] == 'Ticket') echo 'primary';
-                                                        elseif ($result['record_type'] == 'Ticket Reservation') echo 'primary';
-                                                        elseif ($result['record_type'] == 'Visa') echo 'danger';
-                                                        elseif ($result['record_type'] == 'Hotel') echo 'success';
-                                                        elseif ($result['record_type'] == 'Umrah') echo 'warning';
-                                                        elseif ($result['record_type'] == 'Additional Payment') echo 'info';
-                                                        elseif ($result['record_type'] == 'Creditor') echo 'secondary';
-                                                        elseif ($result['record_type'] == 'Debtor') echo 'dark';
-                                                        elseif ($result['record_type'] == 'Expense') echo 'secondary';
-                                                        ?>">
+                                                        <span class="t <?php
+                                                        if ($result['record_type'] == 'Ticket') echo 'badge-primary';
+                                                        elseif ($result['record_type'] == 'Ticket Reservation') echo 'badge-primary';
+                                                        elseif ($result['record_type'] == 'Visa') echo 'badge-danger';
+                                                        elseif ($result['record_type'] == 'Hotel') echo 'badge-success';
+                                                        elseif ($result['record_type'] == 'Umrah') echo 'badge-warning';
+                                                        elseif ($result['record_type'] == 'Additional Payment') echo 'badge-info';
+                                                        elseif ($result['record_type'] == 'Creditor') echo 'badge-secondary';
+                                                        elseif ($result['record_type'] == 'Debtor') echo 'badge-dark';
+                                                        elseif ($result['record_type'] == 'Expense') echo 'badge-secondary';
+                                                        ?> badge-pill px-3 py-1">
                                                             <?php echo h($result['record_type']); ?>
                                                         </span>
                                                         <div class="small text-muted mt-1 text-truncate">
@@ -686,28 +866,28 @@ include '../includes/header.php';
                                                                         <table class="table table-sm">
                                                                             <thead>
                                                                                 <tr>
-                                                                                    <th><?= __('type') ?></th>
-                                                                                    <th><?= __('transaction') ?></th>
-                                                                                    <th><?= __('amount') ?></th>
-                                                                                    <th><?= __('description') ?></th>
-                                                                                    <th><?= __('date') ?></th>
+                                                                                    <th><i class="feather icon-tag mr-1"></i><?= __('type') ?></th>
+                                                                                    <th><i class="feather icon-repeat mr-1"></i><?= __('transaction') ?></th>
+                                                                                    <th><i class="feather icon-dollar-sign mr-1"></i><?= __('amount') ?></th>
+                                                                                    <th><i class="feather icon-file-text mr-1"></i><?= __('description') ?></th>
+                                                                                    <th><i class="feather icon-calendar mr-1"></i><?= __('date') ?></th>
                                                                                 </tr>
                                                                             </thead>
                                                                             <tbody>
                                                                                 <?php foreach ($result['transactions'] as $transaction): ?>
                                                                                     <tr>
                                                                                         <td>
-                                                                                            <span class="badge-<?php 
+                                                                                            <span class="badge <?php
                                                                                             if ($transaction['transaction_type'] == 'Main Account') {
                                                                                                 if (strpos(strtolower($transaction['type']), 'debit') !== false) {
-                                                                                                    echo 'danger';
+                                                                                                    echo 'badge-danger';
                                                                                                 } else {
-                                                                                                    echo 'success';
+                                                                                                    echo 'badge-success';
                                                                                                 }
                                                                                             } else {
-                                                                                                echo 'secondary';
+                                                                                                echo 'badge-secondary';
                                                                                             }
-                                                                                            ?>">
+                                                                                            ?> badge-pill px-3 py-1">
                                                                                                 <?php echo h($transaction['transaction_type']); ?>
                                                                                             </span>
                                                                                         </td>

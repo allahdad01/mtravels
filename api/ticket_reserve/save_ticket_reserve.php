@@ -231,9 +231,11 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             $transaction_id = $pdo->lastInsertId();
 
             // Update supplier balance
-            $stmt_balance = $pdo->prepare("UPDATE suppliers SET balance = balance - ? WHERE id = ?");
+            $stmt_balance = $pdo->prepare("UPDATE suppliers SET balance = balance - ? WHERE id = ? AND tenant_id = ? AND branch_id = ?");
             $stmt_balance->bindParam(1, $base, PDO::PARAM_STR);
             $stmt_balance->bindParam(2, $supplier_id, PDO::PARAM_INT);
+            $stmt_balance->bindParam(3, $tenant_id, PDO::PARAM_INT);
+            $stmt_balance->bindParam(4, $branch_id, PDO::PARAM_INT);
             $stmt_balance->execute();
         } else {
             // For non-regular suppliers, just record the transaction without balance

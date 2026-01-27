@@ -48,11 +48,11 @@ try {
     $stmt_fetch = $pdo->prepare("
         SELECT va.sold_to, va.supplier, va.paid_to, va.currency, c.client_type, s.supplier_type
         FROM visa_applications va
-        JOIN clients c ON va.sold_to = c.id
-        JOIN suppliers s ON va.supplier = s.id
-        WHERE va.id = ? AND va.tenant_id = ?
+        JOIN clients c ON va.sold_to = c.id AND c.tenant_id = ? AND c.branch_id = ?
+        JOIN suppliers s ON va.supplier = s.id AND s.tenant_id = ? AND s.branch_id = ?
+        WHERE va.id = ? AND va.tenant_id = ? AND va.branch_id = ?
     ");
-    $stmt_fetch->execute([$visa_id, $tenant_id]);
+    $stmt_fetch->execute([$tenant_id, $branch_id, $tenant_id, $branch_id, $visa_id, $tenant_id, $branch_id]);
     $visa = $stmt_fetch->fetch(PDO::FETCH_ASSOC);
 
     if (!$visa) {
@@ -69,11 +69,11 @@ try {
     // Step 2: Reverse Client Transactions (Only If Client is Regular)
     if ($client_type === 'regular') { 
         $stmt_client_transactions = $pdo->prepare("
-            SELECT id, amount, type, created_at FROM client_transactions 
-            WHERE client_id = ? AND transaction_of = 'visa_sale' 
-            AND reference_id = ? AND tenant_id = ?
+            SELECT id, amount, type, created_at FROM client_transactions
+            WHERE client_id = ? AND transaction_of = 'visa_sale'
+            AND reference_id = ? AND tenant_id = ? AND branch_id = ?
         ");
-        $stmt_client_transactions->execute([$client_id, $visa_id, $tenant_id]);
+        $stmt_client_transactions->execute([$client_id, $visa_id, $tenant_id, $branch_id]);
         $client_transactions = $stmt_client_transactions->fetchAll(PDO::FETCH_ASSOC);
 
         foreach ($client_transactions as $transaction) {
@@ -83,59 +83,59 @@ try {
 
             // Adjust Client Balance with Correct Reversal Logic
             $clientBalanceField = ($currency == 'USD') ? 'usd_balance' : 'afs_balance';
-            
+
             // Reverse logic: If original was 'credit', subtract; if 'debit', add.
             $adjustClientBalance = $pdo->prepare("
-                UPDATE clients 
-                SET $clientBalanceField = $clientBalanceField " . ($transaction['type'] == 'credit' ? '-' : '+') . " ? 
-                WHERE id = ? AND tenant_id = ?
+                UPDATE clients
+                SET $clientBalanceField = $clientBalanceField " . ($transaction['type'] == 'credit' ? '-' : '+') . " ?
+                WHERE id = ? AND tenant_id = ? AND branch_id = ?
             ");
-            $adjustClientBalance->execute([$amount, $client_id, $tenant_id]);
+            $adjustClientBalance->execute([$amount, $client_id, $tenant_id, $branch_id]);
 
             // Update all subsequent transactions' running balances
             // If the deleted transaction was a credit, we need to subtract that amount from all later transactions
             // If it was a debit, we need to add that amount to all later transactions
             $updateSubsequentBalances = $pdo->prepare("
-                UPDATE client_transactions 
-                SET balance = balance " . ($transaction['type'] == 'credit' ? '-' : '+') . " ? 
-                WHERE client_id = ? 
-                AND id > ? 
+                UPDATE client_transactions
+                SET balance = balance " . ($transaction['type'] == 'credit' ? '-' : '+') . " ?
+                WHERE client_id = ?
+                AND id > ?
                 AND currency = ?
-                AND tenant_id = ?
+                AND tenant_id = ? AND branch_id = ?
             ");
-            $updateSubsequentBalances->execute([$amount, $client_id, $transaction_id, $currency, $tenant_id]);
+            $updateSubsequentBalances->execute([$amount, $client_id, $transaction_id, $currency, $tenant_id, $branch_id]);
 
             // Delete Client Transaction
-            $deleteClientTransaction = $pdo->prepare("DELETE FROM client_transactions WHERE id = ? AND tenant_id = ?");
-            $deleteClientTransaction->execute([$transaction_id, $tenant_id]);
+            $deleteClientTransaction = $pdo->prepare("DELETE FROM client_transactions WHERE id = ? AND tenant_id = ? AND branch_id = ?");
+            $deleteClientTransaction->execute([$transaction_id, $tenant_id, $branch_id]);
         }
     } else {
 
         $stmt_client_transactions = $pdo->prepare("
             SELECT id, amount, type, created_at FROM client_transactions
             WHERE client_id = ? AND transaction_of = 'visa_sale'
-            AND reference_id = ? AND tenant_id = ?
+            AND reference_id = ? AND tenant_id = ? AND branch_id = ?
         ");
-        $stmt_client_transactions->execute([$client_id, $visa_id, $tenant_id]);
+        $stmt_client_transactions->execute([$client_id, $visa_id, $tenant_id, $branch_id]);
         $client_transactions = $stmt_client_transactions->fetchAll(PDO::FETCH_ASSOC);
 
         foreach ($client_transactions as $transaction) {
             $transaction_id = $transaction['id'];
 
             // Delete Client Transaction
-            $deleteClientTransaction = $pdo->prepare("DELETE FROM client_transactions WHERE id = ? AND tenant_id = ?");
-            $deleteClientTransaction->execute([$transaction_id, $tenant_id]);
+            $deleteClientTransaction = $pdo->prepare("DELETE FROM client_transactions WHERE id = ? AND tenant_id = ? AND branch_id = ?");
+            $deleteClientTransaction->execute([$transaction_id, $tenant_id, $branch_id]);
         }
     }
 
     // Step 3: Reverse Supplier Transactions
     if ($supplier_type === 'External') {
         $stmt_supplier_transactions = $pdo->prepare("
-            SELECT id, amount, transaction_type, transaction_date FROM supplier_transactions 
-            WHERE supplier_id = ? AND transaction_of = 'visa_sale' 
-            AND reference_id = ? AND tenant_id = ?
+            SELECT id, amount, transaction_type, transaction_date FROM supplier_transactions
+            WHERE supplier_id = ? AND transaction_of = 'visa_sale'
+            AND reference_id = ? AND tenant_id = ? AND branch_id = ?
         ");
-        $stmt_supplier_transactions->execute([$supplier_id, $visa_id, $tenant_id]);
+        $stmt_supplier_transactions->execute([$supplier_id, $visa_id, $tenant_id, $branch_id]);
         $supplier_transactions = $stmt_supplier_transactions->fetchAll(PDO::FETCH_ASSOC);
 
         foreach ($supplier_transactions as $transaction) {
@@ -145,38 +145,38 @@ try {
             
             // Adjust Supplier Balance
             $adjustSupplierBalance = $pdo->prepare("
-                UPDATE suppliers 
-                SET balance = balance " . ($transaction['transaction_type'] == 'Credit' ? '-' : '+') . " ? 
-                WHERE id = ? AND tenant_id = ?
+                UPDATE suppliers
+                SET balance = balance " . ($transaction['transaction_type'] == 'Credit' ? '-' : '+') . " ?
+                WHERE id = ? AND tenant_id = ? AND branch_id = ?
             ");
-            $adjustSupplierBalance->execute([$amount, $supplier_id, $tenant_id]);
+            $adjustSupplierBalance->execute([$amount, $supplier_id, $tenant_id, $branch_id]);
             
             // Update all subsequent transactions' running balances
             $updateSubsequentSupplierBalances = $pdo->prepare("
-                UPDATE supplier_transactions 
-                SET balance = balance " . ($transaction['transaction_type'] == 'Credit' ? '-' : '+') . " ? 
-                WHERE supplier_id = ? 
+                UPDATE supplier_transactions
+                SET balance = balance " . ($transaction['transaction_type'] == 'Credit' ? '-' : '+') . " ?
+                WHERE supplier_id = ?
                 AND id > ?
-                AND tenant_id = ?
+                AND tenant_id = ? AND branch_id = ?
             ");
-            $updateSubsequentSupplierBalances->execute([$amount, $supplier_id, $transaction_id, $tenant_id]);
+            $updateSubsequentSupplierBalances->execute([$amount, $supplier_id, $transaction_id, $tenant_id, $branch_id]);
 
             // Delete Supplier Transaction
-            $deleteSupplierTransaction = $pdo->prepare("DELETE FROM supplier_transactions WHERE id = ? AND tenant_id = ?");
-            $deleteSupplierTransaction->execute([$transaction_id, $tenant_id]);
+            $deleteSupplierTransaction = $pdo->prepare("DELETE FROM supplier_transactions WHERE id = ? AND tenant_id = ? AND branch_id = ?");
+            $deleteSupplierTransaction->execute([$transaction_id, $tenant_id, $branch_id]);
         }
     } else {
         $stmt_supplier_transactions = $pdo->prepare("
-            SELECT id, amount, transaction_type, transaction_date FROM supplier_transactions 
-            WHERE supplier_id = ? AND transaction_of = 'visa_sale' 
-            AND reference_id = ? AND tenant_id = ?
+            SELECT id, amount, transaction_type, transaction_date FROM supplier_transactions
+            WHERE supplier_id = ? AND transaction_of = 'visa_sale'
+            AND reference_id = ? AND tenant_id = ? AND branch_id = ?
         ");
-        $stmt_supplier_transactions->execute([$supplier_id, $visa_id, $tenant_id]);
+        $stmt_supplier_transactions->execute([$supplier_id, $visa_id, $tenant_id, $branch_id]);
         $supplier_transactions = $stmt_supplier_transactions->fetchAll(PDO::FETCH_ASSOC);
 
         // Delete Supplier Transaction
-        $deleteSupplierTransaction = $pdo->prepare("DELETE FROM supplier_transactions WHERE id = ? AND tenant_id = ?");
-        $deleteSupplierTransaction->execute([$transaction_id, $tenant_id]);
+        $deleteSupplierTransaction = $pdo->prepare("DELETE FROM supplier_transactions WHERE id = ? AND tenant_id = ? AND branch_id = ?");
+        $deleteSupplierTransaction->execute([$transaction_id, $tenant_id, $branch_id]);
     }
     
     // Handle main account transactions and balance updates
@@ -184,11 +184,11 @@ try {
         // Fetch main account transactions for this visa application
         $stmt_fetch_main_transactions = $pdo->prepare("
             SELECT id, amount, type, currency, created_at
-            FROM main_account_transactions 
+            FROM main_account_transactions
             WHERE reference_id = ? AND transaction_of = 'visa_sale'
-            AND tenant_id = ?
+            AND tenant_id = ? AND branch_id = ?
         ");
-        $stmt_fetch_main_transactions->execute([$visa_id, $tenant_id]);
+        $stmt_fetch_main_transactions->execute([$visa_id, $tenant_id, $branch_id]);
         $main_transactions = $stmt_fetch_main_transactions->fetchAll(PDO::FETCH_ASSOC);
         
         foreach ($main_transactions as $main_transaction) {
@@ -201,66 +201,66 @@ try {
             // Update main account balance based on transaction type
             if ($main_type === 'credit') {
                 if ($main_currency === 'USD') {
-                    $stmt_update_main = $pdo->prepare("UPDATE main_account SET usd_balance = usd_balance - ? WHERE id = ? AND tenant_id = ?");
+                    $stmt_update_main = $pdo->prepare("UPDATE main_account SET usd_balance = usd_balance - ? WHERE id = ? AND tenant_id = ? AND branch_id = ?");
                 } elseif ($main_currency === 'AFS') {
-                    $stmt_update_main = $pdo->prepare("UPDATE main_account SET afs_balance = afs_balance - ? WHERE id = ? AND tenant_id = ?");
+                    $stmt_update_main = $pdo->prepare("UPDATE main_account SET afs_balance = afs_balance - ? WHERE id = ? AND tenant_id = ? AND branch_id = ?");
                 }  elseif ($main_currency === 'EUR') {
-                    $stmt_update_main = $pdo->prepare("UPDATE main_account SET euro_balance = euro_balance - ? WHERE id = ? AND tenant_id = ?");
+                    $stmt_update_main = $pdo->prepare("UPDATE main_account SET euro_balance = euro_balance - ? WHERE id = ? AND tenant_id = ? AND branch_id = ?");
                 } elseif ($main_currency === 'DARHAM') {
-                    $stmt_update_main = $pdo->prepare("UPDATE main_account SET darham_balance = darham_balance - ? WHERE id = ? AND tenant_id = ?");
+                    $stmt_update_main = $pdo->prepare("UPDATE main_account SET darham_balance = darham_balance - ? WHERE id = ? AND tenant_id = ? AND branch_id = ?");
                 } else {
                     throw new Exception("Unsupported currency type for main account balance update.");
                 }
-                
+
                 // Update running balances for all subsequent main account transactions
                 $update_subsequent_main = $pdo->prepare("
-                    UPDATE main_account_transactions 
-                    SET balance = balance - ? 
-                    WHERE main_account_id = ? 
-                    AND id > ? 
+                    UPDATE main_account_transactions
+                    SET balance = balance - ?
+                    WHERE main_account_id = ?
+                    AND id > ?
                     AND currency = ?
-                    AND tenant_id = ?
+                    AND tenant_id = ? AND branch_id = ?
                 ");
             } elseif ($main_type === 'debit') {
                 if ($main_currency === 'USD') {
-                    $stmt_update_main = $pdo->prepare("UPDATE main_account SET usd_balance = usd_balance + ? WHERE id = ? AND tenant_id = ?");
+                    $stmt_update_main = $pdo->prepare("UPDATE main_account SET usd_balance = usd_balance + ? WHERE id = ? AND tenant_id = ? AND branch_id = ?");
                 } elseif ($main_currency === 'AFS') {
-                    $stmt_update_main = $pdo->prepare("UPDATE main_account SET afs_balance = afs_balance + ? WHERE id = ? AND tenant_id = ?");
+                    $stmt_update_main = $pdo->prepare("UPDATE main_account SET afs_balance = afs_balance + ? WHERE id = ? AND tenant_id = ? AND branch_id = ?");
                 }  elseif ($main_currency === 'EUR') {
-                    $stmt_update_main = $pdo->prepare("UPDATE main_account SET euro_balance = euro_balance + ? WHERE id = ? AND tenant_id = ?");
+                    $stmt_update_main = $pdo->prepare("UPDATE main_account SET euro_balance = euro_balance + ? WHERE id = ? AND tenant_id = ? AND branch_id = ?");
                 } elseif ($main_currency === 'DARHAM') {
-                    $stmt_update_main = $pdo->prepare("UPDATE main_account SET darham_balance = darham_balance + ? WHERE id = ? AND tenant_id = ?");
+                    $stmt_update_main = $pdo->prepare("UPDATE main_account SET darham_balance = darham_balance + ? WHERE id = ? AND tenant_id = ? AND branch_id = ?");
                 } else {
                     throw new Exception("Unsupported currency type for main account balance update.");
                 }
-                
+
                 // Update running balances for all subsequent main account transactions
                 $update_subsequent_main = $pdo->prepare("
-                    UPDATE main_account_transactions 
-                    SET balance = balance + ? 
-                    WHERE main_account_id = ? 
-                    AND id > ? 
+                    UPDATE main_account_transactions
+                    SET balance = balance + ?
+                    WHERE main_account_id = ?
+                    AND id > ?
                     AND currency = ?
-                    AND tenant_id = ?
+                    AND tenant_id = ? AND branch_id = ?
                 ");
             } else {
                 throw new Exception("Invalid transaction type for main account transaction.");
             }
             
-            $stmt_update_main->execute([$main_amount, $mainAccountId, $tenant_id]);
-            
+            $stmt_update_main->execute([$main_amount, $mainAccountId, $tenant_id, $branch_id]);
+
             // Execute the update for subsequent transactions
-            $update_subsequent_main->execute([$main_amount, $mainAccountId, $transaction_id, $main_currency, $tenant_id]);
+            $update_subsequent_main->execute([$main_amount, $mainAccountId, $transaction_id, $main_currency, $tenant_id, $branch_id]);
         }
     }
     
     // Delete main account transactions associated with this visa application
-    $delete_main_transactions = $pdo->prepare("DELETE FROM main_account_transactions WHERE reference_id = ? AND transaction_of = 'visa_sale' AND tenant_id = ?");
-    $delete_main_transactions->execute([$visa_id, $tenant_id]);
+    $delete_main_transactions = $pdo->prepare("DELETE FROM main_account_transactions WHERE reference_id = ? AND transaction_of = 'visa_sale' AND tenant_id = ? AND branch_id = ?");
+    $delete_main_transactions->execute([$visa_id, $tenant_id, $branch_id]);
 
     // Step 5: Delete the Visa Application Record
-    $deleteVisa = $pdo->prepare("DELETE FROM visa_applications WHERE id = ? AND tenant_id = ?");
-    $deleteVisa->execute([$visa_id, $tenant_id]);
+    $deleteVisa = $pdo->prepare("DELETE FROM visa_applications WHERE id = ? AND tenant_id = ? AND branch_id = ?");
+    $deleteVisa->execute([$visa_id, $tenant_id, $branch_id]);
 
     // Commit Transaction
     $pdo->commit();

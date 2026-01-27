@@ -268,9 +268,11 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 
             // Link additional passengers to main booking
             if ($index > 0 && $main_booking_id > 0) {
-                $stmt_update_ref = $pdo->prepare("UPDATE ticket_bookings SET group_booking_id = ? WHERE id = ?");
+                $stmt_update_ref = $pdo->prepare("UPDATE ticket_bookings SET group_booking_id = ? WHERE id = ? AND tenant_id = ? AND branch_id = ?");
                 $stmt_update_ref->bindParam(1, $main_booking_id, PDO::PARAM_INT);
                 $stmt_update_ref->bindParam(2, $ticket_id, PDO::PARAM_INT);
+                $stmt_update_ref->bindParam(3, $tenant_id, PDO::PARAM_INT);
+                $stmt_update_ref->bindParam(4, $branch_id, PDO::PARAM_INT);
                 if (!$stmt_update_ref->execute()) {
                     throw new Exception('Failed to update group booking reference');
                 }
@@ -298,9 +300,11 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 }
 
                 // Update supplier balance
-                $stmt_balance = $pdo->prepare("UPDATE suppliers SET balance = ? WHERE id = ?");
+                $stmt_balance = $pdo->prepare("UPDATE suppliers SET balance = ? WHERE id = ? AND tenant_id = ? AND branch_id = ?");
                 $stmt_balance->bindParam(1, $new_supplier_balance, PDO::PARAM_STR);
                 $stmt_balance->bindParam(2, $supplier_id, PDO::PARAM_INT);
+                $stmt_balance->bindParam(3, $tenant_id, PDO::PARAM_INT);
+                $stmt_balance->bindParam(4, $branch_id, PDO::PARAM_INT);
                 if (!$stmt_balance->execute()) {
                     throw new Exception('Failed to update supplier balance');
                 }

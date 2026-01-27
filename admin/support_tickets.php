@@ -131,7 +131,7 @@ require_once '../includes/header.php';
 
 .table-responsive {
     border-radius: 10px;
-    overflow: hidden;
+
 }
 
 .table {

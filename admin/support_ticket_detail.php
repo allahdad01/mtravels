@@ -117,12 +117,15 @@ require_once '../includes/header.php';
 ?>
 
 <style>
+/* Enhanced custom styles for better layout and design */
 .page-header.card {
     background: linear-gradient(135deg, #4099ff 0%, #2ed8b6 100%);
     color: #ffffff;
     border: none;
     margin-bottom: 20px;
     padding: 20px !important;
+    box-shadow: 0 4px 12px rgba(0,0,0,0.15);
+    border-radius: 10px;
 }
 
 .page-header.card .row {
@@ -134,6 +137,7 @@ require_once '../includes/header.php';
 .page-header.card h5 {
     color: #ffffff;
     margin: 0;
+    font-weight: 600;
 }
 
 .page-header.card .text-end {
@@ -144,26 +148,256 @@ require_once '../includes/header.php';
     background: rgba(255,255,255,0.2);
     color: #ffffff;
     border: 1px solid rgba(255,255,255,0.3);
+    border-radius: 25px;
+    transition: all 0.3s ease;
 }
 
 .page-header.card .btn:hover {
     background: rgba(255,255,255,0.3);
     border-color: rgba(255,255,255,0.5);
+    transform: translateY(-1px);
+}
+
+.card {
+    border-radius: 10px;
+    box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+    transition: transform 0.2s ease-in-out, box-shadow 0.2s ease-in-out;
+    border: none;
+}
+
+.card:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 4px 16px rgba(0,0,0,0.15);
+}
+
+.card-header {
+    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    color: white;
+    border-radius: 10px 10px 0 0;
+    padding: 1rem 1.5rem;
+    border: none;
+}
+
+.card-header h5 {
+    margin: 0;
+    font-weight: 600;
+    display: flex;
+    align-items: center;
+}
+
+.progress {
+    border-radius: 15px;
+    overflow: hidden;
+    box-shadow: inset 0 1px 2px rgba(0,0,0,0.1);
+}
+
+.progress-bar {
+    transition: width 0.6s ease;
+}
+
+.badge {
+    font-size: 0.85em;
+    padding: 0.5em 0.75em;
+    border-radius: 20px;
+    font-weight: 500;
+}
+
+.badge-success {
+    background-color: #28a745;
+}
+
+.badge-warning {
+    background-color: #ffc107;
+    color: #212529;
+}
+
+.badge-info {
+    background-color: #17a2b8;
+}
+
+.badge-primary {
+    background-color: #007bff;
+}
+
+.badge-secondary {
+    background-color: #6c757d;
+}
+
+.badge-danger {
+    background-color: #dc3545;
+}
+
+.table-responsive {
+    border-radius: 10px;
+
+}
+
+.table {
+    margin-bottom: 0;
+}
+
+.table thead th {
+    background-color: #f8f9fa;
+    border-bottom: 2px solid #dee2e6;
+    font-weight: 600;
+    color: #495057;
+    padding: 1rem;
+}
+
+.table tbody tr:hover {
+    background-color: #f1f3f4;
+}
+
+.table tbody td {
+    padding: 1rem;
+    vertical-align: middle;
+}
+
+.form-control {
+    border-radius: 8px;
+    border: 1px solid #ced4da;
+    transition: border-color 0.15s ease-in-out, box-shadow 0.15s ease-in-out;
+    padding: 0.75rem;
+}
+
+.form-control:focus {
+    border-color: #4099ff;
+    box-shadow: 0 0 0 0.2rem rgba(64, 153, 255, 0.25);
+}
+
+.btn-primary {
+    background: linear-gradient(135deg, #4099ff 0%, #2ed8b6 100%);
+    border: none;
+    border-radius: 25px;
+    padding: 0.75rem 2rem;
+    font-weight: 600;
+    transition: all 0.3s ease;
+}
+
+.btn-primary:hover {
+    transform: translateY(-1px);
+    box-shadow: 0 4px 12px rgba(64, 153, 255, 0.3);
+}
+
+.btn-secondary {
+    border-radius: 25px;
+    padding: 0.75rem 2rem;
+    font-weight: 600;
+    transition: all 0.3s ease;
+}
+
+.btn-warning {
+    background: linear-gradient(135deg, #ffc107 0%, #ff8c00 100%);
+    border: none;
+    border-radius: 25px;
+    padding: 0.75rem 2rem;
+    font-weight: 600;
+    transition: all 0.3s ease;
+    color: #212529;
+}
+
+.btn-warning:hover {
+    transform: translateY(-1px);
+    box-shadow: 0 4px 12px rgba(255, 193, 7, 0.3);
+}
+
+.btn-danger {
+    background: linear-gradient(135deg, #dc3545 0%, #c82333 100%);
+    border: none;
+    border-radius: 25px;
+    padding: 0.75rem 2rem;
+    font-weight: 600;
+    transition: all 0.3s ease;
+}
+
+.btn-danger:hover {
+    transform: translateY(-1px);
+    box-shadow: 0 4px 12px rgba(220, 53, 69, 0.3);
+}
+
+.btn-info {
+    background: linear-gradient(135deg, #17a2b8 0%, #138496 100%);
+    border: none;
+    border-radius: 25px;
+    padding: 0.75rem 2rem;
+    font-weight: 600;
+    transition: all 0.3s ease;
+}
+
+.btn-info:hover {
+    transform: translateY(-1px);
+    box-shadow: 0 4px 12px rgba(23, 162, 184, 0.3);
+}
+
+.btn-success {
+    background: linear-gradient(135deg, #28a745 0%, #218838 100%);
+    border: none;
+    border-radius: 25px;
+    padding: 0.75rem 2rem;
+    font-weight: 600;
+    transition: all 0.3s ease;
+}
+
+.btn-success:hover {
+    transform: translateY(-1px);
+    box-shadow: 0 4px 12px rgba(40, 167, 69, 0.3);
+}
+
+.alert {
+    border-radius: 10px;
+    border: none;
+    padding: 1rem 1.5rem;
+}
+
+.alert-info {
+    background: linear-gradient(135deg, #d1ecf1 0%, #bee5eb 100%);
+    color: #0c5460;
+}
+
+.alert-success {
+    background: linear-gradient(135deg, #d4edda 0%, #c3e6cb 100%);
+    color: #155724;
+}
+
+.alert-danger {
+    background: linear-gradient(135deg, #f8d7da 0%, #f5c6cb 100%);
+    color: #721c24;
+}
+
+.h2 {
+    font-size: 2.5rem;
+}
+
+.h4 {
+    font-size: 1.5rem;
+}
+
+.h5 {
+    font-size: 1.25rem;
+}
+
+.h6 {
+    font-size: 1rem;
 }
 </style>
 
 <div class="pcoded-main-container">
     <div class="pcoded-wrapper">
         <div class="pcoded-content">
-            <div class="page-header card">
+                    <div class="pcoded-inner-content">
+                        <div class="main-body">
+                            <div class="page-wrapper">
+                                <!-- [ Main Content ] start -->
+                                <div class="main-content">
+                    <div class="page-header card">
                 <div class="row align-items-center">
                     <div class="col-md-6">
-                        <h5 class="mb-0"><?php echo htmlspecialchars($ticket['ticket_number']); ?></h5>
+                        <h5 class="mb-0"><i class="feather icon-file-text mr-2"></i><?php echo htmlspecialchars($ticket['ticket_number']); ?></h5>
                     </div>
                     <div class="col-md-6 text-end">
-                        <a href="support_tickets.php" class="btn btn-secondary btn-sm">
-                            <i class="fas fa-arrow-left"></i> Back to Tickets
-                        </a>
+                        <a href="support_tickets.php" class="btn btn-outline-secondary btn-sm">
+                                                    <i class="feather icon-arrow-left mr-1"></i> Back to Tickets
+                                                </a>
                     </div>
                 </div>
             </div>
@@ -171,7 +405,9 @@ require_once '../includes/header.php';
             <?php if (!empty($success)): ?>
                 <div class="alert alert-success alert-dismissible fade show" role="alert">
                     <?php echo htmlspecialchars($success); ?>
-                    <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+                    <button type="button" class="close" data-dismiss="alert" aria-label="Close">
+                                                                    <span aria-hidden="true">&times;</span>
+                                                                </button>
                 </div>
             <?php endif; ?>
 
@@ -196,40 +432,40 @@ require_once '../includes/header.php';
                                 <div class="col-md-3">
                                     <small class="text-muted">Status</small>
                                     <div>
-                                        <span class="bg-<?php 
-                                            echo $ticket['status'] === 'open' ? 'primary' : 
-                                                ($ticket['status'] === 'in_progress' ? 'warning' : 
-                                                ($ticket['status'] === 'resolved' ? 'success' : 'secondary'));
-                                        ?>">
-                                            <?php echo ucwords(str_replace('_', ' ', $ticket['status'])); ?>
-                                        </span>
+                                        <span class="badge badge-<?php
+                                                                                     echo $ticket['status'] === 'open' ? 'primary' :
+                                                                                         ($ticket['status'] === 'in_progress' ? 'warning' :
+                                                                                         ($ticket['status'] === 'resolved' ? 'success' : 'secondary'));
+                                                                                 ?>">
+                                                                                 <?php echo ucwords(str_replace('_', ' ', $ticket['status'])); ?>
+                                                                                 </span>
                                     </div>
                                 </div>
                                 <div class="col-md-3">
                                     <small class="text-muted">Priority</small>
                                     <div>
-                                        <span class="bg-<?php 
-                                            echo $ticket['priority'] === 'critical' ? 'danger' : 
-                                                ($ticket['priority'] === 'high' ? 'warning' : 'info');
-                                        ?>">
-                                            <?php echo ucfirst($ticket['priority']); ?>
-                                        </span>
+                                        <span class="badge badge-<?php
+                                                                                     echo $ticket['priority'] === 'critical' ? 'danger' :
+                                                                                         ($ticket['priority'] === 'high' ? 'warning' : 'info');
+                                                                                 ?>">
+                                                                                 <?php echo ucfirst($ticket['priority']); ?>
+                                                                                 </span>
                                     </div>
                                 </div>
                                 <div class="col-md-3">
                                     <small class="text-muted">Category</small>
                                     <div>
-                                        <span class="bg-info">
-                                            <?php echo htmlspecialchars($ticket['category_name']); ?>
-                                        </span>
+                                        <span class="badge badge-info">
+                                                                                     <?php echo htmlspecialchars($ticket['category_name']); ?>
+                                                                                 </span>
                                     </div>
                                 </div>
                                 <div class="col-md-3">
                                     <small class="text-muted">SLA Status</small>
                                     <div>
-                                        <span class="bg-<?php echo $sla_display['color']; ?>">
-                                            <?php echo $sla_display['status']; ?>
-                                        </span>
+                                        <span class="badge badge-<?php echo $sla_display['color']; ?>">
+                                                                                     <?php echo $sla_display['status']; ?>
+                                                                                 </span>
                                     </div>
                                 </div>
                             </div>
@@ -343,7 +579,7 @@ require_once '../includes/header.php';
                                                 type="submit" 
                                                 name="update_status" 
                                                 value="<?php echo $status; ?>" 
-                                                class="btn btn-outline-<?php echo $options['color']; ?> btn-sm"
+                                                class="btn btn-<?php echo $options['color']; ?> btn-sm"
                                             >
                                                 <?php echo $options['label']; ?>
                                             </button>

@@ -189,8 +189,10 @@ try {
         // Step 3: Handle client transactions
         if ($client_id && $client_id > 0) {
             // Check client type
-            $stmt_check_client = $pdo->prepare("SELECT client_type FROM clients WHERE id = ?");
+            $stmt_check_client = $pdo->prepare("SELECT client_type FROM clients WHERE id = ? AND tenant_id = ? AND branch_id = ?");
             $stmt_check_client->bindParam(1, $client_id, PDO::PARAM_INT);
+            $stmt_check_client->bindParam(2, $tenant_id, PDO::PARAM_INT);
+            $stmt_check_client->bindParam(3, $branch_id, PDO::PARAM_INT);
             $stmt_check_client->execute();
             $client_type = $stmt_check_client->fetch(PDO::FETCH_ASSOC)['client_type'];
 
@@ -216,17 +218,19 @@ try {
                     if ($ticket_currency === 'USD') {
                         $stmt_update_client = $pdo->prepare("UPDATE clients SET usd_balance = usd_balance " .
                                                            ($client_transaction_type == 'credit' ? '-' : '+') .
-                                                           " ? WHERE id = ?");
+                                                           " ? WHERE id = ? AND tenant_id = ? AND branch_id = ?");
                     } elseif ($ticket_currency === 'AFS') {
                         $stmt_update_client = $pdo->prepare("UPDATE clients SET afs_balance = afs_balance " .
                                                            ($client_transaction_type == 'credit' ? '-' : '+') .
-                                                           " ? WHERE id = ?");
+                                                           " ? WHERE id = ? AND tenant_id = ? AND branch_id = ?");
                     } else {
                         throw new PDOException("Unsupported currency type for client balance update.");
                     }
 
                     $stmt_update_client->bindParam(1, $client_transaction_amount, PDO::PARAM_STR);
                     $stmt_update_client->bindParam(2, $client_id, PDO::PARAM_INT);
+                    $stmt_update_client->bindParam(3, $tenant_id, PDO::PARAM_INT);
+                    $stmt_update_client->bindParam(4, $branch_id, PDO::PARAM_INT);
                     if (!$stmt_update_client->execute()) {
                         throw new PDOException("Failed to update client balance for client ID $client_id.");
                     }

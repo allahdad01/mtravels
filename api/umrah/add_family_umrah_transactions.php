@@ -137,7 +137,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                     }
 
                     // Record supplier transaction
-                    $stmt_insert_supplier_transaction = $pdo->prepare("INSERT INTO supplier_transactions (supplier_id, transaction_type, amount, remarks, transaction_of, reference_id, balance, transaction_date, receipt, tenant_id, branch_id) VALUES (?, ?, ?, ?, 'umrah', ?, ?, NOW(), ?, ?, ?)");
+                    $stmt_insert_supplier_transaction = $pdo->prepare("INSERT INTO supplier_transactions (supplier_id, transaction_type, amount, remarks, transaction_of, reference_id, balance, transaction_date, receipt, tenant_id, branch_id) VALUES (?, ?, ?, ?, 'umrah_transaction', ?, ?, NOW(), ?, ?, ?)");
                     $stmt_insert_supplier_transaction->bindParam(1, $supplier_id, PDO::PARAM_INT);
                     $stmt_insert_supplier_transaction->bindParam(2, 'Credit', PDO::PARAM_STR);
                     $stmt_insert_supplier_transaction->bindParam(3, $payment_amount, PDO::PARAM_STR);
@@ -180,7 +180,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                     }
 
                     // Record main account transaction
-                    $stmt_insert_main_account_transaction = $pdo->prepare("INSERT INTO main_account_transactions (main_account_id, type, amount, currency, description, transaction_of, reference_id, balance, created_at, receipt, tenant_id, exchange_rate, branch_id) VALUES (?, ?, ?, ?, ?, 'umrah', ?, ?, NOW(), ?, ?, ?, ?)");
+                    $stmt_insert_main_account_transaction = $pdo->prepare("INSERT INTO main_account_transactions (main_account_id, type, amount, currency, description, transaction_of, reference_id, balance, created_at, receipt, tenant_id, exchange_rate, branch_id) VALUES (?, ?, ?, ?, ?, 'umrah_transaction', ?, ?, NOW(), ?, ?, ?, ?)");
                     $stmt_insert_main_account_transaction->bindParam(1, $paid_to, PDO::PARAM_INT);
                     $stmt_insert_main_account_transaction->bindParam(2, 'Credit', PDO::PARAM_STR);
                     $stmt_insert_main_account_transaction->bindParam(3, $payment_amount, PDO::PARAM_STR);
@@ -248,7 +248,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 }
 
                 // Record main account transaction
-                $stmt_insert_main_account_transaction = $pdo->prepare("INSERT INTO main_account_transactions (main_account_id, type, amount, currency, description, transaction_of, reference_id, balance, created_at, receipt, tenant_id, exchange_rate, branch_id) VALUES (?, 'credit', ?, ?, ?, 'umrah', ?, ?, NOW(), ?, ?, ?, ?)");
+                $stmt_insert_main_account_transaction = $pdo->prepare("INSERT INTO main_account_transactions (main_account_id, type, amount, currency, description, transaction_of, reference_id, balance, created_at, receipt, tenant_id, exchange_rate, branch_id) VALUES (?, 'credit', ?, ?, ?, 'umrah_transaction', ?, ?, NOW(), ?, ?, ?, ?)");
                 $stmt_insert_main_account_transaction->bindParam(1, $paid_to, PDO::PARAM_INT);
                 $stmt_insert_main_account_transaction->bindParam(2, $payment_amount, PDO::PARAM_STR);
                 $stmt_insert_main_account_transaction->bindParam(3, $payment_currency, PDO::PARAM_STR);

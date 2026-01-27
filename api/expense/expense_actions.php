@@ -32,9 +32,9 @@ try {
 
             if($categoryId) {
                 // Update
-                $stmt = $pdo->prepare("UPDATE expense_categories SET name = ? WHERE id = ? AND tenant_id = ?");
-                $stmt->execute([$categoryName, $categoryId, $tenant_id]);
-                
+                $stmt = $pdo->prepare("UPDATE expense_categories SET name = ? WHERE id = ? AND tenant_id = ? AND branch_id = ?");
+                $stmt->execute([$categoryName, $categoryId, $tenant_id, $branch_id]);
+
                 // Log the activity
                 $old_values = json_encode([
                     'category_id' => $categoryId

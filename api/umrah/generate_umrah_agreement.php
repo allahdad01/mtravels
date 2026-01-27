@@ -52,12 +52,12 @@ try {
         LEFT JOIN umrah_booking_services ubs ON um.booking_id = ubs.booking_id
         LEFT JOIN suppliers s ON ubs.supplier_id = s.id
         LEFT JOIN clients c ON um.sold_to = c.id
-        WHERE um.booking_id = ? AND um.tenant_id = ?
+        WHERE um.booking_id = ? AND um.tenant_id = ? AND um.branch_id = ?
         GROUP BY um.booking_id
     ";
     
     $stmt = $pdo->prepare($query);
-    $stmt->execute([$user_id, $bookingId, $tenant_id]);
+    $stmt->execute([$user_id, $bookingId, $tenant_id, $branch_id]);
     $booking = $stmt->fetch(PDO::FETCH_ASSOC);
     
     if (!$booking) {

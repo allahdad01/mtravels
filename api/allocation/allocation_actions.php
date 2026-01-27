@@ -13,7 +13,7 @@ require_once '../../admin/security.php';
 enforce_auth();
 
 $tenant_id = $_SESSION['tenant_id'];
-
+$branch_id = $_SESSION['branch_id'];
 
 // Check if user is logged in
 if (!isset($_SESSION['user_id'])) {
@@ -172,9 +172,9 @@ function createAllocation($pdo) {
 
         // Add transaction record
         $transactionStmt = $pdo->prepare("
-            INSERT INTO main_account_transactions 
-            (main_account_id, type, amount, description, balance, currency, transaction_of, reference_id, tenant_id) 
-            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
+            INSERT INTO main_account_transactions
+            (main_account_id, type, amount, description, balance, currency, transaction_of, reference_id, tenant_id, branch_id)
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
         ");
         $transactionStmt->execute([
             $mainAccountId,
@@ -186,7 +186,8 @@ function createAllocation($pdo) {
             $currency,
             'budget_allocation',
             $allocationId,
-            $tenant_id
+            $tenant_id,
+            $branch_id
         ]);
 
         // Commit transaction
@@ -209,11 +210,11 @@ function createAllocation($pdo) {
         $user_agent = $_SERVER['HTTP_USER_AGENT'] ?? '';
         
         $activityStmt = $pdo->prepare("
-            INSERT INTO activity_log 
-            (user_id, action, table_name, record_id, old_values, new_values, ip_address, user_agent, created_at, tenant_id) 
-            VALUES (?, 'add', 'budget_allocations', ?, ?, ?, ?, ?, NOW(), ?)
+            INSERT INTO activity_log
+            (user_id, action, table_name, record_id, old_values, new_values, ip_address, user_agent, created_at, tenant_id, branch_id)
+            VALUES (?, 'add', 'budget_allocations', ?, ?, ?, ?, ?, NOW(), ?, ?)
         ");
-        $activityStmt->execute([$user_id, $allocationId, $old_values, $new_values, $ip_address, $user_agent, $tenant_id]);
+        $activityStmt->execute([$user_id, $allocationId, $old_values, $new_values, $ip_address, $user_agent, $tenant_id, $branch_id]);
 
         sendResponse(true, 'Budget allocation created successfully');
     } catch (PDOException $e) {
@@ -249,8 +250,8 @@ function updateAllocation($pdo) {
 
         // Log the activity
         // Get the current allocation data for old_values
-        $stmt = $pdo->prepare("SELECT * FROM budget_allocations WHERE id = ?");
-        $stmt->execute([$allocationId]);
+        $stmt = $pdo->prepare("SELECT * FROM budget_allocations WHERE id = ? AND tenant_id = ? AND branch_id = ?");
+        $stmt->execute([$allocationId, $tenant_id, $branch_id]);
         $allocation = $stmt->fetch(PDO::FETCH_ASSOC);
         
         $old_values = json_encode(['description' => $allocation['description'] ?? '']);
@@ -261,11 +262,11 @@ function updateAllocation($pdo) {
         $user_agent = $_SERVER['HTTP_USER_AGENT'] ?? '';
         
         $activityStmt = $pdo->prepare("
-            INSERT INTO activity_log 
-            (user_id, action, table_name, record_id, old_values, new_values, ip_address, user_agent, created_at, tenant_id) 
-            VALUES (?, 'update', 'budget_allocations', ?, ?, ?, ?, ?, NOW(), ?)
+            INSERT INTO activity_log
+            (user_id, action, table_name, record_id, old_values, new_values, ip_address, user_agent, created_at, tenant_id, branch_id)
+            VALUES (?, 'update', 'budget_allocations', ?, ?, ?, ?, ?, NOW(), ?, ?)
         ");
-        $activityStmt->execute([$user_id, $allocationId, $old_values, $new_values, $ip_address, $user_agent, $tenant_id]);
+        $activityStmt->execute([$user_id, $allocationId, $old_values, $new_values, $ip_address, $user_agent, $tenant_id, $branch_id]);
 
         sendResponse(true, 'Budget allocation updated successfully');
     } catch (PDOException $e) {
@@ -396,11 +397,11 @@ function deleteAllocation($pdo) {
         $user_agent = $_SERVER['HTTP_USER_AGENT'] ?? '';
         
         $activityStmt = $pdo->prepare("
-            INSERT INTO activity_log 
-            (user_id, action, table_name, record_id, old_values, new_values, ip_address, user_agent, created_at, tenant_id) 
-            VALUES (?, 'delete', 'budget_allocations', ?, ?, ?, ?, ?, NOW(), ?)
+            INSERT INTO activity_log
+            (user_id, action, table_name, record_id, old_values, new_values, ip_address, user_agent, created_at, tenant_id, branch_id)
+            VALUES (?, 'delete', 'budget_allocations', ?, ?, ?, ?, ?, NOW(), ?, ?)
         ");
-        $activityStmt->execute([$user_id, $allocationId, $old_values, $new_values, $ip_address, $user_agent, $tenant_id]);
+        $activityStmt->execute([$user_id, $allocationId, $old_values, $new_values, $ip_address, $user_agent, $tenant_id, $branch_id]);
 
         sendResponse(true, 'Budget allocation deleted successfully');
     } catch (PDOException $e) {
@@ -416,6 +417,8 @@ function deleteAllocation($pdo) {
 // Get all allocations for a specific category
 function getAllocations($pdo) {
     try {
+        $tenant_id = $_SESSION['tenant_id'];
+        $branch_id = $_SESSION['branch_id'];
         $categoryId = isset($_POST['category_id']) ? intval($_POST['category_id']) : 0;
         $currency = isset($_POST['currency']) ? $_POST['currency'] : null;
         
@@ -454,6 +457,8 @@ function getAllocations($pdo) {
 // Get details for a specific allocation
 function getAllocationDetails($pdo) {
     try {
+        $tenant_id = $_SESSION['tenant_id'];
+        $branch_id = $_SESSION['branch_id'];
         $allocationId = isset($_POST['allocation_id']) ? intval($_POST['allocation_id']) : 0;
         
         if ($allocationId <= 0) {
@@ -500,8 +505,8 @@ function getAllocationDetails($pdo) {
 function getCategoryName($pdo, $categoryId) {
     $tenant_id = $_SESSION['tenant_id'];
     $branch_id = $_SESSION['branch_id'];
-    $stmt = $pdo->prepare("SELECT name FROM expense_categories WHERE id = ? AND tenant_id = ?");
-    $stmt->execute([$categoryId, $tenant_id]);
+    $stmt = $pdo->prepare("SELECT name FROM expense_categories WHERE id = ? AND tenant_id = ? AND branch_id = ?");
+    $stmt->execute([$categoryId, $tenant_id, $branch_id]);
     return $stmt->fetchColumn() ?: 'Unknown Category';
 }
 
@@ -602,9 +607,9 @@ function addFunds($pdo) {
 
         // Log the transaction in main_account_transactions
         $transactionStmt = $pdo->prepare("
-            INSERT INTO main_account_transactions 
-            (main_account_id, type, amount, description, balance, currency, transaction_of, reference_id, tenant_id) 
-            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
+            INSERT INTO main_account_transactions
+            (main_account_id, type, amount, description, balance, currency, transaction_of, reference_id, tenant_id, branch_id)
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
         ");
         $description = "Additional funding to budget allocation: " . $allocation['category_name'] . ($note ? " - " . $note : "");
         $transactionStmt->execute([
@@ -616,7 +621,8 @@ function addFunds($pdo) {
             $currency,
             'budget_allocation',
             $allocationId,
-            $tenant_id
+            $tenant_id,
+            $branch_id
         ]);
 
         // Log the activity
@@ -634,11 +640,11 @@ function addFunds($pdo) {
         $user_agent = $_SERVER['HTTP_USER_AGENT'] ?? '';
         
         $activityStmt = $pdo->prepare("
-            INSERT INTO activity_log 
-            (user_id, action, table_name, record_id, old_values, new_values, ip_address, user_agent, created_at, tenant_id) 
-            VALUES (?, 'add_funds', 'budget_allocations', ?, ?, ?, ?, ?, NOW(), ?)
+            INSERT INTO activity_log
+            (user_id, action, table_name, record_id, old_values, new_values, ip_address, user_agent, created_at, tenant_id, branch_id)
+            VALUES (?, 'add_funds', 'budget_allocations', ?, ?, ?, ?, ?, NOW(), ?, ?)
         ");
-        $activityStmt->execute([$user_id, $allocationId, $old_values, $new_values, $ip_address, $user_agent, $tenant_id]);
+        $activityStmt->execute([$user_id, $allocationId, $old_values, $new_values, $ip_address, $user_agent, $tenant_id, $branch_id]);
 
         // Commit transaction
         $pdo->commit();
@@ -662,6 +668,7 @@ function addFunds($pdo) {
 // Get fund transactions for an allocation
 function getFundTransactions($pdo) {
     $tenant_id = $_SESSION['tenant_id'];
+    $branch_id = $_SESSION['branch_id'];
     try {
         $allocationId = isset($_POST['allocation_id']) ? intval($_POST['allocation_id']) : 0;
         
@@ -688,11 +695,11 @@ function getFundTransactions($pdo) {
         
         // Get transactions associated with this allocation
         $transactionStmt = $pdo->prepare("
-            SELECT * FROM main_account_transactions 
-            WHERE transaction_of = 'budget_allocation' AND reference_id = ?
+            SELECT * FROM main_account_transactions
+            WHERE transaction_of = 'budget_allocation' AND reference_id = ? AND tenant_id = ? AND branch_id = ?
             ORDER BY created_at DESC
         ");
-        $transactionStmt->execute([$allocationId]);
+        $transactionStmt->execute([$allocationId, $tenant_id, $branch_id]);
         $transactions = $transactionStmt->fetchAll(PDO::FETCH_ASSOC);
         
         sendResponse(true, 'Fund transactions retrieved successfully', [
@@ -708,6 +715,7 @@ function getFundTransactions($pdo) {
 // Delete a fund transaction
 function deleteFundTransaction($pdo) {
     $tenant_id = $_SESSION['tenant_id'];
+    $branch_id = $_SESSION['branch_id'];
     try {
         $transactionId = isset($_POST['transaction_id']) ? intval($_POST['transaction_id']) : 0;
         $allocationId = isset($_POST['allocation_id']) ? intval($_POST['allocation_id']) : 0;
@@ -853,11 +861,11 @@ function deleteFundTransaction($pdo) {
         $new_values = json_encode([]);
         
         $activityStmt = $pdo->prepare("
-            INSERT INTO activity_log 
-            (user_id, action, table_name, record_id, old_values, new_values, ip_address, user_agent, created_at, tenant_id) 
-            VALUES (?, 'delete', 'main_account_transactions', ?, ?, ?, ?, ?, NOW(), ?)
+            INSERT INTO activity_log
+            (user_id, action, table_name, record_id, old_values, new_values, ip_address, user_agent, created_at, tenant_id, branch_id)
+            VALUES (?, 'delete', 'main_account_transactions', ?, ?, ?, ?, ?, NOW(), ?, ?)
         ");
-        $activityStmt->execute([$user_id, $transactionId, $old_values, $new_values, $ip_address, $user_agent, $tenant_id]);
+        $activityStmt->execute([$user_id, $transactionId, $old_values, $new_values, $ip_address, $user_agent, $tenant_id, $branch_id]);
         
         // Commit transaction
         $pdo->commit();
@@ -876,6 +884,7 @@ function deleteFundTransaction($pdo) {
 // Filter allocations by month and year
 function filterAllocationsByMonth($pdo) {
     $tenant_id = $_SESSION['tenant_id'];
+    $branch_id = $_SESSION['branch_id'];
     try {
         $month = isset($_POST['month']) ? $_POST['month'] : date('m');
         $year = isset($_POST['year']) ? $_POST['year'] : date('Y');

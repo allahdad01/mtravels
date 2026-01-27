@@ -58,8 +58,8 @@ try {
     }
 
     // Update status
-    $update_stmt = $pdo->prepare("UPDATE maktobs SET status = ?, updated_at = NOW() WHERE id = ?");
-    $update_stmt->execute([$new_status, $maktob_id]);
+    $update_stmt = $pdo->prepare("UPDATE maktobs SET status = ?, updated_at = NOW() WHERE id = ? AND branch_id = ?");
+    $update_stmt->execute([$new_status, $maktob_id, $_SESSION['branch_id']]);
 
     // Log the action
     $log_stmt = $pdo->prepare("INSERT INTO maktob_logs (tenant_id, maktob_id, user_id, action, old_values, new_values, ip_address, branch_id)
@@ -78,8 +78,8 @@ try {
     // Send notification if sent
     if ($action === 'send') {
         // Get tenant admin for notification
-        $admin_stmt = $pdo->prepare("SELECT email, name, phone FROM users WHERE tenant_id = ? AND role IN ('super_admin', 'tenant_super_admin', 'admin') ORDER BY role DESC LIMIT 1");
-        $admin_stmt->execute([$_SESSION['tenant_id']]);
+        $admin_stmt = $pdo->prepare("SELECT email, name, phone FROM users WHERE tenant_id = ? AND branch_id = ? AND role IN ('super_admin', 'tenant_super_admin', 'admin') ORDER BY role DESC LIMIT 1");
+        $admin_stmt->execute([$_SESSION['tenant_id'], $_SESSION['branch_id']]);
         $admin = $admin_stmt->fetch(PDO::FETCH_ASSOC);
 
         if ($admin && $admin['email']) {

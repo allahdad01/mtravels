@@ -47,10 +47,11 @@ if ($amount <= 0) {
 }
 
 // Fetch the main account balances (USD and AFS) based on account ID
-$mainAccountQuery = "SELECT usd_balance, afs_balance, darham_balance, euro_balance FROM main_account WHERE id = ? AND tenant_id = ?";
+$mainAccountQuery = "SELECT usd_balance, afs_balance, darham_balance, euro_balance FROM main_account WHERE id = ? AND tenant_id = ? AND branch_id = ?";
 $stmt = $pdo->prepare($mainAccountQuery);
 $stmt->bindParam(1, $accountId, PDO::PARAM_INT);
 $stmt->bindParam(2, $tenant_id, PDO::PARAM_INT);
+$stmt->bindParam(3, $branch_id, PDO::PARAM_INT);
 $stmt->execute();
 $mainAccount = $stmt->fetch(PDO::FETCH_ASSOC);
 
@@ -66,11 +67,12 @@ $fullRemark = "Account funded by $username. Remarks: $userRemarks. Receipt: $rec
 // Update the main account balance based on the selected currency
 if ($currency === 'USD') {
     $newUsdBalance = $mainAccount['usd_balance'] + $amount;
-    $updateQuery = "UPDATE main_account SET usd_balance = ? WHERE id = ? AND tenant_id = ?";
+    $updateQuery = "UPDATE main_account SET usd_balance = ? WHERE id = ? AND tenant_id = ? AND branch_id = ?";
     $stmt = $pdo->prepare($updateQuery);
     $stmt->bindParam(1, $newUsdBalance, PDO::PARAM_STR);
     $stmt->bindParam(2, $accountId, PDO::PARAM_INT);
     $stmt->bindParam(3, $tenant_id, PDO::PARAM_INT);
+    $stmt->bindParam(4, $branch_id, PDO::PARAM_INT);
     $stmt->execute();
 
     // Log the transaction (funding)
@@ -125,11 +127,12 @@ if ($currency === 'USD') {
     echo json_encode(['success' => true, 'message' => 'Main account funded with USD.']);
 } elseif ($currency === 'AFS') {
     $newAfsBalance = $mainAccount['afs_balance'] + $amount;
-    $updateQuery = "UPDATE main_account SET afs_balance = ? WHERE id = ? AND tenant_id = ?";
+    $updateQuery = "UPDATE main_account SET afs_balance = ? WHERE id = ? AND tenant_id = ? AND branch_id = ?";
     $stmt = $pdo->prepare($updateQuery);
     $stmt->bindParam(1, $newAfsBalance, PDO::PARAM_STR);
     $stmt->bindParam(2, $accountId, PDO::PARAM_INT);
     $stmt->bindParam(3, $tenant_id, PDO::PARAM_INT);
+    $stmt->bindParam(4, $branch_id, PDO::PARAM_INT);
     $stmt->execute();
 
     // Log the transaction (funding)
@@ -184,11 +187,12 @@ if ($currency === 'USD') {
     echo json_encode(['success' => true, 'message' => 'Main account funded with AFS.']);
 } elseif ($currency === 'DARHAM') {
     $newDarhamBalance = $mainAccount['darham_balance'] + $amount;
-    $updateQuery = "UPDATE main_account SET darham_balance = ? WHERE id = ? AND tenant_id = ?";
+    $updateQuery = "UPDATE main_account SET darham_balance = ? WHERE id = ? AND tenant_id = ? AND branch_id = ?";
     $stmt = $pdo->prepare($updateQuery);
     $stmt->bindParam(1, $newDarhamBalance, PDO::PARAM_STR);
     $stmt->bindParam(2, $accountId, PDO::PARAM_INT);
     $stmt->bindParam(3, $tenant_id, PDO::PARAM_INT);
+    $stmt->bindParam(4, $branch_id, PDO::PARAM_INT);
     $stmt->execute();
 
     // Log the transaction (funding)
@@ -243,11 +247,12 @@ if ($currency === 'USD') {
     echo json_encode(['success' => true, 'message' => 'Main account funded with DARHAM.']);
 } elseif ($currency === 'EUR') {
     $newEuroBalance = $mainAccount['euro_balance'] + $amount;
-    $updateQuery = "UPDATE main_account SET euro_balance = ? WHERE id = ? AND tenant_id = ?";
+    $updateQuery = "UPDATE main_account SET euro_balance = ? WHERE id = ? AND tenant_id = ? AND branch_id = ?";
     $stmt = $pdo->prepare($updateQuery);
     $stmt->bindParam(1, $newEuroBalance, PDO::PARAM_STR);
     $stmt->bindParam(2, $accountId, PDO::PARAM_INT);
     $stmt->bindParam(3, $tenant_id, PDO::PARAM_INT);
+    $stmt->bindParam(4, $branch_id, PDO::PARAM_INT);
     $stmt->execute();
 
     // Log the transaction (funding)

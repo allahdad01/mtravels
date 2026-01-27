@@ -33,7 +33,7 @@ if (!$clientId) {
     $error = "No client ID provided";
 } else {
     // Get client details
-    $clientQuery = "SELECT id, image, name, email, phone, usd_balance, afs_balance, address, created_at, updated_at, client_type FROM clients WHERE id = ? AND tenant_id = ? AND branch_id = ?";
+    $clientQuery = "SELECT id, image, name, email, phone, usd_balance, afs_balance, address, created_at, updated_at, client_type, status FROM clients WHERE id = ? AND tenant_id = ? AND branch_id = ?";
 
     $stmt = $pdo->prepare($clientQuery);
     $stmt->execute([$clientId, $tenant_id, $branch_id]);
@@ -68,47 +68,221 @@ if (!$clientId) {
 include '../includes/header.php';
 ?>
 <style>
-/* Apply gradient background to card headers matching the sidebar */
+/* Enhanced custom styles for better layout and design */
+.page-header.card {
+    background: linear-gradient(135deg, #4099ff 0%, #2ed8b6 100%);
+    color: #ffffff;
+    border: none;
+    margin-bottom: 20px;
+    padding: 20px !important;
+    box-shadow: 0 4px 12px rgba(0,0,0,0.15);
+    border-radius: 10px;
+}
+
+.page-header.card .row {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+}
+
+.page-header.card h5 {
+    color: #ffffff;
+    margin: 0;
+    font-weight: 600;
+}
+
+.page-header.card .text-end {
+    text-align: right;
+}
+
+.page-header.card .btn {
+    background: rgba(255,255,255,0.2);
+    color: #ffffff;
+    border: 1px solid rgba(255,255,255,0.3);
+    border-radius: 25px;
+    transition: all 0.3s ease;
+}
+
+.page-header.card .btn:hover {
+    background: rgba(255,255,255,0.3);
+    border-color: rgba(255,255,255,0.5);
+    transform: translateY(-1px);
+}
+
+.card {
+    border-radius: 10px;
+    box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+    transition: transform 0.2s ease-in-out, box-shadow 0.2s ease-in-out;
+    border: none;
+}
+
+.card:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 4px 16px rgba(0,0,0,0.15);
+}
+
 .card-header {
-    background: linear-gradient(135deg, #4099ff 0%, #2ed8b6 100%) !important;
-    color: #ffffff !important;
-    border-bottom: none !important;
+    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    color: white;
+    border-radius: 10px 10px 0 0;
+    padding: 1rem 1.5rem;
+    border: none;
 }
 
 .card-header h5 {
-    color: #ffffff !important;
-    margin-bottom: 0 !important;
+    margin: 0;
+    font-weight: 600;
+    display: flex;
+    align-items: center;
 }
 
-.card-header .card-header-right {
-    color: #ffffff !important;
+.progress {
+    border-radius: 15px;
+    overflow: hidden;
+    box-shadow: inset 0 1px 2px rgba(0,0,0,0.1);
 }
 
-.card-header .card-header-right .btn {
-    color: #ffffff !important;
-    border-color: rgba(255, 255, 255, 0.3) !important;
+.progress-bar {
+    transition: width 0.6s ease;
 }
 
-.card-header .card-header-right .btn:hover {
-    background: rgba(255, 255, 255, 0.1) !important;
-    border-color: rgba(255, 255, 255, 0.5) !important;
+.t {
+    font-size: 0.85em;
+    padding: 0.5em 0.75em;
+    border-radius: 20px;
+    font-weight: 500;
+}
+
+.badge-success {
+    background-color: #28a745;
+}
+
+.badge-warning {
+    background-color: #ffc107;
+    color: #212529;
+}
+
+.badge-info {
+    background-color: #17a2b8;
+}
+
+.badge-danger {
+    background-color: #dc3545;
+    color: #ffffff;
+}
+
+.table-responsive {
+    border-radius: 10px;
+
+}
+
+.table {
+    margin-bottom: 0;
+}
+
+.table thead th {
+    background-color: #f8f9fa;
+    border-bottom: 2px solid #dee2e6;
+    font-weight: 600;
+    color: #495057;
+    padding: 1rem;
+}
+
+.table tbody tr:hover {
+    background-color: #f1f3f4;
+}
+
+.table tbody td {
+    padding: 1rem;
+    vertical-align: middle;
+}
+
+.form-control {
+    border-radius: 8px;
+    border: 1px solid #ced4da;
+    transition: border-color 0.15s ease-in-out, box-shadow 0.15s ease-in-out;
+    padding: 0.75rem;
+}
+
+.form-control:focus {
+    border-color: #4099ff;
+    box-shadow: 0 0 0 0.2rem rgba(64, 153, 255, 0.25);
+}
+
+.btn-primary {
+    background: linear-gradient(135deg, #4099ff 0%, #2ed8b6 100%);
+    border: none;
+    border-radius: 25px;
+    padding: 0.75rem 2rem;
+    font-weight: 600;
+    transition: all 0.3s ease;
+}
+
+.btn-primary:hover {
+    transform: translateY(-1px);
+    box-shadow: 0 4px 12px rgba(64, 153, 255, 0.3);
+}
+
+.btn-secondary {
+    border-radius: 25px;
+    padding: 0.75rem 2rem;
+    font-weight: 600;
+    transition: all 0.3s ease;
+}
+
+.alert {
+    border-radius: 10px;
+    border: none;
+    padding: 1rem 1.5rem;
+}
+
+.alert-info {
+    background: linear-gradient(135deg, #d1ecf1 0%, #bee5eb 100%);
+    color: #0c5460;
+}
+
+.alert-success {
+    background: linear-gradient(135deg, #d4edda 0%, #c3e6cb 100%);
+    color: #155724;
+}
+
+.alert-danger {
+    background: linear-gradient(135deg, #f8d7da 0%, #f5c6cb 100%);
+    color: #721c24;
+}
+
+#estimated_cost {
+    color: #28a745;
+    font-weight: bold;
+}
+
+.h2 {
+    font-size: 2.5rem;
+}
+
+.h4 {
+    font-size: 1.5rem;
+}
+
+.h5 {
+    font-size: 1.25rem;
+}
+
+.h6 {
+    font-size: 1rem;
 }
 </style>
 <div class="pcoded-main-container">
     <div class="pcoded-content">
-        <div class="page-header">
-            <div class="page-block">
-                <div class="row align-items-center">
-                    <div class="col-md-12">
-                        <div class="page-header-title">
-                            <h5 class="m-b-10"><?= __('client_details') ?></h5>
-                        </div>
-                        <ul class="breadcrumb">
-                            <li class="breadcrumb-item"><a href="index.php"><i class="feather icon-home"></i></a></li>
-                            <li class="breadcrumb-item"><a href="search.php"><?= __('search') ?></a></li>
-                            <li class="breadcrumb-item"><a href="javascript:"><?= __('client_details') ?></a></li>
-                        </ul>
-                    </div>
+        <div class="page-header card">
+            <div class="row align-items-center">
+                <div class="col-md-6">
+                    <h5 class="mb-0"><i class="feather icon-user mr-2"></i><?= __('client_details') ?></h5>
+                </div>
+                <div class="col-md-6 text-end">
+                    <a href="search.php" class="btn btn-outline-secondary btn-sm">
+                        <i class="feather icon-arrow-left mr-1"></i><?= __('back_to_search') ?>
+                    </a>
                 </div>
             </div>
         </div>
@@ -126,10 +300,10 @@ include '../includes/header.php';
                                 <i class="feather icon-user mr-2"></i>
                                 <?= __('client_information') ?>
                                 <span class="float-right">
-                                    <span class="badge-<?php 
-                                        if (isset($clientData['status']) && $clientData['status'] == 'Active') echo 'success';
-                                        elseif (isset($clientData['status']) && $clientData['status'] == 'Inactive') echo 'danger';
-                                        else echo 'warning';
+                                    <span class="t <?php
+                                        if (isset($clientData['status']) && strtolower($clientData['status']) == 'active') echo 'badge-success';
+                                        elseif (isset($clientData['status']) && strtolower($clientData['status']) == 'inactive') echo 'badge-danger';
+                                        else echo 'badge-warning';
                                     ?>">
                                         <?php echo isset($clientData['status']) ? htmlspecialchars($clientData['status']) : 'Unknown'; ?>
                                     </span>
@@ -551,8 +725,8 @@ include '../includes/header.php';
                                         <tr>
                                             <td><?php echo date('Y-m-d', strtotime($transaction['transaction_date'])); ?></td>
                                             <td>
-                                                <span class="badge-<?php 
-                                                    echo (isset($transaction['type']) && strtolower($transaction['type']) == 'credit') ? 'success' : 'info'; 
+                                                <span class="t badge-<?php
+                                                    echo (isset($transaction['type']) && strtolower($transaction['type']) == 'credit') ? 'success' : 'info';
                                                 ?>">
                                                     <?php echo isset($transaction['type']) ? ucfirst(strtolower($transaction['type'])) : '—'; ?>
                                                 </span>

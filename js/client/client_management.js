@@ -1,8 +1,3 @@
-const clientTypeTranslations = {
-    'regular': '<?= __("regular") ?>',
-    'agency': '<?= __("agency") ?>'
-};
-
 document.addEventListener('DOMContentLoaded', function() {
     // Hide preloader when page is fully loaded
     window.addEventListener('load', function() {
@@ -67,7 +62,7 @@ document.addEventListener('DOMContentLoaded', function() {
         document.getElementById('totalClients').textContent = totalClients;
         document.getElementById('totalAgencies').textContent = agencies;
         document.getElementById('totalBalance').textContent = `$${totalUsd.toFixed(2)}`;
-        document.getElementById('totalAfs').textContent = `₳${totalAfs.toFixed(2)}`;
+        document.getElementById('totalAfs').textContent = `AFN${totalAfs.toFixed(2)}`;
     }
 
     // Render Clients Table
@@ -106,16 +101,13 @@ document.addEventListener('DOMContentLoaded', function() {
             const row = document.createElement('tr');
             const bgColor = getRandomColor();
 
-            // Get translated client type and extract the main part (before parenthesis)
+            // Get translated client type
             const typeText = clientTypeTranslations[client.client_type] || client.client_type;
-            const displayType = typeText.split('(')[0];
+            const displayType = typeText;
 
             row.innerHTML = `
                 <td>
                     <div class="d-flex align-items-center">
-                        <div class="client-avatar mr-3" style="background-color: ${bgColor}">
-                            ${client.name.charAt(0).toUpperCase()}
-                        </div>
                         <div>
                             <h6 class="mb-0">${client.name}</h6>
                             <small class="text-muted">${client.address || ''}</small>
@@ -130,15 +122,22 @@ document.addEventListener('DOMContentLoaded', function() {
                 <td>${client.email}</td>
                 <td>${client.phone || '-'}</td>
                 <td>$${parseFloat(client.usd_balance || 0).toFixed(2)}</td>
-                <td>₳${parseFloat(client.afs_balance || 0).toFixed(2)}</td>
+                <td>AFN${parseFloat(client.afs_balance || 0).toFixed(2)}</td>
                 <td>${client.status}</td>
                 <td class="text-right">
-                    <button class="btn btn-info btn-action" onclick="editClient(${client.id})">
-                        <i class="fas fa-edit text-white"></i>
-                    </button>
-                    <button class="btn btn-danger btn-action" onclick="deleteClient(${client.id})">
-                        <i class="fas fa-trash-alt"></i>
-                    </button>
+                    <div class="dropdown">
+                        <button class="btn btn-secondary btn-sm dropdown-toggle" type="button" data-toggle="dropdown" aria-haspopup="true" aria-expanded="false">
+                            <i class="fas fa-ellipsis-v"></i>
+                        </button>
+                        <div class="dropdown-menu">
+                            <a class="dropdown-item" href="#" onclick="editClient(${client.id})">
+                                <i class="fas fa-edit"></i> Edit
+                            </a>
+                            <a class="dropdown-item text-danger" href="#" onclick="deleteClient(${client.id})">
+                                <i class="fas fa-trash-alt"></i> Delete
+                            </a>
+                        </div>
+                    </div>
                 </td>
             `;
 

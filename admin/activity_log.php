@@ -215,8 +215,309 @@ try {
 
 ?>
 
-<link href="../css/activity_log/styles.css" rel="stylesheet">
 <?php include '../includes/header.php'; ?>
+
+<style>
+/* Enhanced custom styles for better layout and design */
+.page-header.card {
+    background: linear-gradient(135deg, #4099ff 0%, #2ed8b6 100%);
+    color: #ffffff;
+    border: none;
+    margin-bottom: 20px;
+    padding: 20px !important;
+    box-shadow: 0 4px 12px rgba(0,0,0,0.15);
+    border-radius: 10px;
+}
+
+.page-header.card .row {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+}
+
+.page-header.card h5 {
+    color: #ffffff;
+    margin: 0;
+    font-weight: 600;
+}
+
+.page-header.card .text-end {
+    text-align: right;
+}
+
+.page-header.card .btn {
+    background: rgba(255,255,255,0.2);
+    color: #ffffff;
+    border: 1px solid rgba(255,255,255,0.3);
+    border-radius: 25px;
+}
+
+.page-header.card .btn:hover {
+    background: rgba(255,255,255,0.3);
+    border-color: rgba(255,255,255,0.5);
+}
+
+.card {
+    border-radius: 10px;
+    box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+    border: none;
+}
+
+.card-header {
+    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    color: white;
+    border-radius: 10px 10px 0 0;
+    padding: 1rem 1.5rem;
+    border: none;
+}
+
+.card-header h5 {
+    margin: 0;
+    font-weight: 600;
+    display: flex;
+    align-items: center;
+}
+
+.progress {
+    border-radius: 15px;
+    overflow: hidden;
+    box-shadow: inset 0 1px 2px rgba(0,0,0,0.1);
+}
+
+.progress-bar {
+    transition: width 0.6s ease;
+}
+
+.t {
+    font-size: 0.85em;
+    padding: 0.5em 0.75em;
+    border-radius: 20px;
+    font-weight: 500;
+}
+
+.badge-success {
+    background-color: #28a745;
+}
+
+.badge-warning {
+    background-color: #ffc107;
+    color: #212529;
+}
+
+.badge-info {
+    background-color: #17a2b8;
+}
+
+.badge-primary {
+    background-color: #007bff;
+}
+
+.badge-secondary {
+    background-color: #6c757d;
+}
+
+.badge-danger {
+    background-color: #dc3545;
+}
+
+.table-responsive {
+    border-radius: 10px;
+
+}
+
+.table {
+    margin-bottom: 0;
+}
+
+.table thead th {
+    background-color: #f8f9fa;
+    border-bottom: 2px solid #dee2e6;
+    font-weight: 600;
+    color: #495057;
+    padding: 1rem;
+}
+
+.table tbody tr:hover {
+    background-color: #f1f3f4;
+}
+
+.table tbody td {
+    padding: 1rem;
+    vertical-align: middle;
+}
+
+.form-control {
+    border-radius: 8px;
+    border: 1px solid #ced4da;
+    padding: 0.75rem;
+}
+
+.form-control:focus {
+    border-color: #4099ff;
+    box-shadow: 0 0 0 0.2rem rgba(64, 153, 255, 0.25);
+}
+
+.btn-primary {
+    background: linear-gradient(135deg, #4099ff 0%, #2ed8b6 100%);
+    border: none;
+    border-radius: 25px;
+    padding: 0.75rem 2rem;
+    font-weight: 600;
+    transition: all 0.3s ease;
+}
+
+.btn-primary:hover {
+    transform: translateY(-1px);
+    box-shadow: 0 4px 12px rgba(64, 153, 255, 0.3);
+}
+
+.btn-secondary {
+    border-radius: 25px;
+    padding: 0.75rem 2rem;
+    font-weight: 600;
+    transition: all 0.3s ease;
+}
+
+.btn-warning {
+    background: linear-gradient(135deg, #ffc107 0%, #ff8c00 100%);
+    border: none;
+    border-radius: 25px;
+    padding: 0.75rem 2rem;
+    font-weight: 600;
+    transition: all 0.3s ease;
+    color: #212529;
+}
+
+.btn-warning:hover {
+    transform: translateY(-1px);
+    box-shadow: 0 4px 12px rgba(255, 193, 7, 0.3);
+}
+
+.btn-danger {
+    background: linear-gradient(135deg, #dc3545 0%, #c82333 100%);
+    border: none;
+    border-radius: 25px;
+    padding: 0.75rem 2rem;
+    font-weight: 600;
+    transition: all 0.3s ease;
+}
+
+.btn-danger:hover {
+    transform: translateY(-1px);
+    box-shadow: 0 4px 12px rgba(220, 53, 69, 0.3);
+}
+
+.btn-info {
+    background: linear-gradient(135deg, #17a2b8 0%, #138496 100%);
+    border: none;
+    border-radius: 25px;
+    padding: 0.75rem 2rem;
+    font-weight: 600;
+    transition: all 0.3s ease;
+}
+
+.btn-info:hover {
+    transform: translateY(-1px);
+    box-shadow: 0 4px 12px rgba(23, 162, 184, 0.3);
+}
+
+.btn-success {
+    background: linear-gradient(135deg, #28a745 0%, #218838 100%);
+    border: none;
+    border-radius: 25px;
+    padding: 0.75rem 2rem;
+    font-weight: 600;
+    transition: all 0.3s ease;
+}
+
+.btn-success:hover {
+    transform: translateY(-1px);
+    box-shadow: 0 4px 12px rgba(40, 167, 69, 0.3);
+}
+
+.alert {
+    border-radius: 10px;
+    border: none;
+    padding: 1rem 1.5rem;
+}
+
+.alert-info {
+    background: linear-gradient(135deg, #d1ecf1 0%, #bee5eb 100%);
+    color: #0c5460;
+}
+
+.alert-success {
+    background: linear-gradient(135deg, #d4edda 0%, #c3e6cb 100%);
+    color: #155724;
+}
+
+.alert-danger {
+    background: linear-gradient(135deg, #f8d7da 0%, #f5c6cb 100%);
+    color: #721c24;
+}
+
+.alert-warning {
+    background: linear-gradient(135deg, #fff3cd 0%, #ffeaa7 100%);
+    color: #856404;
+}
+
+
+.modal-header {
+    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    color: white;
+    border-radius: 10px 10px 0 0;
+    border: none;
+    padding: 1rem 1.5rem;
+}
+
+.modal-header .close {
+    color: white;
+    opacity: 0.8;
+}
+
+.modal-body {
+    padding: 1.5rem;
+}
+
+.modal-body p {
+    word-break: break-word;
+    overflow-wrap: break-word;
+}
+
+.modal-footer {
+    border-top: none;
+    border-radius: 0 0 10px 10px;
+    padding: 1rem 1.5rem;
+}
+
+.h2 {
+    font-size: 2.5rem;
+}
+
+.h4 {
+    font-size: 1.5rem;
+}
+
+.h5 {
+    font-size: 1.25rem;
+}
+
+.h6 {
+    font-size: 1rem;
+}
+
+.user-agent-info {
+    word-break: break-all;
+    max-width: 100%;
+    display: inline-block;
+    white-space: normal;
+}
+
+.user-agent-wrapper {
+    max-height: 100px;
+    overflow-y: auto;
+}
+</style>
 
 <!-- [ Main Content ] start -->
 <div class="pcoded-main-container">
@@ -226,13 +527,19 @@ try {
                 <div class="main-body">
                     <div class="page-wrapper">
                         <!-- [ Main Content ] start -->
-                            <div class="d-flex justify-content-between align-items-center mb-4">
-                                <h2><?= __('activity_log') ?></h2>
-                                <?php if (!empty($logs)): ?>
-                                <button type="button" class="btn btn-danger" data-toggle="modal" data-target="#bulkDeleteModal">
-                                    <i class="fas fa-trash"></i> <?= __('bulk_delete') ?>
-                                </button>
-                                <?php endif; ?>
+                            <div class="page-header card">
+                                <div class="row align-items-center">
+                                    <div class="col-md-6">
+                                        <h5 class="mb-0"><i class="feather icon-activity mr-2"></i><?= __('activity_log') ?></h5>
+                                    </div>
+                                    <div class="col-md-6 text-end">
+                                        <?php if (!empty($logs)): ?>
+                                        <button type="button" class="btn btn-danger" data-toggle="modal" data-target="#bulkDeleteModal">
+                                            <i class="feather icon-trash-2 mr-1"></i> <?= __('bulk_delete') ?>
+                                        </button>
+                                        <?php endif; ?>
+                                    </div>
+                                </div>
                             </div>
                             
                             <?php if (isset($success_message)): ?>
@@ -244,8 +551,8 @@ try {
                             <?php endif; ?>
                             
                             <!-- Filters Section -->
-                            <div class="card mb-4 shadow-sm">
-                                <div class="card-header bg-primary text-white">
+                            <div class="card mb-4">
+                                <div class="card-header">
                                     <h5 class="mb-0"><i class="feather icon-filter mr-2"></i><?= __('filter_logs') ?></h5>
                                 </div>
                                 <div class="card-body">
@@ -306,7 +613,7 @@ try {
                             </div>
                             
                             <!-- Bulk Delete Modal -->
-                            <div class="modal fade" id="bulkDeleteModal" tabindex="-1" role="dialog" aria-labelledby="bulkDeleteModalLabel" aria-hidden="true">
+                            <div class="modal" id="bulkDeleteModal" tabindex="-1" role="dialog" aria-labelledby="bulkDeleteModalLabel" aria-hidden="true">
                                 <div class="modal-dialog" role="document">
                                     <div class="modal-content">
                                         <div class="modal-header">
@@ -339,8 +646,8 @@ try {
                                 </div>
                             </div>
                             
-                            <div class="card shadow-sm border-0">
-                                <div class="card-header bg-transparent py-3">
+                            <div class="card">
+                                <div class="card-header">
                                     <div class="row align-items-center">
                                         <div class="col">
                                             <h5 class="mb-0 text-primary">
@@ -419,7 +726,7 @@ try {
                                                                 if ($log['action'] == 'delete') $badge_class = 'badge-danger';
                                                                 if ($log['action'] == 'insert') $badge_class = 'badge-primary';
                                                                 ?>
-                                                                <span class="badge<?php echo $badge_class; ?>">
+                                                                <span class="t <?php echo $badge_class; ?>">
                                                                     <?php echo h(ucfirst($log['action'])); ?>
                                                                 </span>
                                                             </td>
@@ -437,7 +744,7 @@ try {
                                                                 </div>
                                                                 
                                                                 <!-- View Log Modal -->
-                                                                <div class="modal fade" id="viewLogModal<?php echo h($log['id']); ?>" tabindex="-1" role="dialog" aria-labelledby="viewLogModalLabel<?php echo h($log['id']); ?>" aria-hidden="true">
+                                                                <div class="modal" id="viewLogModal<?php echo h($log['id']); ?>" tabindex="-1" role="dialog" aria-labelledby="viewLogModalLabel<?php echo h($log['id']); ?>" aria-hidden="true">
                                                                     <div class="modal-dialog modal-lg" role="document">
                                                                         <div class="modal-content">
                                                                             <div class="modal-header">
@@ -515,7 +822,7 @@ try {
                                                                 </div>
                                                                 
                                                                 <!-- Delete Log Modal -->
-                                                                <div class="modal fade" id="deleteLogModal<?php echo h($log['id']); ?>" tabindex="-1" role="dialog" aria-labelledby="deleteLogModalLabel<?php echo h($log['id']); ?>" aria-hidden="true">
+                                                                <div class="modal" id="deleteLogModal<?php echo h($log['id']); ?>" tabindex="-1" role="dialog" aria-labelledby="deleteLogModalLabel<?php echo h($log['id']); ?>" aria-hidden="true">
                                                                     <div class="modal-dialog" role="document">
                                                                         <div class="modal-content">
                                                                             <div class="modal-header">

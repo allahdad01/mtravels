@@ -1260,12 +1260,12 @@ try {
                             FROM visa_applications v
                             LEFT JOIN suppliers s ON v.supplier = s.id
                             LEFT JOIN main_account_transactions mat ON v.id = mat.reference_id and mat.transaction_of = 'visa_sale'
-                            WHERE v." . ($reportType === 'supplier' ? 'supplier' : 
-                                        ($reportType === 'client' ? 'sold_to' : 
-                                        ($reportType === 'main_account' ? 'paid_to' : 'supplier'))) . " = ? 
-                            AND v.receive_date BETWEEN ? AND ? AND v.tenant_id = ?
+                            WHERE v." . ($reportType === 'supplier' ? 'supplier' :
+                                        ($reportType === 'client' ? 'sold_to' :
+                                        ($reportType === 'main_account' ? 'paid_to' : 'supplier'))) . " = ?
+                            AND v.receive_date BETWEEN ? AND ? AND v.tenant_id = ? AND v.branch_id = ?
                             GROUP BY v.id";
-                        $params = [$entity, $startDate, $endDate, $tenant_id];
+                        $params = [$entity, $startDate, $endDate, $tenant_id, $branch_id];
                         $headers = ['Applicant Name', 'Passport Number',
                                    'Phone', 'Title', 'Gender',
                                    'Country', 'Visa Type',
@@ -1416,7 +1416,7 @@ try {
                             LEFT JOIN clients c ON va.sold_to = c.id
                             LEFT JOIN main_account m ON va.paid_to = m.id
                             LEFT JOIN users u ON vr.processed_by = u.id
-                            WHERE vr.refund_date BETWEEN ? AND ? AND vr.tenant_id = ? vr.branch_id = ?";
+                            WHERE vr.refund_date BETWEEN ? AND ? AND vr.tenant_id = ? AND vr.branch_id = ?";
                         $params = [$startDate, $endDate, $tenant_id, $branch_id];
                         $headers = [
                             'Passport Number',
@@ -1545,8 +1545,8 @@ try {
                             LEFT JOIN clients c ON tb.sold_to = c.id
                             LEFT JOIN main_account m ON tb.paid_to = m.id
                             LEFT JOIN main_account_transactions mat ON tb.id = mat.reference_id and mat.transaction_of = 'ticket_sale'
-                            WHERE tb.sold_to = ? AND tb.issue_date BETWEEN ? AND ? AND tb.tenant_id = ? AND tb.branch_id = ? 
-                            GROUP BY rt.id
+                            WHERE tb.sold_to = ? AND tb.issue_date BETWEEN ? AND ? AND tb.tenant_id = ? AND tb.branch_id = ?
+                            GROUP BY tb.id
                             
                             UNION ALL
                             

@@ -42,7 +42,6 @@ try {
             um.name,
             um.passport_number,
             f.contact,
-
             um.relation,
             um.entry_date,
             um.flight_date,

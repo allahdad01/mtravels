@@ -186,7 +186,7 @@ $exchange_rate = isset($_POST['exchange_rate']) ? DbSecurity::validateInput($_PO
             if (strtolower($transactionTo) === 'internal account' || empty($transactionTo)) {
                 // Handle internal account transaction
                 $mainTxStmt = $pdo->prepare("SELECT id, amount, type, currency, main_account_id, balance FROM main_account_transactions
-                                             WHERE reference_id = ? AND transaction_of = 'umrah' AND tenant_id = ? AND branch_id = ?");
+                                             WHERE reference_id = ? AND transaction_of = 'umrah_transaction' AND tenant_id = ? AND branch_id = ?");
                 $mainTxStmt->bindParam(1, $transactionId, PDO::PARAM_INT);
                 $mainTxStmt->bindParam(2, $tenant_id, PDO::PARAM_INT);
                 $mainTxStmt->bindParam(3, $branch_id, PDO::PARAM_INT);
@@ -295,7 +295,7 @@ $exchange_rate = isset($_POST['exchange_rate']) ? DbSecurity::validateInput($_PO
 
                     // Check for existing supplier transaction
                     $supplierTxStmt = $pdo->prepare("SELECT id, amount, balance FROM supplier_transactions
-                                                    WHERE reference_id = ? AND transaction_of = 'umrah' AND tenant_id = ? AND branch_id = ?");
+                                                    WHERE reference_id = ? AND transaction_of = 'umrah_transaction' AND tenant_id = ? AND branch_id = ?");
                     $supplierTxStmt->bindParam(1, $transactionId, PDO::PARAM_INT);
                     $supplierTxStmt->bindParam(2, $tenant_id, PDO::PARAM_INT);
                     $supplierTxStmt->bindParam(3, $branch_id, PDO::PARAM_INT);
@@ -403,17 +403,17 @@ $exchange_rate = isset($_POST['exchange_rate']) ? DbSecurity::validateInput($_PO
                                  SET f.total_paid = (
                                      SELECT SUM(paid) FROM umrah_bookings
                                      WHERE family_id = (
-                                         SELECT family_id FROM umrah_bookings WHERE booking_id = ? AND tenant_id = ?
+                                         SELECT family_id FROM umrah_bookings WHERE booking_id = ? AND tenant_id = ? AND branch_id = ?
                                      )
                                  ),
                                  f.total_due = (
                                      SELECT SUM(due) FROM umrah_bookings
                                      WHERE family_id = (
-                                         SELECT family_id FROM umrah_bookings WHERE booking_id = ? AND tenant_id = ?
+                                         SELECT family_id FROM umrah_bookings WHERE booking_id = ? AND tenant_id = ? AND branch_id = ?
                                      )
                                  )
                                  WHERE f.family_id = (
-                                     SELECT family_id FROM umrah_bookings WHERE booking_id = ? AND tenant_id = ?
+                                     SELECT family_id FROM umrah_bookings WHERE booking_id = ? AND tenant_id = ? AND branch_id = ?
                                  )";
             $updateFamilyStmt = $pdo->prepare($updateFamilyQuery);
             $updateFamilyStmt->bindParam(1, $umrahId, PDO::PARAM_INT);
@@ -422,6 +422,7 @@ $exchange_rate = isset($_POST['exchange_rate']) ? DbSecurity::validateInput($_PO
             $updateFamilyStmt->bindParam(4, $tenant_id, PDO::PARAM_INT);
             $updateFamilyStmt->bindParam(5, $umrahId, PDO::PARAM_INT);
             $updateFamilyStmt->bindParam(6, $tenant_id, PDO::PARAM_INT);
+            $updateFamilyStmt->bindParam(7, $branch_id, PDO::PARAM_INT);
 
             if (!$updateFamilyStmt->execute()) {
                 throw new PDOException("Failed to update family totals");
@@ -433,7 +434,7 @@ $exchange_rate = isset($_POST['exchange_rate']) ? DbSecurity::validateInput($_PO
             if (strtolower($transactionTo) === 'internal account' || empty($transactionTo)) {
                 // Handle internal account date change
                 $mainTxStmt = $pdo->prepare("SELECT id, main_account_id, currency FROM main_account_transactions
-                                             WHERE reference_id = ? AND transaction_of = 'umrah' AND tenant_id = ? AND branch_id = ?");
+                                             WHERE reference_id = ? AND transaction_of = 'umrah_transaction' AND tenant_id = ? AND branch_id = ?");
                 $mainTxStmt->bindParam(1, $umrahId, PDO::PARAM_INT);
                 $mainTxStmt->bindParam(2, $tenant_id, PDO::PARAM_INT);
                 $mainTxStmt->bindParam(3, $branch_id, PDO::PARAM_INT);
@@ -498,7 +499,7 @@ $exchange_rate = isset($_POST['exchange_rate']) ? DbSecurity::validateInput($_PO
 
                     // Check for existing supplier transaction
                     $supplierTxStmt = $pdo->prepare("SELECT id FROM supplier_transactions
-                                                    WHERE reference_id = ? AND transaction_type = 'umrah' AND tenant_id = ? AND branch_id = ?");
+                                                    WHERE reference_id = ? AND transaction_type = 'umrah_transaction' AND tenant_id = ? AND branch_id = ?");
                     $supplierTxStmt->bindParam(1, $umrahId, PDO::PARAM_INT);
                     $supplierTxStmt->bindParam(2, $tenant_id, PDO::PARAM_INT);
                     $supplierTxStmt->bindParam(3, $branch_id, PDO::PARAM_INT);

@@ -68,9 +68,9 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         // Handle supplier transactions if penalty changed
         if ($supplierPenaltyDifference != 0 && $supplier_id > 0) {
             // Check if supplier is external
-            $supplierQuery = "SELECT * FROM suppliers WHERE id = ? AND tenant_id = ?";
+            $supplierQuery = "SELECT * FROM suppliers WHERE id = ? AND tenant_id = ? AND branch_id = ?";
             $stmtSupplier = $conn->prepare($supplierQuery);
-            $stmtSupplier->bind_param('ii', $supplier_id, $tenant_id);
+            $stmtSupplier->bind_param('iii', $supplier_id, $tenant_id, $branch_id);
             $stmtSupplier->execute();
             $supplierResult = $stmtSupplier->get_result();
             $supplierData = $supplierResult->fetch_assoc();
@@ -84,9 +84,9 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             
             if ($isExternal) {
                 // Get current supplier balance
-                $getCurrentSupplierBalanceQuery = "SELECT balance FROM suppliers WHERE id = ? AND tenant_id = ?";
+                $getCurrentSupplierBalanceQuery = "SELECT balance FROM suppliers WHERE id = ? AND tenant_id = ? AND branch_id = ?";
                 $stmtGetCurrentSupplierBalance = $conn->prepare($getCurrentSupplierBalanceQuery);
-                $stmtGetCurrentSupplierBalance->bind_param('ii', $supplier_id, $tenant_id);
+                $stmtGetCurrentSupplierBalance->bind_param('iii', $supplier_id, $tenant_id, $branch_id);
                 $stmtGetCurrentSupplierBalance->execute();
                 $stmtGetCurrentSupplierBalance->bind_result($currentSupplierBalance);
                 $stmtGetCurrentSupplierBalance->fetch();
@@ -96,12 +96,12 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 // If supplier penalty decreased, supplier gets more money back (credit)
                 if ($supplierPenaltyDifference > 0) {
                     // Penalty decreased, supplier gets more money back
-                    $updateSupplierQuery = "UPDATE suppliers SET balance = balance + ? WHERE id = ? AND tenant_id = ?";
+                    $updateSupplierQuery = "UPDATE suppliers SET balance = balance + ? WHERE id = ? AND tenant_id = ? AND branch_id = ?";
                     $newSupplierBalance = $currentSupplierBalance + $supplierPenaltyDifference;
                     $transactionType = 'credit';
                 } else {
                     // Penalty increased, supplier gets less money back
-                    $updateSupplierQuery = "UPDATE suppliers SET balance = balance - ? WHERE id = ? AND tenant_id = ?";
+                    $updateSupplierQuery = "UPDATE suppliers SET balance = balance - ? WHERE id = ? AND tenant_id = ? AND branch_id = ?";
                     $absPenaltyDiff = abs($supplierPenaltyDifference);
                     $newSupplierBalance = $currentSupplierBalance - $absPenaltyDiff;
                     $transactionType = 'debit';
@@ -110,24 +110,24 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 // Update supplier balance
                 $stmtUpdateSupplier = $conn->prepare($updateSupplierQuery);
                 $absSupplierPenaltyDiff = abs($supplierPenaltyDifference);
-                $stmtUpdateSupplier->bind_param('di', $absSupplierPenaltyDiff, $supplier_id, $tenant_id);
+                $stmtUpdateSupplier->bind_param('dii', $absSupplierPenaltyDiff, $supplier_id, $tenant_id, $branch_id);
                 $stmtUpdateSupplier->execute();
                 $stmtUpdateSupplier->close();
                 
                 // Check if transaction exists for this refund
                 $checkTransactionQuery = "SELECT id, transaction_date, balance, amount, transaction_type FROM supplier_transactions 
-                                         WHERE supplier_id = ? AND reference_id = ? AND transaction_of = 'ticket_refund' AND tenant_id = ?";
+                                         WHERE supplier_id = ? AND reference_id = ? AND transaction_of = 'ticket_refund' AND tenant_id = ? AND branch_id = ?";
                 $stmtCheckTransaction = $conn->prepare($checkTransactionQuery);
-                $stmtCheckTransaction->bind_param('iiii', $supplier_id, $ticket_id, $tenant_id);
+                $stmtCheckTransaction->bind_param('iiiii', $supplier_id, $ticket_id, $tenant_id, $branch_id);
                 $stmtCheckTransaction->execute();
                 $transactionResult = $stmtCheckTransaction->get_result();
                 $existingTransaction = $transactionResult->fetch_assoc();
                 $stmtCheckTransaction->close();
                 
                 // Get the base amount from the ticket_bookings
-                $getBaseQuery = "SELECT price FROM ticket_bookings WHERE id = ? AND tenant_id = ?";
+                $getBaseQuery = "SELECT price FROM ticket_bookings WHERE id = ? AND tenant_id = ? AND branch_id = ?";
                 $stmtGetBase = $conn->prepare($getBaseQuery);
-                $stmtGetBase->bind_param('ii', $originalData['ticket_id'], $tenant_id);
+                $stmtGetBase->bind_param('iii', $originalData['ticket_id'], $tenant_id, $branch_id);
                 $stmtGetBase->execute();
                 $stmtGetBase->bind_result($baseAmount);
                 $stmtGetBase->fetch();
@@ -164,10 +164,10 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                     // Update existing transaction - maintain the original transaction type
                     $updateTransactionQuery = "UPDATE supplier_transactions 
                                              SET amount = ?, balance = ?, remarks = CONCAT('Updated: ', ?) 
-                                             WHERE id = ? AND tenant_id = ?";
+                                             WHERE id = ? AND tenant_id = ? AND branch_id = ?";
                     $stmtUpdateTransaction = $conn->prepare($updateTransactionQuery);
-                    $stmtUpdateTransaction->bind_param('ddsi', $newRefundToSupplier, 
-                                                   $newTransactionBalance, $remarks, $transactionId, $tenant_id);
+                    $stmtUpdateTransaction->bind_param('ddsii', $newRefundToSupplier, 
+                                                   $newTransactionBalance, $remarks, $transactionId, $tenant_id, $branch_id);
                     $stmtUpdateTransaction->execute();
                     $stmtUpdateTransaction->close();
                     
@@ -180,7 +180,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                                                            WHERE supplier_id = ? 
                                                            AND id > ? 
                                                            AND id != ?
-                                                           AND tenant_id = ?";
+                                                           AND tenant_id = ? AND branch_id = ?";
                         } else {
                             // New refund amount is lower than current transaction amount - decrease subsequent balances
                             $updateSubsequentSupplierQuery = "UPDATE supplier_transactions 
@@ -188,23 +188,23 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                                                            WHERE supplier_id = ? 
                                                            AND id > ? 
                                                            AND id != ?
-                                                           AND tenant_id = ?";
+                                                           AND tenant_id = ? AND branch_id = ?";
                         }
                         
                         $stmtUpdateSubsequentSupplier = $conn->prepare($updateSubsequentSupplierQuery);
                         $absAmountDifference = abs($amountDifference);
-                        $stmtUpdateSubsequentSupplier->bind_param('disi', $absAmountDifference, $supplier_id, $transactionId, $transactionId, $tenant_id);
+                        $stmtUpdateSubsequentSupplier->bind_param('disiii', $absAmountDifference, $supplier_id, $transactionId, $transactionId, $tenant_id, $branch_id);
                         $stmtUpdateSubsequentSupplier->execute();
                         $stmtUpdateSubsequentSupplier->close();
                     }
                 } else {
                     // Create new transaction record if one doesn't exist
                     $insertSupplierTransactionQuery = "INSERT INTO supplier_transactions 
-                        (supplier_id, reference_id, transaction_type, amount, balance, remarks, transaction_of, tenant_id) 
+                        (supplier_id, reference_id, transaction_type, amount, balance, remarks, transaction_of, tenant_id, branch_id) 
                         VALUES (?, ?, ?, ?, ?, ?, 'ticket_refund', ?)";
                     $stmtInsertSupplierTransaction = $conn->prepare($insertSupplierTransactionQuery);
-                    $stmtInsertSupplierTransaction->bind_param('iisddsi', $supplier_id, $ticket_id, $transactionType, 
-                                                         $newRefundToSupplier, $newSupplierBalance, $remarks, $tenant_id);
+                    $stmtInsertSupplierTransaction->bind_param('iisddsii', $supplier_id, $ticket_id, $transactionType, 
+                                                         $newRefundToSupplier, $newSupplierBalance, $remarks, $tenant_id, $branch_id);
                     $stmtInsertSupplierTransaction->execute();
                     $stmtInsertSupplierTransaction->close();
                 }
@@ -214,9 +214,9 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         // Handle client transactions if refund amount changed
         if ($refundDifference != 0 && $client_id > 0) {
             // Check if client is regular
-            $clientQuery = "SELECT * FROM clients WHERE id = ? AND tenant_id = ?";
+            $clientQuery = "SELECT * FROM clients WHERE id = ? AND tenant_id = ? AND branch_id = ?";
             $stmtClient = $conn->prepare($clientQuery);
-            $stmtClient->bind_param('ii', $client_id, $tenant_id);
+            $stmtClient->bind_param('iii', $client_id, $tenant_id, $branch_id);
             $stmtClient->execute();
             $clientResult = $stmtClient->get_result();
             $clientData = $clientResult->fetch_assoc();
@@ -233,9 +233,9 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 $balanceField = strtolower($currency) === 'usd' ? 'usd_balance' : 'afs_balance';
                 
                 // Get current client balance
-                $getCurrentBalanceQuery = "SELECT $balanceField FROM clients WHERE id = ? AND tenant_id = ?";
+                $getCurrentBalanceQuery = "SELECT $balanceField FROM clients WHERE id = ? AND tenant_id = ? AND branch_id = ?v";
                 $stmtGetCurrentBalance = $conn->prepare($getCurrentBalanceQuery);
-                $stmtGetCurrentBalance->bind_param('ii', $client_id, $tenant_id);
+                $stmtGetCurrentBalance->bind_param('iii', $client_id, $tenant_id, $branch_id);
                 $stmtGetCurrentBalance->execute();
                 $stmtGetCurrentBalance->bind_result($currentBalance);
                 $stmtGetCurrentBalance->fetch();
@@ -245,12 +245,12 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 // If refund decreased, client gets less money back (credit)
                 if ($refundDifference > 0) {
                     // Refund decreased, client gets less money back
-                    $updateClientQuery = "UPDATE clients SET $balanceField = $balanceField + ? WHERE id = ? AND tenant_id = ?";
+                    $updateClientQuery = "UPDATE clients SET $balanceField = $balanceField + ? WHERE id = ? AND tenant_id = ? AND branch_id = ?";
                     $newBalance = $currentBalance + $refundDifference;
                     $transactionType = 'credit';
                 } else {
                     // Refund increased, client gets more money back
-                    $updateClientQuery = "UPDATE clients SET $balanceField = $balanceField - ? WHERE id = ? AND tenant_id = ?";
+                    $updateClientQuery = "UPDATE clients SET $balanceField = $balanceField - ? WHERE id = ? AND tenant_id = ? AND branch_id = ?";
                     $absRefundDiff = abs($refundDifference);
                     $newBalance = $currentBalance - $absRefundDiff;
                     $transactionType = 'debit';
@@ -259,13 +259,13 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 // Update client balance
                 $stmtUpdateClient = $conn->prepare($updateClientQuery);
                 $absRefundDifference = abs($refundDifference);
-                $stmtUpdateClient->bind_param('di', $absRefundDifference, $client_id, $tenant_id);
+                $stmtUpdateClient->bind_param('diii', $absRefundDifference, $client_id, $tenant_id, $branch_id);
                 $stmtUpdateClient->execute();
                 $stmtUpdateClient->close();
                 
                 // Check if transaction exists for this refund
                 $checkClientTransactionQuery = "SELECT id, created_at, balance, amount, type FROM client_transactions 
-                                             WHERE client_id = ? AND reference_id = ? AND transaction_of = 'ticket_refund' AND tenant_id = ?";
+                                             WHERE client_id = ? AND reference_id = ? AND transaction_of = 'ticket_refund' AND tenant_id = ? ";
                 $stmtCheckClientTransaction = $conn->prepare($checkClientTransactionQuery);
                 $stmtCheckClientTransaction->bind_param('iiii', $client_id, $ticket_id, $tenant_id);
                 $stmtCheckClientTransaction->execute();

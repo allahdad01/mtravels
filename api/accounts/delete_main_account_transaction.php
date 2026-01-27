@@ -133,8 +133,8 @@ try {
     
     $stmt_log = $pdo->prepare("
         INSERT INTO activity_log
-        (user_id, action, table_name, record_id, old_values, new_values, ip_address, user_agent, created_at, tenant_id)
-        VALUES (?, 'delete', 'main_account_transactions', ?, ?, ?, ?, ?, NOW(), ?)
+        (user_id, action, table_name, record_id, old_values, new_values, ip_address, user_agent, created_at, tenant_id, branch_id)
+        VALUES (?, 'delete', 'main_account_transactions', ?, ?, ?, ?, ?, NOW(), ?, ?)
     ");
     $stmt_log->bindParam(1, $user_id, PDO::PARAM_INT);
     $stmt_log->bindParam(2, $transactionId, PDO::PARAM_INT);
@@ -143,6 +143,7 @@ try {
     $stmt_log->bindParam(5, $ip_address, PDO::PARAM_STR);
     $stmt_log->bindParam(6, $user_agent, PDO::PARAM_STR);
     $stmt_log->bindParam(7, $tenant_id, PDO::PARAM_INT);
+    $stmt_log->bindParam(8, $branch_id, PDO::PARAM_INT);
     $stmt_log->execute();
     
     // Return success response

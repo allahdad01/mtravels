@@ -25,6 +25,7 @@ require_once '../../includes/db.php';
 // Enforce authentication
 enforce_auth();
 $tenant_id = $_SESSION['tenant_id'];
+$branch_id = $_SESSION['branch_id'];
 
 // Get JSON input
 $input = file_get_contents('php://input');
@@ -59,10 +60,11 @@ try {
     }
 
     // Get current visa data
-    $visaQuery = "SELECT * FROM visa_applications WHERE id = ? AND tenant_id = ?";
+    $visaQuery = "SELECT * FROM visa_applications WHERE id = ? AND tenant_id = ? AND branch_id = ?";
     $stmt = $pdo->prepare($visaQuery);
     $stmt->bindParam(1, $visa_id, PDO::PARAM_INT);
     $stmt->bindParam(2, $tenant_id, PDO::PARAM_INT);
+    $stmt->bindParam(3, $branch_id, PDO::PARAM_INT);
     $stmt->execute();
     $visa = $stmt->fetch(PDO::FETCH_ASSOC);
 
@@ -81,7 +83,7 @@ try {
                         profit = ?,
                         remarks = CONCAT(COALESCE(remarks, ''), '\n[RE-APPLIED] ', ?, ' | ', NOW()),
                         updated_at = NOW()
-                    WHERE id = ? AND tenant_id = ?";
+                    WHERE id = ? AND tenant_id = ? AND branch_id = ?";
 
     $reapply_note = "Re-applied: " . $reapply_reason;
     $stmt = $pdo->prepare($update_query);
@@ -90,6 +92,7 @@ try {
     $stmt->bindParam(3, $reapply_note, PDO::PARAM_STR);
     $stmt->bindParam(4, $visa_id, PDO::PARAM_INT);
     $stmt->bindParam(5, $tenant_id, PDO::PARAM_INT);
+    $stmt->bindParam(6, $branch_id, PDO::PARAM_INT);
     $stmt->execute();
 
     if ($stmt->affected_rows === 0) {
@@ -101,9 +104,10 @@ try {
     // 1. Restore supplier balance for external suppliers
     if ($visa['base'] > 0) {
         // Get supplier details
-        $supplierQuery = $pdo->prepare("SELECT supplier_type, balance, name FROM suppliers WHERE id = ? AND tenant_id = ?");
+        $supplierQuery = $pdo->prepare("SELECT supplier_type, balance, name FROM suppliers WHERE id = ? AND tenant_id = ? AND branch_id = ?");
         $supplierQuery->bindParam(1, $visa['supplier'], PDO::PARAM_INT);
         $supplierQuery->bindParam(2, $tenant_id, PDO::PARAM_INT);
+        $supplierQuery->bindParam(3, $branch_id, PDO::PARAM_INT);
         $supplierQuery->execute();
         $supplier = $supplierQuery->fetch(PDO::FETCH_ASSOC);
 
@@ -113,18 +117,19 @@ try {
                 if ($supplier['supplier_type'] === 'External') {
                     // Update supplier balance (deduct the base amount)
                     $newBalance = $supplier['balance'] - $visa['base'];
-                    $updateSupplierQuery = "UPDATE suppliers SET balance = ? WHERE id = ? AND tenant_id = ?";
+                    $updateSupplierQuery = "UPDATE suppliers SET balance = ? WHERE id = ? AND tenant_id = ? AND branch_id = ?";
                     $stmt = $pdo->prepare($updateSupplierQuery);
                     $stmt->bindParam(1, $newBalance, PDO::PARAM_STR);
                     $stmt->bindParam(2, $visa['supplier'], PDO::PARAM_INT);
                     $stmt->bindParam(3, $tenant_id, PDO::PARAM_INT);
+                    $stmt->bindParam(4, $branch_id, PDO::PARAM_INT);
                     $stmt->execute();
                 }
 
                 // Record supplier transaction
                 $supplierTransactionQuery = "INSERT INTO supplier_transactions
-                    (supplier_id, transaction_type, amount, balance, remarks, transaction_of, reference_id, tenant_id)
-                    VALUES (?, 'Debit', ?, ?, ?, 'visa_sale', ?, ?)";
+                    (supplier_id, transaction_type, amount, balance, remarks, transaction_of, reference_id, tenant_id, branch_id)
+                    VALUES (?, 'Debit', ?, ?, ?, 'visa_sale', ?, ?, ?)";
                 $stmt = $pdo->prepare($supplierTransactionQuery);
                 $supplierTransactionDescription = "Re-application reversal for visa #$visa_id - $reapply_reason";
                 $balance = ($supplier['supplier_type'] === 'External') ? $newBalance : $supplier['balance'];
@@ -134,6 +139,7 @@ try {
                 $stmt->bindParam(4, $supplierTransactionDescription, PDO::PARAM_STR);
                 $stmt->bindParam(5, $visa_id, PDO::PARAM_INT);
                 $stmt->bindParam(6, $tenant_id, PDO::PARAM_INT);
+                $stmt->bindParam(7, $branch_id, PDO::PARAM_INT);
                 if (!$stmt->execute()) {
                     throw new PDOException("Failed to record supplier transaction");
                 }
@@ -147,9 +153,10 @@ try {
     // 2. Restore client balance for regular clients (reverse the cancellation)
     if ($visa['sold'] > 0) {
         // Get client details and type
-        $clientQuery = $pdo->prepare("SELECT client_type, usd_balance, afs_balance, name FROM clients WHERE id = ? AND tenant_id = ?");
+        $clientQuery = $pdo->prepare("SELECT client_type, usd_balance, afs_balance, name FROM clients WHERE id = ? AND tenant_id = ? AND branch_id = ?");
         $clientQuery->bindParam(1, $visa['sold_to'], PDO::PARAM_INT);
         $clientQuery->bindParam(2, $tenant_id, PDO::PARAM_INT);
+        $clientQuery->bindParam(3, $branch_id, PDO::PARAM_INT);
         $clientQuery->execute();
         $client = $clientQuery->fetch(PDO::FETCH_ASSOC);
 
@@ -163,18 +170,20 @@ try {
                     // Update client balance based on currency (restore the original charge)
                     if ($visa['currency'] === 'USD') {
                         $newUsdBalance = $client['usd_balance'] + $restoreInClientCurrency;
-                        $updateClientQuery = "UPDATE clients SET usd_balance = ? WHERE id = ? AND tenant_id = ?";
+                        $updateClientQuery = "UPDATE clients SET usd_balance = ? WHERE id = ? AND tenant_id = ? AND branch_id = ?";
                         $stmt = $pdo->prepare($updateClientQuery);
                         $stmt->bindParam(1, $newUsdBalance, PDO::PARAM_STR);
                         $stmt->bindParam(2, $visa['sold_to'], PDO::PARAM_INT);
                         $stmt->bindParam(3, $tenant_id, PDO::PARAM_INT);
+                        $stmt->bindParam(4, $branch_id, PDO::PARAM_INT);
                     } else {
-                        $newAfsBalance = $client['afs_balance'] + $restoreInClientCurrency;
-                        $updateClientQuery = "UPDATE clients SET afs_balance = ? WHERE id = ? AND tenant_id = ?";
-                        $stmt = $pdo->prepare($updateClientQuery);
-                        $stmt->bindParam(1, $newAfsBalance, PDO::PARAM_STR);
-                        $stmt->bindParam(2, $visa['sold_to'], PDO::PARAM_INT);
-                        $stmt->bindParam(3, $tenant_id, PDO::PARAM_INT);
+                       $newAfsBalance = $client['afs_balance'] + $restoreInClientCurrency;
+                       $updateClientQuery = "UPDATE clients SET afs_balance = ? WHERE id = ? AND tenant_id = ? AND branch_id = ?";
+                       $stmt = $pdo->prepare($updateClientQuery);
+                       $stmt->bindParam(1, $newAfsBalance, PDO::PARAM_STR);
+                       $stmt->bindParam(2, $visa['sold_to'], PDO::PARAM_INT);
+                       $stmt->bindParam(3, $tenant_id, PDO::PARAM_INT);
+                       $stmt->bindParam(4, $branch_id, PDO::PARAM_INT);
                     }
                     if (!$stmt->execute()) {
                         throw new PDOException("Failed to update client balance");
@@ -182,8 +191,8 @@ try {
 
                     // Record client transaction (credit to restore the original charge)
                     $clientTransactionQuery = "INSERT INTO client_transactions
-                        (client_id, type, amount, balance, currency, description, transaction_of, reference_id, created_at, tenant_id)
-                        VALUES (?, 'debit', ?, ?, ?, ?, 'visa_sale', ?, NOW(), ?)";
+                        (client_id, type, amount, balance, currency, description, transaction_of, reference_id, created_at, tenant_id, branch_id)
+                        VALUES (?, 'debit', ?, ?, ?, ?, 'visa_sale', ?, NOW(), ?, ?)";
                     $stmt = $pdo->prepare($clientTransactionQuery);
                     $clientTransactionDescription = "Re-application reversal for visa #$visa_id - $reapply_reason";
                     $balance = ($visa['currency'] === 'USD') ? $newUsdBalance : $newAfsBalance;
@@ -194,14 +203,15 @@ try {
                     $stmt->bindParam(5, $clientTransactionDescription, PDO::PARAM_STR);
                     $stmt->bindParam(6, $visa_id, PDO::PARAM_INT);
                     $stmt->bindParam(7, $tenant_id, PDO::PARAM_INT);
+                    $stmt->bindParam(8, $branch_id, PDO::PARAM_INT);
                     if (!$stmt->execute()) {
                         throw new PDOException("Failed to record client transaction");
                     }
                 } else {
                     // Record client transaction for agency clients without balance
                     $clientTransactionQuery = "INSERT INTO client_transactions
-                        (client_id, type, amount, currency, description, transaction_of, reference_id, created_at, tenant_id)
-                        VALUES (?, 'debit', ?, ?, ?, 'visa_sale', ?, NOW(), ?)";
+                        (client_id, type, amount, currency, description, transaction_of, reference_id, created_at, tenant_id, branch_id)
+                        VALUES (?, 'debit', ?, ?, ?, 'visa_sale', ?, NOW(), ?, ?)";
                     $stmt = $pdo->prepare($clientTransactionQuery);
                     $clientTransactionDescription = "Re-application reversal for visa #$visa_id - $reapply_reason";
                     $stmt->bindParam(1, $visa['sold_to'], PDO::PARAM_INT);
@@ -210,6 +220,7 @@ try {
                     $stmt->bindParam(4, $clientTransactionDescription, PDO::PARAM_STR);
                     $stmt->bindParam(5, $visa_id, PDO::PARAM_INT);
                     $stmt->bindParam(6, $tenant_id, PDO::PARAM_INT);
+                    $stmt->bindParam(7, $branch_id, PDO::PARAM_INT);
                     if (!$stmt->execute()) {
                         throw new PDOException("Failed to record client transaction");
                     }
@@ -241,8 +252,8 @@ try {
         $user_agent = $_SERVER['HTTP_USER_AGENT'] ?? 'Unknown';
 
         $logQuery = "INSERT INTO activity_log
-                    (user_id, action, table_name, record_id, old_values, new_values, ip_address, user_agent, created_at, tenant_id)
-                    VALUES (?, 'visa_reapply', 'visa_applications', ?, ?, ?, ?, ?, NOW(), ?)";
+                    (user_id, action, table_name, record_id, old_values, new_values, ip_address, user_agent, created_at, tenant_id, branch_id)
+                    VALUES (?, 'visa_reapply', 'visa_applications', ?, ?, ?, ?, ?, NOW(), ?, ?)";
 
         $stmt = $pdo->prepare($logQuery);
         $stmt->bindParam(1, $_SESSION['user_id'], PDO::PARAM_INT);
@@ -252,6 +263,7 @@ try {
         $stmt->bindParam(5, $ip_address, PDO::PARAM_STR);
         $stmt->bindParam(6, $user_agent, PDO::PARAM_STR);
         $stmt->bindParam(7, $tenant_id, PDO::PARAM_INT);
+        $stmt->bindParam(8, $branch_id, PDO::PARAM_INT);
         $stmt->execute();
         $stmt->close();
     } catch (PDOException $e) {

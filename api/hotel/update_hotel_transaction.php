@@ -135,28 +135,31 @@ $transaction_id = isset($_POST['transaction_id']) ? DbSecurity::validateInput($_
             $typeChangeAdjustment = ($type == 'credit') ? -2 * $originalAmount : 2 * $originalAmount;
             
             // Update subsequent transactions' balances
-            $updateSubsequentQuery = "UPDATE main_account_transactions 
-                                     SET balance = balance + ? 
-                                     WHERE main_account_id = ? 
-                                     AND id > ? 
+            $updateSubsequentQuery = "UPDATE main_account_transactions
+                                     SET balance = balance + ?
+                                     WHERE main_account_id = ?
+                                     AND id > ?
                                      AND id != ?
-                                     AND tenant_id = ?";
+                                     AND tenant_id = ?
+                                     AND branch_id = ?";
             $updateSubsequentStmt = $pdo->prepare($updateSubsequentQuery);
             $updateSubsequentStmt->bindParam(1, $typeChangeAdjustment, PDO::PARAM_STR);
             $updateSubsequentStmt->bindParam(2, $mainAccountId, PDO::PARAM_INT);
             $updateSubsequentStmt->bindParam(3, $transactionId, PDO::PARAM_INT);
             $updateSubsequentStmt->bindParam(4, $transactionId, PDO::PARAM_INT);
             $updateSubsequentStmt->bindParam(5, $tenant_id, PDO::PARAM_INT);
+            $updateSubsequentStmt->bindParam(6, $branch_id, PDO::PARAM_INT);
             
             if (!$updateSubsequentStmt->execute()) {
                 throw new Exception("Failed to update subsequent transactions: " . $updateSubsequentStmt->error);
             }
             
             // Update main account balance
-            $stmt = $pdo->prepare("UPDATE main_account SET $balanceField = $balanceField + ? WHERE id = ? AND tenant_id = ?");
+            $stmt = $pdo->prepare("UPDATE main_account SET $balanceField = $balanceField + ? WHERE id = ? AND tenant_id = ? AND branch_id = ?");
             $stmt->bindParam(1, $typeChangeAdjustment, PDO::PARAM_STR);
             $stmt->bindParam(2, $mainAccountId, PDO::PARAM_INT);
             $stmt->bindParam(3, $tenant_id, PDO::PARAM_INT);
+            $stmt->bindParam(4, $branch_id, PDO::PARAM_INT);
 
             if (!$stmt->execute()) {
                 throw new Exception("Failed to update main account balance");
@@ -169,28 +172,31 @@ $transaction_id = isset($_POST['transaction_id']) ? DbSecurity::validateInput($_
             // For debit transactions, subsequent balances decrease when amount increases
             $balanceAdjustment = ($dbTransactionType == 'credit') ? $amountDifference : -$amountDifference;
             
-            $updateSubsequentQuery = "UPDATE main_account_transactions 
-                                     SET balance = balance + ? 
-                                     WHERE main_account_id = ? 
-                                     AND id > ? 
+            $updateSubsequentQuery = "UPDATE main_account_transactions
+                                     SET balance = balance + ?
+                                     WHERE main_account_id = ?
+                                     AND id > ?
                                      AND id != ?
-                                     AND tenant_id = ?";
+                                     AND tenant_id = ?
+                                     AND branch_id = ?";
             $updateSubsequentStmt = $pdo->prepare($updateSubsequentQuery);
             $updateSubsequentStmt->bindParam(1, $balanceAdjustment, PDO::PARAM_STR);
             $updateSubsequentStmt->bindParam(2, $mainAccountId, PDO::PARAM_INT);
             $updateSubsequentStmt->bindParam(3, $transactionId, PDO::PARAM_INT);
             $updateSubsequentStmt->bindParam(4, $transactionId, PDO::PARAM_INT);
             $updateSubsequentStmt->bindParam(5, $tenant_id, PDO::PARAM_INT);
+            $updateSubsequentStmt->bindParam(6, $branch_id, PDO::PARAM_INT);
 
             if (!$updateSubsequentStmt->execute()) {
                 throw new Exception("Failed to update subsequent transactions");
             }
 
             // Get the current balance of the transaction
-            $getCurrentBalanceQuery = "SELECT balance FROM main_account_transactions WHERE id = ? AND tenant_id = ?";
+            $getCurrentBalanceQuery = "SELECT balance FROM main_account_transactions WHERE id = ? AND tenant_id = ? AND branch_id = ?";
             $getCurrentBalanceStmt = $pdo->prepare($getCurrentBalanceQuery);
             $getCurrentBalanceStmt->bindParam(1, $transactionId, PDO::PARAM_INT);
             $getCurrentBalanceStmt->bindParam(2, $tenant_id, PDO::PARAM_INT);
+            $getCurrentBalanceStmt->bindParam(3, $branch_id, PDO::PARAM_INT);
 
             if (!$getCurrentBalanceStmt->execute()) {
                 throw new Exception("Failed to get current transaction balance");
@@ -202,11 +208,12 @@ $transaction_id = isset($_POST['transaction_id']) ? DbSecurity::validateInput($_
             $newBalance = $currentBalance + (($dbTransactionType == 'credit') ? $amountDifference : -$amountDifference);
 
             // Update the balance of the current transaction
-            $updateCurrentBalanceQuery = "UPDATE main_account_transactions SET balance = ? WHERE id = ? AND tenant_id = ?";
+            $updateCurrentBalanceQuery = "UPDATE main_account_transactions SET balance = ? WHERE id = ? AND tenant_id = ? AND branch_id = ?";
             $updateCurrentBalanceStmt = $pdo->prepare($updateCurrentBalanceQuery);
             $updateCurrentBalanceStmt->bindParam(1, $newBalance, PDO::PARAM_STR);
             $updateCurrentBalanceStmt->bindParam(2, $transactionId, PDO::PARAM_INT);
             $updateCurrentBalanceStmt->bindParam(3, $tenant_id, PDO::PARAM_INT);
+            $updateCurrentBalanceStmt->bindParam(4, $branch_id, PDO::PARAM_INT);
 
             if (!$updateCurrentBalanceStmt->execute()) {
                 throw new Exception("Failed to update current transaction balance");
@@ -214,7 +221,7 @@ $transaction_id = isset($_POST['transaction_id']) ? DbSecurity::validateInput($_
         }
         
         // Update the transaction
-        $stmt = $pdo->prepare("UPDATE main_account_transactions SET amount = ?, description = ?, created_at = ?, type = ?, exchange_rate = ? WHERE id = ? AND tenant_id = ?");
+        $stmt = $pdo->prepare("UPDATE main_account_transactions SET amount = ?, description = ?, created_at = ?, type = ?, exchange_rate = ? WHERE id = ? AND tenant_id = ? AND branch_id = ?");
         $stmt->bindParam(1, $newAmount, PDO::PARAM_STR);
         $stmt->bindParam(2, $newDescription, PDO::PARAM_STR);
         $stmt->bindParam(3, $newDate, PDO::PARAM_STR);
@@ -222,6 +229,7 @@ $transaction_id = isset($_POST['transaction_id']) ? DbSecurity::validateInput($_
         $stmt->bindParam(5, $exchange_rate, PDO::PARAM_STR);
         $stmt->bindParam(6, $transactionId, PDO::PARAM_INT);
         $stmt->bindParam(7, $tenant_id, PDO::PARAM_INT);
+        $stmt->bindParam(8, $branch_id, PDO::PARAM_INT);
 
         if (!$stmt->execute()) {
             throw new Exception("Failed to update transaction");
@@ -233,10 +241,11 @@ $transaction_id = isset($_POST['transaction_id']) ? DbSecurity::validateInput($_
             // For debit transactions (paid out), decrease balance if amount increases
             $balanceAdjustment = ($dbTransactionType == 'credit') ? $amountDifference : -$amountDifference;
             
-            $stmt = $pdo->prepare("UPDATE main_account SET $balanceField = $balanceField + ? WHERE id = ? AND tenant_id = ?");
+            $stmt = $pdo->prepare("UPDATE main_account SET $balanceField = $balanceField + ? WHERE id = ? AND tenant_id = ? AND branch_id = ?");
             $stmt->bindParam(1, $balanceAdjustment, PDO::PARAM_STR);
             $stmt->bindParam(2, $mainAccountId, PDO::PARAM_INT);
             $stmt->bindParam(3, $tenant_id, PDO::PARAM_INT);
+            $stmt->bindParam(4, $branch_id, PDO::PARAM_INT);
 
             if (!$stmt->execute()) {
                 throw new Exception("Failed to update main account balance");
@@ -250,9 +259,11 @@ $transaction_id = isset($_POST['transaction_id']) ? DbSecurity::validateInput($_
                                    FROM main_account_transactions
                                    WHERE main_account_id = ?
                                    AND tenant_id = ?
+                                   AND branch_id = ?
                                    ORDER BY created_at ASC, id ASC");
             $stmt->bindParam(1, $mainAccountId, PDO::PARAM_INT);
             $stmt->bindParam(2, $tenant_id, PDO::PARAM_INT);
+            $stmt->bindParam(3, $branch_id, PDO::PARAM_INT);
 
             if (!$stmt->execute()) {
                 throw new Exception("Failed to retrieve transactions for reordering");
@@ -271,10 +282,11 @@ $transaction_id = isset($_POST['transaction_id']) ? DbSecurity::validateInput($_
                 }
 
                 // Update the balance for this transaction
-                $updateStmt = $pdo->prepare("UPDATE main_account_transactions SET balance = ? WHERE id = ? AND tenant_id = ?");
+                $updateStmt = $pdo->prepare("UPDATE main_account_transactions SET balance = ? WHERE id = ? AND tenant_id = ? AND branch_id = ?");
                 $updateStmt->bindParam(1, $runningBalance, PDO::PARAM_STR);
                 $updateStmt->bindParam(2, $tx['id'], PDO::PARAM_INT);
                 $updateStmt->bindParam(3, $tenant_id, PDO::PARAM_INT);
+                $updateStmt->bindParam(4, $branch_id, PDO::PARAM_INT);
 
                 if (!$updateStmt->execute()) {
                     throw new Exception("Failed to update transaction balance during reordering");
@@ -315,8 +327,8 @@ $transaction_id = isset($_POST['transaction_id']) ? DbSecurity::validateInput($_
         
         // Insert activity log
         $stmt = $pdo->prepare("INSERT INTO activity_log
-            (user_id, action, table_name, record_id, old_values, new_values, ip_address, user_agent, tenant_id)
-            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)");
+            (user_id, action, table_name, record_id, old_values, new_values, ip_address, user_agent, tenant_id, branch_id)
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)");
         $stmt->bindParam(1, $user_id, PDO::PARAM_INT);
         $stmt->bindParam(2, $action, PDO::PARAM_STR);
         $stmt->bindParam(3, $table_name, PDO::PARAM_STR);
@@ -326,6 +338,7 @@ $transaction_id = isset($_POST['transaction_id']) ? DbSecurity::validateInput($_
         $stmt->bindParam(7, $ip_address, PDO::PARAM_STR);
         $stmt->bindParam(8, $user_agent, PDO::PARAM_STR);
         $stmt->bindParam(9, $tenant_id, PDO::PARAM_INT);
+        $stmt->bindParam(10, $branch_id, PDO::PARAM_INT);
         $stmt->execute();
         
         // Commit transaction

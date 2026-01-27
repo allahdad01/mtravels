@@ -180,13 +180,13 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                     $oldSupplierTransactionExists = $stmtCheckOldSupplierTransaction->rowCount() > 0;
 
                     if ($oldSupplierTransactionExists) {
-                        // Update existing transaction record
-                        $updateOldSupplierTransactionQuery = "UPDATE supplier_transactions SET transaction_type = 'cancelled', remarks = CONCAT(remarks, ' (Supplier changed)') WHERE supplier_id = ? AND reference_id = ? AND transaction_of = 'ticket_reserve' AND tenant_id = ?";
-                        $stmtUpdateOldSupplierTransaction = $pdo->prepare($updateOldSupplierTransactionQuery);
-                        $stmtUpdateOldSupplierTransaction->bindParam(1, $originalSupplier, PDO::PARAM_INT);
-                        $stmtUpdateOldSupplierTransaction->bindParam(2, $id, PDO::PARAM_INT);
-                        $stmtUpdateOldSupplierTransaction->bindParam(3, $tenant_id, PDO::PARAM_INT);
-                        $stmtUpdateOldSupplierTransaction->execute();
+                        // Delete existing transaction record
+                        $deleteOldSupplierTransactionQuery = "DELETE FROM supplier_transactions WHERE supplier_id = ? AND reference_id = ? AND transaction_of = 'ticket_reserve' AND tenant_id = ?";
+                        $stmtDeleteOldSupplierTransaction = $pdo->prepare($deleteOldSupplierTransactionQuery);
+                        $stmtDeleteOldSupplierTransaction->bindParam(1, $originalSupplier, PDO::PARAM_INT);
+                        $stmtDeleteOldSupplierTransaction->bindParam(2, $id, PDO::PARAM_INT);
+                        $stmtDeleteOldSupplierTransaction->bindParam(3, $tenant_id, PDO::PARAM_INT);
+                        $stmtDeleteOldSupplierTransaction->execute();
                     }
                 }
             }
@@ -591,21 +591,17 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                         }
                     }
 
-                    // Update client_id in transactions and add note about transfer
-                    $updateTransactionsQuery = "UPDATE client_transactions
-                                              SET client_id = ?,
-                                                  description = CONCAT(description, ' (Transferred from client ', ?, ')')
+                    // Delete old client transactions related to this ticket
+                    $deleteTransactionsQuery = "DELETE FROM client_transactions
                                               WHERE client_id = ?
                                               AND reference_id = ?
                                               AND transaction_of = 'ticket_reserve'
                                               AND tenant_id = ?";
-                    $stmtUpdateTransactions = $pdo->prepare($updateTransactionsQuery);
-                    $stmtUpdateTransactions->bindParam(1, $sold_to, PDO::PARAM_INT);
-                    $stmtUpdateTransactions->bindParam(2, $originalClient, PDO::PARAM_INT);
-                    $stmtUpdateTransactions->bindParam(3, $originalClient, PDO::PARAM_INT);
-                    $stmtUpdateTransactions->bindParam(4, $id, PDO::PARAM_INT);
-                    $stmtUpdateTransactions->bindParam(5, $tenant_id, PDO::PARAM_INT);
-                    $stmtUpdateTransactions->execute();
+                    $stmtDeleteTransactions = $pdo->prepare($deleteTransactionsQuery);
+                    $stmtDeleteTransactions->bindParam(1, $originalClient, PDO::PARAM_INT);
+                    $stmtDeleteTransactions->bindParam(2, $id, PDO::PARAM_INT);
+                    $stmtDeleteTransactions->bindParam(3, $tenant_id, PDO::PARAM_INT);
+                    $stmtDeleteTransactions->execute();
                 }
             }
 

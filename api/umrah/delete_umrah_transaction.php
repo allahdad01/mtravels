@@ -91,7 +91,6 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         $currency = $transaction['currency'];
         $transaction_to = $transaction['transaction_to'];
         $payment_description = $transaction['payment_description'];
-        $is_refund = $payment_amount < 0 || strpos($payment_description, 'Refund for:') === 0;
 
         // For proper reversal, we need to reverse the sign of the amount
         $reversal_amount = -$payment_amount;
@@ -254,7 +253,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 }
 
                 // Delete related main_account_transactions record
-                $stmt_delete_main_transaction = $pdo->prepare("DELETE FROM main_account_transactions WHERE reference_id = ? AND transaction_of = 'umrah' AND tenant_id = ? AND branch_id = ?");
+                $stmt_delete_main_transaction = $pdo->prepare("DELETE FROM main_account_transactions WHERE reference_id = ? AND transaction_of = 'umrah_transaction' AND tenant_id = ? AND branch_id = ?");
                 $stmt_delete_main_transaction->bindParam(1, $transaction_id, PDO::PARAM_INT);
                 $stmt_delete_main_transaction->bindParam(2, $tenant_id, PDO::PARAM_INT);
                 $stmt_delete_main_transaction->bindParam(3, $branch_id, PDO::PARAM_INT);
@@ -297,7 +296,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             }
 
             // Get the transaction date to find subsequent transactions
-            $stmt_get_transaction_date = $pdo->prepare("SELECT created_at FROM main_account_transactions WHERE reference_id = ? AND transaction_of = 'umrah' AND tenant_id = ? AND branch_id = ?");
+            $stmt_get_transaction_date = $pdo->prepare("SELECT created_at FROM main_account_transactions WHERE reference_id = ? AND transaction_of = 'umrah_transaction' AND tenant_id = ? AND branch_id = ?");
             $stmt_get_transaction_date->bindParam(1, $transaction_id, PDO::PARAM_INT);
             $stmt_get_transaction_date->bindParam(2, $tenant_id, PDO::PARAM_INT);
             $stmt_get_transaction_date->bindParam(3, $branch_id, PDO::PARAM_INT);
@@ -331,7 +330,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             }
 
             // Delete related main_account_transactions record
-            $stmt_delete_main_transaction = $pdo->prepare("DELETE FROM main_account_transactions WHERE reference_id = ? AND transaction_of = 'umrah' AND tenant_id = ? AND branch_id = ?");
+            $stmt_delete_main_transaction = $pdo->prepare("DELETE FROM main_account_transactions WHERE reference_id = ? AND transaction_of = 'umrah_transaction' AND tenant_id = ? AND branch_id = ?");
             $stmt_delete_main_transaction->bindParam(1, $transaction_id, PDO::PARAM_INT);
             $stmt_delete_main_transaction->bindParam(2, $tenant_id, PDO::PARAM_INT);
             $stmt_delete_main_transaction->bindParam(3, $branch_id, PDO::PARAM_INT);
@@ -368,7 +367,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         $stmt_delete_notification->execute();
 
         // Add notification about the deletion
-        $transaction_type_text = $is_refund ? "refund" : "payment";
+        $transaction_type_text = "payment";
         $amount_display = abs($payment_amount);
         $notification_message = "A $transaction_type_text of $amount_display $currency has been deleted by $username for the Umrah booking.";
         $recipient_role = "admin";
@@ -396,7 +395,6 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             'currency' => $currency,
             'transaction_to' => $transaction_to,
             'payment_description' => $payment_description,
-            'is_refund' => $is_refund,
             'supplier_id' => $supplier_id,
             'paid_to' => $paid_to
         ]);
