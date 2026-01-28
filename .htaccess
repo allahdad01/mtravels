@@ -15,6 +15,11 @@
     php_value opcache.max_wasted_percentage 5
     php_value opcache.use_cwd 1
     php_value opcache.huge_code_pages 1
+
+    # Security: Disable error display in production
+    php_value display_errors 0
+    php_value log_errors 1
+    php_value error_log logs/php_errors.log
 </IfModule>
 
 
@@ -58,3 +63,24 @@ AddDefaultCharset UTF-8
     Order Allow,Deny
     Deny from all
 </FilesMatch>
+
+# Security Headers
+<IfModule mod_headers.c>
+    # HSTS (HTTP Strict Transport Security)
+    Header always set Strict-Transport-Security "max-age=31536000; includeSubDomains; preload"
+
+    # Prevent clickjacking - Allow same origin for chat iframe
+    Header always set X-Frame-Options DENY
+    <Files "chat.php">
+        Header always set X-Frame-Options SAMEORIGIN
+    </Files>
+
+    # XSS Protection
+    Header always set X-XSS-Protection "1; mode=block"
+
+    # Prevent MIME type sniffing
+    Header always set X-Content-Type-Options nosniff
+
+    # Referrer Policy
+    Header always set Referrer-Policy "strict-origin-when-cross-origin"
+</IfModule>

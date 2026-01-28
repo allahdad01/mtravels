@@ -38,7 +38,8 @@ try {
 
 // Fetch settings data
 try {
-    $settingStmt = $pdo->query("SELECT `key`, `value` FROM platform_settings");
+    $settingStmt = $pdo->prepare("SELECT `key`, `value` FROM platform_settings");
+    $settingStmt->execute();
     $settings = $settingStmt->fetchAll(PDO::FETCH_KEY_PAIR);
 } catch (PDOException $e) {
     error_log("Settings Error: " . $e->getMessage());
@@ -1771,6 +1772,12 @@ $imagePath = "../assets/images/user/" . $profilePic;
                     <a href="backup_management.php" class="nav-link">
                         <span class="pcoded-micon"><i class="feather icon-save"></i></span>
                         <span class="pcoded-mtext">Manage Backup</span>
+                    </a>
+                </li>
+                <li data-username="ssl_monitoring" class="nav-item <?php echo basename($_SERVER['PHP_SELF']) == 'ssl_monitoring.php' ? 'active' : ''; ?>">
+                    <a href="ssl_monitoring.php" class="nav-link">
+                        <span class="pcoded-micon"><i class="fas fa-shield-alt"></i></span>
+                        <span class="pcoded-mtext">SSL Monitoring</span>
                     </a>
                 </li>
                 <li data-username="support_tickets_admin" class="nav-item <?php echo basename($_SERVER['PHP_SELF']) == 'support_tickets_list.php' || basename($_SERVER['PHP_SELF']) == 'support_ticket_view.php' ? 'active' : ''; ?>">

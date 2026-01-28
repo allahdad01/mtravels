@@ -43,9 +43,6 @@ $head_of_family = isset($_POST['head_of_family']) ? DbSecurity::validateInput($_
 // Validate family_id
 $family_id = isset($_POST['family_id']) ? DbSecurity::validateInput($_POST['family_id'], 'int', ['min' => 0]) : null;
 
-// Enable error reporting for debugging
-error_reporting(E_ALL);
-ini_set('display_errors', 1);
 header('Content-Type: application/json');
 
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {

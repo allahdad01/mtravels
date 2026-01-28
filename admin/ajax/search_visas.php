@@ -14,10 +14,6 @@ enforce_auth();
 // Database connection
 require_once '../../includes/conn.php';
 
-// Enable error reporting for debugging
-error_reporting(E_ALL);
-ini_set('display_errors', 1);
-
 // Initialize response array
 $response = [
     'success' => false,

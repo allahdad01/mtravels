@@ -1,0 +1,120 @@
+name: Security Audit
+
+on:
+  push:
+    branches: [ main, master, develop ]
+  pull_request:
+    branches: [ main, master, develop ]
+  schedule:
+    # Run weekly on Mondays at 9 AM UTC
+    - cron: '0 9 * * 1'
+
+jobs:
+  security-audit:
+    runs-on: ubuntu-latest
+
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+
+    - name: Set up PHP
+      uses: shivammathur/setup-php@v2
+      with:
+        php-version: '8.1'
+        extensions: mbstring, xml, ctype, iconv, intl, pdo, pdo_mysql
+
+    - name: Install Composer dependencies
+      run: |
+        composer install --no-progress --prefer-dist --optimize-autoloader
+
+    - name: Install security tools
+      run: |
+        composer require --dev sensiolabs/security-checker phpstan/phpstan --no-progress
+
+    - name: Run custom security audit
+      run: php scripts/security-audit.php
+
+    - name: Run Composer security check
+      run: |
+        if [ -f vendor/bin/security-checker ]; then
+          vendor/bin/security-checker security:check composer.lock
+        else
+          echo "Security checker not available"
+        fi
+
+    - name: Run PHPStan static analysis
+      run: |
+        if [ -f vendor/bin/phpstan ]; then
+          vendor/bin/phpstan analyse --error-format=github
+        else
+          echo "PHPStan not available"
+        fi
+      continue-on-error: true
+
+    - name: Check for security headers
+      run: |
+        echo "Checking security headers configuration..."
+        if grep -q "Strict-Transport-Security" .htaccess; then
+          echo "✓ HSTS header found"
+        else
+          echo "❌ HSTS header missing"
+          exit 1
+        fi
+
+        if grep -q "X-Frame-Options" .htaccess; then
+          echo "✓ X-Frame-Options header found"
+        else
+          echo "❌ X-Frame-Options header missing"
+          exit 1
+        fi
+
+    - name: Check file permissions
+      run: |
+        echo "Checking sensitive file permissions..."
+        if [ -f .env ]; then
+          perms=$(stat -c "%a" .env)
+          if [ "$perms" -le "600" ]; then
+            echo "✓ .env file permissions are secure ($perms)"
+          else
+            echo "❌ .env file permissions too permissive ($perms)"
+            exit 1
+          fi
+        fi
+
+  dependency-scan:
+    runs-on: ubuntu-latest
+
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+
+    - name: Run Trivy vulnerability scanner
+      uses: aquasecurity/trivy-action@master
+      with:
+        scan-type: 'fs'
+        scan-ref: '.'
+        format: 'sarif'
+        output: 'trivy-results.sarif'
+
+    - name: Upload Trivy scan results to GitHub Security tab
+      uses: github/codeql-action/upload-sarif@v2
+      if: always()
+      with:
+        sarif_file: 'trivy-results.sarif'
+
+  secrets-scan:
+    runs-on: ubuntu-latest
+
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+      with:
+        fetch-depth: 0
+
+    - name: Run TruffleHog OSS
+      uses: trufflesecurity/trufflehog@main
+      with:
+        path: ./
+        base: main
+        head: HEAD
+        extra_args: --debug --only-verified

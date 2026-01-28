@@ -14,9 +14,6 @@ enforce_auth();
 require_once '../../includes/db.php';
 $tenant_id = $_SESSION['tenant_id'];
 $branch_id = $_SESSION['branch_id'];
-// Enable error reporting for debugging
-error_reporting(E_ALL);
-ini_set('display_errors', 1);
 
 // Initialize response array
 $response = [

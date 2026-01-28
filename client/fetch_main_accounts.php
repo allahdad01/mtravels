@@ -4,7 +4,8 @@ require_once('../includes/db.php');
 header('Content-Type: application/json');
 
 try {
-    $stmt = $pdo->query("SELECT id, name FROM main_account ORDER BY name");
+    $stmt = $pdo->prepare("SELECT id, name FROM main_account ORDER BY name");
+    $stmt->execute();
     $accounts = $stmt->fetchAll(PDO::FETCH_ASSOC);
     echo json_encode($accounts);
 } catch (PDOException $e) {

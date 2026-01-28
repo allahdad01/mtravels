@@ -6,10 +6,6 @@ if (session_status() === PHP_SESSION_NONE) {
 $tenant_id = $_SESSION['tenant_id'];
 $branch_id = $_SESSION['branch_id'];
 
-// Enable error reporting for debugging
-error_reporting(E_ALL);
-ini_set('display_errors', 1);
-
 // Connect to database
 require_once('../../includes/db.php');
 

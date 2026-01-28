@@ -10,10 +10,6 @@ header('Content-Type: application/json');
 $tenant_id = $_SESSION['tenant_id'];
 $branch_id = $_SESSION['branch_id'];
 
-// Enable error reporting for debugging
-error_reporting(E_ALL);
-ini_set('display_errors', 1);
-
 // Check if it's a POST request
 if ($_SERVER['REQUEST_METHOD'] !== 'POST') {
     echo json_encode([

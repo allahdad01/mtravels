@@ -36,10 +36,11 @@ try {
 
 // Fetch settings data
 try {
-    $settingStmt = $pdo->query("SELECT * FROM settings WHERE id = 1");
+    $settingStmt = $pdo->prepare("SELECT * FROM settings WHERE id = 1");
+    $settingStmt->execute();
     $settings = $settingStmt->fetch(PDO::FETCH_ASSOC);
 } catch (PDOException $e) {
-   
+
     $settings = ['agency_name' => 'Default Name'];
 }
 

@@ -85,8 +85,9 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['notification_id'])) {
             $umrah_data = $stmt_fetch_umrah->fetch(PDO::FETCH_ASSOC);
             if (!$umrah_data) {
                 // Debug: Query the table directly to see what's there
-                $debug_query = $pdo->query("SELECT id FROM umrah_transactions WHERE id = " . intval($transaction_id) . " AND tenant_id = " . intval($tenant_id) . " AND branch_id = " . intval($branch_id));
-                $debug_count = $debug_query ? $debug_query->rowCount() : 0;
+                $debug_stmt = $pdo->prepare("SELECT id FROM umrah_transactions WHERE id = ? AND tenant_id = ? AND branch_id = ?");
+                $debug_stmt->execute([$transaction_id, $tenant_id, $branch_id]);
+                $debug_count = $debug_stmt->rowCount();
                 throw new Exception('Umrah transaction details not found. Transaction ID: ' . $transaction_id .
                                   '. Records found: ' . $debug_count);
             }

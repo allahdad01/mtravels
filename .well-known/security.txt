@@ -1,0 +1,22 @@
+# MTravels Security Policy
+# This file follows the security.txt standard (RFC 9116)
+# https://securitytxt.org/
+
+# Contact Information
+Contact: mailto:security@mtravels.com
+Contact: https://mtravels.com/security-contact
+
+# Encryption
+# Our PGP key can be found at: https://mtravels.com/pgp-key.txt
+
+# Policy
+Policy: https://mtravels.com/security-policy
+
+# Preferred Languages
+Preferred-Languages: en, ps, fa
+
+# Acknowledgment
+# We appreciate security researchers who follow responsible disclosure practices
+
+# Expires
+Expires: 2025-12-31T23:59:59.000Z

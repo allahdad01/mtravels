@@ -153,42 +153,30 @@ include '../includes/conn.php';
 require_once '../includes/conn.php';
 
 // Query for tickets booked today with supplier name and transaction status
-$today_query = "SELECT ticket_bookings.*, 
-                       suppliers.name AS supplier_name 
-                       
-                FROM ticket_bookings
-                LEFT JOIN suppliers ON ticket_bookings.supplier = suppliers.id
-                
-                WHERE DATE(ticket_bookings.created_at) = CURDATE() and ticket_bookings.sold_to = '".$_SESSION['user_id']."'";
+$today_query = "SELECT ticket_bookings.*, suppliers.name AS supplier_name FROM ticket_bookings LEFT JOIN suppliers ON ticket_bookings.supplier = suppliers.id WHERE DATE(ticket_bookings.created_at) = CURDATE() AND ticket_bookings.sold_to = ?";
 try {
-    $today_stmt = $pdo->query($today_query);
+    $today_stmt = $pdo->prepare($today_query);
+    $today_stmt->execute([$_SESSION['user_id']]);
 } catch (PDOException $e) {
     error_log("Error fetching today's tickets: " . $e->getMessage());
     $today_stmt = null;
 }
 
 // Fetch this week's tickets
-$this_week_query = "SELECT ticket_bookings.*, 
-                           suppliers.name AS supplier_name
-                    FROM ticket_bookings
-                    LEFT JOIN suppliers ON ticket_bookings.supplier = suppliers.id
-                    WHERE YEARWEEK(ticket_bookings.created_at, 1) = YEARWEEK(CURDATE(), 1) and ticket_bookings.sold_to = '".$_SESSION['user_id']."'";
+$this_week_query = "SELECT ticket_bookings.*, suppliers.name AS supplier_name FROM ticket_bookings LEFT JOIN suppliers ON ticket_bookings.supplier = suppliers.id WHERE YEARWEEK(ticket_bookings.created_at, 1) = YEARWEEK(CURDATE(), 1) AND ticket_bookings.sold_to = ?";
 try {
-    $this_week_stmt = $pdo->query($this_week_query);
+    $this_week_stmt = $pdo->prepare($this_week_query);
+    $this_week_stmt->execute([$_SESSION['user_id']]);
 } catch (PDOException $e) {
     error_log("Error fetching this week's tickets: " . $e->getMessage());
     $this_week_stmt = null;
 }
 
 // Fetch this month's tickets
-$this_month_query = "SELECT ticket_bookings.*, 
-                            suppliers.name AS supplier_name
-                     FROM ticket_bookings
-                     LEFT JOIN suppliers ON ticket_bookings.supplier = suppliers.id
-                     WHERE YEAR(ticket_bookings.created_at) = YEAR(CURDATE())
-                       AND MONTH(ticket_bookings.created_at) = MONTH(CURDATE()) and ticket_bookings.sold_to = '".$_SESSION['user_id']."'";
+$this_month_query = "SELECT ticket_bookings.*, suppliers.name AS supplier_name FROM ticket_bookings LEFT JOIN suppliers ON ticket_bookings.supplier = suppliers.id WHERE YEAR(ticket_bookings.created_at) = YEAR(CURDATE()) AND MONTH(ticket_bookings.created_at) = MONTH(CURDATE()) AND ticket_bookings.sold_to = ?";
 try {
-    $this_month_stmt = $pdo->query($this_month_query);
+    $this_month_stmt = $pdo->prepare($this_month_query);
+    $this_month_stmt->execute([$_SESSION['user_id']]);
 } catch (PDOException $e) {
     error_log("Error fetching this month's tickets: " . $e->getMessage());
     $this_month_stmt = null;

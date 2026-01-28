@@ -11,10 +11,6 @@ if (!$tenant_id) {
     exit();
 }
 
-// Enable error reporting
-error_reporting(E_ALL);
-ini_set('display_errors', 1);
-
 // Connect to database
 require_once('../../includes/db.php');
 
