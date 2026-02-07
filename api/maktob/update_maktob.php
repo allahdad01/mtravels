@@ -15,6 +15,14 @@ $branch_id = $_SESSION['branch_id'];
 // Include database connection
 require_once('../includes/db.php');
 
+// CSRF Protection
+if ($_SERVER['REQUEST_METHOD'] === 'POST' && !verify_csrf_token()) {
+    http_response_code(403);
+    $_SESSION['error_message'] = 'Security validation failed. Please try again.';
+    header('Location: ../../admin/manage_maktobs.php');
+    exit;
+}
+
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     $maktob_id = isset($_POST['maktob_id']) ? (int)$_POST['maktob_id'] : 0;
     $subject = $_POST['subject'];

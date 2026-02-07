@@ -24,6 +24,14 @@ if (!isset($_SESSION['user_id'])) {
 // Database connection
 require_once('../../includes/db.php');
 
+// CSRF Protection
+if ($_SERVER['REQUEST_METHOD'] === 'POST' && !verify_csrf_token()) {
+    http_response_code(403);
+    header('Content-Type: application/json');
+    echo json_encode(['success' => false, 'message' => 'Security validation failed. Please try again.']);
+    exit;
+}
+
 // Validate allocation_id
 $allocation_id = isset($_POST['allocation_id']) ? DbSecurity::validateInput($_POST['allocation_id'], 'int', ['min' => 0]) : null;
 

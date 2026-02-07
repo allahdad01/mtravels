@@ -16,6 +16,14 @@ if (!isset($_SESSION['user_id'])) {
 
 require_once '../includes/db.php';
 
+// CSRF Protection for POST requests
+if (($_SERVER['REQUEST_METHOD'] === 'POST' || isset($_POST['action'])) && !verify_csrf_token()) {
+    http_response_code(403);
+    header('Content-Type: application/json');
+    echo json_encode(['error' => 'Security validation failed. Please try again.']);
+    exit;
+}
+
 $user_id = $_SESSION['user_id'];
 $tenant_id = $_SESSION['tenant_id'] ?? 1;
 $branch_id = $_SESSION['branch_id'] ?? 1;

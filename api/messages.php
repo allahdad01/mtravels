@@ -11,6 +11,13 @@
 		echo json_encode(['error' => 'unauthorized']);
 		exit;
 	}
+
+	// CSRF Protection for POST/PUT/DELETE requests
+	if (in_array($_SERVER['REQUEST_METHOD'], ['POST', 'PUT', 'DELETE']) && !verify_csrf_token()) {
+		http_response_code(403);
+		echo json_encode(['error' => 'Security validation failed. Please try again.']);
+		exit;
+	}
 	
 	// Initialize encryption handler
 	$encryptor = new MessageEncryption($pdo);

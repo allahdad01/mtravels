@@ -5,6 +5,7 @@
  */
 
 header('Content-Type: application/json');
+session_start();
 
 // Handle preflight requests
 if ($_SERVER['REQUEST_METHOD'] === 'OPTIONS') {
@@ -12,6 +13,13 @@ if ($_SERVER['REQUEST_METHOD'] === 'OPTIONS') {
 }
 
 require_once '../../includes/db.php';
+
+// CSRF Protection for POST/PUT/DELETE requests
+if (in_array($_SERVER['REQUEST_METHOD'], ['POST', 'PUT', 'DELETE']) && !verify_csrf_token()) {
+    http_response_code(403);
+    echo json_encode(['error' => 'Security validation failed. Please try again.']);
+    exit;
+}
 require_once '../../includes/conn.php';
 require_once 'WhatsAppManager.php';
 

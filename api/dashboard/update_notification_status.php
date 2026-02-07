@@ -28,6 +28,13 @@ if ($notification_id <= 0 || empty($status)) {
 // Database connection
 require_once '../../includes/db.php';
 
+// CSRF Protection
+if ($_SERVER['REQUEST_METHOD'] === 'POST' && !verify_csrf_token()) {
+    http_response_code(403);
+    echo json_encode(['success' => false, 'message' => 'Security validation failed. Please try again.']);
+    exit;
+}
+
 // Validate status
 $status = isset($_POST['status']) ? DbSecurity::validateInput($_POST['status'], 'string', ['maxlength' => 255]) : null;
 
