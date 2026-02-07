@@ -314,16 +314,23 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
 
 // Function to complete login after successful TOTP verification
 function completeLogin() {
-    // Set regular session variables from pending data
-    $_SESSION["loggedin"] = true;
-    $_SESSION["user_id"] = $_SESSION["pending_user_id"];
-    $_SESSION["tenant_id"] = $_SESSION["pending_user_tenant_id"];
-    $_SESSION["branch_id"] = $_SESSION["pending_user_branch_id"];
-    $_SESSION["name"] = $_SESSION["pending_user_name"];
-    $_SESSION["role"] = $_SESSION["pending_user_role"];
-    $_SESSION["user_type"] = $_SESSION["pending_user_type"];
-    $_SESSION["login_time"] = time();
-    $_SESSION["last_activity"] = time(); // Track activity for timeout
+     // Set regular session variables from pending data
+     $_SESSION["loggedin"] = true;
+     $_SESSION["user_id"] = $_SESSION["pending_user_id"];
+     $_SESSION["tenant_id"] = $_SESSION["pending_user_tenant_id"];
+     $_SESSION["branch_id"] = $_SESSION["pending_user_branch_id"];
+     $_SESSION["name"] = $_SESSION["pending_user_name"];
+     $_SESSION["role"] = $_SESSION["pending_user_role"];
+     $_SESSION["user_type"] = $_SESSION["pending_user_type"];
+     $_SESSION["login_time"] = time();
+     $_SESSION["last_activity"] = time(); // Track activity for timeout
+     
+     // Bind session to user's IP address and browser (session hijacking prevention)
+     $_SESSION['ip_address'] = $_SERVER['REMOTE_ADDR'];
+     $_SESSION['user_agent'] = $_SERVER['HTTP_USER_AGENT'];
+     
+     // Log the login with security details
+     error_log("User {$_SESSION['user_id']} logged in from IP {$_SERVER['REMOTE_ADDR']} with role {$_SESSION['role']}");
     
     // Add client-specific data if available
     if (isset($_SESSION["pending_user_client_type"])) {

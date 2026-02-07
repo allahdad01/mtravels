@@ -29,6 +29,22 @@ function checkSessionValid() {
         return false;
     }
     
+    // Verify IP address hasn't changed (session hijacking prevention)
+    if (isset($_SESSION['ip_address']) && $_SESSION['ip_address'] !== $_SERVER['REMOTE_ADDR']) {
+        error_log("Session IP mismatch for user {$_SESSION['user_id']}: stored={$_SESSION['ip_address']}, current={$_SERVER['REMOTE_ADDR']}");
+        session_unset();
+        session_destroy();
+        return false;
+    }
+    
+    // Verify User-Agent hasn't changed (session hijacking prevention)
+    if (isset($_SESSION['user_agent']) && $_SESSION['user_agent'] !== $_SERVER['HTTP_USER_AGENT']) {
+        error_log("Session User-Agent mismatch for user {$_SESSION['user_id']}: stored={$_SESSION['user_agent']}, current={$_SERVER['HTTP_USER_AGENT']}");
+        session_unset();
+        session_destroy();
+        return false;
+    }
+    
     // Update last activity time (this extends the session on active use)
     $_SESSION["last_activity"] = time();
     
