@@ -9,10 +9,25 @@ if (session_status() === PHP_SESSION_NONE) {
     session_start();
 }
 
+// Check session timeout (30 minutes)
+$sessionTimeout = 30 * 60;
+if (isset($_SESSION['last_activity']) && (time() - $_SESSION['last_activity'] > $sessionTimeout)) {
+    session_unset();
+    session_destroy();
+    header('Location: ../login.php?timeout=1');
+    exit();
+}
+$_SESSION['last_activity'] = time();
+
 // Check if user is super admin
 if (!isset($_SESSION['user_id']) || $_SESSION['role'] !== 'super_admin') {
     header('Location: ../login.php');
     exit();
+}
+
+// Create CSRF token if not exists
+if (!isset($_SESSION['csrf_token'])) {
+    $_SESSION['csrf_token'] = bin2hex(random_bytes(32));
 }
 
 // Database connection
@@ -39,6 +54,14 @@ function getAddonCurrencySymbol($currencyCode) {
 
 // Handle form submission for recording payment
 if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action']) && $_POST['action'] === 'record_payment') {
+    // Validate CSRF token
+    if (!isset($_POST['csrf_token']) || 
+        !hash_equals($_SESSION['csrf_token'], $_POST['csrf_token'])) {
+        http_response_code(403);
+        header('Location: branch_addon_payments.php?error=csrf');
+        exit();
+    }
+    
     $addon_id = intval($_POST['addon_id']);
     $amount = floatval($_POST['amount']);
     $currency = $_POST['currency'];
@@ -63,7 +86,9 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action']) && $_POST['
             $error_message = $result['message'];
         }
     } catch (Exception $e) {
-        $error_message = "Error recording payment: " . $e->getMessage();
+        error_log("Payment recording error: " . $e->getMessage());
+        // Never expose error details to client
+        $error_message = "An error occurred while recording the payment. Please try again.";
     }
 }
 

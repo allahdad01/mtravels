@@ -2,6 +2,7 @@
 require_once '../includes/db.php';
 require_once 'security.php';
 require_once '../includes/language_helpers.php';
+require_once '../includes/SecureFileUpload.php';
 
 // Enforce authentication
 enforce_auth();
@@ -93,28 +94,27 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['add_deposit'])) {
 
         error_log("Wallet updated successfully");
 
-        // Handle receipt upload if provided
-        if (isset($_FILES['receipt']) && $_FILES['receipt']['error'] === UPLOAD_ERR_OK) {
-            $file_extension = pathinfo($_FILES['receipt']['name'], PATHINFO_EXTENSION);
-            $new_filename = 'receipt_' . $transaction_id . '_' . time() . '.' . $file_extension;
-            $upload_path = '../uploads/receipts/' . $new_filename;
-
-            if (!is_dir('../uploads/receipts')) {
-                mkdir('../uploads/receipts', 0777, true);
-            }
-
-            if (move_uploaded_file($_FILES['receipt']['tmp_name'], $upload_path)) {
+        // Handle receipt upload if provided - SECURE VERSION
+        if (isset($_FILES['receipt'])) {
+            // Use SecureFileUpload for receipt files
+            $uploader = new SecureFileUpload(10 * 1024 * 1024, '../uploads/'); // 10MB max
+            $result = $uploader->upload('receipt', 'receipts');
+            
+            if ($result['success']) {
+                $receipt_filename = $result['data']['filename'];
                 // Update transaction with receipt path
                 $stmt = $pdo->prepare("UPDATE sarafi_transactions SET receipt_path = ? WHERE id = ? AND tenant_id = ?");
-                $stmt->bindParam(1, $new_filename, PDO::PARAM_STR);
+                $stmt->bindParam(1, $receipt_filename, PDO::PARAM_STR);
                 $stmt->bindParam(2, $transaction_id, PDO::PARAM_INT);
                 $stmt->bindParam(3, $tenant_id, PDO::PARAM_INT);
                 if (!$stmt->execute()) {
                     throw new Exception(__("error_updating_receipt_path"));
                 }
-                error_log("Receipt uploaded successfully: $new_filename");
+                error_log("Receipt uploaded successfully: $receipt_filename");
             } else {
-                error_log("Failed to move uploaded file to: $upload_path");
+                error_log("Receipt upload failed: " . $result['error']);
+                // Note: We don't throw exception here as transaction is already created
+                // Just log it and continue
             }
         }
 
@@ -176,19 +176,23 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['add_withdrawal'])) {
         $stmt->bindParam(5, $branch_id, PDO::PARAM_INT);
         $stmt->execute();
 
-        // Handle receipt upload if provided
-        if (isset($_FILES['receipt']) && $_FILES['receipt']['error'] === UPLOAD_ERR_OK) {
-            $file_extension = pathinfo($_FILES['receipt']['name'], PATHINFO_EXTENSION);
-            $new_filename = 'receipt_' . $transaction_id . '_' . time() . '.' . $file_extension;
-            $upload_path = '../uploads/receipts/' . $new_filename;
-
-            if (move_uploaded_file($_FILES['receipt']['tmp_name'], $upload_path)) {
+        // Handle receipt upload if provided - SECURE VERSION
+        if (isset($_FILES['receipt'])) {
+            // Use SecureFileUpload for receipt files
+            $uploader = new SecureFileUpload(10 * 1024 * 1024, '../uploads/'); // 10MB max
+            $result = $uploader->upload('receipt', 'receipts');
+            
+            if ($result['success']) {
+                $receipt_filename = $result['data']['filename'];
                 // Update transaction with receipt path
                 $stmt = $pdo->prepare("UPDATE sarafi_transactions SET receipt_path = ? WHERE id = ? AND tenant_id = ?");
-                $stmt->bindParam(1, $new_filename, PDO::PARAM_STR);
+                $stmt->bindParam(1, $receipt_filename, PDO::PARAM_STR);
                 $stmt->bindParam(2, $transaction_id, PDO::PARAM_INT);
                 $stmt->bindParam(3, $tenant_id, PDO::PARAM_INT);
                 $stmt->execute();
+                error_log("Withdrawal receipt uploaded: $receipt_filename");
+            } else {
+                error_log("Withdrawal receipt upload failed: " . $result['error']);
             }
         }
 

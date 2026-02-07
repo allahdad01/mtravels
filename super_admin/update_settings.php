@@ -1,6 +1,7 @@
 <?php
 session_start();
 require_once '../includes/db.php';
+require_once 'includes/file_upload_security.php';
 
 // Set secure headers
 header("X-XSS-Protection: 1; mode=block");
@@ -19,8 +20,9 @@ if (isset($_SESSION['last_activity']) && (time() - $_SESSION['last_activity'] > 
 }
 $_SESSION['last_activity'] = time();
 
-// Verify CSRF token
-if (!isset($_POST['csrf_token']) || $_POST['csrf_token'] !== $_SESSION['csrf_token']) {
+// Verify CSRF token - use hash_equals to prevent timing attacks
+if (!isset($_POST['csrf_token']) || 
+    !hash_equals($_SESSION['csrf_token'], $_POST['csrf_token'])) {
     header('Location: platform_settings.php?error=invalid_csrf');
     exit();
 }
@@ -138,44 +140,61 @@ if (!is_dir($upload_dir)) {
     mkdir($upload_dir, 0755, true);
 }
 
-// Handle platform logo upload
+// Handle platform logo upload with MIME validation
 $platform_logo_path = null;
-if ($platform_logo && $platform_logo['size'] > 0) {
-    $allowed_types = ['image/jpeg', 'image/png', 'image/gif'];
-    if (!in_array($platform_logo['type'], $allowed_types)) {
-        $errors[] = "Invalid platform logo format. Only JPEG, PNG, and GIF are allowed.";
-    } elseif ($platform_logo['size'] > 2 * 1024 * 1024) { // 2MB limit
-        $errors[] = "Platform logo size exceeds 2MB.";
+if ($platform_logo && $platform_logo['error'] === UPLOAD_ERR_OK && $platform_logo['size'] > 0) {
+    // Validate file using FileUploadSecurity
+    $validation = FileUploadSecurity::validateUpload($platform_logo, 'image', 2097152); // 2MB limit
+    
+    if (!$validation['success']) {
+        $errors[] = "Platform logo: " . $validation['error'];
     } else {
-        $file_extension = pathinfo($platform_logo['name'], PATHINFO_EXTENSION);
-        $filename = 'logo_' . time() . '_' . uniqid() . '.' . $file_extension;
-        $full_path = $upload_dir . $filename;
-
-        if (move_uploaded_file($platform_logo['tmp_name'], $full_path)) {
-            $platform_logo_path = $filename;
+        // Move file using secure method
+        $moveResult = FileUploadSecurity::moveUploadedFile(
+            $platform_logo['tmp_name'],
+            $upload_dir,
+            $validation['safe_name']
+        );
+        
+        if ($moveResult['success']) {
+            $platform_logo_path = $validation['safe_name'];
         } else {
-            $errors[] = "Failed to upload platform logo.";
+            $errors[] = "Failed to upload platform logo: " . $moveResult['error'];
         }
     }
 }
 
-// Handle platform favicon upload
+// Handle platform favicon upload with MIME validation
 $platform_favicon_path = null;
-if ($platform_favicon && $platform_favicon['size'] > 0) {
-    $allowed_types = ['image/x-icon', 'image/png'];
-    if (!in_array($platform_favicon['type'], $allowed_types)) {
-        $errors[] = "Invalid favicon format. Only ICO and PNG are allowed.";
-    } elseif ($platform_favicon['size'] > 100 * 1024) { // 100KB limit
+if ($platform_favicon && $platform_favicon['error'] === UPLOAD_ERR_OK && $platform_favicon['size'] > 0) {
+    // Validate file using FileUploadSecurity - note: ICO is not in standard image validation
+    // So we need to validate PNG or use custom allowlist
+    $finfo = finfo_open(FILEINFO_MIME_TYPE);
+    $favicon_mime = finfo_file($finfo, $platform_favicon['tmp_name']);
+    finfo_close($finfo);
+    
+    $allowed_favicon_mimes = ['image/x-icon', 'image/png', 'image/vnd.microsoft.icon'];
+    
+    if (!in_array($favicon_mime, $allowed_favicon_mimes)) {
+        $errors[] = "Invalid favicon format. Only ICO and PNG are allowed (detected: " . htmlspecialchars($favicon_mime) . ")";
+    } elseif ($platform_favicon['size'] > 102400) { // 100KB limit
         $errors[] = "Favicon size exceeds 100KB.";
     } else {
-        $file_extension = pathinfo($platform_favicon['name'], PATHINFO_EXTENSION);
-        $filename = 'favicon_' . time() . '_' . uniqid() . '.' . $file_extension;
-        $full_path = $upload_dir . $filename;
-
-        if (move_uploaded_file($platform_favicon['tmp_name'], $full_path)) {
-            $platform_favicon_path = $filename;
+        // Get extension and validate
+        $ext = strtolower(pathinfo($platform_favicon['name'], PATHINFO_EXTENSION));
+        if (!in_array($ext, ['ico', 'png'])) {
+            $errors[] = "Invalid favicon file extension. Only .ico and .png are allowed.";
         } else {
-            $errors[] = "Failed to upload favicon.";
+            // Generate safe filename
+            $safe_filename = 'favicon_' . bin2hex(random_bytes(8)) . '.' . $ext;
+            $full_path = $upload_dir . $safe_filename;
+            
+            if (move_uploaded_file($platform_favicon['tmp_name'], $full_path)) {
+                @chmod($full_path, 0644);
+                $platform_favicon_path = $safe_filename;
+            } else {
+                $errors[] = "Failed to upload favicon.";
+            }
         }
     }
 }

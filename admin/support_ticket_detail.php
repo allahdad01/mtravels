@@ -21,6 +21,7 @@ require_once '../includes/db.php';
 require_once '../includes/SupportTicketManager.php';
 require_once '../includes/SLACalculator.php';
 require_once '../includes/TicketNotificationService.php';
+require_once '../includes/SecureFileUpload.php';
 
 $ticketManager = new SupportTicketManager($pdo);
 $slaCalculator = new SLACalculator($pdo);
@@ -49,32 +50,24 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     if (empty($reply_text)) {
         $error = 'Reply cannot be empty';
     } else {
-        // Handle screenshot upload
-        $screenshot_path = null;
-        if (!empty($_FILES['screenshot']['name'])) {
-            $upload_dir = '../uploads/support_tickets/';
-            if (!is_dir($upload_dir)) {
-                mkdir($upload_dir, 0755, true);
-            }
-            
-            $file = $_FILES['screenshot'];
-            $allowed_types = ['image/jpeg', 'image/png', 'image/gif'];
-            
-            if (!in_array($file['type'], $allowed_types)) {
-                $error = 'Only JPG, PNG, and GIF images are allowed';
-            } elseif ($file['size'] > 5 * 1024 * 1024) {
-                $error = 'Image must be less than 5MB';
-            } else {
-                $filename = 'reply_' . time() . '_' . basename($file['name']);
-                $target_path = $upload_dir . $filename;
-                
-                if (move_uploaded_file($file['tmp_name'], $target_path)) {
-                    $screenshot_path = 'uploads/support_tickets/' . $filename;
-                } else {
-                    $error = 'Failed to upload screenshot';
-                }
-            }
-        }
+        // Handle screenshot upload - SECURE VERSION
+         $screenshot_path = null;
+         if (isset($_FILES['screenshot'])) {
+             $uploader = new SecureFileUpload(
+                 5 * 1024 * 1024, // 5MB max size
+                 '../uploads/'
+             );
+             
+             $result = $uploader->upload('screenshot', 'support_tickets');
+             
+             if ($result['success']) {
+                 $screenshot_path = 'uploads/support_tickets/' . $result['data']['filename'];
+                 // Optionally log the upload
+                 error_log("Support ticket screenshot uploaded: {$result['data']['filename']} by user {$_SESSION['user_id']}");
+             } else {
+                 $error = "File upload failed: " . $result['error'];
+             }
+         }
         
         if (empty($error)) {
             // Reinitialize manager with services

@@ -1,0 +1,230 @@
+/* Document Upload Styles */
+
+/* File input styling */
+.custom-file-input {
+    display: none;
+}
+
+.custom-file-label {
+    cursor: pointer;
+    display: block;
+    padding: 8px 12px;
+    border: 2px dashed #007bff;
+    border-radius: 4px;
+    background-color: #f8f9ff;
+    text-align: center;
+    transition: all 0.3s ease;
+    color: #007bff;
+    font-size: 13px;
+}
+
+.custom-file-label:hover {
+    background-color: #e7f0ff;
+    border-color: #0056b3;
+    color: #0056b3;
+}
+
+.custom-file-input:focus + .custom-file-label {
+    border-color: #0056b3;
+    background-color: #e7f0ff;
+    box-shadow: 0 0 0 0.2rem rgba(0, 123, 255, 0.25);
+}
+
+/* Document preview styling */
+.document-preview {
+    position: relative;
+    border-radius: 8px;
+    overflow: hidden;
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+}
+
+.document-preview img {
+    width: 100%;
+    height: auto;
+    display: block;
+}
+
+.document-preview-actions {
+    position: absolute;
+    bottom: 0;
+    left: 0;
+    right: 0;
+    background: rgba(0, 0, 0, 0.7);
+    padding: 10px;
+    display: flex;
+    gap: 8px;
+    justify-content: center;
+}
+
+.document-preview-actions button {
+    padding: 6px 12px;
+    font-size: 12px;
+}
+
+/* Upload button animation */
+.btn[type="button"]:disabled {
+    opacity: 0.6;
+    cursor: not-allowed;
+}
+
+.btn-upload-progress {
+    animation: pulse 1.5s infinite;
+}
+
+@keyframes pulse {
+    0%, 100% {
+        opacity: 1;
+    }
+    50% {
+        opacity: 0.5;
+    }
+}
+
+/* Modal styling */
+.modal-documents-header {
+    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    color: white;
+}
+
+.document-card {
+    border: 1px solid #e0e0e0;
+    border-radius: 8px;
+    transition: all 0.3s ease;
+}
+
+.document-card:hover {
+    box-shadow: 0 4px 16px rgba(0, 0, 0, 0.1);
+    border-color: #007bff;
+}
+
+/* Document type icons */
+.document-icon {
+    font-size: 24px;
+    margin-bottom: 10px;
+}
+
+.photo-icon {
+    color: #17a2b8;
+}
+
+.passport-icon {
+    color: #6c757d;
+}
+
+/* Upload progress */
+.upload-progress {
+    display: none;
+    margin-top: 10px;
+}
+
+.upload-progress.show {
+    display: block;
+}
+
+.progress-bar-animated {
+    animation: progress-bar-stripes 1s linear infinite;
+}
+
+/* Responsive styling */
+@media (max-width: 768px) {
+    .document-preview-actions {
+        flex-direction: column;
+    }
+    
+    .custom-file-label {
+        font-size: 12px;
+        padding: 6px 10px;
+    }
+}
+
+/* Info alert styling */
+.alert-document-info {
+    background-color: #e3f2fd;
+    border-left: 4px solid #2196f3;
+    color: #1565c0;
+}
+
+/* File input label animation */
+.file-input-wrapper {
+    position: relative;
+}
+
+.file-input-wrapper input:hover + label {
+    background-color: #e7f0ff;
+}
+
+/* Dropdown button styling for documents in table */
+.btn-group-documents .btn {
+    padding: 4px 8px;
+    font-size: 12px;
+}
+
+.btn-group-documents .btn i {
+    margin-right: 4px;
+}
+
+/* No documents indicator */
+.no-documents {
+    color: #6c757d;
+    font-style: italic;
+    font-size: 12px;
+}
+
+/* Delete confirmation styling */
+.delete-confirm-modal {
+    text-align: center;
+}
+
+.delete-confirm-icon {
+    font-size: 48px;
+    color: #dc3545;
+    margin: 20px 0;
+}
+
+/* Preview before upload styling */
+#photoPreviewBeforeUpload,
+#passportPreviewBeforeUpload {
+    padding: 15px;
+    background-color: #f8f9fa;
+    border: 2px solid #dee2e6;
+    border-radius: 8px;
+    animation: slideIn 0.3s ease-in-out;
+}
+
+@keyframes slideIn {
+    from {
+        opacity: 0;
+        transform: translateY(-10px);
+    }
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
+}
+
+#photoPreviewImage {
+    border: 1px solid #dee2e6;
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+    transition: transform 0.2s ease;
+}
+
+#photoPreviewImage:hover {
+    transform: scale(1.02);
+}
+
+#passportPreviewContent img {
+    border: 1px solid #dee2e6;
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+}
+
+#passportPreviewContent .alert {
+    text-align: center;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    min-height: 200px;
+}
+
+#passportPreviewContent .alert i {
+    color: #0c5ff4;
+}

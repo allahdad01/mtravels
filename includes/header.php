@@ -73,20 +73,18 @@ if ($tenant_id) {
         
         // Check if tenant exists in tenant_subscriptions
         $debug_query = "SELECT * FROM tenant_subscriptions WHERE tenant_id = ?";
-        $debug_stmt = $conn->prepare($debug_query);
-        $debug_stmt->bind_param('i', $tenant_id);
-        $debug_stmt->execute();
-        $debug_result = $debug_stmt->get_result();
+        $debug_stmt = $pdo->prepare($debug_query);
+        $debug_stmt->execute([$tenant_id]);
+        $debug_result = $debug_stmt->fetchAll(PDO::FETCH_ASSOC);
         
-        if ($debug_result->num_rows === 0) {
+        if (count($debug_result) === 0) {
             error_log("No subscriptions found for tenant: " . $tenant_id);
         } else {
             error_log("Found subscriptions but none active for tenant: " . $tenant_id);
-            while ($debug_row = $debug_result->fetch_assoc()) {
+            foreach ($debug_result as $debug_row) {
                 error_log("Subscription: " . print_r($debug_row, true));
             }
         }
-        $debug_stmt->close();
     }
 } else {
     error_log("Tenant ID is empty or null");
@@ -144,7 +142,8 @@ $imagePath = "../assets/images/user/" . $profilePic;
 
 // Calculate remaining session time (30 minutes = 1800 seconds)
 $session_timeout = 1800; // 30 minutes in seconds
-$remaining_time = isset($_SESSION['login_time']) ? $session_timeout - (time() - $_SESSION['login_time']) : $session_timeout;
+$last_activity = $_SESSION['last_activity'] ?? time();
+$remaining_time = $session_timeout - (time() - $last_activity);
 $remaining_time = max(0, $remaining_time); // Ensure non-negative
 
 
@@ -1577,7 +1576,10 @@ MOBILE SIDEBAR - CLEAN LAYOUT FIX
                             <a href="salary_management.php"><?= __('employee_salaries') ?></a>
                         </li>
                         <li class="<?php echo basename($_SERVER['PHP_SELF']) == 'salary_payment.php' ? 'active' : ''; ?>">
-                            <a href="salary_payment.php"><?= __('salary_payment') ?></a>
+                            <a href="salary_payment.php"><?= __('process_payment') ?></a>
+                        </li>
+                        <li class="<?php echo basename($_SERVER['PHP_SELF']) == 'salary_payments.php' ? 'active' : ''; ?>">
+                            <a href="salary_payments.php"><i class="feather icon-user mr-2"></i><?= __('my_payments') ?></a>
                         </li>
                     </ul>
                 </li>
@@ -2011,22 +2013,70 @@ document.addEventListener('DOMContentLoaded', function() {
 
     // Session timeout functionality
     let remainingTime = <?php echo $remaining_time; ?>; // Get remaining time from PHP
+    let lastActivityTime = Date.now();
+    const SESSION_TIMEOUT = <?php echo $session_timeout; ?>; // 30 minutes in seconds
+    let warningShown5Min = false;
+    let warningShown1Min = false;
+    
+    // Function to check session status with server
+    function checkServerSession() {
+        fetch('../api/session_check.php', {
+            method: 'GET',
+            credentials: 'same-origin',
+            headers: { 'X-Requested-With': 'XMLHttpRequest' }
+        })
+        .then(response => {
+            if (response.status === 401 || response.status === 403) {
+                // Session expired on server - redirect immediately
+                window.location.href = '../login.php?timeout=1';
+                return null;
+            }
+            return response.json();
+        })
+        .then(data => {
+            if (data && !data.authenticated) {
+                // Session expired - redirect immediately
+                window.location.href = '../login.php?timeout=1';
+            }
+        })
+        .catch(error => {
+            console.error('Session check error:', error);
+        });
+    }
+    
+    // Check session immediately when tab becomes visible
+    document.addEventListener('visibilitychange', function() {
+        if (document.visibilityState === 'visible') {
+            // Tab is now visible - check if session is still valid
+            const timeSinceLastActivity = (Date.now() - lastActivityTime) / 1000;
+            
+            // If more than 30 seconds have passed while tab was hidden, verify with server
+            if (timeSinceLastActivity > 30) {
+                checkServerSession();
+            }
+            
+            // Update last activity time
+            lastActivityTime = Date.now();
+        }
+    });
 
     function updateSessionTimer() {
         if (remainingTime <= 0) {
             // Auto logout when time expires
-            window.location.href = 'logout.php';
+            window.location.href = '../logout.php';
             return;
         }
 
         // Show warning 5 minutes before timeout
-        if (remainingTime === 300) { // 5 minutes = 300 seconds
+        if (remainingTime <= 300 && remainingTime > 299 && !warningShown5Min) {
             alert('Your session will expire in 5 minutes. Please save your work.');
+            warningShown5Min = true;
         }
 
         // Show warning 1 minute before timeout
-        if (remainingTime === 60) { // 1 minute = 60 seconds
+        if (remainingTime <= 60 && remainingTime > 59 && !warningShown1Min) {
             alert('Your session will expire in 1 minute. Please save your work.');
+            warningShown1Min = true;
         }
 
         remainingTime--;
@@ -2039,8 +2089,10 @@ document.addEventListener('DOMContentLoaded', function() {
     let activityEvents = ['mousedown', 'mousemove', 'keypress', 'scroll', 'touchstart', 'click'];
     activityEvents.forEach(function(event) {
         document.addEventListener(event, function() {
-            // Reset remaining time to full session timeout
-            remainingTime = <?php echo $session_timeout; ?>;
+            lastActivityTime = Date.now();
+            // Reset warning flags
+            warningShown5Min = false;
+            warningShown1Min = false;
         }, true);
     });
 });

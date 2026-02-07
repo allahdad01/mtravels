@@ -1,12 +1,24 @@
 <?php
 session_start();
 
+// Session timeout validation
+$sessionTimeout = 30 * 60;
+if (isset($_SESSION['last_activity']) && (time() - $_SESSION['last_activity'] > $sessionTimeout)) {
+    session_unset();
+    session_destroy();
+    http_response_code(401);
+    exit(json_encode(['success' => false, 'message' => 'Session expired']));
+}
+$_SESSION['last_activity'] = time();
+
 if (!isset($_SESSION['user_id']) || $_SESSION['role'] !== 'super_admin' || !is_null($_SESSION['tenant_id'])) {
     header('Location: ../../login.php');
     exit();
 }
 
-if (!isset($_POST['csrf_token']) || $_POST['csrf_token'] !== $_SESSION['csrf_token']) {
+// CSRF validation - use hash_equals to prevent timing attacks
+if (!isset($_POST['csrf_token']) || 
+    !hash_equals($_SESSION['csrf_token'], $_POST['csrf_token'])) {
     $_SESSION['error'] = 'CSRF token validation failed';
     header('Location: ../system_expenses.php');
     exit();

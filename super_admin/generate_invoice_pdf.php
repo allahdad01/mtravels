@@ -4,8 +4,15 @@ if (session_status() === PHP_SESSION_NONE) {
     session_start();
 }
 
-// Check if user is logged in with proper role (super admin)
-if (!isset($_SESSION['user_id']) || $_SESSION['role'] !== 'super_admin') {
+// Check if user is logged in with proper role
+if (!isset($_SESSION['user_id']) || !isset($_SESSION['role'])) {
+    header('Location: ../login.php');
+    exit();
+}
+
+// Only super_admin or tenant_admin can access
+if (!in_array($_SESSION['role'], ['super_admin', 'tenant_admin'])) {
+    error_log("Unauthorized PDF access attempt: User {$_SESSION['user_id']} - IP: {$_SERVER['REMOTE_ADDR']}");
     header('Location: ../login.php');
     exit();
 }
@@ -19,22 +26,35 @@ if (!isset($pdo) || !$pdo) {
     die("Database connection failed. Please contact administrator.");
 }
 
-// Get parameters
-$payment_id = intval($_GET['payment_id'] ?? 0);
-$subscription_id = intval($_GET['subscription_id'] ?? 0);
-$amount = floatval($_GET['amount'] ?? 0);
-$currency = $_GET['currency'] ?? 'USD';
-$payment_date = $_GET['payment_date'] ?? date('Y-m-d');
-$payment_method = $_GET['payment_method'] ?? '';
-$transaction_id = $_GET['transaction_id'] ?? '';
-$receipt_number = $_GET['receipt_number'] ?? '';
-$notes = $_GET['notes'] ?? '';
+// Generate CSRF token if not exists
+if (!isset($_SESSION['csrf_token'])) {
+    $_SESSION['csrf_token'] = bin2hex(random_bytes(32));
+}
+
+// Check for CSRF token on POST requests
+if ($_SERVER['REQUEST_METHOD'] === 'POST') {
+    if (!isset($_POST['csrf_token']) || !hash_equals($_SESSION['csrf_token'], $_POST['csrf_token'])) {
+        error_log("CSRF token validation failed: User {$_SESSION['user_id']} - IP: {$_SERVER['REMOTE_ADDR']}");
+        die('Invalid request - CSRF token validation failed');
+    }
+}
+
+// Get parameters from POST (more secure than GET)
+$payment_id = intval($_POST['payment_id'] ?? $_GET['payment_id'] ?? 0);
+$subscription_id = intval($_POST['subscription_id'] ?? $_GET['subscription_id'] ?? 0);
+$amount = floatval($_POST['amount'] ?? $_GET['amount'] ?? 0);
+$currency = $_POST['currency'] ?? $_GET['currency'] ?? 'USD';
+$payment_date = $_POST['payment_date'] ?? $_GET['payment_date'] ?? date('Y-m-d');
+$payment_method = $_POST['payment_method'] ?? $_GET['payment_method'] ?? '';
+$transaction_id = $_POST['transaction_id'] ?? $_GET['transaction_id'] ?? '';
+$receipt_number = $_POST['receipt_number'] ?? $_GET['receipt_number'] ?? '';
+$notes = $_POST['notes'] ?? $_GET['notes'] ?? '';
 
 // If payment_id is provided, fetch from database
 if ($payment_id > 0) {
     try {
         $stmt = $pdo->prepare("
-            SELECT sp.*, ts.id as subscription_id
+            SELECT sp.*, ts.id as subscription_id, ts.tenant_id
             FROM subscription_payments sp
             LEFT JOIN tenant_subscriptions ts ON sp.subscription_id = ts.id
             WHERE sp.id = ?
@@ -43,8 +63,19 @@ if ($payment_id > 0) {
         $payment_record = $stmt->fetch(PDO::FETCH_ASSOC);
         
         if (!$payment_record) {
+            error_log("Payment not found: {$payment_id} - User: {$_SESSION['user_id']}");
             die('Payment record not found');
         }
+        
+        // SECURITY: Verify user has access to this payment
+        if ($_SESSION['role'] === 'tenant_admin') {
+            // Tenant admins can only access payments from their own tenant
+            if ($payment_record['tenant_id'] != $_SESSION['tenant_id']) {
+                error_log("SECURITY: Unauthorized payment access - User: {$_SESSION['user_id']}, Payment: {$payment_id}, Tenant: {$payment_record['tenant_id']}, User Tenant: {$_SESSION['tenant_id']}");
+                die('Unauthorized access to this payment');
+            }
+        }
+        // Super admins can access all payments
         
         // Use payment record data
         $subscription_id = $payment_record['subscription_id'];
@@ -55,8 +86,12 @@ if ($payment_id > 0) {
         $transaction_id = $payment_record['transaction_id'];
         $receipt_number = $payment_record['receipt_number'];
         $notes = $payment_record['notes'];
+        
+        // Log PDF generation
+        error_log("PDF_GENERATED: User {$_SESSION['user_id']} generated invoice for payment {$payment_id}");
     } catch (PDOException $e) {
-        die("Error fetching payment: " . $e->getMessage());
+        error_log("Error fetching payment: " . $e->getMessage());
+        die("Error fetching payment");
     }
 } elseif (!$subscription_id || !$amount) {
     die('Invalid parameters');

@@ -33,6 +33,7 @@ unset($_SESSION['error_message']);
 
 // Include database connection
 require_once('../includes/db.php');
+require_once('../includes/SecureFileUpload.php');
 
 // Handle maktob submission directly
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
@@ -52,53 +53,43 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     $file_path = null;
     $pdf_path = null;
 
-    // Handle PDF file upload
-    if (isset($_FILES['pdf_file']) && $_FILES['pdf_file']['error'] === UPLOAD_ERR_OK) {
-        $upload_dir = 'uploads/maktobs/';
-        if (!is_dir($upload_dir)) {
-            mkdir($upload_dir, 0755, true);
-        }
+    // Handle PDF file upload - SECURE VERSION
+     if (isset($_FILES['pdf_file'])) {
+         $uploader = new SecureFileUpload(
+             10 * 1024 * 1024, // 10MB max size
+             'uploads/'
+         );
+         
+         $result = $uploader->upload('pdf_file', 'maktobs');
+         
+         if ($result['success']) {
+             $pdf_path = 'uploads/maktobs/' . $result['data']['filename'];
+             error_log("PDF file uploaded securely: {$result['data']['filename']}");
+         } else {
+             $_SESSION['error_message'] = 'Failed to upload PDF file: ' . $result['error'];
+             header('Location: ' . $_SERVER['PHP_SELF']);
+             exit();
+         }
+     }
 
-        $file_extension = strtolower(pathinfo($_FILES['pdf_file']['name'], PATHINFO_EXTENSION));
-        if ($file_extension !== 'pdf') {
-            $_SESSION['error_message'] = 'Only PDF files are allowed for PDF file.';
-            header('Location: ' . $_SERVER['PHP_SELF']);
-            exit();
-        }
-
-        $file_name = 'maktob_pdf_' . time() . '_' . uniqid() . '.pdf';
-        $pdf_path = $upload_dir . $file_name;
-
-        if (!move_uploaded_file($_FILES['pdf_file']['tmp_name'], $pdf_path)) {
-            $_SESSION['error_message'] = 'Failed to upload PDF file.';
-            header('Location: ' . $_SERVER['PHP_SELF']);
-            exit();
-        }
-    }
-
-    // Handle attachment upload
-    if (isset($_FILES['attachment']) && $_FILES['attachment']['error'] === UPLOAD_ERR_OK) {
-        $upload_dir = 'uploads/maktobs/';
-        if (!is_dir($upload_dir)) {
-            mkdir($upload_dir, 0755, true);
-        }
-
-        $file_extension = strtolower(pathinfo($_FILES['attachment']['name'], PATHINFO_EXTENSION));
-        if ($file_extension !== 'pdf') {
-            $_SESSION['error_message'] = 'Only PDF files are allowed for attachment.';
-            header('Location: ' . $_SERVER['PHP_SELF']);
-            exit();
-        }
-
-        $file_name = 'maktob_attachment_' . time() . '_' . uniqid() . '.pdf';
-        $file_path = $upload_dir . $file_name;
-
-        if (!move_uploaded_file($_FILES['attachment']['tmp_name'], $file_path)) {
-            $_SESSION['error_message'] = 'Failed to upload attachment.';
-            header('Location: ' . $_SERVER['PHP_SELF']);
-            exit();
-        }
-    }
+    // Handle attachment upload - SECURE VERSION
+     if (isset($_FILES['attachment'])) {
+         $uploader = new SecureFileUpload(
+             10 * 1024 * 1024, // 10MB max size
+             'uploads/'
+         );
+         
+         $result = $uploader->upload('attachment', 'maktobs');
+         
+         if ($result['success']) {
+             $file_path = 'uploads/maktobs/' . $result['data']['filename'];
+             error_log("Attachment file uploaded securely: {$result['data']['filename']}");
+         } else {
+             $_SESSION['error_message'] = 'Failed to upload attachment: ' . $result['error'];
+             header('Location: ' . $_SERVER['PHP_SELF']);
+             exit();
+         }
+     }
 
     error_log("Session info - tenant_id: $tenant_id, branch_id: $branch_id, user_id: $sender_id");
 

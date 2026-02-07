@@ -28,7 +28,56 @@ if (!isset($_SESSION['user_id']) || !isset($_SESSION['role']) || $_SESSION['role
     exit();
 }
 require_once '../includes/db.php';
-require_once '../includes/db.php';
+
+/**
+ * Safely execute mysqldump using proc_open (prevents command injection)
+ */
+function executeMysqldumpSafely($mysqldump, $host, $user, $pass, $database, $outputFile) {
+    // Build command array for safety
+    $cmd = [
+        escapeshellarg($mysqldump),
+        '--no-tablespaces',
+        '--single-transaction',
+        '--quick',
+        '--lock-tables=false',
+        '--host=' . escapeshellarg($host),
+        '--user=' . escapeshellarg($user),
+    ];
+    
+    if (!empty($pass)) {
+        $cmd[] = '--password=' . escapeshellarg($pass);
+    }
+    
+    $cmd[] = escapeshellarg($database);
+    
+    $descriptorspec = [
+        0 => ['pipe', 'r'],              // stdin
+        1 => ['file', $outputFile, 'w'], // stdout to file (SAFE)
+        2 => ['pipe', 'w']               // stderr
+    ];
+    
+    $process = proc_open(implode(' ', $cmd), $descriptorspec, $pipes);
+    
+    if (!is_resource($process)) {
+        throw new Exception("Failed to execute mysqldump");
+    }
+    
+    fclose($pipes[0]);
+    $stderr = stream_get_contents($pipes[2]);
+    fclose($pipes[2]);
+    $return_value = proc_close($process);
+    
+    if ($return_value !== 0) {
+        error_log("Mysqldump error: " . $stderr);
+        throw new Exception("Backup command failed");
+    }
+    
+    if (!file_exists($outputFile) || filesize($outputFile) === 0) {
+        throw new Exception("Backup file was not created or is empty");
+    }
+    
+    return true;
+}
 
 // Initialize messages
 $success_message = isset($_SESSION['success_message']) ? $_SESSION['success_message'] : null;
@@ -88,36 +137,16 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['backup_database'])) {
             if (is_executable($mysqldump)) {
                 $mysqldump_available = true;
                 
-                // Prepare mysqldump command
-                $cmd = sprintf(
-                    '%s --no-tablespaces -h%s -u%s %s %s > %s', 
-                    escapeshellcmd($mysqldump), 
-                    escapeshellarg($host), 
-                    escapeshellarg($user), 
-                    $pass ? '-p' . escapeshellarg($pass) : '', 
-                    escapeshellarg($name), 
-                    escapeshellarg($abs_path)
-                );
-                
-                // Try to execute mysqldump
-                $ret = null; 
-                $output = [];
-                
-                // Use different methods to run the command
-                if (function_exists('exec')) {
-                    exec($cmd, $output, $ret);
-                } elseif (function_exists('system')) {
-                    $ret = system($cmd, $output);
-                } else {
-                    // Skip this method if no shell execution is available
+                try {
+                    // Use safe proc_open method instead of shell execution
+                    if (executeMysqldumpSafely($mysqldump, $host, $user, $pass, $name, $abs_path)) {
+                        $dumpOk = true;
+                        break;
+                    }
+                } catch (Exception $e) {
+                    error_log("Mysqldump error: " . $e->getMessage());
+                    // Continue to next mysqldump path
                     continue;
-                }
-                
-                $dumpOk = ($ret === 0) && file_exists($abs_path) && filesize($abs_path) > 0;
-                
-                // If successful, break the loop
-                if ($dumpOk) {
-                    break;
                 }
             }
         }
@@ -153,33 +182,62 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['backup_database'])) {
                 // Get tables
                 $tables = $pdo->query("SHOW TABLES")->fetchAll(PDO::FETCH_COLUMN);
                 
+                // Validate allowed tables first (security check)
+                $allowed_tables = [];
+                $info_result = $pdo->query("SELECT TABLE_NAME FROM information_schema.TABLES WHERE TABLE_SCHEMA = DATABASE()");
+                while ($row = $info_result->fetch(PDO::FETCH_ASSOC)) {
+                    $allowed_tables[] = $row['TABLE_NAME'];
+                }
+                
                 // Export each table
                 foreach ($tables as $table) {
-                    // Get table structure
-                    $create_table = $pdo->query("SHOW CREATE TABLE `{$table}`")->fetch(PDO::FETCH_NUM)[1];
-                    $create_table_sql = "DROP TABLE IF EXISTS `{$table}`;\n" . $create_table . ";\n\n";
-                    fwrite($fh, $create_table_sql);
-                    
-                    // Get table data
-                    $stmt = $pdo->query("SELECT * FROM `{$table}`");
-                    
-                    // Only proceed if there are rows
-                    while ($row = $stmt->fetch(PDO::FETCH_ASSOC)) {
-                        $columns = array_map(function($k) { return "`" . str_replace('`', '``', $k) . "`"; }, array_keys($row));
-                        $values = array_map(function($v) {
-                            if ($v === null) return 'NULL';
-                            return "'" . str_replace(["\\", "'"], ["\\\\", "\\'"], (string)$v) . "'";
-                        }, array_values($row));
-                        
-                        $insert_sql = sprintf(
-                            "INSERT INTO `%s` (%s) VALUES (%s);\n", 
-                            $table, 
-                            implode(',', $columns), 
-                            implode(',', $values)
-                        );
-                        fwrite($fh, $insert_sql);
+                    // SECURITY: Validate table name against allowed list
+                    if (!in_array($table, $allowed_tables)) {
+                        error_log("WARNING: Invalid table name in backup - skipping table: {$table}");
+                        continue;
                     }
-                    fwrite($fh, "\n");
+                    
+                    try {
+                        // Safely escape table identifier
+                        $table_identifier = '`' . str_replace('`', '``', $table) . '`';
+                        
+                        // Get table structure using prepared statement safety
+                        $create_result = $pdo->query("SHOW CREATE TABLE {$table_identifier}");
+                        if (!$create_result) {
+                            error_log("ERROR: Could not get structure for table {$table}");
+                            continue;
+                        }
+                        
+                        $create_table = $create_result->fetch(PDO::FETCH_NUM)[1];
+                        $create_table_sql = "DROP TABLE IF EXISTS {$table_identifier};\n" . $create_table . ";\n\n";
+                        fwrite($fh, $create_table_sql);
+                        
+                        // Get table data using prepared statement
+                        $select_stmt = $pdo->prepare("SELECT * FROM {$table_identifier}");
+                        $select_stmt->execute();
+                        
+                        // Only proceed if there are rows
+                        while ($row = $select_stmt->fetch(PDO::FETCH_ASSOC)) {
+                            $columns = array_map(function($k) { return "`" . str_replace('`', '``', $k) . "`"; }, array_keys($row));
+                            $values = array_map(function($v) {
+                                if ($v === null) return 'NULL';
+                                return "'" . str_replace(["\\", "'"], ["\\\\", "\\'"], (string)$v) . "'";
+                            }, array_values($row));
+                            
+                            $insert_sql = sprintf(
+                                "INSERT INTO %s (%s) VALUES (%s);\n", 
+                                $table_identifier,
+                                implode(',', $columns), 
+                                implode(',', $values)
+                            );
+                            fwrite($fh, $insert_sql);
+                        }
+                        fwrite($fh, "\n");
+                    } catch (PDOException $e) {
+                        error_log("ERROR: Failed to backup table {$table}: " . $e->getMessage());
+                        // Continue with next table
+                        continue;
+                    }
                 }
                 
                 // Close the file

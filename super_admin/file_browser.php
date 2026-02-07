@@ -6,12 +6,18 @@ require_once '../includes/db.php';
 
 // Include language system
 require_once '../includes/language_helpers.php';
+require_once 'includes/path_validation.php';
 $lang = init_language();
 
 // Check if user is logged in
 if (!isset($_SESSION['user_id'])) {
     header("Location: ../login.php");
     exit();
+}
+
+// Generate CSRF token if not exists
+if (!isset($_SESSION['csrf_token'])) {
+    $_SESSION['csrf_token'] = bin2hex(random_bytes(32));
 }
 
 // Get settings for site title, etc.
@@ -66,26 +72,40 @@ function deleteDirectory($dir) {
 // Initialize variables
 $searchQuery = isset($_GET['search']) ? trim($_GET['search']) : '';
 $currentFolder = isset($_GET['folder']) ? trim($_GET['folder']) : '';
-$uploadsDir = '../uploads';
-$currentDir = $uploadsDir;
 
-if (!empty($currentFolder)) {
-    $currentDir .= '/' . $currentFolder;
+// Get safe uploads directory using validation function
+$uploadsDir = getSafeUploadsDir();
+if ($uploadsDir === false) {
+    die('Error: Uploads directory not accessible');
 }
 
-// Validate that the requested directory is within uploads
-$realUploadsPath = realpath($uploadsDir);
-$requestedPath = realpath($currentDir);
-
-if ($requestedPath === false || strpos($requestedPath, $realUploadsPath) !== 0) {
-    // Directory traversal attempt or invalid directory
-    $currentDir = $uploadsDir;
-    $currentFolder = '';
+// Validate folder parameter if provided
+$currentDir = $uploadsDir;
+if (!empty($currentFolder)) {
+    $requestedDir = getSafeUploadsDir($currentFolder);
+    if ($requestedDir === false) {
+        // Invalid directory traversal attempt detected
+        error_log("WARNING: Directory traversal attempt detected - Folder: {$currentFolder}, User: {$_SESSION['user_id']}");
+        $currentDir = $uploadsDir;
+        $currentFolder = '';
+    } else {
+        $currentDir = $requestedDir;
+    }
 }
 
 // Handle AJAX requests first
 if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action'])) {
     $response = ['success' => false, 'message' => ''];
+    
+    // Validate CSRF token for all POST operations
+    if (!isset($_POST['csrf_token']) || 
+        !hash_equals($_SESSION['csrf_token'] ?? '', $_POST['csrf_token'])) {
+        http_response_code(403);
+        $response['message'] = 'CSRF token validation failed';
+        header('Content-Type: application/json');
+        echo json_encode($response);
+        exit();
+    }
     
     if ($_POST['action'] === 'delete_item') {
         $itemPath = trim($_POST['item_path']);
@@ -148,21 +168,98 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action'])) {
             $successCount = 0;
             $errors = [];
             
+            // Define whitelist of allowed file extensions
+            $allowed_extensions = [
+                'pdf', 'doc', 'docx', 'xls', 'xlsx',
+                'jpg', 'jpeg', 'png', 'gif', 'txt', 'zip'
+            ];
+            
+            // Define allowed MIME types
+            $allowed_mimes = [
+                'application/pdf' => 'pdf',
+                'application/msword' => 'doc',
+                'application/vnd.openxmlformats-officedocument.wordprocessingml.document' => 'docx',
+                'application/vnd.ms-excel' => 'xls',
+                'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' => 'xlsx',
+                'image/jpeg' => 'jpg',
+                'image/png' => 'png',
+                'image/gif' => 'gif',
+                'text/plain' => 'txt',
+                'application/zip' => 'zip',
+                'application/x-zip-compressed' => 'zip'
+            ];
+            
+            // Maximum file size: 50MB
+            $max_file_size = 50 * 1024 * 1024;
+            
             // Handle multiple files
             for ($i = 0; $i < count($uploadedFiles['name']); $i++) {
-                $fileName = $uploadedFiles['name'][$i];
+                $originalName = $uploadedFiles['name'][$i];
                 $tmpPath = $uploadedFiles['tmp_name'][$i];
-                $targetPath = $currentDir . '/' . $fileName;
+                $error = $uploadedFiles['error'][$i];
+                $fileSize = $uploadedFiles['size'][$i];
                 
-                // Basic file name validation
-                if (preg_match('/[\/\\\\]/', $fileName)) {
+                // Check for upload errors
+                if ($error !== UPLOAD_ERR_OK) {
+                    $errors[] = "Upload error for: " . htmlspecialchars($originalName);
+                    continue;
+                }
+                
+                // Check file size
+                if ($fileSize > $max_file_size) {
+                    $errors[] = "File exceeds 50MB limit: " . htmlspecialchars($originalName);
+                    continue;
+                }
+                
+                // Validate filename
+                $fileName = basename($originalName);
+                if (!isValidFilename($fileName)) {
                     $errors[] = "Invalid filename: " . htmlspecialchars($fileName);
                     continue;
                 }
                 
+                // Check file extension
+                $ext = strtolower(pathinfo($fileName, PATHINFO_EXTENSION));
+                if (!in_array($ext, $allowed_extensions)) {
+                    $errors[] = "File type not allowed: " . htmlspecialchars($ext);
+                    continue;
+                }
+                
+                // Validate MIME type
+                $finfo = @finfo_open(FILEINFO_MIME_TYPE);
+                if ($finfo === false) {
+                    $errors[] = "Cannot verify file type for: " . htmlspecialchars($fileName);
+                    continue;
+                }
+                
+                $mime_type = @finfo_file($finfo, $tmpPath);
+                @finfo_close($finfo);
+                
+                if (!isset($allowed_mimes[$mime_type])) {
+                    $errors[] = "Invalid file MIME type for: " . htmlspecialchars($originalName) . 
+                               " (detected: {$mime_type})";
+                    continue;
+                }
+                
+                // Verify extension matches MIME type
+                if ($allowed_mimes[$mime_type] !== $ext) {
+                    $errors[] = "File extension doesn't match MIME type: " . 
+                               htmlspecialchars($originalName);
+                    continue;
+                }
+                
+                // Generate safe filename
+                $safeFileName = generateSafeFilename($fileName);
+                $targetPath = $currentDir . '/' . $safeFileName;
+                
                 // Move uploaded file
                 if (move_uploaded_file($tmpPath, $targetPath)) {
+                    // Set proper permissions (readable only, no execute)
+                    @chmod($targetPath, 0644);
                     $successCount++;
+                    
+                    // Log successful upload
+                    error_log("FILE_UPLOAD: User {$_SESSION['user_id']} uploaded {$fileName} to {$targetPath}");
                 } else {
                     $errors[] = "Failed to upload: " . htmlspecialchars($fileName);
                 }

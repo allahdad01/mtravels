@@ -8,6 +8,9 @@ require_once 'security.php';
 // Include language helper
 require_once '../includes/language_helpers.php';
 
+// Include secure file upload class
+require_once '../includes/SecureFileUpload.php';
+
 // Enforce authentication
 enforce_auth();
 
@@ -54,25 +57,20 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['add_asset'])) {
     $assigned_to = $_POST['assigned_to'];
     $condition_state = $_POST['condition_state'];
     
-    // Handle document upload
+    // Handle document upload - SECURE VERSION
     $document = '';
-    if(isset($_FILES['document']) && $_FILES['document']['error'] == 0) {
-        $allowed = array('jpg', 'jpeg', 'png', 'pdf', 'doc', 'docx');
-        $filename = $_FILES['document']['name'];
-        $ext = pathinfo($filename, PATHINFO_EXTENSION);
+    if(isset($_FILES['document'])) {
+        // Use SecureFileUpload class for safe file handling
+        $uploader = new SecureFileUpload(10 * 1024 * 1024, '../uploads/'); // 10MB max
+        $result = $uploader->upload('document', 'assets');
         
-        if(in_array(strtolower($ext), $allowed)) {
-            $new_filename = 'asset_doc_' . time() . '.' . $ext;
-            $destination = '../uploads/assets/' . $new_filename;
-            
-            // Create directory if it doesn't exist
-            if (!file_exists('../uploads/assets/')) {
-                mkdir('../uploads/assets/', 0777, true);
-            }
-            
-            if(move_uploaded_file($_FILES['document']['tmp_name'], $destination)) {
-                $document = $new_filename;
-            }
+        if ($result['success']) {
+            $document = $result['data']['filename'];
+            error_log("Asset document uploaded: {$result['data']['filename']} for asset creation by user {$_SESSION['user_id']}");
+        } else {
+            $_SESSION['error_message'] = "Document upload failed: " . $result['error'];
+            header('Location: ' . $redirect_url);
+            exit();
         }
     }
     
@@ -131,33 +129,31 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['edit_asset'])) {
     $asset = $stmt->fetch();
     $current_document = $asset['document'];
     
-    // Handle document upload
+    // Handle document upload - SECURE VERSION
     $document = $current_document;
-    if(isset($_FILES['document']) && $_FILES['document']['error'] == 0) {
-        $allowed = array('jpg', 'jpeg', 'png', 'pdf', 'doc', 'docx');
-        $filename = $_FILES['document']['name'];
-        $ext = pathinfo($filename, PATHINFO_EXTENSION);
+    if(isset($_FILES['document'])) {
+        // Use SecureFileUpload class for safe file handling
+        $uploader = new SecureFileUpload(10 * 1024 * 1024, '../uploads/'); // 10MB max
+        $result = $uploader->upload('document', 'assets');
         
-        if(in_array(strtolower($ext), $allowed)) {
-            $new_filename = 'asset_doc_' . time() . '.' . $ext;
-            $destination = '../uploads/assets/' . $new_filename;
+        if ($result['success']) {
+            $document = $result['data']['filename'];
             
-            // Create directory if it doesn't exist
-            if (!file_exists('../uploads/assets/')) {
-                mkdir('../uploads/assets/', 0777, true);
-            }
-            
-            if(move_uploaded_file($_FILES['document']['tmp_name'], $destination)) {
-                $document = $new_filename;
-                
-                // Delete old document if it exists
-                if(!empty($current_document)) {
-                    $old_file = '../uploads/assets/' . $current_document;
-                    if(file_exists($old_file)) {
-                        unlink($old_file);
-                    }
+            // Delete old document if it exists
+            if(!empty($current_document)) {
+                $old_file = '../uploads/assets/' . $current_document;
+                // Verify path is safe before deleting
+                if(file_exists($old_file) && strpos(realpath($old_file), realpath('../uploads/assets/')) === 0) {
+                    @unlink($old_file);
+                    error_log("Old asset document deleted: $current_document");
                 }
             }
+            
+            error_log("Asset document updated: {$result['data']['filename']} for asset ID $asset_id by user {$_SESSION['user_id']}");
+        } else {
+            $_SESSION['error_message'] = "Document upload failed: " . $result['error'];
+            header('Location: ' . $redirect_url);
+            exit();
         }
     }
     

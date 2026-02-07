@@ -13,17 +13,24 @@ function checkSessionValid() {
         return false;
     }
     
-    // Check for session timeout (30 minutes)
-    $session_timeout = 60 * 60; // 30 minutes in seconds
-    if (isset($_SESSION["login_time"]) && (time() - $_SESSION["login_time"] > $session_timeout)) {
-        // Session timed out
+    // Check for session timeout (30 minutes = 1800 seconds)
+    $session_timeout = 1800; // 30 minutes in seconds
+    
+    // Use last_activity for timeout checking, not login_time
+    // This ensures the session expires after 30 minutes of INACTIVITY
+    if (!isset($_SESSION["last_activity"])) {
+        $_SESSION["last_activity"] = time();
+    }
+    
+    if (time() - $_SESSION["last_activity"] > $session_timeout) {
+        // Session timed out due to inactivity
         session_unset();
         session_destroy();
         return false;
     }
     
-    // Update last activity time
-    $_SESSION["login_time"] = time();
+    // Update last activity time (this extends the session on active use)
+    $_SESSION["last_activity"] = time();
     
     // Regenerate session ID periodically to prevent session fixation
     if (!isset($_SESSION["last_regeneration"]) || (time() - $_SESSION["last_regeneration"] > 300)) {

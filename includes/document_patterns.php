@@ -635,28 +635,34 @@ function findPythonExecutable() {
             }
         }
     } else {
-        // Unix/Linux - try 'python3' or 'python'
-        $which = shell_exec('which python3 2>/dev/null') ?: shell_exec('which python 2>/dev/null');
-        if ($which) {
-            $pythonPath = trim($which);
-            return $pythonPath;
+        // Unix/Linux - check known paths first (safe method, no shell_exec)
+        $unixPaths = [
+            '/usr/bin/python3',
+            '/usr/local/bin/python3',
+            '/opt/homebrew/bin/python3',
+            '/usr/bin/python',
+            '/usr/local/bin/python',
+        ];
+        
+        foreach ($unixPaths as $path) {
+            if (file_exists($path) && is_executable($path)) {
+                return $path;
+            }
         }
-    }
-    
-    // Try 3: Just try 'python' - it might work
-    $output = [];
-    $returnCode = 0;
-    exec('python --version 2>&1', $output, $returnCode);
-    if ($returnCode === 0) {
-        $pythonPath = 'python';
-        return $pythonPath;
-    }
-    
-    // Try 4: Try 'python3'
-    exec('python3 --version 2>&1', $output, $returnCode);
-    if ($returnCode === 0) {
-        $pythonPath = 'python3';
-        return $pythonPath;
+        
+        // Check PATH environment (safer than shell_exec)
+        $path_env = explode(PATH_SEPARATOR, getenv('PATH') ?? '');
+        foreach ($path_env as $dir) {
+            $python3_path = $dir . DIRECTORY_SEPARATOR . 'python3';
+            if (file_exists($python3_path) && is_executable($python3_path)) {
+                return $python3_path;
+            }
+            
+            $python_path = $dir . DIRECTORY_SEPARATOR . 'python';
+            if (file_exists($python_path) && is_executable($python_path)) {
+                return $python_path;
+            }
+        }
     }
     
     return null;
@@ -749,11 +755,39 @@ PYTHON;
         // Write Python script to file
         file_put_contents($pythonScript, $pythonCode);
         
-        // Execute Python script
+        // Execute Python script using proc_open (safer than exec)
+        // Build command as array to prevent shell injection
+        $descriptorspec = [
+            0 => ['pipe', 'r'],  // stdin
+            1 => ['pipe', 'w'],  // stdout
+            2 => ['pipe', 'w']   // stderr
+        ];
+        
+        $process = proc_open(
+            [$pythonExe, $pythonScript, $imagePath, $outputFile],
+            $descriptorspec,
+            $pipes,
+            null,
+            null
+        );
+        
         $output = [];
-        $returnCode = 0;
-        $command = escapeshellarg($pythonExe) . ' ' . escapeshellarg($pythonScript) . ' ' . escapeshellarg($imagePath) . ' ' . escapeshellarg($outputFile) . ' 2>&1';
-        exec($command, $output, $returnCode);
+        $returnCode = -1;
+        
+        if (is_resource($process)) {
+            fclose($pipes[0]); // Close stdin
+            
+            $stdout = stream_get_contents($pipes[1]);
+            $stderr = stream_get_contents($pipes[2]);
+            fclose($pipes[1]);
+            fclose($pipes[2]);
+            
+            $returnCode = proc_close($process);
+            $output = array_filter(array_merge(
+                explode("\n", $stdout),
+                explode("\n", $stderr)
+            ));
+        }
         
         // Clean up Python script
         @unlink($pythonScript);

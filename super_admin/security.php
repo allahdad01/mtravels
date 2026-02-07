@@ -22,7 +22,10 @@ if (session_status() === PHP_SESSION_NONE) {
     }
     
     ini_set('session.use_only_cookies', 1);
-    ini_set('session.cookie_samesite', 'Lax'); // Changed from Strict to Lax for better local development
+    
+    // Use Strict for production, Lax for localhost development
+    $samesite = (gethostname() === 'localhost' || $_SERVER['HTTP_HOST'] === 'localhost:80') ? 'Lax' : 'Strict';
+    ini_set('session.cookie_samesite', $samesite);
     
     session_start();
 }
@@ -31,8 +34,20 @@ if (session_status() === PHP_SESSION_NONE) {
 header("X-XSS-Protection: 1; mode=block");
 header("X-Content-Type-Options: nosniff");
 header("X-Frame-Options: DENY");
-// Temporarily disabled CSP header
-// header("Content-Security-Policy: default-src 'self'; script-src 'self' 'unsafe-inline'; style-src 'self' 'unsafe-inline';");
+
+// Content Security Policy - Enhanced protection
+$csp = "default-src 'self'; ";
+$csp .= "script-src 'self' 'unsafe-inline' https://cdn.jsdelivr.net https://unpkg.com https://cdnjs.cloudflare.com; ";
+$csp .= "style-src 'self' 'unsafe-inline' https://fonts.googleapis.com https://cdn.datatables.net https://cdn.jsdelivr.net; ";
+$csp .= "img-src 'self' data: blob:; ";
+$csp .= "font-src 'self' https://fonts.gstatic.com; ";
+$csp .= "connect-src 'self' https://cdn.jsdelivr.net https://unpkg.com blob:; ";
+$csp .= "worker-src 'self' blob:; ";
+$csp .= "frame-src 'none'; ";
+$csp .= "object-src 'none'; ";
+$csp .= "base-uri 'self';";
+header("Content-Security-Policy: $csp");
+
 header("Referrer-Policy: strict-origin-when-cross-origin");
 
 // Only set HSTS header for HTTPS connections
@@ -153,7 +168,8 @@ function h($string) {
 }
 
 /**
- * Rate limiting for API endpoints
+ * Rate limiting for API endpoints - IP-based for better coverage
+ * Works across sessions and for unauthenticated users
  * 
  * @param string $endpoint Name of the endpoint
  * @param int $max_requests Maximum allowed requests in the time window
@@ -162,36 +178,44 @@ function h($string) {
  */
 function check_rate_limit($endpoint, $max_requests = 30, $window_seconds = 60) {
     $currentTime = time();
+    $clientIp = $_SERVER['REMOTE_ADDR'];
+    $rateKey = hash('sha256', $clientIp . ':' . $endpoint);
+    $rateFile = sys_get_temp_dir() . '/rate_limit_' . $rateKey . '.json';
     
-    // Initialize rate limiting data
-    if (!isset($_SESSION['api_rate_limits'])) {
-        $_SESSION['api_rate_limits'] = [];
-    }
+    // Read existing rate limit data
+    $rateData = ['count' => 0, 'window_start' => $currentTime];
     
-    if (!isset($_SESSION['api_rate_limits'][$endpoint])) {
-        $_SESSION['api_rate_limits'][$endpoint] = [
-            'count' => 0,
-            'window_start' => $currentTime
-        ];
-    }
-    
-    // Reset if window has expired
-    if ($currentTime - $_SESSION['api_rate_limits'][$endpoint]['window_start'] > $window_seconds) {
-        $_SESSION['api_rate_limits'][$endpoint] = [
-            'count' => 0,
-            'window_start' => $currentTime
-        ];
+    if (file_exists($rateFile)) {
+        $fileContent = file_get_contents($rateFile);
+        $storedData = json_decode($fileContent, true);
+        
+        if ($storedData && isset($storedData['window_start'])) {
+            // Check if window has expired
+            if ($currentTime - $storedData['window_start'] > $window_seconds) {
+                // Reset the window
+                $rateData = ['count' => 0, 'window_start' => $currentTime];
+            } else {
+                $rateData = $storedData;
+            }
+        }
     }
     
     // Increment count
-    $_SESSION['api_rate_limits'][$endpoint]['count']++;
+    $rateData['count']++;
     
-    // Check if over limit
-    if ($_SESSION['api_rate_limits'][$endpoint]['count'] > $max_requests) {
-        return false;
+    // Write updated data
+    @file_put_contents($rateFile, json_encode($rateData), LOCK_EX);
+    
+    // Clean up old files (older than 1 hour)
+    $oneHourAgo = $currentTime - 3600;
+    foreach (glob(sys_get_temp_dir() . '/rate_limit_*.json') as $file) {
+        if (filemtime($file) < $oneHourAgo) {
+            @unlink($file);
+        }
     }
     
-    return true;
+    // Check if over limit
+    return $rateData['count'] <= $max_requests;
 }
 
 /**

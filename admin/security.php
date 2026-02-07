@@ -54,16 +54,16 @@ if (isset($_SERVER['HTTPS']) && $_SERVER['HTTPS'] === 'on') {
 // Define allowed roles for admin panel
 $admin_roles = ['admin', 'finance'];
 
-// Check session timeout (30 minutes)
-$sessionTimeout = 30 * 60; // 30 minutes in seconds
+// Check session timeout (30 minutes = 1800 seconds)
+$sessionTimeout = 1800; // 30 minutes in seconds
 if (isset($_SESSION['last_activity']) && (time() - $_SESSION['last_activity'] > $sessionTimeout)) {
-    // Session expired, destroy session and redirect to login
+    // Session expired due to inactivity, destroy session and redirect to login
     session_unset();
     session_destroy();
     header('Location: ../login.php?timeout=1');
     exit();
 }
-$_SESSION['last_activity'] = time(); // Update last activity time
+$_SESSION['last_activity'] = time(); // Update last activity time on each request
 
 // Create CSRF token if not exists
 if (!isset($_SESSION['csrf_token'])) {

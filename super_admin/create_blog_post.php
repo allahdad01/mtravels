@@ -1,6 +1,7 @@
 <?php
 session_start();
 require_once '../includes/db.php';
+require_once 'includes/file_upload_security.php';
 
 // Set secure headers
 header("X-XSS-Protection: 1; mode=block");
@@ -70,36 +71,35 @@ if ($result->num_rows > 0) {
     header('Location: manage_blog_posts.php?error=slug_exists');
     exit();
 }
-// Handle file upload
+// Handle file upload with MIME validation
 $featured_image = '';
 if (isset($_FILES['featured_image']) && $_FILES['featured_image']['error'] === UPLOAD_ERR_OK) {
     $upload_dir = '../uploads/blog/';
+    
+    // Validate file using FileUploadSecurity
+    $validation = FileUploadSecurity::validateUpload($_FILES['featured_image'], 'image', 5242880);
+    
+    if (!$validation['success']) {
+        header('Location: manage_blog_posts.php?error=' . urlencode($validation['error']));
+        exit();
+    }
+    
+    // Create upload directory if needed
     if (!is_dir($upload_dir)) {
         mkdir($upload_dir, 0755, true);
     }
-
-    $file_extension = strtolower(pathinfo($_FILES['featured_image']['name'], PATHINFO_EXTENSION));
-    $allowed_extensions = ['jpg', 'jpeg', 'png', 'gif', 'webp'];
-
-    if (!in_array($file_extension, $allowed_extensions)) {
-        header('Location: manage_blog_posts.php?error=invalid_file_type');
-        exit();
-    }
-
-    // Check file size (max 5MB)
-    if ($_FILES['featured_image']['size'] > 5 * 1024 * 1024) {
-        header('Location: manage_blog_posts.php?error=file_too_large');
-        exit();
-    }
-
-    // Generate unique filename
-    $filename = uniqid('blog_') . '.' . $file_extension;
-    $upload_path = $upload_dir . $filename;
-
-    if (move_uploaded_file($_FILES['featured_image']['tmp_name'], $upload_path)) {
-        $featured_image = '/uploads/blog/' . $filename;
+    
+    // Move file using secure method
+    $moveResult = FileUploadSecurity::moveUploadedFile(
+        $_FILES['featured_image']['tmp_name'],
+        $upload_dir,
+        $validation['safe_name']
+    );
+    
+    if ($moveResult['success']) {
+        $featured_image = '/uploads/blog/' . $validation['safe_name'];
     } else {
-        header('Location: manage_blog_posts.php?error=upload_failed');
+        header('Location: manage_blog_posts.php?error=' . urlencode($moveResult['error']));
         exit();
     }
 }

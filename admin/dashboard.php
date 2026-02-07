@@ -57,7 +57,7 @@ if (!file_exists($imagePath)) {
 }
 ?>
 <link rel="stylesheet" href="../css/dashboard/dashboard.css">
-<link href="../css/dashboard/css/dashboard-styles.css" rel="stylesheet">
+<link href="../css/dashboard/dashboard-styles.css" rel="stylesheet">
 <link rel="stylesheet" href="../css/general/modal-styles.css">
 
 

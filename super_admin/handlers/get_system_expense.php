@@ -1,6 +1,14 @@
 <?php
 session_start();
 
+// Session timeout validation
+$sessionTimeout = 30 * 60;
+if (isset($_SESSION['last_activity']) && (time() - $_SESSION['last_activity'] > $sessionTimeout)) {
+    http_response_code(401);
+    exit(json_encode(['success' => false, 'message' => 'Session expired']));
+}
+$_SESSION['last_activity'] = time();
+
 if (!isset($_SESSION['user_id']) || $_SESSION['role'] !== 'super_admin' || !is_null($_SESSION['tenant_id'])) {
     http_response_code(403);
     exit(json_encode(['success' => false, 'message' => 'Unauthorized']));
@@ -33,6 +41,7 @@ try {
 
 } catch (Exception $e) {
     error_log("Get expense error: " . $e->getMessage());
-    exit(json_encode(['success' => false, 'message' => 'Error: ' . $e->getMessage()]));
+    // Never expose error details to client
+    exit(json_encode(['success' => false, 'message' => 'An error occurred. Please try again.']));
 }
 ?>

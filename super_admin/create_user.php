@@ -1,6 +1,7 @@
 <?php
 session_start();
 require_once '../includes/db.php';
+require_once 'includes/role_security.php';
 
 // Set secure headers
 header("X-XSS-Protection: 1; mode=block");
@@ -49,9 +50,18 @@ if (!filter_var($email, FILTER_VALIDATE_EMAIL)) {
 if (strlen($password) < 8) {
     $errors[] = "Password must be at least 8 characters long.";
 }
-if (!in_array($role, ['super_admin', 'tenant_admin', 'user'])) {
+
+// Validate and sanitize role input using role security module
+$role = sanitizeRoleInput($role);
+if ($role === null) {
     $errors[] = "Invalid role.";
+} else {
+    // Check if current admin can assign this role
+    if (!canAssignRole($role, $_SESSION['role'])) {
+        $errors[] = "You cannot assign a role with higher privileges than your own.";
+    }
 }
+
 if ($role !== 'super_admin' && empty($tenant_id)) {
     $errors[] = "Tenant is required for non-super admin roles.";
 }
@@ -93,12 +103,22 @@ if (empty($errors)) {
         sendTenantUserNotificationEmail($tenant_id, $name, $email, $role);
     }
 
-    // Log action
+    // Log action with role security audit
+    logRoleChange($_SESSION['user_id'], $user_id, null, $role, $pdo);
+    
     $stmt = $pdo->prepare("INSERT INTO audit_logs (user_id, action, entity_type, entity_id, details, ip_address, created_at)
-                            VALUES (?, 'create_user', 'user', ?, ?, ?, NOW())");
-    $details = json_encode(['name' => $name, 'email' => $email, 'role' => $role, 'tenant_id' => $tenant_id]);
+                             VALUES (?, 'create_user', 'user', ?, ?, ?, NOW())");
+    $details = json_encode([
+        'name' => $name,
+        'email' => $email,
+        'role' => $role,
+        'tenant_id' => $tenant_id,
+        'created_by' => $_SESSION['user_id']
+    ]);
     $ip_address = $_SERVER['REMOTE_ADDR'];
     $stmt->execute([$_SESSION['user_id'], $user_id, $details, $ip_address]);
+    
+    error_log("USER_CREATED: Admin {$_SESSION['user_id']} created user {$user_id} ({$email}) with role {$role}");
     header('Location: manage_users.php?success=user_created');
 } else {
     header('Location: manage_users.php?error=' . urlencode(implode(', ', $errors)));

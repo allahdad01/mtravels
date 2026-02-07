@@ -3,6 +3,7 @@
 require_once 'security.php';
 require_once '../includes/language_helpers.php';
 require_once '../includes/db.php';
+require_once '../includes/SecureFileUpload.php';
 $tenant_id = $_SESSION['tenant_id'];
 $branch_id = $_SESSION['branch_id'];
 // Start session if not already started
@@ -37,25 +38,19 @@ try {
         throw new Exception(__('email_already_exists'));
     }
 
-    // Handle file upload
+    // Handle profile picture upload - SECURE VERSION
     $profile_pic = 'default-avatar.jpg'; // Default profile picture
-    if (isset($_FILES['profile_pic']) && $_FILES['profile_pic']['error'] === UPLOAD_ERR_OK) {
-        $allowed = ['jpg', 'jpeg', 'png', 'gif'];
-        $filename = $_FILES['profile_pic']['name'];
-        $ext = strtolower(pathinfo($filename, PATHINFO_EXTENSION));
+    if (isset($_FILES['profile_pic'])) {
+        // Use SecureFileUpload for profile pictures
+        $uploader = new SecureFileUpload(5 * 1024 * 1024, '../assets/'); // 5MB max
+        $result = $uploader->upload('profile_pic', 'images/user');
         
-        if (!in_array($ext, $allowed)) {
-            throw new Exception(__('invalid_file_type'));
+        if ($result['success']) {
+            $profile_pic = $result['data']['filename'];
+            error_log("User profile picture uploaded: {$result['data']['filename']}");
+        } else {
+            throw new Exception(__('error_uploading_profile_picture') . ': ' . $result['error']);
         }
-        
-        // Generate unique filename
-        $new_filename = uniqid() . '.' . $ext;
-        $upload_path = '../assets/images/user/' . $new_filename;
-        
-        if (!move_uploaded_file($_FILES['profile_pic']['tmp_name'], $upload_path)) {
-            throw new Exception(__('error_uploading_profile_picture'));
-        }
-        $profile_pic = $new_filename;
     }
 
     // Insert new user
@@ -85,31 +80,18 @@ try {
     // Get the new user ID
     $userId = $pdo->lastInsertId();
     
-    // Handle document uploads
-    if (isset($_FILES['user_documents']) && !empty($_FILES['user_documents']['name'][0])) {
-        // Create user directory if it doesn't exist
-        $userDocDir = "../uploads/user_documents/{$userId}";
-        if (!file_exists($userDocDir)) {
-            mkdir($userDocDir, 0755, true);
-        }
+    // Handle document uploads - SECURE VERSION
+    if (isset($_FILES['user_documents'])) {
+        // Use SecureFileUpload for user documents
+        $uploader = new SecureFileUpload(10 * 1024 * 1024, '../uploads/'); // 10MB per file
+        $upload_result = $uploader->uploadMultiple('user_documents', "user_documents/{$userId}", 10); // Max 10 files
         
-        // Process each uploaded document
-        $allowedDocs = ['pdf', 'doc', 'docx', 'jpg', 'jpeg', 'png'];
-        $uploadedDocs = [];
-        
-        foreach ($_FILES['user_documents']['name'] as $key => $filename) {
-            if ($_FILES['user_documents']['error'][$key] === UPLOAD_ERR_OK) {
-                $ext = strtolower(pathinfo($filename, PATHINFO_EXTENSION));
-                
-                if (!in_array($ext, $allowedDocs)) {
-                    continue; // Skip invalid file types
-                }
-                
-                // Generate unique filename
-                $newFilename = uniqid() . '_' . preg_replace('/[^a-zA-Z0-9_.-]/', '', $filename);
-                $uploadPath = "{$userDocDir}/{$newFilename}";
-                
-                if (move_uploaded_file($_FILES['user_documents']['tmp_name'][$key], $uploadPath)) {
+        if ($upload_result['success']) {
+            // Process successfully uploaded documents
+            $uploadedDocs = [];
+            
+            foreach ($upload_result['data']['files'] as $file_result) {
+                if ($file_result['success']) {
                     // Save document info in the database
                     $docStmt = $pdo->prepare("
                         INSERT INTO user_documents (
@@ -121,14 +103,15 @@ try {
 
                     $docStmt->execute([
                         'user_id' => $userId,
-                        'filename' => $newFilename,
-                        'original_name' => $filename,
-                        'file_type' => $ext,
+                        'filename' => $file_result['data']['filename'],
+                        'original_name' => $file_result['data']['original_name'],
+                        'file_type' => $file_result['data']['extension'],
                         'tenant_id' => $tenant_id,
                         'branch_id' => $branch_id
                     ]);
                     
-                    $uploadedDocs[] = $newFilename;
+                    $uploadedDocs[] = $file_result['data']['filename'];
+                    error_log("User document uploaded: {$file_result['data']['filename']}");
                 }
             }
         }

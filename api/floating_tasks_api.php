@@ -52,8 +52,10 @@ try {
             exit();
     }
 } catch (Exception $e) {
+    error_log("Floating Tasks API Error: " . $e->getMessage());
+    error_log("Stack trace: " . $e->getTraceAsString());
     http_response_code(500);
-    echo json_encode(['error' => $e->getMessage()]);
+    echo json_encode(['error' => $e->getMessage(), 'trace' => $e->getTraceAsString()]);
     exit();
 }
 
@@ -61,6 +63,14 @@ function getTasks() {
     global $pdo, $user_id, $tenant_id, $branch_id;
 
     try {
+        // Check if table exists first
+        $checkStmt = $pdo->query("SHOW TABLES LIKE 'floating_tasks'");
+        if ($checkStmt->rowCount() === 0) {
+            http_response_code(503);
+            echo json_encode(['error' => 'Database table not initialized. Please run migrations.']);
+            exit();
+        }
+        
         $stmt = $pdo->prepare("
             SELECT id, task_text, completed, created_at
             FROM floating_tasks

@@ -27,6 +27,7 @@ require_once('../includes/db.php');
 <link rel="stylesheet" href="../css/general/modal-styles.css">
 <link rel="stylesheet" href="../css/ticket/ticket-form.css">
 <link rel="stylesheet" href="../css/umrah/umrah-management.css">
+<link rel="stylesheet" href="../css/document-upload.css">
 <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/sweetalert2@11.7.32/dist/sweetalert2.min.css">
 <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
 
@@ -599,7 +600,9 @@ require_once('../includes/db.php');
                                                                                                                         onclick="selectForGroupTicket(<?= $member['booking_id'] ?>, '<?= htmlspecialchars($member['name']) ?>'); return false;">
                                                                                                                         <i class="feather icon-users mr-2 text-primary"></i><?= __('select_for_group_ticket') ?>
                                                                                                                     </a>
-
+                                                                                                                    <a class="dropdown-item" href="#" onclick="openMemberDocumentsModal(<?= $member['booking_id'] ?>, '<?= htmlspecialchars($member['name']) ?>'); return false;">
+                                                                                                                        <i class="feather icon-file-text mr-2 text-success"></i>Photo & Passport
+                                                                                                                    </a>
 
                                                                                                                     <div class="dropdown-divider"></div>
 
@@ -765,6 +768,7 @@ require_once('../includes/db.php');
     <?php include '../modals/umrah/family_cancellation_details_modal.php'; ?>
     <?php include '../modals/umrah/member_document_template.php'; ?>
     <?php include '../modals/umrah/member_details_modal.php'; ?>
+    <?php include '../modals/umrah/member_documents_modal.php'; ?>
     <?php include '../modals/umrah/date_change_modal.php'; ?>
     <?php include '../modals/umrah/bank_receipt_modal.php'; ?>
     <?php include '../modals/umrah/umrah_presidency_modal.php'; ?>
@@ -787,6 +791,9 @@ require_once('../includes/db.php');
     <script src="https://cdn.jsdelivr.net/npm/select2@4.1.0-rc.0/dist/js/select2.min.js"></script>
     <!-- SweetAlert2 -->
     <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11.7.32/dist/sweetalert2.all.min.js"></script>
+
+    <!-- Document Upload Script -->
+    <script src="../js/member-document-upload.js"></script>
 
     <!-- Custom Scripts -->
     <script>
@@ -878,6 +885,9 @@ require_once('../includes/db.php');
 
 <!-- Document Upload Handler for Umrah -->
 <script src="../js/umrah/document-upload-handler.js"></script>
+
+<!-- Documents Modal Handler -->
+<script src="../js/umrah/open_documents_modal.js"></script>
 
 <!-- Floating action button for ID card generation -->
 <div id="idCardFloatingButton" class="position-fixed" style="bottom: 80px; right: 30px; z-index: 1050; display: none;">

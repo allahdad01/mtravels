@@ -13,11 +13,31 @@ class Logger {
     const ERROR = 3;
     const CRITICAL = 4;
     
-    // Log file path - ensure this is outside the web root
-    private static $logFilePath = '../../logs/admin_log.log';
+    // Log file path - absolute path outside the web root
+    // This is set at runtime in the constructor to ensure proper path resolution
+    private static $logFilePath = null;
     
     // Current minimum log level
     private static $minLogLevel = self::INFO;
+    
+    /**
+     * Initialize log file path if not already set
+     */
+    private static function initializeLogPath() {
+        if (self::$logFilePath === null) {
+            // Get the project root (one level up from super_admin directory)
+            $projectRoot = dirname(dirname(dirname(__FILE__)));
+            $logsDir = $projectRoot . '/logs';
+            
+            // Create logs directory if it doesn't exist
+            if (!is_dir($logsDir)) {
+                @mkdir($logsDir, 0755, true);
+            }
+            
+            // Set the log file path
+            self::$logFilePath = $logsDir . '/admin_log.log';
+        }
+    }
     
     /**
      * Log a message with context information
@@ -28,6 +48,9 @@ class Logger {
      * @return bool Whether logging was successful
      */
     public static function log($message, $level = self::INFO, $context = []) {
+        // Initialize log path
+        self::initializeLogPath();
+        
         // Only log if level is at or above minimum
         if ($level < self::$minLogLevel) {
             return true;
@@ -247,10 +270,31 @@ class Logger {
     }
     
     /**
-     * Set the log file path
+     * Set the log file path (should be absolute path)
+     * 
+     * @param string $path Absolute path to log file
      */
     public static function setLogFilePath($path) {
+        // Ensure the path is absolute
+        if (!self::isAbsolutePath($path)) {
+            throw new Exception("Log file path must be absolute: $path");
+        }
+        
+        // Ensure directory exists
+        $dir = dirname($path);
+        if (!is_dir($dir)) {
+            @mkdir($dir, 0755, true);
+        }
+        
         self::$logFilePath = $path;
+    }
+    
+    /**
+     * Check if a path is absolute
+     */
+    private static function isAbsolutePath($path) {
+        return (isset($path[0]) && $path[0] === '/') || // Unix/Linux
+               (isset($path[1]) && $path[1] === ':');    // Windows
     }
 }
 ?> 

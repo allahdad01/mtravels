@@ -35,11 +35,13 @@ if (!isset($_SESSION['csrf_token'])) {
 
 // Database connection
 require_once '../includes/db.php';
+require_once 'includes/file_upload_security.php';
 
 // Handle POST requests for CRUD operations
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
-    // Verify CSRF token
-    if (!isset($_POST['csrf_token']) || $_POST['csrf_token'] !== $_SESSION['csrf_token']) {
+    // Verify CSRF token - use hash_equals to prevent timing attacks
+    if (!isset($_POST['csrf_token']) || 
+        !hash_equals($_SESSION['csrf_token'], $_POST['csrf_token'])) {
         http_response_code(403);
         echo json_encode(['success' => false, 'message' => 'CSRF token validation failed']);
         exit();
@@ -50,7 +52,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     try {
         switch ($action) {
             case 'add_testimonial':
-                // Handle file upload for photo
+                // Handle file upload for photo with MIME validation
                 $photo_path = null;
                 if (isset($_FILES['photo']) && $_FILES['photo']['error'] === UPLOAD_ERR_OK) {
                     $upload_dir = '../uploads/testimonials/';
@@ -58,22 +60,26 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                         mkdir($upload_dir, 0755, true);
                     }
 
-                    $file_extension = strtolower(pathinfo($_FILES['photo']['name'], PATHINFO_EXTENSION));
-                    $allowed_extensions = ['jpg', 'jpeg', 'png', 'gif'];
-
-                    if (!in_array($file_extension, $allowed_extensions)) {
-                        throw new Exception('Invalid file type. Only JPG, PNG, and GIF are allowed.');
+                    // Validate file using FileUploadSecurity
+                    $validation = FileUploadSecurity::validateUpload($_FILES['photo'], 'image', 5242880);
+                    
+                    if (!$validation['success']) {
+                        throw new Exception($validation['error']);
                     }
 
-                    $filename = uniqid('testimonial_') . '.' . $file_extension;
-                    $photo_path = $upload_dir . $filename;
+                    // Move file using secure method
+                    $moveResult = FileUploadSecurity::moveUploadedFile(
+                        $_FILES['photo']['tmp_name'],
+                        $upload_dir,
+                        $validation['safe_name']
+                    );
 
-                    if (!move_uploaded_file($_FILES['photo']['tmp_name'], $photo_path)) {
-                        throw new Exception('Failed to upload photo');
+                    if (!$moveResult['success']) {
+                        throw new Exception($moveResult['error']);
                     }
 
                     // Store relative path
-                    $photo_path = 'uploads/testimonials/' . $filename;
+                    $photo_path = 'uploads/testimonials/' . $validation['safe_name'];
                 }
 
                 $stmt = $pdo->prepare("INSERT INTO testimonials (tenant_id, name, photo, testimonial, destination, rating, active, created_at, updated_at) VALUES (?, ?, ?, ?, ?, ?, 1, NOW(), NOW())");
@@ -88,7 +94,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             case 'update_testimonial':
                 $testimonial_id = $_POST['testimonial_id'];
 
-                // Handle photo update
+                // Handle photo update with MIME validation
                 $photo_path = $_POST['existing_photo'] ?? null;
                 if (isset($_FILES['photo']) && $_FILES['photo']['error'] === UPLOAD_ERR_OK) {
                     $upload_dir = '../uploads/testimonials/';
@@ -96,22 +102,28 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                         mkdir($upload_dir, 0755, true);
                     }
 
-                    $file_extension = strtolower(pathinfo($_FILES['photo']['name'], PATHINFO_EXTENSION));
-                    $allowed_extensions = ['jpg', 'jpeg', 'png', 'gif'];
-
-                    if (!in_array($file_extension, $allowed_extensions)) {
-                        throw new Exception('Invalid file type. Only JPG, PNG, and GIF are allowed.');
+                    // Validate file using FileUploadSecurity
+                    $validation = FileUploadSecurity::validateUpload($_FILES['photo'], 'image', 5242880);
+                    
+                    if (!$validation['success']) {
+                        throw new Exception($validation['error']);
                     }
 
-                    $filename = uniqid('testimonial_') . '.' . $file_extension;
-                    $new_photo_path = $upload_dir . $filename;
+                    // Move file using secure method
+                    $moveResult = FileUploadSecurity::moveUploadedFile(
+                        $_FILES['photo']['tmp_name'],
+                        $upload_dir,
+                        $validation['safe_name']
+                    );
 
-                    if (move_uploaded_file($_FILES['photo']['tmp_name'], $new_photo_path)) {
+                    if ($moveResult['success']) {
                         // Delete old photo if exists
                         if ($photo_path && file_exists('../' . $photo_path)) {
-                            unlink('../' . $photo_path);
+                            @unlink('../' . $photo_path);
                         }
-                        $photo_path = 'uploads/testimonials/' . $filename;
+                        $photo_path = 'uploads/testimonials/' . $validation['safe_name'];
+                    } else {
+                        throw new Exception($moveResult['error']);
                     }
                 }
 

@@ -28,6 +28,7 @@ if (!isset($_SESSION['tenant_id'])) {
 }
 
 require_once '../includes/db.php';
+require_once '../includes/SecureFileUpload.php';
 $tenant_id = $_SESSION['tenant_id'];
 $branch_id = $_SESSION['branch_id'];
 // Initialize messages
@@ -154,16 +155,19 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['add_deposit'])) {
         $stmt->bindParam(5, $branch_id, PDO::PARAM_INT);
         $stmt->execute();
 
-        // Handle receipt upload if provided
-        if (isset($_FILES['receipt']) && $_FILES['receipt']['error'] === UPLOAD_ERR_OK) {
-            $file_extension = pathinfo($_FILES['receipt']['name'], PATHINFO_EXTENSION);
-            $new_filename = 'receipt_' . $transaction_id . '_' . time() . '.' . $file_extension;
-            $upload_path = '../uploads/receipts/' . $new_filename;
-
-            if (move_uploaded_file($_FILES['receipt']['tmp_name'], $upload_path)) {
+        // Handle receipt upload - SECURE VERSION
+        if (isset($_FILES['receipt'])) {
+            $uploader = new SecureFileUpload(
+                10 * 1024 * 1024, // 10MB max size
+                '../uploads/'
+            );
+            
+            $result = $uploader->upload('receipt', 'receipts');
+            
+            if ($result['success']) {
                 // Update transaction with receipt path
                 $stmt = $pdo->prepare("UPDATE sarafi_transactions SET receipt_path = ? WHERE id = ? AND tenant_id = ? AND branch_id = ?");
-                $stmt->bindParam(1, $new_filename, PDO::PARAM_STR);
+                $stmt->bindParam(1, $result['data']['filename'], PDO::PARAM_STR);
                 $stmt->bindParam(2, $transaction_id, PDO::PARAM_INT);
                 $stmt->bindParam(3, $tenant_id, PDO::PARAM_INT);
                 $stmt->bindParam(4, $branch_id, PDO::PARAM_INT);
@@ -292,22 +296,25 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['add_withdrawal'])) {
         $stmt->bindParam(5, $branch_id, PDO::PARAM_INT);
         $stmt->execute();
 
-        // Handle receipt upload if provided
-        if (isset($_FILES['receipt']) && $_FILES['receipt']['error'] === UPLOAD_ERR_OK) {
-            $file_extension = pathinfo($_FILES['receipt']['name'], PATHINFO_EXTENSION);
-            $new_filename = 'receipt_' . $transaction_id . '_' . time() . '.' . $file_extension;
-            $upload_path = '../uploads/receipts/' . $new_filename;
-
-            if (move_uploaded_file($_FILES['receipt']['tmp_name'], $upload_path)) {
-                // Update transaction with receipt path
-                $stmt = $pdo->prepare("UPDATE sarafi_transactions SET receipt_path = ? WHERE id = ? AND tenant_id = ? AND branch_id = ?");
-                $stmt->bindParam(1, $new_filename, PDO::PARAM_STR);
-                $stmt->bindParam(2, $transaction_id, PDO::PARAM_INT);
-                $stmt->bindParam(3, $tenant_id, PDO::PARAM_INT);
-                $stmt->bindParam(4, $branch_id, PDO::PARAM_INT);
-                $stmt->execute();
-            }
-        }
+        // Handle receipt upload - SECURE VERSION
+         if (isset($_FILES['receipt'])) {
+             $uploader = new SecureFileUpload(
+                 10 * 1024 * 1024, // 10MB max size
+                 '../uploads/'
+             );
+             
+             $result = $uploader->upload('receipt', 'receipts');
+             
+             if ($result['success']) {
+                 // Update transaction with receipt path
+                 $stmt = $pdo->prepare("UPDATE sarafi_transactions SET receipt_path = ? WHERE id = ? AND tenant_id = ? AND branch_id = ?");
+                 $stmt->bindParam(1, $result['data']['filename'], PDO::PARAM_STR);
+                 $stmt->bindParam(2, $transaction_id, PDO::PARAM_INT);
+                 $stmt->bindParam(3, $tenant_id, PDO::PARAM_INT);
+                 $stmt->bindParam(4, $branch_id, PDO::PARAM_INT);
+                 $stmt->execute();
+             }
+         }
 
         $pdo->commit();
         $_SESSION['success_message'] = __('withdrawal_success');

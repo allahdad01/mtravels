@@ -1,19 +1,29 @@
 <?php
 session_start();
 
+// Session timeout validation
+$sessionTimeout = 30 * 60;
+if (isset($_SESSION['last_activity']) && (time() - $_SESSION['last_activity'] > $sessionTimeout)) {
+    http_response_code(401);
+    exit(json_encode(['success' => false, 'message' => 'Session expired']));
+}
+$_SESSION['last_activity'] = time();
+
 // Verify super admin
 if (!isset($_SESSION['user_id']) || $_SESSION['role'] !== 'super_admin' || !is_null($_SESSION['tenant_id'])) {
     http_response_code(403);
     exit(json_encode(['success' => false, 'message' => 'Unauthorized']));
 }
 
-// CSRF validation
-if (!isset($_POST['csrf_token']) || $_POST['csrf_token'] !== $_SESSION['csrf_token']) {
+// CSRF validation - use hash_equals to prevent timing attacks
+if (!isset($_POST['csrf_token']) || 
+    !hash_equals($_SESSION['csrf_token'], $_POST['csrf_token'])) {
     http_response_code(403);
     exit(json_encode(['success' => false, 'message' => 'CSRF token validation failed']));
 }
 
 require_once '../../includes/db.php';
+require_once '../includes/file_upload_security.php';
 
 try {
     // Validate inputs
@@ -35,28 +45,34 @@ try {
         $currency = 'USD';
     }
 
-    // Handle file upload
+    // Handle file upload with MIME validation
     $receipt_file = null;
     if (isset($_FILES['receipt_file']) && $_FILES['receipt_file']['error'] === UPLOAD_ERR_OK) {
         $file = $_FILES['receipt_file'];
-        $max_size = 5 * 1024 * 1024; // 5MB
-        $allowed = ['pdf', 'jpg', 'jpeg', 'png'];
         
-        if ($file['size'] > $max_size) {
-            exit(json_encode(['success' => false, 'message' => 'File too large (max 5MB)']));
-        }
-
-        $ext = strtolower(pathinfo($file['name'], PATHINFO_EXTENSION));
-        if (!in_array($ext, $allowed)) {
-            exit(json_encode(['success' => false, 'message' => 'Invalid file type']));
+        // Validate file using FileUploadSecurity
+        $validation = FileUploadSecurity::validateUpload($file, 'document', 5242880);
+        
+        if (!$validation['success']) {
+            exit(json_encode(['success' => false, 'message' => $validation['error']]));
         }
 
         $upload_dir = '../../uploads/expenses/';
-        if (!is_dir($upload_dir)) mkdir($upload_dir, 0755, true);
+        if (!is_dir($upload_dir)) {
+            mkdir($upload_dir, 0755, true);
+        }
 
-        $filename = 'expense_' . time() . '_' . uniqid() . '.' . $ext;
-        if (move_uploaded_file($file['tmp_name'], $upload_dir . $filename)) {
-            $receipt_file = 'uploads/expenses/' . $filename;
+        // Move file using secure method
+        $moveResult = FileUploadSecurity::moveUploadedFile(
+            $file['tmp_name'],
+            $upload_dir,
+            $validation['safe_name']
+        );
+        
+        if ($moveResult['success']) {
+            $receipt_file = 'uploads/expenses/' . $validation['safe_name'];
+        } else {
+            exit(json_encode(['success' => false, 'message' => $moveResult['error']]));
         }
     }
 
@@ -101,6 +117,7 @@ try {
 
 } catch (Exception $e) {
     error_log("Expense creation error: " . $e->getMessage());
-    exit(json_encode(['success' => false, 'message' => 'Error: ' . $e->getMessage()]));
+    // Never expose error details to client
+    exit(json_encode(['success' => false, 'message' => 'An error occurred. Please try again.']));
 }
 ?>

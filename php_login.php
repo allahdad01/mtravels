@@ -195,6 +195,7 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
                             $_SESSION["role"] = $role;
                             $_SESSION["user_type"] = "staff";
                             $_SESSION["login_time"] = time();
+                            $_SESSION["last_activity"] = time(); // Track activity for timeout
                             
                             // Regenerate session ID for security
                             session_regenerate_id(true);
@@ -278,6 +279,7 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
                                         $_SESSION["client_type"] = $client_type;
                                         $_SESSION["user_type"] = "client";
                                         $_SESSION["login_time"] = time();
+                                        $_SESSION["last_activity"] = time(); // Track activity for timeout
 
                                         // Regenerate session ID for security
                                         session_regenerate_id(true);
@@ -321,6 +323,7 @@ function completeLogin() {
     $_SESSION["role"] = $_SESSION["pending_user_role"];
     $_SESSION["user_type"] = $_SESSION["pending_user_type"];
     $_SESSION["login_time"] = time();
+    $_SESSION["last_activity"] = time(); // Track activity for timeout
     
     // Add client-specific data if available
     if (isset($_SESSION["pending_user_client_type"])) {

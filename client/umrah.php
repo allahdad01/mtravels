@@ -142,8 +142,9 @@ require_once('../includes/conn.php');
                                                                 <th>Room</th>
                                                                 <th>Duration</th>
                                                                 <th>Price</th>
+                                                                <th>Documents</th>
 
-                                                            </tr>
+                                                                </tr>
                                                         </thead>
                                                         <tbody>
                                                             <?php
@@ -162,9 +163,21 @@ require_once('../includes/conn.php');
                                                                         <td><?= htmlspecialchars($member['room_type']) ?></td>
                                                                         <td><?= htmlspecialchars($member['duration']) ?></td>
                                                                         <td><?= htmlspecialchars($member['sold_price']) ?></td>
-             
-                                                                        
-                                                                    </tr>
+                                                                        <td>
+                                                                            <div class="btn-group btn-group-sm" role="group">
+                                                                                <?php if (!empty($member['photo_path'])): ?>
+                                                                                    <button type="button" class="btn btn-outline-info" title="View Photo" onclick="viewClientDocument('<?= htmlspecialchars($member['photo_path']) ?>', 'Photo')">
+                                                                                        <i class="feather icon-image"></i>
+                                                                                    </button>
+                                                                                <?php endif; ?>
+                                                                                <?php if (!empty($member['passport_path'])): ?>
+                                                                                    <button type="button" class="btn btn-outline-primary" title="View Passport" onclick="viewClientDocument('<?= htmlspecialchars($member['passport_path']) ?>', 'Passport')">
+                                                                                        <i class="feather icon-file-text"></i>
+                                                                                    </button>
+                                                                                <?php endif; ?>
+                                                                            </div>
+                                                                        </td>
+                                                                        </tr>
                                                                 <?php }
                                                             } else { ?>
                                                                 <tr>
@@ -215,6 +228,8 @@ require_once('../includes/conn.php');
     <script src="../assets/js/vendor-all.min.js"></script>
 	<script src="../assets/plugins/bootstrap/js/bootstrap.min.js"></script>
     <script src="../assets/js/pcoded.min.js"></script>
+    <!-- SweetAlert2 -->
+    <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11.7.32/dist/sweetalert2.all.min.js"></script>
 
 
                                  
@@ -303,15 +318,69 @@ document.getElementById("price").addEventListener("input", calculateFinancials);
 document.getElementById("paid").addEventListener("input", calculateFinancials);
 
 function calculateFinancials() {
-    let price = parseFloat(document.getElementById("price").value) || 0;
-    let soldPrice = parseFloat(document.getElementById("sold_price").value) || 0;
-    let paid = parseFloat(document.getElementById("paid").value) || 0;
+     let price = parseFloat(document.getElementById("price").value) || 0;
+     let soldPrice = parseFloat(document.getElementById("sold_price").value) || 0;
+     let paid = parseFloat(document.getElementById("paid").value) || 0;
 
-    let profit = soldPrice - price;
-    let due = soldPrice - paid;
+     let profit = soldPrice - price;
+     let due = soldPrice - paid;
 
-    document.getElementById("profit").value = profit.toFixed(2);
-    document.getElementById("due").value = due.toFixed(2);
+     document.getElementById("profit").value = profit.toFixed(2);
+     document.getElementById("due").value = due.toFixed(2);
+ }
+
+// View client document (photo or passport)
+function viewClientDocument(filePath, documentType) {
+    if (!filePath) {
+        alert('No file available');
+        return;
+    }
+
+    // Fix path if needed (for compatibility with old stored paths)
+    filePath = fixFilePath(filePath);
+
+    // Check file type and open accordingly
+    if (filePath.endsWith('.pdf')) {
+        // Open PDF in new tab
+        window.open(filePath, '_blank');
+    } else if (filePath.match(/\.(jpg|jpeg|png|gif)$/i)) {
+        // Show image in modal
+        Swal.fire({
+            title: documentType,
+            imageUrl: filePath,
+            imageAlt: documentType,
+            width: '80%',
+            showConfirmButton: false,
+            html: '<a href="' + filePath + '" download class="btn btn-primary mt-3">Download</a>'
+        });
+    } else {
+        // Download other files
+        window.location.href = filePath;
+    }
+}
+
+// Helper function to fix file paths
+function fixFilePath(path) {
+    if (!path) return path;
+    
+    // Get current page path
+    const currentPath = window.location.pathname;
+    
+    // If path starts with /uploads/ but is missing base path
+    if (path.startsWith('/uploads/') && !currentPath.includes(path)) {
+        // Extract base path from current URL
+        const pathParts = currentPath.split('/');
+        // Remove the filename to get directory
+        pathParts.pop();
+        const basePath = pathParts.join('/');
+        
+        // If path doesn't already contain the base, prepend it
+        if (!path.includes(basePath)) {
+            path = basePath + path;
+        }
+    }
+    
+    return path;
 }
 </script>
 <script>
