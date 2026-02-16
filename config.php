@@ -1,4 +1,13 @@
 <?php
+/* SECURITY: Hide PHP version and implementation details */
+error_reporting(E_ALL);
+ini_set('display_errors', '0');
+ini_set('log_errors', '1');
+ini_set('expose_php', 'off');
+header_remove('X-Powered-By');
+header_remove('X-AspNet-Version');
+header_remove('X-AspNetMvc-Version');
+
 /* Load environment variables from .env file */
 require_once dirname(__FILE__) . '/includes/env_loader.php';
 

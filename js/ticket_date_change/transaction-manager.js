@@ -137,12 +137,12 @@ const transactionManager = {
     // Load transaction modal with ticket data
     loadTransactionModal: function(ticketId) {
         if (!ticketId) {
-            console.error('no_ticket_id_provided');
+
             this.showToast('No ticket ID provided', 'error');
             return;
         }
         
-        console.log('Loading transactions for ticket ID:', ticketId);
+
         
         // Store ticket ID in the form
         $('#booking_id').val(ticketId);
@@ -180,15 +180,15 @@ const transactionManager = {
                 const soldAmount = parseFloat(ticketData.sold || ticketData.amount || ticketData.total) || 0;
                 const exchangeRate = parseFloat(ticketData.exchange_rate) || 1;
 
-                console.log('Ticket data:', ticketData);
-                console.log('Sold amount:', soldAmount, 'Currency:', currency);
+
+
 
                 // Store ticket currency for exchange rate logic
                 window.ticketCurrency = currency;
 
                 // Display original amount
                 $('#totalAmount').text(`${currency} ${soldAmount.toFixed(2)}`);
-                console.log('Setting totalAmount to:', `${currency} ${soldAmount.toFixed(2)}`);
+
 
                 // Display exchange rate
                 $('#exchangeRateDisplay').text(exchangeRate.toFixed(4));
@@ -205,7 +205,7 @@ const transactionManager = {
                 }
             },
             error: (xhr, status, error) => {
-                console.error('Error loading ticket details:', error);
+
                 this.showToast('Failed to load ticket details. Please try again.', 'error');
             }
         });
@@ -344,7 +344,7 @@ const transactionManager = {
                 $('#aedSection').toggle(hasCurrency.DARHAM);
             },
             error: function(xhr, status, error) {
-                console.error('Error loading transactions:', error);
+
                 $('#transactionTableBody').html('<tr><td colspan="6" class="text-center">error_loading_transactions</td></tr>');
                 $('#exchangeRateDisplay').text('Error loading exchange rates');
                 $('#exchangedAmount').text('Error calculating amounts');
@@ -419,11 +419,11 @@ const transactionManager = {
                         submitBtn.prop('disabled', false);
                         submitBtn.html(originalText);
                         transactionManager.showToast('Error: ' + (result.message || 'Failed to add transaction'), 'error');
-                        console.error('Server response:', result);
+
                     }
                 } catch (e) {
-                    console.error('Error parsing response:', e);
-                    console.error('Raw response:', response);
+
+
                     // Reset submission flag and re-enable submit button on parsing error
                     transactionManager.isSubmitting = false;
                     submitBtn.prop('disabled', false);
@@ -432,8 +432,8 @@ const transactionManager = {
                 }
             },
             error: function(xhr, status, error) {
-                console.error('AJAX Error:', error);
-                console.error('Response:', xhr.responseText);
+
+
                 // Reset submission flag and re-enable submit button on network error
                 transactionManager.isSubmitting = false;
                 submitBtn.prop('disabled', false);
@@ -454,7 +454,7 @@ const transactionManager = {
     
     // Edit transaction
     editTransaction: function(transactionId) {
-        console.log('Loading transaction for edit:', transactionId);
+
 
         $.ajax({
             url: '../api/ticket_date_change/get_date_change_transaction.php',
@@ -464,7 +464,7 @@ const transactionManager = {
             success: function(response) {
                 if (response.success) {
                     const tx = response.transaction;
-                    console.log('Transaction data loaded:', tx);
+
 
                     // Parse the datetime string
                     const txDate = new Date(tx.transaction_date);
@@ -524,8 +524,8 @@ const transactionManager = {
                 }
             },
             error: function(xhr, status, error) {
-                console.error('Error loading transaction details:', error);
-                console.error('Response:', xhr.responseText);
+
+
                 transactionManager.showToast('Failed to load transaction details. Please try again.', 'error');
             }
         });
@@ -584,11 +584,11 @@ const transactionManager = {
                         submitBtn.prop('disabled', false);
                         submitBtn.html(originalText);
                         transactionManager.showToast('Error: ' + (result.message || 'Failed to update transaction'), 'error');
-                        console.error('Server response:', result);
+
                     }
                 } catch (e) {
-                    console.error('Error parsing response:', e);
-                    console.error('Raw response:', response);
+
+
                     // Re-enable submit button on parsing error
                     submitBtn.prop('disabled', false);
                     submitBtn.html(originalText);
@@ -596,8 +596,8 @@ const transactionManager = {
                 }
             },
             error: function(xhr, status, error) {
-                console.error('AJAX Error:', error);
-                console.error('Response:', xhr.responseText);
+
+
                 // Re-enable submit button on network error
                 submitBtn.prop('disabled', false);
                 submitBtn.html(originalText);
@@ -641,12 +641,12 @@ const transactionManager = {
                             transactionManager.showToast('Error: ' + (result.message || 'Unknown error'), 'error');
                         }
                     } catch (e) {
-                        console.error('Error parsing response:', e);
+
                         transactionManager.showToast('Error processing the request', 'error');
                     }
                 },
                 error: function(xhr, status, error) {
-                    console.error('Delete Error Response:', {
+                    console.log({
                         status: xhr.status,
                         error: error,
                         response: xhr.responseText

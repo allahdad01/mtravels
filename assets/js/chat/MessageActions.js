@@ -316,7 +316,7 @@ class MessageActions {
         .catch(error => {
             this.ui.stopLoadingSpinner(spinnerId);
             this.ui.showError('Error deleting message');
-            console.error(error);
+
         });
     }
 
@@ -375,7 +375,7 @@ class MessageActions {
             }
         })
         .catch(error => {
-            console.error('Error adding reaction:', error);
+
         });
     }
 

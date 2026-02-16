@@ -115,7 +115,7 @@
                 }
             },
             error: function(xhr, status, error) {
-                console.error('AJAX Error:', error);
+
                 alert('Error fetching visa details');
             }
         });
@@ -186,7 +186,7 @@
                         alert('Error adding transaction: ' + (result.message || 'Unknown error'));
                     }
                 } catch (e) {
-                    console.error('Error parsing response:', e);
+
                     // Re-enable the submit button on parsing error
                     submitButton.prop('disabled', false);
                     submitButton.html(originalText);
@@ -194,7 +194,7 @@
                 }
             },
             error: function(xhr, status, error) {
-                console.error('AJAX Error:', error);
+
                 alert('error_adding_transaction');
                 // Re-enable the submit button on network error
                 submitButton.prop('disabled', false);
@@ -334,14 +334,14 @@
                    $('#aedSection').toggle(hasCurrency.DARHAM);
 
                } catch(e) {
-                   console.error('Error parsing transactions:', e);
+
                    $('#transactionTableBody').html('<tr><td colspan="6" class="text-center">error_loading_transactions</td></tr>');
                    $('#exchangeRateDisplay').text('Error loading exchange rates');
                    $('#exchangedAmount').text('Error calculating amounts');
                }
            },
            error: function(xhr, status, error){
-               console.error('Error loading transactions:', error);
+
                $('#transactionTableBody').html('<tr><td colspan="6" class="text-center">error_loading_transactions</td></tr>');
                $('#exchangeRateDisplay').text('Error loading exchange rates');
                $('#exchangedAmount').text('Error calculating amounts');
@@ -372,7 +372,7 @@
 
         // Get the visa ID from the transaction modal
         const currentVisaId = $('#transactionVisaIdInput').val();
-        console.log('Current visa ID:', currentVisaId);
+
 
         // Set the form values
         $('#editTransactionId').val(transactionId);
@@ -428,7 +428,7 @@
                 postData.payment_exchange_rate = exchangeRate;
             }
 
-            console.log('Sending data to server:', postData);
+
 
             $.post('../api/visa/update_visa_payment.php', postData)
                 .done(function(response) {
@@ -444,8 +444,8 @@
                     }
                 })
                 .fail(function(xhr, status, error) {
-                    console.error('AJAX Error:', error);
-                    console.error('Response:', xhr.responseText);
+
+
                     // Re-enable submit button on network error
                     submitButton.prop('disabled', false);
                     submitButton.html(originalText);
@@ -496,12 +496,12 @@
                         alert('error_deleting_transaction: ' + (result.message || 'unknown_error'));
                     }
                 } catch (e) {
-                    console.error('Error parsing response:', e);
+                    console.log(e);
                     alert('error_processing_the_request');
                 }
             },
             error: function(xhr, status, error) {
-                console.error('Delete Error Response:', {
+                console.log({
                     status: xhr.status,
                     error: error,
                     response: xhr.responseText
@@ -555,12 +555,12 @@
                         alert('error_processing_refund: ' + (result.message || 'unknown_error'));
                     }
                 } catch (e) {
-                    console.error('Error parsing response:', e);
+
                     alert('error_processing_the_refund_request');
                 }
             },
             error: function(xhr, status, error) {
-                console.error('AJAX Error:', error);
+
                 alert('error_processing_refund');
             }
         });

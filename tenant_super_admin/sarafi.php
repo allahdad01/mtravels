@@ -218,7 +218,7 @@ $summary = $summary_stmt->fetch(PDO::FETCH_ASSOC);
     /* Table Styles */
     .table-responsive {
         border-radius: 10px;
-        overflow: hidden;
+        
     }
 
     .table {

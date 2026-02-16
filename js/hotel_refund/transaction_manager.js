@@ -30,13 +30,13 @@ const transactionManager = {
         
         // Additional protection: Disable button on click to prevent multiple submissions
         $('#hotelTransactionForm button[type="submit"]').off('click').on('click', function(e) {
-            if (isHotelRefundTransactionSubmitting) {
-                console.log('Button click ignored during submission');
-                e.preventDefault();
-                e.stopPropagation();
-                return false;
-            }
-        });
+             if (isHotelRefundTransactionSubmitting) {
+                 console.log('Form already submitting, preventing duplicate submission');
+                 e.preventDefault();
+                 e.stopPropagation();
+                 return false;
+             }
+         });
         
         $('#paymentCurrency').on('change', this.handleCurrencyChange);
         $('#paymentCurrency').on('change', this.toggleExchangeRateField.bind(this));
@@ -226,14 +226,14 @@ const transactionManager = {
                     $('#aedSection').toggle(hasCurrency.DARHAM);
 
                 } catch(e) {
-                    console.error('Error parsing transactions:', e);
+
                     $('#transactionTableBody').html('<tr><td colspan="6" class="text-center">error_loading_transactions</td></tr>');
                     $('#exchangeRateDisplay').text('Error loading exchange rates');
                     $('#exchangedAmount').text('Error calculating amounts');
                 }
             },
             error: function(xhr, status, error){
-                console.error('Error loading transactions:', error);
+
                 $('#transactionTableBody').html('<tr><td colspan="6" class="text-center">error_loading_transactions</td></tr>');
                 $('#exchangeRateDisplay').text('Error loading exchange rates');
                 $('#exchangedAmount').text('Error calculating amounts');
@@ -244,7 +244,7 @@ const transactionManager = {
     // Disable/Enable submit button helper
     setSubmitButtonState: function(disabled, text) {
         const $submitBtn = $('#hotelTransactionForm button[type="submit"]');
-        console.log('Setting refund button state to:', disabled);
+
         $submitBtn.prop('disabled', disabled);
         
         if (disabled) {
@@ -265,17 +265,17 @@ const transactionManager = {
         e.preventDefault();
         e.stopPropagation();
 
-        console.log('Refund form submission triggered, isHotelRefundTransactionSubmitting:', isHotelRefundTransactionSubmitting);
+
 
         // PREVENTION #1: Check if already submitting
         if (isHotelRefundTransactionSubmitting) {
-            console.log('Refund form submission already in progress, ignoring duplicate request');
+
             return false;
         }
 
         // Set submitting flag immediately
         isHotelRefundTransactionSubmitting = true;
-        console.log('Set isHotelRefundTransactionSubmitting to true');
+
 
         // PREVENTION #2: Disable submit button immediately
         this.setSubmitButtonState(true, 'Processing...');
@@ -303,7 +303,7 @@ const transactionManager = {
         
         // Validate required fields
         if (!refundId) {
-            console.error('No refund ID in form');
+
             showToast('error: Missing refund ID');
             isHotelRefundTransactionSubmitting = false;
             this.setSubmitButtonState(false);
@@ -312,11 +312,11 @@ const transactionManager = {
 
         const self = this;
 
-        console.log('Starting refund AJAX request...');
+
 
         // Set a backup timeout to re-enable the form in case something goes wrong
         const backupTimeout = setTimeout(() => {
-            console.log('Backup timeout triggered, re-enabling refund form');
+
             isHotelRefundTransactionSubmitting = false;
             self.setSubmitButtonState(false);
         }, 35000); // 35 seconds (5 seconds after the main timeout)
@@ -329,7 +329,7 @@ const transactionManager = {
             contentType: false,
             timeout: 30000, // 30 second timeout
             success: function(response) {
-                console.log('Refund AJAX success:', response);
+
                 clearTimeout(backupTimeout); // Clear backup timeout
                 try {
                     const result = typeof response === 'string' ? JSON.parse(response) : response;
@@ -344,19 +344,19 @@ const transactionManager = {
                         showToast('error_adding_transaction: ' + (result.message || 'unknown_error'));
                     }
                 } catch (e) {
-                    console.error('Error parsing response:', e);
+
                     // Re-enable submit button on parsing error
                     showToast('error_processing_the_request');
                 }
             },
             error: function(xhr, status, error) {
-                console.error('Refund AJAX Error:', error);
-                console.error('Response:', xhr.responseText);
+
+
                 clearTimeout(backupTimeout); // Clear backup timeout
                 showToast('error_adding_transaction');
             },
             complete: function() {
-                console.log('Refund AJAX complete, re-enabling form');
+
                 // CRITICAL: Always re-enable form in complete callback
                 // This runs whether success or error
                 isHotelRefundTransactionSubmitting = false;
@@ -384,7 +384,7 @@ const transactionManager = {
         // Get the current refund ID from the refund_id field
         const refundId = $('#refund_id').val();
 
-        console.log('Current refund ID:', refundId);
+
 
         // Create edit transaction modal if it doesn't exist
         if (!$('#editTransactionModal').length) {
@@ -535,9 +535,9 @@ const transactionManager = {
             }
 
             // Log the form data for debugging
-            console.log('Submitting transaction update with data:');
+
             for (let pair of formData.entries()) {
-                console.log(pair[0] + ': ' + pair[1]);
+
             }
 
             $.ajax({
@@ -560,7 +560,7 @@ const transactionManager = {
                             showToast('Error updating transaction: ' + (result.message || 'Unknown error'));
                         }
                     } catch (e) {
-                        console.error('Error parsing response:', e);
+
                         // Re-enable submit button on parsing error
                         submitBtn.prop('disabled', false);
                         submitBtn.html(originalText);
@@ -568,8 +568,8 @@ const transactionManager = {
                     }
                 },
                 error: function(xhr, status, error) {
-                    console.error('AJAX Error:', error);
-                    console.error('Response:', xhr.responseText);
+
+
                     // Re-enable submit button on network error
                     submitBtn.prop('disabled', false);
                     submitBtn.html(originalText);
@@ -611,7 +611,7 @@ const transactionManager = {
         }
 
         // Log values for debugging
-        console.log('Edit Transaction:', {
+        console.log({
             transactionId: transactionId,
             refundId: refundId,
             amount: amount,
@@ -658,12 +658,12 @@ const transactionManager = {
                         showToast('error_deleting_transaction: ' + (result.message || 'Unknown error'));
                     }
                 } catch (e) {
-                    console.error('Error parsing response:', e);
+
                     showToast('error_processing_the_request');
                 }
             },
             error: function(xhr, status, error) {
-                console.error('Delete Error Response:', {
+                console.log({
                     status: xhr.status,
                     error: error,
                     response: xhr.responseText

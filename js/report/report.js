@@ -149,7 +149,7 @@ function loadOptions() {
             document.getElementById("umrahFamilyType").value = "all";
             // Reset call counter for new session
             loadFamiliesCallCount = 0;
-            console.log('Switched to umrah category, reset call counter');
+
             // Load families if specific is selected
             toggleFamilySelection();
         } else {
@@ -162,7 +162,7 @@ function loadOptions() {
             // Reset loading flag and counter
             isLoadingFamilies = false;
             loadFamiliesCallCount = 0;
-            console.log('Switched away from umrah category, reset flags and counter');
+
         }
     });
 }
@@ -198,7 +198,7 @@ function loadExpenseCategories() {
         error: function() {
             // On error, show error message
             expenseCategoryDropdown.innerHTML = '<option value="all">🔍 All Categories</option>';
-            console.error("Failed to load expense categories");
+
         }
     });
 }
@@ -227,7 +227,7 @@ var loadFamiliesCallCount = 0;
 
 // Function to clean up all dynamic fields and Bootstrap Select instances
 function cleanupDynamicFields() {
-    console.log('Cleaning up dynamic fields...');
+
 
     // Clean up expense category Bootstrap Select
     // Note: Bootstrap Select removed for specificFamily only
@@ -243,7 +243,7 @@ function cleanupDynamicFields() {
         familyDropdown.className = 'form-select form-select-lg';
     }
 
-    console.log('Dynamic fields cleanup completed');
+
 }
 
 // Function to toggle family selection visibility
@@ -264,7 +264,7 @@ function toggleFamilySelection() {
 
 // Function to clean up family selection when switching away
 function cleanupFamilySelection() {
-    console.log('Cleaning up family selection...');
+
 
     // Set flag to prevent new loading
     isLoadingFamilies = false;
@@ -281,17 +281,17 @@ function cleanupFamilySelection() {
         familyDropdown.className = 'form-select form-select-lg';
     }
 
-    console.log('Family selection cleanup completed');
+
 }
 
 // Function to load families from the database
 function loadFamilies() {
     loadFamiliesCallCount++;
-    console.log('loadFamilies function called (call #' + loadFamiliesCallCount + ')');
+
 
     // Prevent multiple simultaneous calls
     if (isLoadingFamilies) {
-        console.log('Family loading already in progress, skipping...');
+
         return;
     }
 
@@ -299,7 +299,7 @@ function loadFamilies() {
 
     var familyDropdown = document.getElementById("specificFamily");
     if (!familyDropdown) {
-        console.error('Family dropdown element not found');
+
         isLoadingFamilies = false;
         return;
     }
@@ -315,7 +315,7 @@ function loadFamilies() {
         dataType: "json",
         timeout: 10000, // Add timeout to prevent hanging requests
         success: function (response) {
-            console.log('Ajax response received:', response);
+
 
             // Clear dropdown completely
             $('#specificFamily').empty();
@@ -333,7 +333,7 @@ function loadFamilies() {
                     }
                 });
 
-                console.log('Options added');
+
 
                 // Initialize Select2
                 $('#specificFamily').select2({
@@ -347,15 +347,15 @@ function loadFamilies() {
                 isLoadingFamilies = false;
             } else {
                 $('#specificFamily').html('<option value="">No families found</option>');
-                console.log('No families found');
+
                 isLoadingFamilies = false;
             }
         },
         error: function (xhr, status, error) {
             $('#specificFamily').html('<option value="">Error loading families</option>');
-            console.error("Failed to load families:", error);
-            console.error("XHR status:", status);
-            console.error("XHR response:", xhr.responseText);
+
+
+
             isLoadingFamilies = false;
         }
     });
@@ -383,7 +383,7 @@ function updateStartDateForStatement() {
                 }
             },
             error: function() {
-                console.error("Failed to fetch entity created date");
+
             }
         });
     }
@@ -462,7 +462,7 @@ function filterResults() {
                 }
             },
             error: function(xhr, status, error) {
-                console.error("Error:", error);
+
                exportSection.style.display = "none";
             }
         });
@@ -502,7 +502,7 @@ function filterResults() {
                 }
             },
             error: function(xhr, status, error) {
-                console.error("Error:", error);
+
                 exportSection.style.display = "none";
             }
         });
@@ -650,9 +650,9 @@ function escapeHtml(str) {
 
 // Add this function for debugging
 function debugDate(dateString) {
-    console.log('Original date:', dateString);
+
     const date = new Date(dateString);
-    console.log('Parsed date:', date);
+
     return formatDate(dateString);
 }
 
@@ -688,32 +688,32 @@ $(document).ready(function() {
     }
 
     // Test family selection functionality
-    console.log('Testing family selection elements...');
+
     var umrahFamilyType = document.getElementById('umrahFamilyType');
     var specificFamilySelection = document.getElementById('specificFamilySelection');
     var specificFamily = document.getElementById('specificFamily');
 
     if (umrahFamilyType) {
-        console.log('umrahFamilyType element found');
+
         // Remove any existing event listeners to prevent duplicates
         var newUmrahFamilyType = umrahFamilyType.cloneNode(true);
         umrahFamilyType.parentNode.replaceChild(newUmrahFamilyType, umrahFamilyType);
         // Add event listener to the new element
         newUmrahFamilyType.addEventListener('change', toggleFamilySelection);
     } else {
-        console.error('umrahFamilyType element NOT found');
+
     }
 
     if (specificFamilySelection) {
-        console.log('specificFamilySelection element found');
+
     } else {
-        console.error('specificFamilySelection element NOT found');
+
     }
 
     if (specificFamily) {
-        console.log('specificFamily element found');
+
     } else {
-        console.error('specificFamily element NOT found');
+
     }
 
     $('#dateRange').daterangepicker({

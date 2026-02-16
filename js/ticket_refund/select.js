@@ -21,7 +21,7 @@ function searchTickets(searchType) {
             }
         })
         .catch(error => {
-            console.error('Error:', error);
+
             alert('error_searching_for_tickets');
         });
 }
@@ -73,11 +73,11 @@ function displaySearchResults(tickets) {
 
 // Select ticket for refund
 function selectTicket(ticket) {
-    console.log('Selecting ticket:', ticket);
+
     
     // Validate ticket data
     if (!ticket || !ticket.id || !ticket.price || !ticket.sold) {
-        console.error('Invalid ticket data:', ticket);
+
         return;
     }
     
@@ -116,7 +116,7 @@ function selectTicket(ticket) {
         // Calculate initial refund
         calculateRefund();
     } else {
-        console.error('Refund form not found');
+
     }
 }
 
@@ -243,7 +243,7 @@ function saveRefundTicket() {
         }
     })
     .catch(error => {
-        console.error('Error:', error);
+
         showToast('Error saving refund ticket', 'error');
     });
 }

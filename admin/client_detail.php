@@ -19,11 +19,14 @@ if (!isset($_SESSION['user_id'])  || $_SESSION['role'] !== 'admin') {
     exit();
 }
 
+// Load input validation helper
+require_once '../includes/InputValidator.php';
+
 // Include database connection
 include '../includes/db.php';
 
 // Initialize variables
-$clientId = isset($_GET['id']) ? intval($_GET['id']) : 0;
+$clientId = InputValidator::getInt($_GET['id'] ?? '', 0, 1);
 $clientData = null;
 $transactions = [];
 $error = null;
@@ -797,6 +800,7 @@ include '../includes/header.php';
 
 
                             <!-- Required Js -->
+    
     <script src="../assets/js/vendor-all.min.js"></script>
     <script src="../assets/plugins/bootstrap/js/bootstrap.min.js"></script>
     <script src="../assets/js/pcoded.min.js"></script>

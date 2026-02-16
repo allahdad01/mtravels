@@ -210,7 +210,7 @@ $summary = $summary_stmt->fetch(PDO::FETCH_ASSOC);
 /* Table styles */
 .table-responsive {
     border-radius: 10px;
-    overflow: hidden;
+    
 }
 
 .table {
@@ -341,7 +341,7 @@ $summary = $summary_stmt->fetch(PDO::FETCH_ASSOC);
 /* Progress bars */
 .progress {
     border-radius: 15px;
-    overflow: hidden;
+    
     box-shadow: inset 0 1px 2px rgba(0,0,0,0.1);
 }
 

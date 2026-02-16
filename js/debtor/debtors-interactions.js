@@ -8,32 +8,32 @@ document.addEventListener('DOMContentLoaded', function() {
 
     // Direct event handler for all edit transaction buttons
     const editButtons = document.querySelectorAll('.edit-transaction-btn');
-    console.log('Found ' + editButtons.length + ' edit transaction buttons');
+
 
     editButtons.forEach(function(button) {
         button.addEventListener('click', function(e) {
             e.preventDefault();
             e.stopPropagation();
-            console.log('Edit button clicked directly');
+
 
             // Get data attributes
-            const transactionId = this.getAttribute('data-transaction-id');
-            const debtorId = this.getAttribute('data-debtor-id');
-            const amount = this.getAttribute('data-amount');
-            const currency = this.getAttribute('data-currency');
-            const description = this.getAttribute('data-description');
-            const paymentDate = this.getAttribute('data-payment-date');
-            const createdAt = this.getAttribute('data-created-at');
+             const transactionId = this.getAttribute('data-transaction-id');
+             const debtorId = this.getAttribute('data-debtor-id');
+             const amount = this.getAttribute('data-amount');
+             const currency = this.getAttribute('data-currency');
+             const description = this.getAttribute('data-description');
+             const paymentDate = this.getAttribute('data-payment-date');
+             const createdAt = this.getAttribute('data-created-at');
 
-            console.log('Transaction data:', {
-                transactionId,
-                debtorId,
-                amount,
-                currency,
-                description,
-                paymentDate,
-                createdAt
-            });
+             console.log({
+                 transactionId,
+                 debtorId,
+                 amount,
+                 currency,
+                 description,
+                 paymentDate,
+                 createdAt
+             });
 
             // Close any open modals first
             $('.modal').modal('hide');
@@ -68,9 +68,9 @@ document.addEventListener('DOMContentLoaded', function() {
     // Direct event handler for the save button
     const saveButton = document.getElementById('saveTransactionBtn');
     if (saveButton) {
-        console.log('Save button found, attaching direct handler');
+
         saveButton.addEventListener('click', function(e) {
-            console.log('Save button clicked directly');
+
 
             const form = document.getElementById('editTransactionForm');
 
@@ -83,28 +83,28 @@ document.addEventListener('DOMContentLoaded', function() {
             let isValid = true;
 
             if (!amount || amount <= 0) {
-                console.log('Amount validation failed');
+
                 const field = document.getElementById('edit_amount');
                 field.classList.add('is-invalid');
                 isValid = false;
             }
 
             if (!description.trim()) {
-                console.log('Description validation failed');
+
                 const field = document.getElementById('edit_description');
                 field.classList.add('is-invalid');
                 isValid = false;
             }
 
             if (!paymentDate) {
-                console.log('Payment date validation failed');
+
                 const field = document.getElementById('edit_payment_date');
                 field.classList.add('is-invalid');
                 isValid = false;
             }
 
             if (!isValid) {
-                console.log('Form validation failed');
+
                 Swal.fire({
                     icon: 'warning',
                     title: 'Please complete all required fields',
@@ -143,11 +143,11 @@ document.addEventListener('DOMContentLoaded', function() {
                 body: formData
             })
             .then(response => {
-                console.log('Response received:', response);
+
                 return response.json();
             })
             .then(data => {
-                console.log('Data received:', data);
+
                 Swal.close();
                 if (data.success) {
                     // Close modal
@@ -180,7 +180,7 @@ document.addEventListener('DOMContentLoaded', function() {
                 }
             })
             .catch(error => {
-                console.error('Error:', error);
+
                 Swal.close();
                 Swal.fire({
                     icon: 'error',
@@ -193,18 +193,18 @@ document.addEventListener('DOMContentLoaded', function() {
             });
         });
     } else {
-        console.error('Save button not found!');
+
     }
 
     // Direct event handler for delete transaction buttons
     const deleteButtons = document.querySelectorAll('.delete-transaction-btn');
-    console.log('Found ' + deleteButtons.length + ' delete transaction buttons');
+
 
     deleteButtons.forEach(function(button) {
         button.addEventListener('click', function(e) {
             e.preventDefault();
             e.stopPropagation();
-            console.log('Delete button clicked');
+
 
             // Get data attributes
             const transactionId = this.getAttribute('data-transaction-id');
@@ -212,7 +212,7 @@ document.addEventListener('DOMContentLoaded', function() {
             const amount = this.getAttribute('data-amount');
             const currency = this.getAttribute('data-currency');
 
-            console.log('Transaction data for deletion:', {
+            console.log({
                 transactionId,
                 debtorId,
                 amount,
@@ -246,11 +246,11 @@ document.addEventListener('DOMContentLoaded', function() {
                     body: formData
                 })
                 .then(response => {
-                    console.log('Response received:', response);
+
                     return response.json();
                 })
                 .then(data => {
-                    console.log('Data received:', data);
+
                     if (data.success) {
                         // Show success message
                         Swal.fire({
@@ -279,7 +279,7 @@ document.addEventListener('DOMContentLoaded', function() {
                     }
                 })
                 .catch(error => {
-                    console.error('Error:', error);
+
                     Swal.fire({
                         icon: 'error',
                         title: 'An error occurred while deleting the transaction',
@@ -295,19 +295,19 @@ document.addEventListener('DOMContentLoaded', function() {
 
     // Direct event handler for delete debtor buttons
     const deleteDebtorButtons = document.querySelectorAll('.delete-debtor-btn');
-    console.log('Found ' + deleteDebtorButtons.length + ' delete debtor buttons');
+
 
     deleteDebtorButtons.forEach(function(button) {
         button.addEventListener('click', function(e) {
             e.preventDefault();
             e.stopPropagation();
-            console.log('Delete debtor button clicked');
+
 
             // Get data attributes
             const debtorId = this.getAttribute('data-debtor-id');
             const debtorName = this.getAttribute('data-debtor-name');
 
-            console.log('Debtor data for deletion:', {
+            console.log({
                 debtorId,
                 debtorName
             });
@@ -344,11 +344,11 @@ document.addEventListener('DOMContentLoaded', function() {
                         body: formData
                     })
                     .then(response => {
-                        console.log('Response received:', response);
+
                         return response.json();
                     })
                     .then(data => {
-                        console.log('Data received:', data);
+
                         Swal.close();
                         if (data.success) {
                             // Show success message
@@ -378,7 +378,7 @@ document.addEventListener('DOMContentLoaded', function() {
                         }
                     })
                     .catch(error => {
-                        console.error('Error:', error);
+
                         Swal.close();
                         Swal.fire({
                             icon: 'error',

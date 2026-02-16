@@ -25,7 +25,7 @@
     
                                 // Check if transactions is an array
                                 if (!Array.isArray(transactions)) {
-                                    console.error('Invalid transactions response:', transactions);
+
                                     $('#transactionsTableBody').html('<tr><td colspan="6" class="text-center">Error loading transactions</td></tr>');
                                     return;
                                 }
@@ -74,28 +74,28 @@
                                         // Update exchange rates for calculations if this transaction has a rate
                                         if (transaction.currency === 'AFS') {
                                             usdToAfsRate = transactionExchangeRate;
-                                            console.log('Updated AFS rate:', usdToAfsRate);
+
                                             // Add to display list if not already present
                                             if (!exchangeRatesDisplay.find(rate => rate.currency === 'AFS' && rate.value === transactionExchangeRate)) {
                                                 exchangeRatesDisplay.push({ currency: 'AFS', value: transactionExchangeRate });
                                             }
                                         } else if (transaction.currency === 'EUR') {
                                             usdToEurRate = transactionExchangeRate;
-                                            console.log('Updated EUR rate:', usdToEurRate);
+
                                             // Add to display list if not already present
                                             if (!exchangeRatesDisplay.find(rate => rate.currency === 'EUR' && rate.value === transactionExchangeRate)) {
                                                 exchangeRatesDisplay.push({ currency: 'EUR', value: transactionExchangeRate });
                                             }
                                         } else if (transaction.currency === 'DARHAM') {
                                             usdToDarhamRate = transactionExchangeRate;
-                                            console.log('Updated DARHAM rate:', usdToDarhamRate);
+
                                             // Add to display list if not already present
                                             if (!exchangeRatesDisplay.find(rate => rate.currency === 'DARHAM' && rate.value === transactionExchangeRate)) {
                                                 exchangeRatesDisplay.push({ currency: 'DARHAM', value: transactionExchangeRate });
                                             }
                                         } else if (transaction.currency === 'USD') {
                                             usdToUsdRate = transactionExchangeRate;
-                                            console.log('Updated USD rate:', usdToUsdRate);
+
                                             // Add to display list if not already present
                                             if (!exchangeRatesDisplay.find(rate => rate.currency === 'USD' && rate.value === transactionExchangeRate)) {
                                                 exchangeRatesDisplay.push({ currency: 'USD', value: transactionExchangeRate });
@@ -207,14 +207,14 @@
     
                                 // Calculate totals and remaining amounts using transaction-specific exchange rates
                                 let totalPaidInBaseCurrency = 0;
-                                console.log('Total currency:', totalCurrency, 'Total amount:', totalAmount);
-                                console.log('Exchange rates - AFS:', usdToAfsRate, 'EUR:', usdToEurRate, 'DARHAM:', usdToDarhamRate);
+
+
 
                                 // Sum up all payments converted to the payment's base currency
                                 transactions.forEach(transaction => {
                                     const amount = parseFloat(transaction.amount);
                                     let transactionExchangeRate = transaction.exchange_rate ? parseFloat(transaction.exchange_rate) : null;
-                                    console.log('Processing transaction:', transaction.currency, amount, 'rate:', transactionExchangeRate);
+
 
                                     // Convert transaction amount to base currency
                                     let convertedAmount = amount;
@@ -243,50 +243,50 @@
                                             if (totalCurrency === 'USD') {
                                                 if (transaction.currency === 'AFS') {
                                                     convertedAmount = amount / exchangeRateToUse;
-                                                    console.log('USD base - AFS conversion:', amount, '/', exchangeRateToUse, '=', convertedAmount);
+
                                                 } else if (transaction.currency === 'EUR') {
                                                     convertedAmount = amount / exchangeRateToUse;
-                                                    console.log('USD base - EUR conversion:', amount, '/', exchangeRateToUse, '=', convertedAmount);
+
                                                 } else if (transaction.currency === 'DARHAM') {
                                                     convertedAmount = amount / exchangeRateToUse;
-                                                    console.log('USD base - DARHAM conversion:', amount, '/', exchangeRateToUse, '=', convertedAmount);
+
                                                 }
                                             } else if (totalCurrency === 'AFS') {
                                                 if (transaction.currency === 'USD') {
                                                     convertedAmount = amount * exchangeRateToUse;
-                                                    console.log('AFS base - USD conversion:', amount, '*', exchangeRateToUse, '=', convertedAmount);
+
                                                 } else if (transaction.currency === 'EUR') {
                                                     convertedAmount = amount * exchangeRateToUse;
-                                                    console.log('AFS base - EUR conversion:', amount, '*', exchangeRateToUse, '=', convertedAmount);
+
                                                 } else if (transaction.currency === 'DARHAM') {
                                                     convertedAmount = amount * exchangeRateToUse;
-                                                    console.log('AFS base - DARHAM conversion:', amount, '*', exchangeRateToUse, '=', convertedAmount);
+
                                                 }
                                             } else if (totalCurrency === 'EUR') {
                                                 if (transaction.currency === 'USD') {
                                                     convertedAmount = amount * exchangeRateToUse;
-                                                    console.log('EUR base - USD conversion:', amount, '*', exchangeRateToUse, '=', convertedAmount);
+
                                                 } else if (transaction.currency === 'AFS') {
                                                     convertedAmount = amount * exchangeRateToUse;
-                                                    console.log('EUR base - AFS conversion:', amount, '*', exchangeRateToUse, '=', convertedAmount);
+
                                                 } else if (transaction.currency === 'DARHAM') {
                                                     convertedAmount = amount * exchangeRateToUse;
-                                                    console.log('EUR base - DARHAM conversion:', amount, '*', exchangeRateToUse, '=', convertedAmount);
+
                                                 }
                                             }
                                         } else {
-                                            console.log('No exchange rate available for', transaction.currency, '->', totalCurrency);
+
                                         }
                                     } else {
-                                        console.log('No conversion needed for', transaction.currency, 'amount:', amount);
+
                                     }
 
                                     totalPaidInBaseCurrency += convertedAmount;
-                                    console.log('Running total paid in base currency:', totalPaidInBaseCurrency);
+
                                 });
 
                                 const remainingAmount = Math.max(0, totalAmount - totalPaidInBaseCurrency);
-                                console.log('Final calculation - Total:', totalAmount, 'Paid:', totalPaidInBaseCurrency, 'Remaining:', remainingAmount);
+
     
                                 // Display amounts in each currency section
                                 if (hasUSDTransactions) {
@@ -358,7 +358,7 @@
                                 }
     
                             } catch (e) {
-                                console.error('Error parsing transactions:', e);
+
                                 $('#transactionsTableBody').html(
                                     '<tr><td colspan="6" class="text-center">error_loading_transactions</td></tr>'
                                 );
@@ -367,7 +367,7 @@
                             }
                         },
                         error: function(xhr, status, error) {
-                            console.error('Error loading transactions:', error);
+
                             $('#transactionsTableBody').html(
                                 '<tr><td colspan="6" class="text-center">error_loading_transactions</td></tr>'
                             );
@@ -438,12 +438,12 @@
                                         alert('Error: ' + (result.message || 'Unknown error occurred'));
                                     }
                                 } catch (e) {
-                                    console.error('Error parsing response:', e);
+
                                     alert('Error: Invalid response from server');
                                 }
                             },
                             error: function(xhr, status, error) {
-                                console.error('Error deleting transaction:', error);
+
                                 alert('Error deleting transaction');
                             }
                         });

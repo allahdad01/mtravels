@@ -18,7 +18,7 @@ function printRefundAgreement(ticketId) {
             }
         })
         .catch(error => {
-            console.error('Error:', error);
+
             alert(window.translations.error_generating_agreement);
         });
 }
@@ -40,6 +40,6 @@ function deleteTicket(id) {
                 alert(window.translations.error + ': ' + data.message);
             }
         })
-        .catch(error => console.error('Error deleting Ticket:', error));
+
     }
 }

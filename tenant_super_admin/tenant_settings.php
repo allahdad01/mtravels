@@ -348,7 +348,7 @@ require_once('../includes/db.php');
 }
 
 .custom-file-label {
-    overflow: hidden;
+    
     text-overflow: ellipsis;
     white-space: nowrap;
     border-radius: 8px;

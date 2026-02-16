@@ -42,7 +42,7 @@ class VoiceRecorder {
             
             return true;
         } catch (error) {
-            console.error('[VoiceRecorder] Initialization failed:', error);
+
             alert('Microphone permission required for voice messages');
             return false;
         }
@@ -130,7 +130,7 @@ class VoiceRecorder {
 
             return true;
         } catch (error) {
-            console.error('[VoiceRecorder] Failed to start recording:', error);
+
             return false;
         }
     }
@@ -228,7 +228,7 @@ class VoiceRecorder {
 
             updateVisualization();
         } catch (error) {
-            console.warn('[VoiceRecorder] Visualization setup failed:', error);
+
         }
     }
 

@@ -62,32 +62,7 @@ if ($tenant_id) {
     $row = $stmt->fetch(PDO::FETCH_ASSOC);
     if ($row) {
         $allowed_features = json_decode($row['features'], true) ?? [];
-        
-        // Debug: Log the features for troubleshooting
-        error_log("Tenant ID: " . $tenant_id);
-        error_log("Features JSON: " . $row['features']);
-        error_log("Parsed Features: " . print_r($allowed_features, true));
-    } else {
-        // Debug: Log if no subscription found
-        error_log("No active subscription found for tenant: " . $tenant_id);
-        
-        // Check if tenant exists in tenant_subscriptions
-        $debug_query = "SELECT * FROM tenant_subscriptions WHERE tenant_id = ?";
-        $debug_stmt = $pdo->prepare($debug_query);
-        $debug_stmt->execute([$tenant_id]);
-        $debug_result = $debug_stmt->fetchAll(PDO::FETCH_ASSOC);
-        
-        if (count($debug_result) === 0) {
-            error_log("No subscriptions found for tenant: " . $tenant_id);
-        } else {
-            error_log("Found subscriptions but none active for tenant: " . $tenant_id);
-            foreach ($debug_result as $debug_row) {
-                error_log("Subscription: " . print_r($debug_row, true));
-            }
-        }
     }
-} else {
-    error_log("Tenant ID is empty or null");
 }
 
 // Temporary fix: If no features found, assign default features for testing
@@ -138,7 +113,7 @@ try {
 $user_id = $_SESSION["user_id"];
 
 $profilePic = !empty($user['profile_pic']) ? htmlspecialchars($user['profile_pic']) : 'default-avatar.jpg';
-$imagePath = "../assets/images/user/" . $profilePic;
+$imagePath = "../assets/images/user/" . basename($profilePic);
 
 // Calculate remaining session time (30 minutes = 1800 seconds)
 $session_timeout = 1800; // 30 minutes in seconds
@@ -199,9 +174,6 @@ $remaining_time = max(0, $remaining_time); // Ensure non-negative
     <link rel="stylesheet" href="../assets/plugins/animation/css/animate.min.css">
     <!-- vendor css -->
     <link rel="stylesheet" href="../assets/css/style.css">
-        <!-- DataTables CSS -->
-    <link rel="stylesheet" type="text/css" href="https://cdn.datatables.net/1.11.5/css/dataTables.bootstrap4.min.css">
-    <link rel="stylesheet" type="text/css" href="https://cdn.datatables.net/responsive/2.2.9/css/responsive.bootstrap4.min.css">
     
 
 <style>

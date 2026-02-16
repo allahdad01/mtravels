@@ -35,6 +35,9 @@ if (!isset($_SESSION['csrf_token'])) {
     $_SESSION['csrf_token'] = bin2hex(random_bytes(32));
 }
 
+// Load input validation helper
+require_once '../includes/InputValidator.php';
+
 require_once '../api/dashboard/dashboard_handler.php';
 require_once '../api/dashboard/supplier_notification.php';
 require_once '../api/dashboard/client_notification.php';
@@ -1022,12 +1025,11 @@ if (!file_exists($imagePath)) {
                                 }
 
                                 // Get selected date for departures filter, default to today
-                                $selected_date = isset($_GET['departure_date']) ? $_GET['departure_date'] : date('Y-m-d');
-
-                                // Validate date format
-                                if (!preg_match('/^\d{4}-\d{2}-\d{2}$/', $selected_date)) {
-                                    $selected_date = date('Y-m-d');
-                                }
+                                $selected_date = InputValidator::getDate(
+                                    $_GET['departure_date'] ?? '',
+                                    'Y-m-d',
+                                    date('Y-m-d')
+                                );
 
                                 // Query for departures on selected date
                                 $today_departures_query = "SELECT ticket_bookings.*,
@@ -1493,6 +1495,7 @@ if (!file_exists($imagePath)) {
     <?php include '../includes/admin_footer.php'; ?>
 
     <!-- Required Js -->
+    
     <script src="../assets/js/vendor-all.min.js"></script>
 	<script src="../assets/plugins/bootstrap/js/bootstrap.min.js"></script>
     <script src="../assets/js/pcoded.min.js"></script>

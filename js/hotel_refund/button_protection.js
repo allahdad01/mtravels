@@ -104,21 +104,4 @@
 // Initialize button protection
 const hotelRefundsButtonProtection = new HotelRefundsButtonProtection();
 
-$(document).ready(function() {
-$('#refundsTable').DataTable({
-    responsive: true,
-    pageLength: 25,
-    lengthChange: true,
-    searching: true,
-    ordering: true,
-    paging: false,  // Disable DataTables pagination
-    columns: [
-        { width: '5%' },   // ID
-        { width: '20%' },  // Visa Details
-        { width: '15%' },  // Refund Info
-        { width: '10%' },  // Amount
-        { width: '15%' },  // Date
-        { width: '15%' }   // Actions
-    ]
-});
-});
+// DataTables removed - using server-side PHP filtering instead

@@ -181,14 +181,14 @@
                         $('#aedSection').toggle(hasCurrency.DARHAM);
 
                     } catch(e) {
-                        console.error('Error parsing transactions:', e);
+                        console.log(e);
                         $('#transactionTableBody').html('<tr><td colspan="6" class="text-center">error_loading_transactions</td></tr>');
                         $('#exchangeRateDisplay').text('Error loading exchange rates');
                         $('#exchangedAmount').text('Error calculating amounts');
                     }
                 },
                 error: function(xhr, status, error){
-                    console.error('Error loading transactions:', error);
+                    console.log({status, error});
                     $('#transactionTableBody').html('<tr><td colspan="6" class="text-center">error_loading_transactions</td></tr>');
                     $('#exchangeRateDisplay').text('Error loading exchange rates');
                     $('#exchangedAmount').text('Error calculating amounts');
@@ -274,7 +274,7 @@
                             alert('Error adding transaction: ' + (result.message || 'Unknown error'));
                         }
                     } catch (e) {
-                        console.error('Error parsing response:', e);
+
                         // Re-enable submit button on parsing error
                         submitButton.prop('disabled', false);
                         submitButton.html(originalText);
@@ -282,7 +282,7 @@
                     }
                 },
                 error: function(xhr, status, error) {
-                    console.error('AJAX Error:', error);
+
                     alert('error_adding_transaction');
                     // Re-enable submit button on network error
                     submitButton.prop('disabled', false);
@@ -356,7 +356,7 @@
                     }
                 },
                 error: function(xhr, status, error) {
-                    console.error('AJAX Error:', error);
+
                     alert('error_fetching_transaction_details');
                 }
             });
@@ -392,12 +392,12 @@
                             alert('error_deleting_transaction: ' + (result.message || 'unknown_error'));
                         }
                     } catch (e) {
-                        console.error('Error parsing response:', e);
+                        console.log(e);
                         alert('Error processing the request');
                     }
                 },
                 error: function(xhr, status, error) {
-                    console.error('AJAX Error:', error);
+                    console.log({status, error});
                     alert('error_deleting_transaction');
                 }
             });
@@ -476,7 +476,7 @@
                 }
             },
             error: function(xhr, status, error) {
-                console.error('AJAX Error:', error);
+
                 alert('error_fetching_refund_details');
                 $('#refundTransactionModal .modal-content').removeClass('loading');
             }
@@ -538,15 +538,15 @@
                         alert('error_updating_transaction: ' + (result.message || 'unknown_error'));
                     }
                 } catch (e) {
-                    console.error('Error parsing response:', e);
+                    console.log(e);
                     // Re-enable submit button on parsing error
                     submitButton.prop('disabled', false);
                     submitButton.html(originalText);
                     alert('error_processing_the_request');
                 }
-            },
-            error: function(xhr, status, error) {
-                console.error('AJAX Error:', error);
+                },
+                error: function(xhr, status, error) {
+                console.log({status, error});
                 // Re-enable submit button on network error
                 submitButton.prop('disabled', false);
                 submitButton.html(originalText);

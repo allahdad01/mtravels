@@ -154,7 +154,7 @@ $(document).ready(function() {
                 }
             },
             error: function(xhr, status, error) {
-                console.error('Error:', error);
+
                 alert('An error occurred while saving the category');
             }
         });
@@ -176,7 +176,7 @@ $(document).ready(function() {
             const allocationCurrency = selectedAllocation.data('currency');
             // Ensure the currency matches the allocation
             formData.set('expenseCurrency', allocationCurrency);
-            console.log('Form submission - ensuring currency matches allocation:', allocationCurrency);
+
         }
         
         // Re-enable any disabled fields to ensure their values are included in the form
@@ -210,7 +210,7 @@ $(document).ready(function() {
                 }
             },
             error: function(xhr, status, error) {
-                console.error('Error:', error);
+
                 alert('An error occurred while saving the expense');
                 // Reset button
                 submitBtn.html(originalText);
@@ -251,7 +251,7 @@ $(document).ready(function() {
                     }
                 },
                 error: function(xhr, status, error) {
-                    console.error('Error:', error);
+
                     alert('An error occurred while deleting the category');
                 }
             });
@@ -319,7 +319,7 @@ $(document).ready(function() {
                 }
             },
             error: function(xhr, status, error) {
-                console.error('Error fetching expense details:', error);
+
             }
         });
         
@@ -353,7 +353,7 @@ $(document).ready(function() {
                     }
                 },
                 error: function(xhr, status, error) {
-                    console.error('Error:', error);
+
                     alert('An error occurred while deleting the expense');
                 }
             });
@@ -379,13 +379,6 @@ $(document).ready(function() {
     $('#startDate').val(formatDateISO(firstDay));
     $('#endDate').val(formatDateISO(lastDay));
     
-    console.log('Initial date range:', {
-        startDate: formatDateISO(firstDay),
-        endDate: formatDateISO(lastDay),
-        startDay: firstDay.getDate(),
-        endDay: lastDay.getDate()
-    });
-    
     // Debug function to validate date format
     function validateDateRange() {
         const startDate = $('#startDate').val();
@@ -394,13 +387,6 @@ $(document).ready(function() {
         // Check if the start date is the first day of the month
         const startDateObj = new Date(startDate);
         const isFirstDay = startDateObj.getDate() === 1;
-        
-        console.log('Current date range:', {
-            startDate,
-            endDate,
-            isFirstDayOfMonth: isFirstDay,
-            startDateObj
-        });
         
         return isFirstDay;
     }
@@ -439,12 +425,6 @@ $(document).ready(function() {
                 startDate = new Date(today.getFullYear(), today.getMonth(), 1);
                 // Last day of current month
                 endDate = new Date(today.getFullYear(), today.getMonth() + 1, 0);
-                console.log('Month date range:', {
-                    startDate: formatDateISO(startDate),
-                    endDate: formatDateISO(endDate),
-                    startDay: startDate.getDate(),
-                    endDay: endDate.getDate()
-                });
                 break;
             case 'quarter':
                 const quarter = Math.floor(today.getMonth() / 3);
@@ -464,14 +444,6 @@ $(document).ready(function() {
         // Use our custom formatting function
         $('#startDate').val(formatDateISO(startDate));
         $('#endDate').val(formatDateISO(endDate));
-        
-        console.log('Selected date range:', {
-            range: range,
-            startDate: formatDateISO(startDate),
-            endDate: formatDateISO(endDate),
-            startDay: startDate.getDate(),
-            endDay: endDate.getDate()
-        });
         
         // Make the current selection button active
         $('.btn-group .btn').removeClass('active');
@@ -529,7 +501,7 @@ $(document).ready(function() {
             $('#expenseMainAccount').val('');
             $('#expenseMainAccount').prop('disabled', true);
 
-            console.log('Allocation selected. Currency set to:', currency);
+
         } else {
             // Reset fields
             $('#expenseCurrency').prop('disabled', false);
@@ -554,7 +526,7 @@ $(document).ready(function() {
     const categoryId = searchParams.get('category_id');
     
     if (allocationId) {
-        console.log('Allocation ID from URL:', allocationId);
+
         
         // First, set the expense form to defaults
         $('#expenseForm')[0].reset();
@@ -568,7 +540,7 @@ $(document).ready(function() {
         if (selectedOption.val()) {
             // Get currency from the allocation data
             const allocationCurrency = selectedOption.data('currency');
-            console.log('Setting currency from URL allocation:', allocationCurrency);
+
             
             // Set and lock currency field
             $('#expenseCurrency').val(allocationCurrency);
@@ -653,7 +625,7 @@ $(document).ready(function() {
                         if (selectedOption.val()) {
                             // Get the currency from the allocation data
                             const currency = selectedOption.data('currency');
-                            console.log('Setting currency from allocation:', currency);
+
                             
                             // Ensure currency matches the allocation
                             $('#expenseCurrency').val(currency);
@@ -678,7 +650,7 @@ $(document).ready(function() {
                 }
             },
             error: function(xhr, status, error) {
-                console.error('Error:', error);
+
                 alert('An error occurred while fetching expense details');
             }
         });
@@ -696,13 +668,6 @@ $(document).ready(function() {
         // Use our custom formatting function
         $('#startDate').val(formatDateISO(firstDay));
         $('#endDate').val(formatDateISO(lastDay));
-        
-        console.log('Reset date range:', {
-            startDate: formatDateISO(firstDay),
-            endDate: formatDateISO(lastDay),
-            startDay: firstDay.getDate(),
-            endDay: lastDay.getDate()
-        });
         
         // Clear any active button state
         $('.btn-group .btn').removeClass('active');

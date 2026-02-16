@@ -33,18 +33,18 @@ $query = "SELECT
     u.name as created_by_name
 FROM supplier_transactions st
 LEFT JOIN users u ON st.created_by = u.id
-WHERE st.supplier_id = ?
+WHERE st.supplier_id = ? AND st.tenant_id = ?
 ORDER BY st.transaction_date DESC
 LIMIT ? OFFSET ?";
 
 $stmt = $pdo->prepare($query);
-$stmt->execute([$supplier_id, $results_per_page, $offset]);
+$stmt->execute([$supplier_id, $tenant_id, $results_per_page, $offset]);
 $transactions = $stmt->fetchAll(PDO::FETCH_ASSOC);
 
 // Get total count
-$count_query = "SELECT COUNT(*) as total FROM supplier_transactions WHERE supplier_id = ?";
+$count_query = "SELECT COUNT(*) as total FROM supplier_transactions WHERE supplier_id = ? AND tenant_id = ?";
 $count_stmt = $pdo->prepare($count_query);
-$count_stmt->execute([$supplier_id]);
+$count_stmt->execute([$supplier_id, $tenant_id]);
 $total_transactions = $count_stmt->fetch(PDO::FETCH_ASSOC)['total'];
 $total_pages = ceil($total_transactions / $results_per_page);
 ?>

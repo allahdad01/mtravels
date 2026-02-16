@@ -2,6 +2,7 @@
 require_once '../../includes/language_helpers.php';
 require_once '../../includes/db.php';
 require_once '../../admin/security.php';
+require_once '../../includes/SecureFileUpload.php';
 
 // Start session if not already started
 if (session_status() === PHP_SESSION_NONE) {
@@ -86,56 +87,38 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             $errors[] = __('password_length_error');
         }
 
-        // Handle profile picture upload
+        // Handle profile picture upload using SecureFileUpload
         $profile_pic_path = $employee['profile_pic']; // Keep existing by default
         if (isset($_FILES['profile_pic']) && $_FILES['profile_pic']['error'] === UPLOAD_ERR_OK) {
-            $upload_dir = '../assets/images/user/';
-            if (!is_dir($upload_dir)) {
-                mkdir($upload_dir, 0755, true);
-            }
-
-            $file_extension = strtolower(pathinfo($_FILES['profile_pic']['name'], PATHINFO_EXTENSION));
-            $allowed_extensions = ['jpg', 'jpeg', 'png', 'gif'];
-
-            if (!in_array($file_extension, $allowed_extensions)) {
-                $errors[] = __('invalid_file_type');
-            } elseif ($_FILES['profile_pic']['size'] > 2 * 1024 * 1024) { // 2MB limit
-                $errors[] = __('file_too_large');
-            } else {
-                $new_filename = 'user_' . $employee_id . '_' . time() . '.' . $file_extension;
-                $upload_path = $upload_dir . $new_filename;
-
-                if (move_uploaded_file($_FILES['profile_pic']['tmp_name'], $upload_path)) {
+            try {
+                $uploader = new SecureFileUpload(2 * 1024 * 1024, '../../assets/');
+                $result = $uploader->upload('profile_pic', 'images/user');
+                
+                if ($result['success']) {
                     // Delete old profile picture if it exists and is not default
                     if ($employee['profile_pic'] && $employee['profile_pic'] !== 'default-avatar.jpg' &&
-                        file_exists('../assets/images/user/' . $employee['profile_pic'])) {
-                        unlink('../assets/images/user/' . $employee['profile_pic']);
+                        file_exists('../../assets/images/user/' . $employee['profile_pic'])) {
+                        unlink('../../assets/images/user/' . $employee['profile_pic']);
                     }
-                    $profile_pic_path = $new_filename;
+                    $profile_pic_path = $result['data']['filename'];
                 } else {
-                    $errors[] = __('error_uploading_profile_picture');
+                    $errors[] = __('error_uploading_profile_picture') . ': ' . $result['error'];
                 }
+            } catch (Exception $e) {
+                $errors[] = __('error_uploading_profile_picture') . ': ' . $e->getMessage();
             }
         }
 
-        // Handle document uploads
+        // Handle document uploads using SecureFileUpload
         $uploaded_documents = [];
         if (isset($_FILES['user_documents']) && !empty($_FILES['user_documents']['name'][0])) {
-            $upload_dir = '../uploads/user_documents/' . $employee_id . '/';
-            if (!is_dir($upload_dir)) {
-                mkdir($upload_dir, 0755, true);
-            }
-
-            foreach ($_FILES['user_documents']['name'] as $key => $filename) {
-                if ($_FILES['user_documents']['error'][$key] === UPLOAD_ERR_OK) {
-                    $file_extension = strtolower(pathinfo($filename, PATHINFO_EXTENSION));
-                    $allowed_extensions = ['pdf', 'doc', 'docx', 'jpg', 'jpeg', 'png'];
-
-                    if (in_array($file_extension, $allowed_extensions)) {
-                        $new_filename = time() . '_' . $key . '_' . preg_replace('/[^a-zA-Z0-9]/', '_', $filename);
-                        $upload_path = $upload_dir . $new_filename;
-
-                        if (move_uploaded_file($_FILES['user_documents']['tmp_name'][$key], $upload_path)) {
+            try {
+                $uploader = new SecureFileUpload(10 * 1024 * 1024, '../../uploads/');
+                $result = $uploader->uploadMultiple('user_documents', "user_documents/{$employee_id}", 10);
+                
+                if ($result['success']) {
+                    foreach ($result['data']['files'] as $file_result) {
+                        if ($file_result['success']) {
                             // Save document info to database
                             $doc_stmt = $pdo->prepare("
                                 INSERT INTO user_documents (user_id, filename, original_name, file_type, uploaded_at, tenant_id, branch_id)
@@ -143,15 +126,18 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                             ");
                             $doc_stmt->execute([
                                 $employee_id,
-                                $new_filename,
-                                $filename,
-                                $file_extension,
+                                $file_result['data']['filename'],
+                                $file_result['data']['original_name'],
+                                $file_result['data']['extension'],
                                 $tenant_id,
                                 $branch_id
                             ]);
+                            $uploaded_documents[] = $file_result['data']['filename'];
                         }
                     }
                 }
+            } catch (Exception $e) {
+                error_log("Document upload error: " . $e->getMessage());
             }
         }
 

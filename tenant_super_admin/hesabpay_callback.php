@@ -19,6 +19,14 @@ $amount = $_POST['amount'] ?? 0;
 $currency = $_POST['currency'] ?? 'AFN';
 $transaction_id = $_POST['transaction_id'] ?? '';
 
+// Validate amount is numeric
+if (!empty($amount) && (!is_numeric($amount) || floatval($amount) <= 0)) {
+    error_log("Invalid amount in callback: " . json_encode($_POST));
+    http_response_code(400);
+    exit();
+}
+$amount = !empty($amount) ? floatval($amount) : 0;
+
 // Verify the callback
 if (empty($session_id) || empty($status)) {
     error_log("Invalid callback data: " . json_encode($_POST));

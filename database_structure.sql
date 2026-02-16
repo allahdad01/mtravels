@@ -1,5 +1,5 @@
 -- Database structure export
--- Generated on: 2026-01-28 11:50:15
+-- Generated on: 2026-02-08 08:37:45
 
 -- Table structure for table `activity_log`
 CREATE TABLE `activity_log` (
@@ -177,9 +177,9 @@ CREATE TABLE `audit_logs` (
   PRIMARY KEY (`id`),
   KEY `user_id` (`user_id`),
   CONSTRAINT `fk_audit_logs_user` FOREIGN KEY (`user_id`) REFERENCES `users` (`id`) ON DELETE CASCADE
-) ENGINE=InnoDB AUTO_INCREMENT=63 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+) ENGINE=InnoDB AUTO_INCREMENT=64 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
--- Total rows in `audit_logs`: 62
+-- Total rows in `audit_logs`: 63
 
 -- Table structure for table `blog_posts`
 CREATE TABLE `blog_posts` (
@@ -982,9 +982,9 @@ CREATE TABLE `encryption_audit` (
   KEY `fk_ea_user` (`user_id`),
   CONSTRAINT `fk_ea_tenant` FOREIGN KEY (`tenant_id`) REFERENCES `tenants` (`id`) ON DELETE CASCADE,
   CONSTRAINT `fk_ea_user` FOREIGN KEY (`user_id`) REFERENCES `users` (`id`) ON DELETE SET NULL
-) ENGINE=InnoDB AUTO_INCREMENT=2365 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+) ENGINE=InnoDB AUTO_INCREMENT=2401 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
--- Total rows in `encryption_audit`: 2364
+-- Total rows in `encryption_audit`: 2400
 
 -- Table structure for table `encryption_key_rotations`
 CREATE TABLE `encryption_key_rotations` (
@@ -1149,6 +1149,7 @@ CREATE TABLE `floating_tasks` (
   `id` int(11) NOT NULL AUTO_INCREMENT,
   `user_id` int(11) NOT NULL,
   `tenant_id` int(11) NOT NULL DEFAULT 1,
+  `branch_id` int(11) NOT NULL DEFAULT 1,
   `task_text` varchar(255) NOT NULL,
   `completed` tinyint(1) DEFAULT 0,
   `created_at` timestamp NOT NULL DEFAULT current_timestamp(),
@@ -1156,8 +1157,9 @@ CREATE TABLE `floating_tasks` (
   PRIMARY KEY (`id`),
   KEY `idx_user_tenant` (`user_id`,`tenant_id`),
   KEY `idx_created_at` (`created_at`),
+  KEY `idx_branch_id` (`branch_id`),
   CONSTRAINT `fk_floating_tasks_user` FOREIGN KEY (`user_id`) REFERENCES `users` (`id`) ON DELETE CASCADE
-) ENGINE=InnoDB AUTO_INCREMENT=3 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+) ENGINE=InnoDB AUTO_INCREMENT=4 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
 -- Total rows in `floating_tasks`: 0
 
@@ -1390,7 +1392,7 @@ CREATE TABLE `login_attempts` (
   `branch_id` bigint(20) DEFAULT NULL,
   PRIMARY KEY (`id`),
   KEY `email` (`email`)
-) ENGINE=InnoDB AUTO_INCREMENT=68 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+) ENGINE=InnoDB AUTO_INCREMENT=70 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
 -- Total rows in `login_attempts`: 0
 
@@ -1407,9 +1409,9 @@ CREATE TABLE `login_history` (
   KEY `tenant_id` (`tenant_id`),
   CONSTRAINT `fk_login_history_tenant` FOREIGN KEY (`tenant_id`) REFERENCES `tenants` (`id`) ON DELETE CASCADE,
   CONSTRAINT `login_history_ibfk_1` FOREIGN KEY (`user_id`) REFERENCES `users` (`id`)
-) ENGINE=InnoDB AUTO_INCREMENT=170 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+) ENGINE=InnoDB AUTO_INCREMENT=171 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
--- Total rows in `login_history`: 54
+-- Total rows in `login_history`: 55
 
 -- Table structure for table `main_account`
 CREATE TABLE `main_account` (
@@ -2165,9 +2167,9 @@ CREATE TABLE `system_expenses` (
   KEY `idx_system_expenses_category_date` (`category_id`,`date`),
   CONSTRAINT `fk_system_expenses_category` FOREIGN KEY (`category_id`) REFERENCES `system_expense_categories` (`id`) ON DELETE CASCADE,
   CONSTRAINT `fk_system_expenses_created_by` FOREIGN KEY (`created_by`) REFERENCES `users` (`id`) ON DELETE SET NULL
-) ENGINE=InnoDB AUTO_INCREMENT=4 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci COMMENT='System-wide expenses tracked by admin';
+) ENGINE=InnoDB AUTO_INCREMENT=5 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci COMMENT='System-wide expenses tracked by admin';
 
--- Total rows in `system_expenses`: 3
+-- Total rows in `system_expenses`: 4
 
 -- Table structure for table `system_profit_loss_by_category`
 CREATE TABLE `system_profit_loss_by_category` (
@@ -2383,7 +2385,7 @@ CREATE TABLE `ticket_categories` (
   UNIQUE KEY `name` (`name`),
   KEY `idx_status` (`status`),
   KEY `idx_sort` (`sort_order`)
-) ENGINE=InnoDB AUTO_INCREMENT=21 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+) ENGINE=InnoDB AUTO_INCREMENT=12 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
 -- Total rows in `ticket_categories`: 10
 
@@ -2475,7 +2477,7 @@ CREATE TABLE `ticket_sla_rules` (
   PRIMARY KEY (`id`),
   UNIQUE KEY `priority` (`priority`),
   KEY `idx_priority` (`priority`)
-) ENGINE=InnoDB AUTO_INCREMENT=9 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+) ENGINE=InnoDB AUTO_INCREMENT=6 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
 -- Total rows in `ticket_sla_rules`: 4
 
@@ -2616,6 +2618,12 @@ CREATE TABLE `umrah_bookings` (
   `created_at` timestamp NOT NULL DEFAULT current_timestamp(),
   `updated_at` timestamp NOT NULL DEFAULT current_timestamp() ON UPDATE current_timestamp(),
   `remarks` varchar(100) NOT NULL,
+  `photo_path` varchar(500) DEFAULT NULL,
+  `passport_path` varchar(500) DEFAULT NULL,
+  `visa_path` varchar(255) DEFAULT NULL,
+  `photo_uploaded_at` timestamp NULL DEFAULT NULL,
+  `passport_uploaded_at` timestamp NULL DEFAULT NULL,
+  `visa_uploaded_at` timestamp NULL DEFAULT NULL,
   `status` enum('active','refunded','cancelled') NOT NULL DEFAULT 'active',
   `imported` tinyint(1) NOT NULL DEFAULT 0,
   `branch_id` bigint(20) DEFAULT NULL,
@@ -2838,7 +2846,7 @@ CREATE TABLE `user_online_sessions` (
   PRIMARY KEY (`id`),
   UNIQUE KEY `unique_user_session` (`user_id`,`session_id`),
   KEY `idx_last_activity` (`last_activity`)
-) ENGINE=InnoDB AUTO_INCREMENT=3678 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+) ENGINE=InnoDB AUTO_INCREMENT=3806 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
 -- Total rows in `user_online_sessions`: 0
 

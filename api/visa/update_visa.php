@@ -57,29 +57,32 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     $pdo->beginTransaction();
 
     try {
-        // Get original data for comparison
-        $stmt = $pdo->prepare("SELECT * FROM visa_applications WHERE id = ? AND tenant_id = ? AND branch_id = ?");
-        $stmt->bindParam(1, $id, PDO::PARAM_INT);
-        $stmt->bindParam(2, $tenant_id, PDO::PARAM_INT);
-        $stmt->bindParam(3, $branch_id, PDO::PARAM_INT);
-        $stmt->execute();
-        $originalData = $stmt->fetch(PDO::FETCH_ASSOC);
+         // Get original data for comparison
+         $stmt = $pdo->prepare("SELECT * FROM visa_applications WHERE id = ? AND tenant_id = ? AND branch_id = ?");
+         $stmt->bindParam(1, $id, PDO::PARAM_INT);
+         $stmt->bindParam(2, $tenant_id, PDO::PARAM_INT);
+         $stmt->bindParam(3, $branch_id, PDO::PARAM_INT);
+         $stmt->execute();
+         $originalData = $stmt->fetch(PDO::FETCH_ASSOC);
 
-        if (!$originalData) {
-            throw new PDOException("Visa application not found");
-        }
+         if (!$originalData) {
+             throw new PDOException("Visa application not found");
+         }
 
-        // Calculate differences
-        $soldDifference = $sold - $originalData['sold'];
-        $baseDifference = $base - $originalData['base'];
-        $sold_to = intval($sold_to);
-        $supplier = intval($supplier);
-        $originalClient = intval($originalData['sold_to']);
-        $originalSupplier = intval($originalData['supplier']);
-        $originalCurrency = $originalData['currency'];
+         // Calculate differences
+         $soldDifference = $sold - $originalData['sold'];
+         $baseDifference = $base - $originalData['base'];
+         $sold_to = intval($sold_to);
+         $supplier = intval($supplier);
+         $originalClient = intval($originalData['sold_to']);
+         $originalSupplier = intval($originalData['supplier']);
+         $originalCurrency = $originalData['currency'];
+         $visaStatus = $originalData['status'];
 
-        // Handle supplier changes or base amount differences
-        if ($supplier != $originalSupplier || $baseDifference != 0) {
+         // Only process client and supplier calculations if visa is approved
+         if ($visaStatus === 'Approved') {
+         // Handle supplier changes or base amount differences
+         if ($supplier != $originalSupplier || $baseDifference != 0) {
             // Check if original supplier exists
             if ($originalSupplier > 0) {
                 $oldSupplierQuery = "SELECT supplier_type, balance, currency FROM suppliers WHERE id = ? AND tenant_id = ? AND branch_id = ?";
@@ -585,10 +588,11 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                         }
                     }
                 }
-            }
-        }
+                }
+                }
+                } // End of: if ($visaStatus === 'Approved')
 
-        // Prepare the SQL update statement for the visa application
+                // Prepare the SQL update statement for the visa application
         $sql = "UPDATE visa_applications
                 SET supplier = ?, sold_to = ?, title = ?, gender = ?, applicant_name = ?,
                     passport_number = ?, country = ?, visa_type = ?, receive_date = ?,

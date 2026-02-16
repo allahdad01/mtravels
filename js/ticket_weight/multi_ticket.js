@@ -1,29 +1,7 @@
 
 $(document).ready(function() {
-    // Initialize DataTable
-    $('#weightsTable').DataTable({
-        responsive: true,
-        autoWidth: false,
-        language: {
-            search: 'Search:',
-            lengthMenu: 'Show _MENU_ entries',
-            info: 'Showing _START_ to _END_ of _TOTAL_ entries',
-            infoEmpty: 'Showing 0 to 0 of 0 entries',
-            infoFiltered: '(filtered from _MAX_ total entries)',
-            paginate: {
-                first: 'First',
-                last: 'Last',
-                next: 'Next',
-                previous: 'Previous'
-            }
-        },
-        columnDefs: [
-            { orderable: false, targets: 'no-sort' },
-            { orderable: false, targets: 0 } // Make checkbox column non-sortable
-        ],
-        order: [[5, 'desc']] // Sort by date added by default (adjusted for new checkbox column)
-    });
-
+    // DataTables removed - using server-side PHP filtering
+    
     // Handle select all checkbox
     $('#selectAllWeights').on('change', function() {
         $('.weight-checkbox').prop('checked', $(this).prop('checked'));

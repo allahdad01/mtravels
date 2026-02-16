@@ -25,7 +25,7 @@ $query = "SELECT
     COALESCE(SUM(CASE WHEN mat.type = 'debit' THEN mat.amount ELSE 0 END), 0) as total_debits
 FROM main_account ma
 LEFT JOIN branches b ON ma.branch_id = b.id
-LEFT JOIN main_account_transactions mat ON ma.id = mat.main_account_id
+LEFT JOIN main_account_transactions mat ON ma.id = mat.main_account_id AND mat.tenant_id = ma.tenant_id
 WHERE ma.tenant_id = ?";
 
 // Add branch filtering
@@ -177,7 +177,7 @@ $summary = $summary_stmt->fetch(PDO::FETCH_ASSOC);
 
 .progress {
     border-radius: 15px;
-    overflow: hidden;
+    
     box-shadow: inset 0 1px 2px rgba(0,0,0,0.1);
 }
 
@@ -215,7 +215,7 @@ $summary = $summary_stmt->fetch(PDO::FETCH_ASSOC);
 
 .table-responsive {
     border-radius: 10px;
-    overflow: hidden;
+    
 }
 
 .table {
@@ -348,7 +348,7 @@ $summary = $summary_stmt->fetch(PDO::FETCH_ASSOC);
 
 .summary-card {
     border-radius: 10px;
-    overflow: hidden;
+    
 }
 
 .summary-card .card-body {

@@ -263,9 +263,6 @@ try {
         }
     }
 
-    // Debugging: Print total income
-    error_log("Total Income: " . print_r($totalIncome, true));
-    error_log("Total Expenses: " . print_r($totalExpenses, true));
 
     // Calculate profit/loss for the date range
     $profitLossData = [

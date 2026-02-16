@@ -107,7 +107,7 @@ $(document).ready(function() {
             },
             dataType: 'json',
             success: function(response) {
-                console.log('Search response:', response);
+
                 
                 if (response.success) {
                     const tbody = $('#searchResultsTable tbody');
@@ -179,7 +179,7 @@ $(document).ready(function() {
                 }
             },
             error: function(xhr, status, error) {
-                console.error('Search Error:', {xhr, status, error});
+
                 showAlert(translations.search_failed);
                 $('#searchResultsTable tbody').html(`
                     <tr>
@@ -270,7 +270,7 @@ $(document).ready(function() {
     $form.on('submit', function(e) {
         e.preventDefault();
         
-        console.log('Form submission started');
+
         
         // Check if a ticket is selected
         if (!$('#selectedTicketId').val()) {
@@ -345,9 +345,9 @@ $(document).ready(function() {
         const formData = new FormData(this);
         
         // Add debug logging
-        console.log('Form data being sent:');
+
         for (let [key, value] of formData.entries()) {
-            console.log(key, value);
+
         }
         
         // Disable submit button and show loading state
@@ -362,7 +362,7 @@ $(document).ready(function() {
             processData: false,
             contentType: false,
             success: function(response) {
-                console.log('Server response:', response);
+
                 
                 // Handle different response types
                 let responseText = typeof response === 'string' ? response.trim() : '';
@@ -432,7 +432,7 @@ $(document).ready(function() {
                         }
                     } catch (e) {
                         // Not JSON, treat as plain text error
-                        console.error('Unexpected response format:', responseText);
+
                         if (typeof Swal !== 'undefined') {
                             Swal.fire({
                                 icon: 'error',
@@ -447,8 +447,8 @@ $(document).ready(function() {
                 }
             },
             error: function(xhr, status, error) {
-                console.error('Ajax Error:', {xhr, status, error});
-                console.error('Response Text:', xhr.responseText);
+
+
                 
                 if (typeof Swal !== 'undefined') {
                     Swal.fire({

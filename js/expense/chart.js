@@ -19,7 +19,7 @@ function destroyExistingCharts() {
 function createIncomeChart(data) {
     const ctx = document.getElementById('incomeChart');
     if (!ctx) {
-        console.error('Income chart canvas not found');
+
         return;
     }
 
@@ -104,7 +104,7 @@ function createIncomeChart(data) {
 function createExpenseChart(data) {
     const ctx = document.getElementById('expenseChart');
     if (!ctx) {
-        console.error('Expense chart canvas not found');
+
         return;
     }
 
@@ -164,7 +164,7 @@ function createExpenseChart(data) {
 function createProfitLossChart(data) {
     const ctx = document.getElementById('profitLossChart');
     if (!ctx) {
-        console.error('Profit/Loss chart canvas not found');
+
         return;
     }
 
@@ -262,7 +262,7 @@ function exportComprehensiveReport() {
             }
         },
         error: function(xhr, status, error) {
-            console.error('Error:', error);
+
             alert('error: ' + response.message);
         }
     });
@@ -317,7 +317,7 @@ function exportToExcel(type) {
             }
         },
         error: function(xhr, status, error) {
-            console.error('Error:', error);
+
             alert('error: ' + response.message);
         }
     });
@@ -333,11 +333,6 @@ function filterExpenses() {
     // Get the selected date range from the filter
     const filterStartDate = $('#filterStartDate').val() ? new Date($('#filterStartDate').val() + 'T00:00:00') : null;
     const filterEndDate = $('#filterEndDate').val() ? new Date($('#filterEndDate').val() + 'T23:59:59') : null;
-    
-    console.log('Filtering expenses with date range:', {
-        filterStartDate: filterStartDate ? filterStartDate.toISOString() : 'none',
-        filterEndDate: filterEndDate ? filterEndDate.toISOString() : 'none'
-    });
     
     // Make sure all categories are visible
     $('.category-section').show();
@@ -363,22 +358,16 @@ function filterExpenses() {
         const createdAtStr = $row.data('created');
         
         if (!createdAtStr) {
-            console.error('No created_at date found');
+
             $row.show(); // Show row with no date
             return;
         }
         
-        console.log('Row created_at:', createdAtStr);
+
         
         try {
             // Parse the created_at date
             const rowDate = new Date(createdAtStr);
-            
-            console.log('Comparing dates:', {
-                rowCreatedAt: rowDate.toISOString(),
-                filterStartDate: filterStartDate ? filterStartDate.toISOString() : 'none',
-                filterEndDate: filterEndDate ? filterEndDate.toISOString() : 'none'
-            });
             
             // Check date range against created_at date
             const dateMatch = (!filterStartDate || rowDate >= filterStartDate) && (!filterEndDate || rowDate <= filterEndDate);
@@ -390,7 +379,7 @@ function filterExpenses() {
                 $row.hide();
             }
         } catch (e) {
-            console.error('Error parsing created_at date:', e);
+
             $row.show(); // Show row with invalid date format
         }
     });
@@ -399,11 +388,6 @@ function filterExpenses() {
     $('.category-section').each(function() {
         const $section = $(this);
         const $visibleRows = $section.find('tbody tr:visible');
-        
-        console.log('Category visible rows:', {
-            category: $section.find('.category-header h6').text(),
-            visibleRows: $visibleRows.length
-        });
         
         // Always show the category, but show a message if no matching expenses
         if ($visibleRows.length === 0) {
@@ -443,7 +427,7 @@ function loadFinancialData() {
         },
         dataType: 'json',
         success: function(response) {
-            console.log('Financial data received:', response); // Debug log
+
             if(response.success) {
                 destroyExistingCharts(); // Destroy existing charts
 
@@ -478,11 +462,11 @@ function loadFinancialData() {
                 createExpenseChart(response.expenses);
                 createProfitLossChart(response.profitLoss);
             } else {
-                console.error('Error loading financial data:', response.message);
+
             }
         },
         error: function(xhr, status, error) {
-            console.error('Ajax error:', error);
+
         }
     });
 }

@@ -13,7 +13,7 @@
                 });
             })
             .catch(error => {
-                console.error('error_fetching_main_accounts:', error);
+
                 alert('error_fetching_main_accounts');
             });
     }
@@ -118,7 +118,7 @@
             }
         })
         .catch(error => {
-            console.error('error_withdrawing_funds:', error);
+
             alert('error_withdrawing_funds');
         });
     });

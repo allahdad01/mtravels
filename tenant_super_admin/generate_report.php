@@ -305,6 +305,7 @@ $tenant = $stmt->fetch(PDO::FETCH_ASSOC);
                     </div>
                 </div>
             </div>
+            <?php endif; ?>
 
             <!-- Top Suppliers -->
             <?php if (!empty($generated_report['top_suppliers'])): ?>

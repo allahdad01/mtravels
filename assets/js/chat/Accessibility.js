@@ -385,12 +385,12 @@ class Accessibility {
             }
         });
 
-        console.log('Accessibility Audit Results:');
+
         if (issues.length === 0) {
-            console.log('✅ No major accessibility issues found');
+
         } else {
-            console.warn(`⚠️ ${issues.length} accessibility issues found:`);
-            issues.forEach(issue => console.warn(`  - ${issue}`));
+
+
         }
 
         return issues;

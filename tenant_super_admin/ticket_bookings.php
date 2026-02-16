@@ -27,13 +27,14 @@ $query = "SELECT
     COALESCE(w.total_weight, 0) as total_weight_count,
     COALESCE(w.weight_count, 0) as weight_items_count
 FROM ticket_bookings tb
-LEFT JOIN users u ON tb.created_by = u.id
+LEFT JOIN users u ON tb.created_by = u.id AND u.tenant_id = tb.tenant_id
 LEFT JOIN branches b ON tb.branch_id = b.id
-LEFT JOIN refunded_tickets r ON tb.id = r.ticket_id
-LEFT JOIN date_change_tickets dc ON tb.id = dc.ticket_id
+LEFT JOIN refunded_tickets r ON tb.id = r.ticket_id AND r.tenant_id = tb.tenant_id
+LEFT JOIN date_change_tickets dc ON tb.id = dc.ticket_id AND dc.tenant_id = tb.tenant_id
 LEFT JOIN (
     SELECT ticket_id, COUNT(*) as weight_count, SUM(weight) as total_weight
     FROM ticket_weights
+    WHERE tenant_id = (SELECT tenant_id FROM ticket_bookings WHERE id = ticket_id LIMIT 1)
     GROUP BY ticket_id
 ) w ON tb.id = w.ticket_id
 WHERE tb.tenant_id = ?";
@@ -177,7 +178,7 @@ $branches = $branches_stmt->fetchAll(PDO::FETCH_ASSOC);
 
     .progress {
         border-radius: 15px;
-        overflow: hidden;
+        
         box-shadow: inset 0 1px 2px rgba(0,0,0,0.1);
     }
 
@@ -207,7 +208,7 @@ $branches = $branches_stmt->fetchAll(PDO::FETCH_ASSOC);
 
     .table-responsive {
         border-radius: 10px;
-        overflow: hidden;
+        
     }
 
     .table {

@@ -527,7 +527,8 @@ include '../includes/header.php';
 <!-- Chart.js -->
 <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
                             <!-- Required Js -->
-                            <script src="../assets/js/vendor-all.min.js"></script>
+                            
+    <script src="../assets/js/vendor-all.min.js"></script>
     <script src="../assets/plugins/bootstrap/js/bootstrap.min.js"></script>
     <script src="../assets/js/pcoded.min.js"></script>
 
@@ -586,19 +587,7 @@ const dailyChart = new Chart(document.getElementById('dailyChart'), {
     }
 });
 
-// Initialize DataTable
-$(document).ready(function() {
-    $('#emailsTable').DataTable({
-        responsive: true,
-        pageLength: 25,
-        order: [[0, 'desc']],
-        language: {
-            search: "Search emails:",
-            lengthMenu: "Show _MENU_ emails per page",
-            info: "Showing _START_ to _END_ of _TOTAL_ emails"
-        }
-    });
-});
+// DataTable removed
 </script>
 
 <?php include '../includes/admin_footer.php'; ?>

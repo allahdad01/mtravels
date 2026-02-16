@@ -5,7 +5,6 @@ let selectedPilgrims = [];
 
 // Function to select pilgrim for ID card (called from dropdown)
 function selectForIdCard(bookingId, pilgrName) {
-    console.log('Selecting pilgrim:', bookingId, pilgrName);
     
     // Check if pilgrim is already selected
     const existingIndex = selectedPilgrims.findIndex(p => p.id == bookingId);
@@ -13,7 +12,7 @@ function selectForIdCard(bookingId, pilgrName) {
     if (existingIndex > -1) {
         // Remove if already selected
         selectedPilgrims.splice(existingIndex, 1);
-        showToast('Pilgrim removed from ID card selection', 'info');
+        showToast('info', 'Pilgrim removed from ID card selection');
     } else {
         // Add if not selected and under limit
          if (selectedPilgrims.length >= 8) {
@@ -23,13 +22,38 @@ function selectForIdCard(bookingId, pilgrName) {
         
         selectedPilgrims.push({
             id: bookingId,
-            name: pilgrName
+            name: pilgrName,
+            photoPath: null,
+            visaPath: null
         });
-        showToast('Pilgrim selected for ID card generation', 'success');
+        
+        // Fetch member documents (photo and visa)
+        fetchMemberDocuments(bookingId);
+        
+        showToast('success', 'Pilgrim selected for ID card generation');
     }
     
     // Update UI
     updateIdCardSelection();
+}
+
+// Fetch member documents from the API
+function fetchMemberDocuments(bookingId) {
+    fetch(`../api/get_member_documents.php?booking_id=${bookingId}`)
+        .then(response => response.json())
+        .then(data => {
+            if (data.success) {
+                // Find the pilgrim and update their document paths
+                const pilgrim = selectedPilgrims.find(p => p.id == bookingId);
+                if (pilgrim) {
+                    pilgrim.photoPath = data.photo_path || null;
+                    pilgrim.visaPath = data.visa_path || null;
+                }
+                // Update UI to show document status
+                updatePhotoUploadContainer();
+            }
+        })
+        .catch(error => console.error('Error fetching member documents:', error));
 }
 
 // Function to update ID card selection UI
@@ -63,7 +87,7 @@ function updateIdCardSelection() {
     // Update photo upload container
     updatePhotoUploadContainer();
     
-    console.log('Selected pilgrims updated:', selectedPilgrims);
+
 }
 
 // Function to update selected pilgrims list display
@@ -115,14 +139,39 @@ function updatePhotoUploadContainer() {
     
     selectedPilgrims.forEach(pilgrim => {
         const photoDiv = document.createElement('div');
-        photoDiv.className = 'col-md-4 mb-3';
+        photoDiv.className = 'col-md-6 mb-3';
+        
+        // Check if photo exists from member documents
+        const hasPhoto = pilgrim.photoPath !== null && pilgrim.photoPath !== undefined;
+        const hasVisa = pilgrim.visaPath !== null && pilgrim.visaPath !== undefined;
+        
+        let photoStatus = '';
+        if (hasPhoto) {
+            photoStatus = `<div class="alert alert-success alert-sm mb-2">
+                <i class="feather icon-check-circle mr-1"></i>Photo from member documents
+            </div>`;
+        }
+        
+        let visaStatus = '';
+        if (hasVisa) {
+            visaStatus = `<div class="alert alert-success alert-sm mb-2">
+                <i class="feather icon-check-circle mr-1"></i>Visa from member documents
+            </div>`;
+        } else {
+            visaStatus = `<div class="alert alert-warning alert-sm mb-2">
+                <i class="feather icon-alert-triangle mr-1"></i>No visa document
+            </div>`;
+        }
+        
         photoDiv.innerHTML = `
             <div class="card">
-                <div class="card-body text-center">
+                <div class="card-body">
                     <h6 class="card-title">${pilgrim.name}</h6>
+                    ${photoStatus}
+                    ${visaStatus}
                     <div class="form-group">
-                        <label for="photo_${pilgrim.id}" class="btn btn-outline-primary btn-sm">
-                            <i class="feather icon-camera mr-1"></i>Upload Photo
+                        <label for="photo_${pilgrim.id}" class="btn btn-outline-primary btn-sm btn-block">
+                            <i class="feather icon-camera mr-1"></i>Upload Photo (Optional)
                         </label>
                         <input type="file" 
                                id="photo_${pilgrim.id}" 
@@ -169,7 +218,7 @@ document.addEventListener('DOMContentLoaded', function() {
     const showModalBtn = document.getElementById('showIdCardModal');
     if (showModalBtn) {
         showModalBtn.addEventListener('click', function() {
-            console.log('Opening ID card modal');
+
             $('#idCardModal').modal('show');
         });
     }
@@ -180,8 +229,8 @@ document.addEventListener('DOMContentLoaded', function() {
     const generateBtn = document.getElementById('generateIdCardsBtn');
     if (generateBtn) {
         generateBtn.addEventListener('click', function() {
-            console.log('Generate ID Cards button clicked');
-            console.log('Selected pilgrims:', selectedPilgrims);
+
+
             
             // Check if pilgrims are selected
             if (!selectedPilgrims || selectedPilgrims.length === 0) {
@@ -193,9 +242,9 @@ document.addEventListener('DOMContentLoaded', function() {
             const selectedPilgrimsInput = document.getElementById('selectedPilgrimsInput');
             if (selectedPilgrimsInput) {
                 selectedPilgrimsInput.value = JSON.stringify(selectedPilgrims);
-                console.log('Updated hidden input:', selectedPilgrimsInput.value);
+
             } else {
-                console.error('selectedPilgrimsInput element not found');
+
                 showToast('error', 'Form element not found. Please refresh the page.');
                 return;
             }
@@ -248,7 +297,7 @@ document.addEventListener('DOMContentLoaded', function() {
 function submitIdCardForm() {
     const form = document.getElementById('idCardForm');
     if (!form) {
-        console.error('ID Card form not found');
+
         showToast('error', 'Form not found. Please refresh the page and try again.');
         return;
     }
@@ -257,7 +306,7 @@ function submitIdCardForm() {
         // Show loading indicator
         showToast('info', 'Generating ID Cards... Please wait.');
         
-        console.log('Submitting form...');
+
         
         // Submit the form
         form.submit();
@@ -276,7 +325,7 @@ function submitIdCardForm() {
         }, 2000);
         
     } catch (error) {
-        console.error('Error submitting form:', error);
+
         showToast('error', 'An error occurred while generating ID cards. Please try again.');
     }
 }
@@ -284,7 +333,7 @@ function submitIdCardForm() {
 // Helper function to show toast messages
 function showToast(message, type = 'info') {
     // You can replace this with your preferred toast notification system
-    console.log(`Toast [${type}]: ${message}`);
+
     
     // If you have a toast system, use it here
     // For now, we'll use a simple alert for critical messages
@@ -295,7 +344,7 @@ function showToast(message, type = 'info') {
 
 // Initialize the system when page loads
 document.addEventListener('DOMContentLoaded', function() {
-    console.log('ID Card system initialized');
+
     
     // Make sure selectedPilgrims is available globally
     window.selectedPilgrims = selectedPilgrims;
@@ -309,10 +358,10 @@ document.addEventListener('DOMContentLoaded', function() {
 
 // Debug function for testing
 window.debugIdCard = function() {
-    console.log('=== ID Card Debug Info ===');
-    console.log('Selected pilgrims:', selectedPilgrims);
-    console.log('Floating button:', document.getElementById('idCardFloatingButton'));
-    console.log('Generate button:', document.getElementById('generateIdCardsBtn'));
-    console.log('Form:', document.getElementById('idCardForm'));
-    console.log('Hidden input:', document.getElementById('selectedPilgrimsInput'));
+
+
+
+
+
+
 };

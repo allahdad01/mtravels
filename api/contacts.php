@@ -166,7 +166,8 @@ $contacts = array_map(function($r) use ($currentUserId, $pdo, $tenantId) {
     );
     $unreadCount = $unreadStmt ? (int)$unreadStmt->fetchColumn() : 0;
 
-    $photo = !empty($r['profile_pic']) ? ('assets/images/user/' . $r['profile_pic']) : null;
+    // Store only the filename - frontend will construct the full path
+    $photo = !empty($r['profile_pic']) ? $r['profile_pic'] : null;
 
     return [
         'id' => (int)$r['id'],

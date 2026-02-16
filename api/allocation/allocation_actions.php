@@ -99,6 +99,7 @@ if (isset($_POST['action'])) {
 // Create a new budget allocation
 function createAllocation($pdo) {
     $tenant_id = $_SESSION['tenant_id'];
+    $branch_id = $_SESSION['branch_id'];
     try {
         // Validate inputs
         $mainAccountId = isset($_POST['main_account_id']) ? intval($_POST['main_account_id']) : 0;
@@ -154,22 +155,23 @@ function createAllocation($pdo) {
         $updateAccountStmt->execute([$amount, $mainAccountId, $tenant_id, $branch_id]);
 
         // Create allocation
-        $allocationStmt = $pdo->prepare("
-            INSERT INTO budget_allocations
-            (main_account_id, category_id, allocated_amount, remaining_amount, currency, allocation_date, description, tenant_id, branch_id)
-            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
-        ");
-        $allocationStmt->execute([
-            $mainAccountId,
-            $categoryId,
-            $amount,
-            $amount, // Initially, remaining amount equals allocated amount
-            $currency,
-            $date,
-            $description,
-            $tenant_id,
-            $branch_id
-        ]);
+         $allocationStmt = $pdo->prepare("
+             INSERT INTO budget_allocations
+             (main_account_id, category_id, allocated_amount, remaining_amount, currency, allocation_date, description, created_by, tenant_id, branch_id)
+             VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+         ");
+         $allocationStmt->execute([
+             $mainAccountId,
+             $categoryId,
+             $amount,
+             $amount, // Initially, remaining amount equals allocated amount
+             $currency,
+             $date,
+             $description,
+             $_SESSION['user_id'],
+             $tenant_id,
+             $branch_id
+         ]);
         
         $allocationId = $pdo->lastInsertId();
 
@@ -521,6 +523,7 @@ function getCategoryName($pdo, $categoryId) {
 // Add funds to an existing allocation
 function addFunds($pdo) {
     $tenant_id = $_SESSION['tenant_id'];
+    $branch_id = $_SESSION['branch_id'];
     try {
         // Validate inputs
         $allocationId = isset($_POST['allocation_id']) ? intval($_POST['allocation_id']) : 0;

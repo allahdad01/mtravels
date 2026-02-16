@@ -335,15 +335,18 @@ foreach ($visas as $key => $visa) {
                                                                             </button>
                                                                             <button class="dropdown-item" 
                                                                                     onclick="openCancellationModal(<?= $visa['id'] ?>, '<?= htmlspecialchars($visa['applicant_name']) ?>', '<?= htmlspecialchars($visa['status']) ?>')">
-                                                                                <i class="feather icon-x-circle text-danger mr-2"></i> <?= __('cancel_visa') ?>
-                                                                            </button>
-                                                                            <?php if (in_array(strtolower($visa['status']), ['cancelled', 'rejected', 'withdrawn'])): ?>
-                                                                            <button class="dropdown-item" 
-                                                                                    onclick="openReapplyModal(<?= $visa['id'] ?>, '<?= htmlspecialchars($visa['applicant_name']) ?>', <?= htmlspecialchars($visa['profit']) ?>, <?= htmlspecialchars($visa['base']) ?>, <?= htmlspecialchars($visa['sold']) ?>, '<?= htmlspecialchars($visa['currency']) ?>')">
-                                                                                <i class="feather icon-refresh-ccw text-success mr-2"></i> <?= __('re_apply_visa') ?>
-                                                                            </button>
-                                                                            <?php endif; ?>
-                                                                            <div class="dropdown-divider"></div>
+                                                                                 <i class="feather icon-x-circle text-danger mr-2"></i> <?= __('cancel_visa') ?>
+                                                                             </button>
+                                                                             <?php if (in_array(strtolower($visa['status']), ['cancelled', 'rejected', 'withdrawn'])): ?>
+                                                                             <button class="dropdown-item" 
+                                                                                     onclick="openReapplyModal(<?= $visa['id'] ?>, '<?= htmlspecialchars($visa['applicant_name']) ?>', <?= htmlspecialchars($visa['profit']) ?>, <?= htmlspecialchars($visa['base']) ?>, <?= htmlspecialchars($visa['sold']) ?>, '<?= htmlspecialchars($visa['currency']) ?>')">
+                                                                                 <i class="feather icon-refresh-ccw text-success mr-2"></i> <?= __('re_apply_visa') ?>
+                                                                             </button>
+                                                                             <?php endif; ?>
+                                                                             <button class="dropdown-item" data-action="upload-docs" data-visa-id="<?= $visa['id'] ?>">
+                                                                                 <i class="feather icon-upload text-info mr-2"></i> <?= __('documents') ?>
+                                                                             </button>
+                                                                             <div class="dropdown-divider"></div>
                                                                             <button class="dropdown-item text-danger" onclick="deleteVisa(<?= $visa['id'] ?>)">
                                                                                 <i class="feather icon-trash-2 mr-2"></i> <?= __('delete') ?>
                                                                             </button>
@@ -548,8 +551,10 @@ foreach ($visas as $key => $visa) {
     <?php include '../modals/visa/cancellation_modal.php'; ?>
     <?php include '../modals/visa/reapply_modal.php'; ?>
     <?php include '../modals/visa/multi_visa_modal.php'; ?>
+    <?php include '../modals/visa/documents_modal.php'; ?>
     <?php include '../modals/visa/transaction_modal.php'; ?>
     <?php include '../modals/visa/edit_transaction_modal.php'; ?>
+
     
     
 
@@ -661,6 +666,7 @@ foreach ($visas as $key => $visa) {
          <script src="../js/visa/search.js"></script>
          <script src="../js/visa/cancel_reapply.js"></script>
          <script src="../js/visa/toast.js"></script>
+         <script src="../js/visa/document_manager.js"></script>
 
 
 </body>

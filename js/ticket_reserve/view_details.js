@@ -2,7 +2,7 @@
 $(document).on('click', '.view-details', function() {
     var ticketData = $(this).data('ticket');
 
-    console.log(ticketData);  // Log ticket data for debugging
+
      if (!ticketData || !ticketData.ticket || !ticketData.ticket.id) {
         alert('Ticket data or ID is missing!');
         return;

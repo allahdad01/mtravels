@@ -44,7 +44,7 @@ $(document).ready(function() {
                 }
             },
             error: function(xhr, status, error) {
-                console.error(error);
+
                 alert("An error occurred while processing your request.");
             }
         });

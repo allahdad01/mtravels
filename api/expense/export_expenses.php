@@ -6,14 +6,25 @@ $branch_id = $_SESSION['branch_id'];
 // Enforce authentication
 enforce_auth();
 
+// Load input validation helper
+require_once '../../includes/InputValidator.php';
+
 require_once('../../includes/db.php');
 header('Content-Type: application/json');
 $branch_id = $_SESSION['branch_id'];
 
 try {
-    // Get date range from request
-    $startDate = $_GET['startDate'] ?? date('Y-m-01');
-    $endDate = $_GET['endDate'] ?? date('Y-m-t');
+    // Get date range from request - validate date format
+    $startDate = InputValidator::getDate(
+        $_GET['startDate'] ?? '',
+        'Y-m-d',
+        date('Y-m-01')
+    );
+    $endDate = InputValidator::getDate(
+        $_GET['endDate'] ?? '',
+        'Y-m-d',
+        date('Y-m-t')
+    );
 
     // Fetch expenses with category and main account information
     $stmt = $pdo->prepare("

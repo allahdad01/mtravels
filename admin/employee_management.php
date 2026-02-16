@@ -233,7 +233,7 @@ include '../includes/header.php';
                                                             <?php foreach ($active_employees as $employee): ?>
                                                                 <tr>
                                                                     <td>
-                                                                        <img src="../assets/images/user/<?= htmlspecialchars($employee['profile_pic'] ?? 'default-avatar.jpg') ?>"
+                                                                        <img src="../assets/images/user/<?= htmlspecialchars(basename($employee['profile_pic'] ?? 'default-avatar.jpg')) ?>"
                                                                               class="user-avatar" style="width: 40px !important; height: 40px !important;" alt="User Avatar">
                                                                     </td>
                                                                     <td>
@@ -320,7 +320,7 @@ include '../includes/header.php';
                                                             <?php foreach ($fired_employees as $employee): ?>
                                                                 <tr class="table-danger">
                                                                     <td>
-                                                                        <img src="../assets/images/user/<?= htmlspecialchars($employee['profile_pic'] ?? 'default-avatar.jpg') ?>"
+                                                                        <img src="../assets/images/user/<?= htmlspecialchars(basename($employee['profile_pic'] ?? 'default-avatar.jpg')) ?>"
                                                                               class="user-avatar" style="width: 40px !important; height: 40px !important;" alt="User Avatar">
                                                                     </td>
                                                                     <td>
@@ -422,15 +422,11 @@ include '../includes/header.php';
     <?php include '../modals/employee/termination_modal.php'; ?>
         <!-- Required Js -->
         <script src="../assets/js/vendor-all.min.js"></script>
-    <script src="../assets/plugins/bootstrap/js/bootstrap.min.js"></script>
-    <script src="../assets/js/pcoded.min.js"></script>
+        <script src="../assets/plugins/bootstrap/js/bootstrap.min.js"></script>
+        <script src="../assets/js/pcoded.min.js"></script>
 
-    <!-- DataTables JS -->
-    <script src="https://cdn.datatables.net/1.11.5/js/jquery.dataTables.min.js"></script>
-    <script src="https://cdn.datatables.net/1.11.5/js/dataTables.bootstrap4.min.js"></script>
-    <script src="https://cdn.datatables.net/responsive/2.2.9/js/dataTables.responsive.min.js"></script>
-    <script src="https://cdn.datatables.net/responsive/2.2.9/js/responsive.bootstrap4.min.js"></script>
-    <!-- Employee Management JS -->
+        <!-- DataTables removed - using server-side PHP filtering instead -->
+        <!-- Employee Management JS -->
     <script src="../js/employee/employee_management.js"></script>
 
 <?php include '../includes/admin_footer.php'; ?>

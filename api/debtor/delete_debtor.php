@@ -1,12 +1,15 @@
 <?php
 // Include database security module for input validation
-require_once 'includes/db_security.php';
+require_once '../admin/includes/db_security.php';
 
 // Include security module
-require_once 'security.php';
+require_once '../admin/security.php';
 
 // Include language helper
 require_once '../includes/language_helpers.php';
+
+// Load input validation helper
+require_once '../includes/InputValidator.php';
 
 // Enforce authentication
 enforce_auth();
@@ -28,7 +31,7 @@ require_once '../includes/db.php';
 
 // Handle debtor deletion via AJAX
 if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['delete_debtor'])) {
-    $debtor_id = $_POST['debtor_id'];
+    $debtor_id = InputValidator::getInt($_POST['debtor_id'] ?? '', 0, 1);
 
     try {
         // Get debtor information

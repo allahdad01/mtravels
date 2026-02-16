@@ -37,7 +37,7 @@ class ChatManager {
             
             return true;
         } catch (error) {
-            console.error('[ChatManager] Initialization failed:', error);
+
             return false;
         }
     }
@@ -55,7 +55,7 @@ class ChatManager {
             this.settings = await response.json();
             return this.settings;
         } catch (error) {
-            console.error('[ChatManager] Failed to load settings:', error);
+
             this.settings = this.getDefaultSettings();
             return this.settings;
         }
@@ -75,7 +75,7 @@ class ChatManager {
             this.contacts = data.contacts || [];
             return this.contacts;
         } catch (error) {
-            console.error('[ChatManager] Failed to load contacts:', error);
+
             return [];
         }
     }
@@ -95,7 +95,7 @@ class ChatManager {
             this.preferences.muted = new Set(data.muted || []);
             return this.preferences;
         } catch (error) {
-            console.error('[ChatManager] Failed to load preferences:', error);
+
             return this.preferences;
         }
     }
@@ -122,7 +122,7 @@ class ChatManager {
                 contact.typing = this.typingUsers.has(contact.id);
             });
             
-            console.log('[ChatManager] Online users:', Array.from(this.onlineUsers));
+
             
             // Dispatch event so UI can update
             window.dispatchEvent(new CustomEvent('userStatusUpdated', { 
@@ -131,7 +131,7 @@ class ChatManager {
             
             return { online: this.onlineUsers, typing: this.typingUsers };
         } catch (error) {
-            console.warn('[ChatManager] Failed to load user status:', error);
+
             return { online: new Set(), typing: new Set() };
         }
     }
@@ -151,7 +151,7 @@ class ChatManager {
             this.messages.set(contactId, data.messages || []);
             return this.getMessages(contactId);
         } catch (error) {
-            console.error('[ChatManager] Failed to load messages:', error);
+
             return [];
         }
     }
@@ -167,7 +167,8 @@ class ChatManager {
                 headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
                 body: new URLSearchParams({
                     to_user_id: contactId,
-                    content: content
+                    content: content,
+                    csrf_token: window.csrfToken || ''
                 })
             });
             
@@ -176,7 +177,7 @@ class ChatManager {
             const data = await response.json();
             return data;
         } catch (error) {
-            console.error('[ChatManager] Failed to send message:', error);
+
             throw error;
         }
     }
@@ -236,7 +237,8 @@ class ChatManager {
                 headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
                 body: new URLSearchParams({
                     action: 'block',
-                    target_id: userId
+                    target_id: userId,
+                    csrf_token: window.csrfToken || ''
                 })
             });
             
@@ -245,7 +247,7 @@ class ChatManager {
                 return true;
             }
         } catch (error) {
-            console.error('[ChatManager] Failed to block user:', error);
+
         }
         return false;
     }
@@ -261,7 +263,8 @@ class ChatManager {
                 headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
                 body: new URLSearchParams({
                     action: 'unblock',
-                    target_id: userId
+                    target_id: userId,
+                    csrf_token: window.csrfToken || ''
                 })
             });
             
@@ -270,7 +273,7 @@ class ChatManager {
                 return true;
             }
         } catch (error) {
-            console.error('[ChatManager] Failed to unblock user:', error);
+
         }
         return false;
     }
@@ -286,7 +289,8 @@ class ChatManager {
                 headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
                 body: new URLSearchParams({
                     action: 'mute',
-                    target_id: userId
+                    target_id: userId,
+                    csrf_token: window.csrfToken || ''
                 })
             });
             
@@ -295,7 +299,7 @@ class ChatManager {
                 return true;
             }
         } catch (error) {
-            console.error('[ChatManager] Failed to mute user:', error);
+
         }
         return false;
     }
@@ -311,7 +315,8 @@ class ChatManager {
                 headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
                 body: new URLSearchParams({
                     action: 'unmute',
-                    target_id: userId
+                    target_id: userId,
+                    csrf_token: window.csrfToken || ''
                 })
             });
             
@@ -320,7 +325,7 @@ class ChatManager {
                 return true;
             }
         } catch (error) {
-            console.error('[ChatManager] Failed to unmute user:', error);
+
         }
         return false;
     }
@@ -336,11 +341,12 @@ class ChatManager {
                 headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
                 body: new URLSearchParams({
                     peer_id: contactId,
-                    typing: isTyping ? '1' : '0'
+                    typing: isTyping ? '1' : '0',
+                    csrf_token: window.csrfToken || ''
                 })
             });
         } catch (error) {
-            console.warn('[ChatManager] Failed to update typing status:', error);
+
         }
     }
 
@@ -348,20 +354,21 @@ class ChatManager {
      * Mark messages as read
      */
     async markAsRead(contactId) {
-        try {
-            await fetch('api/messages.php', {
-                method: 'POST',
-                credentials: 'include',
-                headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
-                body: new URLSearchParams({
-                    action: 'mark_seen',
-                    peer_id: contactId
-                })
-            });
-        } catch (error) {
-            console.warn('[ChatManager] Failed to mark messages as read:', error);
-        }
-    }
+         try {
+             await fetch('api/messages.php', {
+                 method: 'POST',
+                 credentials: 'include',
+                 headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+                 body: new URLSearchParams({
+                     action: 'mark_seen',
+                     peer_id: contactId,
+                     csrf_token: window.csrfToken || ''
+                 })
+             });
+         } catch (error) {
+
+         }
+     }
 
     /**
      * Get default settings

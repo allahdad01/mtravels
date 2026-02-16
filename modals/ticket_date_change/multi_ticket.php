@@ -37,7 +37,7 @@
                         <select class="form-control" id="clientFilter" name="clientFilter">
                             <option value=""><?= __('all_clients') ?></option>
                             <?php
-                            if ($clients) {
+                            if (!empty($clients)) {
                                 foreach ($clients as $client) {
                                     echo '<option value="' . htmlspecialchars($client['name']) . '">' .
                                          htmlspecialchars($client['name']) . '</option>';

@@ -31,7 +31,7 @@ document.addEventListener('DOMContentLoaded', function () {
                 }
             })
             .catch(error => {
-                console.error('Error adding main account:', error);
+
                 showErrorToast('An unexpected error occurred while adding the account.');
             });
         });
@@ -108,7 +108,7 @@ document.addEventListener('DOMContentLoaded', function () {
                     }
                 })
                 .catch(error => {
-                    console.error('Error fetching account details:', error);
+
                     showErrorToast('Failed to load account details. Please try again.');
                 });
         });
@@ -156,7 +156,7 @@ document.addEventListener('DOMContentLoaded', function () {
                 saveButton.disabled = false;
                 saveButton.innerHTML = '<i class="feather icon-save mr-1"></i> Save Changes';
                 
-                console.error('Error updating account:', error);
+
                 showErrorToast('An error occurred while updating the account. Please try again.');
             });
         });
@@ -281,7 +281,7 @@ document.addEventListener('DOMContentLoaded', function () {
                         }
                     })
                     .catch(error => {
-                        console.error('Error:', error);
+
                         showErrorToast('An error occurred while processing the payment');
                     });
                 });
@@ -325,7 +325,7 @@ document.addEventListener('DOMContentLoaded', function() {
             try {
                 $('#partialPaymentModal').modal('show');
             } catch (error) {
-                console.error('Error showing modal:', error);
+
             }
         });
     });
@@ -501,7 +501,8 @@ $(document).ready(function() {
 
 // Debug function to log filter values
 function logFilterValues(type, currency, receipt, dateRange) {
-    console.log(`Filtering ${type} transactions:`, {
+    console.log({
+        type: type,
         currency: currency,
         receipt: receipt,
         dateRange: dateRange
@@ -550,7 +551,7 @@ function filterMainAccountTransactions() {
         }
     });
     
-    console.log(`Filtered main account transactions: ${matchedRows}/${totalRows} rows matched`);
+
     
     // Show or hide the "no transactions" message
     if (hasVisibleRows) {
@@ -602,7 +603,7 @@ function filterClientTransactions() {
         }
     });
     
-    console.log(`Filtered client transactions: ${matchedRows}/${totalRows} rows matched`);
+
     
     // Show or hide the "no transactions" message
     if (hasVisibleRows) {
@@ -650,7 +651,7 @@ function filterSupplierTransactions() {
         }
     });
     
-    console.log(`Filtered supplier transactions: ${matchedRows}/${totalRows} rows matched`);
+
     
     // Show or hide the "no transactions" message
     if (hasVisibleRows) {
@@ -719,7 +720,7 @@ function initializeDateRangePicker(selector, filterFunction) {
             filterFunction();
         });
     } else {
-        console.error('daterangepicker plugin not found');
+
     }
 } // Function to setup and show the bonus modal
 function setupBonusModal(supplierId, supplierName, supplierCurrency) {

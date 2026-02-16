@@ -2,7 +2,7 @@
     function formatDateISO(date) {
         // Check if date is undefined or null
         if (!date) {
-            console.error('formatDateISO received undefined or null date');
+
             return '';
         }
         const year = date.getFullYear();
@@ -22,13 +22,6 @@
     $('#startDate').val(formatDateISO(firstDay));
     $('#endDate').val(formatDateISO(lastDay));
     
-    console.log('Initial date range:', {
-        startDate: formatDateISO(firstDay),
-        endDate: formatDateISO(lastDay),
-        startDay: firstDay.getDate(),
-        endDay: lastDay.getDate()
-    });
-    
     // Debug function to validate date format
     function validateDateRange() {
         const startDate = $('#startDate').val();
@@ -37,13 +30,6 @@
         // Check if the start date is the first day of the month
         const startDateObj = new Date(startDate);
         const isFirstDay = startDateObj.getDate() === 1;
-        
-        console.log('Current date range:', {
-            startDate,
-            endDate,
-            isFirstDayOfMonth: isFirstDay,
-            startDateObj
-        });
         
         return isFirstDay;
     }
@@ -83,12 +69,6 @@
                 startDate = new Date(today.getFullYear(), today.getMonth(), 1);
                 // Last day of current month
                 endDate = new Date(today.getFullYear(), today.getMonth() + 1, 0);
-                console.log('Month date range:', {
-                    startDate: formatDateISO(startDate),
-                    endDate: formatDateISO(endDate),
-                    startDay: startDate.getDate(),
-                    endDay: endDate.getDate()
-                });
                 break;
             case 'quarter':
                 const quarter = Math.floor(today.getMonth() / 3);
@@ -108,14 +88,6 @@
         // Use our custom formatting function
         $('#startDate').val(formatDateISO(startDate));
         $('#endDate').val(formatDateISO(endDate));
-        
-        console.log('Selected date range:', {
-            range: range,
-            startDate: formatDateISO(startDate),
-            endDate: formatDateISO(endDate),
-            startDay: startDate.getDate(),
-            endDay: endDate.getDate()
-        });
         
         // Make the current selection button active
         $('.btn-group .btn').removeClass('active');
@@ -148,13 +120,6 @@
         // Use our custom formatting function
         $('#startDate').val(formatDateISO(firstDay));
         $('#endDate').val(formatDateISO(lastDay));
-        
-        console.log('Reset date range:', {
-            startDate: formatDateISO(firstDay),
-            endDate: formatDateISO(lastDay),
-            startDay: firstDay.getDate(),
-            endDay: lastDay.getDate()
-        });
         
         // Clear any active button state
         $('.btn-group .btn').removeClass('active');

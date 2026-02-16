@@ -1,0 +1,45 @@
+# Uploads Directory Security Configuration
+
+# Disable directory listing - CRITICAL for security
+Options -Indexes
+
+# Prevent PHP execution in uploads directory
+<FilesMatch "\.(php|php5|php7|phtml|pht|phps|shtml|ctp|inc)$">
+    <IfModule mod_authz_core.c>
+        Require all denied
+    </IfModule>
+    <IfModule !mod_authz_core.c>
+        Order Allow,Deny
+        Deny from all
+    </IfModule>
+</FilesMatch>
+
+# Set default DirectoryIndex to index.php
+DirectoryIndex index.php
+
+# Allow image files (commonly uploaded)
+<FilesMatch "\.(jpg|jpeg|png|gif|webp|svg|bmp|ico)$">
+    Allow from all
+</FilesMatch>
+
+# Allow document files
+<FilesMatch "\.(pdf|doc|docx|xls|xlsx|ppt|pptx|txt|csv|zip)$">
+    Allow from all
+</FilesMatch>
+
+# Add proper MIME types
+AddType image/jpeg .jpg .jpeg
+AddType image/png .png
+AddType image/gif .gif
+AddType image/webp .webp
+AddType application/pdf .pdf
+AddType text/plain .txt .csv
+
+# Cache static files
+<IfModule mod_expires.c>
+    ExpiresActive On
+    ExpiresByType image/jpeg "access plus 1 month"
+    ExpiresByType image/png "access plus 1 month"
+    ExpiresByType image/gif "access plus 1 month"
+    ExpiresByType application/pdf "access plus 1 week"
+</IfModule>

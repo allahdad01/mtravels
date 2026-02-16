@@ -179,14 +179,14 @@
                     }
 
                 } catch(e) {
-                    console.error('Error parsing transactions:', e);
+                    console.log(e);
                     $('#transactionTableBody').html('<tr><td colspan="6" class="text-center">error_loading_transactions</td></tr>');
                     $('#exchangeRateDisplay').text('Error loading exchange rates');
                     $('#exchangedAmount').text('Error calculating amounts');
                 }
             },
             error: function(xhr, status, error){
-                console.error('Error loading transactions:', error);
+                console.log({status, error});
                 $('#transactionTableBody').html('<tr><td colspan="6" class="text-center">error_loading_transactions</td></tr>');
                 $('#exchangeRateDisplay').text('Error loading exchange rates');
                 $('#exchangedAmount').text('Error calculating amounts');
@@ -241,7 +241,7 @@
                         alert('error_adding_transaction: ' + (result.message || 'unknown_error'));
                     }
                 } catch (e) {
-                    console.error('Error parsing response:', e);
+                    console.log(e);
                     alert('error_processing_the_request');
                 } finally {
                     submitButton.prop('disabled', false);
@@ -249,7 +249,7 @@
                 }
             },
             error: function(xhr, status, error) {
-                console.error('AJAX Error:', error);
+                console.log({status, error});
                 alert('error_adding_transaction');
                 submitButton.prop('disabled', false);
                 submitButton.html('<i class="feather icon-check mr-1"></i>add_transaction');
@@ -327,12 +327,12 @@
                         alert('error_deleting_transaction: ' + (result.message || 'unknown_error'));
                     }
                 } catch (e) {
-                    console.error('Error parsing response:', e);
+                    console.log(e);
                     alert('error_processing_the_request');
                 }
             },
             error: function(xhr, status, error) {
-                console.error('AJAX Error:', error);
+                console.log({status, error});
                 alert('error_deleting_transaction');
             }
         });
@@ -406,15 +406,15 @@ $(document).on('submit', '#editTransactionForm', function(e) {
                     alert('error_updating_transaction: ' + (result.message || 'unknown_error'));
                 }
             } catch (e) {
-                console.error('Error parsing response:', e);
+                console.log(e);
                 alert('error_processing_the_request');
             } finally {
                 submitButton.prop('disabled', false);
                 submitButton.html('<i class="feather icon-save mr-1"></i>save_changes');
             }
-        },
-        error: function(xhr, status, error) {
-            console.error('AJAX Error:', error);
+            },
+            error: function(xhr, status, error) {
+            console.log({status, error});
             alert('error_updating_transaction');
             submitButton.prop('disabled', false);
             submitButton.html('<i class="feather icon-save mr-1"></i>save_changes');

@@ -64,42 +64,15 @@ if ($tenant_id) {
          
          if ($row) {
              $allowed_features = json_decode($row['features'], true) ?? [];
-             
-             // Debug: Log the features for troubleshooting
-             error_log("Tenant ID: " . $tenant_id);
-             error_log("Features JSON: " . $row['features']);
-             error_log("Parsed Features: " . print_r($allowed_features, true));
-         } else {
-             // Debug: Log if no subscription found
-             error_log("No active subscription found for tenant: " . $tenant_id);
-             
-             // Check if tenant exists in tenant_subscriptions
-             $debug_query = "SELECT * FROM tenant_subscriptions WHERE tenant_id = ?";
-             $debug_stmt = $pdo->prepare($debug_query);
-             $debug_stmt->execute([$tenant_id]);
-             
-             if ($debug_stmt->rowCount() === 0) {
-                 error_log("No subscriptions found for tenant: " . $tenant_id);
-             } else {
-                 error_log("Found subscriptions but none active for tenant: " . $tenant_id);
-                 while ($debug_row = $debug_stmt->fetch(PDO::FETCH_ASSOC)) {
-                     error_log("Subscription: " . print_r($debug_row, true));
-                 }
-             }
          }
      } catch (PDOException $e) {
-         error_log("Database Error: " . $e->getMessage());
+         // Database error - fallback to empty features
      }
- } else {
-     error_log("Tenant ID is empty or null");
  }
 
 // Helper function to check if a feature is allowed
 function hasFeature($feature, $allowed_features) {
-    $hasIt = in_array($feature, $allowed_features);
-    // Debug: Log feature checks
-    error_log("Checking feature '$feature': " . ($hasIt ? 'ALLOWED' : 'DENIED'));
-    return $hasIt;
+    return in_array($feature, $allowed_features);
 }
 
 // Fetch settings data
@@ -107,9 +80,9 @@ try {
     $settingStmt = $pdo->prepare("SELECT * FROM settings WHERE tenant_id = ?");
     $settingStmt->execute([$tenant_id]);
     $settings = $settingStmt->fetch(PDO::FETCH_ASSOC);
-} catch (PDOException $e) {
-    error_log("Settings Error: " . $e->getMessage());
-}
+    } catch (PDOException $e) {
+    // Settings error - continue with defaults
+    }
 
 // Get the user ID from the session
 $user_id = $_SESSION["user_id"];
@@ -122,14 +95,7 @@ $session_timeout = 1800; // 30 minutes in seconds
 $remaining_time = isset($_SESSION['login_time']) ? $session_timeout - (time() - $_SESSION['login_time']) : $session_timeout;
 $remaining_time = max(0, $remaining_time); // Ensure non-negative
 
-// Debug output for development (remove in production)
-if (isset($_GET['debug'])) {
-    echo "<pre>";
-    echo "Tenant ID: " . $tenant_id . "\n";
-    echo "Allowed Features: " . print_r($allowed_features, true) . "\n";
-    echo "</pre>";
-    exit();
-}
+
 ?>
 
 
@@ -182,18 +148,8 @@ if (isset($_GET['debug'])) {
     <!-- vendor css -->
     <link rel="stylesheet" href="../assets/css/style.css">
 
-    <!-- jQuery (required for DataTables and DateRangePicker) -->
+    <!-- jQuery (required for DateRangePicker) -->
     <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
-
-    <!-- DataTables CSS -->
-    <link rel="stylesheet" type="text/css" href="https://cdn.datatables.net/1.11.5/css/dataTables.bootstrap4.min.css">
-    <link rel="stylesheet" type="text/css" href="https://cdn.datatables.net/responsive/2.2.9/css/responsive.bootstrap4.min.css">
-    
-        <!-- DataTables JS -->
-        <script src="https://cdn.datatables.net/1.11.5/js/jquery.dataTables.min.js"></script>
-        <script src="https://cdn.datatables.net/1.11.5/js/dataTables.bootstrap4.min.js"></script>
-        <script src="https://cdn.datatables.net/responsive/2.2.9/js/dataTables.responsive.min.js"></script>
-        <script src="https://cdn.datatables.net/responsive/2.2.9/js/responsive.bootstrap4.min.js"></script>
     
         <!-- Chart.js for data visualization -->
         <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
@@ -1897,7 +1853,6 @@ document.addEventListener('DOMContentLoaded', function() {
         mobileToggle.addEventListener('click', function(e) {
             e.preventDefault();
             e.stopPropagation();
-            console.log('Mobile menu toggle clicked');
 
             // Check if we're on mobile (screen width < 992px)
             if (window.innerWidth < 992) {

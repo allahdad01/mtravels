@@ -1,7 +1,7 @@
 // Budget Allocation Event Handlers
 
 $(document).ready(function() {
-    console.log('Setting up allocation event handlers');
+
     
     // Create budget allocation form submission
     $('#allocationForm').on('submit', function(e) {
@@ -30,7 +30,7 @@ $(document).ready(function() {
                 }
             })
             .fail(function(xhr, status, error) {
-                console.error('Error:', error);
+
                 alert('An error occurred while creating the allocation');
             })
             .always(function() {
@@ -40,14 +40,84 @@ $(document).ready(function() {
             });
     });
     
+    // View funds for allocation button click
+    $(document).on('click', '.view-funds', function(e) {
+        e.preventDefault();
+        
+        const allocationId = $(this).data('id');
+        
+        // Show loading state
+        const button = $(this);
+        const originalText = button.html();
+        button.html('<i class="fas fa-spinner fa-spin mr-1"></i>Loading...');
+        button.prop('disabled', true);
+        
+        getFundTransactions(allocationId)
+            .done(function(response) {
+                if (response.success) {
+                    const allocation = response.allocation;
+                    const transactions = response.transactions || [];
+                    
+                    // Update allocation details
+                    $('#funds-allocation-category').text(allocation.category_name);
+                    $('#funds-allocation-account').text(allocation.account_name);
+                    $('#funds-allocation-date').text(new Date(allocation.allocation_date).toLocaleDateString());
+                    $('#funds-allocation-amount').text(`${allocation.allocated_amount} ${allocation.currency}`);
+                    $('#funds-allocation-remaining').text(`${allocation.remaining_amount} ${allocation.currency}`);
+                    
+                    // Clear and populate funds table
+                    const tbody = $('#funds-table-body');
+                    tbody.empty();
+                    
+                    if (transactions.length > 0) {
+                        transactions.forEach(transaction => {
+                            const row = `
+                                <tr>
+                                    <td>${new Date(transaction.created_at).toLocaleDateString()}</td>
+                                    <td>${transaction.description}</td>
+                                    <td>${transaction.amount} ${transaction.currency}</td>
+                                    <td><span class="badge-${transaction.type === 'credit' ? 'success' : 'danger'}">${transaction.type}</span></td>
+                                    <td>
+                                        <button class="btn btn-sm btn-danger delete-fund-transaction" data-id="${transaction.id}" data-allocation-id="${allocationId}">
+                                            <i class="feather icon-trash-2"></i>
+                                        </button>
+                                    </td>
+                                </tr>
+                            `;
+                            tbody.append(row);
+                        });
+                        
+                        $('.funds-list').show();
+                        $('#no-funds-message').hide();
+                    } else {
+                        $('.funds-list').hide();
+                        $('#no-funds-message').show();
+                    }
+                    
+                    // Show modal
+                    $('#viewFundsModal').modal('show');
+                } else {
+                    alert('Error: ' + response.message);
+                }
+            })
+            .fail(function(xhr, status, error) {
+                alert('An error occurred while fetching fund transactions');
+            })
+            .always(function() {
+                // Restore button state
+                button.html(originalText);
+                button.prop('disabled', false);
+            });
+    });
+    
     // Add funds to allocation button click
     $(document).on('click', '.fund-allocation', function(e) {
         e.preventDefault();
-        console.log('Fund button clicked');
+
         
         const allocationId = $(this).data('id');
         const currency = $(this).data('currency');
-        console.log('Allocation ID:', allocationId, 'Currency:', currency);
+
         
         // Set values in modal
         $('#fundAllocationId').val(allocationId);
@@ -60,7 +130,7 @@ $(document).ready(function() {
     // Handle fund allocation form submission
     $('#fundAllocationForm').on('submit', function(e) {
         e.preventDefault();
-        console.log('Fund form submitted');
+
         
         const allocationId = $('#fundAllocationId').val();
         const amount = $('#additionalAmount').val();
@@ -82,7 +152,7 @@ $(document).ready(function() {
                 }
             })
             .fail(function(xhr, status, error) {
-                console.error('Error:', error);
+
                 alert('An error occurred while adding funds to the allocation');
             })
             .always(function() {
@@ -113,7 +183,7 @@ $(document).ready(function() {
                     }
                 })
                 .fail(function(xhr, status, error) {
-                    console.error('Error:', error);
+
                     alert('An error occurred while deleting the allocation');
                 })
                 .always(function() {
@@ -191,7 +261,7 @@ $(document).ready(function() {
                 }
             })
             .fail(function(xhr, status, error) {
-                console.error('Error:', error);
+
                 alert('An error occurred while fetching allocation details');
             })
             .always(function() {
@@ -246,8 +316,83 @@ $(document).ready(function() {
                     }
                 })
                 .fail(function(xhr, status, error) {
-                    console.error('Error:', error);
+
                     alert('An error occurred while deleting the expense');
+                })
+                .always(function() {
+                    // Restore button state
+                    button.html(originalHtml);
+                    button.prop('disabled', false);
+                });
+        }
+    });
+    
+    // Delete fund transaction from view funds modal
+    $(document).on('click', '.delete-fund-transaction', function() {
+        if (confirm('Are you sure you want to delete this fund transaction? The amount will be returned to the main account')) {
+            const transactionId = $(this).data('id');
+            const allocationId = $(this).data('allocation-id');
+            
+            // Show loading state
+            const button = $(this);
+            const originalHtml = button.html();
+            button.html('<i class="fas fa-spinner fa-spin"></i>');
+            button.prop('disabled', true);
+            
+            deleteFundTransaction(transactionId, allocationId)
+                .done(function(response) {
+                    if (response.success) {
+                        alert(response.message);
+                        // Refresh the funds modal
+                        getFundTransactions(allocationId)
+                            .done(function(response) {
+                                if (response.success) {
+                                    const allocation = response.allocation;
+                                    const transactions = response.transactions || [];
+                                    
+                                    // Update allocation details
+                                    $('#funds-allocation-category').text(allocation.category_name);
+                                    $('#funds-allocation-account').text(allocation.account_name);
+                                    $('#funds-allocation-date').text(new Date(allocation.allocation_date).toLocaleDateString());
+                                    $('#funds-allocation-amount').text(`${allocation.allocated_amount} ${allocation.currency}`);
+                                    $('#funds-allocation-remaining').text(`${allocation.remaining_amount} ${allocation.currency}`);
+                                    
+                                    // Clear and populate funds table
+                                    const tbody = $('#funds-table-body');
+                                    tbody.empty();
+                                    
+                                    if (transactions.length > 0) {
+                                        transactions.forEach(transaction => {
+                                            const row = `
+                                                <tr>
+                                                    <td>${new Date(transaction.created_at).toLocaleDateString()}</td>
+                                                    <td>${transaction.description}</td>
+                                                    <td>${transaction.amount} ${transaction.currency}</td>
+                                                    <td><span class="badge badge-${transaction.type === 'credit' ? 'success' : 'danger'}">${transaction.type}</span></td>
+                                                    <td>
+                                                        <button class="btn btn-sm btn-danger delete-fund-transaction" data-id="${transaction.id}" data-allocation-id="${allocationId}">
+                                                            <i class="feather icon-trash-2"></i>
+                                                        </button>
+                                                    </td>
+                                                </tr>
+                                            `;
+                                            tbody.append(row);
+                                        });
+                                        
+                                        $('.funds-list').show();
+                                        $('#no-funds-message').hide();
+                                    } else {
+                                        $('.funds-list').hide();
+                                        $('#no-funds-message').show();
+                                    }
+                                }
+                            });
+                    } else {
+                        alert('Error: ' + response.message);
+                    }
+                })
+                .fail(function(xhr, status, error) {
+                    alert('An error occurred while deleting the fund transaction');
                 })
                 .always(function() {
                     // Restore button state

@@ -94,7 +94,7 @@ loadTransactionModal: function(ticketId) {
             }
         },
         error: function(xhr, status, error) {
-            console.error('AJAX Error:', error);
+
             alert('error_fetching_booking_details');
         }
     });
@@ -224,14 +224,14 @@ loadTransactionModal: function(ticketId) {
                     $('#aedSection').toggle(hasCurrency.DARHAM);
 
                 } catch(e) {
-                    console.error('Error parsing transactions:', e);
+
                     $('#transactionTableBody').html('<tr><td colspan="6" class="text-center">error_loading_transactions</td></tr>');
                     $('#exchangeRateDisplay').text('Error loading exchange rates');
                     $('#exchangedAmount').text('Error calculating amounts');
                 }
             },
             error: function(xhr, status, error){
-                console.error('Error loading transactions:', error);
+
                 $('#transactionTableBody').html('<tr><td colspan="6" class="text-center">error_loading_transactions</td></tr>');
                 $('#exchangeRateDisplay').text('Error loading exchange rates');
                 $('#exchangedAmount').text('Error calculating amounts');
@@ -314,8 +314,8 @@ loadTransactionModal: function(ticketId) {
                 }
             },
             error: function(xhr, status, error) {
-                console.error('AJAX Error:', error);
-                console.error('Response:', xhr.responseText);
+
+
                 alert('Error adding transaction');
             }
         });
@@ -352,7 +352,7 @@ loadTransactionModal: function(ticketId) {
         // Get the current ticket ID from the booking_id field
         const ticketId = $('#booking_id').val();
 
-        console.log('Current ticket ID:', ticketId); // Debug log
+
 
         // Create edit transaction modal if it doesn't exist
         if (!$('#editTransactionModal').length) {
@@ -499,10 +499,11 @@ loadTransactionModal: function(ticketId) {
                 }
 
                 // Log the form data for debugging
-                console.log('Submitting transaction update with data:');
-                for (let pair of formData.entries()) {
-                    console.log(pair[0] + ': ' + pair[1]);
-                }
+                console.log('Form data:', {
+                    payment_method: $('#editPaymentMethod').val(),
+                    amount: $('#editAmount').val(),
+                    currency: $('#editPaymentCurrency').val()
+                });
 
                 $.ajax({
                     url: '../api/ticket_reserve/update_ticket_reserve_payment.php',
@@ -524,7 +525,7 @@ loadTransactionModal: function(ticketId) {
                                 alert('Error updating transaction: ' + (result.message || 'Unknown error'));
                             }
                         } catch (e) {
-                            console.error('Error parsing response:', e);
+
                             // Re-enable submit button on parsing error
                             submitBtn.prop('disabled', false);
                             submitBtn.html(originalText);
@@ -532,8 +533,8 @@ loadTransactionModal: function(ticketId) {
                         }
                     },
                     error: function(xhr, status, error) {
-                        console.error('AJAX Error:', error);
-                        console.error('Response:', xhr.responseText);
+
+
                         // Re-enable submit button on network error
                         submitBtn.prop('disabled', false);
                         submitBtn.html(originalText);
@@ -577,7 +578,7 @@ loadTransactionModal: function(ticketId) {
         }
 
         // Log values for debugging
-        console.log('Edit Transaction:', {
+        console.log({
             transactionId: transactionId,
             ticketId: ticketId,
             amount: amount,
@@ -617,12 +618,12 @@ loadTransactionModal: function(ticketId) {
                         showToast('Error deleting transaction: ' + (result.message || 'Unknown error'), 'error');
                     }
                 } catch (e) {
-                    console.error('Error parsing response:', e);
+
                     showToast('Error processing the request', 'error');
                 }
             },
             error: function(xhr, status, error) {
-                console.error('Delete Error Response:', {
+                console.log({
                     status: xhr.status,
                     error: error,
                     response: xhr.responseText

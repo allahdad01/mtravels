@@ -36,7 +36,7 @@ function openRefundModal(visaId, amount, profit, currency) {
             }
         })
         .catch(error => {
-            console.error('Error:', error);
+
             alert('error_fetching_visa_details');
         });
 }
@@ -124,7 +124,7 @@ document.addEventListener('DOMContentLoaded', function() {
             }
         })
         .catch(error => {
-            console.error('Error:', error);
+
             alert('an_error_occurred_while_processing_the_refund');
             // Re-enable the button
             this.disabled = false;

@@ -25,13 +25,12 @@ try {
         SELECT r.*, um.name, um.flight_date, um.return_date, um.room_type, um.duration,
                f.package_type, um.currency as booking_currency,
                u.name as processed_by_name, m.name as account_name,
-               s.name as supplier_name, c.name as client_name
+               c.name as client_name
         FROM umrah_refunds r
         LEFT JOIN umrah_bookings um ON r.booking_id = um.booking_id
         LEFT JOIN families f ON um.family_id = f.family_id
         LEFT JOIN users u ON r.processed_by = u.id
         LEFT JOIN main_account m ON um.paid_to = m.id
-        LEFT JOIN suppliers s ON um.supplier = s.id
         LEFT JOIN clients c ON um.sold_to = c.id
         WHERE r.id = ? AND r.tenant_id = ? AND r.branch_id = ?
     ";

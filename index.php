@@ -219,22 +219,25 @@ $blog_posts = $landingData['blog_posts'];
                     }
                     ?>
                     <form action="contact_handler.php" method="post">
-                        <div class="form-row">
-                            <div class="form-group">
-                                <input type="text" name="name" placeholder="Your Name" required>
-                            </div>
-                            <div class="form-group">
-                                <input type="email" name="email" placeholder="Your Email" required>
-                            </div>
-                        </div>
-                        <div class="form-group">
-                            <input type="text" name="subject" placeholder="Subject" required>
-                        </div>
-                        <div class="form-group">
-                            <textarea name="message" placeholder="Your Message" rows="5" required></textarea>
-                        </div>
-                        <button type="submit" class="btn btn-primary">Send Message</button>
-                    </form>
+                         <!-- CSRF Token Protection -->
+                         <input type="hidden" name="csrf_token" value="<?= htmlspecialchars($_SESSION['csrf_token'] ?? bin2hex(random_bytes(32))); ?>">
+                         
+                         <div class="form-row">
+                             <div class="form-group">
+                                 <input type="text" name="name" placeholder="Your Name" required maxlength="100">
+                             </div>
+                             <div class="form-group">
+                                 <input type="email" name="email" placeholder="Your Email" required>
+                             </div>
+                         </div>
+                         <div class="form-group">
+                             <input type="text" name="subject" placeholder="Subject" required maxlength="100">
+                         </div>
+                         <div class="form-group">
+                             <textarea name="message" placeholder="Your Message" rows="5" required maxlength="1000"></textarea>
+                         </div>
+                         <button type="submit" class="btn btn-primary">Send Message</button>
+                     </form>
                 </div>
             </div>
         </div>

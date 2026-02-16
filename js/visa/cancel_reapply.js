@@ -66,7 +66,7 @@ document.getElementById('processCancellationBtn').addEventListener('click', func
         }
     })
     .catch(error => {
-        console.error('Error:', error);
+
         showToast('An error occurred while cancelling the visa', 'error');
         // Re-enable button
         this.disabled = false;
@@ -149,7 +149,7 @@ document.getElementById('processReapplyBtn').addEventListener('click', function(
         }
     })
     .catch(error => {
-        console.error('Error:', error);
+
         showToast('An error occurred while re-applying the visa', 'error');
         // Re-enable button
         this.disabled = false;

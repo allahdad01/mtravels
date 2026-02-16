@@ -32,7 +32,7 @@
         }
     })
     .catch(error => {
-        console.error('Error:', error);
+
         alert('error_deleting_refund');
         row.removeClass('loading');
     });

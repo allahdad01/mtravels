@@ -40,8 +40,10 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
     // Validate amount
     if (empty($_POST["amount"])) {
         $amount_err = "Please enter the payment amount.";
+    } else if (!is_numeric($_POST["amount"]) || floatval($_POST["amount"]) <= 0) {
+        $amount_err = "Payment amount must be a positive number.";
     } else {
-        $amount = $_POST["amount"];
+        $amount = floatval($_POST["amount"]);
     }
     
     // Validate payment for month
@@ -516,14 +518,29 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
                                     </thead>
                                     <tbody>
                                         <?php
-                                        // Get all salary payments
+                                        // Pagination setup
+                                        $page = isset($_GET['page']) ? (int)$_GET['page'] : 1;
+                                        $per_page = 10;
+                                        $offset = ($page - 1) * $per_page;
+                                        
+                                        // Get total count
+                                        $count_sql = "SELECT COUNT(*) as total FROM salary_payments WHERE tenant_id = ? AND branch_id = ?";
+                                        $count_stmt = $pdo->prepare($count_sql);
+                                        $count_stmt->execute([$tenant_id, $branch_id]);
+                                        $total_rows = $count_stmt->fetch(PDO::FETCH_ASSOC)['total'];
+                                        $total_pages = ceil($total_rows / $per_page);
+                                        
+                                        // Get paginated salary payments
                                         $sql = "SELECT sp.*, u.name as employee_name, ma.name as account_name
                                                 FROM salary_payments sp
                                                 JOIN users u ON sp.user_id = u.id
                                                 JOIN main_account ma ON sp.main_account_id = ma.id
-                                                ORDER BY sp.created_at DESC";
-                                        $result = $pdo->query($sql);
-                                        while ($row = $result->fetch(PDO::FETCH_ASSOC)) {
+                                                WHERE sp.tenant_id = ? AND sp.branch_id = ?
+                                                ORDER BY sp.created_at DESC
+                                                LIMIT ? OFFSET ?";
+                                        $stmt = $pdo->prepare($sql);
+                                        $stmt->execute([$tenant_id, $branch_id, $per_page, $offset]);
+                                        while ($row = $stmt->fetch(PDO::FETCH_ASSOC)) {
                                             echo "<tr>";
                                             echo "<td>" . $row['id'] . "</td>";
                                             echo "<td>" . $row['employee_name'] . "</td>";
@@ -562,13 +579,44 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
                                             echo "</tr>";
                                         }
                                         ?>
-                                    </tbody>
-                                </table>
-                            </div>
-                        </div>
-                    </div>
-                </div>
-                <!-- [ Payment History ] end -->
+                                        </tbody>
+                                        </table>
+                                        </div>
+                                        
+                                        <!-- Pagination -->
+                                        <?php if ($total_pages > 1): ?>
+                                        <nav aria-label="Page navigation">
+                                        <ul class="pagination pagination-sm justify-content-center mt-3">
+                                        <?php if ($page > 1): ?>
+                                        <li class="page-item">
+                                            <a class="page-link" href="?page=1">First</a>
+                                        </li>
+                                        <li class="page-item">
+                                            <a class="page-link" href="?page=<?php echo $page - 1; ?>">Previous</a>
+                                        </li>
+                                        <?php endif; ?>
+                                        
+                                        <?php for ($i = 1; $i <= $total_pages; $i++): ?>
+                                        <li class="page-item <?php echo $i == $page ? 'active' : ''; ?>">
+                                            <a class="page-link" href="?page=<?php echo $i; ?>"><?php echo $i; ?></a>
+                                        </li>
+                                        <?php endfor; ?>
+                                        
+                                        <?php if ($page < $total_pages): ?>
+                                        <li class="page-item">
+                                            <a class="page-link" href="?page=<?php echo $page + 1; ?>">Next</a>
+                                        </li>
+                                        <li class="page-item">
+                                            <a class="page-link" href="?page=<?php echo $total_pages; ?>">Last</a>
+                                        </li>
+                                        <?php endif; ?>
+                                        </ul>
+                                        </nav>
+                                        <?php endif; ?>
+                                        </div>
+                                        </div>
+                                        </div>
+                                        <!-- [ Payment History ] end -->
             </div>
             <!-- [ Main Content ] end -->
         </div>
@@ -649,19 +697,12 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
     <!-- Custom scripts -->
     <script src="../assets/js/vendor-all.min.js"></script>
     <script src="../assets/plugins/bootstrap/js/bootstrap.min.js"></script>
-    <script src="../assets/js/ripple.js"></script>
     <script src="../assets/js/pcoded.min.js"></script>
 
     <script>
         $(document).ready(function() {
-            // Initialize DataTable
-            try {
-                $('#payment-list-table').DataTable();
-            } catch(e) {
-                console.error("DataTable error:", e);
-            }
-            
-            // Simple jQuery filtering (no DataTables dependency)
+            // Simple jQuery filtering
+            // (DataTable removed - using PHP pagination instead)
             var $rows = $('#payment-list-table tbody tr');
             
             // Filter table when month changes

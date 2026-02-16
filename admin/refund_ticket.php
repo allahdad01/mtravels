@@ -28,9 +28,7 @@ $version = '?v=' . time();
 ?>
 
 <?php include '../includes/header.php'; ?>
-<!-- DataTables CSS -->
-<link rel="stylesheet" href="https://cdn.datatables.net/1.10.24/css/dataTables.bootstrap4.min.css">
-<link rel="stylesheet" href="https://cdn.datatables.net/responsive/2.2.7/css/responsive.bootstrap4.min.css">
+<!-- DataTables CSS removed - using server-side PHP filtering -->
 <link rel="stylesheet" href="../css/ticket/ticket_styles.css">
 <link rel="stylesheet" href="../css/ticket/ticket-components.css">
 <link rel="stylesheet" href="../css/general/modal-styles.css">
@@ -416,15 +414,11 @@ $version = '?v=' . time();
 
 
                                   <!-- Required Js -->
-                                    <script src="../assets/js/vendor-all.min.js"></script>
+    <script src="../assets/js/vendor-all.min.js"></script>
                                     <script src="../assets/plugins/bootstrap/js/bootstrap.min.js"></script>
                                     <script src="../assets/js/pcoded.min.js"></script>
 
-                                    <!-- DataTables JS -->
-                                    <script src="https://cdn.datatables.net/1.10.24/js/jquery.dataTables.min.js"></script>
-                                    <script src="https://cdn.datatables.net/1.10.24/js/dataTables.bootstrap4.min.js"></script>
-                                    <script src="https://cdn.datatables.net/responsive/2.2.7/js/dataTables.responsive.min.js"></script>
-                                    <script src="https://cdn.datatables.net/responsive/2.2.7/js/responsive.bootstrap4.min.js"></script>
+                                    <!-- DataTables removed - using server-side PHP filtering -->
                                 
 
 <style>
@@ -577,9 +571,8 @@ window.translations = {
 <script src="../js/ticket_refund/multi_ticket.js<?= $version ?>"></script>
 <script src="../js/ticket_refund/search.js<?= $version ?>"></script>
 <script src="../js/ticket_refund/transaction_manager.js<?= $version ?>"></script>
-<script src="../js/ticket_refund/datatable.js<?= $version ?>"></script>
+<!-- DataTable removed -->
 <script src="../js/ticket_refund/document_actions.js<?= $version ?>"></script>
-<script src="../js/ticket_refund/table_search.js<?= $version ?>"></script>
 <script src="../js/ticket_refund/select.js<?= $version ?>"></script>
 <script src="../js/ticket_refund/main.js<?= $version ?>"></script>
 

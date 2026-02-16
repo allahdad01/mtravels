@@ -28,22 +28,8 @@ include '../api/send_message/sendMessages_handler.php';
 include '../includes/header.php';
 ?>
 
-<!-- JavaScript translations for DataTables -->
+<!-- Translation variables -->
 <script>
-// Translation variables for the DataTable and other components
-var searchText = "<?= __('search') ?>";
-var showText = "<?= __('show') ?>";
-var entriesText = "<?= __('entries') ?>";
-var showingText = "<?= __('showing') ?>";
-var toText = "<?= __('to') ?>";
-var ofText = "<?= __('of') ?>";
-var filteredFromText = "<?= __('filtered_from') ?>";
-var totalEntriesText = "<?= __('total_entries') ?>";
-var firstText = "<?= __('first') ?>";
-var lastText = "<?= __('last') ?>";
-var nextText = "<?= __('next') ?>";
-var previousText = "<?= __('previous') ?>";
-var allText = "<?= __('all') ?>";
 var selectRecipientText = "<?= __('select_a_recipient') ?>";
 var readText = "<?= __('read') ?>";
 var unreadText = "<?= __('unread') ?>";
@@ -279,26 +265,13 @@ var errorMessage = <?= $error_message ? json_encode($error_message) : 'null' ?>;
 <div class="toast-container"></div>
 
 <!-- Required Js -->
-<script src="../assets/js/vendor-all.min.js"></script>
+
+    <script src="../assets/js/vendor-all.min.js"></script>
 <script src="../assets/plugins/bootstrap/js/bootstrap.min.js"></script>
 <script src="../assets/js/pcoded.min.js"></script>
 
 <link href="https://cdn.jsdelivr.net/npm/select2@4.1.0-rc.0/dist/css/select2.min.css" rel="stylesheet" />
 <script src="https://cdn.jsdelivr.net/npm/select2@4.1.0-rc.0/dist/js/select2.min.js"></script>
-
-<!-- DataTables CSS and JS -->
-<link rel="stylesheet" href="https://cdn.datatables.net/1.11.5/css/dataTables.bootstrap4.min.css">
-<link rel="stylesheet" href="https://cdn.datatables.net/responsive/2.2.9/css/responsive.bootstrap4.min.css">
-<script type="text/javascript" src="https://cdn.datatables.net/1.11.5/js/jquery.dataTables.min.js"></script>
-<script type="text/javascript" src="https://cdn.datatables.net/1.11.5/js/dataTables.bootstrap4.min.js"></script>
-<script type="text/javascript" src="https://cdn.datatables.net/responsive/2.2.9/js/dataTables.responsive.min.js"></script>
-<script type="text/javascript" src="https://cdn.datatables.net/responsive/2.2.9/js/responsive.bootstrap4.min.js"></script>
-
-<!-- Toast Notification JS - Make sure this is loaded before message-management.js -->
-<script src="../js/send_message/toast-notifications.js"></script>
-
-<!-- Custom Message Management JS -->
-<script src="../js/send_message/message-management.js"></script>
 
 <!-- Prevent duplicate toast display -->
 <script>

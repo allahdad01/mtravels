@@ -9,7 +9,7 @@ document.addEventListener('DOMContentLoaded', function() {
     // Function to protect form submission
     function protectFormSubmission(form, buttonName, loadingText) {
         form.addEventListener('submit', function(e) {
-            console.log(`Form submitted with button: ${buttonName}`);
+
 
             const submitBtn = this.querySelector(`button[name="${buttonName}"]`);
             if (submitBtn && !submitBtn.disabled) {
@@ -38,7 +38,7 @@ document.addEventListener('DOMContentLoaded', function() {
                     document.head.appendChild(style);
                 }
 
-                console.log(`Button ${buttonName} disabled and loading state shown`);
+
             }
         });
     }
@@ -95,7 +95,7 @@ document.addEventListener('DOMContentLoaded', function() {
         button.addEventListener('click', function(e) {
             // Check if already processing
             if (this.disabled || this.classList.contains('processing') || this.classList.contains('btn-loading')) {
-                console.log('Button already processing, preventing double click');
+
                 e.preventDefault();
                 e.stopPropagation();
                 return false;
@@ -116,11 +116,11 @@ document.addEventListener('DOMContentLoaded', function() {
     allForms.forEach(form => {
         // Remove processing classes when form is actually submitted
         form.addEventListener('submit', function() {
-            console.log('Form submitted, buttons will be properly disabled by protectFormSubmission');
+
         });
     });
 
-    console.log('Button protection initialized for all forms');
+
 });
 
 // Function to check currency and show/hide exchange rate field

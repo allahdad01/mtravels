@@ -10,14 +10,14 @@ document.addEventListener('DOMContentLoaded', () => {
         const discount = parseFloat(document.getElementById('discount').value) || 0; // Default to 0 if not valid
         const pro = sold - discount - base; // Calculate profit with discount
 
-        console.log("Base: ", base);
-        console.log("Sold: ", sold);
-        console.log("Discount: ", discount);
-        console.log('Profit Calculated:', pro);
+
+
+
+
 
         // Update the profit field and make sure it's also visible
         proInput.value = pro.toFixed(2);  // Update to two decimal points
-        console.log('Updated Profit Input Value: ', proInput.value); // Check updated value
+
     }
 
     // Add event listeners for real-time calculation
@@ -38,14 +38,14 @@ document.addEventListener('DOMContentLoaded', () => {
         const editDiscount = parseFloat(document.getElementById('editDiscount').value) || 0; // Default to 0 if not valid
         const editPro = editSold - editDiscount - editBase; // Calculate profit with discount
 
-        console.log("editBase: ", editBase);
-        console.log("editSold: ", editSold);
-        console.log("editDiscount: ", editDiscount);
-        console.log('Profit Calculated:', editPro);
+
+
+
+
 
         // Update the profit field and make sure it's also visible
         editProInput.value = editPro.toFixed(2);  // Update to two decimal points
-        console.log('Updated Profit Input Value: ', editProInput.value); // Check updated value
+
     }
 
     // Add event listeners for real-time calculation

@@ -4,7 +4,7 @@
         // Function to protect form submission
         function protectFormSubmission(form, buttonName, loadingText) {
             form.addEventListener('submit', function(e) {
-                console.log(`Accounts form submitted with button: ${buttonName}`);
+
                 
                 const submitBtn = this.querySelector(`button[name="${buttonName}"]`) || 
                                 this.querySelector(`#${buttonName}`) ||
@@ -39,7 +39,7 @@
                         document.head.appendChild(style);
                     }
                     
-                    console.log(`Button ${buttonName} disabled and loading state shown`);
+
                 }
             });
         }
@@ -109,7 +109,7 @@
                     submitBtn.addEventListener('click', function(e) {
                         e.preventDefault();
                         if (this.disabled || this.classList.contains('processing')) {
-                            console.log('Payment button already processing, preventing double click');
+
                             return false;
                         }
                         
@@ -120,7 +120,7 @@
                         // Form validation and submission logic
                         if (validatePartialPaymentForm()) {
                             // Add your form submission logic here
-                            console.log('Payment form being processed');
+
                         } else {
                             // Re-enable button if validation fails
                             setTimeout(() => {
@@ -151,7 +151,7 @@
             
             if (!isValid) {
                 // Show validation message
-                console.log('Partial payment form validation failed');
+
             }
             
             return isValid;
@@ -164,7 +164,7 @@
             button.addEventListener('click', function(e) {
                 // Check if already processing
                 if (this.disabled || this.classList.contains('processing') || this.classList.contains('btn-loading')) {
-                    console.log('Accounts button already processing, preventing double click');
+
                     e.preventDefault();
                     e.stopPropagation();
                     return false;
@@ -187,7 +187,7 @@
                 e.preventDefault();
                 
                 if (this.disabled || this.classList.contains('processing')) {
-                    console.log('Fund account button already processing');
+
                     return false;
                 }
                 
@@ -196,7 +196,7 @@
                 const currency = document.getElementById(`currency-${accountId}`)?.value;
                 
                 if (!amount || !currency) {
-                    console.log('Amount and currency are required');
+
                     return false;
                 }
                 
@@ -206,9 +206,9 @@
                 this.innerHTML = '<i class="feather icon-refresh-cw mr-1" style="animation: spin 1s linear infinite;"></i>Funding...';
                 
                 // Your funding logic here
-                console.log(`Funding account ${accountId} with ${amount} ${currency}`);
+
             });
         });
 
-        console.log('Button protection initialized for all accounts forms');
+
     });

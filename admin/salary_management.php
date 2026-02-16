@@ -145,11 +145,11 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
 // Fetch current tenant's salary records
 try {
     $stmt = $pdo->prepare("
-        SELECT sm.*, u.username, u.email
+        SELECT sm.*, u.name, u.email
         FROM salary_management sm
         JOIN users u ON sm.user_id = u.id
         WHERE sm.tenant_id = ? AND sm.branch_id = ?
-        ORDER BY u.username ASC
+        ORDER BY u.name ASC
     ");
     $stmt->execute([$tenant_id, $branch_id]);
     $salaries = $stmt->fetchAll(PDO::FETCH_ASSOC);
@@ -160,7 +160,7 @@ try {
 
 // Fetch only tenant's users for dropdown
 try {
-    $stmt = $pdo->prepare("SELECT id, username FROM users WHERE tenant_id = ? AND branch_id = ? AND fired = 0 ORDER BY username ASC");
+    $stmt = $pdo->prepare("SELECT id, name FROM users WHERE tenant_id = ? AND branch_id = ? AND fired = 0 ORDER BY name ASC");
     $stmt->execute([$tenant_id, $branch_id]);
     $users_dropdown = $stmt->fetchAll(PDO::FETCH_ASSOC);
 } catch (PDOException $e) {
@@ -686,6 +686,7 @@ try {
    
     
     <!-- Custom scripts -->
+    
     <script src="../assets/js/vendor-all.min.js"></script>
     <script src="../assets/plugins/bootstrap/js/bootstrap.min.js"></script>
     <!-- DataTables JS -->
@@ -694,7 +695,6 @@ try {
     <script src="https://cdn.datatables.net/responsive/2.2.7/js/dataTables.responsive.min.js"></script>
     <script src="https://cdn.datatables.net/responsive/2.2.7/js/responsive.bootstrap4.min.js"></script>
 
-    <script src="../assets/js/ripple.js"></script>
     <script src="../assets/js/pcoded.min.js"></script>
 
 

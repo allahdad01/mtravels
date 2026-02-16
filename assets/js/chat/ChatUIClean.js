@@ -223,7 +223,7 @@ class ChatUI {
                 });
 
                 audio.addEventListener('error', (e) => {
-                    console.error('[ChatUI] Voice message playback error:', e);
+
                     alert('Failed to play voice message');
                     icon.className = 'fas fa-play';
                     button.classList.remove('playing');
@@ -272,7 +272,7 @@ class ChatUI {
                 const playPromise = audio.play();
                 if (playPromise !== undefined) {
                     playPromise.catch(error => {
-                        console.error('[ChatUI] Play failed:', error);
+
                         alert('Failed to play voice message');
                     });
                 }
@@ -280,7 +280,7 @@ class ChatUI {
                 audio.pause();
             }
         } catch (error) {
-            console.error('[ChatUI] Voice playback error:', error);
+
             alert('Error playing voice message: ' + error.message);
         }
     }
@@ -345,10 +345,17 @@ class ChatUI {
     }
 
     renderContactItem(contact) {
-        const firstLetter = (contact.name || '?').charAt(0).toUpperCase();
-        const avatar = contact.photo
-            ? `<img src="${this.escape(contact.photo)}" alt="${this.escape(contact.name)}">`
-            : firstLetter;
+         const firstLetter = (contact.name || '?').charAt(0).toUpperCase();
+         // Construct photo URL - handle both plain filenames and full paths
+         let photoUrl = null;
+         if (contact.photo) {
+             const photo = this.escape(contact.photo);
+             // If photo already contains a path, use as-is; otherwise prepend assets/images/user/
+             photoUrl = photo.includes('/') ? photo : `assets/images/user/${photo}`;
+         }
+         const avatar = photoUrl
+             ? `<img src="${photoUrl}" alt="${this.escape(contact.name)}">`
+             : firstLetter;
 
         const onlineIndicator = contact.online
             ? '<div class="online-indicator"></div>'
@@ -511,7 +518,7 @@ class ChatUI {
              const url = msg.url || '#';
              const messageId = msg.id || Math.random();
 
-             console.log('[ChatUI] Voice message detected - ID:', messageId, 'URL:', url, 'Duration:', duration);
+
 
              return `
                   <div class="voice-message-box">
@@ -536,7 +543,7 @@ class ChatUI {
                     const messageId = msg.id || Math.random();
                     const isOwn = msg.type === 'outgoing';
 
-                    console.log('[ChatUI] Voice message from JSON - ID:', messageId, 'URL:', url, 'Duration:', duration);
+
 
                     // Use enhanced voice player
                     return VoiceMessageEnhanced.createVoicePlayer(messageId, url, duration, isOwn);
@@ -616,7 +623,7 @@ class ChatUI {
                 }
             }
         } catch (e) {
-            console.error('[ChatUI] Error parsing message:', e);
+
         }
 
         // Regular text message
@@ -647,7 +654,9 @@ class ChatUI {
         // Update avatar
         if (contact.photo) {
             const img = document.createElement('img');
-            img.src = contact.photo;
+            // Handle both plain filenames and full paths
+            const photoPath = contact.photo.includes('/') ? contact.photo : `assets/images/user/${contact.photo}`;
+            img.src = photoPath;
             img.alt = contact.name || 'User';
             img.onerror = () => {
                 this.setAvatarInitials(contact);
@@ -815,7 +824,7 @@ class ChatUI {
         }
 
     addMessage(message) {
-        console.log('[ChatUI] Adding message:', message.id, message.text);
+
 
         const statusIcon = message.type === 'outgoing' ? this.getStatusIcon(message.status || 'sending') : '';
         const dropdownItems = this.getMessageDropdownItems(message.type);
@@ -842,22 +851,22 @@ class ChatUI {
          `;
 
         if (!this.elements.messagesContainer) {
-            console.warn('[ChatUI] Messages container not found');
+
             return;
         }
 
         this.elements.messagesContainer.insertAdjacentHTML('beforeend', html);
-        console.log('[ChatUI] Message DOM count:', this.elements.messagesContainer.querySelectorAll('.message').length);
+
 
         // Cache the element and attach listeners
         if (message.id) {
             const el = this.elements.messagesContainer.querySelector(`[data-message-id="${message.id}"]`);
             if (el) {
-                console.log('[ChatUI] Message element cached for ID:', message.id);
+
                 this.messageIdToElement.set(message.id, el);
                 this.attachMessageListeners(el, message);
             } else {
-                console.warn('[ChatUI] Failed to cache message element for ID:', message.id);
+
             }
         }
 
@@ -1100,7 +1109,7 @@ class ChatUI {
                         this.renderMessages(formatted);
                     }
                 } catch (e) {
-                    console.error('[ChatUI] Failed to reload messages after forward:', e);
+
                 }
 
                 // Update sidebar
@@ -1111,7 +1120,7 @@ class ChatUI {
                 }
             })
             .catch(error => {
-                console.error('[ChatUI] Forward failed:', error);
+
                 this.showError('Failed to forward message');
             });
     }
@@ -1168,7 +1177,7 @@ class ChatUI {
                     this.showError('Failed to delete message');
                 }
             }).catch(error => {
-                console.error('[ChatUI] Delete error:', error);
+
                 messageEl.style.opacity = '1';
                 this.showError('Failed to delete message');
             });
@@ -1213,7 +1222,7 @@ class ChatUI {
     }
 
     addReaction(messageId, emoji) {
-        console.log('[ChatUI] Adding reaction:', messageId, emoji, 'Type:', typeof messageId);
+
 
         // Ensure messageId is a number
         const numericId = parseInt(messageId, 10);
@@ -1233,8 +1242,8 @@ class ChatUI {
         }
 
         if (!messageEl) {
-            console.warn('[ChatUI] Message element not found for ID:', messageId, numericId);
-            console.warn('[ChatUI] Available message IDs:', Array.from(this.messageIdToElement.keys()));
+
+
             return;
         }
 
@@ -1253,17 +1262,17 @@ class ChatUI {
                 csrf_token: window.csrfToken || ''
             })
         }).then(response => {
-            console.log('[ChatUI] Reaction response status:', response.status);
+
             if (!response.ok) {
-                console.error('[ChatUI] Reaction request failed:', response.status);
+
                 this.showError('Failed to add reaction');
                 return null;
             }
             return response.json();
         }).then(data => {
-            console.log('[ChatUI] Reaction data:', data);
+
             if (data && (data.ok || data.action)) {
-                console.log('[ChatUI] Reaction saved, updating UI');
+
                 // Now update UI
                 let reactionsContainer = messageEl.querySelector('.message-reactions');
                 if (!reactionsContainer) {
@@ -1276,12 +1285,12 @@ class ChatUI {
                 setTimeout(() => {
                     if (window.chatApp) {
                         const messageId = parseInt(messageEl.getAttribute('data-message-id'), 10);
-                        console.log('[ChatUI] Reloading reactions for message:', messageId);
+
                         fetch(`api/message_reactions.php?message_id=${messageId}`, {
                             credentials: 'include'
                         }).then(r => r.json())
                             .then(reactionsData => {
-                                console.log('[ChatUI] Reloaded reactions:', reactionsData);
+
                                 reactionsContainer.innerHTML = '';
                                 if (reactionsData.reactions) {
                                     for (const [emoji, reactions] of Object.entries(reactionsData.reactions)) {
@@ -1300,11 +1309,11 @@ class ChatUI {
                     }
                 }, 200);
             } else if (data && data.error) {
-                console.error('[ChatUI] API error:', data.error);
+
                 this.showError(data.error);
             }
         }).catch(error => {
-            console.error('[ChatUI] Reaction error:', error);
+
             this.showError('Failed to add reaction');
         });
     }
@@ -1326,7 +1335,7 @@ class ChatUI {
 
     updateMessageStatus(messageId, status) {
         window.__lastStatusUpdate = { messageId, status, timestamp: Date.now() };
-        console.log('[ChatUI] @@STATUS UPDATE@@', messageId, status);
+
         let el = this.messageIdToElement.get(messageId);
 
         // Try with numeric ID if string lookup failed
@@ -1344,7 +1353,7 @@ class ChatUI {
         }
 
         if (!el) {
-            console.warn('[ChatUI] Message element not found for status update:', messageId);
+
             return;
         }
 
@@ -1392,7 +1401,7 @@ class ChatUI {
     }
 
     showSuccess(message) {
-        console.log(`✓ ${message}`);
+
     }
 
     showTypingIndicator() {
@@ -1496,7 +1505,7 @@ class ChatUI {
                                 this.renderMessages(formatted);
                             }
                         } catch (e) {
-                            console.error('[ChatUI] Failed to reload messages after file upload:', e);
+
                         }
                         // Update sidebar
                         contact.lastMessage = `📎 ${fileName}`;
@@ -1508,7 +1517,7 @@ class ChatUI {
                     }
                 })
                 .catch(error => {
-                    console.error('[ChatUI] File upload failed:', error);
+
                     this.showError(`Upload failed: ${error.message || 'Unknown error'}`);
                 });
         });

@@ -44,7 +44,7 @@ function deleteTicket(id) {
                 }
             })
             .catch(error => {
-                console.error('Error deleting Ticket:', error);
+
                 Swal.fire({
                     icon: 'error',
                     title: 'Error',

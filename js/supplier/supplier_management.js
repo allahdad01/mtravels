@@ -2,10 +2,10 @@
     // Logging utility
     const Logger = {
         log: function(message, ...args) {
-            console.log(`[SupplierManagement] ${message}`, ...args);
+
         },
         error: function(message, ...args) {
-            console.error(`[SupplierManagement] ERROR: ${message}`, ...args);
+
         }
     };
 
@@ -139,7 +139,7 @@
                 showToast("<?= __('error') ?>: " + data.message, 'error');
             }
         })
-        .catch(error => console.error('Error:', error));
+
         },
 
         handleEditSupplier: function(e) {
@@ -161,7 +161,7 @@
                     showToast('error_updating_supplier: ' + data.message, 'error');
                 }
             })
-            .catch(error => console.error('error_updating_supplier:', error));
+
         },
 
         loadSuppliers: function() {
@@ -398,7 +398,7 @@
                     // Show the modal
                     $('#editSupplierModal').modal('show');
                 })
-                .catch(error => console.error('Error fetching supplier details:', error));
+
         },
 
         deleteSupplier: function(id) {
@@ -417,7 +417,7 @@
                 showToast('error: ' + data.message, 'error');
             }
         })
-        .catch(error => console.error('error:', error));
+
     }
         },
 
@@ -437,7 +437,7 @@
                         showToast('error: ' + data.message, 'error');
                     }
                 })
-                .catch(error => console.error('error:', error));
+
             }
         },
 
@@ -457,7 +457,7 @@
                         showToast('error: ' + data.message, 'error');
                     }
                 })
-                .catch(error => console.error('error:', error));
+
             }
         },
 

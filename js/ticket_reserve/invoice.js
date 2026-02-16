@@ -8,7 +8,7 @@ document.addEventListener('DOMContentLoaded', function() {
                 allowClear: true
             });
         } catch (error) {
-            console.warn('Select2 initialization failed:', error);
+
         }
     }
     
@@ -230,7 +230,7 @@ document.addEventListener('DOMContentLoaded', function() {
                 }
             });
         } else {
-            console.log(title + ': ' + text);
+
         }
     }
     

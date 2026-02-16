@@ -11,7 +11,8 @@ require_once 'security.php';
 // Enforce authentication
 enforce_auth();
 
-
+// Load input validation helper
+require_once '../includes/InputValidator.php';
 
 // Check if user is logged in
 if (!isset($_SESSION['user_id'])  || $_SESSION['role'] !== 'admin') {
@@ -26,9 +27,9 @@ require_once('../includes/db.php');
 $currentMonth = date('m');
 $currentYear = date('Y');
 
-// Get selected month and year from filter (if provided)
-$selectedMonth = isset($_GET['month']) ? $_GET['month'] : $currentMonth;
-$selectedYear = isset($_GET['year']) ? $_GET['year'] : $currentYear;
+// Get selected month and year from filter (if provided) - validate as integers
+$selectedMonth = InputValidator::getMonth($_GET['month'] ?? '', (int)$currentMonth);
+$selectedYear = InputValidator::getYear($_GET['year'] ?? '', (int)$currentYear);
 
 // Create date range for filtering allocations
 $startDate = $selectedYear . '-' . $selectedMonth . '-01';
@@ -473,12 +474,13 @@ $stmt->closeCursor();
 <?php include '../modals/allocation/view_fund_modal.php'; ?>
 
 <!-- Required Js -->
-<script src="../assets/js/vendor-all.min.js"></script>
+
+    <script src="../assets/js/vendor-all.min.js"></script>
 <script src="../assets/plugins/bootstrap/js/bootstrap.min.js"></script>
 <script src="../assets/js/pcoded.min.js"></script>
 
-<script src="../js/allocation/allowcation_management.js"></script>
-<script src="../js/allocation/allowcation_event_handlers.js"></script>
+<script src="../js/allocation/allocation_management.js"></script>
+<script src="../js/allocation/allocation_event_handlers.js"></script>
 
 
 

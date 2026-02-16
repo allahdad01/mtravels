@@ -29,7 +29,7 @@ function openCancellationReapplyModal(bookingId, basePrice, soldPrice, currentPr
     jQuery('#cr_current_profit').val(currentProfit);
 
     // Dynamic UI based on status
-    console.log('Booking status:', status); // Debug log
+
     
     if (status === 'cancelled') {
         // Show re-apply option
@@ -108,7 +108,7 @@ jQuery(document).ready(function($) {
         const originalText = btn.html();
         btn.prop('disabled', true).html('<i class="feather icon-refresh-cw spinner"></i> Processing...');
         
-        console.log('Sending AJAX request to process_cancellation_reapply.php');
+
         
         // Send AJAX request
         $.ajax({
@@ -138,21 +138,21 @@ jQuery(document).ready(function($) {
                         showToast('error', result.message || 'Failed to process action');
                     }
                 } catch (e) {
-                    console.error('Error parsing response:', e);
+
                     showToast('error', 'Error processing the request: ' + e.message);
                 }
             },
             error: function(xhr, status, error) {
-                console.error('AJAX Error:', error);
-                console.error('Status:', status);
-                console.error('Response:', xhr.responseText);
+
+
+
                 
                 alert('AJAX Error: ' + error + '\nStatus: ' + status + '\nResponse: ' + xhr.responseText);
             },
             complete: function() {
                 // Reset button state
                 btn.prop('disabled', false).html(originalText);
-                console.log('AJAX request completed');
+
             }
         });
     });
@@ -308,12 +308,12 @@ function processBulkAction(selectedMembers, action, newStatus) {
                     showToast('error', result.message || `Failed to process bulk ${action}`);
                     }
                     } catch (e) {
-                    console.error('Error parsing response:', e);
+
                     showToast('error', 'Error processing the request: ' + e.message);
                     }
                     },
                     error: function(xhr, status, error) {
-                    console.error('Bulk AJAX Error:', error);
+
                     showToast('error', `Error processing bulk ${action}: ` + error);
                     }
     });

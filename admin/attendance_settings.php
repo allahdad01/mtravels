@@ -47,13 +47,29 @@ if (empty($attendance_settings)) {
     ];
 } 
 
+// Load input validation helper
+require_once '../includes/InputValidator.php';
+
 // Handle form submission
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
-    $office_start_time = $_POST['office_start_time'] ?? '09:00';
-    $office_end_time = $_POST['office_end_time'] ?? '17:00';
-    $late_after_minutes = (int)($_POST['late_after_minutes'] ?? 15);
-    $half_day_minutes = (int)($_POST['half_day_minutes'] ?? 240);
-    $working_days = $_POST['working_days'] ?? 'Mon-Fri';
+    // Validate time inputs (HH:MM format)
+    $office_start_time = InputValidator::getPattern(
+        $_POST['office_start_time'] ?? '',
+        '/^\d{2}:\d{2}$/',
+        '09:00'
+    );
+    $office_end_time = InputValidator::getPattern(
+        $_POST['office_end_time'] ?? '',
+        '/^\d{2}:\d{2}$/',
+        '17:00'
+    );
+    
+    // Validate minute settings (positive integers)
+    $late_after_minutes = InputValidator::getInt($_POST['late_after_minutes'] ?? '', 15, 1, 480);
+    $half_day_minutes = InputValidator::getInt($_POST['half_day_minutes'] ?? '', 240, 1, 480);
+    
+    // Validate working days (comma-separated day abbreviations)
+    $working_days = InputValidator::getString($_POST['working_days'] ?? '', 50);
 
     // Check if record exists
     $stmt = $pdo->prepare("SELECT id FROM attendance_settings WHERE tenant_id = ? AND branch_id = ?");
@@ -515,7 +531,8 @@ include '../includes/header.php';
 </style>
 
 <!-- Required Js -->
-<script src="../assets/js/vendor-all.min.js"></script>
+
+    <script src="../assets/js/vendor-all.min.js"></script>
 <script src="../assets/plugins/bootstrap/js/bootstrap.min.js"></script>
 <script src="../assets/js/pcoded.min.js"></script>
 

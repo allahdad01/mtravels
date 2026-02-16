@@ -21,7 +21,7 @@ function searchTickets(searchType) {
             }
         })
         .catch(error => {
-            console.error('Error:', error);
+
             alert('Error searching for tickets');
         });
 }

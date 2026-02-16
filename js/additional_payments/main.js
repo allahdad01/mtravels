@@ -132,12 +132,12 @@ $(document).ready(function() {
                         alert("Error: " + (result.message || "An unknown error occurred."));
                     }
                 } catch (e) {
-                    console.error('Error parsing response:', e);
+
                     alert("Error: Invalid response from server.");
                 }
             },
             error: function(xhr, status, error) {
-                console.error('Error saving payment:', error);
+
                 try {
                     var errorResponse = JSON.parse(xhr.responseText);
                     alert("Error: " + (errorResponse.message || "Failed to save payment."));
@@ -174,11 +174,11 @@ $(document).ready(function() {
         };
         
         // Debug: Log the form data being sent
-        console.log('Form data being sent:', formData);
+
         
         // Use the current page URL
         var ajaxUrl = '../api/additional_payment/additional_payments.php';
-        console.log('AJAX URL:', ajaxUrl);
+
         
         // Submit via AJAX
         $.ajax({
@@ -186,17 +186,17 @@ $(document).ready(function() {
             type: 'POST',
             data: formData,
             beforeSend: function(xhr) {
-                console.log('Before send - Request URL:', this.url);
+
             },
             success: function(response) {
-                console.log('Raw AJAX response:', response);
+
                 
                 try {
                     var result = typeof response === 'object' ? response : JSON.parse(response);
-                    console.log('Parsed response:', result);
+
                     
                     if (result.success) {
-                        console.log('Update successful, closing modal and reloading page');
+
                         // Show success message
                         alert("Payment updated successfully.");
                         // Close modal and reload page
@@ -205,28 +205,28 @@ $(document).ready(function() {
                     } else {
                         // Reset button state
                         $('#updatePayment').prop('disabled', false);
-                        console.error('Update failed:', result.message);
+
                         alert("Error: " + (result.message || "An unknown error occurred."));
                     }
                 } catch (e) {
                     // Reset button state
                     $('#updatePayment').prop('disabled', false);
-                    console.error('Error parsing response:', e);
-                    console.error('Raw response was:', response);
+
+
                     alert("Error: Invalid response from server.");
                 }
             },
             error: function(xhr, status, error) {
                 // Reset button state
                 $('#updatePayment').prop('disabled', false);
-                console.error('AJAX error:', {xhr: xhr, status: status, error: error});
-                console.error('Response status:', xhr.status);
-                console.error('Response text:', xhr.responseText);
-                console.error('Request URL:', this.url);
+
+
+
+
                 
                 // If we get a 404 error, try direct form submission as a fallback
                 if (xhr.status === 404) {
-                    console.log('404 error detected, trying direct form submission as fallback');
+
                     
                     // Create a temporary form for direct submission
                     var tempForm = $('<form>', {
@@ -251,10 +251,10 @@ $(document).ready(function() {
                 
                 try {
                     var errorResponse = JSON.parse(xhr.responseText);
-                    console.error('Parsed error response:', errorResponse);
+
                     alert("Error: " + (errorResponse.message || "Failed to update payment."));
                 } catch (e) {
-                    console.error('Could not parse error response:', e);
+
                     alert("Failed to update payment. Please try again.");
                 }
             }
@@ -337,12 +337,12 @@ $(document).ready(function() {
                         alert("Error: " + (result.message || "An unknown error occurred."));
                     }
                 } catch (e) {
-                    console.error('Error parsing response:', e);
+
                         alert("Error: Invalid response from server.");
                 }
             },
             error: function(xhr, status, error) {
-                console.error('Error saving transaction:', error);
+
                 try {
                     var errorResponse = JSON.parse(xhr.responseText);
                     alert("Error: " + (errorResponse.message || "Failed to save transaction."));
@@ -495,12 +495,12 @@ $(document).ready(function() {
                         alert('Error: ' + (result.message || 'Unknown error occurred'));
                     }
                 } catch (e) {
-                    console.error('Error parsing response:', e);
+
                     alert("Error: Invalid response from server.");
                 }
             },
             error: function(xhr, status, error) {
-                console.error('Error updating transaction:', error);
+
                 try {
                     var errorResponse = JSON.parse(xhr.responseText);
                     alert("Error: " + (errorResponse.message || "Failed to update transaction."));
@@ -539,12 +539,12 @@ $(document).ready(function() {
                             alert("Error: " + (result.message || "An unknown error occurred."));
                         }
                     } catch (e) {
-                        console.error('Error parsing response:', e);
+
                         alert("Error: Invalid response from server.");
                     }
                 },
                 error: function(xhr, status, error) {
-                    console.error('Error deleting transaction:', error);
+
                     try {
                         var errorResponse = JSON.parse(xhr.responseText);
                             alert("Error: " + (errorResponse.message || "Failed to delete transaction."));
@@ -609,12 +609,12 @@ document.addEventListener('DOMContentLoaded', function() {
                         alert("Error: " + (result.message || "An unknown error occurred."));
                     }
                 } catch (e) {
-                    console.error('Error parsing response:', e);
+
                     alert("Error: Invalid response from server.");
                 }
             },
             error: function(xhr, status, error) {
-                console.error('Error saving payment:', error);
+
                 try {
                     var errorResponse = JSON.parse(xhr.responseText);
                     alert("Error: " + (errorResponse.message || "Failed to save payment."));

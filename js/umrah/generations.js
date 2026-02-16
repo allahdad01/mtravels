@@ -60,7 +60,7 @@ function generateTazminAgreement(bookingId) {
             }
         })
         .catch(error => {
-            console.error('Error:', error);
+
             showToast('error', 'Failed to fetch family members');
         });
 }

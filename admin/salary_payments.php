@@ -359,40 +359,7 @@ $page_title = __('salary_payments');
 <script src="../assets/plugins/bootstrap/js/bootstrap.min.js"></script>
 <script src="../assets/js/pcoded.min.js"></script>
 
-<!-- DataTables JS -->
-<script src="https://cdn.datatables.net/1.11.5/js/jquery.dataTables.min.js"></script>
-<script src="https://cdn.datatables.net/1.11.5/js/dataTables.bootstrap4.min.js"></script>
-<script src="https://cdn.datatables.net/responsive/2.2.9/js/dataTables.responsive.min.js"></script>
-<script src="https://cdn.datatables.net/buttons/2.2.2/js/dataTables.buttons.min.js"></script>
-<script src="https://cdn.datatables.net/buttons/2.2.2/js/buttons.html5.min.js"></script>
-<script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.1.3/jszip.min.js"></script>
-
-<script>
-$(document).ready(function() {
-    // Initialize DataTable
-    var table = $('#salary-payments-table').DataTable({
-        responsive: true,
-        pageLength: 25,
-        order: [[0, 'desc']],
-        language: {
-            search: "<?= __('search') ?>:",
-            lengthMenu: "<?= __('show_entries') ?>",
-            info: "<?= __('showing_info') ?>",
-            infoEmpty: "<?= __('no_records') ?>",
-            infoFiltered: "<?= __('filtered_from') ?>",
-            paginate: {
-                first: "<?= __('first') ?>",
-                last: "<?= __('last') ?>",
-                next: "<?= __('next') ?>",
-                previous: "<?= __('previous') ?>"
-            }
-        },
-        dom: '<"row"<"col-sm-12"tr>><"row"<"col-sm-5"i><"col-sm-7"p>>'
-    });
-
-});
-
-</script>
+<!-- DataTables removed - using server-side PHP filtering instead -->
 
 </body>
 </html>

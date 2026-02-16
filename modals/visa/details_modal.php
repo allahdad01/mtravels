@@ -85,6 +85,9 @@
                                                 <button type="button" class="btn btn-secondary" data-dismiss="modal">
                                                     <i class="feather icon-x mr-1"></i><?= __('close') ?>
                                                 </button>
+                                                <button type="button" id="approveVisaBtn" class="btn btn-success" style="display: none;">
+                                                    <i class="feather icon-check mr-1"></i><?= __('approve') ?>
+                                                </button>
                                             </div>
                                         </div>
                                     </div>

@@ -5,36 +5,60 @@ session_start();
 require_once 'includes/db.php';
 require_once 'includes/helpers.php';
 require_once 'includes/theme-helper.php';
+require_once 'includes/InputValidator.php';
+require_once 'includes/RateLimiter.php';
+
+// Generate CSRF token if it doesn't exist
+if (!isset($_SESSION['csrf_token'])) {
+    $_SESSION['csrf_token'] = bin2hex(random_bytes(32));
+}
 
 // Handle form submission
 if ($_POST) {
-    $name = trim($_POST['name'] ?? '');
-    $email = trim($_POST['email'] ?? '');
-    $company = trim($_POST['company'] ?? '');
-    $phone = trim($_POST['phone'] ?? '');
-    $company_size = $_POST['company_size'] ?? '';
-    $preferred_date = $_POST['preferred_date'] ?? '';
-    $preferred_time = $_POST['preferred_time'] ?? '';
-    $message = trim($_POST['message'] ?? '');
-    
-    // Basic validation
-    if (empty($name) || empty($email) || empty($company)) {
-        $_SESSION['demo_error'] = 'Please fill in all required fields.';
-    } elseif (!filter_var($email, FILTER_VALIDATE_EMAIL)) {
-        $_SESSION['demo_error'] = 'Please enter a valid email address.';
+    // CSRF Protection - CRITICAL SECURITY
+    if (!isset($_POST['csrf_token']) || !isset($_SESSION['csrf_token']) || 
+        $_POST['csrf_token'] !== $_SESSION['csrf_token']) {
+        error_log("CSRF attack detected on book-demo form from IP: " . $_SERVER['REMOTE_ADDR']);
+        $_SESSION['demo_error'] = 'Security validation failed. Please try again.';
     } else {
-        try {
-            // Insert demo request into database
-            $stmt = $pdo->prepare("INSERT INTO demo_requests (name, email, company, phone, company_size, preferred_date, preferred_time, message, created_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?, NOW())");
-            $stmt->execute([$name, $email, $company, $phone, $company_size, $preferred_date, $preferred_time, $message]);
+        // Rate limit check - 5 requests per hour per IP
+        if (!RateLimiter::isAllowed($_SERVER['REMOTE_ADDR'], 'demo_requests_per_hour', 0, 'ip')) {
+            $_SESSION['demo_error'] = 'You have submitted too many demo requests. Please try again later.';
+        } else {
+            // Regenerate CSRF token after validation
+            $_SESSION['csrf_token'] = bin2hex(random_bytes(32));
             
-            $_SESSION['demo_success'] = 'Thank you! Your demo request has been submitted successfully. We will contact you within 24 hours to schedule your personalized demo.';
+            // Input validation using InputValidator class
+            $name = InputValidator::getString($_POST['name'] ?? '', 100);
+            $email = InputValidator::getEmail($_POST['email'] ?? '');
+            $company = InputValidator::getString($_POST['company'] ?? '', 100);
+            $phone = InputValidator::getPhone($_POST['phone'] ?? '');
+            $company_size = InputValidator::getEnum($_POST['company_size'] ?? '', ['startup', 'small', 'medium', 'large', 'enterprise']);
+            $preferred_date = InputValidator::getDate($_POST['preferred_date'] ?? '', 'Y-m-d');
+            $preferred_time = InputValidator::getEnum($_POST['preferred_time'] ?? '', ['09:00', '10:00', '11:00', '12:00', '14:00', '15:00', '16:00', '17:00']);
+            $message = InputValidator::getString($_POST['message'] ?? '', 500);
             
-            // Clear form data
-            unset($_POST);
-        } catch (PDOException $e) {
-            error_log("Demo request error: " . $e->getMessage());
-            $_SESSION['demo_error'] = 'There was an error submitting your request. Please try again.';
+            // Validate required fields
+            if (empty($name) || empty($email) || empty($company)) {
+                $_SESSION['demo_error'] = 'Please fill in all required fields with valid data.';
+            } else {
+                try {
+                    // Insert demo request into database
+                    $stmt = $pdo->prepare("INSERT INTO demo_requests (name, email, company, phone, company_size, preferred_date, preferred_time, message, ip_address, created_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, NOW())");
+                    $stmt->execute([$name, $email, $company, $phone, $company_size, $preferred_date, $preferred_time, $message, $_SERVER['REMOTE_ADDR']]);
+                    
+                    $_SESSION['demo_success'] = 'Thank you! Your demo request has been submitted successfully. We will contact you within 24 hours to schedule your personalized demo.';
+                    
+                    // Record action in rate limiter
+                    RateLimiter::recordAction($_SERVER['REMOTE_ADDR'], 'demo_requests_per_hour', 1, $_SERVER['REMOTE_ADDR'], 'ip');
+                    
+                    // Clear form data
+                    unset($_POST);
+                } catch (PDOException $e) {
+                    error_log("Demo request error: " . $e->getMessage());
+                    $_SESSION['demo_error'] = 'There was an error submitting your request. Please try again.';
+                }
+            }
         }
     }
 }
@@ -677,10 +701,13 @@ try {
                     ?>
 
                     <form method="POST" action="">
+                        <!-- CSRF Token Protection -->
+                        <input type="hidden" name="csrf_token" value="<?= htmlspecialchars($_SESSION['csrf_token']); ?>">
+                        
                         <div class="form-row">
                             <div class="form-group">
                                 <label for="name">Full Name <span class="required">*</span></label>
-                                <input type="text" id="name" name="name" required value="<?php echo htmlspecialchars($_POST['name'] ?? ''); ?>">
+                                <input type="text" id="name" name="name" required maxlength="100" value="<?php echo htmlspecialchars($_POST['name'] ?? ''); ?>">
                             </div>
                             <div class="form-group">
                                 <label for="email">Email Address <span class="required">*</span></label>

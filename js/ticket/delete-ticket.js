@@ -19,7 +19,7 @@ function deleteTicket(id) {
             }
         })
         .catch(error => {
-            console.error('Error deleting ticket:', error);
+
             showToast('An error occurred while deleting the ticket', 'error');
         });
     }

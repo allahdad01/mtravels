@@ -38,7 +38,7 @@ function populateDropdowns() {
                             }
                         },
                         error: function() {
-                            console.error('Error fetching supplier currency');
+
                         }
                     });
                 } else {
@@ -123,7 +123,7 @@ function addHotelBookingForm() {
                     }
                 }
             } catch (e) {
-                console.error('Error parsing response:', e);
+
                 showToast('An unexpected error occurred', 'error');
                 // Re-enable button on error
                 if (submitButton) {
@@ -133,7 +133,7 @@ function addHotelBookingForm() {
             }
         },
         error: function(xhr, status, error) {
-            console.error('AJAX Error:', xhr.responseText);
+
             showToast('Failed to add hotel booking', 'error');
             // Re-enable button on error
             if (submitButton) {
@@ -147,7 +147,7 @@ function addHotelBookingForm() {
 // Delete hotel booking
 function deleteBooking(id) {
     if (!id) {
-        console.error('No booking ID provided');
+
         return;
     }
 
@@ -171,7 +171,7 @@ function deleteBooking(id) {
                 }
             },
             error: function(xhr, status, error) {
-                console.error('AJAX Error:', error);
+
                 showToast('Error deleting booking');
             }
         });
@@ -192,7 +192,7 @@ function formatDate(dateString) {
 // View booking details
 window.viewBooking = function(id) {
     if (!id) {
-        console.error('No booking ID provided');
+
         return;
     }
 
@@ -246,8 +246,8 @@ window.viewBooking = function(id) {
             }
         },
         error: function(xhr, status, error) {
-            console.error('AJAX Error:', error);
-            console.log('Response:', xhr.responseText);
+
+
             showToast('Error fetching booking details');
         }
     });
@@ -336,7 +336,7 @@ window.editBooking = function(id) {
                     }
                 });
             } catch (e) {
-                console.error('Error parsing booking data:', e);
+
                 showToast('Error loading booking details');
             }
         },
@@ -374,7 +374,7 @@ function submitEditForm() {
                     showToast('Error updating booking');
                 }
             } catch (e) {
-                console.error('Error parsing response:', e);
+
                 showToast('Error processing update request');
             }
         },

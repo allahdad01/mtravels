@@ -907,11 +907,11 @@ if (empty(array_filter($data))) continue;
     }
 
     private function getOrCreateClient($name) {
-        if (empty($name)) $name = 'Default Client';
+         if (empty($name)) $name = 'Default Client';
 
-        $stmt = $this->pdo->prepare("SELECT id FROM clients WHERE name = ? AND tenant_id = ? AND tenant_id = ? AND branch_id = ?");
-        $stmt->execute([$name, $this->tenantId, $this->branchId]);
-        $client = $stmt->fetch(PDO::FETCH_ASSOC);
+         $stmt = $this->pdo->prepare("SELECT id FROM clients WHERE name = ? AND tenant_id = ? AND branch_id = ?");
+         $stmt->execute([$name, $this->tenantId, $this->branchId]);
+         $client = $stmt->fetch(PDO::FETCH_ASSOC);
 
         if ($client) {
             return $client['id'];
@@ -940,11 +940,11 @@ if (empty(array_filter($data))) continue;
     }
 
     private function getOrCreateMainAccount($name) {
-        if (empty($name)) $name = 'Default Account';
+         if (empty($name)) $name = 'Default Account';
 
-        $stmt = $this->pdo->prepare("SELECT id FROM main_account WHERE name = ? AND tenant_id = ? AND tenant_id = ? AND branch_id = ?");
-        $stmt->execute([$name, $this->tenantId, $this->branchId]);
-        $account = $stmt->fetch(PDO::FETCH_ASSOC);
+         $stmt = $this->pdo->prepare("SELECT id FROM main_account WHERE name = ? AND tenant_id = ? AND branch_id = ?");
+         $stmt->execute([$name, $this->tenantId, $this->branchId]);
+         $account = $stmt->fetch(PDO::FETCH_ASSOC);
 
         if ($account) {
             return $account['id'];

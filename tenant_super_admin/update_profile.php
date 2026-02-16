@@ -13,6 +13,8 @@ if (!isset($_SESSION['user_id'])) {
 
 require_once('../includes/db.php');
 require_once('db_security.php');
+require_once('../includes/SecureFileUpload.php');
+require_once('../includes/PasswordValidator.php');
 
 try {
     $user_id = $_SESSION['user_id'];
@@ -51,46 +53,41 @@ try {
             exit;
         }
 
+        // Validate password strength
+        $validation = PasswordValidator::validate($new_password);
+        if (!$validation['valid']) {
+            echo json_encode(['success' => false, 'message' => 'Password does not meet requirements: ' . implode(', ', $validation['errors'])]);
+            exit;
+        }
+
         $updates[] = "password = ?";
         $params[] = password_hash($new_password, PASSWORD_DEFAULT);
     }
 
-    // Handle image upload
+    // Handle image upload using SecureFileUpload
     if (isset($_FILES['profile_image']) && $_FILES['profile_image']['error'] === UPLOAD_ERR_OK) {
-        $allowedTypes = ['image/jpeg', 'image/png', 'image/gif'];
-        $fileType = $_FILES['profile_image']['type'];
+        try {
+            $uploader = new SecureFileUpload(2 * 1024 * 1024, '../assets/');
+            $result = $uploader->upload('profile_image', 'images/user');
+            
+            if ($result['success']) {
+                // Delete old image if exists
+                $stmt = $pdo->prepare("SELECT profile_pic FROM users WHERE id = ? AND tenant_id = ?");
+                $stmt->execute([$user_id, $tenant_id]);
+                $oldImage = $stmt->fetchColumn();
+                if ($oldImage && $oldImage !== 'default-avatar.jpg') {
+                    $oldImagePath = '../assets/images/user/' . $oldImage;
+                    if (file_exists($oldImagePath)) unlink($oldImagePath);
+                }
 
-        if (!in_array($fileType, $allowedTypes)) {
-            echo json_encode(['success' => false, 'message' => 'Invalid file type. Only JPG, PNG and GIF allowed.']);
-            exit;
-        }
-
-        // Create directory if it doesn't exist
-        $uploadDir = '../assets/images/user/';
-        if (!is_dir($uploadDir)) {
-            mkdir($uploadDir, 0755, true);
-        }
-
-        $fileName = uniqid() . '_' . basename($_FILES['profile_image']['name']);
-        $uploadPath = $uploadDir . $fileName;
-
-        // Debug: Log upload attempt
-        error_log("Attempting to upload file: " . $fileName . " to path: " . $uploadPath);
-
-        if (move_uploaded_file($_FILES['profile_image']['tmp_name'], $uploadPath)) {
-            // Delete old image if exists
-            $stmt = $pdo->prepare("SELECT profile_pic FROM users WHERE id = ? AND tenant_id = ?");
-            $stmt->execute([$user_id, $tenant_id]);
-            $oldImage = $stmt->fetchColumn();
-            if ($oldImage && $oldImage !== 'default-avatar.jpg') {
-                $oldImagePath = $uploadDir . $oldImage;
-                if (file_exists($oldImagePath)) unlink($oldImagePath);
+                $updates[] = "profile_pic = ?";
+                $params[] = $result['data']['filename'];
+            } else {
+                echo json_encode(['success' => false, 'message' => 'Failed to upload image: ' . $result['error']]);
+                exit;
             }
-
-            $updates[] = "profile_pic = ?";
-            $params[] = $fileName;
-        } else {
-            echo json_encode(['success' => false, 'message' => 'Failed to upload image file']);
+        } catch (Exception $e) {
+            echo json_encode(['success' => false, 'message' => 'Upload error: ' . $e->getMessage()]);
             exit;
         }
     }

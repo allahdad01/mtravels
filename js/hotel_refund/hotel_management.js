@@ -44,7 +44,7 @@ function deleteRefund(refundId) {
         }
     })
     .catch(error => {
-        console.error('Error:', error);
+
         showToast('error_deleting_refund');
         row.removeClass('loading');
     });
@@ -117,7 +117,7 @@ function deleteRefund(refundId) {
                 }
             },
             error: function(xhr, status, error) {
-                console.error('AJAX Error:', error);
+
                 showToast('error_fetching_refund_details');
                 $('#refundTransactionModal .modal-content').removeClass('loading');
             }

@@ -1,6 +1,6 @@
 // Function to open refund modal
 function openRefundModal(bookingId, amount, profit, currency) {
-    console.log('Opening refund modal:', { bookingId, amount, profit, currency });
+
     
     // Set hidden fields
     $('#refund_booking_id').val(bookingId);
@@ -82,7 +82,7 @@ $(document).ready(function() {
         const originalText = btn.html();
         btn.prop('disabled', true).html('<i class="feather icon-refresh-cw spinner"></i> Processing...');
         
-        console.log('Sending AJAX request to process_umrah_refund.php');
+
         
         // Send AJAX request
         $.ajax({
@@ -98,7 +98,7 @@ $(document).ready(function() {
                 csrf_token: csrfToken
             },
             success: function(response) {
-                console.log('AJAX success response:', response);
+
                 try {
                     // Try to parse the response if it's a string
                     const result = typeof response === 'string' ? JSON.parse(response) : response;
@@ -113,7 +113,7 @@ $(document).ready(function() {
                          showToast('error', result.message || 'Failed to process refund');
                      }
                 } catch (e) {
-                     console.error('Error parsing response:', e);
+
                      // If response is HTML or plain text, show it directly
                      if (typeof response === 'string') {
                          showToast('error', 'Error processing refund');
@@ -123,9 +123,9 @@ $(document).ready(function() {
                  }
             },
             error: function(xhr, status, error) {
-                console.error('AJAX Error:', error);
-                console.error('Status:', status);
-                console.error('Response:', xhr.responseText);
+
+
+
                 
                 // Try to get message from xhr response
                 let errorMessage = 'Error processing refund';
@@ -141,7 +141,7 @@ $(document).ready(function() {
             complete: function() {
                 // Reset button state
                 btn.prop('disabled', false).html(originalText);
-                console.log('AJAX request completed');
+
             }
         });
     });
@@ -149,7 +149,7 @@ $(document).ready(function() {
     // Also bind to form submit as backup
     $('#refundForm').on('submit', function(e) {
         e.preventDefault();
-        console.log('Form submitted, triggering button click');
+
         $('#processRefundBtn').click();
     });
 });

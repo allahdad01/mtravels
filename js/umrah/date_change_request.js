@@ -1,6 +1,6 @@
 // Date Change Modal Functions
 function openDateChangeModal(bookingId, passengerName, currentFlightDate, currentReturnDate, currentDuration, currentPrice, currency) {
-    console.log('Opening date change modal for booking:', bookingId);
+
 
     // Set modal data
     document.getElementById('dateChangeBookingId').value = bookingId;
@@ -25,7 +25,7 @@ function openDateChangeModal(bookingId, passengerName, currentFlightDate, curren
 
 // Submit Date Change Request
 $(document).on('click', '#submitDateChangeRequest', function() {
-    console.log('Submit date change request clicked');
+
 
     // Validate form
     var form = document.getElementById('dateChangeForm');
@@ -56,7 +56,7 @@ $(document).on('click', '#submitDateChangeRequest', function() {
         processData: false,
         contentType: false,
         success: function(response) {
-            console.log('Date change request response:', response);
+
 
             if (response.success) {
                  showToast('success', response.message || 'Date change request has been submitted successfully.');
@@ -70,7 +70,7 @@ $(document).on('click', '#submitDateChangeRequest', function() {
              }
         },
         error: function(xhr, status, error) {
-            console.error('Date change request error:', error);
+
             showToast('error', 'An error occurred while submitting the request. Please try again.');
         },
         complete: function() {

@@ -62,7 +62,7 @@ class ChatAPI {
         try {
             return await this.request('api/chat_settings.php');
         } catch (error) {
-            console.error('[ChatAPI] Failed to get settings:', error);
+
             throw error;
         }
     }
@@ -74,7 +74,7 @@ class ChatAPI {
         try {
             return await this.request('api/contacts.php');
         } catch (error) {
-            console.error('[ChatAPI] Failed to get contacts:', error);
+
             throw error;
         }
     }
@@ -93,7 +93,7 @@ class ChatAPI {
         try {
             return await this.request(endpoint);
         } catch (error) {
-            console.error('[ChatAPI] Failed to get messages:', error);
+
             throw error;
         }
     }
@@ -125,7 +125,7 @@ class ChatAPI {
 
             return await response.json();
         } catch (error) {
-            console.error('[ChatAPI] Failed to send message:', error);
+
             throw error;
         }
     }
@@ -158,7 +158,7 @@ class ChatAPI {
 
             return await response.json();
         } catch (error) {
-            console.error('[ChatAPI] Failed to edit message:', error);
+
             throw error;
         }
     }
@@ -190,7 +190,7 @@ class ChatAPI {
 
             return await response.json();
         } catch (error) {
-            console.error('[ChatAPI] Failed to delete message:', error);
+
             throw error;
         }
     }
@@ -214,7 +214,7 @@ class ChatAPI {
                 body: formData.toString()
             }).then(r => r.json());
         } catch (error) {
-            console.warn('[ChatAPI] Failed to mark as read:', error);
+
         }
     }
 
@@ -247,7 +247,7 @@ class ChatAPI {
 
             return await response.json();
         } catch (error) {
-            console.error('[ChatAPI] Failed to upload file:', error);
+
             throw error;
         }
     }
@@ -278,7 +278,7 @@ class ChatAPI {
 
             return await response.json();
         } catch (error) {
-            console.error('[ChatAPI] Failed to send voice message:', error);
+
             throw error;
         }
     }
@@ -298,7 +298,7 @@ class ChatAPI {
 
             return await response.json();
         } catch (error) {
-            console.error('[ChatAPI] Failed to get preferences:', error);
+
             throw error;
         }
     }
@@ -328,7 +328,7 @@ class ChatAPI {
 
             return await response.json();
         } catch (error) {
-            console.error('[ChatAPI] Failed to block user:', error);
+
             throw error;
         }
     }
@@ -358,7 +358,7 @@ class ChatAPI {
 
             return await response.json();
         } catch (error) {
-            console.error('[ChatAPI] Failed to unblock user:', error);
+
             throw error;
         }
     }
@@ -388,7 +388,7 @@ class ChatAPI {
 
             return await response.json();
         } catch (error) {
-            console.error('[ChatAPI] Failed to mute user:', error);
+
             throw error;
         }
     }
@@ -418,7 +418,7 @@ class ChatAPI {
 
             return await response.json();
         } catch (error) {
-            console.error('[ChatAPI] Failed to unmute user:', error);
+
             throw error;
         }
     }
@@ -442,7 +442,7 @@ class ChatAPI {
                 body: formData.toString()
             }).then(r => r.json()).catch(() => null);
         } catch (error) {
-            console.warn('[ChatAPI] Failed to send typing indicator:', error);
+
         }
     }
 
@@ -461,7 +461,7 @@ class ChatAPI {
 
             return await response.json();
         } catch (error) {
-            console.warn('[ChatAPI] Failed to get reactions:', error);
+
             return {};
         }
     }
@@ -486,7 +486,7 @@ class ChatAPI {
                 body: formData.toString()
             }).then(r => r.json()).catch(() => null);
         } catch (error) {
-            console.warn('[ChatAPI] Failed to add reaction:', error);
+
         }
     }
 }

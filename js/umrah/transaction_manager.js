@@ -55,8 +55,8 @@ function openTransactionTab(umrahId, soldAmount) {
             }
         },
         error: function(xhr, status, error) {
-            console.error('AJAX Error:', error);
-            console.error('Response:', xhr.responseText);
+
+
             alert('error_loading_umrah_details');
         }
     });
@@ -205,14 +205,14 @@ function loadTransactionHistory(umrahId) {
                 $('#aedSection').toggle(hasCurrency.DARHAM);
 
             } catch(e) {
-                console.error('Error parsing transactions:', e);
+
                 $('#transactionTableBody').html('<tr><td colspan="6" class="text-center">error_loading_transactions</td></tr>');
                 $('#exchangeRateDisplay').text('Error loading exchange rates');
                 $('#exchangedAmount').text('Error calculating amounts');
             }
         },
         error: function(xhr, status, error){
-            console.error('Error loading transactions:', error);
+
             $('#transactionTableBody').html('<tr><td colspan="6" class="text-center">error_loading_transactions</td></tr>');
             $('#exchangeRateDisplay').text('Error loading exchange rates');
             $('#exchangedAmount').text('Error calculating amounts');
@@ -257,7 +257,7 @@ function deleteTransaction(transactionId) {
         }
     })
     .catch(error => {
-        console.error('Error deleting transaction:', error);
+
         alert('an_error_occurred_while_deleting_the_transaction');
         deleteBtn.disabled = false;
         deleteBtn.innerHTML = originalHtml;
@@ -330,7 +330,7 @@ $(document).ready(function() {
                         alert('error: ' + (result.message || 'failed_to_add_transaction'));
                     }
                 } catch (e) {
-                    console.error('Error processing response:', e, response);
+
                     // Re-enable submit button on parsing error
                     submitBtn.prop('disabled', false);
                     submitBtn.html(originalHtml);
@@ -341,8 +341,8 @@ $(document).ready(function() {
                 submitBtn.prop('disabled', false);
                 submitBtn.html(originalHtml);
 
-                console.error('AJAX Error:', error);
-                console.error('Response:', xhr.responseText);
+
+
                 alert('error_adding_transaction');
             }
         });
@@ -429,7 +429,7 @@ $('#paymentCurrency').on('change', function() {
     }
 // Function to edit transaction
 function editTransaction(transactionId) {
-    console.log('Editing transaction:', transactionId);
+
     
     // Fetch the transaction details
     fetch(`../api/umrah/fetch_umrah_transactions.php?transaction_id=${transactionId}`)
@@ -440,12 +440,12 @@ function editTransaction(transactionId) {
             return response.text();
         })
         .then(rawText => {
-            console.log('Raw response for edit:', rawText);
+
             
             try {
                 return JSON.parse(rawText);
             } catch (e) {
-                console.error('JSON parsing error:', e);
+
                 throw new Error('Invalid JSON response from server');
             }
         })
@@ -455,7 +455,7 @@ function editTransaction(transactionId) {
             }
             
             const transaction = data.transaction;
-            console.log('Transaction to edit:', transaction);
+
             
             // Format date and time for form fields
             const paymentDate = transaction.payment_date_only || transaction.payment_date || '';
@@ -500,7 +500,7 @@ function editTransaction(transactionId) {
             $('#editPaymentCurrency').trigger('change');
         })
         .catch(error => {
-            console.error('Error fetching transaction details:', error);
+
             alert('error_fetching_transaction_details: ' + error.message);
         });
 }
@@ -574,9 +574,9 @@ $(document).ready(function() {
         }
         
         // Log the form data for debugging
-        console.log('Form data for update:');
+
         for (let pair of formData.entries()) {
-            console.log(pair[0], pair[1]);
+
         }
         
         $.ajax({
@@ -591,7 +591,7 @@ $(document).ready(function() {
                 
                 try {
                     const result = typeof response === 'string' ? JSON.parse(response) : response;
-                    console.log('Update response:', result);
+
                     
                     if (result.success) {
                         alert('transaction_updated_successfully');
@@ -608,7 +608,7 @@ $(document).ready(function() {
                         alert('error_updating_transaction: ' + (result.message || 'unknown_error'));
                     }
                 } catch (e) {
-                    console.error('Error processing response:', e, response);
+
                     // Re-enable submit button on parsing error
                     submitBtn.prop('disabled', false);
                     submitBtn.html(originalHtml);
@@ -619,8 +619,8 @@ $(document).ready(function() {
                 submitBtn.prop('disabled', false);
                 submitBtn.html(originalHtml);
                 
-                console.error('AJAX Error:', error);
-                console.error('Response:', xhr.responseText);
+
+
                 alert('error_updating_transaction');
             }
         });

@@ -59,6 +59,7 @@ try {
         $currency = $member['currency'];
         $client_type = $member['client_type'];
         $mainAccountId = $member['paid_to'];
+        $isActiveStatus = ($member['status'] === 'active');
 
         // ==================== Handle client transactions ====================
         $clientTransactions = "SELECT id, amount, type, created_at FROM client_transactions
@@ -78,8 +79,8 @@ try {
             $transaction_id = $row['id'];
             $transaction_type = $row['type'];
 
-            // Only adjust balance for regular clients
-            if ($client_type === 'regular') {
+            // Only adjust balance for regular clients AND when status is active
+            if ($isActiveStatus && $client_type === 'regular') {
                 $clientBalanceField = ($currency == 'USD') ? 'usd_balance' : 'afs_balance';
 
                 // Update subsequent transactions' running balances BEFORE deleting
@@ -214,8 +215,8 @@ try {
             $transaction_id = $row['id'];
             $trans_type = $row['transaction_type'];
 
-            // Only adjust balance for external suppliers
-            if ($supplier_type === 'External') {
+            // Only adjust balance for external suppliers AND when status is active
+            if ($isActiveStatus && $supplier_type === 'External') {
                 // Update subsequent transactions' running balances BEFORE deleting
                 if ($trans_type == 'Credit') {
                     // When reversing a credit, subtract from subsequent balances
@@ -262,7 +263,7 @@ try {
                 $stmt->execute();
             }
 
-            // Delete Supplier Transaction
+            // Delete Supplier Transaction (always delete regardless of status)
             $deleteSupplierTransaction = "DELETE FROM supplier_transactions WHERE id = ? AND tenant_id = ? AND branch_id = ?";
             $stmt = $pdo->prepare($deleteSupplierTransaction);
             $stmt->bindParam(1, $transaction_id, PDO::PARAM_INT);
@@ -272,7 +273,7 @@ try {
         }
 
         // ==================== Handle main account transactions ====================
-        if ($mainAccountId && $mainAccountId > 0) {
+        if ($$mainAccountId && $mainAccountId > 0) {
             // First fetch all transactions to process
             $stmt_fetch_main_transactions = $pdo->prepare("
                 SELECT mat.id, mat.amount, mat.type, mat.currency, mat.created_at

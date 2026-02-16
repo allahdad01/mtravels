@@ -68,7 +68,7 @@ const transactionManager = {
 
     loadTransactionModal: function(ticketId) {
         if (!ticketId) {
-            console.error('No ticket ID provided');
+
             return;
         }
     
@@ -105,7 +105,7 @@ const transactionManager = {
                 }
             },
             error: function(xhr, status, error) {
-                console.error('AJAX Error:', error);
+
                 alert('Error fetching booking details');
             }
         });
@@ -233,7 +233,7 @@ const transactionManager = {
             $('#aedSection').toggle(hasCurrency.DARHAM);
         },
         error: function(xhr, status, error) {
-            console.error('Error loading transactions:', error);
+
             $('#transactionTableBody').html('<tr><td colspan="6" class="text-center">error_loading_transactions</td></tr>');
             $('#exchangeRateDisplay').text('Error loading exchange rates');
             $('#exchangedAmount').text('Error calculating amounts');
@@ -291,7 +291,7 @@ const transactionManager = {
                 }
             },
             error: function(xhr, status, error) {
-                console.error('AJAX Error:', error);
+
                 transactionManager.showToast('Error fetching transaction details', 'error');
             }
         });
@@ -351,7 +351,7 @@ const transactionManager = {
     transactionManager.isSubmitting = false;
 },
     error: function(xhr, status, error) {
-        console.error('AJAX Error:', error);
+
         // Re-enable submit button on network error
         submitBtn.prop('disabled', false);
         submitBtn.html(originalText);
@@ -420,7 +420,7 @@ const transactionManager = {
                 }
             },
             error: function(xhr, status, error) {
-                console.error('AJAX Error:', error);
+
                 transactionManager.showToast('Error adding transaction', 'error');
             }
         });
@@ -490,7 +490,7 @@ const transactionManager = {
         }
     },
     error: function(xhr, status, error) {
-        console.error('Delete Error Response:', {
+        console.log({
             status: xhr.status,
             error: error,
             response: xhr.responseText

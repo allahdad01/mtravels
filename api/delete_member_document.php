@@ -22,7 +22,7 @@ $document_type = isset($_POST['document_type']) ? trim($_POST['document_type']) 
 $tenant_id = $_SESSION['tenant_id'];
 $branch_id = $_SESSION['branch_id'];
 
-if (!$booking_id || !in_array($document_type, ['photo', 'passport'])) {
+if (!$booking_id || !in_array($document_type, ['photo', 'passport', 'visa'])) {
     http_response_code(400);
     echo json_encode(['success' => false, 'message' => 'Invalid parameters']);
     exit;

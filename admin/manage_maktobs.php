@@ -322,10 +322,6 @@ $total_records = 0;
 $total_pages = 1;
 
 try {
-    error_log("=== MAKTOB FETCH REQUEST ===");
-    error_log("Search query: " . ($search_query ?: 'none'));
-    error_log("Pagination - Page: $current_page, Items per page: $items_per_page, Offset: $offset");
-    
     // Build query
     $query = "SELECT m.*,
         u.name as sender_name
@@ -343,30 +339,21 @@ try {
     
     $query .= " ORDER BY m.maktob_date DESC";
     
-    error_log("Executing query: $query");
-    error_log("Params: " . json_encode($params));
-    
     $stmt = $pdo->prepare($query);
     $stmt->execute($params);
     $allMaktobs = $stmt->fetchAll(PDO::FETCH_ASSOC);
-    
-    error_log("Records found: " . count($allMaktobs));
     
     // Calculate pagination
     $total_records = count($allMaktobs);
     $total_pages = ceil($total_records / $items_per_page);
     
-    error_log("Total records: $total_records, Total pages: $total_pages");
-    
     // Ensure current page is valid
     if ($current_page > $total_pages && $total_pages > 0) {
-        error_log("Current page $current_page exceeds total pages $total_pages. Adjusting to last page.");
         $current_page = $total_pages;
     }
     
     // Get page data
     $paged_maktobs = array_slice($allMaktobs, $offset, $items_per_page);
-    error_log("Displaying " . count($paged_maktobs) . " records on page $current_page");
 
     // Create a mock result object that mimics mysqli_result
     class MockMysqliResult {
@@ -388,12 +375,7 @@ try {
     }
 
     $recent_maktobs_result = new MockMysqliResult($paged_maktobs);
-    error_log("=== MAKTOB FETCH SUCCESS ===\n");
 } catch (Exception $e) {
-    error_log("=== EXCEPTION DURING MAKTOB FETCH ===");
-    error_log("Exception Code: " . $e->getCode());
-    error_log("Exception Message: " . $e->getMessage());
-    error_log("Stack Trace: " . $e->getTraceAsString());
     // Fallback to empty result
     $recent_maktobs_result = null;
 }
@@ -1158,7 +1140,8 @@ include '../includes/header.php';
     <?php include '../modals/maktob/delete_modal.php'; ?>
 
 <!-- Required Js -->
-<script src="../assets/js/vendor-all.min.js"></script>
+
+    <script src="../assets/js/vendor-all.min.js"></script>
 <script src="../assets/plugins/bootstrap/js/bootstrap.min.js"></script>
 <script src="../assets/js/pcoded.min.js"></script>
 <script src="../js/maktob/main.js"></script>

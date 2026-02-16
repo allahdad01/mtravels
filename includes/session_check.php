@@ -193,21 +193,14 @@ function checkTenantPaymentStatus() {
         $tenant = $stmt->fetch(PDO::FETCH_ASSOC);
 
         if ($tenant) {
-            // Debug logging
-            error_log("Tenant payment check - ID: $tenant_id, payment_status: {$tenant['payment_status']}, status: {$tenant['status']}");
-
             // If tenant is suspended due to payment issues, redirect to payment required page
             if ($tenant['payment_status'] === 'suspended' || $tenant['status'] === 'suspended') {
-                error_log("Tenant $tenant_id is suspended, redirecting to payment_required.php");
                 header("location: " . determineBasePath() . "payment_required.php");
                 exit;
             }
-        } else {
-            error_log("Tenant $tenant_id not found in database");
         }
     } catch (Exception $e) {
         // Log error but don't block access if database check fails
-        error_log("Payment status check error: " . $e->getMessage());
     }
 }
 ?>

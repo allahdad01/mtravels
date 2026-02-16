@@ -24,9 +24,9 @@ $query = "SELECT
     b.name as branch_name,
     s.name as supplier_name
 FROM hotel_bookings hb
-LEFT JOIN users u ON hb.created_by = u.id
+LEFT JOIN users u ON hb.created_by = u.id AND u.tenant_id = hb.tenant_id
 LEFT JOIN branches b ON hb.branch_id = b.id
-LEFT JOIN suppliers s ON hb.supplier_id = s.id
+LEFT JOIN suppliers s ON hb.supplier_id = s.id AND s.tenant_id = hb.tenant_id
 WHERE hb.tenant_id = ?";
 
 // Add branch filter
@@ -166,7 +166,7 @@ $branches = $branches_stmt->fetchAll(PDO::FETCH_ASSOC);
 
     .progress {
         border-radius: 15px;
-        overflow: hidden;
+        
         box-shadow: inset 0 1px 2px rgba(0,0,0,0.1);
     }
 
@@ -196,7 +196,7 @@ $branches = $branches_stmt->fetchAll(PDO::FETCH_ASSOC);
 
     .table-responsive {
         border-radius: 10px;
-        overflow: hidden;
+        
     }
 
     .table {

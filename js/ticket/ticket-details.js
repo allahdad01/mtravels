@@ -2,7 +2,7 @@
 $(document).on('click', '.view-details', function() {
     var ticketData = $(this).data('ticket');
 
-    console.log(ticketData);  // Log ticket data for debugging
+
     if (!ticketData || !ticketData.ticket || !ticketData.ticket.id) {
         showToast('Ticket data or ID is missing!', 'error');
         return;
@@ -132,7 +132,7 @@ $(document).ready(function () {
                         const refundAmount = calculateRefundAmount();
                         $('#refundAmount').val(refundAmount.toFixed(2));
                         
-                        console.log('Calculation method changed. Updated refund amount:', refundAmount.toFixed(2));
+
                     });
 
                     // Show the modal
@@ -157,7 +157,7 @@ $(document).ready(function () {
             method: 'POST',
             data: formData,
             success: function (response) {
-                console.log('Server Response:', response); // Log response for debugging
+
                 if ($.trim(response) === 'success') { // Trim whitespace
                     showToast('Date change recorded successfully', 'success');
                     $('#dateChangeModal').modal('hide');
@@ -192,7 +192,7 @@ $(document).ready(function () {
             method: 'POST',
             data: formData,
             success: function (response) {
-                console.log('Server Response:', response); // Log response for debugging
+
                 if ($.trim(response) === 'success') {
                     showToast('Refund recorded successfully', 'success');
                     $('#refundModal').modal('hide');

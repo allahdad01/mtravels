@@ -41,23 +41,8 @@ function createToast(message, type = 'success') {
 }
 
 document.addEventListener('DOMContentLoaded', function() {
-    // Initialize DataTables for both active and fired employees
-    const activeEmployeesTable = $('#active-employees-table').DataTable({
-        responsive: true,
-        language: {
-            url: '../assets/plugins/datatables/i18n/' + document.documentElement.lang + '.json'
-        },
-        dom: '<"row"<"col-sm-12 col-md-6"l><"col-sm-12 col-md-6"f>>rtip'
-    });
-
-    const firedEmployeesTable = $('#fired-employees-table').DataTable({
-        responsive: true,
-        language: {
-            url: '../assets/plugins/datatables/i18n/' + document.documentElement.lang + '.json'
-        },
-        dom: '<"row"<"col-sm-12 col-md-6"l><"col-sm-12 col-md-6"f>>rtip'
-    });
-
+    // DataTables removed - using server-side PHP filtering instead
+    
     // Initialize modals with proper backdrop handling
     $('.modal').on('show.bs.modal', function() {
         const zIndex = 1040 + (10 * $('.modal:visible').length);
@@ -251,7 +236,7 @@ function generateIkhtar(event, language) {
     }
 
     const finalUrl = `${ikhtarUrl}?user_id=${selectedIkhtarUserId}&language=${language}&job_title=${encodeURIComponent(jobtitleValue)}`;
-    console.log('Opening:', finalUrl);
+
     window.open(finalUrl, '_blank');
 }
 
@@ -326,7 +311,7 @@ function generateFineLetter(event, language) {
     }
 
     const finalUrl = `${fineLetterUrl}?user_id=${selectedFineLetterUserId}&language=${language}&job_title=${encodeURIComponent(jobtitleValue)}&takhaluf=${encodeURIComponent(takhalufValue)}&fine_amount=${encodeURIComponent(fineAmountValue)}&currency=${encodeURIComponent(currencyValue)}`;
-    console.log('Opening:', finalUrl);
+
     window.open(finalUrl, '_blank');
 }
 
@@ -378,7 +363,7 @@ function generateTerminationLetter(event, language) {
     }
 
     const finalUrl = `${terminationLetterUrl}?user_id=${selectedTerminationLetterUserId}&language=${language}&job_title=${encodeURIComponent(jobtitleValue)}&termination_date=${encodeURIComponent(terminationDateValue)}`;
-    console.log('Opening:', finalUrl);
+
     window.open(finalUrl, '_blank');
 }
 

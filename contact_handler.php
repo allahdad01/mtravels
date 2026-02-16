@@ -2,16 +2,42 @@
 // Contact form handler for MTravels landing page
 session_start();
 
-// Include database connection
+// Include database connection and security utilities
 require_once 'includes/db.php';
+require_once 'includes/InputValidator.php';
+require_once 'includes/RateLimiter.php';
+
+// Generate CSRF token if it doesn't exist
+if (!isset($_SESSION['csrf_token'])) {
+    $_SESSION['csrf_token'] = bin2hex(random_bytes(32));
+}
 
 // Check if form was submitted
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
-    // Sanitize and validate input
-    $name = trim(filter_input(INPUT_POST, 'name', FILTER_SANITIZE_STRING));
-    $email = trim(filter_input(INPUT_POST, 'email', FILTER_SANITIZE_EMAIL));
-    $subject = trim(filter_input(INPUT_POST, 'subject', FILTER_SANITIZE_STRING));
-    $message = trim(filter_input(INPUT_POST, 'message', FILTER_SANITIZE_STRING));
+    // CSRF Protection - CRITICAL SECURITY
+    if (!isset($_POST['csrf_token']) || !isset($_SESSION['csrf_token']) || 
+        $_POST['csrf_token'] !== $_SESSION['csrf_token']) {
+        error_log("CSRF attack detected on contact form from IP: " . $_SERVER['REMOTE_ADDR']);
+        $_SESSION['contact_error'] = 'Security validation failed. Please try again.';
+        header('Location: index.php#contact');
+        exit;
+    }
+    
+    // Rate limit check - 3 requests per hour per IP (contact is more sensitive)
+    if (!RateLimiter::isAllowed($_SERVER['REMOTE_ADDR'], 'contact_requests_per_hour', 0, 'ip')) {
+        $_SESSION['contact_error'] = 'You have submitted too many contact requests. Please try again later.';
+        header('Location: index.php#contact');
+        exit;
+    }
+    
+    // Regenerate CSRF token after validation
+    $_SESSION['csrf_token'] = bin2hex(random_bytes(32));
+    
+    // Validate and sanitize input using InputValidator
+    $name = InputValidator::getString($_POST['name'] ?? '', 100);
+    $email = InputValidator::getEmail($_POST['email'] ?? '');
+    $subject = InputValidator::getString($_POST['subject'] ?? '', 100);
+    $message = InputValidator::getString($_POST['message'] ?? '', 1000);
 
     // Validate required fields
     $errors = [];
@@ -20,7 +46,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         $errors[] = 'Name is required';
     }
 
-    if (empty($email) || !filter_var($email, FILTER_VALIDATE_EMAIL)) {
+    if (empty($email)) {
         $errors[] = 'Valid email is required';
     }
 
@@ -64,11 +90,14 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             </html>
             ";
 
-            // Email headers
+            // Email headers - Sanitize email to prevent header injection
+            $email_safe = preg_replace('/[^a-zA-Z0-9@._-]/', '', $email);
+            $name_safe = htmlspecialchars($name);
+            
             $headers = "MIME-Version: 1.0" . "\r\n";
             $headers .= "Content-type:text/html;charset=UTF-8" . "\r\n";
-            $headers .= "From: " . htmlspecialchars($name) . " <" . $email . ">" . "\r\n";
-            $headers .= "Reply-To: " . $email . "\r\n";
+            $headers .= "From: " . $name_safe . " <" . $email_safe . ">" . "\r\n";
+            $headers .= "Reply-To: " . $email_safe . "\r\n";
 
             // Try to send email
             $email_sent = false;
@@ -79,9 +108,12 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             // Always try to store in database (even if email fails)
             $db_stored = false;
             try {
-                $stmt = $pdo->prepare("INSERT INTO contact_messages (name, email, subject, message, created_at) VALUES (?, ?, ?, ?, NOW())");
-                $stmt->execute([$name, $email, $subject, $message]);
+                $stmt = $pdo->prepare("INSERT INTO contact_messages (name, email, subject, message, ip_address, created_at) VALUES (?, ?, ?, ?, ?, NOW())");
+                $stmt->execute([$name, $email, $subject, $message, $_SERVER['REMOTE_ADDR']]);
                 $db_stored = true;
+                
+                // Record action in rate limiter
+                RateLimiter::recordAction($_SERVER['REMOTE_ADDR'], 'contact_requests_per_hour', 1, $_SERVER['REMOTE_ADDR'], 'ip');
             } catch (Exception $db_error) {
                 error_log("Database storage error: " . $db_error->getMessage());
                 // Continue even if database storage fails

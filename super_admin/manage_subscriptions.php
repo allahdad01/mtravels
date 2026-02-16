@@ -8,7 +8,6 @@ if (session_status() === PHP_SESSION_NONE) {
 header("X-XSS-Protection: 1; mode=block");
 header("X-Content-Type-Options: nosniff");
 header("X-Frame-Options: DENY");
-header("Content-Security-Policy: default-src 'self'; script-src 'self' 'unsafe-inline' https://cdn.jsdelivr.net; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com https://cdn.jsdelivr.net; font-src 'self' https://fonts.gstatic.com; img-src 'self' data:;");
 header("Referrer-Policy: strict-origin-when-cross-origin");
 
 // Check session timeout (30 minutes)
@@ -92,6 +91,15 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action']) && $_POST['
     // Validate input
     if (empty($plan_id) || empty($status) || empty($billing_cycle) || empty($amount) || empty($currency)) {
         $errors[] = "All required fields must be filled.";
+    }
+    
+    // Validate amount is numeric
+    if (!empty($amount) && (!is_numeric($amount) || floatval($amount) <= 0)) {
+        $errors[] = "Subscription amount must be a positive number.";
+    }
+    
+    if (!empty($amount)) {
+        $amount = floatval($amount);
     }
     if (!in_array($status, ['active', 'pending', 'expired', 'cancelled'])) {
         $errors[] = "Invalid status.";

@@ -1,7 +1,7 @@
 // Use event delegation to prevent duplicate event handlers
 $(document).off('submit', '#umrahForm').on('submit', '#umrahForm', function(event) {
     event.preventDefault();
-    console.log("Form inside modal submitted!");
+
 
     const submitBtn = event.target.querySelector('button[type="submit"]');
     const originalHtml = submitBtn.innerHTML;
@@ -16,7 +16,7 @@ $(document).off('submit', '#umrahForm').on('submit', '#umrahForm', function(even
     })
     .then(response => response.json())
     .then(data => {
-        console.log("Server Response:", data);
+
         if (data.success) {
             alert("Umrah record added successfully");
             location.reload();
@@ -27,7 +27,7 @@ $(document).off('submit', '#umrahForm').on('submit', '#umrahForm', function(even
         }
     })
     .catch(error => {
-        console.error("Error:", error);
+
         alert("an_error_occurred");
         submitBtn.disabled = false;
         submitBtn.innerHTML = originalHtml;
@@ -54,14 +54,14 @@ $('#editFamilyForm').off('submit').on('submit', function(e) {
                 location.reload();
             } else {
                 alert("error: " + response.message);
-                console.error("Update failed:", response);
+
                 submitButton.prop('disabled', false);
                 submitButton.html('Save changes');
             }
         },
         error: function(xhr, status, error) {
             alert("an_error_occurred");
-            console.error("AJAX Error:", status, error, xhr.responseText);
+
             submitButton.prop('disabled', false);
             submitButton.html('Save changes');
         }
@@ -102,14 +102,14 @@ $(document).ready(function() {
                         submitBtn.html(originalHtml);
                     }
                 } catch (e) {
-                    console.error('Error processing response:', e);
+
                     alert('Error processing the request');
                     submitBtn.prop('disabled', false);
                     submitBtn.html(originalHtml);
                 }
             },
             error: function(xhr, status, error) {
-                console.error('AJAX Error:', error);
+
                 alert('Error adding transaction');
                 submitBtn.prop('disabled', false);
                 submitBtn.html(originalHtml);
@@ -143,7 +143,7 @@ function submitCreateFamilyForm() {
           }
       })
       .catch(error => {
-          console.error("Error:", error);
+
           alert("An error occurred while creating the family");
           submitBtn.disabled = false;
           submitBtn.innerHTML = originalHtml;
@@ -196,7 +196,7 @@ function deleteFamily(familyId) {
             }
         })
         .catch(error => {
-            console.error('Error:', error);
+
             alert('An error occurred while deleting the family');
             if (deleteBtn) {
                 deleteBtn.disabled = false;
@@ -239,7 +239,7 @@ function deleteBooking(bookingId) {
         }
     })
     .catch(error => {
-        console.error("Error:", error);
+
         alert("An error occurred");
         if (deleteBtn) {
             deleteBtn.disabled = false;
@@ -274,7 +274,7 @@ function deleteTransaction(transactionId) {
             }
         })
         .catch(error => {
-            console.error('Error deleting transaction:', error);
+
             alert('An error occurred while deleting the transaction');
             deleteBtn.disabled = false;
             deleteBtn.innerHTML = originalHtml;

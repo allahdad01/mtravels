@@ -15,7 +15,7 @@
 
                 <div class="row">
                     <!-- Photo Section -->
-                    <div class="col-md-6">
+                    <div class="col-md-4">
                         <div class="card border-primary">
                             <div class="card-header bg-primary text-white">
                                 <h6 class="mb-0"><i class="feather icon-image mr-2"></i>Photo</h6>
@@ -59,7 +59,7 @@
                     </div>
 
                     <!-- Passport Section -->
-                    <div class="col-md-6">
+                    <div class="col-md-4">
                         <div class="card border-info">
                             <div class="card-header bg-info text-white">
                                 <h6 class="mb-0"><i class="feather icon-file mr-2"></i>Passport</h6>
@@ -97,6 +97,51 @@
                                     </small>
                                     <button type="button" class="btn btn-primary btn-sm w-100" id="uploadPassportBtn" onclick="uploadMemberDocumentModal('passport')">
                                         <i class="feather icon-upload mr-1"></i>Upload Passport
+                                    </button>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Visa Section -->
+                    <div class="col-md-4">
+                        <div class="card border-success">
+                            <div class="card-header bg-success text-white">
+                                <h6 class="mb-0"><i class="feather icon-shield mr-2"></i>Visa</h6>
+                            </div>
+                            <div class="card-body">
+                                <!-- Visa Preview -->
+                                <div id="visaPreview" class="mb-3" style="display: none;">
+                                    <div id="visaContent"></div>
+                                    <div class="mt-2">
+                                        <button type="button" class="btn btn-sm btn-info mr-2" id="viewVisaBtn" onclick="viewMemberDocument(document.getElementById('visaPath').value, 'visa')">
+                                            <i class="feather icon-eye mr-1"></i>View
+                                        </button>
+                                        <button type="button" class="btn btn-sm btn-danger" id="deleteVisaBtn" onclick="deleteMemberDocument(document.getElementById('documentBookingId').value, 'visa')">
+                                            <i class="feather icon-trash-2 mr-1"></i>Delete
+                                        </button>
+                                    </div>
+                                    <input type="hidden" id="visaPath">
+                                </div>
+
+                                <!-- Visa Upload -->
+                                <div id="visaUploadSection">
+                                    <div id="visaPreviewBeforeUpload" class="mb-3" style="display: none;">
+                                        <div id="visaPreviewContent"></div>
+                                        <div class="mt-2 small text-muted">
+                                            <strong>File:</strong> <span id="visaFileName"></span><br>
+                                            <strong>Size:</strong> <span id="visaFileSize"></span>
+                                        </div>
+                                    </div>
+                                    <div class="custom-file mb-2">
+                                        <input type="file" class="custom-file-input" id="visa-file-document" accept="image/*,.pdf" onchange="previewVisaBeforeUpload(event)">
+                                        <label class="custom-file-label" for="visa-file-document">Choose file</label>
+                                    </div>
+                                    <small class="text-muted d-block mb-2">
+                                        Supported: JPG, PNG, GIF, PDF (Max 5MB)
+                                    </small>
+                                    <button type="button" class="btn btn-primary btn-sm w-100" id="uploadVisaBtn" onclick="uploadMemberDocumentModal('visa')">
+                                        <i class="feather icon-upload mr-1"></i>Upload Visa
                                     </button>
                                 </div>
                             </div>
@@ -255,6 +300,41 @@ function previewPassportBeforeUpload(event) {
     document.getElementById('passportPreviewBeforeUpload').style.display = 'block';
 }
 
+// Preview visa before upload
+function previewVisaBeforeUpload(event) {
+    const file = event.target.files[0];
+    if (!file) {
+        document.getElementById('visaPreviewBeforeUpload').style.display = 'none';
+        return;
+    }
+
+    const fileSize = (file.size / 1024 / 1024).toFixed(2) + ' MB';
+    const fileExt = file.name.split('.').pop().toLowerCase();
+
+    if (fileExt === 'pdf') {
+        // Show PDF indicator
+        document.getElementById('visaPreviewContent').innerHTML = `
+            <div class="alert alert-info" role="alert">
+                <i class="feather icon-file-text mr-2" style="font-size: 48px;"></i>
+                <p class="mt-2"><strong>PDF Document</strong></p>
+            </div>
+        `;
+    } else if (['jpg', 'jpeg', 'png', 'gif'].includes(fileExt)) {
+        // Show image preview
+        const reader = new FileReader();
+        reader.onload = function(e) {
+            document.getElementById('visaPreviewContent').innerHTML = `
+                <img src="${e.target.result}" alt="Preview" class="img-fluid rounded" style="max-height: 200px; width: 100%; object-fit: cover;">
+            `;
+        };
+        reader.readAsDataURL(file);
+    }
+
+    document.getElementById('visaFileName').textContent = file.name;
+    document.getElementById('visaFileSize').textContent = fileSize;
+    document.getElementById('visaPreviewBeforeUpload').style.display = 'block';
+}
+
 // Load documents in modal
 function loadMemberDocumentsModal(bookingId) {
     document.getElementById('documentBookingId').value = bookingId;
@@ -289,6 +369,24 @@ function loadMemberDocumentsModal(bookingId) {
                 } else {
                     document.getElementById('passportPreview').style.display = 'none';
                     document.getElementById('passportUploadSection').style.display = 'block';
+                }
+
+                // Show visa
+                if (data.visa_path) {
+                    document.getElementById('visaPreview').style.display = 'block';
+                    document.getElementById('visaPath').value = data.visa_path;
+                    
+                    let content = '';
+                    if (data.visa_path.endsWith('.pdf')) {
+                        content = '<p><i class="feather icon-file-text mr-2"></i>PDF Document</p>';
+                    } else {
+                        content = `<img src="${data.visa_path}" alt="Visa" class="img-fluid rounded" style="max-height: 250px;">`;
+                    }
+                    document.getElementById('visaContent').innerHTML = content;
+                    document.getElementById('visaUploadSection').style.display = 'none';
+                } else {
+                    document.getElementById('visaPreview').style.display = 'none';
+                    document.getElementById('visaUploadSection').style.display = 'block';
                 }
             }
         })

@@ -41,21 +41,42 @@ if (!empty($_GET)) {
     $redirect_url .= '?' . http_build_query($_GET);
 }
 
+// Load input validation helper
+require_once '../includes/InputValidator.php';
+
 // Handle new asset submission
 if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['add_asset'])) {
-    $name = $_POST['name'];
-    $category = $_POST['category'];
-    $purchase_date = $_POST['purchase_date'];
-    $purchase_value = $_POST['purchase_value'];
-    $current_value = $_POST['current_value'];
-    $currency = $_POST['currency'];
-    $description = $_POST['description'];
-    $location = $_POST['location'];
-    $serial_number = $_POST['serial_number'];
-    $warranty_expiry = !empty($_POST['warranty_expiry']) ? $_POST['warranty_expiry'] : null;
-    $status = $_POST['status'];
-    $assigned_to = $_POST['assigned_to'];
-    $condition_state = $_POST['condition_state'];
+    // Validate CSRF token
+    if (!isset($_POST['csrf_token']) || !hash_equals($_SESSION['csrf_token'] ?? '', $_POST['csrf_token'])) {
+        http_response_code(403);
+        die(json_encode(['success' => false, 'message' => 'CSRF token validation failed']));
+    }
+    
+    $name = InputValidator::getString($_POST['name'] ?? '', 255);
+    $category = InputValidator::getString($_POST['category'] ?? '', 100);
+    $purchase_date = InputValidator::getDate($_POST['purchase_date'] ?? '', 'Y-m-d', '');
+    $purchase_value = InputValidator::getString($_POST['purchase_value'] ?? '', 20);
+    $current_value = InputValidator::getString($_POST['current_value'] ?? '', 20);
+    $currency = InputValidator::getEnum(
+        $_POST['currency'] ?? '',
+        ['USD', 'EUR', 'AFS', 'DARHAM', 'PKR', 'INR'],
+        'USD'
+    );
+    $description = InputValidator::getString($_POST['description'] ?? '', 1000);
+    $location = InputValidator::getString($_POST['location'] ?? '', 255);
+    $serial_number = InputValidator::getString($_POST['serial_number'] ?? '', 100);
+    $warranty_expiry = InputValidator::getDate($_POST['warranty_expiry'] ?? '', 'Y-m-d', null);
+    $status = InputValidator::getEnum(
+        $_POST['status'] ?? '',
+        ['active', 'inactive', 'sold', 'disposed'],
+        'active'
+    );
+    $assigned_to = InputValidator::getInt($_POST['assigned_to'] ?? '', 0);
+    $condition_state = InputValidator::getEnum(
+        $_POST['condition_state'] ?? '',
+        ['new', 'good', 'fair', 'poor'],
+        'good'
+    );
     
     // Handle document upload - SECURE VERSION
     $document = '';
@@ -105,6 +126,12 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['add_asset'])) {
 
 // Handle asset editing
 if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['edit_asset'])) {
+    // Validate CSRF token
+    if (!isset($_POST['csrf_token']) || !hash_equals($_SESSION['csrf_token'] ?? '', $_POST['csrf_token'])) {
+        http_response_code(403);
+        die(json_encode(['success' => false, 'message' => 'CSRF token validation failed']));
+    }
+    
     $asset_id = $_POST['asset_id'];
     $name = $_POST['name'];
     $category = $_POST['category'];
@@ -189,6 +216,12 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['edit_asset'])) {
 
 // Handle asset deactivation
 if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['deactivate_asset'])) {
+    // Validate CSRF token
+    if (!isset($_POST['csrf_token']) || !hash_equals($_SESSION['csrf_token'] ?? '', $_POST['csrf_token'])) {
+        http_response_code(403);
+        die(json_encode(['success' => false, 'message' => 'CSRF token validation failed']));
+    }
+    
     $asset_id = $_POST['asset_id'];
     
     try {
@@ -209,6 +242,12 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['deactivate_asset'])) 
 
 // Handle asset reactivation
 if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['reactivate_asset'])) {
+    // Validate CSRF token
+    if (!isset($_POST['csrf_token']) || !hash_equals($_SESSION['csrf_token'] ?? '', $_POST['csrf_token'])) {
+        http_response_code(403);
+        die(json_encode(['success' => false, 'message' => 'CSRF token validation failed']));
+    }
+    
     $asset_id = $_POST['asset_id'];
     
     try {
@@ -229,6 +268,12 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['reactivate_asset'])) 
 
 // Handle general status change
 if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['change_status'])) {
+    // Validate CSRF token
+    if (!isset($_POST['csrf_token']) || !hash_equals($_SESSION['csrf_token'] ?? '', $_POST['csrf_token'])) {
+        http_response_code(403);
+        die(json_encode(['success' => false, 'message' => 'CSRF token validation failed']));
+    }
+    
     $asset_id = $_POST['asset_id'];
     $new_status = $_POST['new_status'];
     
@@ -261,6 +306,12 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['change_status'])) {
 
 // Handle asset deletion
 if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['delete_asset'])) {
+    // Validate CSRF token
+    if (!isset($_POST['csrf_token']) || !hash_equals($_SESSION['csrf_token'] ?? '', $_POST['csrf_token'])) {
+        http_response_code(403);
+        die(json_encode(['success' => false, 'message' => 'CSRF token validation failed']));
+    }
+    
     $asset_id = $_POST['asset_id'];
     
     try {
@@ -1481,13 +1532,10 @@ if (count($assets) > 0) {
     </style>
 
     <!-- Required Js -->
+    
     <script src="../assets/js/vendor-all.min.js"></script>
     <script src="../assets/plugins/bootstrap/js/bootstrap.min.js"></script>
     <script src="../assets/js/pcoded.min.js"></script>
-
-    <!-- DataTables JS -->
-    <script src="https://cdn.datatables.net/1.11.5/js/jquery.dataTables.min.js"></script>
-    <script src="https://cdn.datatables.net/1.11.5/js/dataTables.bootstrap4.min.js"></script>
 
     <!-- Select2 JS -->
     <script src="https://cdn.jsdelivr.net/npm/select2@4.1.0-rc.0/dist/js/select2.min.js"></script>
@@ -1507,21 +1555,6 @@ if (count($assets) > 0) {
                 document.getElementById('current_value').value = this.value;
             });
             
-            // Initialize DataTables
-            $('#assets-table').DataTable({
-                responsive: true,
-                order: [[0, 'desc']],
-                pageLength: 10,
-                lengthMenu: [[10, 25, 50, -1], [10, 25, 50, "All"]],
-                language: {
-                    search: "<i class='feather icon-search'></i>",
-                    searchPlaceholder: "<?= __('search_assets') ?>...",
-                    paginate: {
-                        next: '<i class="feather icon-chevron-right"></i>',
-                        previous: '<i class="feather icon-chevron-left"></i>'
-                    }
-                }
-            });
             
             // Initialize Select2
             $('.select2').select2({
@@ -1651,68 +1684,18 @@ if (count($assets) > 0) {
             }
             
             // Advanced filters functionality
-            $('#apply-filters').on('click', function() {
-                var table = $('#assets-table').DataTable();
-                
-                // Clear existing filters
-                table.search('').columns().search('').draw();
-                
-                // Apply category filter
-                var category = $('#filter-category').val();
-                if (category) {
-                    table.column(2).search(category).draw();
-                }
-                
-                // Apply location filter
-                var location = $('#filter-location').val();
-                if (location) {
-                    table.column(5).search(location).draw();
-                }
-                
-                // Apply purchase date range filter - this requires custom filtering
-                var dateFrom = $('#filter-date-from').val();
-                var dateTo = $('#filter-date-to').val();
-                
-                if (dateFrom || dateTo) {
-                    $.fn.dataTable.ext.search.push(
-                        function(settings, data, dataIndex) {
-                            var purchaseDate = new Date(data[3]);
-                            purchaseDate.setHours(0, 0, 0, 0);
-                            
-                            var from = dateFrom ? new Date(dateFrom) : null;
-                            if (from) from.setHours(0, 0, 0, 0);
-                            
-                            var to = dateTo ? new Date(dateTo) : null;
-                            if (to) to.setHours(23, 59, 59, 999);
-                            
-                            if (from && to) {
-                                return purchaseDate >= from && purchaseDate <= to;
-                            } else if (from) {
-                                return purchaseDate >= from;
-                            } else if (to) {
-                                return purchaseDate <= to;
-                            }
-                            return true;
-                        }
-                    );
-                    
-                    table.draw();
-                    
-                    // Remove the custom filter after use
-                    $.fn.dataTable.ext.search.pop();
-                }
-            });
-            
-            // Clear all filters
-            $('#clear-filters').on('click', function() {
-                $('#filter-category').val('').trigger('change');
-                $('#filter-location').val('');
-                $('#filter-date-from').val('');
-                $('#filter-date-to').val('');
-                
-                var table = $('#assets-table').DataTable();
-                table.search('').columns().search('').draw();
-            });
+             $('#apply-filters').on('click', function() {
+                 // Filters removed - DataTables is no longer used
+                 // Implement simple client-side filtering or server-side filtering as needed
+             });
+             
+             // Clear all filters
+             $('#clear-filters').on('click', function() {
+                 $('#filter-category').val('').trigger('change');
+                 $('#filter-location').val('');
+                 $('#filter-date-from').val('');
+                 $('#filter-date-to').val('');
+             });
         });
     </script>
 

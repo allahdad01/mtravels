@@ -26,12 +26,12 @@ document.addEventListener('DOMContentLoaded', function() {
                             phoneInput.value = '';
                         }
                     } else {
-                        console.error('Error fetching client info:', data.message);
+
                         phoneInput.value = '';
                     }
                 })
                 .catch(error => {
-                    console.error('Error:', error);
+
                     phoneInput.value = '';
                 });
         });

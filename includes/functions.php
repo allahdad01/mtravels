@@ -1,7 +1,7 @@
 <?php
 // Email sending function using PHPMailer with tracking
 function sendEmail($to, $subject, $body, $isHtml = true, $emailType = 'general', $recipientName = '', $tenantId = null, $attachments = []) {
-    require_once '../vendor/autoload.php';
+    require_once dirname(__DIR__) . '/vendor/autoload.php';
 
     // Get SMTP settings - tenant-specific or platform fallback
     $smtpSettings = getTenantSMTPSettings($tenantId);
@@ -101,20 +101,27 @@ function sendEmail($to, $subject, $body, $isHtml = true, $emailType = 'general',
 
 // Record email tracking
 function recordEmailTracking($emailId, $recipientEmail, $emailType, $tenantId) {
-    global $pdo;
+    global $pdo, $branch_id;
 
     if ($pdo === null) {
         error_log("No database connection available in recordEmailTracking");
         return false;
     }
 
-    $stmt = $pdo->prepare("INSERT INTO email_tracking (email_id, recipient_email, email_type, tenant_id, branch_id) VALUES (?, ?, ?, ?, ?)");
-    $stmt->bindParam(1, $emailId, PDO::PARAM_STR);
-    $stmt->bindParam(2, $recipientEmail, PDO::PARAM_STR);
-    $stmt->bindParam(3, $emailType, PDO::PARAM_STR);
-    $stmt->bindParam(4, $tenantId, PDO::PARAM_INT);
-    $stmt->bindParam(5, $branchId, PDO::PARAM_INT);
-    $stmt->execute();
+    try {
+        $stmt = $pdo->prepare("INSERT INTO email_tracking (email_id, recipient_email, email_type, tenant_id, branch_id) VALUES (?, ?, ?, ?, ?)");
+        $stmt->bindParam(1, $emailId, PDO::PARAM_STR);
+        $stmt->bindParam(2, $recipientEmail, PDO::PARAM_STR);
+        $stmt->bindParam(3, $emailType, PDO::PARAM_STR);
+        $stmt->bindParam(4, $tenantId, PDO::PARAM_INT);
+        $branchIdVal = isset($branch_id) ? intval($branch_id) : null;
+        $stmt->bindParam(5, $branchIdVal, PDO::PARAM_INT);
+        $stmt->execute();
+        return true;
+    } catch (Exception $e) {
+        error_log("Error in recordEmailTracking: " . $e->getMessage());
+        return false;
+    }
 }
 
 // Get base URL for tracking
@@ -1162,14 +1169,14 @@ function sendPaymentConfirmationEmail($tenantId, $amount, $currency, $paymentDat
     ";
 
     return sendEmail($billingEmail, $subject, $body, true, 'payment_confirmation', $tenantName, null, $attachments); // Use platform SMTP for payment confirmations with PDF attachment
-    }
+}
 
-    // Generate invoice PDF for email attachment using the existing generate_invoice_pdf.php
-    function generateInvoicePDF($paymentId, $subscriptionId) {
+// Generate invoice PDF for email attachment using the existing generate_invoice_pdf.php
+function generateInvoicePDF($paymentId, $subscriptionId) {
         global $pdo;
         
         try {
-            require_once '../vendor/autoload.php';
+            require_once dirname(__DIR__) . '/vendor/autoload.php';
             
             // Create temp directory if not exists
             $temp_dir = '../temp/';
@@ -1211,7 +1218,7 @@ function sendPaymentConfirmationEmail($tenantId, $amount, $currency, $paymentDat
 
      // Generate PDF ticket from booking data
     function generateTicketPDF($bookingData, $tenantId) {
-    require_once '../../vendor/autoload.php';
+    require_once dirname(__DIR__) . '/vendor/autoload.php';
     
     // Create new PDF document
     $mpdf = new \Mpdf\Mpdf([
@@ -1596,7 +1603,7 @@ function sendPaymentConfirmationEmail($tenantId, $amount, $currency, $paymentDat
 
 // Send ticket notification email with PDF attachment
 function sendTicketNotificationWithAttachment($email, $name, $subject, $body, $attachmentPath) {
-    require_once '../../vendor/autoload.php';
+    require_once dirname(__DIR__) . '/vendor/autoload.php';
     
     // Get SMTP settings
     global $tenant_id;

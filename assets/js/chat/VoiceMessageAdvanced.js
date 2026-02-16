@@ -40,7 +40,7 @@ class VoiceMessageAdvanced {
      * Handle voice message actions
      */
     async handleVoiceAction(messageId, action, button) {
-        console.log(`[VoiceAdvanced] Action: ${action} on message ${messageId}`);
+
 
         switch (action) {
             case 'play':
@@ -102,7 +102,7 @@ class VoiceMessageAdvanced {
             });
 
             audio.addEventListener('error', (e) => {
-                console.error('[VoiceAdvanced] Audio playback error:', e);
+
                 alert('Failed to play voice message');
                 icon.className = 'fas fa-play';
                 button.classList.remove('playing');
@@ -117,7 +117,7 @@ class VoiceMessageAdvanced {
                     button.classList.add('playing');
                     this.playingMessageId = messageId;
                 }).catch(error => {
-                    console.error('[VoiceAdvanced] Play failed:', error);
+
                     alert('Failed to play voice message');
                 });
             } else {
@@ -233,7 +233,7 @@ class VoiceMessageAdvanced {
             try {
                 this.favorites = new Set(JSON.parse(saved));
             } catch (e) {
-                console.error('[VoiceAdvanced] Failed to load favorites:', e);
+
             }
         }
     }
@@ -288,7 +288,7 @@ class VoiceMessageAdvanced {
             voicePlayer.parentElement.appendChild(transcriptEl);
 
         } catch (error) {
-            console.error('[VoiceAdvanced] Transcription failed:', error);
+
             alert('Transcription failed: ' + error.message);
         } finally {
             button.disabled = false;
@@ -335,7 +335,7 @@ class VoiceMessageAdvanced {
                 button.innerHTML = '<i class="fas fa-trash"></i>';
             }
         } catch (error) {
-            console.error('[VoiceAdvanced] Delete failed:', error);
+
             alert('Error deleting message');
             button.disabled = false;
             button.innerHTML = '<i class="fas fa-trash"></i>';
@@ -417,7 +417,7 @@ class VoiceMessageAdvanced {
                 alert('Voice message forwarded successfully');
             }
         } catch (error) {
-            console.error('[VoiceAdvanced] Forward failed:', error);
+
             alert('Failed to forward message');
         }
     }

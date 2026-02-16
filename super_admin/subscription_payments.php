@@ -230,50 +230,54 @@ $sub_current_page = max(1, min($sub_current_page, $sub_total_pages));
 $sub_offset = ($sub_current_page - 1) * $sub_items_per_page;
 $subscriptions = array_slice(array_values($filtered_subscriptions), $sub_offset, $sub_items_per_page);
 
-// Fetch recent payments
-try {
-    $stmt = $pdo->prepare("
-        SELECT sp.*, ts.plan_id, t.name as tenant_name, t.identifier as tenant_identifier,
-               u.name as processed_by_name
-        FROM subscription_payments sp
-        LEFT JOIN tenant_subscriptions ts ON sp.subscription_id = ts.id
-        LEFT JOIN tenants t ON ts.tenant_id = t.id
-        LEFT JOIN users u ON sp.processed_by = u.id
-        ORDER BY sp.created_at DESC
-        LIMIT 200
-    ");
-    $stmt->execute();
-    $all_recent_payments = $stmt->fetchAll(PDO::FETCH_ASSOC);
-} catch (PDOException $e) {
-    error_log("Error fetching recent payments: " . $e->getMessage());
-    $all_recent_payments = [];
-}
+// Fetch recent payments with pagination
+$payment_items_per_page = 10;
+$payment_current_page = intval($_GET['payment_page'] ?? 1);
+$payment_search_query = $_GET['payment_search'] ?? '';
 
-// Pagination and search for payments
-$pay_items_per_page = 10;
-$pay_current_page = intval($_GET['pay_page'] ?? 1);
-$pay_search_query = $_GET['pay_search'] ?? '';
+try {
+     $stmt = $pdo->prepare("
+         SELECT sp.*, ts.plan_id, t.name as tenant_name, t.identifier as tenant_identifier,
+                u.name as processed_by_name
+         FROM subscription_payments sp
+         LEFT JOIN tenant_subscriptions ts ON sp.subscription_id = ts.id
+         LEFT JOIN tenants t ON ts.tenant_id = t.id
+         LEFT JOIN users u ON sp.processed_by = u.id
+         ORDER BY sp.created_at DESC
+     ");
+     $stmt->execute();
+     $all_recent_payments = $stmt->fetchAll(PDO::FETCH_ASSOC);
+} catch (PDOException $e) {
+     error_log("Error fetching recent payments: " . $e->getMessage());
+     $all_recent_payments = [];
+}
 
 // Filter payments based on search
 $filtered_payments = $all_recent_payments;
-if (!empty($pay_search_query)) {
-    $search_lower = strtolower($pay_search_query);
-    $filtered_payments = array_filter($all_recent_payments, function($pay) use ($search_lower) {
-        return 
-            strpos(strtolower($pay['tenant_name']), $search_lower) !== false ||
-            strpos(strtolower($pay['tenant_identifier']), $search_lower) !== false ||
-            strpos(strtolower($pay['amount']), $search_lower) !== false ||
-            strpos(strtolower($pay['currency']), $search_lower) !== false ||
-            strpos(strtolower($pay['payment_method']), $search_lower) !== false;
-    });
+if (!empty($payment_search_query)) {
+     $search_lower = strtolower($payment_search_query);
+     $filtered_payments = array_filter($all_recent_payments, function($payment) use ($search_lower) {
+         return 
+             strpos(strtolower($payment['tenant_name'] ?? ''), $search_lower) !== false ||
+             strpos(strtolower($payment['tenant_identifier'] ?? ''), $search_lower) !== false ||
+             strpos(strtolower($payment['transaction_id'] ?? ''), $search_lower) !== false ||
+             strpos(strtolower($payment['receipt_number'] ?? ''), $search_lower) !== false;
+     });
 }
 
 // Calculate pagination for payments
-$pay_total_items = count($filtered_payments);
-$pay_total_pages = ceil($pay_total_items / $pay_items_per_page);
-$pay_current_page = max(1, min($pay_current_page, $pay_total_pages));
-$pay_offset = ($pay_current_page - 1) * $pay_items_per_page;
-$recent_payments = array_slice(array_values($filtered_payments), $pay_offset, $pay_items_per_page);
+$payment_total_items = count($filtered_payments);
+$payment_total_pages = ceil($payment_total_items / $payment_items_per_page);
+$payment_current_page = max(1, min($payment_current_page, $payment_total_pages));
+$payment_offset = ($payment_current_page - 1) * $payment_items_per_page;
+$recent_payments = array_slice(array_values($filtered_payments), $payment_offset, $payment_items_per_page);
+
+// Use payment pagination defined above (payment_current_page, payment_total_pages, payment_search_query)
+$pay_items_per_page = $payment_items_per_page;
+$pay_current_page = $payment_current_page;
+$pay_search_query = $payment_search_query;
+$pay_total_items = $payment_total_items;
+$pay_total_pages = $payment_total_pages;
 ?>
 
 <style>

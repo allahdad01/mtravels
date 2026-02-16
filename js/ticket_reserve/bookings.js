@@ -1,31 +1,31 @@
 document.getElementById('supplier').addEventListener('change', function () {
     const supplierId = this.value;
 
-    console.log('Selected Supplier ID:', supplierId);
+
 
     if (supplierId) {
         fetch(`../api/ticket_reserve/get_supplier_currency.php?supplier_id=${supplierId}`)
             .then(response => {
-                console.log('Response status:', response.status); // Log status
+
                 return response.json();
             })
             .then(data => {
-                console.log('Response data:', data); // Log full response
+
                 const currInput = document.getElementById('curr');
                 if (data.currency) {
                     currInput.value = data.currency;
 
-                    console.log('Currency input updated to:', data.currency);
+
                 } else {
                     currInput.value = '';
-                    console.warn('No currency found in response!');
+
                 }
             })
             .catch(error => {
-                console.error('Error fetching supplier currency:', error);
+
             });
     } else {
-        console.log('No supplier selected, clearing input.');
+
         document.getElementById('curr').value = '';
     }
 });
@@ -59,7 +59,7 @@ document.getElementById('bookTicketForm').addEventListener('submit', function (e
         }
     })
     .catch(error => {
-        console.error('Error:', error); // Log error
+
         showToast('An unexpected error occurred.', 'error');
         if (submitBtn) {
             submitBtn.disabled = false; // Re-enable button
@@ -83,7 +83,7 @@ function deleteTicket(id) {
                 alert('error: ' + data.message);
             }
         })
-        .catch(error => console.error('error_deleting_ticket', error));
+
     }
 }
    // Trip type toggle for new booking form
@@ -146,7 +146,7 @@ function deleteTicket(id) {
              const paymentAmountElement = document.getElementById('paymentAmount');
              
              if (!currElement || !paymentCurrencyElement || !soldElement || !exchangeRateElement || !paymentAmountElement) {
-                 console.error('Missing required elements for payment calculation');
+
                  return;
              }
              
@@ -265,13 +265,13 @@ function deleteTicket(id) {
                                             const sold = parseFloat(soldInput.value) || 0; // Default to 0 if not valid
                                             const pro = sold - base; // Calculate profit
 
-                                            console.log("Base: ", base);
-                                            console.log("Sold: ", sold);
-                                            console.log('Profit Calculated:', pro);
+
+
+
 
                                             // Update the profit field and make sure it's also visible
                                             proInput.value = pro.toFixed(2);  // Update to two decimal points
-                                            console.log('Updated Profit Input Value: ', proInput.value); // Check updated value
+
                                         }
 
                                         // Add event listeners for real-time calculation
@@ -290,13 +290,13 @@ function deleteTicket(id) {
                                             const editSold = parseFloat(editSoldInput.value) || 0; // Default to 0 if not valid
                                             const editPro = editSold - editBase; // Calculate profit
 
-                                            console.log("editBase: ", editBase);
-                                            console.log("editSold: ", editSold);
-                                            console.log('Profit Calculated:', editPro);
+
+
+
 
                                             // Update the profit field and make sure it's also visible
                                             editProInput.value = editPro.toFixed(2);  // Update to two decimal points
-                                            console.log('Updated Profit Input Value: ', editProInput.value); // Check updated value
+
                                         }
 
                                         // Add event listeners for real-time calculation

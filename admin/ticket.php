@@ -504,7 +504,7 @@ border-color: rgba(255, 255, 255, 0.5) !important;
 
 
                                     <!-- Required Js -->
-                                    <script src="../assets/js/vendor-all.min.js"></script>
+    <script src="../assets/js/vendor-all.min.js"></script>
                                     <script src="../assets/plugins/bootstrap/js/bootstrap.min.js"></script>
                                     <script src="../assets/js/pcoded.min.js"></script>
                                     <!-- Add Bootstrap-select JavaScript -->
@@ -516,7 +516,6 @@ border-color: rgba(255, 255, 255, 0.5) !important;
                                     <script src="../js/ticket//delete-ticket.js"></script>
                                     <script src="../js/ticket//weight-management.js"></script>
                                     <script src="../js/ticket/refund-calc.js"></script>
-                                    <script src="../js/ticket/generate-invoice.js"></script>
                                     <script src="../js/ticket/search.js"></script>
                                     <script src="../js/ticket/transaction-manager.js"></script>
                                     <script src="../js/ticket/trip-type.js"></script>
@@ -524,7 +523,6 @@ border-color: rgba(255, 255, 255, 0.5) !important;
                                     <script src="../js/ticket/passenger-count.js"></script>
                                     <script src="../js/ticket/supplier-currency-select.js"></script>
                                     <script src="../js/ticket/edit-ticket.js"></script>
-                                    <script src="../js/ticket/passenger-management.js"></script>
                                     <script src="../js/ticket/data/airlines.js"></script>
                                     <script src="../js/ticket/airline-select.js"></script>
                                     <script src="../js/ticket/multi-ticket-invoice.js"></script>

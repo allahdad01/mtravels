@@ -25,7 +25,7 @@ function generateFamilyCompletion(familyId) {
     familyId = parseInt(familyId, 10);
     
     if (isNaN(familyId) || familyId <= 0) {
-        console.error('Invalid family ID:', familyId);
+
         showToast('error', 'Please provide a valid family ID.');
         return;
     }
@@ -70,7 +70,7 @@ function initializeCompletionMembersForFamily(familyId) {
             $('#familyCompletionMembersContainer').html(membersHtml);
         },
         error: function(error) {
-            console.error('Error loading family members:', error);
+
             $('#familyCompletionMembersContainer').html('<p class="text-danger">Error loading members</p>');
         }
     });
@@ -81,7 +81,7 @@ function generateFamilyCancellation(familyId) {
     familyId = parseInt(familyId, 10);
     
     if (isNaN(familyId) || familyId <= 0) {
-        console.error('Invalid family ID:', familyId);
+
         showToast('error', 'Please provide a valid family ID.');
         return;
     }
@@ -256,7 +256,7 @@ function initializeDocumentDetailsTableForFamily(familyId) {
             });
         },
         error: function(xhr, status, error) {
-            console.error('Error fetching family members:', error);
+
             
             // Try to parse error response
             let errorMessage = 'Error loading family members';
@@ -264,7 +264,7 @@ function initializeDocumentDetailsTableForFamily(familyId) {
                 const responseText = xhr.responseText;
                 errorMessage += `: ${responseText}`;
             } catch (e) {
-                console.error('Could not parse error response', e);
+
             }
 
             $('#familyDocumentDetailsTableBody').html(`

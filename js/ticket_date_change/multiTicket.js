@@ -77,12 +77,12 @@ document.addEventListener('DOMContentLoaded', function() {
                 if (data.status === 'success') {
                     populateTicketTable(data.tickets);
                 } else {
-                    console.error('Error loading tickets:', data.message);
+
                     alert('failed_to_load_tickets_please_try_again');
                 }
             })
             .catch(error => {
-                console.error('Error:', error);
+
                     alert('an_error_occurred_while_loading_tickets');
             });
     }

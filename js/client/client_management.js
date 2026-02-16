@@ -34,7 +34,7 @@ document.addEventListener('DOMContentLoaded', function() {
                 renderClients();
             })
             .catch(error => {
-                console.error('Error:', error);
+
                 showError('Failed to load clients');
             })
             .finally(() => {

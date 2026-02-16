@@ -833,6 +833,7 @@ try {
 
     
     <!-- Required Js -->
+    
     <script src="../assets/js/vendor-all.min.js"></script>
     <script src="../assets/plugins/bootstrap/js/bootstrap.min.js"></script>
     <script src="../assets/js/pcoded.min.js"></script>
@@ -885,8 +886,8 @@ try {
                                         echo '<td>' . $dateTime->format('Y-m-d H:i:s') . '</td>';
                                         echo '<td>' . number_format($transaction['amount'], 2) . ' ' . $transaction['currency'] . '</td>';
                                         echo '<td>' . ($transaction['transaction_type'] == 'debit' ? '<span class="badge-success">' . __("payment") . '</span>' : '<span class="badge-danger">' . __("credit") . '</span>') . '</td>';
-                                        echo '<td>' . htmlspecialchars($transaction['description']) . '</td>';
-                                        echo '<td>' . htmlspecialchars($transaction['reference_number']) . '</td>';
+                                        echo '<td>' . htmlspecialchars($transaction['description'] ?? '') . '</td>';
+                                        echo '<td>' . htmlspecialchars($transaction['reference_number'] ?? '') . '</td>';
                                         echo '<td>';
                                         echo '<button class="btn btn-info btn-sm mr-1" title="Print Receipt" onclick="printReceipt(\'' . $transaction['id'] . '\')"><i class="feather icon-printer"></i></button>';
                                         // Add edit button
@@ -1136,11 +1137,11 @@ foreach ($creditors as $creditor):
                         </div>
                         <div class="form-group">
                             <label><?= __("reference_number") ?></label>
-                            <input type="text" class="form-control" name="reference_number" value="<?php echo htmlspecialchars($transaction['reference_number']); ?>">
+                            <input type="text" class="form-control" name="reference_number" value="<?php echo htmlspecialchars($transaction['reference_number'] ?? ''); ?>">
                         </div>
                         <div class="form-group">
                             <label><?= __("description") ?></label>
-                            <textarea class="form-control" name="payment_description" rows="3"><?php echo htmlspecialchars($transaction['description']); ?></textarea>
+                            <textarea class="form-control" name="payment_description" rows="3"><?php echo htmlspecialchars($transaction['description'] ?? ''); ?></textarea>
                         </div>
                         
                         <div class="alert alert-warning">

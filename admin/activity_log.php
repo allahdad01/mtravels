@@ -30,6 +30,9 @@ $error_message = isset($_SESSION['error_message']) ? $_SESSION['error_message'] 
 unset($_SESSION['success_message']);
 unset($_SESSION['error_message']);
 
+// Load input validation helper
+require_once '../includes/InputValidator.php';
+
 // Build redirect URL with current query parameters
 $redirect_url = $_SERVER['PHP_SELF'];
 if (!empty($_GET)) {
@@ -38,15 +41,23 @@ if (!empty($_GET)) {
 
 // Pagination settings
 $records_per_page = 50;
-$page = isset($_GET['page']) ? max(1, intval($_GET['page'])) : 1;
+$page = InputValidator::getInt($_GET['page'] ?? '', 1, 1, 9999);
 $offset = ($page - 1) * $records_per_page;
 
-// Handle activity log filtering
-$date_from = isset($_GET['date_from']) ? $_GET['date_from'] : date('Y-m-d', strtotime('-30 days'));
-$date_to = isset($_GET['date_to']) ? $_GET['date_to'] : date('Y-m-d');
-$user_id = isset($_GET['user_id']) ? intval($_GET['user_id']) : 0;
-$action = isset($_GET['action']) ? $_GET['action'] : '';
-$table_name = isset($_GET['table_name']) ? $_GET['table_name'] : '';
+// Handle activity log filtering - validate all parameters
+$date_from = InputValidator::getDate(
+    $_GET['date_from'] ?? '',
+    'Y-m-d',
+    date('Y-m-d', strtotime('-30 days'))
+);
+$date_to = InputValidator::getDate(
+    $_GET['date_to'] ?? '',
+    'Y-m-d',
+    date('Y-m-d')
+);
+$user_id = InputValidator::getInt($_GET['user_id'] ?? '', 0, 0);
+$action = InputValidator::getString($_GET['action'] ?? '', 50);
+$table_name = InputValidator::getString($_GET['table_name'] ?? '', 50);
 
 // Get all users for filter dropdown
 $users_query = "SELECT id, name FROM users WHERE tenant_id = ? AND branch_id = ? ORDER BY name";
@@ -945,7 +956,8 @@ try {
 <!-- [ Main Content ] end -->
 
 <!-- Required Js -->
-<script src="../assets/js/vendor-all.min.js"></script>
+
+    <script src="../assets/js/vendor-all.min.js"></script>
 <script src="../assets/plugins/bootstrap/js/bootstrap.min.js"></script>
 <script src="../assets/js/pcoded.min.js"></script>
 

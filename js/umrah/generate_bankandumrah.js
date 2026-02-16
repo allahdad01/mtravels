@@ -56,12 +56,12 @@ function showBankLetterModal(userId) {
                     container.appendChild(list);
                 })
                 .catch(err => {
-                    console.error(err);
+
                     container.innerHTML = '<div class="text-danger small">Error loading members</div>';
                 });
         }
     } catch (e) {
-        console.error('Error initializing bank members list', e);
+
     }
 }
 
@@ -142,7 +142,7 @@ function generateBankRecipt(event, language) {
         const memberIdsParam = selected.length ? `&member_ids=${encodeURIComponent(selected.join(','))}` : '';
 
         const finalUrl = `${bankReciptUrl}?family_id=${selectedBankReciptUserId}&language=${language}&bank_name=${encodeURIComponent(bankNameValue)}&bank_account_number=${encodeURIComponent(bankAccountNumberValue)}&account_name=${encodeURIComponent(accountNameValue)}&payment=${encodeURIComponent(paymentValue)}${memberIdsParam}`;
-        console.log('Opening:', finalUrl);
+
         window.open(finalUrl, '_blank');
     }
 
@@ -247,6 +247,6 @@ function generateBankRecipt(event, language) {
         }
 
         const finalUrl = `${umrahUrl}?family_id=${selectedUmrahPresidencyUserId}&language=${language}&family_head_father_name=${encodeURIComponent(familyHeadFatherNameValue)}&family_head_id_number=${encodeURIComponent(familyHeadIdNumberValue)}&umrah_visa_amount=${encodeURIComponent(umrahVisaAmountValue)}&ticket_amount=${encodeURIComponent(ticketAmountValue)}&airline_name=${encodeURIComponent(airlineNameValue)}&makkah_day_number=${encodeURIComponent(makkahDayNumberValue)}&makkah_night_number=${encodeURIComponent(makkahNightNumberValue)}&madina_day_number=${encodeURIComponent(madinaDayNumberValue)}&madina_night_number=${encodeURIComponent(madinaNightNumberValue)}&amount_airport_hotel=${encodeURIComponent(amountAirportHotelValue)}&amount_hotel_airport=${encodeURIComponent(amountHotelAirportValue)}&visiting_ziarats_amount=${encodeURIComponent(visitingZiaratsAmountValue)}&halaqat_darsi_amount=${encodeURIComponent(halaqatDarsiAmountValue)}&total_amount=${encodeURIComponent(totalAmountValue)}&makkah_hotel_name=${encodeURIComponent(makkahHotelNameValue)}&makkah_hotel_degree=${encodeURIComponent(makkahHotelDegreeValue)}&makkah_hotel_distance=${encodeURIComponent(makkahHotelDistanceValue)}&makkah_hotel_amount=${encodeURIComponent(makkahHotelAmountValue)}&madina_hotel_name=${encodeURIComponent(madinaHotelNameValue)}&madina_hotel_degree=${encodeURIComponent(madinaHotelDegreeValue)}&madina_hotel_distance=${encodeURIComponent(madinaHotelDistanceValue)}&madina_hotel_amount=${encodeURIComponent(madinaHotelAmountValue)}&commission_amount=${encodeURIComponent(commissionAmountValue)}&child_services_amount=${encodeURIComponent(childServicesAmountValue)}&child_commission_amount=${encodeURIComponent(childCommissionAmountValue)}}`;
-        console.log('Opening:', finalUrl);
+
         window.open(finalUrl, '_blank');
     }

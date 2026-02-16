@@ -30,7 +30,7 @@ function loadDuesData() {
         })
         .then(data => {
             if (data.error) {
-                console.error('API Error:', data.error);
+
                 return;
             }
             // Update USD dues
@@ -55,7 +55,7 @@ function loadDuesData() {
             document.getElementById('hotelDuesAFS').textContent = formatCurrency(data.hotel_dues_afs, 'AFS');
             document.getElementById('addpaymentDuesAFS').textContent = formatCurrency(data.addpayment_dues_afs, 'AFS');
         })
-        .catch(error => console.error('Error loading dues:', error));
+
 }
 
 function loadDebtorsList(type) {
@@ -66,7 +66,7 @@ function loadDebtorsList(type) {
             
             // Check if the element exists before trying to modify it
             if (!tableBody) {
-                console.error('Element with ID "debtorsTableBody" not found');
+
                 return;
             }
             
@@ -99,10 +99,10 @@ function loadDebtorsList(type) {
             if (typeof $ !== 'undefined' && $.fn.modal) {
                 $('#debtorsModal').modal('show');
             } else {
-                console.error('Bootstrap modal not available');
+
             }
         })
-        .catch(error => console.error('Error loading debtors:', error));
+
 }
 
 function formatCurrency(amount, currency) {

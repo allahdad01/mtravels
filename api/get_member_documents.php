@@ -29,7 +29,7 @@ if (!$booking_id) {
 }
 
 // Get document paths
-$stmt = $pdo->prepare("SELECT photo_path, passport_path FROM umrah_bookings 
+$stmt = $pdo->prepare("SELECT photo_path, passport_path, visa_path FROM umrah_bookings 
                       WHERE booking_id = ? AND tenant_id = ? AND branch_id = ?");
 $stmt->execute([$booking_id, $tenant_id, $branch_id]);
 $result = $stmt->fetch(PDO::FETCH_ASSOC);
@@ -57,11 +57,13 @@ if ($result) {
     
     $photo_path = $result['photo_path'] ? fixPath($result['photo_path']) : null;
     $passport_path = $result['passport_path'] ? fixPath($result['passport_path']) : null;
+    $visa_path = $result['visa_path'] ? fixPath($result['visa_path']) : null;
     
     echo json_encode([
         'success' => true,
         'photo_path' => $photo_path,
-        'passport_path' => $passport_path
+        'passport_path' => $passport_path,
+        'visa_path' => $visa_path
     ]);
 } else {
     http_response_code(404);

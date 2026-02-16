@@ -140,7 +140,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action']) && $_POST['
 }
 .table-responsive {
     border-radius: 10px;
-    overflow: hidden;
+    
 }
 .table {
     margin-bottom: 0;

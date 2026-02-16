@@ -5,6 +5,7 @@
 	require_once __DIR__ . '/../includes/MessageEncryption.php';
 	require_once __DIR__ . '/../includes/ChatAudit.php';
 	require_once __DIR__ . '/../includes/RateLimiter.php';
+	require_once __DIR__ . '/../admin/security.php';
 
 	if (!isset($_SESSION['user_id'])) {
 		http_response_code(401);
@@ -26,11 +27,12 @@
 
 	$method = $_SERVER['REQUEST_METHOD'];
 
-	// Validate current user and get tenant and role
-	$stmt = secure_query($pdo, 'SELECT id, tenant_id, role FROM users WHERE id = ?', [$currentUserId]);
+	// Validate current user and get tenant, role, and branch
+	$stmt = secure_query($pdo, 'SELECT id, tenant_id, branch_id, role FROM users WHERE id = ?', [$currentUserId]);
 	$me = $stmt ? $stmt->fetch() : null;
 	if (!$me) { http_response_code(404); echo json_encode(['error' => 'user_not_found']); exit; }
 	$tenantId = (int)$me['tenant_id'];
+	$myBranch = isset($me['branch_id']) ? (int)$me['branch_id'] : 0;
 	$userRole = $me['role'];
 
 	function room_from_users($a, $b) {
@@ -49,11 +51,6 @@
 		$peerTenant = (int)$peerUser['tenant_id'];
 		$peerBranch = (int)$peerUser['branch_id'];
 		$peerRole = $peerUser['role'];
-		
-		// Get current user's branch
-		$meStmt = secure_query($pdo, 'SELECT branch_id FROM users WHERE id = ?', [$currentUserId]);
-		$meUser = $meStmt ? $meStmt->fetch(PDO::FETCH_ASSOC) : null;
-		$myBranch = $meUser ? (int)$meUser['branch_id'] : 0;
 		
 		// Validate communication is allowed
 		if ($peerTenant === $tenantId) {

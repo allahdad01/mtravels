@@ -185,7 +185,6 @@ foreach ($suppliers as $supplier) {
     <link rel="stylesheet" href="../css/ticket/ticket-components.css">
     <link rel="stylesheet" href="../css/general/modal-styles.css">
     <link rel="stylesheet" href="../css/ticket/ticket-form.css">
-    <link rel="stylesheet" href="../css/ticket/ticket_reserve_datatables.css">
 
     <style>
 /* Apply gradient background to card headers matching the sidebar */

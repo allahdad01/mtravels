@@ -72,7 +72,7 @@ function loadWeightDetails(weightId) {
                     updatePaymentStatus(weight);
                 }
             } catch (e) {
-                console.error('Error:', e);
+
             }
         }
     });
@@ -201,18 +201,18 @@ function loadTransactions(weightId) {
                     $('#darhamSection').toggle(hasCurrency.DARHAM);
 
                 } else {
-                    console.error('Failed to load transactions:', result.message);
+
                 }
 
             } catch(e) {
-                console.error('Error parsing transactions:', e);
+
                 $('#transactionsTableBody').html('<tr><td colspan="6" class="text-center">error_loading_transactions</td></tr>');
                 $('#exchangeRateDisplay').text('Error loading exchange rates');
                 $('#exchangedAmount').text('Error calculating amounts');
             }
         },
         error: function(xhr, status, error){
-            console.error('Error loading transactions:', error);
+
             $('#transactionsTableBody').html('<tr><td colspan="6" class="text-center">error_loading_transactions</td></tr>');
             $('#exchangeRateDisplay').text('Error loading exchange rates');
             $('#exchangedAmount').text('Error calculating amounts');
@@ -236,7 +236,7 @@ function editWeightTransaction(id, remarks, amount, transaction_date, currency, 
     // Get the current weight ID from the weightId field
     const weightId = $('#weightId').val();
 
-    console.log('Current weight ID:', weightId); // Debug log
+
 
     // Create edit transaction modal if it doesn't exist
     if (!$('#editWeightTransactionModal').length) {
@@ -390,9 +390,9 @@ function editWeightTransaction(id, remarks, amount, transaction_date, currency, 
             }
 
             // Log the form data for debugging
-            console.log('Submitting weight transaction update with data:');
+
             for (let pair of formData.entries()) {
-                console.log(pair[0] + ': ' + pair[1]);
+
             }
 
             $.ajax({
@@ -415,7 +415,7 @@ function editWeightTransaction(id, remarks, amount, transaction_date, currency, 
                             alert('Error updating transaction: ' + (result.message || 'Unknown error'));
                         }
                     } catch (e) {
-                        console.error('Error parsing response:', e);
+
                         // Re-enable submit button on parsing error
                         submitBtn.prop('disabled', false);
                         submitBtn.html(originalText);
@@ -423,8 +423,8 @@ function editWeightTransaction(id, remarks, amount, transaction_date, currency, 
                     }
                 },
                 error: function(xhr, status, error) {
-                    console.error('AJAX Error:', error);
-                    console.error('Response:', xhr.responseText);
+
+
                     // Re-enable submit button on network error
                     submitBtn.prop('disabled', false);
                     submitBtn.html(originalText);
@@ -467,7 +467,7 @@ function editWeightTransaction(id, remarks, amount, transaction_date, currency, 
     }
 
     // Log values for debugging
-    console.log('Edit Weight Transaction:', {
+    console.log({
         transactionId: id,
         weightId: weightId,
         amount: amount,
@@ -620,9 +620,9 @@ $('#weightTransactionForm').on('submit', function(e) {
             }
         },
         error: function(xhr, status, error) {
-            console.error('AJAX Error:', error);
-            console.log('Status:', status);
-            console.log('Response:', xhr.responseText);
+
+
+
             // Re-enable submit button on network error
             submitBtn.prop('disabled', false);
             submitBtn.html(originalText);

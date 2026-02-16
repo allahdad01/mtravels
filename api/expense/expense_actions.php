@@ -20,6 +20,7 @@ $tenant_id = $_SESSION['tenant_id'];
 $branch_id = $_SESSION['branch_id'];
 
 require_once('../../includes/db.php');
+require_once('../../includes/SecureFileUpload.php');
 header('Content-Type: application/json');
 
 try {
@@ -131,23 +132,20 @@ try {
             // Get receipt number (optional)
             $receiptNumber = $_POST['expenseReceiptNumber'] ?? '';
             
-            // Handle receipt file upload (optional)
+            // Handle receipt file upload (optional) using SecureFileUpload
             $receiptFile = null;
             if (!empty($_FILES['expenseReceiptFile']['name'])) {
-                // Create directory if it doesn't exist
-                $uploadDir = '../uploads/expense_receipt/';
-                if (!file_exists($uploadDir)) {
-                    mkdir($uploadDir, 0777, true);
-                }
-                
-                // Generate unique filename
-                $fileExtension = pathinfo($_FILES['expenseReceiptFile']['name'], PATHINFO_EXTENSION);
-                $receiptFile = uniqid('receipt_') . '.' . $fileExtension;
-                $targetFile = $uploadDir . $receiptFile;
-                
-                // Move uploaded file
-                if (!move_uploaded_file($_FILES['expenseReceiptFile']['tmp_name'], $targetFile)) {
-                    throw new Exception("Failed to upload receipt file");
+                try {
+                    $uploader = new SecureFileUpload(5 * 1024 * 1024, '../../uploads/');
+                    $result = $uploader->upload('expenseReceiptFile', 'expense_receipt');
+                    
+                    if ($result['success']) {
+                        $receiptFile = $result['data']['filename'];
+                    } else {
+                        throw new Exception("Receipt upload failed: " . $result['error']);
+                    }
+                } catch (Exception $e) {
+                    throw new Exception("Failed to upload receipt file: " . $e->getMessage());
                 }
             }
             

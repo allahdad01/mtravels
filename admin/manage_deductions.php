@@ -333,6 +333,7 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
     <!-- [ Main Content ] end -->
 
     <!-- Required Js -->
+    
     <script src="../assets/js/vendor-all.min.js"></script>
     <script src="../assets/plugins/bootstrap/js/bootstrap.min.js"></script>
     <script src="../assets/js/ripple.js"></script>
@@ -344,7 +345,6 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
         $(document).ready(function() {
             // Initialize DataTable
             try {
-                $('#deduction-list-table').DataTable();
             } catch(e) {
                 console.error("DataTable error:", e);
             }

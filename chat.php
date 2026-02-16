@@ -7,7 +7,8 @@ if (!$currentUserId) {
 }
 
 // Allow embedding in iframes from same origin
-header('X-Frame-Options: SAMEORIGIN');
+// (CSP is handled by .htaccess globally)
+header('X-Frame-Options: SAMEORIGIN');;
 
 // Generate or retrieve CSRF token
 if (empty($_SESSION['csrf_token'])) {

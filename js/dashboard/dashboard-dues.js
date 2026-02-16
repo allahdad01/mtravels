@@ -21,14 +21,14 @@ document.addEventListener('DOMContentLoaded', function() {
         })
         .then(data => {
             if (data.error) {
-                console.error('API Error:', data.error);
+
                 return;
             }
             // Update the dues amounts
             updateDuesAmounts(data);
         })
         .catch(error => {
-            console.error('Error fetching dues data:', error);
+
         });
 });
 

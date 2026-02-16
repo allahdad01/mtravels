@@ -60,7 +60,6 @@ try {
     <link rel="stylesheet" href="../assets/fonts/fontawesome/css/fontawesome-all.min.css">
     <link rel="stylesheet" href="../assets/plugins/animation/css/animate.min.css">
     <link rel="stylesheet" href="../assets/css/style.css">
-    <link rel="stylesheet" href="../assets/css/mobile-responsive.css">
 
     <style>
         .profile-header {
@@ -425,10 +424,10 @@ try {
     <?php include '../modals/umrah/profile_modal.php'; ?>
     <?php include '../modals/umrah/settings_modal.php'; ?>
 
+    
     <script src="../assets/js/vendor-all.min.js"></script>
     <script src="../assets/plugins/bootstrap/js/bootstrap.min.js"></script>
     <script src="../assets/js/pcoded.min.js"></script>
-    <script src="../assets/js/mobile-menu.js"></script>
 
     <script>
     function previewImage(input) {

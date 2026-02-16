@@ -414,7 +414,7 @@ $userQuery = "
 }
 .table-responsive {
     border-radius: 10px;
-    overflow: hidden;
+    
 }
 .table {
     margin-bottom: 0;
@@ -523,7 +523,7 @@ $userQuery = "
 }
 .progress {
     border-radius: 15px;
-    overflow: hidden;
+    
     box-shadow: inset 0 1px 2px rgba(0,0,0,0.1);
 }
 

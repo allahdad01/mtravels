@@ -25,7 +25,7 @@ document.getElementById('addVisaForm').addEventListener('submit', function (even
         }
     })
     .catch(error => {
-        console.error('Error:', error);
+
         showToast('an_unexpected_error_occurred', 'error');
         // Re-enable the button if there's an error
         submitButton.disabled = false;

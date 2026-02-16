@@ -17,7 +17,7 @@ document.getElementById('bookTicketForm').addEventListener('submit', function (e
         }
     })
     .catch(error => {
-        console.error('Error:', error); // Log error
+
         // Use translated error message from PHP
         showToast('An unexpected error occurred', 'error');
     });

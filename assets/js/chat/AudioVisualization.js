@@ -47,7 +47,7 @@ class AudioVisualization {
             // Start visualization with audio element for progress tracking
             this.startVisualization(messageId, analyser, waveformContainer, audioElement);
         } catch (error) {
-            console.error('[AudioVisualization] Error initializing visualization:', error);
+
         }
     }
 

@@ -10,7 +10,7 @@ if (document.readyState === 'loading') {
 
 async function initChat() {
      try {
-         console.log('[Chat] Initializing...');
+
 
          const manager = new ChatManager();
          const ui = new ChatUI();
@@ -29,13 +29,13 @@ async function initChat() {
          // Store in window
          window.chatApp = { manager, ui, api, voiceRecorder, voiceUI, voiceAdvanced };
 
-         console.log(`[Chat] Ready. ${manager.contacts.length} contacts loaded. Online users: ${manager.onlineUsers.size}`);
+
 
          // Setup listeners
          setupListeners(manager, ui, api, voiceUI);
 
      } catch (error) {
-         console.error('[Chat] Error:', error);
+
      }
  }
 
@@ -43,17 +43,17 @@ async function initChat() {
 function loadMessageReactions(messageId) {
     const ui = window.chatApp?.ui;
     if (!ui) {
-        console.warn('[Chat] UI not available');
+
         return;
     }
     
-    console.log('[Chat] Loading reactions for message:', messageId);
+
     
     fetch(`api/message_reactions.php?message_id=${messageId}`, {
         credentials: 'include'
     }).then(response => {
         if (!response.ok) {
-            console.warn(`[Chat] Reactions API returned ${response.status}`);
+
             return null;
         }
         return response.json();
@@ -61,11 +61,11 @@ function loadMessageReactions(messageId) {
       .then(data => {
           if (!data) return;
           
-          console.log('[Chat] Got reactions data:', data);
+
           
           if (data.reactions && Object.keys(data.reactions).length > 0) {
               const messageEl = ui.messageIdToElement.get(messageId);
-              console.log('[Chat] Message element found:', !!messageEl);
+
               
               if (messageEl) {
                   const bubble = messageEl.querySelector('.message-bubble');
@@ -87,13 +87,13 @@ function loadMessageReactions(messageId) {
                               <span class="reaction-count">${reactions.length}</span>
                           `;
                           reactionsContainer.appendChild(reactionEl);
-                          console.log('[Chat] Added reaction:', emoji, reactions.length);
+
                       }
                   }
               }
           }
       }).catch(error => {
-          console.error('[Chat] Failed to load reactions:', error);
+
       });
 }
 
@@ -101,7 +101,7 @@ function setupListeners(manager, ui, api, voiceUI) {
     // Contact selection
     window.addEventListener('contactSelected', async (e) => {
         const { contactId } = e.detail;
-        console.log('[Chat] Selected contact:', contactId);
+
 
         manager.selectContact(contactId);
         const contact = manager.getCurrentContact();
@@ -178,30 +178,30 @@ function setupListeners(manager, ui, api, voiceUI) {
                 });
             }
         } catch (error) {
-            console.error('[Chat] Failed to load messages:', error);
+
         }
     });
 
     // Send message
     let messageCounter = 0;
     window.addEventListener('sendMessage', async () => {
-        console.log('[Chat] sendMessage event triggered');
+
         const contact = manager.getCurrentContact();
         if (!contact) {
-            console.warn('[Chat] No contact selected');
+
             return;
         }
 
         const text = ui.getMessageText();
         if (!text) {
-            console.warn('[Chat] No message text');
+
             return;
         }
 
-        console.log('[Chat] Sending message to contact:', contact.id);
+
         ui.clearInput();
         const messageId = ++messageCounter;
-        console.log('[Chat] Created local message ID:', messageId);
+
         
         // Prepare message body with optional reply
         let messageBody = text;
@@ -224,7 +224,7 @@ function setupListeners(manager, ui, api, voiceUI) {
 
         try {
             const response = await api.sendMessage(contact.id, messageBody);
-            console.log('[Chat] API sendMessage response:', response);
+
             
             if (response && response.id) {
                 // Reload messages to get the server version with proper status
@@ -253,12 +253,12 @@ function setupListeners(manager, ui, api, voiceUI) {
                         ui.renderMessages(formatted);
                     }
                 } catch (e) {
-                    console.error('[Chat] Failed to reload messages:', e);
+
                     // Fallback: just update the message status
                     ui.updateMessageStatus(messageId, 'delivered');
                 }
             } else {
-                console.warn('[Chat] No server ID in response');
+
                 ui.updateMessageStatus(messageId, 'sent');
             }
             
@@ -270,7 +270,7 @@ function setupListeners(manager, ui, api, voiceUI) {
             // Clear reply context after sending
             ui.clearReplyPreview();
         } catch (error) {
-            console.error('[Chat] Failed to send message:', error);
+
             ui.showError('Failed to send message');
         }
     });
@@ -298,17 +298,17 @@ function setupListeners(manager, ui, api, voiceUI) {
 
         // Send typing status to server
         await fetch('api/typing.php', {
-            method: 'POST',
-            credentials: 'include',
-            headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
-            body: new URLSearchParams({
-                peer_id: manager.getCurrentContact().id,
-                typing: '1'
-            })
-        }).catch(e => console.warn('[Chat] Typing status error:', e));
+             method: 'POST',
+             credentials: 'include',
+             headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+             body: new URLSearchParams({
+                 peer_id: manager.getCurrentContact().id,
+                 typing: '1'
+             })
+         });
 
-        // Stop typing after 2 seconds of inactivity
-        typingTimeout = setTimeout(async () => {
+         // Stop typing after 2 seconds of inactivity
+         typingTimeout = setTimeout(async () => {
             await fetch('api/typing.php', {
                 method: 'POST',
                 credentials: 'include',
@@ -317,9 +317,9 @@ function setupListeners(manager, ui, api, voiceUI) {
                     peer_id: manager.getCurrentContact().id,
                     typing: '0'
                 })
-            }).catch(e => console.warn('[Chat] Typing status error:', e));
-        }, 2000);
-    });
+            });
+         }, 2000);
+         });
 
     // Voice message sent
     window.addEventListener('voiceMessageSent', async (e) => {
@@ -357,7 +357,7 @@ function setupListeners(manager, ui, api, voiceUI) {
                     ui.renderMessages(formatted);
                 }
             } catch (error) {
-                console.error('[Chat] Failed to reload messages after voice message:', error);
+
             }
             
             // Update sidebar
@@ -373,16 +373,16 @@ function setupListeners(manager, ui, api, voiceUI) {
             method: 'GET',
             credentials: 'include',
             keepalive: true
-        }).catch(e => console.warn('[Chat] Logout error:', e));
+        });
     });
     }
 
-// Mobile: show sidebar by default
-if (window.innerWidth < 769) {
+    // Mobile: show sidebar by default
+    if (window.innerWidth < 769) {
     document.addEventListener('DOMContentLoaded', () => {
         const sidebar = document.getElementById('sidebar');
         const chatArea = document.getElementById('chatArea');
         if (sidebar) sidebar.classList.add('show');
         if (chatArea) chatArea.classList.remove('show');
     });
-}
+    }

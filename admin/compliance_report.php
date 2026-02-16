@@ -1,6 +1,7 @@
 <?php
 session_start();
 require_once __DIR__ . '/../includes/db.php';
+require_once __DIR__ . '/../includes/InputValidator.php';
 require_once __DIR__ . '/../includes/ChatAudit.php';
 
 // Check if user is logged in
@@ -20,11 +21,27 @@ if (!$currentUser) {
 
 $tenantId = (int)$currentUser['tenant_id'];
 
-// Get report parameters
-$reportType = isset($_GET['type']) ? $_GET['type'] : 'gdpr';
-$startDate = isset($_GET['start_date']) ? $_GET['start_date'] : date('Y-m-d', strtotime('-30 days'));
-$endDate = isset($_GET['end_date']) ? $_GET['end_date'] : date('Y-m-d');
-$export = isset($_GET['export']) ? $_GET['export'] : null;
+// Get report parameters - validate report type and dates
+$reportType = InputValidator::getEnum(
+    $_GET['type'] ?? '',
+    ['gdpr', 'hipaa', 'audit', 'activity'],
+    'gdpr'
+);
+$startDate = InputValidator::getDate(
+    $_GET['start_date'] ?? '',
+    'Y-m-d',
+    date('Y-m-d', strtotime('-30 days'))
+);
+$endDate = InputValidator::getDate(
+    $_GET['end_date'] ?? '',
+    'Y-m-d',
+    date('Y-m-d')
+);
+$export = InputValidator::getEnum(
+    $_GET['export'] ?? '',
+    ['pdf', 'csv', 'json'],
+    null
+);
 
 // Ensure dates are in correct format
 $startDate = date('Y-m-d H:i:s', strtotime($startDate));

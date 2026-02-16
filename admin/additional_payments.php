@@ -22,9 +22,6 @@ if (!isset($_SESSION['csrf_token'])) {
     $_SESSION['csrf_token'] = bin2hex(random_bytes(32));
 }
 
-// Debug CSRF token - remove in production
-error_log("CSRF Token in session: " . $_SESSION['csrf_token']);
-
 // Check if user is logged in
 if (!isset($_SESSION['user_id'])  || $_SESSION['role'] !== 'admin') {
     header('Location: ../login.php');
@@ -40,6 +37,9 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action']) && $_POST['
 
 // Database connection
 require_once('../includes/db.php');
+
+// Load input validation helper
+require_once '../includes/InputValidator.php';
 
 // Fetch main accounts for dropdown
 $mainAccountsQuery = "SELECT * FROM main_account WHERE status = 'active' AND tenant_id = ? AND branch_id = ?";
@@ -67,11 +67,11 @@ $mainAccounts = $stmt->fetchAll();
 
 // Pagination settings
 $items_per_page = 10;
-$current_page = isset($_GET['page']) ? max(1, intval($_GET['page'])) : 1;
+$current_page = InputValidator::getInt($_GET['page'] ?? '', 1, 1, 9999);
 $offset = ($current_page - 1) * $items_per_page;
 
-// Search functionality
-$search_query = isset($_GET['search']) ? trim($_GET['search']) : '';
+// Search functionality - validate and sanitize search query
+$search_query = InputValidator::getString($_GET['search'] ?? '', 100);
 $search_condition = '';
 
 if (!empty($search_query)) {
@@ -429,10 +429,10 @@ $total_pages = ceil($total_records / $items_per_page);
                                                                             data-main-account="<?= $payment['main_account_id'] ?>"
                                                                             data-supplier="<?= $payment['supplier_id'] ?>"
                                                                             data-client="<?= $payment['client_id'] ?>"
-                                                                            data-receipt="<?= htmlspecialchars($payment['receipt']) ?>"
-                                                                            data-description="<?= htmlspecialchars($payment['description']) ?>"
+                                                                            data-receipt="<?= htmlspecialchars($payment['receipt'] ?? '') ?>"
+                                                                            data-description="<?= htmlspecialchars($payment['description'] ?? '') ?>"
                                                                             data-sold-amount="<?= $payment['sold_amount'] ?>"
-                                                                            onclick="this.dispatchEvent(new CustomEvent('click', {bubbles: true})); document.querySelector('.add-transaction[data-id=\'' + this.dataset.id + '\']')?.click();">
+                                                                            onclick="document.querySelector('.add-transaction[data-id=\'' + this.dataset.id + '\']')?.click();">
                                                                              <i class="feather icon-plus mr-2"></i><?= __('add_transaction') ?>
                                                                          </a>
                                                                          <a class="dropdown-item" href="javascript:void(0)" 
@@ -446,7 +446,7 @@ $total_pages = ceil($total_records / $items_per_page);
                                                                             data-main-account="<?= $payment['main_account_id'] ?>"
                                                                             data-supplier="<?= $payment['supplier_id'] ?>"
                                                                             data-client="<?= $payment['client_id'] ?>"
-                                                                            data-receipt="<?= htmlspecialchars($payment['receipt']) ?>"
+                                                                            data-receipt="<?= htmlspecialchars($payment['receipt'] ?? '') ?>"
                                                                             onclick="document.querySelector('.edit-payment[data-id=\'' + this.dataset.id + '\']')?.dispatchEvent(new Event('click', {bubbles: true}));">
                                                                              <i class="feather icon-edit mr-2"></i><?= __('edit') ?>
                                                                          </a>
@@ -466,10 +466,10 @@ $total_pages = ceil($total_records / $items_per_page);
                                                                              data-main-account="<?= $payment['main_account_id'] ?>"
                                                                              data-supplier="<?= $payment['supplier_id'] ?>"
                                                                              data-client="<?= $payment['client_id'] ?>"
-                                                                             data-receipt="<?= htmlspecialchars($payment['receipt']) ?>"
-                                                                             data-description="<?= htmlspecialchars($payment['description']) ?>"
+                                                                             data-receipt="<?= htmlspecialchars($payment['receipt'] ?? '') ?>"
+                                                                             data-description="<?= htmlspecialchars($payment['description'] ?? '') ?>"
                                                                              data-sold-amount="<?= $payment['sold_amount'] ?>">
-                                                                     <i class="feather icon-plus"></i>
+                                                                             <i class="feather icon-plus"></i>
                                                                  </button>
                                                                  <button style="display:none;" class="btn btn-sm btn-primary edit-payment" 
                                                                              data-id="<?= $payment['id'] ?>"
@@ -482,9 +482,9 @@ $total_pages = ceil($total_records / $items_per_page);
                                                                              data-main-account="<?= $payment['main_account_id'] ?>"
                                                                              data-supplier="<?= $payment['supplier_id'] ?>"
                                                                              data-client="<?= $payment['client_id'] ?>"
-                                                                             data-receipt="<?= htmlspecialchars($payment['receipt']) ?>">
-                                                                     <i class="feather icon-edit"></i>
-                                                                 </button>
+                                                                             data-receipt="<?= htmlspecialchars($payment['receipt'] ?? '') ?>">
+                                                                             <i class="feather icon-edit"></i>
+                                                                             </button>
                                                                  <button style="display:none;" class="btn btn-sm btn-danger delete-payment" 
                                                                              data-id="<?= $payment['id'] ?>">
                                                                      <i class="feather icon-trash"></i>
@@ -727,6 +727,7 @@ $total_pages = ceil($total_records / $items_per_page);
     <?php include '../modals/additional_payment/edit_transaction_modal.php'; ?>
 
     <!-- Required Js -->
+    
     <script src="../assets/js/vendor-all.min.js"></script>
     <script src="../assets/plugins/bootstrap/js/bootstrap.min.js"></script>
     <script src="../assets/js/pcoded.min.js"></script>

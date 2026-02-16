@@ -44,30 +44,33 @@ if ($visa_id === null || $visa_id <= 0) {
 $pdo->beginTransaction();
 
 try {
-    // Step 1: Fetch visa-related details
-    $stmt_fetch = $pdo->prepare("
-        SELECT va.sold_to, va.supplier, va.paid_to, va.currency, c.client_type, s.supplier_type
-        FROM visa_applications va
-        JOIN clients c ON va.sold_to = c.id AND c.tenant_id = ? AND c.branch_id = ?
-        JOIN suppliers s ON va.supplier = s.id AND s.tenant_id = ? AND s.branch_id = ?
-        WHERE va.id = ? AND va.tenant_id = ? AND va.branch_id = ?
-    ");
-    $stmt_fetch->execute([$tenant_id, $branch_id, $tenant_id, $branch_id, $visa_id, $tenant_id, $branch_id]);
-    $visa = $stmt_fetch->fetch(PDO::FETCH_ASSOC);
+     // Step 1: Fetch visa-related details
+     $stmt_fetch = $pdo->prepare("
+         SELECT va.sold_to, va.supplier, va.paid_to, va.currency, va.status, c.client_type, s.supplier_type
+         FROM visa_applications va
+         JOIN clients c ON va.sold_to = c.id AND c.tenant_id = ? AND c.branch_id = ?
+         JOIN suppliers s ON va.supplier = s.id AND s.tenant_id = ? AND s.branch_id = ?
+         WHERE va.id = ? AND va.tenant_id = ? AND va.branch_id = ?
+     ");
+     $stmt_fetch->execute([$tenant_id, $branch_id, $tenant_id, $branch_id, $visa_id, $tenant_id, $branch_id]);
+     $visa = $stmt_fetch->fetch(PDO::FETCH_ASSOC);
 
-    if (!$visa) {
-        throw new Exception("Visa application not found.");
-    }
+     if (!$visa) {
+         throw new Exception("Visa application not found.");
+     }
 
-    $client_id = $visa['sold_to'];
-    $supplier_id = $visa['supplier'];
-    $currency = $visa['currency'];
-    $client_type = $visa['client_type'];
-    $supplier_type = $visa['supplier_type'];
-    $mainAccountId = $visa['paid_to'];
+     $client_id = $visa['sold_to'];
+     $supplier_id = $visa['supplier'];
+     $currency = $visa['currency'];
+     $client_type = $visa['client_type'];
+     $supplier_type = $visa['supplier_type'];
+     $mainAccountId = $visa['paid_to'];
+     $visa_status = $visa['status'];
 
-    // Step 2: Reverse Client Transactions (Only If Client is Regular)
-    if ($client_type === 'regular') { 
+     // Only process reversals if visa is approved (transactions were created)
+     if ($visa_status === 'Approved') {
+         // Step 2: Reverse Client Transactions (Only If Client is Regular)
+         if ($client_type === 'regular') {
         $stmt_client_transactions = $pdo->prepare("
             SELECT id, amount, type, created_at FROM client_transactions
             WHERE client_id = ? AND transaction_of = 'visa_sale'
@@ -257,6 +260,7 @@ try {
     // Delete main account transactions associated with this visa application
     $delete_main_transactions = $pdo->prepare("DELETE FROM main_account_transactions WHERE reference_id = ? AND transaction_of = 'visa_sale' AND tenant_id = ? AND branch_id = ?");
     $delete_main_transactions->execute([$visa_id, $tenant_id, $branch_id]);
+    }
 
     // Step 5: Delete the Visa Application Record
     $deleteVisa = $pdo->prepare("DELETE FROM visa_applications WHERE id = ? AND tenant_id = ? AND branch_id = ?");

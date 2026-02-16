@@ -210,7 +210,7 @@ include '../includes/header.php';
                                                             <tr>
                                                                 <td>
                                                                     <div class="d-flex align-items-center">
-                                                                        <img src="../assets/images/user/<?= htmlspecialchars($employee['profile_pic'] ?: '../assets/images/user/avatar-1.jpg'); ?>"
+                                                                        <img src="../assets/images/user/<?= htmlspecialchars(basename($employee['profile_pic'] ?: 'avatar-1.jpg')); ?>"
                                                                             class="rounded-circle mr-3" style="width: 40px; height: 40px; object-fit: cover;">
                                                                         <div>
                                                                             <h6 class="mb-0"><?php echo htmlspecialchars($employee['name']); ?></h6>

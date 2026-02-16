@@ -14,6 +14,9 @@ if ($_SERVER['REQUEST_METHOD'] === 'OPTIONS') {
 
 require_once '../../includes/db.php';
 
+// Load input validation helper
+require_once '../../includes/InputValidator.php';
+
 // CSRF Protection for POST/PUT/DELETE requests
 if (in_array($_SERVER['REQUEST_METHOD'], ['POST', 'PUT', 'DELETE']) && !verify_csrf_token()) {
     http_response_code(403);
@@ -76,9 +79,14 @@ class WhatsAppAPI {
     
     /**
      * Parse request path
+     * Validates path against whitelist of allowed endpoints
      */
     private function getPath() {
-        $path = $_GET['path'] ?? '';
+        $path = InputValidator::getPattern(
+            $_GET['path'] ?? '',
+            '/^[a-z0-9\-]+$/',
+            ''
+        );
         return trim($path, '/');
     }
     

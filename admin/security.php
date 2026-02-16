@@ -41,8 +41,9 @@ header("X-Frame-Options: DENY");
 // Content Security Policy - prevents XSS and injection attacks
 // Allow inline styles for Bootstrap and other libraries, plus external CDNs
 // Added worker-src, blob:, data:, and unsafe-eval for Tesseract.js WASM OCR worker
-header("Content-Security-Policy: default-src 'self'; script-src 'self' 'unsafe-inline' 'unsafe-eval' https://cdn.jsdelivr.net https://code.jquery.com; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com https://cdn.jsdelivr.net https://cdn.datatables.net https://maxcdn.bootstrapcdn.com; font-src 'self' https://fonts.gstatic.com; img-src 'self' data: blob: https:; connect-src 'self' https: blob: data:; worker-src 'self' blob:; frame-ancestors 'none'; base-uri 'self'; form-action 'self';");
-header("Content-Security-Policy-Report-Only: default-src 'self'; script-src 'self' 'unsafe-inline' 'unsafe-eval' https://cdn.jsdelivr.net https://code.jquery.com; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com https://cdn.jsdelivr.net https://cdn.datatables.net https://maxcdn.bootstrapcdn.com; img-src 'self' data: blob:; connect-src 'self' https: blob: data:; worker-src 'self' blob:;");
+// Added cdnjs.cloudflare.com for sweetalert CSS/JS
+header("Content-Security-Policy: default-src 'self'; script-src 'self' 'unsafe-inline' 'unsafe-eval' https://cdn.jsdelivr.net https://code.jquery.com https://cdnjs.cloudflare.com; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com https://cdn.jsdelivr.net https://cdn.datatables.net https://maxcdn.bootstrapcdn.com https://cdnjs.cloudflare.com; font-src 'self' https://fonts.gstatic.com https://cdnjs.cloudflare.com; img-src 'self' data: blob: https:; connect-src 'self' https: blob: data:; worker-src 'self' blob:; frame-ancestors 'none'; base-uri 'self'; form-action 'self';");
+header("Content-Security-Policy-Report-Only: default-src 'self'; script-src 'self' 'unsafe-inline' 'unsafe-eval' https://cdn.jsdelivr.net https://code.jquery.com https://cdnjs.cloudflare.com; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com https://cdn.jsdelivr.net https://cdn.datatables.net https://maxcdn.bootstrapcdn.com https://cdnjs.cloudflare.com; img-src 'self' data: blob:; connect-src 'self' https: blob: data:; worker-src 'self' blob:;");
 
 header("Referrer-Policy: strict-origin-when-cross-origin");
 
@@ -180,7 +181,9 @@ function enforce_csrf($redirect_url = null) {
 }
 
 /**
- * Rate limiting for API endpoints
+ * IMPROVED: IP-based rate limiting for API endpoints
+ * Tracks requests per IP address, not per session
+ * Prevents brute force attacks even before login
  * 
  * @param string $endpoint Name of the endpoint
  * @param int $max_requests Maximum allowed requests in the time window
@@ -189,32 +192,60 @@ function enforce_csrf($redirect_url = null) {
  */
 function check_rate_limit($endpoint, $max_requests = 30, $window_seconds = 60) {
     $currentTime = time();
+    $client_ip = $_SERVER['REMOTE_ADDR'] ?? 'unknown';
     
-    // Initialize rate limiting data
-    if (!isset($_SESSION['api_rate_limits'])) {
-        $_SESSION['api_rate_limits'] = [];
+    // Use file-based rate limiting for IP addresses
+    $rate_limit_dir = dirname(__FILE__) . '/../logs/rate_limits/';
+    
+    // Create directory if it doesn't exist
+    if (!is_dir($rate_limit_dir)) {
+        @mkdir($rate_limit_dir, 0755, true);
     }
     
-    if (!isset($_SESSION['api_rate_limits'][$endpoint])) {
-        $_SESSION['api_rate_limits'][$endpoint] = [
-            'count' => 0,
-            'window_start' => $currentTime
-        ];
+    // Create a file for this endpoint + IP combination
+    $rate_key = md5($endpoint . ':' . $client_ip);
+    $rate_file = $rate_limit_dir . $rate_key . '.json';
+    
+    $rate_data = [
+        'count' => 0,
+        'window_start' => $currentTime
+    ];
+    
+    // Read existing rate limit data
+    if (file_exists($rate_file)) {
+        $file_data = json_decode(file_get_contents($rate_file), true);
+        if ($file_data) {
+            $rate_data = $file_data;
+        }
     }
     
     // Reset if window has expired
-    if ($currentTime - $_SESSION['api_rate_limits'][$endpoint]['window_start'] > $window_seconds) {
-        $_SESSION['api_rate_limits'][$endpoint] = [
+    if ($currentTime - $rate_data['window_start'] > $window_seconds) {
+        $rate_data = [
             'count' => 0,
             'window_start' => $currentTime
         ];
     }
     
     // Increment count
-    $_SESSION['api_rate_limits'][$endpoint]['count']++;
+    $rate_data['count']++;
+    
+    // Write updated rate limit data back to file
+    file_put_contents($rate_file, json_encode($rate_data), LOCK_EX);
+    
+    // Clean up old rate limit files (older than 1 hour)
+    if (rand(1, 100) === 1) { // Run cleanup 1% of the time
+        foreach (glob($rate_limit_dir . '*.json') as $file) {
+            if (time() - filemtime($file) > 3600) {
+                @unlink($file);
+            }
+        }
+    }
     
     // Check if over limit
-    if ($_SESSION['api_rate_limits'][$endpoint]['count'] > $max_requests) {
+    if ($rate_data['count'] > $max_requests) {
+        // Log the rate limit violation
+        error_log("Rate limit exceeded for $endpoint from IP: $client_ip (count: {$rate_data['count']})");
         return false;
     }
     

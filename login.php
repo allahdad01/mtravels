@@ -66,11 +66,10 @@ try {
                   <input type="password" name="password" placeholder="Password" required autocomplete="current-password" id="password" />
                   <button type="button" id="togglePassword" class="toggle-password" aria-label="Toggle password visibility" style="position: absolute; right: 15px; top: 50%; transform: translateY(-50%); background: none; border: none; color: #aaa; cursor: pointer; font-size: 18px;"><i class="fas fa-eye"></i></button>
                 </div>
-                <div class="form-check mb-3">
-                    <input type="checkbox" class="form-check-input" name="remember" id="remember-me">
-                    <label for="remember-me" class="form-check-label">Remember me</label>
-                </div>
                 <input type="submit" value="Login" class="btn solid" />
+                <div style="text-align: center; margin-top: 15px;">
+                  <a href="forgot_password.php" style="font-size: 14px; color: #666; text-decoration: none; transition: color 0.3s; font-weight: bold;">Forgot your password?</a>
+                </div>
             <?php endif; ?>
           </form>
 
@@ -103,7 +102,6 @@ try {
             <h3>Welcome Back</h3>
             <p>Please sign in to continue.</p>
           </div>
-          <img src="login/img/register.svg" class="image" alt="" />
         </div>
       </div>
     </div>

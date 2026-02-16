@@ -282,6 +282,7 @@ $today = date('Y-m-d');
     </div>
 
     <!-- Required Js for print functionality -->
+    
     <script src="../assets/js/vendor-all.min.js"></script>
     <script>
         // Auto-print when the page loads

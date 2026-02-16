@@ -40,7 +40,7 @@ function loadFamilyTransactionData(familyId) {
             }
         },
         error: function(xhr, status, error) {
-            console.error('AJAX Error:', error);
+
             alert('Error loading family transaction data');
         }
     });
@@ -195,7 +195,7 @@ $(document).ready(function() {
                         alert('Error: ' + (result.message || 'Failed to process family transaction'));
                     }
                 } catch (e) {
-                    console.error('Error processing response:', e, response);
+
                     alert('Error processing the server response');
                 }
             },
@@ -203,8 +203,8 @@ $(document).ready(function() {
                 submitBtn.prop('disabled', false);
                 submitBtn.html(originalHtml);
 
-                console.error('AJAX Error:', error);
-                console.error('Response:', xhr.responseText);
+
+
                 alert('Error processing family transaction');
             }
         });

@@ -8,12 +8,12 @@ function loadSuppliers() {
     }).then(data => {
         // The API returns { suppliers: [...], main_account: {...} }
         suppliersData = data.suppliers || [];
-        console.log('Suppliers loaded:', suppliersData);
+
         if (suppliersData.length === 0) {
-            console.warn('No active suppliers found');
+
         }
     }).catch(error => { 
-        console.error('Error loading suppliers:', error);
+
         suppliersData = [];
     });
 }
@@ -116,10 +116,10 @@ $('#umrahModal').on('shown.bs.modal', function() {
             addServiceRow();
             if (suppliersData.length === 0) {
                 // Show warning if no suppliers available
-                console.warn('Warning: No suppliers are available. Please ensure suppliers are created and set to active status.');
+
             }
         }).catch(error => {
-            console.error('Failed to load suppliers:', error);
+
             addServiceRow(); // Still add row even if suppliers fail to load
         });
     }

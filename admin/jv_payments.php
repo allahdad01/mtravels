@@ -923,11 +923,7 @@ try {
     <script src="../assets/plugins/bootstrap/js/bootstrap.min.js"></script>
     <script src="../assets/js/pcoded.min.js"></script>
     
-    <!-- DataTables JS -->
-    <script src="https://cdn.datatables.net/1.11.5/js/jquery.dataTables.min.js"></script>
-    <script src="https://cdn.datatables.net/1.11.5/js/dataTables.bootstrap4.min.js"></script>
-    <script src="https://cdn.datatables.net/responsive/2.2.9/js/dataTables.responsive.min.js"></script>
-    <script src="https://cdn.datatables.net/responsive/2.2.9/js/responsive.bootstrap4.min.js"></script>
+    <!-- DataTables removed - using server-side PHP filtering -->
 
 
     <script>
@@ -992,26 +988,14 @@ try {
     const jvButtonProtection = new JvButtonProtection();
 
     $(document).ready(function() {
-        // Initialize DataTable
-        if ($.fn.DataTable) {
-            $('#clientSupplierTable').DataTable({
-                responsive: true,
-                order: [[0, 'desc']],
-                autoWidth: false,
-                scrollX: true,
-                columnDefs: [
-                    { responsivePriority: 1, targets: [1, 2, 3] }, // JV Name, Client, Supplier
-                    { responsivePriority: 2, targets: [4, 7] },    // Amount, Actions
-                    { responsivePriority: 3, targets: [0, 5, 6] }  // Date, Currency, Receipt
-                ]
-            });
-            
-            // Add click handler for table rows on small screens
-            $('#clientSupplierTable tbody').on('click', 'tr', function(e) {
-                // Only trigger if we're in responsive mode and not clicking on a button
-                if ($(window).width() < 768 && !$(e.target).closest('button').length) {
-                    e.preventDefault();
-                    e.stopPropagation();
+        // DataTables removed - using server-side PHP filtering instead
+        
+        // Add click handler for table rows on small screens
+        $('#clientSupplierTable tbody').on('click', 'tr', function(e) {
+            // Only trigger if we're in responsive mode and not clicking on a button
+            if ($(window).width() < 768 && !$(e.target).closest('button').length) {
+                e.preventDefault();
+                e.stopPropagation();
                     
                     // Find the ID from the row's view button
                     const viewBtn = $(this).find('.view-cs-btn');
@@ -1021,8 +1005,7 @@ try {
                         $('.view-cs-btn[data-id="' + paymentId + '"]').trigger('click');
                     }
                 }
-            });
-        }
+        });
 
         // Enhance View Client-Supplier Payment
         $('.view-cs-btn').off('click').on('click', function() {

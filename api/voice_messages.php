@@ -9,6 +9,7 @@ header('Content-Type: application/json');
 require_once __DIR__ . '/../includes/db.php';
 require_once __DIR__ . '/../includes/ChatAudit.php';
 require_once __DIR__ . '/../includes/RateLimiter.php';
+require_once __DIR__ . '/../includes/SecureFileUpload.php';
 
 if (!isset($_SESSION['user_id'])) {
     http_response_code(401);
@@ -63,20 +64,18 @@ if ($method === 'POST') {
         exit;
     }
 
-    // Check file type (audio only)
-    $mimeType = $audioFile['type'];
-    $allowed_types = ['audio/webm', 'audio/mp4', 'audio/mpeg', 'audio/ogg', 'audio/wav'];
-    if (!in_array($mimeType, $allowed_types)) {
+    // Use SecureFileUpload for audio validation
+    $uploader = new SecureFileUpload(10 * 1024 * 1024, __DIR__ . '/../uploads/');
+    
+    // Manually validate audio MIME types since SecureFileUpload might need adjustment
+    $finfo = finfo_open(FILEINFO_MIME_TYPE);
+    $actualMime = finfo_file($finfo, $audioFile['tmp_name']);
+    finfo_close($finfo);
+    
+    $allowedMimes = ['audio/webm', 'audio/mp4', 'audio/mpeg', 'audio/ogg', 'audio/wav'];
+    if (!in_array($actualMime, $allowedMimes)) {
         http_response_code(400);
-        echo json_encode(['error' => 'invalid_audio_format']);
-        exit;
-    }
-
-    // Check file size (10MB max for voice)
-    $maxSize = 10 * 1024 * 1024;
-    if ($audioFile['size'] > $maxSize) {
-        http_response_code(400);
-        echo json_encode(['error' => 'file_too_large', 'max_bytes' => $maxSize]);
+        echo json_encode(['error' => 'invalid_audio_format', 'detected' => $actualMime]);
         exit;
     }
 
@@ -139,25 +138,24 @@ if ($method === 'POST') {
         error_log('[VoiceAPI] Block check failed: ' . $e->getMessage());
     }
 
-    // Create uploads directory if it doesn't exist
-    $voicesDir = __DIR__ . '/../uploads/voices';
-    if (!is_dir($voicesDir)) {
-        mkdir($voicesDir, 0755, true);
-    }
-
-    // Generate unique filename
-    $filename = 'voice_' . $tenantId . '_' . $currentUserId . '_' . time() . '_' . bin2hex(random_bytes(4)) . '.webm';
-    $filepath = $voicesDir . '/' . $filename;
-
-    // Move uploaded file
-    if (!move_uploaded_file($audioFile['tmp_name'], $filepath)) {
+    // Upload audio file using SecureFileUpload
+    try {
+        $result = $uploader->upload('audio', "voices/{$tenantId}/{$currentUserId}", 1);
+        if (!$result['success']) {
+            http_response_code(400);
+            echo json_encode(['error' => 'file_upload_failed', 'details' => $result['error']]);
+            exit;
+        }
+        $uploadedFile = $result['data'];
+        $filename = $uploadedFile['filename'];
+    } catch (Exception $e) {
         http_response_code(500);
-        echo json_encode(['error' => 'file_save_failed']);
+        echo json_encode(['error' => 'upload_error', 'details' => $e->getMessage()]);
         exit;
     }
 
     // Create relative URL for storage
-    $voiceUrl = 'uploads/voices/' . $filename;
+    $voiceUrl = 'uploads/voices/' . $tenantId . '/' . $currentUserId . '/' . $filename;
 
     // Store voice message in database
     $room = room_from_users($currentUserId, $toUserId);
@@ -283,7 +281,14 @@ if ($method === 'GET') {
             exit;
         }
 
-        $filepath = __DIR__ . '/../uploads/voices/' . $contentData['filename'];
+        // Validate filename to prevent directory traversal
+        if (strpos($contentData['filename'], '..') !== false || strpos($contentData['filename'], '/') !== false) {
+            http_response_code(400);
+            echo json_encode(['error' => 'invalid_filename']);
+            exit;
+        }
+        
+        $filepath = __DIR__ . '/../uploads/voices/' . $tenantId . '/' . $message['from_user_id'] . '/' . $contentData['filename'];
 
         if (!file_exists($filepath)) {
             http_response_code(404);

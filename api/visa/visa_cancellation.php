@@ -112,8 +112,13 @@ try {
 
     $stmt->close();
 
-    // Handle supplier balance reversal for External suppliers
-    if ($visa['base'] > 0) {
+    // Only reverse balances if visa was approved (had transactions)
+    // Pending visas that are cancelled never had transactions, so nothing to reverse
+    $visaWasApproved = ($visa['status'] === 'Approved');
+
+    if ($visaWasApproved) {
+        // Handle supplier balance reversal for External suppliers
+        if ($visa['base'] > 0) {
         // Get supplier details
         $supplierQuery = $pdo->prepare("SELECT balance, currency, name, supplier_type FROM suppliers WHERE id = ? AND tenant_id = ? AND branch_id = ?");
         $supplierQuery->bindParam(1, $visa['supplier'], PDO::PARAM_INT);
@@ -263,14 +268,19 @@ try {
             }
         }
         $clientQuery->close();
-    }
+        }
+        } // End of: if ($visaWasApproved)
 
-    // Commit transaction
-    $pdo->commit();
+        // Commit transaction
+        $pdo->commit();
 
-    echo json_encode([
+        $message = $visaWasApproved
+        ? 'Visa cancelled successfully with balance reversals and profit reset'
+        : 'Visa cancelled successfully. No balance reversals as visa was not approved.';
+
+        echo json_encode([
         'success' => true,
-        'message' => 'Visa cancelled successfully with balance reversals and profit reset',
+        'message' => $message,
         'data' => [
             'visa_id' => $visa_id,
             'old_status' => $visa['status'],

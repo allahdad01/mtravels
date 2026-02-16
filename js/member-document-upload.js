@@ -200,5 +200,5 @@ function loadMemberDocuments(bookingId) {
                 }
             }
         })
-        .catch(error => console.error('Error loading documents:', error));
+
 }

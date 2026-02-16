@@ -198,7 +198,7 @@ async function processAndExtractPdf(file) {
             );
             
             // Log for debugging
-            console.log('Extraction Details:', {
+            console.log({
                 format: format,
                 confidence: confidence,
                 passengers: data.data.passengers ? data.data.passengers.length : 1,
@@ -208,7 +208,7 @@ async function processAndExtractPdf(file) {
             showPdfStatus(`❌ Extraction failed: ${data.message}`, 'error');
         }
     } catch (error) {
-        console.error('PDF Extraction Error:', error);
+
         showPdfStatus(`❌ Error: ${error.message}`, 'error');
     }
 }
@@ -232,7 +232,7 @@ function fillTicketForm(data) {
         'issueDate': flightData.issue_date
     };
     
-    console.log('Filling form with data:', flightFields);
+
     
     // Fill each flight field
     for (const [fieldId, value] of Object.entries(flightFields)) {
@@ -252,7 +252,7 @@ function fillTicketForm(data) {
                 let option = Array.from(field.options).find(opt => opt.value === value || opt.text === value);
                 if (option) {
                     field.value = option.value;
-                    console.log(`Selected ${fieldId}: ${option.text} (value: ${option.value})`);
+
                 } else {
                     // Try fuzzy matching for airline names
                     if (fieldId === 'airline') {
@@ -271,7 +271,7 @@ function fillTicketForm(data) {
                                 value.toLowerCase() === airline.name.split(' (')[0].toLowerCase()
                             );
                             if (matchedAirline) {
-                                console.log(`Exact match found for "${value}": ${matchedAirline.name}`);
+
                             }
                             
                             // Step 2: Try matching by first 2-3 words (e.g., "Ariana Afghan" or "Ariana Afghan Airlines")
@@ -284,7 +284,7 @@ function fillTicketForm(data) {
                                         partialTerm.startsWith(airline.name.split(' (')[0].toLowerCase().split(' ')[0])
                                     );
                                     if (matchedAirline) {
-                                        console.log(`Multi-word match found for "${value}" using "${partialTerm}": ${matchedAirline.name}`);
+
                                         break;
                                     }
                                 }
@@ -297,7 +297,7 @@ function fillTicketForm(data) {
                                     return airlineName.startsWith(words[0]) && airlineName.includes(words[1]);
                                 });
                                 if (matchedAirline) {
-                                    console.log(`Combined match found for "${value}": ${matchedAirline.name}`);
+
                                 }
                             }
                             
@@ -315,7 +315,7 @@ function fillTicketForm(data) {
                                 });
                                 if (bestMatch && bestMatchCount >= Math.ceil(words.length / 2)) {
                                     matchedAirline = bestMatch;
-                                    console.log(`Best match (${bestMatchCount}/${words.length} words) found for "${value}": ${matchedAirline.name}`);
+
                                 }
                             }
                         }
@@ -325,31 +325,31 @@ function fillTicketForm(data) {
                             field.value = matchedAirline.code;
                             option = Array.from(field.options).find(opt => opt.value === matchedAirline.code);
                             if (option) {
-                                console.log(`✓ Selected ${fieldId}: ${option.text} (value: ${option.value})`);
+
                             }
                         } else {
-                            console.warn(`✗ No matching airline option found for: "${value}"`);
+
                         }
                     } else {
-                        console.warn(`No matching option found for ${fieldId}: ${value}`);
+
                     }
                 }
             } else {
                 // Regular input field
                 field.value = formattedValue;
-                console.log(`Filled ${fieldId}: ${formattedValue}`);
+
             }
             
             triggerFieldChange(field);
         } else if (!field) {
-            console.warn(`Field not found: ${fieldId}`);
+
         }
     }
     
     // Set passenger count if we have multiple passengers
     if (data.passengers && Array.isArray(data.passengers)) {
         const passengerCount = data.passengers.length;
-        console.log(`Setting adult count to ${passengerCount}`);
+
         
         // Set adult count
         const adultCountField = document.getElementById('adultCount');
@@ -360,12 +360,12 @@ function fillTicketForm(data) {
             // Wait for passenger rows to be created, then fill them
             // Use setTimeout to allow DOM to update
             setTimeout(() => {
-                console.log('Filling passenger data after DOM update');
+
                 fillPassengerDataMultiple(data.passengers);
             }, 500);
         }
     } else if (flightData.passenger_name) {
-        console.log('Filling single passenger:', flightData.passenger_name);
+
         fillPassengerDataSingle(flightData);
     }
 }
@@ -390,12 +390,12 @@ function fillPassengerDataMultiple(passengers) {
     const container = document.getElementById('passengersContainer');
     if (!container) return;
     
-    console.log(`Attempting to fill ${passengers.length} passengers`);
+
     
     passengers.forEach((passenger, index) => {
         // Passenger indices in form are 1-based, not 0-based
         const passengerIndex = index + 1;
-        console.log(`Processing passenger ${passengerIndex}: ${passenger.passenger_name}`);
+
         
         // Find passenger row using data-passenger attribute (1-based indexing)
         const passengerRow = container.querySelector(`[data-passenger="${passengerIndex}"]`);
@@ -407,16 +407,16 @@ function fillPassengerDataMultiple(passengers) {
             if (nameField && passenger.passenger_name) {
                 nameField.value = passenger.passenger_name;
                 triggerFieldChange(nameField);
-                console.log(`✓ Filled passenger ${passengerIndex} name: ${passenger.passenger_name}`);
+
             } else {
-                console.warn(`Could not find name field for passenger ${passengerIndex}`);
+
             }
             
             // Fill ticket number if available
             // Note: ticket fields are not in the standard form structure,
             // so we skip this for now or add it if needed
         } else {
-            console.warn(`Could not find passenger row for index ${passengerIndex}`);
+
         }
     });
 }

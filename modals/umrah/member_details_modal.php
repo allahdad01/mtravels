@@ -1,163 +1,178 @@
-<!-- Member Details Modal -->
+<!-- Member Details Modal - Modern Enhanced Style -->
 <div class="modal fade" id="memberDetailsModal" tabindex="-1" role="dialog">
     <div class="modal-dialog modal-lg" role="document">
-        <div class="modal-content">
-            <div class="modal-header bg-primary text-white">
-                <h5 class="modal-title">
-                    <i class="feather icon-user mr-2"></i><?= __('member_details') ?>
+        <div class="modal-content" style="border-radius: 0.75rem; border: none; box-shadow: 0 10px 40px rgba(0,0,0,0.1);">
+            <div class="modal-header" style="background: linear-gradient(135deg, #2563eb 0%, #1e40af 100%); border: none; padding: 1.5rem;">
+                <h5 class="modal-title text-white" style="font-weight: 700; font-size: 1.5rem;">
+                    <i class="fas fa-user-circle mr-2" style="font-size: 1.75rem;"></i><?= __('member_details') ?>
                 </h5>
-                <button type="button" class="close text-white" data-dismiss="modal" aria-label="Close">
+                <button type="button" class="close text-white" data-dismiss="modal" aria-label="Close" style="font-size: 1.5rem; opacity: 0.8;">
                     <span aria-hidden="true">&times;</span>
                 </button>
             </div>
-            <div class="modal-body">
-                <div class="row">
+            <div class="modal-body" style="padding: 2rem; background: #f9fafb;">
+                <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); gap: 1.5rem;">
+                    
                     <!-- Personal Information -->
-                    <div class="col-md-6">
-                        <div class="card border-primary mb-3">
-                            <div class="card-header bg-primary text-white">
-                                <h6 class="mb-0"><i class="feather icon-user mr-2"></i><?= __('personal_information') ?></h6>
+                    <div style="background: white; border-radius: 0.75rem; padding: 1.5rem; box-shadow: 0 1px 3px rgba(0,0,0,0.1); border-left: 4px solid #2563eb;">
+                        <h6 style="font-size: 1rem; font-weight: 700; color: #1f2937; margin-bottom: 1rem; display: flex; align-items: center; gap: 0.5rem;">
+                            <i class="fas fa-user" style="color: #2563eb;"></i><?= __('personal_information') ?>
+                        </h6>
+                        <div style="display: flex; flex-direction: column; gap: 0.75rem;">
+                            <div style="display: flex; justify-content: space-between; padding-bottom: 0.75rem; border-bottom: 1px solid #e5e7eb;">
+                                <span style="color: #6b7280; font-weight: 500;"><?= __('name') ?>:</span>
+                                <span style="color: #1f2937; font-weight: 600;" id="memberName"></span>
                             </div>
-                            <div class="card-body">
-                                <table class="table table-sm table-borderless">
-                                    <tr>
-                                        <td class="text-muted"><?= __('name') ?>:</td>
-                                        <td class="font-weight-bold" id="memberName"></td>
-                                    </tr>
-                                    <tr>
-                                        <td class="text-muted"><?= __('gender') ?>:</td>
-                                        <td id="memberGender"></td>
-                                    </tr>
-                                    <tr>
-                                        <td class="text-muted"><?= __('date_of_birth') ?>:</td>
-                                        <td id="memberDob"></td>
-                                    </tr>
-                                    <tr>
-                                        <td class="text-muted"><?= __('passport_number') ?>:</td>
-                                        <td id="memberPassport"></td>
-                                    </tr>
-                                    <tr>
-                                        <td class="text-muted"><?= __('passport_expiry') ?>:</td>
-                                        <td id="memberPassportExpiry"></td>
-                                    </tr>
-                                    <tr>
-                                        <td class="text-muted"><?= __('id_type') ?>:</td>
-                                        <td id="memberId"></td>
-                                    </tr>
-                                    <tr>
-                                        <td class="text-muted"><?= __('remarks') ?>:</td>
-                                        <td id="memberRemarks"></td>
-                                    </tr>
-                                </table>
+                            <div style="display: flex; justify-content: space-between; padding-bottom: 0.75rem; border-bottom: 1px solid #e5e7eb;">
+                                <span style="color: #6b7280; font-weight: 500;"><?= __('gender') ?>:</span>
+                                <span style="color: #1f2937;" id="memberGender"></span>
+                            </div>
+                            <div style="display: flex; justify-content: space-between; padding-bottom: 0.75rem; border-bottom: 1px solid #e5e7eb;">
+                                <span style="color: #6b7280; font-weight: 500;"><?= __('date_of_birth') ?>:</span>
+                                <span style="color: #1f2937;" id="memberDob"></span>
+                            </div>
+                            <div style="display: flex; justify-content: space-between; padding-bottom: 0.75rem; border-bottom: 1px solid #e5e7eb;">
+                                <span style="color: #6b7280; font-weight: 500;"><?= __('passport_number') ?>:</span>
+                                <span style="color: #1f2937;" id="memberPassport"></span>
+                            </div>
+                            <div style="display: flex; justify-content: space-between; padding-bottom: 0.75rem; border-bottom: 1px solid #e5e7eb;">
+                                <span style="color: #6b7280; font-weight: 500;"><?= __('passport_expiry') ?>:</span>
+                                <span style="color: #1f2937;" id="memberPassportExpiry"></span>
+                            </div>
+                            <div style="display: flex; justify-content: space-between; padding-bottom: 0.75rem; border-bottom: 1px solid #e5e7eb;">
+                                <span style="color: #6b7280; font-weight: 500;"><?= __('id_type') ?>:</span>
+                                <span style="color: #1f2937;" id="memberId"></span>
+                            </div>
+                            <div style="display: flex; justify-content: space-between;">
+                                <span style="color: #6b7280; font-weight: 500;"><?= __('remarks') ?>:</span>
+                                <span style="color: #1f2937;" id="memberRemarks"></span>
                             </div>
                         </div>
                     </div>
 
                     <!-- Travel Information -->
-                    <div class="col-md-6">
-                        <div class="card border-info mb-3">
-                            <div class="card-header bg-info text-white">
-                                <h6 class="mb-0"><i class="feather icon-map mr-2"></i><?= __('travel_information') ?></h6>
+                    <div style="background: white; border-radius: 0.75rem; padding: 1.5rem; box-shadow: 0 1px 3px rgba(0,0,0,0.1); border-left: 4px solid #3b82f6;">
+                        <h6 style="font-size: 1rem; font-weight: 700; color: #1f2937; margin-bottom: 1rem; display: flex; align-items: center; gap: 0.5rem;">
+                            <i class="fas fa-plane" style="color: #3b82f6;"></i><?= __('travel_information') ?>
+                        </h6>
+                        <div style="display: flex; flex-direction: column; gap: 0.75rem;">
+                            <div style="display: flex; justify-content: space-between; padding-bottom: 0.75rem; border-bottom: 1px solid #e5e7eb;">
+                                <span style="color: #6b7280; font-weight: 500;"><?= __('entry_date') ?>:</span>
+                                <span style="color: #1f2937;" id="memberEntryDate"></span>
                             </div>
-                            <div class="card-body">
-                                <table class="table table-sm table-borderless">
-                                    <tr>
-                                        <td class="text-muted"><?= __('entry_date') ?>:</td>
-                                        <td id="memberEntryDate"></td>
-                                    </tr>
-                                    <tr>
-                                        <td class="text-muted"><?= __('flight_date') ?>:</td>
-                                        <td id="memberFlightDate"></td>
-                                    </tr>
-                                    <tr>
-                                        <td class="text-muted"><?= __('return_date') ?>:</td>
-                                        <td id="memberReturnDate"></td>
-                                    </tr>
-                                    <tr>
-                                        <td class="text-muted"><?= __('duration') ?>:</td>
-                                        <td id="memberDuration"></td>
-                                    </tr>
-                                    <tr>
-                                        <td class="text-muted"><?= __('room_type') ?>:</td>
-                                        <td id="memberRoomType"></td>
-                                    </tr>
-                                </table>
+                            <div style="display: flex; justify-content: space-between; padding-bottom: 0.75rem; border-bottom: 1px solid #e5e7eb;">
+                                <span style="color: #6b7280; font-weight: 500;"><?= __('flight_date') ?>:</span>
+                                <span style="color: #1f2937;" id="memberFlightDate"></span>
+                            </div>
+                            <div style="display: flex; justify-content: space-between; padding-bottom: 0.75rem; border-bottom: 1px solid #e5e7eb;">
+                                <span style="color: #6b7280; font-weight: 500;"><?= __('return_date') ?>:</span>
+                                <span style="color: #1f2937;" id="memberReturnDate"></span>
+                            </div>
+                            <div style="display: flex; justify-content: space-between; padding-bottom: 0.75rem; border-bottom: 1px solid #e5e7eb;">
+                                <span style="color: #6b7280; font-weight: 500;"><?= __('duration') ?>:</span>
+                                <span style="color: #1f2937;" id="memberDuration"></span>
+                            </div>
+                            <div style="display: flex; justify-content: space-between;">
+                                <span style="color: #6b7280; font-weight: 500;"><?= __('room_type') ?>:</span>
+                                <span style="color: #1f2937;" id="memberRoomType"></span>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Account Information -->
+                    <div style="background: white; border-radius: 0.75rem; padding: 1.5rem; box-shadow: 0 1px 3px rgba(0,0,0,0.1); border-left: 4px solid #8b5cf6;">
+                        <h6 style="font-size: 1rem; font-weight: 700; color: #1f2937; margin-bottom: 1rem; display: flex; align-items: center; gap: 0.5rem;">
+                            <i class="fas fa-building" style="color: #8b5cf6;"></i><?= __('account_info') ?>
+                        </h6>
+                        <div style="display: flex; flex-direction: column; gap: 0.75rem;">
+                            <div style="display: flex; justify-content: space-between; padding-bottom: 0.75rem; border-bottom: 1px solid #e5e7eb;">
+                                <span style="color: #6b7280; font-weight: 500;"><?= __('sold_to') ?>:</span>
+                                <span style="color: #1f2937;" id="memberSoldTo"></span>
+                            </div>
+                            <div style="display: flex; justify-content: space-between; padding-bottom: 0.75rem; border-bottom: 1px solid #e5e7eb;">
+                                <span style="color: #6b7280; font-weight: 500;"><?= __('paid_to') ?>:</span>
+                                <span style="color: #1f2937;" id="memberPaidTo"></span>
+                            </div>
+                            <div style="display: flex; justify-content: space-between;">
+                                <span style="color: #6b7280; font-weight: 500;"><?= __('created_by') ?>:</span>
+                                <span style="color: #1f2937;" id="memberCreatedBy"></span>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Services Information -->
+                    <div style="background: white; border-radius: 0.75rem; padding: 1.5rem; box-shadow: 0 1px 3px rgba(0,0,0,0.1); border-left: 4px solid #06b6d4;">
+                        <h6 style="font-size: 1rem; font-weight: 700; color: #1f2937; margin-bottom: 1rem; display: flex; align-items: center; gap: 0.5rem;">
+                            <i class="fas fa-briefcase" style="color: #06b6d4;"></i>Services
+                        </h6>
+                        <div id="memberServices" style="display: flex; flex-direction: column; gap: 0.75rem;">
+                            <div style="padding: 0.75rem; background: #f0f9ff; border-radius: 0.375rem; border-left: 3px solid #06b6d4; color: #6b7280; font-size: 0.85rem;">
+                                No services assigned
                             </div>
                         </div>
                     </div>
 
                     <!-- Financial Information -->
-                    <div class="col-md-12">
-                        <div class="card border-success">
-                            <div class="card-header bg-success text-white">
-                                <h6 class="mb-0"><i class="feather icon-dollar-sign mr-2"></i><?= __('financial_information') ?></h6>
+                    <div style="background: white; border-radius: 0.75rem; padding: 1.5rem; box-shadow: 0 1px 3px rgba(0,0,0,0.1); border-left: 4px solid #10b981; grid-column: 1 / -1;">
+                        <h6 style="font-size: 1rem; font-weight: 700; color: #1f2937; margin-bottom: 1rem; display: flex; align-items: center; gap: 0.5rem;">
+                            <i class="fas fa-dollar-sign" style="color: #10b981;"></i><?= __('financial_information') ?>
+                        </h6>
+                        <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 2rem;">
+                            <div style="display: flex; flex-direction: column; gap: 0.75rem;">
+                                <div style="display: flex; justify-content: space-between; padding-bottom: 0.75rem; border-bottom: 1px solid #e5e7eb;">
+                                    <span style="color: #6b7280; font-weight: 500;"><?= __('base') ?>:</span>
+                                    <span style="color: #1f2937; font-weight: 600;" id="memberPrice"></span>
+                                </div>
+                                <div style="display: flex; justify-content: space-between; padding-bottom: 0.75rem; border-bottom: 1px solid #e5e7eb;">
+                                    <span style="color: #6b7280; font-weight: 500;"><?= __('sold_price') ?>:</span>
+                                    <span style="color: #1f2937; font-weight: 600;" id="memberSoldPrice"></span>
+                                </div>
+                                <div style="display: flex; justify-content: space-between; padding-bottom: 0.75rem; border-bottom: 1px solid #e5e7eb;">
+                                    <span style="color: #6b7280; font-weight: 500;"><?= __('discount') ?>:</span>
+                                    <span style="color: #1f2937; font-weight: 600;" id="memberDiscount"></span>
+                                </div>
+                                <div style="display: flex; justify-content: space-between;">
+                                    <span style="color: #6b7280; font-weight: 500;"><?= __('profit') ?>:</span>
+                                    <span style="color: #10b981; font-weight: 600;" id="memberProfit"></span>
+                                </div>
                             </div>
-                            <div class="card-body">
-                                <div class="row">
-                                    <div class="col-md-6">
-                                        <table class="table table-sm table-borderless">
-                                            <tr>
-                                                <td class="text-muted"><?= __('base') ?>:</td>
-                                                <td class="font-weight-bold" id="memberPrice"></td>
-                                            </tr>
-                                            <tr>
-                                                <td class="text-muted"><?= __('sold_price') ?>:</td>
-                                                <td class="font-weight-bold" id="memberSoldPrice"></td>
-                                            </tr>
-                                            <tr>
-                                                <td class="text-muted"><?= __('discount') ?>:</td>
-                                                <td class="font-weight-bold" id="memberDiscount"></td>
-                                            </tr>
-                                            <tr>
-                                                <td class="text-muted"><?= __('profit') ?>:</td>
-                                                <td class="text-success font-weight-bold" id="memberProfit"></td>
-                                            </tr>
-                                           
-                                        </table>
-                                    </div>
-                                    <div class="col-md-6">
-                                        <table class="table table-sm table-borderless">
-                                            <tr>
-                                                <td class="text-muted"><?= __('paid') ?>:</td>
-                                                <td class="text-success" id="memberPaid"></td>
-                                            </tr>
-                                            <tr>
-                                                <td class="text-muted"><?= __('bank_payment') ?>:</td>
-                                                <td id="memberBankPayment"></td>
-                                            </tr>
-                                            <tr>
-                                                <td class="text-muted"><?= __('receipt_number') ?>:</td>
-                                                <td id="memberReceiptNumber"></td>
-                                            </tr>
-                                            <tr>
-                                                <td class="text-muted"><?= __('due') ?>:</td>
-                                                <td class="text-danger" id="memberDue"></td>
-                                            </tr>
-                                        </table>
-                                    </div>
+                            <div style="display: flex; flex-direction: column; gap: 0.75rem;">
+                                <div style="display: flex; justify-content: space-between; padding-bottom: 0.75rem; border-bottom: 1px solid #e5e7eb;">
+                                    <span style="color: #6b7280; font-weight: 500;"><?= __('paid') ?>:</span>
+                                    <span style="color: #10b981; font-weight: 600;" id="memberPaid"></span>
+                                </div>
+                                <div style="display: flex; justify-content: space-between; padding-bottom: 0.75rem; border-bottom: 1px solid #e5e7eb;">
+                                    <span style="color: #6b7280; font-weight: 500;"><?= __('bank_payment') ?>:</span>
+                                    <span style="color: #1f2937;" id="memberBankPayment"></span>
+                                </div>
+                                <div style="display: flex; justify-content: space-between; padding-bottom: 0.75rem; border-bottom: 1px solid #e5e7eb;">
+                                    <span style="color: #6b7280; font-weight: 500;"><?= __('receipt_number') ?>:</span>
+                                    <span style="color: #1f2937;" id="memberReceiptNumber"></span>
+                                </div>
+                                <div style="display: flex; justify-content: space-between;">
+                                    <span style="color: #6b7280; font-weight: 500;"><?= __('due') ?>:</span>
+                                    <span style="color: #ef4444; font-weight: 600;" id="memberDue"></span>
                                 </div>
                             </div>
                         </div>
                     </div>
 
                     <!-- Date Change History -->
-                    <div class="col-md-12" id="dateChangeHistorySection" style="display: none;">
-                        <div class="card border-info">
-                            <div class="card-header bg-info text-white">
-                                <h6 class="mb-0"><i class="feather icon-calendar mr-2"></i><?= __('date_change_history') ?></h6>
-                            </div>
-                            <div class="card-body">
-                                <div id="dateChangeHistoryContent">
-                                    <!-- History will be loaded here -->
-                                </div>
+                    <div id="dateChangeHistorySection" style="display: none; grid-column: 1 / -1;">
+                        <div style="background: white; border-radius: 0.75rem; padding: 1.5rem; box-shadow: 0 1px 3px rgba(0,0,0,0.1); border-left: 4px solid #f59e0b;">
+                            <h6 style="font-size: 1rem; font-weight: 700; color: #1f2937; margin-bottom: 1rem; display: flex; align-items: center; gap: 0.5rem;">
+                                <i class="fas fa-calendar" style="color: #f59e0b;"></i><?= __('date_change_history') ?>
+                            </h6>
+                            <div id="dateChangeHistoryContent">
+                                <!-- History will be loaded here -->
                             </div>
                         </div>
                     </div>
                 </div>
             </div>
-            <div class="modal-footer bg-light">
-                <button type="button" class="btn btn-secondary" data-dismiss="modal">
-                    <i class="feather icon-x mr-2"></i><?= __('close') ?>
+            <div class="modal-footer" style="padding: 1.5rem; background: #f9fafb; border-top: 1px solid #e5e7eb;">
+                <button type="button" class="btn btn-secondary" data-dismiss="modal" style="padding: 0.5rem 1.5rem;">
+                    <i class="fas fa-times mr-2"></i><?= __('close') ?>
                 </button>
             </div>
         </div>

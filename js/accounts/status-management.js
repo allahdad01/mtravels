@@ -1,4 +1,4 @@
-console.log('Status Management JS loaded successfully');
+
 
 document.addEventListener('DOMContentLoaded', function() {
     // Function to create and show a confirmation modal
@@ -87,7 +87,7 @@ document.addEventListener('DOMContentLoaded', function() {
                     }
                 })
                 .catch(error => {
-                    console.error('Error:', error);
+
                     showErrorToast('An error occurred while updating the account status. Please try again.');
                 });
             });
@@ -129,7 +129,7 @@ document.addEventListener('DOMContentLoaded', function() {
                     }
                 })
                 .catch(error => {
-                    console.error('Error:', error);
+
                     showErrorToast('An error occurred while updating the client status. Please try again.');
                 });
             });
@@ -172,7 +172,7 @@ document.addEventListener('DOMContentLoaded', function() {
                     }
                 })
                 .catch(error => {
-                    console.error('Error:', error);
+
                     showErrorToast('An error occurred while updating the supplier status. Please try again.');
                 });
             });

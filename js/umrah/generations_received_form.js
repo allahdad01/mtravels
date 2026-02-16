@@ -83,11 +83,11 @@
                         $(`input[name='document_notes[mahram_declaration]']`).val('not_applicable');
                     }
                 } else {
-                    console.warn('Could not fetch member data for pre-filling document receipt modal.');
+
                 }
             })
             .catch(error => {
-                console.error('Error fetching member data for document receipt modal:', error);
+
             });
 
         // Show the details modal
@@ -182,7 +182,7 @@
                      }
                 })
                 .catch(error => {
-                    console.error('Error:', error);
+
                     showToast('error', 'an_error_occurred');
                 });
             });

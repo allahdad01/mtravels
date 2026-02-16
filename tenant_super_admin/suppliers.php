@@ -178,7 +178,7 @@ $summary = $summary_stmt->fetch(PDO::FETCH_ASSOC);
 
 .progress {
     border-radius: 15px;
-    overflow: hidden;
+    
     box-shadow: inset 0 1px 2px rgba(0,0,0,0.1);
 }
 
@@ -220,7 +220,7 @@ $summary = $summary_stmt->fetch(PDO::FETCH_ASSOC);
 
 .table-responsive {
     border-radius: 10px;
-    overflow: hidden;
+    
 }
 
 .table {
@@ -347,7 +347,7 @@ $summary = $summary_stmt->fetch(PDO::FETCH_ASSOC);
 
 .summary-card {
     border-radius: 10px;
-    overflow: hidden;
+    
 }
 
 .summary-card .card-body {

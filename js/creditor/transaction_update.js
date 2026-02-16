@@ -31,7 +31,7 @@ function updateCreditorTransaction(transactionId) {
         }
     })
     .catch(error => {
-        console.error('Error:', error);
+
         alert('<?= __("error_occurred_during_update") ?>');
         // Reset button
         saveButton.innerHTML = originalText;

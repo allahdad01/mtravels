@@ -92,12 +92,8 @@ try {
         
         // If same currency, no conversion needed - THIS IS CRITICAL!
         if ($transCurrency === $baseCurrency) {
-            error_log("DEBUG: Same currency ($transCurrency), returning original amount: $amount");
             return $amount;
         }
-        
-        // Debug logging
-        error_log("DEBUG: Converting $amount from $transCurrency to $baseCurrency with rate $transExchangeRate");
         
         // Based on your exchange rates: USD: 70, EUR: 77.2, AED: 18.5
         // This means: 1 USD = 70 AFS, 1 EUR = 77.2 AFS, 1 AED = 18.5 AFS
@@ -106,30 +102,24 @@ try {
             // Converting TO AFS (your main case)
             if ($transCurrency === 'USD' && $transExchangeRate > 0) {
                 $result = $amount * $transExchangeRate; // USD to AFS: multiply
-                error_log("DEBUG: USD to AFS: $amount * $transExchangeRate = $result");
                 return $result;
             } elseif ($transCurrency === 'EUR' && $transExchangeRate > 0) {
                 $result = $amount * $transExchangeRate; // EUR to AFS: multiply
-                error_log("DEBUG: EUR to AFS: $amount * $transExchangeRate = $result");
                 return $result;
             } elseif ($transCurrency === 'DAR' && $transExchangeRate > 0) {
                 $result = $amount * $transExchangeRate; // AED to AFS: multiply
-                error_log("DEBUG: AED to AFS: $amount * $transExchangeRate = $result");
                 return $result;
             }
         } elseif ($baseCurrency === 'USD') {
             // Converting TO USD
             if ($transCurrency === 'AFS' && $transExchangeRate > 0) {
                 $result = $amount / $transExchangeRate; // AFS to USD: divide
-                error_log("DEBUG: AFS to USD: $amount / $transExchangeRate = $result");
                 return $result;
             } elseif ($transCurrency === 'EUR' && $transExchangeRate > 0) {
                 $result = $amount / $transExchangeRate; // EUR to USD: divide
-                error_log("DEBUG: EUR to USD: $amount / $transExchangeRate = $result");
                 return $result;
             } elseif ($transCurrency === 'DAR' && $transExchangeRate > 0) {
                 $result = $amount / $transExchangeRate; // AED to USD: divide
-                error_log("DEBUG: AED to USD: $amount / $transExchangeRate = $result");
                 return $result;
             }
         }

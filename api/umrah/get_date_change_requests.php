@@ -2,7 +2,6 @@
 // Include security and database connections
 require_once '../../admin/security.php';
 require_once '../../includes/db.php';
-require_once '../../includes/conn.php';
 
 // Enforce authentication
 enforce_auth();
@@ -23,26 +22,18 @@ $query = "
 ";
 
 $params = [$tenant_id, $branch_id, $tenant_id, $branch_id];
-$types = "iiii";
 
 if ($status !== 'all') {
     $query .= " AND dc.status = ?";
     $params[] = $status;
-    $types .= "s";
 }
 
 $query .= " ORDER BY dc.created_at DESC";
 
 try {
-    $stmt = $conn->prepare($query);
-    $stmt->bind_param($types, ...$params);
-    $stmt->execute();
-    $result = $stmt->get_result();
-
-    $requests = [];
-    while ($row = $result->fetch_assoc()) {
-        $requests[] = $row;
-    }
+    $stmt = $pdo->prepare($query);
+    $stmt->execute($params);
+    $requests = $stmt->fetchAll(PDO::FETCH_ASSOC);
 
     // Get counts for each status
     $countQuery = "
@@ -56,25 +47,28 @@ try {
         WHERE tenant_id = ? AND branch_id = ?
     ";
 
-    $countStmt = $conn->prepare($countQuery);
-    $countStmt->bind_param("ii", $tenant_id, $branch_id);
-    $countStmt->execute();
-    $countResult = $countStmt->get_result();
-    $counts = $countResult->fetch_assoc();
+    $countStmt = $pdo->prepare($countQuery);
+    $countStmt->execute([$tenant_id, $branch_id]);
+    $counts = $countStmt->fetch(PDO::FETCH_ASSOC);
 
     echo json_encode([
         'success' => true,
         'requests' => $requests,
         'counts' => [
-            'all' => $counts['total'],
-            'pending' => $counts['pending'],
-            'approved' => $counts['approved'],
-            'completed' => $counts['completed']
+            'all' => (int)$counts['total'],
+            'pending' => (int)$counts['pending'],
+            'approved' => (int)$counts['approved'],
+            'completed' => (int)$counts['completed']
         ]
     ]);
 
+} catch (PDOException $e) {
+    error_log("Get date change requests PDO error: " . $e->getMessage());
+    http_response_code(500);
+    echo json_encode(['success' => false, 'message' => $e->getMessage()]);
 } catch (Exception $e) {
     error_log("Get date change requests error: " . $e->getMessage());
-    echo json_encode(['success' => false, 'message' => 'Failed to load date change requests']);
+    http_response_code(500);
+    echo json_encode(['success' => false, 'message' => $e->getMessage()]);
 }
 ?>

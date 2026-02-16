@@ -45,7 +45,7 @@
                 }
             })
             .catch(error => {
-                console.error('Error fetching member data:', error);
+
             });
         
         // Show the modal

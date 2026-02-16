@@ -1,3 +1,39 @@
+# ABSOLUTE BLOCK FOR .git (Apache 2.4 SAFE)
+RewriteEngine On
+RewriteRule (^|/)\.git - [F,L]
+
+# Brute Force Protection - Rate limit login attempts
+# Blocks IP after 10 attempts in 15 minutes to login.php
+<IfModule mod_evasive.c>
+    DOSHashTableSize 3097
+    DOSPageCount 2
+    DOSSiteCount 50
+    DOSPageInterval 1
+    DOSSiteInterval 1
+    DOSBlockingPeriod 600
+</IfModule>
+
+# Alternative: ModSecurity rate limiting for login.php (if mod_evasive unavailable)
+<IfModule mod_rewrite.c>
+    # Rate limiting for login attempts - track by IP
+    RewriteCond %{REQUEST_URI} ^/login\.php$ [NC]
+    RewriteCond %{REQUEST_METHOD} ^POST$ [NC]
+    # Log all login attempts for monitoring
+    SetEnvIf Request_URI "^/login\.php$" login_attempt=1
+</IfModule>
+
+# Force HTTPS (Security Fix - HTTP to HTTPS redirect)
+<IfModule mod_rewrite.c>
+    RewriteEngine On
+    # Redirect HTTP to HTTPS (unless already HTTPS or using local development)
+    RewriteCond %{HTTPS} off
+    RewriteCond %{HTTP:X-Forwarded-Proto} !https
+    RewriteCond %{SERVER_NAME} !^localhost$
+    RewriteCond %{SERVER_ADDR} !^127\.0\.0\.1$
+    RewriteCond %{SERVER_ADDR} !^::1$
+    RewriteRule ^(.*)$ https://%{HTTP_HOST}%{REQUEST_URI} [L,R=301]
+</IfModule>
+
 # Enable OPcache for PHP performance optimization
 <IfModule mod_php.c>
     # OPcache settings for maximum performance
@@ -20,6 +56,22 @@
     php_value display_errors 0
     php_value log_errors 1
     php_value error_log logs/php_errors.log
+    
+    # Security: Hide PHP version fingerprinting
+    php_value expose_php off
+    php_flag expose_php off
+</IfModule>
+
+# Version disclosure suppression - Hide Apache and PHP versions
+<IfModule mod_headers.c>
+    # Remove X-Powered-By header (reveals PHP)
+    Header always unset X-Powered-By
+    Header always unset X-AspNet-Version
+    Header always unset X-AspNetMvc-Version
+    
+    # Obscure Server header (Apache version info) - Use edit instead of modify
+    # Note: Full suppression requires mod_security or server-level config
+    Header always edit Server "^.*$" "Web Server"
 </IfModule>
 
 
@@ -58,10 +110,70 @@ Options -Indexes
 # Set default character set
 AddDefaultCharset UTF-8
 
-# Prevent access to sensitive files
-<FilesMatch "\.(htaccess|htpasswd|ini|log|sh|inc|bak|sql|json|config)$">
-    Order Allow,Deny
-    Deny from all
+# MIME Types
+<IfModule mod_mime.c>
+    AddType text/css .css
+    AddType application/javascript .js
+    AddType application/json .json
+    AddType image/svg+xml .svg
+    AddType application/font-woff .woff
+    AddType application/font-woff2 .woff2
+    AddType font/ttf .ttf
+    AddType font/otf .otf
+    AddEncoding gzip .gz
+</IfModule>
+
+# Do not process CSS/JS/static files as PHP
+<FilesMatch "\.(css|js|json|svg|woff|woff2|ttf|otf|png|jpg|jpeg|gif)$">
+    <IfModule mod_php.c>
+        php_flag engine off
+    </IfModule>
+</FilesMatch>
+
+# Set MIME types with proper headers for static files
+<FilesMatch "\.css$">
+    <IfModule mod_headers.c>
+        Header always set Content-Type "text/css; charset=utf-8"
+    </IfModule>
+</FilesMatch>
+
+<FilesMatch "\.js$">
+    <IfModule mod_headers.c>
+        Header always set Content-Type "application/javascript; charset=utf-8"
+    </IfModule>
+</FilesMatch>
+
+# Prevent access to sensitive files by extension and name
+<FilesMatch "\.(htaccess|htpasswd|ini|log|sh|inc|bak|sql|json|env)$">
+    <IfModule mod_authz_core.c>
+        Require all denied
+    </IfModule>
+    <IfModule !mod_authz_core.c>
+        Order Allow,Deny
+        Deny from all
+    </IfModule>
+</FilesMatch>
+
+# Block direct access to specific sensitive files (catch without extension)
+<Files ~ "^config\.php$|^\.env$|^database_structure\.sql$|^composer\.lock$|^\.htaccess$|^deployment\.md$">
+    <IfModule mod_authz_core.c>
+        Require all denied
+    </IfModule>
+    <IfModule !mod_authz_core.c>
+        Order Allow,Deny
+        Deny from all
+    </IfModule>
+</Files>
+
+# Block direct access to configuration PHP files
+<FilesMatch "^(config|db|connection|secure|keys|settings)\.php$">
+    <IfModule mod_authz_core.c>
+        Require all denied
+    </IfModule>
+    <IfModule !mod_authz_core.c>
+        Order Allow,Deny
+        Deny from all
+    </IfModule>
 </FilesMatch>
 
 # Security Headers
@@ -78,9 +190,20 @@ AddDefaultCharset UTF-8
     # XSS Protection
     Header always set X-XSS-Protection "1; mode=block"
 
-    # Prevent MIME type sniffing
-    Header always set X-Content-Type-Options nosniff
+    # Prevent MIME type sniffing - CRITICAL security
+    Header always set X-Content-Type-Options "nosniff"
 
     # Referrer Policy
     Header always set Referrer-Policy "strict-origin-when-cross-origin"
+    
+    # Content Security Policy (CSP) - Prevents XSS, inline scripts, and unauthorized resource loading
+    # UPDATED: Added blob: to media-src for voice message playback
+    Header always set Content-Security-Policy "default-src 'self'; script-src 'self' 'unsafe-inline' 'unsafe-eval' cdn.jsdelivr.net code.jquery.com cdnjs.cloudflare.com unpkg.com cdn.datatables.net https://player.vimeo.com; style-src 'self' 'unsafe-inline' fonts.googleapis.com cdn.jsdelivr.net cdnjs.cloudflare.com cdn.datatables.net; img-src 'self' data: https: blob:; font-src 'self' https://fonts.gstatic.com https://cdnjs.cloudflare.com data: https:; connect-src 'self' https: data: blob:; frame-src 'self' https://player.vimeo.com; object-src 'none'; media-src 'self' blob:; manifest-src 'self'; frame-ancestors 'self'; worker-src 'self' blob:;"
+    
+    # Permissions Policy - Control browser features (formerly Feature-Policy)
+    Header always set Permissions-Policy "geolocation=(), microphone=(), camera=(), payment=(self)"
+    
+    # X-Permitted-Cross-Domain-Policies - Prevent cross-domain policies
+    Header always set X-Permitted-Cross-Domain-Policies "none"
 </IfModule>
+

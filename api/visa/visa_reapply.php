@@ -92,12 +92,17 @@ try {
     $stmt->execute();
 
     if ($stmt->affected_rows === 0) {
-        throw new PDOException('Failed to update visa status');
-    }
+         throw new PDOException('Failed to update visa status');
+     }
 
-    // Handle balance restorations (reverse the cancellation logic)
+     // Only restore balances if the original visa was approved (had transactions)
+     // Pending visas that were cancelled never had transactions, so nothing to restore
+     $originalWasApproved = ($visa['status'] === 'Approved');
 
-    // 1. Restore supplier balance for external suppliers
+     if ($originalWasApproved) {
+         // Handle balance restorations (reverse the cancellation logic)
+
+         // 1. Restore supplier balance for external suppliers
     if ($visa['base'] > 0) {
         // Get supplier details
         $supplierQuery = $pdo->prepare("SELECT supplier_type, balance, name FROM suppliers WHERE id = ? AND tenant_id = ? AND branch_id = ?");
@@ -226,9 +231,10 @@ try {
             }
         }
         $clientQuery->close();
-    }
+        }
+        } // End of: if ($originalWasApproved)
 
-    // 3. Log activity
+        // 3. Log activity
     try {
         // Prepare old and new values as JSON
         $old_values = json_encode([
@@ -270,22 +276,31 @@ try {
     // Commit transaction
     $pdo->commit();
 
+    $message = $originalWasApproved 
+        ? 'Visa re-applied successfully with balance restorations and profit restoration'
+        : 'Visa re-applied successfully. No balance restorations as original visa was not approved.';
+
+    $response_data = [
+        'visa_id' => $visa_id,
+        'old_status' => $visa['status'],
+        'new_status' => $new_status,
+        'applicant_name' => $visa['applicant_name'],
+        'old_profit' => $visa['profit'],
+        'new_profit' => $original_profit,
+    ];
+
+    if ($originalWasApproved) {
+        $response_data['balance_restorations'] = [
+            'supplier_amount' => $visa['base'],
+            'client_amount' => $visa['sold'],
+            'currency' => $visa['currency']
+        ];
+    }
+
     echo json_encode([
         'success' => true,
-        'message' => 'Visa re-applied successfully with balance restorations and profit restoration',
-        'data' => [
-            'visa_id' => $visa_id,
-            'old_status' => $visa['status'],
-            'new_status' => $new_status,
-            'applicant_name' => $visa['applicant_name'],
-            'old_profit' => $visa['profit'],
-            'new_profit' => $original_profit,
-            'balance_restorations' => [
-                'supplier_amount' => $visa['base'],
-                'client_amount' => $visa['sold'],
-                'currency' => $visa['currency']
-            ]
-        ]
+        'message' => $message,
+        'data' => $response_data
     ]);
 
 } catch (PDOException $e) {

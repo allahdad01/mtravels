@@ -25,9 +25,11 @@
                         <select class="form-control" id="clientFilter" name="clientFilter">
                             <option value=""><?= __('all_clients') ?></option>
                             <?php
-                            foreach ($clients as $client) {
-                                echo "<option value='" . htmlspecialchars($client['id']) . "'>" .
-                                     htmlspecialchars($client['name']) . "</option>";
+                            if (!empty($clients)) {
+                                foreach ($clients as $client) {
+                                    echo "<option value='" . htmlspecialchars($client['id']) . "'>" .
+                                         htmlspecialchars($client['name']) . "</option>";
+                                }
                             }
                             ?>
                         </select>
@@ -38,9 +40,11 @@
                         <select class="form-control" id="clientForInvoice" name="clientForInvoice" required>
                             <option value=""><?= __('select_client') ?></option>
                             <?php
-                            foreach ($clients as $client) {
-                                echo "<option value='" . htmlspecialchars($client['id']) . "'>" .
-                                     htmlspecialchars($client['name']) . "</option>";
+                            if (!empty($clients)) {
+                                foreach ($clients as $client) {
+                                    echo "<option value='" . htmlspecialchars($client['id']) . "'>" .
+                                         htmlspecialchars($client['name']) . "</option>";
+                                }
                             }
                             ?>
                         </select>

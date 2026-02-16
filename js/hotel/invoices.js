@@ -80,12 +80,12 @@ function loadTicketsForInvoice() {
             if (data.status === 'success') {
                 populateTicketTable(data.tickets);
             } else {
-                console.error('Error loading tickets:', data.message);
+
                 showToast('Failed to load tickets');
             }
         })
         .catch(error => {
-            console.error('Error:', error);
+
             showToast('An error occurred while loading tickets');
         });
 }

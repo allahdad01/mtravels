@@ -43,12 +43,12 @@ $(document).ready(function() {
                         showToast('error', response.message || 'Failed to update notification status');
                     }
                 } catch (e) {
-                    console.error('Error parsing response:', e);
+
                     showToast('error', 'Error processing response');
                 }
             },
             error: function(xhr, status, error) {
-                console.error('AJAX Error:', status, error);
+
                 showToast('error', 'Error updating notification status');
             }
         });

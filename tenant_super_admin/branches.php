@@ -276,7 +276,7 @@ function logActivity($pdo, $tenant_id, $user_id, $action, $table_name, $record_i
 }
 .table-responsive {
     border-radius: 10px;
-    overflow: hidden;
+    
 }
 .table {
     margin-bottom: 0;

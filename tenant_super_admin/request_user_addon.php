@@ -59,8 +59,26 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['request_addon'])) {
 }
 
 // Get tenant's pending requests and active addons
-$pending_requests = $userAddonManager->getTenantAddonRequests($tenant_id, 'pending');
-$active_addons = $userAddonManager->getActiveUserAddons($tenant_id);
+$all_pending_requests = $userAddonManager->getTenantAddonRequests($tenant_id, 'pending');
+$all_active_addons = $userAddonManager->getActiveUserAddons($tenant_id);
+
+// Pagination for pending requests (5 per page)
+$pending_items_per_page = 5;
+$pending_current_page = intval($_GET['pending_page'] ?? 1);
+$pending_total_items = count($all_pending_requests);
+$pending_total_pages = ceil($pending_total_items / $pending_items_per_page);
+$pending_current_page = max(1, min($pending_current_page, $pending_total_pages));
+$pending_offset = ($pending_current_page - 1) * $pending_items_per_page;
+$pending_requests = array_slice($all_pending_requests, $pending_offset, $pending_items_per_page);
+
+// Pagination for active addons (5 per page)
+$addon_items_per_page = 5;
+$addon_current_page = intval($_GET['addon_page'] ?? 1);
+$addon_total_items = count($all_active_addons);
+$addon_total_pages = ceil($addon_total_items / $addon_items_per_page);
+$addon_current_page = max(1, min($addon_current_page, $addon_total_pages));
+$addon_offset = ($addon_current_page - 1) * $addon_items_per_page;
+$active_addons = array_slice($all_active_addons, $addon_offset, $addon_items_per_page);
 
 $page_title = __('request_more_users');
 include 'header.php';
@@ -238,84 +256,166 @@ include 'header.php';
                                         </div>
 
                                         <!-- Pending Requests -->
-                                        <?php if (!empty($pending_requests)): ?>
-                                        <div class="card mt-3">
-                                            <div class="card-header">
-                                                <h5><i class="feather icon-clock mr-2"></i><?php echo __('pending_requests'); ?> <span class="badge badge-warning badge-pill ml-2"><?php echo count($pending_requests); ?></span></h5>
-                                            </div>
-                                            <div class="card-body table-responsive">
-                                                <table class="table table-hover">
-                                                    <thead>
-                                                        <tr>
-                                                            <th><i class="feather icon-user-plus mr-1"></i><?php echo __('requested_users'); ?></th>
-                                                            <th><i class="feather icon-dollar-sign mr-1"></i><?php echo __('estimated_cost'); ?></th>
-                                                            <th><i class="feather icon-calendar mr-1"></i><?php echo __('requested_at'); ?></th>
-                                                            <th><i class="feather icon-alert-circle mr-1"></i><?php echo __('status'); ?></th>
-                                                        </tr>
-                                                    </thead>
-                                                    <tbody>
-                                                        <?php foreach ($pending_requests as $request): ?>
-                                                        <tr>
-                                                            <td>
-                                                                <span class="badge badge-success badge-pill px-3 py-2 font-weight-bold">
-                                                                    +<?php echo intval($request['requested_additional_users']); ?>
-                                                                </span>
-                                                            </td>
-                                                            <td class="text-success font-weight-bold h6">
-                                                                <?php echo number_format($request['estimated_monthly_cost'], 2); ?> <?php echo htmlspecialchars($currency); ?>
-                                                            </td>
-                                                            <td class="text-muted"><?php echo date('M d, Y H:i', strtotime($request['requested_at'])); ?></td>
-                                                            <td>
-                                                                <span class="badge badge-warning badge-pill px-3 py-1">
-                                                                    <?php echo ucfirst(htmlspecialchars($request['status'])); ?>
-                                                                </span>
-                                                            </td>
-                                                        </tr>
-                                                        <?php endforeach; ?>
-                                                    </tbody>
-                                                </table>
-                                            </div>
-                                        </div>
-                                        <?php endif; ?>
+                                         <?php if (!empty($all_pending_requests)): ?>
+                                         <div class="card mt-3">
+                                             <div class="card-header">
+                                                 <h5><i class="feather icon-clock mr-2"></i><?php echo __('pending_requests'); ?> <span class="badge badge-warning badge-pill ml-2"><?php echo $pending_total_items; ?></span></h5>
+                                             </div>
+                                             <div class="card-body table-responsive">
+                                                 <table class="table table-hover">
+                                                     <thead>
+                                                         <tr>
+                                                             <th><i class="feather icon-user-plus mr-1"></i><?php echo __('requested_users'); ?></th>
+                                                             <th><i class="feather icon-dollar-sign mr-1"></i><?php echo __('estimated_cost'); ?></th>
+                                                             <th><i class="feather icon-calendar mr-1"></i><?php echo __('requested_at'); ?></th>
+                                                             <th><i class="feather icon-alert-circle mr-1"></i><?php echo __('status'); ?></th>
+                                                         </tr>
+                                                     </thead>
+                                                     <tbody>
+                                                         <?php foreach ($pending_requests as $request): ?>
+                                                         <tr>
+                                                             <td>
+                                                                 <span class="badge badge-success badge-pill px-3 py-2 font-weight-bold">
+                                                                     +<?php echo intval($request['requested_additional_users']); ?>
+                                                                 </span>
+                                                             </td>
+                                                             <td class="text-success font-weight-bold h6">
+                                                                 <?php echo number_format($request['estimated_monthly_cost'], 2); ?> <?php echo htmlspecialchars($currency); ?>
+                                                             </td>
+                                                             <td class="text-muted"><?php echo date('M d, Y H:i', strtotime($request['requested_at'])); ?></td>
+                                                             <td>
+                                                                 <span class="badge badge-warning badge-pill px-3 py-1">
+                                                                     <?php echo ucfirst(htmlspecialchars($request['status'])); ?>
+                                                                 </span>
+                                                             </td>
+                                                         </tr>
+                                                         <?php endforeach; ?>
+                                                     </tbody>
+                                                 </table>
+                                             </div>
+
+                                             <!-- Pagination for Pending Requests -->
+                                             <?php if ($pending_total_pages > 1): ?>
+                                             <nav aria-label="Pending requests pagination" class="mt-2 mb-0">
+                                             <ul class="pagination justify-content-center mb-0" style="padding: 1rem;">
+                                             <li class="page-item <?= $pending_current_page === 1 ? 'disabled' : '' ?>">
+                                             <a class="page-link" href="request_user_addon.php?pending_page=<?= $pending_current_page - 1 ?>">
+                                                 <i class="feather icon-chevron-left"></i> Prev
+                                             </a>
+                                             </li>
+                                             <?php 
+                                             $p_start = max(1, $pending_current_page - 2);
+                                             $p_end = min($pending_total_pages, $pending_current_page + 2);
+                                             if ($p_start > 1): ?>
+                                             <li class="page-item"><a class="page-link" href="request_user_addon.php?pending_page=1">1</a></li>
+                                             <?php if ($p_start > 2): ?>
+                                             <li class="page-item disabled"><span class="page-link">...</span></li>
+                                             <?php endif; ?>
+                                             <?php endif; ?>
+                                             <?php for ($i = $p_start; $i <= $p_end; $i++): ?>
+                                             <li class="page-item <?= $i === $pending_current_page ? 'active' : '' ?>">
+                                             <a class="page-link" href="request_user_addon.php?pending_page=<?= $i ?>"><?= $i ?></a>
+                                             </li>
+                                             <?php endfor; ?>
+                                             <?php if ($p_end < $pending_total_pages): ?>
+                                             <?php if ($p_end < $pending_total_pages - 1): ?>
+                                             <li class="page-item disabled"><span class="page-link">...</span></li>
+                                             <?php endif; ?>
+                                             <li class="page-item"><a class="page-link" href="request_user_addon.php?pending_page=<?= $pending_total_pages ?>"><?= $pending_total_pages ?></a></li>
+                                             <?php endif; ?>
+                                             <li class="page-item <?= $pending_current_page === $pending_total_pages ? 'disabled' : '' ?>">
+                                             <a class="page-link" href="request_user_addon.php?pending_page=<?= $pending_current_page + 1 ?>">
+                                                 Next <i class="feather icon-chevron-right"></i>
+                                             </a>
+                                             </li>
+                                             </ul>
+                                             </nav>
+                                             <div class="text-center text-muted small" style="padding: 0 1rem 1rem 1rem;">
+                                             Page <?= $pending_current_page ?> of <?= $pending_total_pages ?>
+                                             </div>
+                                             <?php endif; ?>
+                                         </div>
+                                         <?php endif; ?>
 
                                         <!-- Active Add-ons -->
-                                        <?php if (!empty($active_addons)): ?>
-                                        <div class="card mt-3">
-                                            <div class="card-header">
-                                                <h5><i class="feather icon-check-circle mr-2"></i><?php echo __('active_user_addons'); ?> <span class="badge badge-success badge-pill ml-2"><?php echo count($active_addons); ?></span></h5>
-                                            </div>
-                                            <div class="card-body table-responsive">
-                                                <table class="table table-hover">
-                                                    <thead>
-                                                        <tr>
-                                                            <th><i class="feather icon-users mr-1"></i><?php echo __('additional_users'); ?></th>
-                                                            <th><i class="feather icon-tag mr-1"></i><?php echo __('cost_per_user'); ?></th>
-                                                            <th><i class="feather icon-credit-card mr-1"></i><?php echo __('total_cost'); ?></th>
-                                                            <th><i class="feather icon-repeat mr-1"></i><?php echo __('billing_cycle'); ?></th>
-                                                            <th><i class="feather icon-refresh-cw mr-1"></i><?php echo __('renewal_date'); ?></th>
-                                                        </tr>
-                                                    </thead>
-                                                    <tbody>
-                                                        <?php foreach ($active_addons as $addon): ?>
-                                                        <tr>
-                                                            <td>
-                                                                <span class="badge badge-success badge-pill px-3 py-2 font-weight-bold">
-                                                                    +<?php echo intval($addon['additional_users']); ?>
-                                                                </span>
-                                                            </td>
-                                                            <td class="text-muted font-weight-bold"><?php echo number_format($addon['addon_price_per_user'], 2); ?> <?php echo htmlspecialchars($currency); ?></td>
-                                                            <td class="text-success font-weight-bold h6"><?php echo number_format($addon['total_addon_cost'], 2); ?> <?php echo htmlspecialchars($currency); ?></td>
-                                                            <td class="text-primary font-weight-bold"><?php echo ucfirst(htmlspecialchars($addon['billing_cycle'])); ?></td>
-                                                            <td class="text-muted">
-                                                                <?php echo $addon['next_renewal_date'] ? date('M d, Y', strtotime($addon['next_renewal_date'])) : '<span class="text-danger">-</span>'; ?>
-                                                            </td>
-                                                        </tr>
-                                                        <?php endforeach; ?>
-                                                    </tbody>
-                                                </table>
-                                            </div>
-                                        </div>
-                                        <?php endif; ?>
+                                         <?php if (!empty($all_active_addons)): ?>
+                                         <div class="card mt-3">
+                                             <div class="card-header">
+                                                 <h5><i class="feather icon-check-circle mr-2"></i><?php echo __('active_user_addons'); ?> <span class="badge badge-success badge-pill ml-2"><?php echo $addon_total_items; ?></span></h5>
+                                             </div>
+                                             <div class="card-body table-responsive">
+                                                 <table class="table table-hover">
+                                                     <thead>
+                                                         <tr>
+                                                             <th><i class="feather icon-users mr-1"></i><?php echo __('additional_users'); ?></th>
+                                                             <th><i class="feather icon-tag mr-1"></i><?php echo __('cost_per_user'); ?></th>
+                                                             <th><i class="feather icon-credit-card mr-1"></i><?php echo __('total_cost'); ?></th>
+                                                             <th><i class="feather icon-repeat mr-1"></i><?php echo __('billing_cycle'); ?></th>
+                                                             <th><i class="feather icon-refresh-cw mr-1"></i><?php echo __('renewal_date'); ?></th>
+                                                         </tr>
+                                                     </thead>
+                                                     <tbody>
+                                                         <?php foreach ($active_addons as $addon): ?>
+                                                         <tr>
+                                                             <td>
+                                                                 <span class="badge badge-success badge-pill px-3 py-2 font-weight-bold">
+                                                                     +<?php echo intval($addon['additional_users']); ?>
+                                                                 </span>
+                                                             </td>
+                                                             <td class="text-muted font-weight-bold"><?php echo number_format($addon['addon_price_per_user'], 2); ?> <?php echo htmlspecialchars($currency); ?></td>
+                                                             <td class="text-success font-weight-bold h6"><?php echo number_format($addon['total_addon_cost'], 2); ?> <?php echo htmlspecialchars($currency); ?></td>
+                                                             <td class="text-primary font-weight-bold"><?php echo ucfirst(htmlspecialchars($addon['billing_cycle'])); ?></td>
+                                                             <td class="text-muted">
+                                                                 <?php echo $addon['next_renewal_date'] ? date('M d, Y', strtotime($addon['next_renewal_date'])) : '<span class="text-danger">-</span>'; ?>
+                                                             </td>
+                                                         </tr>
+                                                         <?php endforeach; ?>
+                                                     </tbody>
+                                                 </table>
+                                             </div>
+
+                                             <!-- Pagination for Active Add-ons -->
+                                             <?php if ($addon_total_pages > 1): ?>
+                                             <nav aria-label="Active addons pagination" class="mt-2 mb-0">
+                                             <ul class="pagination justify-content-center mb-0" style="padding: 1rem;">
+                                             <li class="page-item <?= $addon_current_page === 1 ? 'disabled' : '' ?>">
+                                             <a class="page-link" href="request_user_addon.php?addon_page=<?= $addon_current_page - 1 ?>">
+                                                 <i class="feather icon-chevron-left"></i> Prev
+                                             </a>
+                                             </li>
+                                             <?php 
+                                             $a_start = max(1, $addon_current_page - 2);
+                                             $a_end = min($addon_total_pages, $addon_current_page + 2);
+                                             if ($a_start > 1): ?>
+                                             <li class="page-item"><a class="page-link" href="request_user_addon.php?addon_page=1">1</a></li>
+                                             <?php if ($a_start > 2): ?>
+                                             <li class="page-item disabled"><span class="page-link">...</span></li>
+                                             <?php endif; ?>
+                                             <?php endif; ?>
+                                             <?php for ($i = $a_start; $i <= $a_end; $i++): ?>
+                                             <li class="page-item <?= $i === $addon_current_page ? 'active' : '' ?>">
+                                             <a class="page-link" href="request_user_addon.php?addon_page=<?= $i ?>"><?= $i ?></a>
+                                             </li>
+                                             <?php endfor; ?>
+                                             <?php if ($a_end < $addon_total_pages): ?>
+                                             <?php if ($a_end < $addon_total_pages - 1): ?>
+                                             <li class="page-item disabled"><span class="page-link">...</span></li>
+                                             <?php endif; ?>
+                                             <li class="page-item"><a class="page-link" href="request_user_addon.php?addon_page=<?= $addon_total_pages ?>"><?= $addon_total_pages ?></a></li>
+                                             <?php endif; ?>
+                                             <li class="page-item <?= $addon_current_page === $addon_total_pages ? 'disabled' : '' ?>">
+                                             <a class="page-link" href="request_user_addon.php?addon_page=<?= $addon_current_page + 1 ?>">
+                                                 Next <i class="feather icon-chevron-right"></i>
+                                             </a>
+                                             </li>
+                                             </ul>
+                                             </nav>
+                                             <div class="text-center text-muted small" style="padding: 0 1rem 1rem 1rem;">
+                                             Page <?= $addon_current_page ?> of <?= $addon_total_pages ?>
+                                             </div>
+                                             <?php endif; ?>
+                                         </div>
+                                         <?php endif; ?>
                                     </div>
                                 </div>
                             </div>
@@ -397,7 +497,7 @@ include 'header.php';
 
     .progress {
         border-radius: 15px;
-        overflow: hidden;
+        
         box-shadow: inset 0 1px 2px rgba(0,0,0,0.1);
     }
 
@@ -427,7 +527,6 @@ include 'header.php';
 
     .table-responsive {
         border-radius: 10px;
-        overflow: hidden;
     }
 
     .table {

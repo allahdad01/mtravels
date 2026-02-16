@@ -30,19 +30,26 @@ $currency = $plan['currency'] ?? 'USD';
 $addonPricing = $userAddonManager->getAddonPricing();
 
 
+// Load input validation helper
+require_once '../includes/InputValidator.php';
+
 // Handle form submission
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     // Verify CSRF token
     if (!isset($_POST['csrf_token']) || $_POST['csrf_token'] !== $_SESSION['csrf_token']) {
         $error = __('invalid_csrf_token');
     } else {
-        $name = trim($_POST['name'] ?? '');
-        $email = trim($_POST['email'] ?? '');
-        $phone = trim($_POST['phone'] ?? '');
+        $name = InputValidator::getString($_POST['name'] ?? '', 255);
+        $email = InputValidator::getEmail($_POST['email'] ?? '');
+        $phone = InputValidator::getPhone($_POST['phone'] ?? '');
         $password = $_POST['password'] ?? '';
-        $role = $_POST['role'] ?? '';
-        $hire_date = $_POST['hire_date'] ?? '';
-        $address = trim($_POST['address'] ?? '');
+        $role = InputValidator::getEnum(
+            $_POST['role'] ?? '',
+            ['admin', 'staff', 'manager', 'supervisor'],
+            ''
+        );
+        $hire_date = InputValidator::getDate($_POST['hire_date'] ?? '', 'Y-m-d', '');
+        $address = InputValidator::getString($_POST['address'] ?? '', 500);
 
         // Validation
         $errors = [];
@@ -58,7 +65,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 
         if (empty($email)) {
             $errors[] = __('email_required');
-        } elseif (!filter_var($email, FILTER_VALIDATE_EMAIL)) {
+        } elseif (!$email) {
             $errors[] = __('invalid_email_format');
         } else {
             // Check if email already exists
@@ -71,7 +78,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 
         if (empty($password)) {
             $errors[] = __('password_required');
-        } elseif (strlen($password) < 6) {
+        } elseif (strlen($password) < 12) {
+            // Enforce stronger password requirement (12+ chars)
             $errors[] = __('password_too_short');
         }
 
@@ -389,6 +397,7 @@ include '../includes/header.php';
         </div>
     </div>
     <!-- Required Js -->
+    
     <script src="../assets/js/vendor-all.min.js"></script>
     <script src="../assets/plugins/bootstrap/js/bootstrap.min.js"></script>
     <script src="../assets/js/pcoded.min.js"></script>

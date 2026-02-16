@@ -13,6 +13,7 @@ require_once "config.php";
 require_once "includes/db.php";
 require_once "includes/totp_helper.php";
 require_once "includes/RateLimiter.php";
+require_once "includes/PasswordValidator.php";
 
 // Create TOTP helper
 $totpHelper = new TotpHelper($pdo, $conection_db);
@@ -55,8 +56,9 @@ function recordFailedAttempt($email, $conection_db) {
     global $pdo;
     
     $time = date("Y-m-d H:i:s");
+    $ip_address = $_SERVER['REMOTE_ADDR'];
+    
     if ($stmt = $conection_db->prepare("INSERT INTO login_attempts (email, time, ip_address) VALUES (?, ?, ?)")) {
-        $ip_address = $_SERVER['REMOTE_ADDR'];
         $stmt->bind_param("sss", $email, $time, $ip_address);
         $stmt->execute();
         $stmt->close();
@@ -64,6 +66,59 @@ function recordFailedAttempt($email, $conection_db) {
     
     // Record in rate limiter
     RateLimiter::recordAction($email, 'login_attempts_per_15min', 1, $ip_address, 'email');
+    
+    // Send alert email if this is the 3rd or 5th failed attempt
+    $valid_attempts_window = date("Y-m-d H:i:s", time() - (30 * 60));
+    if ($count_stmt = $conection_db->prepare("SELECT COUNT(*) AS attempts FROM login_attempts WHERE email = ? AND time > ?")) {
+        $count_stmt->bind_param("ss", $email, $valid_attempts_window);
+        $count_stmt->execute();
+        $count_stmt->bind_result($attempts);
+        $count_stmt->fetch();
+        $count_stmt->close();
+        
+        // Alert on 3rd and 5th attempts
+        if (in_array($attempts, [3, 5])) {
+            notifyFailedLoginAttempt($email, $ip_address, $attempts);
+        }
+    }
+}
+
+// Send security alert email for failed login attempts
+function notifyFailedLoginAttempt($email, $ip_address, $attempt_count) {
+    // Get user's name for personalization
+    global $conection_db;
+    $user_name = "User";
+    
+    $name_stmt = $conection_db->prepare("SELECT name FROM users WHERE email = ? UNION SELECT name FROM clients WHERE email = ? LIMIT 1");
+    $name_stmt->bind_param("ss", $email, $email);
+    $name_stmt->execute();
+    $name_stmt->bind_result($user_name);
+    $name_stmt->fetch();
+    $name_stmt->close();
+    
+    $subject = "Security Alert: Failed Login Attempt on Your Account";
+    $message = "
+Dear $user_name,
+
+We detected $attempt_count failed login attempt(s) to your account.
+
+IP Address: $ip_address
+Time: " . date("Y-m-d H:i:s") . "
+
+If this wasn't you:
+1. Reset your password immediately
+2. Enable Two-Factor Authentication if available
+3. Contact support
+
+If this was you, please ignore this message.
+
+Security Team";
+    
+    $headers = "From: security@" . $_SERVER['HTTP_HOST'] . "\r\n";
+    $headers .= "Content-Type: text/plain; charset=UTF-8\r\n";
+    
+    @mail($email, $subject, $message, $headers);
+    error_log("Security alert sent to $email for failed login attempts from $ip_address");
 }
 
 if ($_SERVER["REQUEST_METHOD"] == "POST") {

@@ -134,7 +134,7 @@ $(document).on('input', '.edit-service-base-price, .edit-service-sold-price, #ed
 
 $(document).on('submit', '#editMemberForm', function(event) {
     event.preventDefault();
-    console.log("Edit form submitted!");
+
 
     const submitBtn = event.target.querySelector('button[type="submit"]');
     const originalHtml = submitBtn.innerHTML;
@@ -149,7 +149,7 @@ $(document).on('submit', '#editMemberForm', function(event) {
     })
     .then(response => response.json())
     .then(data => {
-        console.log("Server Response:", data);
+
         if (data.success) {
             alert("Umrah member updated successfully");
             location.reload();
@@ -160,7 +160,7 @@ $(document).on('submit', '#editMemberForm', function(event) {
         }
     })
     .catch(error => {
-        console.error("Error:", error);
+
         alert("An error occurred");
         submitBtn.disabled = false;
         submitBtn.innerHTML = originalHtml;
@@ -171,7 +171,7 @@ $(document).on('submit', '#editMemberForm', function(event) {
 // This is handled by openEditMemberModal function for editing existing members
 
 function openEditMemberModal(bookingId) {
-     console.log('Opening edit modal for booking:', bookingId);
+
 
      // Show loading state
      showToast('info', 'Loading... Please wait');
@@ -239,7 +239,7 @@ function openEditMemberModal(bookingId) {
                 }
         })
         .catch(error => {
-            console.error('Error:', error);
+
             showToast('error', 'Failed to load member details');
         });
 }

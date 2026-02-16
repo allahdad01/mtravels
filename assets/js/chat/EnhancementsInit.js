@@ -16,27 +16,27 @@ class EnhancementsInit {
      */
     async init(chatManager) {
         try {
-            console.log('Initializing chat enhancements...');
+
 
             // Initialize utilities
             this.ui = new UIUtilities();
-            console.log('✓ UI Utilities initialized');
+
 
             // Initialize features
             this.messageActions = new MessageActions(chatManager, this.ui);
-            console.log('✓ Message Actions initialized');
+
 
             this.keyboardNav = new KeyboardNavigation(chatManager, this.ui);
-            console.log('✓ Keyboard Navigation initialized');
+
 
             this.accessibility = new Accessibility();
-            console.log('✓ Accessibility initialized');
+
 
             this.emojiPicker = new EmojiPickerEnhanced();
-            console.log('✓ Enhanced Emoji Picker initialized');
+
 
             this.fileUpload = new FileUploadProgress(this.ui);
-            console.log('✓ File Upload Progress initialized');
+
 
             // Setup emoji button
             this.setupEmojiButton();
@@ -50,7 +50,7 @@ class EnhancementsInit {
             // Add accessibility support
             this.setupAccessibilityFeatures();
 
-            console.log('✅ All chat enhancements initialized successfully');
+
             this.ui.showSuccess('Chat enhancements loaded');
 
             // Make utilities globally accessible
@@ -60,7 +60,7 @@ class EnhancementsInit {
             window.chatApp.enhancements = this;
 
         } catch (error) {
-            console.error('Error initializing enhancements:', error);
+
             this.ui?.showError('Failed to initialize chat features');
         }
     }
@@ -233,7 +233,7 @@ class EnhancementsInit {
             .map(([key, value]) => `${key}: ${value ? '✓' : '✗'}`)
             .join('\n');
 
-        console.log('Chat Enhancements Status:\n' + status);
+
         this.ui?.showInfo('Chat enhancements status logged to console');
     }
 }

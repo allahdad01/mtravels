@@ -240,12 +240,24 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['reactivate_debtor']))
 // Handle payment submission
 if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['pay'])) {
     $debtor_id = $_POST['debtor_id'];
-    $amount = $_POST['amount'];
+    
+    // Validate amount is numeric
+    if (!isset($_POST['amount']) || !is_numeric($_POST['amount']) || floatval($_POST['amount']) <= 0) {
+        throw new Exception("Invalid payment amount: must be a positive number");
+    }
+    $amount = floatval($_POST['amount']);
+    
     $currency = $_POST['currency'];
     $payment_date = $_POST['payment_date'];
     $description = $_POST['description'];
     $paid_to = $_POST['paid_to'];
+    
+    // Validate exchange rate is numeric
     $exchange_rate = isset($_POST['exchange_rate']) && !empty($_POST['exchange_rate']) ? $_POST['exchange_rate'] : 1;
+    if (!is_numeric($exchange_rate) || floatval($exchange_rate) <= 0) {
+        throw new Exception("Invalid exchange rate: must be a positive number");
+    }
+    $exchange_rate = floatval($exchange_rate);
 
     try {
         $pdo->beginTransaction();

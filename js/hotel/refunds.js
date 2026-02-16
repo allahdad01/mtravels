@@ -80,12 +80,12 @@ $(document).ready(function() {
                         showToast('Error: ' + (result.message || 'Failed to process refund'));
                     }
                 } catch (e) {
-                    console.error('Error parsing response:', e);
+
                     showToast('Error processing the refund request');
                 }
             },
             error: function(xhr, status, error) {
-                console.error('AJAX Error:', error);
+
                 showToast('Error processing refund');
             }
         });

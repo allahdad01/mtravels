@@ -18,6 +18,7 @@ if (!isset($_SESSION['user_id'])) {
 
 require_once('../includes/db.php');
 require_once('../includes/SecureFileUpload.php');
+require_once('../includes/PasswordValidator.php');
 
 try {
     $user_id = $_SESSION['user_id'];
@@ -53,6 +54,13 @@ try {
 
         if ($new_password !== $confirm_password) {
             echo json_encode(['success' => false, 'message' => 'New passwords do not match']);
+            exit;
+        }
+
+        // Validate password strength
+        $validation = PasswordValidator::validate($new_password);
+        if (!$validation['valid']) {
+            echo json_encode(['success' => false, 'message' => 'Password does not meet requirements: ' . implode(', ', $validation['errors'])]);
             exit;
         }
 

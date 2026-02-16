@@ -8,6 +8,7 @@ $tenant_id = $_SESSION['tenant_id'];
 
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     require_once '../includes/conn.php';
+    require_once '../includes/SecureFileUpload.php';
 
 
     if ($conn->connect_error) {
@@ -44,18 +45,19 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     $oldSettings = $currentSettingsResult->fetch_assoc();
     $getCurrentSettingsStmt->close();
 
-    // Handle logo upload (if a new file is uploaded)
+    // Handle logo upload (if a new file is uploaded) using SecureFileUpload
     if ($logo['name']) {
-        // Define the upload directory
-        $upload_dir = '../uploads/logo/';
-        $logo_name = basename($logo['name']);
-        $target_file = $upload_dir . $logo_name;
-
-        // Check if file upload was successful
-        if (move_uploaded_file($logo['tmp_name'], $target_file)) {
-            $logo_path = $logo_name;  // Save just the file name (not the full path)
-        } else {
-            die("Failed to upload logo image.");
+        try {
+            $uploader = new SecureFileUpload(2 * 1024 * 1024, '../uploads/');
+            $result = $uploader->upload('logo', 'logo', 1);
+            
+            if ($result['success']) {
+                $logo_path = $result['data']['filename'];  // Save just the file name (not the full path)
+            } else {
+                die("Failed to upload logo image: " . $result['error']);
+            }
+        } catch (Exception $e) {
+            die("Upload error: " . $e->getMessage());
         }
     } else {
         // If no new file is uploaded, keep the existing logo (only its file name)

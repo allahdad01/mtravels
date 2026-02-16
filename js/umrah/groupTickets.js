@@ -104,5 +104,5 @@ document.addEventListener('DOMContentLoaded', function () {
 
 // Toast helper
 function showToast(message, type = 'info') {
-    console.log(`Toast [${type}]: ${message}`);
+
 }

@@ -8,7 +8,7 @@ document.addEventListener('DOMContentLoaded', function() {
     const clientContainer = document.querySelector('.client-cards-container');
 
     // Debug logging for initial element selection
-    console.log('Elements found:', {
+    console.log({
         searchInput: clientSearch,
         perPageSelect: clientPerPage,
         container: clientContainer,
@@ -22,7 +22,7 @@ document.addEventListener('DOMContentLoaded', function() {
     if (!clientContainer) missingElements.push('Client container (.client-cards-container)');
 
     if (missingElements.length > 0) {
-        console.error('Missing required elements:', missingElements);
+
         return;
     }
 
@@ -34,7 +34,7 @@ document.addEventListener('DOMContentLoaded', function() {
         const allClientCards = Array.from(clientContainer.querySelectorAll('.col-md-4'));
 
         // Debug logging
-        console.log('Filtering clients:', {
+        console.log({
             searchTerm,
             perPage,
             totalCards: allClientCards.length

@@ -48,8 +48,19 @@ if (!empty($_GET)) {
 // Handle deposit submission
 if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['add_deposit'])) {
     $customer_id = $_POST['customer_id'];
-    $amount = $_POST['amount'];
+    
+    // Validate amount is numeric
+    if (!isset($_POST['amount']) || !is_numeric($_POST['amount']) || floatval($_POST['amount']) <= 0) {
+        die(json_encode(['success' => false, 'message' => 'Invalid amount: must be a positive number']));
+    }
+    $amount = floatval($_POST['amount']);
+    
+    // Validate currency
+    if (!isset($_POST['currency']) || empty($_POST['currency'])) {
+        die(json_encode(['success' => false, 'message' => 'Currency is required']));
+    }
     $currency = $_POST['currency'];
+    
     $notes = $_POST['notes'];
     $reference = $_POST['reference'];
     $main_account_id = $_POST['main_account_id'];
@@ -530,7 +541,7 @@ $transactions = $stmt->fetchAll(PDO::FETCH_ASSOC);
 
 <?php include '../includes/header.php'; ?>
 <link rel="stylesheet" href="../css/general/modal-styles.css">
-<link rel="stylesheet" href="../css/sarfi/styles.css">
+<link rel="stylesheet" href="../css/sarafi/styles.css">
 
     <!-- [ Main Content ] start -->
     <div class="pcoded-main-container">

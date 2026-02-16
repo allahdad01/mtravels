@@ -4,6 +4,7 @@ require_once 'security.php';
 require_once '../includes/language_helpers.php';
 require_once '../includes/db.php';
 require_once '../includes/SecureFileUpload.php';
+require_once '../includes/PasswordValidator.php';
 $tenant_id = $_SESSION['tenant_id'];
 $branch_id = $_SESSION['branch_id'];
 // Start session if not already started
@@ -36,6 +37,12 @@ try {
     $stmt->execute([$_POST['email'], $tenant_id, $branch_id]);
     if ($stmt->fetchColumn() > 0) {
         throw new Exception(__('email_already_exists'));
+    }
+
+    // Validate password strength
+    $password_validation = PasswordValidator::validate($_POST['password']);
+    if (!$password_validation['valid']) {
+        throw new Exception(__('password_does_not_meet_requirements') . ': ' . implode(', ', $password_validation['errors']));
     }
 
     // Handle profile picture upload - SECURE VERSION

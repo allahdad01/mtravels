@@ -2,6 +2,7 @@
 
 // Create budget allocation
 function createBudgetAllocation(categoryId, mainAccountId, amount, currency, date, description) {
+    const csrfToken = $('input[name="csrf_token"]').val();
     return $.ajax({
         url: '../api/allocation/allocation_actions.php',
         type: 'POST',
@@ -12,7 +13,8 @@ function createBudgetAllocation(categoryId, mainAccountId, amount, currency, dat
             amount: amount,
             currency: currency,
             date: date,
-            description: description
+            description: description,
+            csrf_token: csrfToken
         },
         dataType: 'json'
     });
@@ -20,6 +22,7 @@ function createBudgetAllocation(categoryId, mainAccountId, amount, currency, dat
 
 // Add funds to allocation
 function addFundsToAllocation(allocationId, amount, note) {
+    const csrfToken = $('input[name="csrf_token"]').val();
     return $.ajax({
         url: '../api/allocation/allocation_actions.php',
         type: 'POST',
@@ -27,7 +30,8 @@ function addFundsToAllocation(allocationId, amount, note) {
             action: 'add_funds',
             allocation_id: allocationId,
             amount: amount,
-            note: note
+            note: note,
+            csrf_token: csrfToken
         },
         dataType: 'json'
     });
@@ -35,12 +39,14 @@ function addFundsToAllocation(allocationId, amount, note) {
 
 // Get fund transactions for an allocation
 function getFundTransactions(allocationId) {
+    const csrfToken = $('input[name="csrf_token"]').val();
     return $.ajax({
         url: '../api/allocation/allocation_actions.php',
         type: 'POST',
         data: {
             action: 'get_fund_transactions',
-            allocation_id: allocationId
+            allocation_id: allocationId,
+            csrf_token: csrfToken
         },
         dataType: 'json'
     });
@@ -48,12 +54,14 @@ function getFundTransactions(allocationId) {
 
 // Get allocation details and expenses
 function getAllocationDetails(allocationId) {
+    const csrfToken = $('input[name="csrf_token"]').val();
     return $.ajax({
         url: '../api/allocation/allocation_actions.php',
         type: 'POST',
         data: {
             action: 'get_allocation_details',
-            allocation_id: allocationId
+            allocation_id: allocationId,
+            csrf_token: csrfToken
         },
         dataType: 'json'
     });
@@ -61,12 +69,14 @@ function getAllocationDetails(allocationId) {
 
 // Delete allocation
 function deleteAllocation(allocationId) {
+    const csrfToken = $('input[name="csrf_token"]').val();
     return $.ajax({
         url: '../api/allocation/allocation_actions.php',
         type: 'POST',
         data: {
             action: 'delete_allocation',
-            allocation_id: allocationId
+            allocation_id: allocationId,
+            csrf_token: csrfToken
         },
         dataType: 'json'
     });
@@ -74,13 +84,15 @@ function deleteAllocation(allocationId) {
 
 // Delete fund transaction
 function deleteFundTransaction(transactionId, allocationId) {
+    const csrfToken = $('input[name="csrf_token"]').val();
     return $.ajax({
         url: '../api/allocation/allocation_actions.php',
         type: 'POST',
         data: {
             action: 'delete_fund_transaction',
             transaction_id: transactionId,
-            allocation_id: allocationId
+            allocation_id: allocationId,
+            csrf_token: csrfToken
         },
         dataType: 'json'
     });

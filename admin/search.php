@@ -39,35 +39,35 @@ if (isset($_POST['search'])) {
         $resultMessage = "Please enter a search term";
     } else {
         // Array to store the combined results
-        $searchResults = [];
-        
-        // Search in ticket_bookings table
-        $ticketQuery = "SELECT 
-                'Ticket' AS record_type,
-                tb.id,
-                tb.passenger_name AS name,
-                tb.pnr AS reference,
-                tb.phone,
-                tb.gender,
-                c.name AS client_name,
-                c.id AS client_id,
-                s.name AS supplier_name,
-                s.id AS supplier_id,
-                tb.origin,
-                tb.destination,
-                tb.departure_date,
-                tb.issue_date,
-                tb.status,
-                tb.currency,
-                tb.sold AS amount,
-                NULL AS passport_number
-            FROM ticket_bookings tb
-            LEFT JOIN clients c ON tb.sold_to = c.id AND c.branch_id = ?
-            LEFT JOIN suppliers s ON tb.supplier = s.id AND s.branch_id = ?
-            WHERE tb.tenant_id = ? AND tb.branch_id = ? AND
-                tb.passenger_name LIKE ? OR
-                tb.pnr LIKE ? OR
-                tb.phone LIKE ?";
+         $searchResults = [];
+         
+         // Search in ticket_bookings table
+         $ticketQuery = "SELECT 
+                 'Ticket' AS record_type,
+                 tb.id,
+                 tb.passenger_name AS name,
+                 tb.pnr AS reference,
+                 tb.phone,
+                 tb.gender,
+                 c.name AS client_name,
+                 c.id AS client_id,
+                 s.name AS supplier_name,
+                 s.id AS supplier_id,
+                 tb.origin,
+                 tb.destination,
+                 tb.departure_date,
+                 tb.issue_date,
+                 tb.status,
+                 tb.currency,
+                 tb.sold AS amount,
+                 NULL AS passport_number
+             FROM ticket_bookings tb
+             LEFT JOIN clients c ON tb.sold_to = c.id AND c.branch_id = ?
+             LEFT JOIN suppliers s ON tb.supplier = s.id AND s.branch_id = ?
+             WHERE tb.tenant_id = ? AND tb.branch_id = ? AND
+                 (tb.passenger_name LIKE ? OR
+                  tb.pnr LIKE ? OR
+                  tb.phone LIKE ?)";
                 
         $stmt = $pdo->prepare($ticketQuery);
         $likeParam = "%$searchTerm%";
@@ -95,13 +95,13 @@ if (isset($_POST['search'])) {
                 tb.currency,
                 tb.sold AS amount,
                 NULL AS passport_number
-            FROM ticket_reservations tb
-            LEFT JOIN clients c ON tb.sold_to = c.id AND c.branch_id = ?
-            LEFT JOIN suppliers s ON tb.supplier = s.id AND s.branch_id = ?
-            WHERE tb.tenant_id = ? AND tb.branch_id = ? AND
-                tb.passenger_name LIKE ? OR
-                tb.pnr LIKE ? OR
-                tb.phone LIKE ?";
+                FROM ticket_reservations tb
+                LEFT JOIN clients c ON tb.sold_to = c.id AND c.branch_id = ?
+                LEFT JOIN suppliers s ON tb.supplier = s.id AND s.branch_id = ?
+                WHERE tb.tenant_id = ? AND tb.branch_id = ? AND
+                (tb.passenger_name LIKE ? OR
+                 tb.pnr LIKE ? OR
+                 tb.phone LIKE ?)";
                 
         $stmt = $pdo->prepare($ticketReservationQuery);
         $likeParam = "%$searchTerm%";
@@ -110,32 +110,32 @@ if (isset($_POST['search'])) {
         $searchResults = array_merge($searchResults, $ticketReservationResults);
         
         // Search in visa_applications table
-        $visaQuery = "SELECT 
-                'Visa' AS record_type,
-                va.id,
-                va.applicant_name AS name,
-                va.passport_number AS reference,
-                va.phone,
-                va.gender,
-                c.name AS client_name,
-                c.id AS client_id,
-                s.name AS supplier_name,
-                s.id AS supplier_id,
-                va.country AS origin,
-                va.visa_type AS destination,
-                va.applied_date AS departure_date,
-                va.receive_date AS issue_date,
-                va.status,
-                va.currency,
-                va.sold AS amount,
-                va.passport_number
-            FROM visa_applications va
-            LEFT JOIN clients c ON va.sold_to = c.id AND c.branch_id = ?
-            LEFT JOIN suppliers s ON va.supplier = s.id AND s.branch_id = ?
-            WHERE va.tenant_id = ? AND va.branch_id = ? AND
-                va.applicant_name LIKE ? OR
-                va.passport_number LIKE ? OR
-                va.phone LIKE ?";
+         $visaQuery = "SELECT 
+                 'Visa' AS record_type,
+                 va.id,
+                 va.applicant_name AS name,
+                 va.passport_number AS reference,
+                 va.phone,
+                 va.gender,
+                 c.name AS client_name,
+                 c.id AS client_id,
+                 s.name AS supplier_name,
+                 s.id AS supplier_id,
+                 va.country AS origin,
+                 va.visa_type AS destination,
+                 va.applied_date AS departure_date,
+                 va.receive_date AS issue_date,
+                 va.status,
+                 va.currency,
+                 va.sold AS amount,
+                 va.passport_number
+             FROM visa_applications va
+             LEFT JOIN clients c ON va.sold_to = c.id AND c.branch_id = ?
+             LEFT JOIN suppliers s ON va.supplier = s.id AND s.branch_id = ?
+             WHERE va.tenant_id = ? AND va.branch_id = ? AND
+                 (va.applicant_name LIKE ? OR
+                  va.passport_number LIKE ? OR
+                  va.phone LIKE ?)";
                 
         $stmt = $pdo->prepare($visaQuery);
         $stmt->execute([$branch_id, $branch_id, $tenant_id, $branch_id, $likeParam, $likeParam, $likeParam]);
@@ -143,31 +143,31 @@ if (isset($_POST['search'])) {
         $searchResults = array_merge($searchResults, $visaResults);
         
         // Search in hotel_bookings table
-        $hotelQuery = "SELECT 
-                'Hotel' AS record_type,
-                hb.id,
-                CONCAT(hb.first_name, ' ', hb.last_name) AS name,
-                hb.order_id AS reference,
-                hb.contact_no AS phone,
-                hb.gender,
-                hb.sold_to AS client_name,
-                NULL AS client_id,
-                s.name AS supplier_name,
-                s.id AS supplier_id,
-                'Hotel' AS origin,
-                hb.accommodation_details AS destination,
-                hb.check_in_date AS departure_date,
-                hb.issue_date,
-                'Booked' AS status,
-                hb.currency,
-                hb.sold_amount AS amount,
-                NULL AS passport_number
-            FROM hotel_bookings hb
-            LEFT JOIN suppliers s ON hb.supplier_id = s.id AND s.branch_id = ?
-            WHERE hb.tenant_id = ? AND hb.branch_id = ? AND
-                CONCAT(hb.first_name, ' ', hb.last_name) LIKE ? OR
-                hb.order_id LIKE ? OR
-                hb.contact_no LIKE ?";
+         $hotelQuery = "SELECT 
+                 'Hotel' AS record_type,
+                 hb.id,
+                 CONCAT(hb.first_name, ' ', hb.last_name) AS name,
+                 hb.order_id AS reference,
+                 hb.contact_no AS phone,
+                 hb.gender,
+                 hb.sold_to AS client_name,
+                 NULL AS client_id,
+                 s.name AS supplier_name,
+                 s.id AS supplier_id,
+                 'Hotel' AS origin,
+                 hb.accommodation_details AS destination,
+                 hb.check_in_date AS departure_date,
+                 hb.issue_date,
+                 'Booked' AS status,
+                 hb.currency,
+                 hb.sold_amount AS amount,
+                 NULL AS passport_number
+             FROM hotel_bookings hb
+             LEFT JOIN suppliers s ON hb.supplier_id = s.id AND s.branch_id = ?
+             WHERE hb.tenant_id = ? AND hb.branch_id = ? AND
+                 (CONCAT(hb.first_name, ' ', hb.last_name) LIKE ? OR
+                  hb.order_id LIKE ? OR
+                  hb.contact_no LIKE ?)";
                 
         $stmt = $pdo->prepare($hotelQuery);
         $stmt->execute([$branch_id, $tenant_id, $branch_id, $likeParam, $likeParam, $likeParam]);
@@ -175,31 +175,31 @@ if (isset($_POST['search'])) {
         $searchResults = array_merge($searchResults, $hotelResults);
         
         // Search in umrah_bookings table
-            $umrahQuery = "SELECT
-            'Umrah' AS record_type,
-            ub.booking_id AS id,
-            ub.name,
-            ub.passport_number AS reference,
-            NULL AS phone,
-            NULL AS gender,
-            c.name AS client_name,
-            ub.sold_to AS client_id,
-            NULL AS supplier_name,
-            NULL AS supplier_id,
-            'Mecca/Medina' AS origin,
-            ub.room_type AS destination,
-            ub.flight_date AS departure_date,
-            ub.created_at AS issue_date,
-            'Booked' AS status,
-            ub.currency,
-            ub.sold_price AS amount,
-            ub.passport_number
-            FROM umrah_bookings ub
-            LEFT JOIN clients c ON ub.sold_to = c.id AND c.branch_id = ?
-            WHERE ub.tenant_id = ? AND ub.branch_id = ? AND
-            (ub.name LIKE ? OR
-            ub.passport_number LIKE ? OR
-            ub.id_type LIKE ?)";
+             $umrahQuery = "SELECT
+             'Umrah' AS record_type,
+             ub.booking_id AS id,
+             ub.name,
+             ub.passport_number AS reference,
+             NULL AS phone,
+             NULL AS gender,
+             c.name AS client_name,
+             ub.sold_to AS client_id,
+             NULL AS supplier_name,
+             NULL AS supplier_id,
+             'Mecca/Medina' AS origin,
+             ub.room_type AS destination,
+             ub.flight_date AS departure_date,
+             ub.created_at AS issue_date,
+             'Booked' AS status,
+             ub.currency,
+             ub.sold_price AS amount,
+             ub.passport_number
+             FROM umrah_bookings ub
+             LEFT JOIN clients c ON ub.sold_to = c.id AND c.branch_id = ?
+             WHERE ub.tenant_id = ? AND ub.branch_id = ? AND
+             (ub.name LIKE ? OR
+              ub.passport_number LIKE ? OR
+              ub.id_type LIKE ?)";
                 
         $stmt = $pdo->prepare($umrahQuery);
         $stmt->execute([$branch_id, $tenant_id, $branch_id, $likeParam, $likeParam, $likeParam]);
@@ -227,10 +227,10 @@ if (isset($_POST['search'])) {
        ap.currency,
        ap.sold_amount AS amount,
        NULL AS passport_number
-   FROM additional_payments ap
+       FROM additional_payments ap
             WHERE ap.tenant_id = ? AND ap.branch_id = ? AND
-            ap.description LIKE ? OR
-            ap.payment_type LIKE ?";
+            (ap.description LIKE ? OR
+             ap.payment_type LIKE ?)";
                 
         $stmt = $pdo->prepare($additionalPaymentsQuery);
         $stmt->execute([$tenant_id, $branch_id, $likeParam, $likeParam]);
@@ -966,6 +966,7 @@ include '../includes/header.php';
 </div>
 
                             <!-- Required Js -->
+    
     <script src="../assets/js/vendor-all.min.js"></script>
     <script src="../assets/plugins/bootstrap/js/bootstrap.min.js"></script>
     <script src="../assets/js/pcoded.min.js"></script>

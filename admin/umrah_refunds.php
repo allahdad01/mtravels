@@ -442,10 +442,7 @@ if ($tableExists) {
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/sweetalert2@11/dist/sweetalert2.min.css">
     <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11/dist/sweetalert2.all.min.js"></script>
 
-    <!-- Add DataTables for advanced table interactions -->
-    <link rel="stylesheet" href="https://cdn.datatables.net/1.11.5/css/dataTables.bootstrap4.min.css">
-    <script src="https://cdn.datatables.net/1.11.5/js/jquery.dataTables.min.js"></script>
-    <script src="https://cdn.datatables.net/1.11.5/js/dataTables.bootstrap4.min.js"></script>
+    <!-- DataTables removed - using server-side PHP filtering -->
 
     <!-- Add Animate.css for smooth animations -->
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/animate.css/4.1.1/animate.min.css">
@@ -454,24 +451,7 @@ if ($tableExists) {
 
 
     <script>
-    $(document).ready(function() {
-        $('#umrahRefundsTable').DataTable({
-            responsive: true,
-            pageLength: <?= $recordsPerPage ?>,
-            lengthChange: true,
-            searching: true,
-            ordering: true,
-            paging: false,  // Disable DataTables pagination
-            columns: [
-                { width: '5%' },   // ID
-                { width: '20%' },  // Pilgrim Details
-                { width: '15%' },  // Refund Info
-                { width: '15%' },  // Financial Details
-                { width: '15%' },  // Processed On
-                { width: '10%' }   // Actions
-            ]
-        });
-    });
+    // DataTables removed - using server-side PHP filtering instead
     </script>
 
 

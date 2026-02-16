@@ -71,7 +71,7 @@ async function extractTicketFromPdf(file) {
             );
             
             // Log extraction details
-            console.log('Extraction Details:', {
+            console.log({
                 format: format,
                 confidence: confidence,
                 data: data.data
@@ -80,7 +80,7 @@ async function extractTicketFromPdf(file) {
             showExtractionStatus(`❌ ${data.message}`, 'error');
         }
     } catch (error) {
-        console.error('Extraction Error:', error);
+
         showExtractionStatus(`❌ Error: ${error.message}`, 'error');
     }
 }
@@ -89,7 +89,7 @@ async function extractTicketFromPdf(file) {
  * Populate ticket form with extracted data
  */
 function populateTicketForm(data) {
-    console.log('Populating form with data:', data);
+
     
     // Handle group booking - use first passenger for flight info
     const flightData = data.passengers ? data.passengers[0] : data;
@@ -100,7 +100,7 @@ function populateTicketForm(data) {
     // Set passenger count if we have multiple passengers
     if (data.passengers && Array.isArray(data.passengers)) {
         const passengerCount = data.passengers.length;
-        console.log(`Setting adult count to ${passengerCount} and filling ${passengerCount} passengers`);
+
         
         // Set adult count
         const adultCountField = document.getElementById('adultCount');
@@ -111,12 +111,12 @@ function populateTicketForm(data) {
             // Wait for passenger rows to be created, then fill them
             // Use setTimeout to allow DOM to update
             setTimeout(() => {
-                console.log('Filling passenger data after DOM update');
+
                 fillGroupPassengerForm(data.passengers);
             }, 500);
         }
     } else if (data.passenger_name) {
-        console.log('Filling single passenger');
+
         fillSinglePassengerForm(data);
     }
 }
@@ -140,7 +140,7 @@ function fillSinglePassengerForm(data) {
         if (element && value) {
             element.value = value;
             triggerChange(element);
-            console.log(`Filled ${id}: ${value}`);
+
         }
     });
 }
@@ -153,12 +153,12 @@ function fillGroupPassengerForm(data) {
     if (!container) return;
     
     const passengers = data;
-    console.log(`Filling ${passengers.length} passengers in container`);
+
     
     passengers.forEach((passenger, index) => {
         // Passenger indices in form are 1-based, not 0-based
         const passengerIndex = index + 1;
-        console.log(`Processing passenger ${passengerIndex}: ${passenger.passenger_name}`);
+
         
         // Find passenger row using data-passenger attribute (1-based indexing)
         const passengerRow = container.querySelector(`[data-passenger="${passengerIndex}"]`);
@@ -170,16 +170,16 @@ function fillGroupPassengerForm(data) {
             if (nameField) {
                 nameField.value = passenger.passenger_name || passenger.name || '';
                 triggerChange(nameField);
-                console.log(`✓ Filled passenger ${passengerIndex} name: ${nameField.value}`);
+
             } else {
-                console.warn(`Could not find name field for passenger ${passengerIndex}`);
+
             }
             
             // Fill ticket number if available
             // Note: ticket fields are not in the standard form structure,
             // so we skip this for now or add it if needed
         } else {
-            console.warn(`Could not find passenger row for index ${passengerIndex}`);
+
         }
     });
 }
@@ -199,16 +199,16 @@ function fillFlightDetails(data) {
         'issueDate': data.issue_date
     };
     
-    console.log('Flight details fields:', flightFields);
+
     
     Object.entries(flightFields).forEach(([id, value]) => {
         const element = document.getElementById(id);
         if (element && value) {
             element.value = value;
             triggerChange(element);
-            console.log(`Filled flight field ${id}: ${value}`);
+
         } else if (!element && value) {
-            console.warn(`Flight field not found: ${id}`);
+
         }
     });
 }

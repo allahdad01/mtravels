@@ -8,7 +8,6 @@ if (session_status() === PHP_SESSION_NONE) {
 header("X-XSS-Protection: 1; mode=block");
 header("X-Content-Type-Options: nosniff");
 header("X-Frame-Options: DENY");
-header("Content-Security-Policy: default-src 'self'; script-src 'self' 'unsafe-inline' https://cdn.jsdelivr.net; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com https://cdn.jsdelivr.net; font-src 'self' https://fonts.gstatic.com; img-src 'self' data:;");
 header("Referrer-Policy: strict-origin-when-cross-origin");
 
 // Check session timeout (30 minutes)
@@ -48,7 +47,7 @@ if ($tenant_filter && is_numeric($tenant_filter)) {
 }
 
 // Get all tickets for super admin
-$tickets = $ticketManager->getTicketsForSuperAdmin($filters);
+$tickets = $ticketManager->getAllTickets($filters);
 $stats = $ticketManager->getStatistics();
 
 // Get list of tenants
@@ -245,14 +244,14 @@ include '../includes/header_super_admin.php';
                                                     <strong><?php echo htmlspecialchars($ticket['ticket_number']); ?></strong>
                                                 </td>
                                                 <td>
-                                                    <span title="<?php echo htmlspecialchars($ticket['subject']); ?>">
-                                                        <?php echo htmlspecialchars(substr($ticket['subject'], 0, 40)); ?>
-                                                        <?php echo strlen($ticket['subject']) > 40 ? '...' : ''; ?>
+                                                    <span title="<?php echo htmlspecialchars($ticket['subject'] ?? ''); ?>">
+                                                        <?php echo htmlspecialchars(substr($ticket['subject'] ?? '', 0, 40)); ?>
+                                                        <?php echo strlen($ticket['subject'] ?? '') > 40 ? '...' : ''; ?>
                                                     </span>
                                                 </td>
-                                                <td><small><?php echo htmlspecialchars($ticket['tenant_id']); ?></small></td>
-                                                <td><small><?php echo htmlspecialchars($ticket['submitted_by_name']); ?></small></td>
-                                                <td><small><?php echo htmlspecialchars($ticket['category']); ?></small></td>
+                                                <td><small><?php echo htmlspecialchars($ticket['tenant_id'] ?? ''); ?></small></td>
+                                                <td><small><?php echo htmlspecialchars($ticket['submitted_by_name'] ?? ''); ?></small></td>
+                                                <td><small><?php echo htmlspecialchars($ticket['category'] ?? ''); ?></small></td>
                                                 <td>
                                                     <span class="priority-badge badge badge-<?php 
                                                         echo $ticket['priority'] === 'urgent' ? 'danger' : 
@@ -292,3 +291,8 @@ include '../includes/header_super_admin.php';
 </div>
 
 <?php include '../includes/admin_footer.php'; ?>
+<!-- Required Js -->
+<script src="../assets/js/vendor-all.min.js"></script>
+<script src="../assets/plugins/bootstrap/js/bootstrap.min.js"></script>
+<script src="../assets/js/pcoded.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>

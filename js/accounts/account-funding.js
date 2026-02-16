@@ -40,7 +40,7 @@ function setupFundingModal(supplierId, supplierName, supplierCurrency) {
     try {
         $('#fundSupplierModal').modal('show');
     } catch (error) {
-        console.error('Error showing fundSupplierModal:', error);
+
     }
 }
 
@@ -59,7 +59,7 @@ function loadMainAccounts() {
             });
         })
         .catch(error => {
-            console.error('Error fetching main accounts:', error);
+
         });
 }
 
@@ -152,7 +152,7 @@ function loadMainAccountsForClients() {
             });
         })
         .catch(error => {
-            console.error('Error fetching main accounts:', error);
+
         });
 }
 
@@ -191,7 +191,7 @@ document.addEventListener('DOMContentLoaded', function() {
                 }
             })
             .catch(error => {
-                console.error('Error funding supplier:', error);
+
                 showErrorToast('An unexpected error occurred while funding the supplier.');
             });
         });
@@ -301,7 +301,7 @@ document.addEventListener('DOMContentLoaded', function() {
                 }
             })
             .catch(error => {
-                console.error('Error:', error);
+
                 showErrorToast('An error occurred during the transfer');
             });
         });

@@ -81,7 +81,7 @@ const transactionManager = {
 
         // PREVENTION #1: Check if already submitting
         if (this.isSubmitting) {
-            console.log('Form submission already in progress, ignoring duplicate request');
+
             return false;
         }
 
@@ -161,8 +161,8 @@ const transactionManager = {
                 }
             },
             error: function(xhr, status, error) {
-                console.error('AJAX Error:', error);
-                console.error('Response:', xhr.responseText);
+
+
                 
                 // Show appropriate error message
                 if (status === 'timeout') {
@@ -207,7 +207,7 @@ const transactionManager = {
                 }
             },
             error: function(xhr, status, error) {
-                console.error('AJAX Error:', error);
+
                 alert('error_fetching_booking_details');
             }
         });
@@ -325,14 +325,14 @@ const transactionManager = {
                     $('#aedSection').toggle(hasCurrency.DARHAM);
 
                 } catch(e) {
-                    console.error('Error parsing transactions:', e);
+
                     $('#transactionTableBody').html('<tr><td colspan="6" class="text-center">error_loading_transactions</td></tr>');
                     $('#exchangeRateDisplay').text('Error loading exchange rates');
                     $('#exchangedAmount').text('Error calculating amounts');
                 }
             },
             error: function(xhr, status, error){
-                console.error('Error loading transactions:', error);
+
                 $('#transactionTableBody').html('<tr><td colspan="6" class="text-center">error_loading_transactions</td></tr>');
                 $('#exchangeRateDisplay').text('Error loading exchange rates');
                 $('#exchangedAmount').text('Error calculating amounts');
@@ -467,7 +467,7 @@ const transactionManager = {
                 
                 // Prevent double submission
                 if (isEditSubmitting) {
-                    console.log('Edit form submission already in progress');
+
                     return false;
                 }
                 
@@ -487,9 +487,9 @@ const transactionManager = {
                 }
                 
                 // Log form data for debugging
-                console.log('Edit Form Data:');
+
                 for (let pair of formData.entries()) {
-                    console.log(pair[0] + ': ' + pair[1]);
+
                 }
                 
                 if (!formData.get('transaction_id')) {
@@ -531,7 +531,7 @@ const transactionManager = {
                     contentType: false,
                     timeout: 30000,
                     success: function(response) {
-                        console.log('Edit response:', response);
+
                         try {
                             const result = typeof response === 'string' ? JSON.parse(response) : response;
                             if (result.success) {
@@ -542,15 +542,15 @@ const transactionManager = {
                                 alert('Error updating transaction: ' + (result.message || 'Unknown error'));
                             }
                         } catch (e) {
-                            console.error('Error parsing response:', e);
-                            console.error('Raw response:', response);
+
+
                             alert('Error processing the request');
                         }
                     },
                     error: function(xhr, status, error) {
-                        console.error('AJAX Error:', error);
-                        console.error('Status:', status);
-                        console.error('Response:', xhr.responseText);
+
+
+
                         
                         if (status === 'timeout') {
                             alert('Request timed out. Please try again.');
@@ -615,12 +615,12 @@ const transactionManager = {
                         showToast('Error deleting transaction: ' + (result.message || 'Unknown error'), 'error');
                     }
                 } catch (e) {
-                    console.error('Error parsing response:', e);
+
                     showToast('Error processing the request', 'error');
                 }
             },
             error: function(xhr, status, error) {
-                console.error('Delete Error Response:', {
+                console.log({
                     status: xhr.status,
                     error: error,
                     response: xhr.responseText

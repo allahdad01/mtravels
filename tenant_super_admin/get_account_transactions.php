@@ -35,17 +35,17 @@ $offset = ($page - 1) * $results_per_page;
 $query = "SELECT
     mat.*
 FROM main_account_transactions mat
-WHERE mat.main_account_id = ?
+WHERE mat.main_account_id = ? AND mat.tenant_id = ?
 LIMIT ? OFFSET ?";
 
 $stmt = $pdo->prepare($query);
-$stmt->execute([$account_id, $results_per_page, $offset]);
+$stmt->execute([$account_id, $tenant_id, $results_per_page, $offset]);
 $transactions = $stmt->fetchAll(PDO::FETCH_ASSOC);
 
 // Get total count
-$count_query = "SELECT COUNT(*) as total FROM main_account_transactions WHERE main_account_id = ?";
+$count_query = "SELECT COUNT(*) as total FROM main_account_transactions WHERE main_account_id = ? AND tenant_id = ?";
 $count_stmt = $pdo->prepare($count_query);
-$count_stmt->execute([$account_id]);
+$count_stmt->execute([$account_id, $tenant_id]);
 $total_transactions = $count_stmt->fetch(PDO::FETCH_ASSOC)['total'];
 $total_pages = ceil($total_transactions / $results_per_page);
 ?>

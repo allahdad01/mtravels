@@ -107,7 +107,7 @@ $(document).ready(function() {
                 }
             },
             error: function(xhr, status, error) {
-                console.error(error);
+
                 alert('An error occurred while processing your request.');
                 
                 // Reset to original values
@@ -186,7 +186,7 @@ $(document).ready(function() {
                 }
             },
             error: function(xhr, status, error) {
-                console.error(error);
+
                 alert('An error occurred while processing your request.');
                 tableBody.html('<tr><td colspan="5" class="text-center">Error loading data</td></tr>');
             }

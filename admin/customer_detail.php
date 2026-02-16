@@ -3,6 +3,7 @@ require_once '../includes/db.php';
 require_once 'security.php';
 require_once '../includes/language_helpers.php';
 require_once '../includes/SecureFileUpload.php';
+require_once '../includes/InputValidator.php';
 
 // Enforce authentication
 enforce_auth();
@@ -19,9 +20,11 @@ if (!isset($_SESSION['user_id']) || $_SESSION['role'] !== 'admin') {
     exit();
 }
 
+// Validate customer ID parameter
+$customerId = InputValidator::getInt($_GET['id'] ?? '', 0, 1);
 
 // Build redirect URL with current query parameters
-$redirect_url = $_SERVER['PHP_SELF'] . '?id=' . $_GET['id'];
+$redirect_url = $_SERVER['PHP_SELF'] . '?id=' . $customerId;
 
 // Debug POST data
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
@@ -34,11 +37,15 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['add_deposit'])) {
     error_log('Processing deposit...');
     
     try {
-        $customer_id = $_POST['customer_id'];
-        $amount = $_POST['amount'];
-        $currency = $_POST['currency'];
-        $notes = $_POST['notes'] ?? '';
-        $reference = $_POST['reference'];
+        $customer_id = InputValidator::getInt($_POST['customer_id'] ?? '', 0, 1);
+        $amount = InputValidator::getString($_POST['amount'] ?? '', 20);
+        $currency = InputValidator::getEnum(
+            $_POST['currency'] ?? '',
+            ['USD', 'EUR', 'AFS', 'DARHAM', 'PKR', 'INR'],
+            'USD'
+        );
+        $notes = InputValidator::getString($_POST['notes'] ?? '', 500);
+        $reference = InputValidator::getString($_POST['reference'] ?? '', 100);
 
         error_log("Deposit data - Customer: $customer_id, Amount: $amount, Currency: $currency, Reference: $reference");
 
@@ -133,11 +140,15 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['add_deposit'])) {
 
 // Handle withdrawal submission
 if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['add_withdrawal'])) {
-    $customer_id = $_POST['customer_id'];
-    $amount = $_POST['amount'];
-    $currency = $_POST['currency'];
-    $notes = $_POST['notes'];
-    $reference = $_POST['reference'];
+    $customer_id = InputValidator::getInt($_POST['customer_id'] ?? '', 0, 1);
+    $amount = InputValidator::getString($_POST['amount'] ?? '', 20);
+    $currency = InputValidator::getEnum(
+        $_POST['currency'] ?? '',
+        ['USD', 'EUR', 'AFS', 'DARHAM', 'PKR', 'INR'],
+        'USD'
+    );
+    $notes = InputValidator::getString($_POST['notes'] ?? '', 500);
+    $reference = InputValidator::getString($_POST['reference'] ?? '', 100);
     
     try {
         $pdo->beginTransaction();
@@ -648,6 +659,7 @@ unset($_SESSION['error_message']);
     </div>
 
                             <!-- Required Js -->
+    
     <script src="../assets/js/vendor-all.min.js"></script>
     <script src="../assets/plugins/bootstrap/js/bootstrap.min.js"></script>
     <script src="../assets/js/pcoded.min.js"></script>

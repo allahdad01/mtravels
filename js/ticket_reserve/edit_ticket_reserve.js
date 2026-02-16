@@ -89,9 +89,9 @@
                 }
             });
             
-            console.log('Form populated successfully with ticket data');
+
         } catch (error) {
-            console.error('Error populating form:', error);
+
             alert('Error loading form data. Please check the console for details.');
         }
     };
@@ -114,7 +114,7 @@
             }
         })
         .catch(error => {
-            console.error('Error fetching ticket data:', error);
+
             document.getElementById('editLoader').style.display = 'none';
             alert('An error occurred while loading ticket data. Please try again.');
         });
@@ -131,7 +131,7 @@ document.addEventListener('DOMContentLoaded', function() {
     
     // Skip initialization if elements are not present on the page
     if (!editBaseInput || !editSoldInput || !editTripTypeSelect) {
-        console.log('Edit form elements not found, skipping initialization');
+
         return;
     }
     
@@ -145,7 +145,7 @@ document.addEventListener('DOMContentLoaded', function() {
             originalBase = parseFloat(editBaseInput.value) || 0;
             originalSold = parseFloat(editSoldInput.value) || 0;
             
-            console.log('Original values stored - Base:', originalBase, 'Sold:', originalSold);
+
             
             // Show/hide return fields based on trip type
             toggleReturnFields();
@@ -248,7 +248,7 @@ document.addEventListener('DOMContentLoaded', function() {
                         const currentBalance = parseFloat(data.balance) || 0;
                         const newBalance = currentBalance + difference;
                         
-                        console.log(`Supplier balance update preview: ${currentBalance} + ${difference} = ${newBalance}`);
+
                         
                         // Update the supplier dropdown to show the new balance preview
                         const supplierSelect = document.getElementById('editSupplier');
@@ -260,14 +260,14 @@ document.addEventListener('DOMContentLoaded', function() {
                             }
                         }
                     } else {
-                        console.log('Supplier is not External, no balance update needed');
+
                     }
                 } else {
-                    console.error('Error fetching supplier balance:', data.message);
+
                 }
             })
             .catch(error => {
-                console.error('Error in supplier balance update:', error);
+
             });
     }
     
@@ -288,7 +288,7 @@ document.addEventListener('DOMContentLoaded', function() {
                         const currentBalance = parseFloat(data.balance) || 0;
                         const newBalance = currentBalance + difference;
                         
-                        console.log(`Client balance update preview: ${currentBalance} + ${difference} = ${newBalance} ${currency}`);
+
                         
                         // Update the client dropdown to show the new balance preview
                         const clientSelect = document.getElementById('editSoldTo');
@@ -300,14 +300,14 @@ document.addEventListener('DOMContentLoaded', function() {
                             }
                         }
                     } else {
-                        console.log('Client is not Regular, no balance update needed');
+
                     }
                 } else {
-                    console.error('Error fetching client balance:', data.message);
+
                 }
             })
             .catch(error => {
-                console.error('Error in client balance update:', error);
+
             });
     }
     
@@ -365,7 +365,7 @@ document.addEventListener('DOMContentLoaded', function() {
                 }
             })
             .catch(error => {
-                console.error('Error updating ticket:', error);
+
                 if (editLoader) {
                     editLoader.style.display = 'none';
                 }

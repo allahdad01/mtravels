@@ -37,14 +37,14 @@ function editVisa(id) {
                 $('#editPaidTo').selectpicker('val', visa.paid_to);
                 
                 // Log for debugging
-                console.log('Country from database:', visa.country);
-                console.log('Country dropdown value after setting:', $('#editCountry').selectpicker('val'));
-                console.log('Paid To value:', visa.paid_to);
+
+
+
             } else {
-                console.error('Visa not found');
+
             }
         })
-        .catch(error => console.error('Error fetching visa details:', error));
+
 }
 
  // Add event listeners for edit form profit calculation
@@ -62,7 +62,7 @@ function editVisa(id) {
         originalBase = parseFloat(editBaseInput.value) || 0;
         originalSold = parseFloat(editSoldInput.value) || 0;
         
-        console.log('Original values stored - Base:', originalBase, 'Sold:', originalSold);
+
     });
 
     // Function to calculate and update the profit field
@@ -110,7 +110,7 @@ function editVisa(id) {
             }
         })
         .catch(error => {
-            console.error('Error updating visa:', error);
+
             showToast('an_unexpected_error_occurred', 'error');
             // Re-enable the button if there's an error
             submitButton.disabled = false;

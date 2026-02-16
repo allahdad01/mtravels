@@ -31,8 +31,11 @@ $stmt->execute([$tenant_id, $branch_id, $tenant_id, $branch_id, $tenant_id, $bra
 $member = $stmt->fetch(PDO::FETCH_ASSOC);
 
 if ($member) {
-    // Fetch services
-    $servicesSql = "SELECT * FROM umrah_booking_services WHERE booking_id = ? AND tenant_id = ? AND branch_id = ?";
+    // Fetch services with supplier information
+    $servicesSql = "SELECT ubs.*, s.name as supplier_name
+                    FROM umrah_booking_services ubs
+                    LEFT JOIN suppliers s ON ubs.supplier_id = s.id
+                    WHERE ubs.booking_id = ? AND ubs.tenant_id = ? AND ubs.branch_id = ?";
     $servicesStmt = $pdo->prepare($servicesSql);
     $servicesStmt->execute([$bookingId, $tenant_id, $branch_id]);
     $services = $servicesStmt->fetchAll(PDO::FETCH_ASSOC);

@@ -51,6 +51,24 @@ if ($status_filter !== 'all') {
 
 $query .= " ORDER BY a.date DESC, u.name ASC";
 
+// Pagination setup
+$records_per_page = 25;
+$current_page = isset($_GET['page']) ? max(1, (int)$_GET['page']) : 1;
+$offset = ($current_page - 1) * $records_per_page;
+
+// Get total count for pagination
+$count_query = "SELECT COUNT(*) FROM (" . str_replace("SELECT a.*,", "SELECT a.id,", $query) . ") as total";
+$count_stmt = $pdo->prepare($count_query);
+$count_stmt->execute($params);
+$total_records = $count_stmt->fetchColumn();
+$total_pages = ceil($total_records / $records_per_page);
+
+// Add LIMIT to main query
+$query .= " LIMIT ? OFFSET ?";
+$params[] = $records_per_page;
+$params[] = $offset;
+$types .= "ii";
+
 $stmt = $pdo->prepare($query);
 $stmt->execute($params);
 $attendance_records = $stmt->fetchAll(PDO::FETCH_ASSOC);
@@ -486,6 +504,68 @@ include '../includes/header.php';
                                     </div>
                                 </div>
                             </div>
+                            
+                            <!-- Pagination Controls -->
+                            <?php if ($total_pages > 1): ?>
+                            <div class="row mt-4">
+                                <div class="col-12">
+                                    <nav aria-label="Page navigation">
+                                        <ul class="pagination justify-content-center">
+                                            <?php
+                                            // Build query string for pagination links
+                                            $query_params = [
+                                                'month' => $month,
+                                                'user' => $user_filter,
+                                                'status' => $status_filter
+                                            ];
+                                            $base_url = '?' . http_build_query($query_params) . '&page=';
+                                            ?>
+                                            <!-- Previous button -->
+                                            <li class="page-item <?php echo $current_page <= 1 ? 'disabled' : ''; ?>">
+                                                <a class="page-link" href="<?php echo $base_url . ($current_page - 1); ?>">
+                                                    <?php echo __('previous'); ?>
+                                                </a>
+                                            </li>
+                                            
+                                            <!-- Page numbers -->
+                                            <?php
+                                            $start_page = max(1, $current_page - 2);
+                                            $end_page = min($total_pages, $current_page + 2);
+                                            
+                                            if ($start_page > 1) {
+                                                echo '<li class="page-item"><a class="page-link" href="' . $base_url . '1">1</a></li>';
+                                                if ($start_page > 2) {
+                                                    echo '<li class="page-item disabled"><span class="page-link">...</span></li>';
+                                                }
+                                            }
+                                            
+                                            for ($i = $start_page; $i <= $end_page; $i++) {
+                                                $active = $i === $current_page ? ' active' : '';
+                                                echo '<li class="page-item' . $active . '"><a class="page-link" href="' . $base_url . $i . '">' . $i . '</a></li>';
+                                            }
+                                            
+                                            if ($end_page < $total_pages) {
+                                                if ($end_page < $total_pages - 1) {
+                                                    echo '<li class="page-item disabled"><span class="page-link">...</span></li>';
+                                                }
+                                                echo '<li class="page-item"><a class="page-link" href="' . $base_url . $total_pages . '">' . $total_pages . '</a></li>';
+                                            }
+                                            ?>
+                                            
+                                            <!-- Next button -->
+                                            <li class="page-item <?php echo $current_page >= $total_pages ? 'disabled' : ''; ?>">
+                                                <a class="page-link" href="<?php echo $base_url . ($current_page + 1); ?>">
+                                                    <?php echo __('next'); ?>
+                                                </a>
+                                            </li>
+                                        </ul>
+                                    </nav>
+                                    <div class="text-center text-muted small">
+                                        <?php echo sprintf(__('showing_records'), ($offset + 1), min($offset + $records_per_page, $total_records), $total_records); ?>
+                                    </div>
+                                </div>
+                            </div>
+                            <?php endif; ?>
                         </div>
                     </div>
                 </div>
@@ -511,14 +591,12 @@ include '../includes/header.php';
     </div>
 </div>
 
-<script>
-$(document).ready(function() {
-    $('#attendance-table').DataTable({
-        "order": [[0, "desc"]],
-        "pageLength": 25
-    });
-});
+<!-- Required Js -->
+<script src="../assets/js/vendor-all.min.js"></script>
+<script src="../assets/plugins/bootstrap/js/bootstrap.min.js"></script>
+<script src="../assets/js/pcoded.min.js"></script>
 
+<script>
 function viewDetails(attendanceId) {
     // Load attendance details via AJAX
     fetch(`../api/attendance/get_attendance_details.php?id=${attendanceId}`)
@@ -546,8 +624,4 @@ function exportAttendance() {
     window.open(`../api/attendance/export_attendance.php?month=${month}&user=${user}&status=${status}`, '_blank');
 }
 </script>
-<!-- Required Js -->
-<script src="../assets/js/vendor-all.min.js"></script>
-<script src="../assets/plugins/bootstrap/js/bootstrap.min.js"></script>
-<script src="../assets/js/pcoded.min.js"></script>
 <?php include '../includes/admin_footer.php'; ?>

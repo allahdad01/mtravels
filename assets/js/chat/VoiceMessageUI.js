@@ -31,7 +31,7 @@ class VoiceMessageUI {
      */
     init() {
         if (!this.voiceBtn) {
-            console.warn('[VoiceMessageUI] Voice button not found');
+
             return;
         }
 
@@ -69,15 +69,15 @@ class VoiceMessageUI {
             });
 
             if (!success) {
-                console.error('[VoiceMessageUI] Failed to start recording');
+
                 return;
             }
 
             this.isRecording = true;
             this.updateRecordingUI(true);
-            console.log('[VoiceMessageUI] Recording started');
+
         } catch (error) {
-            console.error('[VoiceMessageUI] Start recording failed:', error);
+
             alert('Failed to start recording');
         }
     }
@@ -93,14 +93,14 @@ class VoiceMessageUI {
             const audioBlob = await this.voiceRecorder.stopRecording();
 
             if (!audioBlob) {
-                console.warn('[VoiceMessageUI] No audio recorded');
+
                 return;
             }
 
             // Send voice message
             await this.sendVoiceMessage(audioBlob);
         } catch (error) {
-            console.error('[VoiceMessageUI] Stop recording failed:', error);
+
             alert('Failed to stop recording');
         }
     }
@@ -134,7 +134,7 @@ class VoiceMessageUI {
             );
 
             if (response.success || response.message_id) {
-                console.log('[VoiceMessageUI] Voice message sent successfully');
+
 
                 // Dispatch event so the chat can update
                 window.dispatchEvent(new CustomEvent('voiceMessageSent', {
@@ -160,7 +160,7 @@ class VoiceMessageUI {
                 sendBtn.disabled = false;
             }
         } catch (error) {
-            console.error('[VoiceMessageUI] Failed to send voice message:', error);
+
             alert('Error sending voice message: ' + error.message);
 
             // Reset button
@@ -232,7 +232,7 @@ class VoiceMessageUI {
      */
     handleRecordingStop() {
         // Recording has stopped, audio is ready
-        console.log('[VoiceMessageUI] Recording stopped, ready to send');
+
     }
 
     /**
@@ -261,7 +261,11 @@ class VoiceMessageUI {
 
         // Get user initials or avatar
         const senderInitial = message.sender_name ? message.sender_name.charAt(0).toUpperCase() : 'U';
-        const avatarURL = message.sender_avatar || '';
+        let avatarURL = '';
+        if (message.sender_avatar) {
+            // Handle both plain filenames and full paths
+            avatarURL = message.sender_avatar.includes('/') ? message.sender_avatar : `assets/images/user/${message.sender_avatar}`;
+        }
 
         // Format the timestamp
         const timestamp = new Date(message.created_at || Date.now());
@@ -348,7 +352,7 @@ class VoiceMessageUI {
                 });
 
                 audio.addEventListener('error', (e) => {
-                    console.error('[VoiceMessageUI] Audio playback error:', e);
+
                     alert('Failed to play voice message');
                     icon.className = 'fas fa-play';
                     playBtn.classList.remove('playing');
@@ -382,7 +386,7 @@ class VoiceMessageUI {
                 const playPromise = audio.play();
                 if (playPromise !== undefined) {
                     playPromise.catch(error => {
-                        console.error('[VoiceMessageUI] Play failed:', error);
+
                         alert('Failed to play voice message');
                     });
                 }
@@ -390,7 +394,7 @@ class VoiceMessageUI {
                 audio.pause();
             }
         } catch (error) {
-            console.error('[VoiceMessageUI] Failed to play voice message:', error);
+
             alert('Failed to play voice message: ' + error.message);
         }
     }
@@ -400,12 +404,12 @@ class VoiceMessageUI {
      */
     updateVoiceProgress(voicePlayer, audio) {
         if (!voicePlayer) {
-            console.warn('[VoiceMessageUI] voicePlayer is null');
+
             return;
         }
 
         if (!audio || !audio.duration) {
-            console.warn('[VoiceMessageUI] audio or duration is not set');
+
             return;
         }
 

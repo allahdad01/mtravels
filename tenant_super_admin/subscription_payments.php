@@ -4,12 +4,6 @@ if (session_status() === PHP_SESSION_NONE) {
     session_start();
 }
 
-// Security headers
-header("X-XSS-Protection: 1; mode=block");
-header("X-Content-Type-Options: nosniff");
-header("X-Frame-Options: DENY");
-header("Content-Security-Policy: default-src 'self'; script-src 'self' 'unsafe-inline' https://cdn.jsdelivr.net; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com https://cdn.jsdelivr.net; font-src 'self' https://fonts.gstatic.com; img-src 'self' data:;");
-
 // Session timeout (30 mins)
 $sessionTimeout = 30 * 60;
 if (isset($_SESSION['last_activity']) && (time() - $_SESSION['last_activity'] > $sessionTimeout)) {
@@ -92,23 +86,48 @@ try {
     $subscriptions = [];
 }
 
-// Fetch subscription payment history
+// Fetch all subscription payment history for pagination
 try {
-    $stmt = $pdo->prepare("
-        SELECT sp.*, ts.plan_id, p.name AS plan_name, u.name AS processed_by_name
-        FROM subscription_payments sp
-        LEFT JOIN tenant_subscriptions ts ON sp.subscription_id = ts.id
-        LEFT JOIN plans p ON ts.plan_id = p.id
-        LEFT JOIN users u ON sp.processed_by = u.id
-        WHERE ts.tenant_id = :tenant_id
-        ORDER BY sp.payment_date DESC, sp.created_at DESC
-    ");
-    $stmt->execute(['tenant_id' => $tenant_id]);
-    $payments = $stmt->fetchAll(PDO::FETCH_ASSOC);
+     $stmt = $pdo->prepare("
+         SELECT sp.*, ts.plan_id, p.name AS plan_name, u.name AS processed_by_name
+         FROM subscription_payments sp
+         LEFT JOIN tenant_subscriptions ts ON sp.subscription_id = ts.id
+         LEFT JOIN plans p ON ts.plan_id = p.id
+         LEFT JOIN users u ON sp.processed_by = u.id
+         WHERE ts.tenant_id = :tenant_id
+         ORDER BY sp.payment_date DESC, sp.created_at DESC
+     ");
+     $stmt->execute(['tenant_id' => $tenant_id]);
+     $all_payments = $stmt->fetchAll(PDO::FETCH_ASSOC);
 } catch (PDOException $e) {
-    error_log("Error fetching payments: " . $e->getMessage());
-    $payments = [];
+     error_log("Error fetching payments: " . $e->getMessage());
+     $all_payments = [];
 }
+
+// Pagination for payments
+$payment_items_per_page = 10;
+$payment_current_page = intval($_GET['payment_page'] ?? 1);
+$payment_search_query = $_GET['payment_search'] ?? '';
+
+// Filter payments based on search
+$filtered_payments = $all_payments;
+if (!empty($payment_search_query)) {
+     $search_lower = strtolower($payment_search_query);
+     $filtered_payments = array_filter($all_payments, function($payment) use ($search_lower) {
+         return 
+             strpos(strtolower($payment['plan_name'] ?? ''), $search_lower) !== false ||
+             strpos(strtolower($payment['payment_method'] ?? ''), $search_lower) !== false ||
+             strpos(strtolower($payment['receipt_number'] ?? ''), $search_lower) !== false ||
+             strpos(strtolower($payment['currency'] ?? ''), $search_lower) !== false;
+     });
+}
+
+// Calculate pagination
+$payment_total_items = count($filtered_payments);
+$payment_total_pages = ceil($payment_total_items / $payment_items_per_page);
+$payment_current_page = max(1, min($payment_current_page, $payment_total_pages));
+$payment_offset = ($payment_current_page - 1) * $payment_items_per_page;
+$payments = array_slice(array_values($filtered_payments), $payment_offset, $payment_items_per_page);
 
 // Handle HesabPay redirect
 if (isset($_GET['payment'], $_GET['subscription_id'])) {
@@ -226,7 +245,7 @@ if (isset($_GET['payment'], $_GET['subscription_id'])) {
     border-radius: 15px;
     box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
     transition: transform 0.3s ease, box-shadow 0.3s ease;
-    overflow: hidden;
+    
 }
 
 .subscription-card:hover {
@@ -280,7 +299,7 @@ if (isset($_GET['payment'], $_GET['subscription_id'])) {
 
 .table-responsive {
     border-radius: 10px;
-    overflow: hidden;
+    
 }
 
 .table {
@@ -548,14 +567,32 @@ if (isset($_GET['payment'], $_GET['subscription_id'])) {
                         </div>
 
                         <!-- Payment History -->
-                        <div class="row">
-                            <div class="col-12">
-                                <div class="card">
-                                    <div class="card-header">
-                                        <h5><i class="feather icon-history mr-2"></i><?= __('payment_history') ?></h5>
-                                    </div>
-                                    <div class="card-body">
-                                        <?php if (count($payments) > 0): ?>
+                         <div class="row">
+                             <div class="col-12">
+                                 <div class="card">
+                                     <div class="card-header">
+                                         <div class="row align-items-center">
+                                             <div class="col-md-6">
+                                                 <h5><i class="feather icon-history mr-2"></i><?= __('payment_history') ?> <span class="badge badge-pill badge-info"><?= $payment_total_items ?> total</span></h5>
+                                             </div>
+                                             <div class="col-md-6">
+                                                 <form method="GET" class="form-inline float-right">
+                                                     <input type="text" name="payment_search" class="form-control form-control-sm mr-2" 
+                                                            placeholder="Search payments..." value="<?= htmlspecialchars($payment_search_query) ?>" style="width: 250px;">
+                                                     <button type="submit" class="btn btn-sm btn-primary">
+                                                         <i class="feather icon-search"></i>
+                                                     </button>
+                                                     <?php if (!empty($payment_search_query)): ?>
+                                                     <a href="subscription_payments.php" class="btn btn-sm btn-secondary ml-2">
+                                                         <i class="feather icon-x"></i> Clear
+                                                     </a>
+                                                     <?php endif; ?>
+                                                 </form>
+                                             </div>
+                                         </div>
+                                     </div>
+                                     <div class="card-body">
+                                         <?php if (count($payments) > 0): ?>
                                             <div class="table-responsive">
                                                 <table class="table table-hover">
                                                     <thead>
@@ -607,20 +644,65 @@ if (isset($_GET['payment'], $_GET['subscription_id'])) {
                                                             </tr>
                                                         <?php endforeach; ?>
                                                     </tbody>
-                                                </table>
-                                            </div>
-                                        <?php else: ?>
-                                            <div class="text-center py-5">
-                                                <div class="mb-4">
+                                                    </table>
+                                                    </div>
+
+                                                    <!-- Pagination for Payments -->
+                                                    <?php if ($payment_total_pages > 1): ?>
+                                                    <nav aria-label="Payments pagination" class="mt-3 mb-0">
+                                                    <ul class="pagination justify-content-center mb-0">
+                                                    <li class="page-item <?= $payment_current_page === 1 ? 'disabled' : '' ?>">
+                                                    <a class="page-link" href="subscription_payments.php?payment_page=<?= $payment_current_page - 1 ?><?= !empty($payment_search_query) ? '&payment_search=' . urlencode($payment_search_query) : '' ?>">
+                                                    <i class="feather icon-chevron-left"></i> Previous
+                                                    </a>
+                                                    </li>
+                                                    <?php 
+                                                    $payment_start_page = max(1, $payment_current_page - 2);
+                                                    $payment_end_page = min($payment_total_pages, $payment_current_page + 2);
+                                                    if ($payment_start_page > 1): ?>
+                                                    <li class="page-item">
+                                                    <a class="page-link" href="subscription_payments.php?payment_page=1<?= !empty($payment_search_query) ? '&payment_search=' . urlencode($payment_search_query) : '' ?>">1</a>
+                                                    </li>
+                                                    <?php if ($payment_start_page > 2): ?>
+                                                    <li class="page-item disabled"><span class="page-link">...</span></li>
+                                                    <?php endif; ?>
+                                                    <?php endif; ?>
+                                                    <?php for ($i = $payment_start_page; $i <= $payment_end_page; $i++): ?>
+                                                    <li class="page-item <?= $i === $payment_current_page ? 'active' : '' ?>">
+                                                    <a class="page-link" href="subscription_payments.php?payment_page=<?= $i ?><?= !empty($payment_search_query) ? '&payment_search=' . urlencode($payment_search_query) : '' ?>"><?= $i ?></a>
+                                                    </li>
+                                                    <?php endfor; ?>
+                                                    <?php if ($payment_end_page < $payment_total_pages): ?>
+                                                    <?php if ($payment_end_page < $payment_total_pages - 1): ?>
+                                                    <li class="page-item disabled"><span class="page-link">...</span></li>
+                                                    <?php endif; ?>
+                                                    <li class="page-item">
+                                                    <a class="page-link" href="subscription_payments.php?payment_page=<?= $payment_total_pages ?><?= !empty($payment_search_query) ? '&payment_search=' . urlencode($payment_search_query) : '' ?>"><?= $payment_total_pages ?></a>
+                                                    </li>
+                                                    <?php endif; ?>
+                                                    <li class="page-item <?= $payment_current_page === $payment_total_pages ? 'disabled' : '' ?>">
+                                                    <a class="page-link" href="subscription_payments.php?payment_page=<?= $payment_current_page + 1 ?><?= !empty($payment_search_query) ? '&payment_search=' . urlencode($payment_search_query) : '' ?>">
+                                                    Next <i class="feather icon-chevron-right"></i>
+                                                    </a>
+                                                    </li>
+                                                    </ul>
+                                                    </nav>
+                                                    <div class="text-center mt-2 text-muted small">
+                                                    Page <?= $payment_current_page ?> of <?= $payment_total_pages ?> | Showing <?= count($payments) ?> of <?= $payment_total_items ?> payments
+                                                    </div>
+                                                    <?php endif; ?>
+                                                    <?php else: ?>
+                                                    <div class="text-center py-5">
+                                                    <div class="mb-4">
                                                     <i class="feather icon-receipt text-muted" style="font-size: 4rem;"></i>
-                                                </div>
-                                                <h5 class="text-muted font-weight-bold mb-2"><?= __('no_payment_history_found') ?></h5>
-                                                <p class="text-muted mb-4"><?= __('payment_history_will_appear_here') ?></p>
-                                                <button type="button" class="btn btn-outline-primary btn-lg">
+                                                    </div>
+                                                    <h5 class="text-muted font-weight-bold mb-2"><?= __('no_payment_history_found') ?></h5>
+                                                    <p class="text-muted mb-4"><?= __('payment_history_will_appear_here') ?></p>
+                                                    <button type="button" class="btn btn-outline-primary btn-lg">
                                                     <i class="feather icon-refresh-cw mr-2"></i>Check for Updates
-                                                </button>
-                                            </div>
-                                        <?php endif; ?>
+                                                    </button>
+                                                    </div>
+                                                    <?php endif; ?>
                                     </div>
                                 </div>
                             </div>

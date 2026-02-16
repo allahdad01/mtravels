@@ -732,7 +732,7 @@ $summary = $summary_stmt->fetch(PDO::FETCH_ASSOC);
 
 .table-responsive {
     border-radius: 10px;
-    overflow: hidden;
+    
 }
 
 .table {
@@ -811,7 +811,7 @@ $summary = $summary_stmt->fetch(PDO::FETCH_ASSOC);
 
 .modal-content {
     border-radius: 15px;
-    overflow: hidden;
+    
 }
 
 .modal-header.bg-primary {

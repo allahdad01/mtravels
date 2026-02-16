@@ -47,16 +47,16 @@ $entityType = isset($_POST['entityType']) ? DbSecurity::validateInput($_POST['en
     }
 
     // Get company settings
-    $settingsQuery = "SELECT * FROM settings WHERE id = 1";
+    $settingsQuery = "SELECT * FROM settings WHERE id = 1 AND tenant_id = ?";
     $stmt = $pdo->prepare($settingsQuery);
-    $stmt->execute();
+    $stmt->execute([$tenant_id]);
     $companySettings = $stmt->fetch(PDO::FETCH_ASSOC);
 
     switch($reportType) {
         case 'client':
             // Get client details
-            $stmt = $pdo->prepare("SELECT * FROM clients WHERE id = ?");
-            $stmt->execute([$entity]);
+            $stmt = $pdo->prepare("SELECT * FROM clients WHERE id = ? AND tenant_id = ?");
+            $stmt->execute([$entity, $tenant_id]);
             $entityDetails = $stmt->fetch(PDO::FETCH_ASSOC);
             
             // Get client transactions
@@ -146,8 +146,8 @@ $entityType = isset($_POST['entityType']) ? DbSecurity::validateInput($_POST['en
 
         case 'supplier':
             // Get supplier details
-            $stmt = $pdo->prepare("SELECT * FROM suppliers WHERE id = ?");
-            $stmt->execute([$entity]);
+            $stmt = $pdo->prepare("SELECT * FROM suppliers WHERE id = ? AND tenant_id = ?");
+            $stmt->execute([$entity, $tenant_id]);
             $entityDetails = $stmt->fetch(PDO::FETCH_ASSOC);
             
             // Get supplier transactions
@@ -226,8 +226,8 @@ $entityType = isset($_POST['entityType']) ? DbSecurity::validateInput($_POST['en
 
         case 'main_account':
             // Get main account details
-            $stmt = $pdo->prepare("SELECT * FROM main_account WHERE id = ?");
-            $stmt->execute([$entity]);
+            $stmt = $pdo->prepare("SELECT * FROM main_account WHERE id = ? AND tenant_id = ?");
+            $stmt->execute([$entity, $tenant_id]);
             $entityDetails = $stmt->fetch(PDO::FETCH_ASSOC);
             
             // Get main account transactions

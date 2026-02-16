@@ -72,7 +72,7 @@ function processRefundTransaction(refundId) {
             }
         },
         error: function(xhr, status, error) {
-            console.error('AJAX Error:', error);
+
             alert('Error fetching refund details');
             $('#refundTransactionModal .modal-content').removeClass('loading');
         }
@@ -123,7 +123,7 @@ function printRefundAgreement(refundId) {
                     }
                 })
                 .catch(error => {
-                    console.error('Error:', error);
+
                     Swal.fire(
                         'error',
                         'network_error_occurred',

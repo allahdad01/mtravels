@@ -259,7 +259,7 @@ function editTicket(ticketId) {
             
             // Ensure we have a valid airline value
             const airlineValue = data.airline || '';
-            console.log('Setting airline value:', airlineValue); // Debug log
+
             populateAirlineOptions(editAirlineSelect, airlineValue);
             
             // Refresh the Bootstrap Select
@@ -332,7 +332,7 @@ function editTicket(ticketId) {
             $('#editTicketModal').modal('show');
         })
         .catch(error => {
-            console.error('Error:', error);
+
             document.getElementById('editLoader').style.display = 'none';
             showToast('Error fetching ticket data: ' + error.message, 'error');
         });
@@ -353,7 +353,7 @@ document.addEventListener('DOMContentLoaded', function() {
         originalBase = parseFloat(editBaseInput.value) || 0;
         originalSold = parseFloat(editSoldInput.value) || 0;
         
-        console.log('Original values stored - Base:', originalBase, 'Sold:', originalSold);
+
         
         // Show/hide return fields based on trip type
         toggleReturnFields();
@@ -435,7 +435,7 @@ document.addEventListener('DOMContentLoaded', function() {
                         const currentBalance = parseFloat(data.balance) || 0;
                         const newBalance = currentBalance + difference;
                         
-                        console.log(`Supplier balance update preview: ${currentBalance} + ${difference} = ${newBalance}`);
+
                         
                         // Update the supplier dropdown to show the new balance preview
                         const supplierSelect = document.getElementById('editSupplier');
@@ -444,14 +444,14 @@ document.addEventListener('DOMContentLoaded', function() {
                         // Update the option text with the new balance preview
                         selectedOption.text = `${data.supplier_name} (Balance: ${newBalance.toFixed(2)})`;
                     } else {
-                        console.log('Supplier is not External, no balance update needed');
+
                     }
                 } else {
-                    console.error('Error fetching supplier balance:', data.message);
+
                 }
             })
             .catch(error => {
-                console.error('Error in supplier balance update:', error);
+
             });
     }
     
@@ -471,7 +471,7 @@ document.addEventListener('DOMContentLoaded', function() {
                         const currentBalance = parseFloat(data.balance) || 0;
                         const newBalance = currentBalance + difference;
                         
-                        console.log(`Client balance update preview: ${currentBalance} + ${difference} = ${newBalance} ${currency}`);
+
                         
                         // Update the client dropdown to show the new balance preview
                         const clientSelect = document.getElementById('editSoldTo');
@@ -480,14 +480,14 @@ document.addEventListener('DOMContentLoaded', function() {
                         // Update the option text with the new balance preview
                         selectedOption.text = `${data.client_name} (${currency}: ${newBalance.toFixed(2)})`;
                     } else {
-                        console.log('Client is not Regular, no balance update needed');
+
                     }
                 } else {
-                    console.error('Error fetching client balance:', data.message);
+
                 }
             })
             .catch(error => {
-                console.error('Error in client balance update:', error);
+
             });
     }
     
@@ -535,7 +535,7 @@ document.addEventListener('DOMContentLoaded', function() {
             }
         })
         .catch(error => {
-            console.error('Error updating ticket:', error);
+
             document.getElementById('editLoader').style.display = 'none';
             showToast('An error occurred while updating the ticket', 'error');
         });

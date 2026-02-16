@@ -267,7 +267,7 @@ function logActivity($pdo, $tenant_id, $user_id, $action, $table_name, $record_i
         border-radius: 15px;
         box-shadow: 0 4px 15px rgba(0,0,0,0.08);
         transition: transform 0.3s ease, box-shadow 0.3s ease;
-        overflow: hidden;
+        
     }
     
     .stats-card:hover {
@@ -323,7 +323,7 @@ function logActivity($pdo, $tenant_id, $user_id, $action, $table_name, $record_i
         height: 10px;
         border-radius: 10px;
         background: #e9ecef;
-        overflow: hidden;
+        
     }
     
     .custom-progress .progress-bar {
@@ -334,7 +334,7 @@ function logActivity($pdo, $tenant_id, $user_id, $action, $table_name, $record_i
     /* Table Styling */
     .users-table {
         border-radius: 10px;
-        overflow: hidden;
+        
         box-shadow: 0 4px 15px rgba(0,0,0,0.08);
     }
     
@@ -668,7 +668,10 @@ function logActivity($pdo, $tenant_id, $user_id, $action, $table_name, $record_i
                                     <tr>
                                         <td>
                                             <div class="d-flex align-items-center">
-                                                <img src="../assets/images/user/<?= htmlspecialchars($user['profile_pic'] ?: 'default-avatar.jpg') ?>"
+                                                <img src="<?php 
+                                                    $pic = $user['profile_pic'] ?: 'default-avatar.jpg';
+                                                    echo strpos($pic, 'assets/') !== false ? '../' . htmlspecialchars($pic) : '../assets/images/user/' . htmlspecialchars($pic);
+                                                ?>"
                                                      class="rounded-circle mr-2" width="40" height="40" alt="Profile">
                                                 <div>
                                                     <strong><?= htmlspecialchars($user['name']) ?></strong>

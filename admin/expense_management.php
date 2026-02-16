@@ -220,6 +220,7 @@ $categories = $categoriesStmt->fetchAll(PDO::FETCH_ASSOC);
 <?php include '../modals/expense/expense_modal.php'; ?>
 
     <!-- Required Js -->
+    
     <script src="../assets/js/vendor-all.min.js"></script>
 	<script src="../assets/plugins/bootstrap/js/bootstrap.min.js"></script>
     <script src="../assets/js/pcoded.min.js"></script>

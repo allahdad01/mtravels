@@ -152,7 +152,7 @@ try {
     <!-- Security headers are now sent via PHP instead of META tags -->
 
     <!-- Favicon icon -->
-    <link rel="icon" href="assets/images/favicon.ico" type="image/x-icon">
+    <link rel="icon" href="uploads/logo/<?= htmlspecialchars($settings['logo'] ?? 'default-logo.png') ?>" type="image/x-icon">
     <!-- fontawesome icon -->
     <link rel="stylesheet" href="assets/fonts/fontawesome/css/fontawesome-all.min.css">
     <!-- animation css -->

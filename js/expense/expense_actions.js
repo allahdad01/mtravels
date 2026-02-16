@@ -30,7 +30,7 @@ $('#categoryForm').on('submit', function(e) {
             }
         },
         error: function(xhr, status, error) {
-            console.error('Error:', error);
+
             alert('an_error_occurred_while_saving_the_category');
         }
     });
@@ -52,7 +52,7 @@ $('#expenseForm').on('submit', function(e) {
         const allocationCurrency = selectedAllocation.data('currency');
         // Ensure the currency matches the allocation
         formData.set('expenseCurrency', allocationCurrency);
-        console.log('Form submission - ensuring currency matches allocation:', allocationCurrency);
+
     }
     
     // Re-enable any disabled fields to ensure their values are included in the form
@@ -86,7 +86,7 @@ $('#expenseForm').on('submit', function(e) {
             }
         },
         error: function(xhr, status, error) {
-            console.error('Error:', error);
+
             alert('an_error_occurred_while_saving_the_expense');
             // Reset button
             submitBtn.html(originalText);
@@ -127,7 +127,7 @@ $('.delete-category').on('click', function() {
                 }
             },
             error: function(xhr, status, error) {
-                console.error('Error:', error);
+
                 alert('an_error_occurred_while_deleting_the_category');
             }
         });
@@ -195,7 +195,7 @@ $('.edit-expense').on('click', function() {
             }
         },
         error: function(xhr, status, error) {
-            console.error('Error fetching expense details:', error);
+
         }
     });
     
@@ -229,7 +229,7 @@ $('.delete-expense').on('click', function() {
                 }
             },
             error: function(xhr, status, error) {
-                console.error('Error:', error);
+
                 alert('an_error_occurred_while_deleting_the_expense');
             }
         });
@@ -275,7 +275,7 @@ $('#expenseAllocation').on('change', function() {
         $('#expenseMainAccount').val('');
         $('#expenseMainAccount').prop('disabled', true);
 
-        console.log('Allocation selected. Currency set to:', currency);
+
     } else {
         // Reset fields
         $('#expenseCurrency').prop('disabled', false);
@@ -300,7 +300,7 @@ const currency = searchParams.get('currency');
 const categoryId = searchParams.get('category_id');
 
 if (allocationId) {
-    console.log('Allocation ID from URL:', allocationId);
+
     
     // First, set the expense form to defaults
     $('#expenseForm')[0].reset();
@@ -314,7 +314,7 @@ if (allocationId) {
     if (selectedOption.val()) {
         // Get currency from the allocation data
         const allocationCurrency = selectedOption.data('currency');
-        console.log('Setting currency from URL allocation:', allocationCurrency);
+
         
         // Set and lock currency field
         $('#expenseCurrency').val(allocationCurrency);
@@ -399,7 +399,7 @@ if (editExpenseId) {
                     if (selectedOption.val()) {
                         // Get the currency from the allocation data
                         const currency = selectedOption.data('currency');
-                        console.log('Setting currency from allocation:', currency);
+
                         
                         // Ensure currency matches the allocation
                         $('#expenseCurrency').val(currency);
@@ -424,7 +424,7 @@ if (editExpenseId) {
             }
         },
         error: function(xhr, status, error) {
-            console.error('Error:', error);
+
             alert('an_error_occurred_while_fetching_expense_details');
         }
     });

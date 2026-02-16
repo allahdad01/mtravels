@@ -55,6 +55,7 @@ if ($booking_id !== null) {
         $currency = $booking['currency'];
         $client_type = $booking['client_type'];
         $mainAccountId = $booking['paid_to'];
+        $isActiveStatus = ($booking['status'] === 'active');
 
         // Get all services/suppliers for this booking
         $servicesQuery = "SELECT ubs.id as service_id, ubs.supplier_id, ubs.service_type, ubs.base_price, ubs.sold_price, ubs.profit, ubs.currency, s.supplier_type
@@ -74,8 +75,8 @@ if ($booking_id !== null) {
         // Start Transaction
         $pdo->beginTransaction();
 
-        // Step 2: Reverse Client Transactions (Only If Client is Regular)
-        if ($client_type === 'regular') {
+        // Step 2: Reverse Client Transactions (Only If Client is Regular AND status is active)
+        if ($isActiveStatus && $client_type === 'regular') {
             $clientTransactions = "SELECT id, amount, type, created_at FROM client_transactions
                                    WHERE client_id = ? AND transaction_of = 'umrah'
                                    AND reference_id = ? AND tenant_id = ? AND branch_id = ?
@@ -147,7 +148,7 @@ if ($booking_id !== null) {
                 $stmt->bindParam(3, $branch_id, PDO::PARAM_INT);
                 $stmt->execute();
             }
-        } else if ($client_type === 'agency') {
+        } else if ($isActiveStatus && $client_type === 'agency') {
             // For agency clients, just delete the transactions without balance adjustments
             $deleteClientTransactions = "DELETE FROM client_transactions
                                        WHERE client_id = ? AND transaction_of = 'umrah'
@@ -171,139 +172,45 @@ if ($booking_id !== null) {
         $stmt_get_umrah_txn_ids->execute();
         $umrah_txn_ids = $stmt_get_umrah_txn_ids->fetchAll(PDO::FETCH_COLUMN);
 
-        // Step 4: Reverse Supplier Transactions for all unique suppliers
-        $uniqueSuppliers = [];
-        foreach ($services as $service) {
-            $supplier_id = $service['supplier_id'];
-            if (!isset($uniqueSuppliers[$supplier_id])) {
-                $uniqueSuppliers[$supplier_id] = $service['supplier_type'];
+        // Step 4: Reverse Supplier Transactions for all unique suppliers (only if status is active)
+        if ($isActiveStatus) {
+            $uniqueSuppliers = [];
+            foreach ($services as $service) {
+                $supplier_id = $service['supplier_id'];
+                if (!isset($uniqueSuppliers[$supplier_id])) {
+                    $uniqueSuppliers[$supplier_id] = $service['supplier_type'];
+                }
             }
-        }
 
-        foreach ($uniqueSuppliers as $supplier_id => $supplier_type) {
-            // Fetch ALL supplier transactions related to this booking
-            // Type 1: Initial booking transactions (reference_id = booking_id, transaction_of = 'umrah')
-            // Type 2: Payment transactions (reference_id = umrah_transaction_id, transaction_of = 'umrah_transaction')
-            $allSupplierTransactions = [];
+            foreach ($uniqueSuppliers as $supplier_id => $supplier_type) {
+                // Fetch ALL supplier transactions related to this booking
+                // Type 1: Initial booking transactions (reference_id = booking_id, transaction_of = 'umrah')
+                // Type 2: Payment transactions (reference_id = umrah_transaction_id, transaction_of = 'umrah_transaction')
+                $allSupplierTransactions = [];
 
-            // Get Type 1: Initial booking transactions
-            $supplierTransactions1 = "SELECT id, amount, transaction_type, transaction_date, 'umrah' as txn_type 
-                                      FROM supplier_transactions
-                                      WHERE supplier_id = ? AND transaction_of = 'umrah'
-                                      AND reference_id = ? AND tenant_id = ? AND branch_id = ?";
-            $stmt = $pdo->prepare($supplierTransactions1);
-            $stmt->bindParam(1, $supplier_id, PDO::PARAM_INT);
-            $stmt->bindParam(2, $booking_id, PDO::PARAM_INT);
-            $stmt->bindParam(3, $tenant_id, PDO::PARAM_INT);
-            $stmt->bindParam(4, $branch_id, PDO::PARAM_INT);
-            $stmt->execute();
-            $supplierResults1 = $stmt->fetchAll(PDO::FETCH_ASSOC);
-            $allSupplierTransactions = array_merge($allSupplierTransactions, $supplierResults1);
-
-            // Get Type 2: Payment transactions (if umrah_transactions exist)
-            if (!empty($umrah_txn_ids)) {
-                $placeholders = implode(',', array_fill(0, count($umrah_txn_ids), '?'));
-                $supplierTransactions2 = "SELECT id, amount, transaction_type, transaction_date, 'umrah_transaction' as txn_type
+                // Get Type 1: Initial booking transactions
+                $supplierTransactions1 = "SELECT id, amount, transaction_type, transaction_date, 'umrah' as txn_type 
                                           FROM supplier_transactions
-                                          WHERE supplier_id = ? AND transaction_of = 'umrah_transaction'
-                                          AND reference_id IN ($placeholders) 
-                                          AND tenant_id = ? AND branch_id = ?";
-                $stmt = $pdo->prepare($supplierTransactions2);
-                
-                $param_index = 1;
-                $stmt->bindValue($param_index++, $supplier_id, PDO::PARAM_INT);
-                foreach ($umrah_txn_ids as $txn_id) {
-                    $stmt->bindValue($param_index++, $txn_id, PDO::PARAM_INT);
-                }
-                $stmt->bindValue($param_index++, $tenant_id, PDO::PARAM_INT);
-                $stmt->bindValue($param_index++, $branch_id, PDO::PARAM_INT);
-                $stmt->execute();
-                $supplierResults2 = $stmt->fetchAll(PDO::FETCH_ASSOC);
-                $allSupplierTransactions = array_merge($allSupplierTransactions, $supplierResults2);
-            }
-
-            // Sort all transactions by ID to process in correct order
-            usort($allSupplierTransactions, function($a, $b) {
-                return $a['id'] <=> $b['id'];
-            });
-
-            // Process supplier transactions based on supplier type
-            if ($supplier_type === 'External') {
-                foreach ($allSupplierTransactions as $row) {
-                    $amount = abs($row['amount']);
-                    $transaction_id = $row['id'];
-                    $trans_type = $row['transaction_type'];
-
-                    // Update subsequent transactions BEFORE deleting
-                    if ($trans_type == 'Credit') {
-                        $updateSubsequentSupplierBalances = "UPDATE supplier_transactions
-                                                            SET balance = balance - ?
-                                                            WHERE supplier_id = ?
-                                                            AND id > ?
-                                                            AND tenant_id = ? AND branch_id = ?";
-                    } else {
-                        $updateSubsequentSupplierBalances = "UPDATE supplier_transactions
-                                                            SET balance = balance + ?
-                                                            WHERE supplier_id = ?
-                                                            AND id > ?
-                                                            AND tenant_id = ? AND branch_id = ?";
-                    }
-
-                    $stmtUpdate = $pdo->prepare($updateSubsequentSupplierBalances);
-                    $stmtUpdate->bindParam(1, $amount, PDO::PARAM_STR);
-                    $stmtUpdate->bindParam(2, $supplier_id, PDO::PARAM_INT);
-                    $stmtUpdate->bindParam(3, $transaction_id, PDO::PARAM_INT);
-                    $stmtUpdate->bindParam(4, $tenant_id, PDO::PARAM_INT);
-                    $stmtUpdate->bindParam(5, $branch_id, PDO::PARAM_INT);
-                    $stmtUpdate->execute();
-
-                    // Adjust Supplier Balance
-                    if ($trans_type == 'Credit') {
-                        $adjustSupplierBalance = "UPDATE suppliers
-                                                  SET balance = balance - ?
-                                                  WHERE id = ? AND tenant_id = ? AND branch_id = ?";
-                    } else {
-                        $adjustSupplierBalance = "UPDATE suppliers
-                                                  SET balance = balance + ?
-                                                  WHERE id = ? AND tenant_id = ? AND branch_id = ?";
-                    }
-
-                    $stmt = $pdo->prepare($adjustSupplierBalance);
-                    $stmt->bindParam(1, $amount, PDO::PARAM_STR);
-                    $stmt->bindParam(2, $supplier_id, PDO::PARAM_INT);
-                    $stmt->bindParam(3, $tenant_id, PDO::PARAM_INT);
-                    $stmt->bindParam(4, $branch_id, PDO::PARAM_INT);
-                    $stmt->execute();
-
-                    // Delete Supplier Transaction
-                    $deleteSupplierTransaction = "DELETE FROM supplier_transactions WHERE id = ? AND tenant_id = ? AND branch_id = ?";
-                    $stmt = $pdo->prepare($deleteSupplierTransaction);
-                    $stmt->bindParam(1, $transaction_id, PDO::PARAM_INT);
-                    $stmt->bindParam(2, $tenant_id, PDO::PARAM_INT);
-                    $stmt->bindParam(3, $branch_id, PDO::PARAM_INT);
-                    $stmt->execute();
-                }
-            } else if ($supplier_type === 'Internal') {
-                // For internal suppliers, just delete all transactions without balance adjustments
-                // Delete Type 1: Initial booking transactions
-                $deleteSupplierTransactions1 = "DELETE FROM supplier_transactions
-                                                WHERE supplier_id = ? AND transaction_of = 'umrah'
-                                                AND reference_id = ? AND tenant_id = ? AND branch_id = ?";
-                $stmt = $pdo->prepare($deleteSupplierTransactions1);
+                                          WHERE supplier_id = ? AND transaction_of = 'umrah'
+                                          AND reference_id = ? AND tenant_id = ? AND branch_id = ?";
+                $stmt = $pdo->prepare($supplierTransactions1);
                 $stmt->bindParam(1, $supplier_id, PDO::PARAM_INT);
                 $stmt->bindParam(2, $booking_id, PDO::PARAM_INT);
                 $stmt->bindParam(3, $tenant_id, PDO::PARAM_INT);
                 $stmt->bindParam(4, $branch_id, PDO::PARAM_INT);
                 $stmt->execute();
+                $supplierResults1 = $stmt->fetchAll(PDO::FETCH_ASSOC);
+                $allSupplierTransactions = array_merge($allSupplierTransactions, $supplierResults1);
 
-                // Delete Type 2: Payment transactions (if any)
+                // Get Type 2: Payment transactions (if umrah_transactions exist)
                 if (!empty($umrah_txn_ids)) {
                     $placeholders = implode(',', array_fill(0, count($umrah_txn_ids), '?'));
-                    $deleteSupplierTransactions2 = "DELETE FROM supplier_transactions
-                                                    WHERE supplier_id = ? AND transaction_of = 'umrah_transaction'
-                                                    AND reference_id IN ($placeholders)
-                                                    AND tenant_id = ? AND branch_id = ?";
-                    $stmt = $pdo->prepare($deleteSupplierTransactions2);
+                    $supplierTransactions2 = "SELECT id, amount, transaction_type, transaction_date, 'umrah_transaction' as txn_type
+                                              FROM supplier_transactions
+                                              WHERE supplier_id = ? AND transaction_of = 'umrah_transaction'
+                                              AND reference_id IN ($placeholders) 
+                                              AND tenant_id = ? AND branch_id = ?";
+                    $stmt = $pdo->prepare($supplierTransactions2);
                     
                     $param_index = 1;
                     $stmt->bindValue($param_index++, $supplier_id, PDO::PARAM_INT);
@@ -313,6 +220,102 @@ if ($booking_id !== null) {
                     $stmt->bindValue($param_index++, $tenant_id, PDO::PARAM_INT);
                     $stmt->bindValue($param_index++, $branch_id, PDO::PARAM_INT);
                     $stmt->execute();
+                    $supplierResults2 = $stmt->fetchAll(PDO::FETCH_ASSOC);
+                    $allSupplierTransactions = array_merge($allSupplierTransactions, $supplierResults2);
+                }
+
+                // Sort all transactions by ID to process in correct order
+                usort($allSupplierTransactions, function($a, $b) {
+                    return $a['id'] <=> $b['id'];
+                });
+
+                // Process supplier transactions based on supplier type
+                if ($supplier_type === 'External') {
+                    foreach ($allSupplierTransactions as $row) {
+                        $amount = abs($row['amount']);
+                        $transaction_id = $row['id'];
+                        $trans_type = $row['transaction_type'];
+
+                        // Update subsequent transactions BEFORE deleting
+                        if ($trans_type == 'Credit') {
+                            $updateSubsequentSupplierBalances = "UPDATE supplier_transactions
+                                                                SET balance = balance - ?
+                                                                WHERE supplier_id = ?
+                                                                AND id > ?
+                                                                AND tenant_id = ? AND branch_id = ?";
+                        } else {
+                            $updateSubsequentSupplierBalances = "UPDATE supplier_transactions
+                                                                SET balance = balance + ?
+                                                                WHERE supplier_id = ?
+                                                                AND id > ?
+                                                                AND tenant_id = ? AND branch_id = ?";
+                        }
+
+                        $stmtUpdate = $pdo->prepare($updateSubsequentSupplierBalances);
+                        $stmtUpdate->bindParam(1, $amount, PDO::PARAM_STR);
+                        $stmtUpdate->bindParam(2, $supplier_id, PDO::PARAM_INT);
+                        $stmtUpdate->bindParam(3, $transaction_id, PDO::PARAM_INT);
+                        $stmtUpdate->bindParam(4, $tenant_id, PDO::PARAM_INT);
+                        $stmtUpdate->bindParam(5, $branch_id, PDO::PARAM_INT);
+                        $stmtUpdate->execute();
+
+                        // Adjust Supplier Balance
+                        if ($trans_type == 'Credit') {
+                            $adjustSupplierBalance = "UPDATE suppliers
+                                                      SET balance = balance - ?
+                                                      WHERE id = ? AND tenant_id = ? AND branch_id = ?";
+                        } else {
+                            $adjustSupplierBalance = "UPDATE suppliers
+                                                      SET balance = balance + ?
+                                                      WHERE id = ? AND tenant_id = ? AND branch_id = ?";
+                        }
+
+                        $stmt = $pdo->prepare($adjustSupplierBalance);
+                        $stmt->bindParam(1, $amount, PDO::PARAM_STR);
+                        $stmt->bindParam(2, $supplier_id, PDO::PARAM_INT);
+                        $stmt->bindParam(3, $tenant_id, PDO::PARAM_INT);
+                        $stmt->bindParam(4, $branch_id, PDO::PARAM_INT);
+                        $stmt->execute();
+
+                        // Delete Supplier Transaction
+                        $deleteSupplierTransaction = "DELETE FROM supplier_transactions WHERE id = ? AND tenant_id = ? AND branch_id = ?";
+                        $stmt = $pdo->prepare($deleteSupplierTransaction);
+                        $stmt->bindParam(1, $transaction_id, PDO::PARAM_INT);
+                        $stmt->bindParam(2, $tenant_id, PDO::PARAM_INT);
+                        $stmt->bindParam(3, $branch_id, PDO::PARAM_INT);
+                        $stmt->execute();
+                    }
+                } else if ($supplier_type === 'Internal') {
+                    // For internal suppliers, just delete all transactions without balance adjustments
+                    // Delete Type 1: Initial booking transactions
+                    $deleteSupplierTransactions1 = "DELETE FROM supplier_transactions
+                                                    WHERE supplier_id = ? AND transaction_of = 'umrah'
+                                                    AND reference_id = ? AND tenant_id = ? AND branch_id = ?";
+                    $stmt = $pdo->prepare($deleteSupplierTransactions1);
+                    $stmt->bindParam(1, $supplier_id, PDO::PARAM_INT);
+                    $stmt->bindParam(2, $booking_id, PDO::PARAM_INT);
+                    $stmt->bindParam(3, $tenant_id, PDO::PARAM_INT);
+                    $stmt->bindParam(4, $branch_id, PDO::PARAM_INT);
+                    $stmt->execute();
+
+                    // Delete Type 2: Payment transactions (if any)
+                    if (!empty($umrah_txn_ids)) {
+                        $placeholders = implode(',', array_fill(0, count($umrah_txn_ids), '?'));
+                        $deleteSupplierTransactions2 = "DELETE FROM supplier_transactions
+                                                        WHERE supplier_id = ? AND transaction_of = 'umrah_transaction'
+                                                        AND reference_id IN ($placeholders)
+                                                        AND tenant_id = ? AND branch_id = ?";
+                        $stmt = $pdo->prepare($deleteSupplierTransactions2);
+                        
+                        $param_index = 1;
+                        $stmt->bindValue($param_index++, $supplier_id, PDO::PARAM_INT);
+                        foreach ($umrah_txn_ids as $txn_id) {
+                            $stmt->bindValue($param_index++, $txn_id, PDO::PARAM_INT);
+                        }
+                        $stmt->bindValue($param_index++, $tenant_id, PDO::PARAM_INT);
+                        $stmt->bindValue($param_index++, $branch_id, PDO::PARAM_INT);
+                        $stmt->execute();
+                    }
                 }
             }
         }

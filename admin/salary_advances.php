@@ -72,8 +72,10 @@ if ($_SERVER["REQUEST_METHOD"] == "POST" && isset($_GET["advance_user_id"])) {
     // Validate amount
     if (empty($_POST["amount"])) {
         $amount_err = "Please enter the advance amount.";
+    } else if (!is_numeric($_POST["amount"]) || floatval($_POST["amount"]) <= 0) {
+        $amount_err = "Advance amount must be a positive number.";
     } else {
-        $amount = $_POST["amount"];
+        $amount = floatval($_POST["amount"]);
         
         // Check if amount is reasonable (not more than 3x monthly salary)
         if ($amount > ($current_salary * 3)) {
@@ -469,6 +471,7 @@ if ($_SERVER["REQUEST_METHOD"] == "POST" && isset($_GET["advance_user_id"])) {
 <?php include '../includes/admin_footer.php'; ?>
 
     <!-- Required Js -->
+    
     <script src="../assets/js/vendor-all.min.js"></script>
     <script src="../assets/plugins/bootstrap/js/bootstrap.min.js"></script>
     <script src="../assets/js/ripple.js"></script>
