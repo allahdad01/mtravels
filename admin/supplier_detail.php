@@ -9,41 +9,34 @@ require_once '../includes/language_helpers.php';
 enforce_auth();
 $tenant_id = $_SESSION['tenant_id'];
 $branch_id = $_SESSION['branch_id'];
-// Start session if not already started
 
-// Check if user is logged in
-if (!isset($_SESSION['user_id'])  || $_SESSION['role'] !== 'admin') {
+// Check if user is logged in with proper role
+$allowed_roles = ['admin', 'finance'];
+if (!isset($_SESSION['user_id']) || !in_array($_SESSION['role'], $allowed_roles)) {
+    error_log("Unauthorized access attempt to dashboard: " . ($_SESSION['user_id'] ?? 'unknown') . " - Role: " . ($_SESSION['role'] ?? 'unknown') . " - IP: " . $_SERVER['REMOTE_ADDR']);
     header('Location: ../login.php');
     exit();
 }
 
-// Load input validation helper
 require_once '../includes/InputValidator.php';
-
-// Include database connection
 include '../includes/db.php';
 
-// Initialize variables
 $supplierId = InputValidator::getInt($_GET['id'] ?? '', 0, 1);
 $supplierData = null;
 $transactions = [];
 $error = null;
 
-// Check if ID is provided
 if (!$supplierId) {
     $error = "No supplier ID provided";
 } else {
-    // Get supplier details
     $supplierQuery = "SELECT id, name, contact_person, supplier_type, phone, email, address, currency, balance, created_at, updated_at FROM suppliers WHERE id = ? AND tenant_id = ? AND branch_id = ?";
-
     $stmt = $pdo->prepare($supplierQuery);
     $stmt->execute([$supplierId, $tenant_id, $branch_id]);
     $supplierData = $stmt->fetch(PDO::FETCH_ASSOC);
-    
+
     if (!$supplierData) {
         $error = "Supplier not found";
     } else {
-        // Get transactions related to this supplier
         $transactionsQuery = "SELECT
                 st.id,
                 st.supplier_id,
@@ -53,7 +46,6 @@ if (!$supplierId) {
                 st.reference_id,
                 st.transaction_of,
                 st.transaction_date
-
             FROM supplier_transactions st
             WHERE st.supplier_id = ? AND st.tenant_id = ? AND st.branch_id = ?
             ORDER BY st.transaction_date DESC";
@@ -64,413 +56,746 @@ if (!$supplierId) {
     }
 }
 
-// Include the header
+// Compute KPI stats
+$totalCredit = 0;
+$totalDebit = 0;
+foreach ($transactions as $t) {
+    if (strtolower($t['transaction_type']) === 'credit') {
+        $totalCredit += $t['amount'];
+    } else {
+        $totalDebit += $t['amount'];
+    }
+}
+
 include '../includes/header.php';
 ?>
 <style>
-/* Enhanced custom styles for better layout and design */
-.page-header.card {
-    background: linear-gradient(135deg, #4099ff 0%, #2ed8b6 100%);
-    color: #ffffff;
-    border: none;
-    margin-bottom: 20px;
-    padding: 20px !important;
-    box-shadow: 0 4px 12px rgba(0,0,0,0.15);
-    border-radius: 10px;
-}
+    @import url('https://fonts.googleapis.com/css2?family=DM+Sans:wght@300;400;500;600;700&family=DM+Mono:wght@400;500&display=swap');
 
-.page-header.card .row {
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-}
+    :root {
+        --primary:       #1a56db;
+        --primary-light: #e8f0fe;
+        --primary-soft:  #dbeafe;
+        --success:       #0d9488;
+        --success-light: #d1fae5;
+        --danger:        #dc2626;
+        --danger-light:  #fee2e2;
+        --warning:       #d97706;
+        --warning-light: #fef3c7;
+        --neutral-50:    #f9fafb;
+        --neutral-100:   #f3f4f6;
+        --neutral-200:   #e5e7eb;
+        --neutral-400:   #9ca3af;
+        --neutral-600:   #4b5563;
+        --neutral-700:   #374151;
+        --neutral-900:   #111827;
+        --surface:       #ffffff;
+        --radius-sm:     6px;
+        --radius-md:     10px;
+        --radius-lg:     14px;
+        --shadow-sm:     0 1px 3px rgba(0,0,0,.08), 0 1px 2px rgba(0,0,0,.06);
+        --shadow-md:     0 4px 12px rgba(0,0,0,.08), 0 2px 4px rgba(0,0,0,.05);
+        --shadow-lg:     0 10px 30px rgba(0,0,0,.10);
+    }
 
-.page-header.card h5 {
-    color: #ffffff;
-    margin: 0;
-    font-weight: 600;
-}
+    * { font-family: 'DM Sans', sans-serif; box-sizing: border-box; }
 
-.page-header.card .text-end {
-    text-align: right;
-}
+    /* ── Page wrapper ── */
+    .sd-wrap {
+        padding: 24px;
+        background: var(--neutral-50);
+        min-height: 100vh;
+    }
 
-.page-header.card .btn {
-    background: rgba(255,255,255,0.2);
-    color: #ffffff;
-    border: 1px solid rgba(255,255,255,0.3);
-    border-radius: 25px;
-    transition: all 0.3s ease;
-}
+    /* ── Top bar ── */
+    .sd-topbar {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        margin-bottom: 28px;
+    }
+    .sd-topbar-left {
+        display: flex;
+        align-items: center;
+        gap: 14px;
+    }
+    .sd-back-btn {
+        display: inline-flex;
+        align-items: center;
+        gap: 6px;
+        color: var(--neutral-600);
+        font-size: 0.875rem;
+        font-weight: 500;
+        text-decoration: none;
+        padding: 8px 16px;
+        border-radius: 999px;
+        border: 1.5px solid var(--neutral-200);
+        background: var(--surface);
+        transition: all .2s;
+    }
+    .sd-back-btn:hover {
+        border-color: var(--primary);
+        color: var(--primary);
+        box-shadow: var(--shadow-sm);
+    }
+    .sd-page-title {
+        font-size: 1.35rem;
+        font-weight: 700;
+        color: var(--neutral-900);
+        margin: 0;
+        letter-spacing: -0.3px;
+    }
+    .sd-page-sub {
+        font-size: 0.8rem;
+        color: var(--neutral-400);
+        font-weight: 400;
+        display: block;
+        margin-top: 1px;
+    }
 
-.page-header.card .btn:hover {
-    background: rgba(255,255,255,0.3);
-    border-color: rgba(255,255,255,0.5);
-    transform: translateY(-1px);
-}
+    /* ── KPI row ── */
+    .sd-kpi-row {
+        display: grid;
+        grid-template-columns: repeat(4, 1fr);
+        gap: 16px;
+        margin-bottom: 24px;
+    }
+    .sd-kpi {
+        background: var(--surface);
+        border-radius: var(--radius-lg);
+        padding: 20px 22px;
+        box-shadow: var(--shadow-sm);
+        border: 1.5px solid var(--neutral-100);
+        display: flex;
+        align-items: center;
+        gap: 16px;
+        transition: box-shadow .2s;
+    }
+    .sd-kpi:hover { box-shadow: var(--shadow-md); }
+    .sd-kpi-icon {
+        width: 46px; height: 46px;
+        border-radius: var(--radius-md);
+        display: flex; align-items: center; justify-content: center;
+        font-size: 1.25rem;
+        flex-shrink: 0;
+    }
+    .sd-kpi-icon.blue   { background: var(--primary-light); color: var(--primary); }
+    .sd-kpi-icon.green  { background: var(--success-light); color: var(--success); }
+    .sd-kpi-icon.red    { background: var(--danger-light);  color: var(--danger); }
+    .sd-kpi-icon.amber  { background: var(--warning-light); color: var(--warning); }
+    .sd-kpi-label {
+        font-size: 0.75rem;
+        font-weight: 500;
+        color: var(--neutral-400);
+        text-transform: uppercase;
+        letter-spacing: .6px;
+        margin: 0 0 4px;
+    }
+    .sd-kpi-value {
+        font-size: 1.3rem;
+        font-weight: 700;
+        color: var(--neutral-900);
+        margin: 0;
+        font-family: 'DM Mono', monospace;
+        letter-spacing: -0.5px;
+    }
+    .sd-kpi-value.danger { color: var(--danger); }
+    .sd-kpi-value.success { color: var(--success); }
 
-.card {
-    border-radius: 10px;
-    box-shadow: 0 2px 8px rgba(0,0,0,0.1);
-    transition: transform 0.2s ease-in-out, box-shadow 0.2s ease-in-out;
-    border: none;
-}
+    /* ── Cards ── */
+    .sd-card {
+        background: var(--surface);
+        border-radius: var(--radius-lg);
+        border: 1.5px solid var(--neutral-100);
+        box-shadow: var(--shadow-sm);
+        margin-bottom: 20px;
+        overflow: hidden;
+    }
+    .sd-card-head {
+        padding: 16px 22px;
+        border-bottom: 1.5px solid var(--neutral-100);
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        background: var(--neutral-50);
+    }
+    .sd-card-title {
+        font-size: 0.925rem;
+        font-weight: 600;
+        color: var(--neutral-700);
+        margin: 0;
+        display: flex;
+        align-items: center;
+        gap: 8px;
+    }
+    .sd-card-title i { color: var(--primary); font-size: 1rem; }
+    .sd-card-body { padding: 22px; }
 
-.card:hover {
-    transform: translateY(-2px);
-    box-shadow: 0 4px 16px rgba(0,0,0,0.15);
-}
+    /* ── Supplier profile layout ── */
+    .sd-profile {
+        display: flex;
+        gap: 28px;
+        align-items: flex-start;
+    }
+    .sd-avatar {
+        width: 80px; height: 80px;
+        border-radius: var(--radius-lg);
+        background: var(--primary-light);
+        display: flex; align-items: center; justify-content: center;
+        font-size: 2rem;
+        color: var(--primary);
+        flex-shrink: 0;
+        font-weight: 700;
+        letter-spacing: -1px;
+        border: 2px solid var(--primary-soft);
+    }
+    .sd-profile-info { flex: 1; }
+    .sd-supplier-name {
+        font-size: 1.4rem;
+        font-weight: 700;
+        color: var(--neutral-900);
+        margin: 0 0 4px;
+        letter-spacing: -0.4px;
+    }
+    .sd-supplier-type {
+        display: inline-block;
+        font-size: 0.75rem;
+        font-weight: 600;
+        color: var(--primary);
+        background: var(--primary-light);
+        padding: 3px 10px;
+        border-radius: 999px;
+        margin-bottom: 16px;
+        text-transform: uppercase;
+        letter-spacing: .5px;
+    }
+    .sd-meta-grid {
+        display: grid;
+        grid-template-columns: repeat(3, 1fr);
+        gap: 14px 24px;
+    }
+    .sd-meta-item label {
+        font-size: 0.7rem;
+        font-weight: 600;
+        color: var(--neutral-400);
+        text-transform: uppercase;
+        letter-spacing: .6px;
+        display: block;
+        margin-bottom: 3px;
+    }
+    .sd-meta-item span {
+        font-size: 0.88rem;
+        color: var(--neutral-700);
+        font-weight: 500;
+    }
+    .sd-meta-item span.muted { color: var(--neutral-400); font-style: italic; }
 
-.card-header {
-    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-    color: white;
-    border-radius: 10px 10px 0 0;
-    padding: 1rem 1.5rem;
-    border: none;
-}
+    /* ── Divider ── */
+    .sd-divider {
+        width: 1.5px;
+        background: var(--neutral-100);
+        align-self: stretch;
+        margin: 0 4px;
+        flex-shrink: 0;
+    }
 
-.card-header h5 {
-    margin: 0;
-    font-weight: 600;
-    display: flex;
-    align-items: center;
-}
+    /* ── Balance panel ── */
+    .sd-balance-panel {
+        width: 200px;
+        flex-shrink: 0;
+        text-align: center;
+        padding: 20px;
+        border-radius: var(--radius-md);
+        border: 1.5px solid var(--neutral-100);
+    }
+    .sd-balance-panel.owed   { background: var(--danger-light);  border-color: #fca5a5; }
+    .sd-balance-panel.clear  { background: var(--success-light); border-color: #6ee7b7; }
+    .sd-balance-label {
+        font-size: 0.7rem;
+        font-weight: 600;
+        color: var(--neutral-400);
+        text-transform: uppercase;
+        letter-spacing: .6px;
+        margin-bottom: 6px;
+    }
+    .sd-balance-value {
+        font-size: 1.6rem;
+        font-weight: 700;
+        font-family: 'DM Mono', monospace;
+        letter-spacing: -1px;
+        margin: 0;
+    }
+    .sd-balance-value.owed  { color: var(--danger); }
+    .sd-balance-value.clear { color: var(--success); }
+    .sd-balance-status {
+        font-size: 0.75rem;
+        font-weight: 500;
+        margin-top: 4px;
+    }
+    .sd-balance-status.owed  { color: var(--danger); }
+    .sd-balance-status.clear { color: var(--success); }
 
-.progress {
-    border-radius: 15px;
-    overflow: hidden;
-    box-shadow: inset 0 1px 2px rgba(0,0,0,0.1);
-}
+    /* ── Transactions filter bar ── */
+    .sd-filter-bar {
+        display: flex;
+        align-items: center;
+        gap: 10px;
+    }
+    .sd-search-box {
+        position: relative;
+        flex: 1;
+    }
+    .sd-search-box input {
+        width: 100%;
+        padding: 8px 12px 8px 36px;
+        border: 1.5px solid var(--neutral-200);
+        border-radius: var(--radius-md);
+        font-size: 0.85rem;
+        color: var(--neutral-700);
+        outline: none;
+        transition: border-color .2s;
+        font-family: 'DM Sans', sans-serif;
+    }
+    .sd-search-box input:focus { border-color: var(--primary); }
+    .sd-search-box i {
+        position: absolute;
+        left: 11px; top: 50%;
+        transform: translateY(-50%);
+        color: var(--neutral-400);
+        font-size: 0.875rem;
+    }
+    .sd-filter-pill {
+        padding: 8px 16px;
+        border-radius: 999px;
+        border: 1.5px solid var(--neutral-200);
+        background: var(--surface);
+        font-size: 0.8rem;
+        font-weight: 500;
+        color: var(--neutral-600);
+        cursor: pointer;
+        transition: all .2s;
+        white-space: nowrap;
+    }
+    .sd-filter-pill:hover,
+    .sd-filter-pill.active { border-color: var(--primary); color: var(--primary); background: var(--primary-light); }
+    .sd-filter-pill.all.active   { border-color: var(--neutral-600); color: var(--neutral-700); background: var(--neutral-100); }
+    .sd-filter-pill.debit.active { border-color: var(--danger); color: var(--danger); background: var(--danger-light); }
+    .sd-filter-pill.credit.active{ border-color: var(--success); color: var(--success); background: var(--success-light); }
 
-.progress-bar {
-    transition: width 0.6s ease;
-}
+    /* ── Table ── */
+    .sd-table-wrap {
+        overflow-x: auto;
+        max-height: 500px;
+        overflow-y: auto;
+        border-radius: var(--radius-md);
+        border: 1.5px solid var(--neutral-100);
+        margin-top: 16px;
+    }
+    .sd-table {
+        width: 100%;
+        border-collapse: collapse;
+        font-size: 0.86rem;
+    }
+    .sd-table thead {
+        position: sticky;
+        top: 0;
+        z-index: 2;
+    }
+    .sd-table thead th {
+        background: var(--neutral-100);
+        color: var(--neutral-600);
+        font-weight: 600;
+        font-size: 0.72rem;
+        text-transform: uppercase;
+        letter-spacing: .6px;
+        padding: 11px 14px;
+        border-bottom: 1.5px solid var(--neutral-200);
+        white-space: nowrap;
+    }
+    .sd-table tbody tr {
+        border-bottom: 1px solid var(--neutral-100);
+        transition: background .15s;
+    }
+    .sd-table tbody tr:last-child { border-bottom: none; }
+    .sd-table tbody tr:hover { background: var(--neutral-50); }
+    .sd-table tbody td {
+        padding: 12px 14px;
+        vertical-align: middle;
+        color: var(--neutral-700);
+    }
+    .sd-table td.date-col {
+        font-family: 'DM Mono', monospace;
+        font-size: 0.8rem;
+        color: var(--neutral-400);
+        white-space: nowrap;
+    }
+    .sd-table td.amount-col {
+        font-family: 'DM Mono', monospace;
+        font-weight: 600;
+        white-space: nowrap;
+    }
+    .sd-table td.amount-col.credit { color: var(--success); }
+    .sd-table td.amount-col.debit  { color: var(--danger); }
 
-.t {
-    font-size: 0.85em;
-    padding: 0.5em 0.75em;
-    border-radius: 20px;
-    font-weight: 500;
-}
+    /* ── Type badge ── */
+    .sd-badge {
+        display: inline-flex;
+        align-items: center;
+        gap: 5px;
+        padding: 4px 10px;
+        border-radius: 999px;
+        font-size: 0.73rem;
+        font-weight: 600;
+        text-transform: uppercase;
+        letter-spacing: .5px;
+    }
+    .sd-badge::before {
+        content: '';
+        width: 6px; height: 6px;
+        border-radius: 50%;
+        display: block;
+    }
+    .sd-badge.credit { background: var(--success-light); color: var(--success); }
+    .sd-badge.credit::before { background: var(--success); }
+    .sd-badge.debit  { background: var(--danger-light); color: var(--danger); }
+    .sd-badge.debit::before  { background: var(--danger); }
 
-.badge-success {
-    background-color: #28a745;
-}
+    /* ── Ref link ── */
+    .sd-ref-link {
+        display: inline-flex;
+        align-items: center;
+        gap: 5px;
+        color: var(--primary);
+        text-decoration: none;
+        font-weight: 500;
+        font-size: 0.83rem;
+        padding: 3px 8px;
+        border-radius: var(--radius-sm);
+        background: var(--primary-light);
+        transition: background .15s;
+    }
+    .sd-ref-link:hover { background: var(--primary-soft); color: var(--primary); }
 
-.badge-warning {
-    background-color: #ffc107;
-    color: #212529;
-}
+    /* ── Empty state ── */
+    .sd-empty {
+        text-align: center;
+        padding: 56px 24px;
+        color: var(--neutral-400);
+    }
+    .sd-empty i { font-size: 2.5rem; display: block; margin-bottom: 12px; opacity: .4; }
+    .sd-empty p { font-size: 0.9rem; margin: 0; }
 
-.badge-info {
-    background-color: #17a2b8;
-}
+    /* ── Error state ── */
+    .sd-error {
+        background: var(--danger-light);
+        border: 1.5px solid #fca5a5;
+        border-radius: var(--radius-lg);
+        padding: 24px 28px;
+        color: var(--danger);
+        margin-bottom: 20px;
+        display: flex;
+        align-items: center;
+        gap: 14px;
+    }
+    .sd-error i { font-size: 1.5rem; flex-shrink: 0; }
+    .sd-error-msg { font-weight: 600; font-size: 0.95rem; }
 
-.badge-danger {
-    background-color: #dc3545;
-    color: #ffffff;
-}
-
-.table-responsive {
-    border-radius: 10px;
-
-}
-
-.table {
-    margin-bottom: 0;
-}
-
-.table thead th {
-    background-color: #f8f9fa;
-    border-bottom: 2px solid #dee2e6;
-    font-weight: 600;
-    color: #495057;
-    padding: 1rem;
-}
-
-.table tbody tr:hover {
-    background-color: #f1f3f4;
-}
-
-.table tbody td {
-    padding: 1rem;
-    vertical-align: middle;
-}
-
-.form-control {
-    border-radius: 8px;
-    border: 1px solid #ced4da;
-    transition: border-color 0.15s ease-in-out, box-shadow 0.15s ease-in-out;
-    padding: 0.75rem;
-}
-
-.form-control:focus {
-    border-color: #4099ff;
-    box-shadow: 0 0 0 0.2rem rgba(64, 153, 255, 0.25);
-}
-
-.btn-primary {
-    background: linear-gradient(135deg, #4099ff 0%, #2ed8b6 100%);
-    border: none;
-    border-radius: 25px;
-    padding: 0.75rem 2rem;
-    font-weight: 600;
-    transition: all 0.3s ease;
-}
-
-.btn-primary:hover {
-    transform: translateY(-1px);
-    box-shadow: 0 4px 12px rgba(64, 153, 255, 0.3);
-}
-
-.btn-secondary {
-    border-radius: 25px;
-    padding: 0.75rem 2rem;
-    font-weight: 600;
-    transition: all 0.3s ease;
-}
-
-.alert {
-    border-radius: 10px;
-    border: none;
-    padding: 1rem 1.5rem;
-}
-
-.alert-info {
-    background: linear-gradient(135deg, #d1ecf1 0%, #bee5eb 100%);
-    color: #0c5460;
-}
-
-.alert-success {
-    background: linear-gradient(135deg, #d4edda 0%, #c3e6cb 100%);
-    color: #155724;
-}
-
-.alert-danger {
-    background: linear-gradient(135deg, #f8d7da 0%, #f5c6cb 100%);
-    color: #721c24;
-}
-
-#estimated_cost {
-    color: #28a745;
-    font-weight: bold;
-}
-
-.h2 {
-    font-size: 2.5rem;
-}
-
-.h4 {
-    font-size: 1.5rem;
-}
-
-.h5 {
-    font-size: 1.25rem;
-}
-
-.h6 {
-    font-size: 1rem;
-}
+    /* ── Responsive ── */
+    @media (max-width: 992px) {
+        .sd-kpi-row { grid-template-columns: repeat(2, 1fr); }
+        .sd-profile  { flex-direction: column; }
+        .sd-divider  { display: none; }
+        .sd-balance-panel { width: 100%; }
+        .sd-meta-grid { grid-template-columns: repeat(2, 1fr); }
+    }
+    @media (max-width: 576px) {
+        .sd-kpi-row { grid-template-columns: 1fr; }
+        .sd-meta-grid { grid-template-columns: 1fr; }
+        .sd-filter-bar { flex-wrap: wrap; }
+    }
 </style>
+
 <div class="pcoded-main-container">
-    <div class="pcoded-content">
-        <div class="page-header card">
-            <div class="row align-items-center">
-                <div class="col-md-6">
-                    <h5 class="mb-0"><i class="feather icon-briefcase mr-2"></i><?= __('supplier_details') ?></h5>
-                </div>
-                <div class="col-md-6 text-end">
-                    <a href="search.php" class="btn btn-outline-secondary btn-sm">
-                        <i class="feather icon-arrow-left mr-1"></i><?= __('back_to_search') ?>
-                    </a>
+  <div class="pcoded-content">
+    <div class="sd-wrap">
+
+      <?php if ($error): ?>
+        <!-- ── Error ── -->
+        <div class="sd-error">
+            <i class="feather icon-alert-circle"></i>
+            <div>
+                <div class="sd-error-msg"><?= h($error) ?></div>
+                <a href="search.php" class="sd-back-btn" style="margin-top:10px;display:inline-flex;">
+                    <i class="feather icon-arrow-left"></i> <?= __('back_to_search') ?>
+                </a>
+            </div>
+        </div>
+
+      <?php else: ?>
+        <!-- ── Top bar ── -->
+        <div class="sd-topbar">
+            <div class="sd-topbar-left">
+                <a href="search.php" class="sd-back-btn">
+                    <i class="feather icon-arrow-left"></i> <?= __('back_to_search') ?>
+                </a>
+                <div>
+                    <h1 class="sd-page-title"><?= __('supplier_details') ?></h1>
+                    <span class="sd-page-sub"><?= __('supplier_information') ?> &amp; <?= __('transaction_history') ?></span>
                 </div>
             </div>
         </div>
 
-        <div class="row">
-            <div class="col-md-12">
-                <?php if ($error): ?>
-                    <div class="alert alert-danger"><?php echo h($error); ?></div>
-                    <a href="search.php" class="btn btn-primary"><?= __('back_to_search') ?></a>
-                <?php else: ?>
-                    <!-- Supplier Information Card -->
-                    <div class="card">
-                        <div class="card-header">
-                            <h5>
-                                <i class="feather icon-briefcase mr-2"></i>
-                                <?= __('supplier_information') ?>
-                            </h5>
-                        </div>
-                        <div class="card-body">
-                            <div class="row">
-                                <div class="col-md-6">
-                                    <div class="table-responsive">
-                                        <table class="table table-bordered">
-                                            <tr>
-                                                <th style="width: 40%"><?= __('name') ?></th>
-                                                <td><?php echo isset($supplierData['name']) ? htmlspecialchars($supplierData['name']) : '—'; ?></td>
-                                            </tr>
-                                            <tr>
-                                                <th><?= __('contact_person') ?></th>
-                                                <td><?php echo isset($supplierData['contact_person']) ? htmlspecialchars($supplierData['contact_person']) : '—'; ?></td>
-                                            </tr>
-                                            <tr>
-                                                <th><?= __('supplier_type') ?></th>
-                                                <td><?php echo isset($supplierData['supplier_type']) ? htmlspecialchars($supplierData['supplier_type']) : '—'; ?></td>
-                                            </tr>
-                                            <tr>
-                                                <th><?= __('email') ?></th>
-                                                <td><?php echo isset($supplierData['email']) ? htmlspecialchars($supplierData['email']) : '—'; ?></td>
-                                            </tr>
-                                            <tr>
-                                                <th><?= __('phone') ?></th>
-                                                <td><?php echo isset($supplierData['phone']) ? htmlspecialchars($supplierData['phone']) : '—'; ?></td>
-                                            </tr>
-                                        </table>
-                                    </div>
-                                </div>
-                                <div class="col-md-6">
-                                    <div class="table-responsive">
-                                        <table class="table table-bordered">
-                                            <tr>
-                                                <th style="width: 40%"><?= __('address') ?></th>
-                                                <td><?php echo isset($supplierData['address']) ? htmlspecialchars($supplierData['address']) : '—'; ?></td>
-                                            </tr>
-                                            <tr>
-                                                <th><?= __('balance') ?></th>
-                                                <td class="<?php echo (isset($supplierData['balance']) && $supplierData['balance'] > 0) ? 'text-danger' : 'text-success'; ?>">
-                                                    <strong>
-                                                        <?php 
-                                                        if (isset($supplierData['currency']) && isset($supplierData['balance'])) {
-                                                            echo htmlspecialchars($supplierData['currency']) . ' ' . 
-                                                                htmlspecialchars($supplierData['balance']);
-                                                        } else {
-                                                            echo '—';
-                                                        }
-                                                        ?>
-                                                    </strong>
-                                                </td>
-                                            </tr>
-                                            <tr>
-                                                <th><?= __('created_at') ?></th>
-                                                <td><?php echo isset($supplierData['created_at']) ? date('Y-m-d H:i', strtotime($supplierData['created_at'])) : '—'; ?></td>
-                                            </tr>
-                                            <tr>
-                                                <th><?= __('updated_at') ?></th>
-                                                <td><?php echo isset($supplierData['updated_at']) ? date('Y-m-d H:i', strtotime($supplierData['updated_at'])) : '—'; ?></td>
-                                            </tr>
-                                        </table>
-                                    </div>
-                                </div>
+        <!-- ── KPI Row ── -->
+        <?php
+            $currency  = htmlspecialchars($supplierData['currency'] ?? '');
+            $balance   = $supplierData['balance'] ?? 0;
+            $isOwed    = $balance > 0;
+        ?>
+        <div class="sd-kpi-row">
+            <div class="sd-kpi">
+                <div class="sd-kpi-icon blue"><i class="feather icon-activity"></i></div>
+                <div>
+                    <p class="sd-kpi-label"><?= __('total_transactions') ?></p>
+                    <p class="sd-kpi-value"><?= count($transactions) ?></p>
+                </div>
+            </div>
+            <div class="sd-kpi">
+                <div class="sd-kpi-icon green"><i class="feather icon-arrow-down-circle"></i></div>
+                <div>
+                    <p class="sd-kpi-label"><?= __('total_paid') ?></p>
+                    <p class="sd-kpi-value success"><?= $currency ?> <?= number_format($totalCredit, 2) ?></p>
+                </div>
+            </div>
+            <div class="sd-kpi">
+                <div class="sd-kpi-icon red"><i class="feather icon-arrow-up-circle"></i></div>
+                <div>
+                    <p class="sd-kpi-label"><?= __('total_debit') ?></p>
+                    <p class="sd-kpi-value danger"><?= $currency ?> <?= number_format($totalDebit, 2) ?></p>
+                </div>
+            </div>
+            <div class="sd-kpi">
+                <div class="sd-kpi-icon amber"><i class="feather icon-dollar-sign"></i></div>
+                <div>
+                    <p class="sd-kpi-label"><?= __('balance') ?></p>
+                    <p class="sd-kpi-value <?= $isOwed ? 'danger' : 'success' ?>">
+                        <?= $currency ?> <?= number_format(abs($balance), 2) ?>
+                    </p>
+                </div>
+            </div>
+        </div>
+
+        <!-- ── Supplier Profile Card ── -->
+        <div class="sd-card">
+            <div class="sd-card-head">
+                <h5 class="sd-card-title">
+                    <i class="feather icon-briefcase"></i>
+                    <?= __('supplier_information') ?>
+                </h5>
+            </div>
+            <div class="sd-card-body">
+                <div class="sd-profile">
+                    <!-- Avatar -->
+                    <div class="sd-avatar">
+                        <?= strtoupper(mb_substr($supplierData['name'] ?? '?', 0, 2)) ?>
+                    </div>
+
+                    <!-- Info block -->
+                    <div class="sd-profile-info">
+                        <h2 class="sd-supplier-name"><?= htmlspecialchars($supplierData['name'] ?? '—') ?></h2>
+                        <?php if (!empty($supplierData['supplier_type'])): ?>
+                            <span class="sd-supplier-type"><?= htmlspecialchars($supplierData['supplier_type']) ?></span>
+                        <?php endif; ?>
+
+                        <div class="sd-meta-grid">
+                            <div class="sd-meta-item">
+                                <label><?= __('contact_person') ?></label>
+                                <span <?= empty($supplierData['contact_person']) ? 'class="muted"' : '' ?>>
+                                    <?= !empty($supplierData['contact_person']) ? htmlspecialchars($supplierData['contact_person']) : '—' ?>
+                                </span>
+                            </div>
+                            <div class="sd-meta-item">
+                                <label><?= __('email') ?></label>
+                                <span <?= empty($supplierData['email']) ? 'class="muted"' : '' ?>>
+                                    <?= !empty($supplierData['email']) ? htmlspecialchars($supplierData['email']) : '—' ?>
+                                </span>
+                            </div>
+                            <div class="sd-meta-item">
+                                <label><?= __('phone') ?></label>
+                                <span <?= empty($supplierData['phone']) ? 'class="muted"' : '' ?>>
+                                    <?= !empty($supplierData['phone']) ? htmlspecialchars($supplierData['phone']) : '—' ?>
+                                </span>
+                            </div>
+                            <div class="sd-meta-item">
+                                <label><?= __('address') ?></label>
+                                <span <?= empty($supplierData['address']) ? 'class="muted"' : '' ?>>
+                                    <?= !empty($supplierData['address']) ? htmlspecialchars($supplierData['address']) : '—' ?>
+                                </span>
+                            </div>
+                            <div class="sd-meta-item">
+                                <label><?= __('created_at') ?></label>
+                                <span><?= !empty($supplierData['created_at']) ? date('d M Y', strtotime($supplierData['created_at'])) : '—' ?></span>
+                            </div>
+                            <div class="sd-meta-item">
+                                <label><?= __('updated_at') ?></label>
+                                <span><?= !empty($supplierData['updated_at']) ? date('d M Y', strtotime($supplierData['updated_at'])) : '—' ?></span>
                             </div>
                         </div>
                     </div>
 
-                    <!-- Transactions History -->
-                    <div class="card">
-                        <div class="card-header">
-                            <h5><i class="feather icon-activity mr-2"></i><?= __('transaction_history') ?></h5>
-                        </div>
-                        <div class="card-body">
-                            <?php if (!empty($transactions)): ?>
-                            <div class="table-responsive">
-                                <table class="table table-hover">
-                                    <thead>
-                                        <tr>
-                                            <th><?= __('date') ?></th>
-                                            <th><?= __('type') ?></th>
-                                            <th><?= __('amount') ?></th>
-                                            <th><?= __('related_to') ?></th>
-                                            <th><?= __('description') ?></th>
-                                        </tr>
-                                    </thead>
-                                    <tbody>
-                                        <?php foreach ($transactions as $transaction): ?>
-                                        <tr>
-                                            <td><?php echo date('Y-m-d', strtotime($transaction['transaction_date'])); ?></td>
-                                            <td>
-                                                <span class="t badge-<?php
-                                                    echo (isset($transaction['transaction_type']) && strtolower($transaction['transaction_type']) == 'credit') ? 'success' : 'info';
-                                                ?>">
-                                                    <?php echo isset($transaction['transaction_type']) ? ucfirst(strtolower($transaction['transaction_type'])) : '—'; ?>
-                                                </span>
-                                            </td>
-                                            <td>
-                                                <span class="<?php echo (isset($transaction['transaction_type']) && strtolower($transaction['transaction_type']) == 'credit') ? 'text-success' : 'text-danger'; ?>">
-                                                    <?php 
-                                                    if (isset($transaction['amount'])) {
-                                                        echo isset($supplierData['currency']) ? htmlspecialchars($supplierData['currency']) . ' ' : '';
-                                                        echo htmlspecialchars($transaction['amount']);
-                                                    } else {
-                                                        echo '—';
-                                                    }
-                                                    ?>
-                                                </span>
-                                            </td>
-                                            <td>
-                                                <?php 
-                                                if (isset($transaction['transaction_of']) && !empty($transaction['transaction_of'])) {
-                                                    $transactionType = htmlspecialchars(ucfirst($transaction['transaction_of']));
-                                                    $refId = isset($transaction['reference_id']) ? htmlspecialchars($transaction['reference_id']) : '';
-                                                    
-                                                    switch ($transaction['transaction_of']) {
-                                                        case 'ticket':
-                                                            echo "<a href='ticket_detail.php?id={$refId}'>{$transactionType} #{$refId}</a>";
-                                                            break;
-                                                        case 'visa':
-                                                        case 'visa_sale':
-                                                            echo "<a href='visa_detail.php?id={$refId}'>{$transactionType} #{$refId}</a>";
-                                                            break;
-                                                        case 'hotel':
-                                                        case 'hotel_booking':
-                                                            echo "<a href='hotel_detail.php?id={$refId}'>{$transactionType} #{$refId}</a>";
-                                                            break;
-                                                        default:
-                                                            echo h($transactionType) . ($refId ? " #{$refId}" : '');
-                                                    }
-                                                } else {
-                                                    echo '—';
-                                                }
-                                                ?>
-                                            </td>
-                                            <td><?php echo isset($transaction['description']) ? htmlspecialchars($transaction['description']) : '—'; ?></td>
-                                        </tr>
-                                        <?php endforeach; ?>
-                                    </tbody>
-                                </table>
-                            </div>
-                            <?php else: ?>
-                            <div class="alert alert-info"><?= __('no_transactions_found_for_this_supplier') ?></div>
-                            <?php endif; ?>
+                    <div class="sd-divider"></div>
+
+                    <!-- Balance panel -->
+                    <div class="sd-balance-panel <?= $isOwed ? 'owed' : 'clear' ?>">
+                        <div class="sd-balance-label"><?= __('outstanding_balance') ?></div>
+                        <p class="sd-balance-value <?= $isOwed ? 'owed' : 'clear' ?>">
+                            <?= $currency ?> <?= number_format(abs($balance), 2) ?>
+                        </p>
+                        <div class="sd-balance-status <?= $isOwed ? 'owed' : 'clear' ?>">
+                            <?= $isOwed ? '⚠ Amount Owed' : '✓ Settled' ?>
                         </div>
                     </div>
-                    
-                    <!-- Action Buttons -->
-                    <div class="row mb-4">
-                        <div class="col-md-12">
-                            <a href="search.php" class="btn btn-secondary">
-                                <i class="feather icon-arrow-left mr-1"></i> <?= __('back_to_search') ?>
-                            </a>
-                        </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- ── Transactions Card ── -->
+        <div class="sd-card">
+            <div class="sd-card-head">
+                <h5 class="sd-card-title">
+                    <i class="feather icon-list"></i>
+                    <?= __('transaction_history') ?>
+                    <span style="background:var(--primary-light);color:var(--primary);font-size:0.72rem;padding:2px 8px;border-radius:999px;font-weight:600;margin-left:6px;">
+                        <?= count($transactions) ?>
+                    </span>
+                </h5>
+                <!-- Filter bar -->
+                <?php if (!empty($transactions)): ?>
+                <div class="sd-filter-bar">
+                    <div class="sd-search-box">
+                        <i class="feather icon-search"></i>
+                        <input type="text" id="txSearch" placeholder="Search transactions…">
                     </div>
-                    
-                    
+                    <button class="sd-filter-pill all active" data-filter="all">All</button>
+                    <button class="sd-filter-pill credit" data-filter="credit">Credit</button>
+                    <button class="sd-filter-pill debit"  data-filter="debit">Debit</button>
+                </div>
+                <?php endif; ?>
+            </div>
+
+            <div class="sd-card-body" style="padding: 0 22px 22px;">
+                <?php if (!empty($transactions)): ?>
+                <div class="sd-table-wrap">
+                    <table class="sd-table" id="txTable">
+                        <thead>
+                            <tr>
+                                <th><?= __('date') ?></th>
+                                <th><?= __('type') ?></th>
+                                <th><?= __('amount') ?></th>
+                                <th><?= __('related_to') ?></th>
+                                <th><?= __('description') ?></th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <?php foreach ($transactions as $tx):
+                                $txType = strtolower($tx['transaction_type'] ?? '');
+                                $isCredit = $txType === 'credit';
+                                $refId = htmlspecialchars($tx['reference_id'] ?? '');
+                                $txOf  = $tx['transaction_of'] ?? '';
+                            ?>
+                            <tr data-type="<?= $txType ?>">
+                                <td class="date-col">
+                                    <?= !empty($tx['transaction_date']) ? date('d M Y', strtotime($tx['transaction_date'])) : '—' ?>
+                                </td>
+                                <td>
+                                    <span class="sd-badge <?= $isCredit ? 'credit' : 'debit' ?>">
+                                        <?= ucfirst($txType ?: '—') ?>
+                                    </span>
+                                </td>
+                                <td class="amount-col <?= $isCredit ? 'credit' : 'debit' ?>">
+                                    <?= $isCredit ? '+' : '−' ?> <?= $currency ?> <?= number_format($tx['amount'] ?? 0, 2) ?>
+                                </td>
+                                <td>
+                                    <?php if (!empty($txOf) && !empty($refId)):
+                                        $label = ucfirst(str_replace('_', ' ', $txOf));
+                                        switch ($txOf) {
+                                            case 'ticket':
+                                                echo "<a class='sd-ref-link' href='ticket_detail.php?id={$refId}'><i class='feather icon-tag'></i>{$label} #{$refId}</a>";
+                                                break;
+                                            case 'visa': case 'visa_sale':
+                                                echo "<a class='sd-ref-link' href='visa_detail.php?id={$refId}'><i class='feather icon-credit-card'></i>{$label} #{$refId}</a>";
+                                                break;
+                                            case 'hotel': case 'hotel_booking':
+                                                echo "<a class='sd-ref-link' href='hotel_detail.php?id={$refId}'><i class='feather icon-home'></i>{$label} #{$refId}</a>";
+                                                break;
+                                            default:
+                                                echo "<span class='sd-ref-link' style='cursor:default;background:var(--neutral-100);color:var(--neutral-600)'>{$label} #{$refId}</span>";
+                                        }
+                                    else: echo '<span style="color:var(--neutral-400)">—</span>';
+                                    endif; ?>
+                                </td>
+                                <td style="color:var(--neutral-600); max-width:220px; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;" title="<?= htmlspecialchars($tx['description'] ?? '') ?>">
+                                    <?= !empty($tx['description']) ? htmlspecialchars($tx['description']) : '<span style="color:var(--neutral-400)">—</span>' ?>
+                                </td>
+                            </tr>
+                            <?php endforeach; ?>
+                        </tbody>
+                    </table>
+                </div>
+                <?php else: ?>
+                <div class="sd-empty">
+                    <i class="feather icon-inbox"></i>
+                    <p><?= __('no_transactions_found_for_this_supplier') ?></p>
+                </div>
                 <?php endif; ?>
             </div>
         </div>
+
+      <?php endif; ?>
     </div>
+  </div>
 </div>
 
+<script src="../assets/js/vendor-all.min.js"></script>
+<script src="../assets/plugins/bootstrap/js/bootstrap.min.js"></script>
+<script src="../assets/js/pcoded.min.js"></script>
 
-                            <!-- Required Js -->
-    
-    <script src="../assets/js/vendor-all.min.js"></script>
-    <script src="../assets/plugins/bootstrap/js/bootstrap.min.js"></script>
-    <script src="../assets/js/pcoded.min.js"></script>
+<script>
+(function () {
+    const searchInput = document.getElementById('txSearch');
+    const filterBtns  = document.querySelectorAll('.sd-filter-pill');
+    const rows        = document.querySelectorAll('#txTable tbody tr');
 
+    let activeFilter = 'all';
+    let searchTerm   = '';
 
-<!-- Include Admin Footer -->
+    function applyFilters() {
+        rows.forEach(row => {
+            const type    = row.dataset.type || '';
+            const text    = row.textContent.toLowerCase();
+            const typeMatch   = activeFilter === 'all' || type === activeFilter;
+            const searchMatch = !searchTerm || text.includes(searchTerm);
+            row.style.display = (typeMatch && searchMatch) ? '' : 'none';
+        });
+    }
+
+    filterBtns.forEach(btn => {
+        btn.addEventListener('click', () => {
+            filterBtns.forEach(b => b.classList.remove('active'));
+            btn.classList.add('active');
+            activeFilter = btn.dataset.filter;
+            applyFilters();
+        });
+    });
+
+    if (searchInput) {
+        searchInput.addEventListener('input', e => {
+            searchTerm = e.target.value.toLowerCase().trim();
+            applyFilters();
+        });
+    }
+})();
+</script>
+
 <?php include '../includes/admin_footer.php'; ?>
-
 </body>
-</html> 
+</html>

@@ -102,7 +102,9 @@ function checkRoleAuthorization() {
     }
     
     // Check if user is trying to access a section they don't have permission for
-    if (strpos($current_path, '/admin/') !== false && $role !== 'admin' && $role !== 'tenant_super_admin') {
+     // Admin folder is shared by admin, finance, sales, umrah, and staff roles
+     $allowed_admin_roles = ['admin', 'tenant_super_admin', 'finance', 'sales', 'umrah', 'staff'];
+    if (strpos($current_path, '/admin/') !== false && !in_array($role, $allowed_admin_roles)) {
         header("location: " . determineBasePath() . "access_denied.php");
         exit;
     }

@@ -13,10 +13,10 @@ require_once '../includes/language_helpers.php';
 // Enforce authentication for this page
 enforce_auth(['admin', 'finance']);
 
-
-
-// Check if user is logged in
-if (!isset($_SESSION['user_id'])  || $_SESSION['role'] !== 'admin') {
+// Check if user is logged in with proper role
+$allowed_roles = ['admin', 'finance'];
+if (!isset($_SESSION['user_id']) || !in_array($_SESSION['role'], $allowed_roles)) {
+    error_log("Unauthorized access attempt to dashboard: " . ($_SESSION['user_id'] ?? 'unknown') . " - Role: " . ($_SESSION['role'] ?? 'unknown') . " - IP: " . $_SERVER['REMOTE_ADDR']);
     header('Location: ../login.php');
     exit();
 }
@@ -24,9 +24,7 @@ require_once '../includes/db.php';
 
 // Initialize messages
 $success_message = isset($_SESSION['success_message']) ? $_SESSION['success_message'] : null;
-$error_message = isset($_SESSION['error_message']) ? $_SESSION['error_message'] : null;
-
-// Clear session messages after retrieving them
+$error_message   = isset($_SESSION['error_message'])   ? $_SESSION['error_message']   : null;
 unset($_SESSION['success_message']);
 unset($_SESSION['error_message']);
 
@@ -37,1543 +35,1233 @@ if (!empty($_GET)) {
 }
 
 // Get all clients
-$clientsQuery = "SELECT id, name, usd_balance, afs_balance FROM clients WHERE status = 'active' AND tenant_id = ? AND branch_id = ? ORDER BY name";
-$clientsStmt = $pdo->prepare($clientsQuery);
+$clientsStmt = $pdo->prepare("SELECT id, name, usd_balance, afs_balance FROM clients WHERE status = 'active' AND tenant_id = ? AND branch_id = ? ORDER BY name");
 $clientsStmt->execute([$tenant_id, $branch_id]);
 $clients = $clientsStmt->fetchAll(PDO::FETCH_ASSOC);
 
 // Get all suppliers
-$suppliersQuery = "SELECT id, name, balance, currency FROM suppliers WHERE status = 'active' AND tenant_id = ? AND branch_id = ? ORDER BY name";
-$suppliersStmt = $pdo->prepare($suppliersQuery);
+$suppliersStmt = $pdo->prepare("SELECT id, name, balance, currency FROM suppliers WHERE status = 'active' AND tenant_id = ? AND branch_id = ? ORDER BY name");
 $suppliersStmt->execute([$tenant_id, $branch_id]);
 $suppliers = $suppliersStmt->fetchAll(PDO::FETCH_ASSOC);
 
 // Pagination settings
 $items_per_page = 10;
-$current_page = isset($_GET['page']) ? max(1, intval($_GET['page'])) : 1;
-$offset = ($current_page - 1) * $items_per_page;
+$current_page   = isset($_GET['page']) ? max(1, intval($_GET['page'])) : 1;
+$offset         = ($current_page - 1) * $items_per_page;
 
-// Search functionality
-$search_query = isset($_GET['search']) ? trim($_GET['search']) : '';
+// Search
+$search_query     = isset($_GET['search']) ? trim($_GET['search']) : '';
 $search_condition = '';
-
 if (!empty($search_query)) {
-    $search_condition = " AND (
-        jp.jv_name LIKE ? OR
-        c.name LIKE ? OR
-        s.name LIKE ? OR
-        jp.receipt LIKE ?
-    )";
+    $search_condition = " AND (jp.jv_name LIKE ? OR c.name LIKE ? OR s.name LIKE ? OR jp.receipt LIKE ?)";
 }
 
-// Get total count
-$countQuery = "SELECT COUNT(*) as total FROM jv_payments jp
-              LEFT JOIN clients c ON jp.client_id = c.id
-              LEFT JOIN suppliers s ON jp.supplier_id = s.id
-              WHERE jp.tenant_id = ? AND jp.branch_id = ?" . $search_condition;
+// Total count
 $countParams = [$tenant_id, $branch_id];
 if (!empty($search_query)) {
-    $search_param = '%' . $search_query . '%';
-    $countParams = array_merge($countParams, array_fill(0, 4, $search_param));
+    $sp = '%' . $search_query . '%';
+    $countParams = array_merge($countParams, array_fill(0, 4, $sp));
 }
 try {
-    $countStmt = $pdo->prepare($countQuery);
+    $countStmt = $pdo->prepare("SELECT COUNT(*) as total FROM jv_payments jp LEFT JOIN clients c ON jp.client_id = c.id LEFT JOIN suppliers s ON jp.supplier_id = s.id WHERE jp.tenant_id = ? AND jp.branch_id = ?" . $search_condition);
     $countStmt->execute($countParams);
     $total_records = $countStmt->fetch(PDO::FETCH_ASSOC)['total'];
-    $total_pages = ceil($total_records / $items_per_page);
+    $total_pages   = ceil($total_records / $items_per_page);
 } catch (PDOException $e) {
     error_log("Error counting JV payments: " . $e->getMessage());
     $total_records = 0;
-    $total_pages = 1;
+    $total_pages   = 1;
 }
 
-// Get all JV payments with pagination
-$jvPaymentsQuery = "SELECT jp.*, u.name as created_by_name
-                    FROM jv_payments jp
-                    LEFT JOIN users u ON jp.created_by = u.id
-                    WHERE jp.tenant_id = ? AND jp.branch_id = ?
-                    ORDER BY jp.created_at DESC";
+// Fetch paginated payments
+$csPayments = [];
 try {
-    $jvPaymentsStmt = $pdo->prepare($jvPaymentsQuery);
-    $jvPaymentsStmt->execute([$tenant_id, $branch_id]);
-    $jvPayments = $jvPaymentsStmt->fetchAll(PDO::FETCH_ASSOC);
+    $params = [$tenant_id, $branch_id];
+    if (!empty($search_query)) {
+        $sp     = '%' . $search_query . '%';
+        $params = array_merge($params, array_fill(0, 4, $sp));
+    }
+    $params[] = $items_per_page;
+    $params[] = $offset;
+    $csStmt = $pdo->prepare("SELECT jp.*, c.name as client_name, s.name as supplier_name FROM jv_payments jp LEFT JOIN clients c ON jp.client_id = c.id LEFT JOIN suppliers s ON jp.supplier_id = s.id WHERE jp.tenant_id = ? AND jp.branch_id = ?" . $search_condition . " ORDER BY jp.created_at DESC LIMIT ? OFFSET ?");
+    $csStmt->execute($params);
+    $csPayments = $csStmt->fetchAll(PDO::FETCH_ASSOC);
 } catch (PDOException $e) {
-    error_log("Error fetching JV payments: " . $e->getMessage());
-    $jvPayments = [];
+    error_log("Error fetching client-supplier payments: " . $e->getMessage());
 }
-    
+
+$search_param_str = !empty($search_query) ? '&search=' . urlencode($search_query) : '';
 ?>
+<?php include '../includes/header.php'; ?>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Geist+Mono:wght@400;500&family=DM+Sans:wght@300;400;500;600&display=swap" rel="stylesheet">
 
+<style>
+/* ─── Design tokens ────────────────────────────────────── */
+:root {
+  --bg:          #fafaf9;
+  --surface:     #ffffff;
+  --border:      #e5e5e3;
+  --border-soft: #f0f0ee;
+  --text-primary:#1a1a18;
+  --text-muted:  #8c8c87;
+  --text-dim:    #b5b5b0;
+  --accent:      #1a1a18;
+  --accent-soft: #f4f4f2;
+  --green:       #16a34a;
+  --green-bg:    #f0fdf4;
+  --amber:       #b45309;
+  --amber-bg:    #fffbeb;
+  --blue:        #1d4ed8;
+  --blue-bg:     #eff6ff;
+  --red:         #dc2626;
+  --red-bg:      #fef2f2;
+  --radius:      6px;
+  --radius-lg:   10px;
+  --shadow:      0 1px 4px rgba(0,0,0,0.06), 0 0 0 1px rgba(0,0,0,0.04);
+  --font-sans:   'DM Sans', sans-serif;
+  --font-mono:   'Geist Mono', monospace;
+  --t:           150ms cubic-bezier(0.16, 1, 0.3, 1);
+}
 
+/* Scope everything under .jvp- to avoid fighting pcoded styles */
+.jvp-wrap {
+  font-family: var(--font-sans);
+  color: var(--text-primary);
+  font-size: 14px;
+  line-height: 1.5;
+  -webkit-font-smoothing: antialiased;
+  padding: 28px;
+}
 
+/* ─── Page Header ───────────────────────────────────────── */
+.jvp-page-head {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 16px;
+  margin-bottom: 24px;
+  padding-bottom: 20px;
+  border-bottom: 1px solid var(--border);
+  flex-wrap: wrap;
+}
+.jvp-breadcrumb {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 11.5px;
+  color: var(--text-muted);
+  margin-bottom: 5px;
+  font-family: var(--font-mono);
+  letter-spacing: .02em;
+}
+.jvp-breadcrumb svg { opacity: .4; }
+.jvp-title {
+  font-size: 21px;
+  font-weight: 600;
+  color: var(--text-primary);
+  letter-spacing: -.4px;
+  line-height: 1.2;
+  margin: 0;
+}
+.jvp-subtitle {
+  font-size: 13px;
+  color: var(--text-muted);
+  margin-top: 3px;
+}
+.jvp-head-right {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-shrink: 0;
+  margin-top: 2px;
+  flex-wrap: wrap;
+}
 
-    <?php include '../includes/header.php'; ?>
-    <link rel="stylesheet" href="../css/general/modal-styles.css">
-    <link rel="stylesheet" href="../css/jv_payment/styles.css">
+/* ─── Stat chips ────────────────────────────────────────── */
+.jvp-stat-chips {
+  display: flex;
+  align-items: center;
+  gap: 2px;
+  background: var(--border-soft);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  padding: 3px;
+}
+.jvp-stat-chip {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 5px 10px;
+  border-radius: 5px;
+  font-size: 12px;
+  color: var(--text-muted);
+  white-space: nowrap;
+  transition: background var(--t);
+}
+.jvp-stat-chip:hover { background: var(--surface); }
+.jvp-stat-chip strong { color: var(--text-primary); font-weight: 600; font-size: 13px; }
+.jvp-stat-sep { width: 1px; height: 18px; background: var(--border); }
 
-    <style>
-    /* Enhanced custom styles for better layout and design */
-    .page-header.card {
-        background: linear-gradient(135deg, #4099ff 0%, #2ed8b6 100%);
-        color: #ffffff;
-        border: none;
-        margin-bottom: 20px;
-        padding: 20px !important;
-        box-shadow: 0 4px 12px rgba(0,0,0,0.15);
-        border-radius: 10px;
-    }
+/* ─── Buttons ───────────────────────────────────────────── */
+.jvp-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 7px 14px;
+  font-family: var(--font-sans);
+  font-size: 13px;
+  font-weight: 500;
+  border-radius: var(--radius);
+  border: 1px solid transparent;
+  cursor: pointer;
+  transition: all var(--t);
+  text-decoration: none !important;
+  white-space: nowrap;
+  line-height: 1;
+  background: none;
+}
+.jvp-btn:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+.jvp-btn-primary { background: var(--text-primary) !important; color: #fff !important; border-color: var(--text-primary) !important; }
+.jvp-btn-primary:hover { background: #2d2d2b !important; color: #fff !important; }
+.jvp-btn-primary:active { background: #111110 !important; transform: translateY(1px); }
+.jvp-btn-ghost { background: transparent !important; color: var(--text-muted) !important; border-color: var(--border) !important; }
+.jvp-btn-ghost:hover { background: var(--accent-soft) !important; color: var(--text-primary) !important; border-color: #d0d0cd !important; }
+.jvp-btn-danger { background: var(--red) !important; color: #fff !important; border-color: var(--red) !important; }
+.jvp-btn-danger:hover { background: #b91c1c !important; color: #fff !important; }
 
-    .page-header.card .row {
-        display: flex;
-        justify-content: space-between;
-        align-items: center;
-    }
+.jvp-btn-icon {
+  padding: 6px;
+  border-radius: var(--radius);
+  background: transparent;
+  border: 1px solid transparent;
+  color: var(--text-muted);
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  transition: all var(--t);
+  line-height: 0;
+}
+.jvp-btn-icon:hover { background: var(--accent-soft); color: var(--text-primary); border-color: var(--border); }
+.jvp-btn-icon.danger:hover { background: var(--red-bg); color: var(--red); border-color: #fca5a5; }
 
-    .page-header.card h5 {
-        color: #ffffff;
-        margin: 0;
-        font-weight: 600;
-    }
+/* ─── Alerts ────────────────────────────────────────────── */
+.jvp-alert {
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+  padding: 11px 14px;
+  border-radius: var(--radius);
+  margin-bottom: 16px;
+  font-size: 13px;
+  animation: jvpSlideDown 300ms ease both;
+}
+.jvp-alert.success { background: var(--green-bg); border: 1px solid #bbf7d0; color: #166534; }
+.jvp-alert.error   { background: var(--red-bg);   border: 1px solid #fca5a5;  color: #7f1d1d; }
+.jvp-alert.info    { background: var(--blue-bg);   border: 1px solid #bfdbfe;  color: #1e3a8a; }
+.jvp-alert .dismiss { margin-left: auto; flex-shrink: 0; background: none; border: none; cursor: pointer; opacity: .6; line-height: 0; color: inherit; }
+.jvp-alert .dismiss:hover { opacity: 1; }
+@keyframes jvpSlideDown { from { opacity: 0; transform: translateY(-5px); } to { opacity: 1; transform: translateY(0); } }
 
-    .page-header.card .text-end {
-        text-align: right;
-    }
+/* ─── Toolbar ───────────────────────────────────────────── */
+.jvp-toolbar {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 14px;
+  flex-wrap: wrap;
+}
+.jvp-search-wrap { position: relative; flex: 1; max-width: 360px; }
+.jvp-search-wrap svg { position: absolute; left: 10px; top: 50%; transform: translateY(-50%); color: var(--text-dim); pointer-events: none; }
+.jvp-search-input {
+  width: 100%;
+  padding: 7px 10px 7px 34px;
+  font-family: var(--font-sans);
+  font-size: 13px;
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  background: var(--surface);
+  color: var(--text-primary);
+  transition: border var(--t), box-shadow var(--t);
+}
+.jvp-search-input::placeholder { color: var(--text-dim); }
+.jvp-search-input:focus { outline: none; border-color: #aaa; box-shadow: 0 0 0 3px rgba(26,26,24,.06); }
+.jvp-toolbar-right { display: flex; align-items: center; gap: 6px; margin-left: auto; }
 
-    .page-header.card .btn {
-        background: rgba(255,255,255,0.2);
-        color: #ffffff;
-        border: 1px solid rgba(255,255,255,0.3);
-        border-radius: 25px;
-        transition: all 0.3s ease;
-    }
+/* ─── Table card ────────────────────────────────────────── */
+.jvp-table-card {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-lg);
+  box-shadow: var(--shadow);
+  overflow: hidden;
+}
+.jvp-table-wrap { overflow-x: auto; }
+.jvp-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-family: var(--font-sans);
+}
+.jvp-table thead tr { background: var(--border-soft); border-bottom: 1px solid var(--border); }
+.jvp-table th {
+  padding: 9px 14px;
+  text-align: left;
+  font-size: 11px;
+  font-weight: 700;
+  color: var(--text-muted);
+  text-transform: uppercase;
+  letter-spacing: .06em;
+  white-space: nowrap;
+}
+.jvp-table th.right, .jvp-table td.right { text-align: right; }
+.jvp-table th.center, .jvp-table td.center { text-align: center; }
+.jvp-table tbody tr { border-bottom: 1px solid var(--border-soft); transition: background var(--t); }
+.jvp-table tbody tr:last-child { border-bottom: none; }
+.jvp-table tbody tr:hover { background: var(--border-soft); }
+.jvp-table td { padding: 11px 14px; font-size: 13px; vertical-align: middle; color: var(--text-primary); }
 
-    .page-header.card .btn:hover {
-        background: rgba(255,255,255,0.3);
-        border-color: rgba(255,255,255,0.5);
-        transform: translateY(-1px);
-    }
+/* Cell helpers */
+.jvp-date-main { font-size: 13px; font-weight: 500; }
+.jvp-date-sub  { font-size: 11px; color: var(--text-dim); font-family: var(--font-mono); margin-top: 1px; }
+.jvp-jv-label  { display: inline-flex; align-items: center; font-family: var(--font-mono); font-size: 12px; font-weight: 500; background: var(--accent-soft); color: var(--text-primary); border: 1px solid var(--border); padding: 3px 8px; border-radius: 4px; }
+.jvp-party-name { font-size: 13px; font-weight: 500; }
+.jvp-party-role { font-size: 11px; color: var(--text-dim); }
+.jvp-amount     { font-family: var(--font-mono); font-size: 13px; font-weight: 500; }
+.jvp-currency-badge { display: inline-block; font-family: var(--font-mono); font-size: 11px; font-weight: 700; padding: 2px 7px; border-radius: 3px; letter-spacing: .04em; }
+.jvp-currency-badge.usd { background: var(--blue-bg); color: var(--blue); border: 1px solid #bfdbfe; }
+.jvp-currency-badge.afs { background: var(--amber-bg); color: var(--amber); border: 1px solid #fde68a; }
+.jvp-receipt-code { font-family: var(--font-mono); font-size: 12px; color: var(--text-muted); background: var(--border-soft); padding: 2px 7px; border-radius: 3px; border: 1px solid var(--border); }
 
-    .card {
-        border-radius: 10px;
-        box-shadow: 0 2px 8px rgba(0,0,0,0.1);
-        transition: transform 0.2s ease-in-out, box-shadow 0.2s ease-in-out;
-        border: none;
-    }
+/* Row actions — fade in on hover */
+.jvp-row-actions { display: flex; align-items: center; gap: 4px; opacity: 0; transition: opacity var(--t); }
+.jvp-table tbody tr:hover .jvp-row-actions { opacity: 1; }
 
-    .card:hover {
-        transform: translateY(-2px);
-        box-shadow: 0 4px 16px rgba(0,0,0,0.15);
-    }
+/* ─── Table footer / pagination ─────────────────────────── */
+.jvp-table-footer {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 12px 16px;
+  border-top: 1px solid var(--border);
+  background: var(--border-soft);
+  flex-wrap: wrap;
+  gap: 10px;
+}
+.jvp-table-count { font-size: 12px; color: var(--text-muted); }
+.jvp-table-count strong { color: var(--text-primary); }
+.jvp-pagination { display: flex; align-items: center; gap: 3px; }
+.jvp-page-btn {
+  display: inline-flex; align-items: center; justify-content: center;
+  min-width: 30px; height: 30px; padding: 0 6px;
+  border-radius: var(--radius); border: 1px solid transparent;
+  font-size: 12.5px; font-family: var(--font-sans); font-weight: 500;
+  cursor: pointer; color: var(--text-muted); background: transparent;
+  transition: all var(--t); text-decoration: none;
+}
+.jvp-page-btn:hover { background: var(--surface); border-color: var(--border); color: var(--text-primary); }
+.jvp-page-btn.active { background: var(--text-primary); color: #fff; border-color: var(--text-primary); }
+.jvp-page-btn.disabled, .jvp-page-btn[disabled] { opacity: .35; cursor: default; pointer-events: none; }
+.jvp-page-ellipsis { color: var(--text-dim); font-size: 13px; padding: 0 2px; }
 
-    .card-header {
-        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-        color: white;
-        border-radius: 10px 10px 0 0;
-        padding: 1rem 1.5rem;
-        border: none;
-    }
+/* ─── Empty state ───────────────────────────────────────── */
+.jvp-empty {
+  padding: 56px 24px;
+  text-align: center;
+}
+.jvp-empty-icon {
+  width: 44px; height: 44px;
+  background: var(--border-soft); border: 1px solid var(--border); border-radius: 10px;
+  display: inline-flex; align-items: center; justify-content: center;
+  margin-bottom: 14px; color: var(--text-dim);
+}
+.jvp-empty-title { font-size: 14px; font-weight: 600; margin-bottom: 4px; }
+.jvp-empty-sub   { font-size: 13px; color: var(--text-muted); }
 
-    .card-header h5 {
-        margin: 0;
-        font-weight: 600;
-        display: flex;
-        align-items: center;
-    }
+/* ─── Modals ────────────────────────────────────────────── */
+.jvp-backdrop {
+  position: fixed; inset: 0;
+  background: rgba(0,0,0,.3); backdrop-filter: blur(2px);
+  z-index: 9999;
+  display: flex; align-items: center; justify-content: center;
+  padding: 24px;
+}
+.jvp-modal {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-lg);
+  box-shadow: 0 20px 60px rgba(0,0,0,.15), 0 0 0 1px rgba(0,0,0,.06);
+  width: 100%; max-width: 580px; max-height: 90vh; overflow-y: auto;
+  animation: jvpModalUp 200ms cubic-bezier(0.16, 1, 0.3, 1) both;
+}
+.jvp-modal.sm { max-width: 420px; }
+@keyframes jvpModalUp { from { opacity: 0; transform: translateY(12px) scale(.98); } to { opacity: 1; transform: translateY(0) scale(1); } }
+.jvp-modal-head {
+  display: flex; align-items: center; justify-content: space-between;
+  padding: 18px 22px 16px; border-bottom: 1px solid var(--border);
+}
+.jvp-modal-head h2 { font-size: 15px; font-weight: 600; letter-spacing: -.2px; margin: 0; }
+.jvp-modal-head p  { font-size: 12px; color: var(--text-muted); margin: 2px 0 0; }
+.jvp-modal-body { padding: 22px; }
+.jvp-modal-foot {
+  display: flex; align-items: center; justify-content: flex-end;
+  gap: 8px; padding: 14px 22px;
+  border-top: 1px solid var(--border); background: var(--border-soft);
+}
 
-    .progress {
-        border-radius: 15px;
-        overflow: hidden;
-        box-shadow: inset 0 1px 2px rgba(0,0,0,0.1);
-    }
+/* ─── Form ──────────────────────────────────────────────── */
+.jvp-form-grid   { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; }
+.jvp-form-full   { grid-template-columns: 1fr; }
+.jvp-form-three  { grid-template-columns: 1fr 1fr 1fr; }
+.jvp-field {}
+.jvp-field label {
+  display: block; font-size: 11.5px; font-weight: 700; color: var(--text-muted);
+  text-transform: uppercase; letter-spacing: .05em; margin-bottom: 5px;
+}
+.jvp-field input,
+.jvp-field select,
+.jvp-field textarea {
+  width: 100%; padding: 8px 11px;
+  font-family: var(--font-sans); font-size: 13.5px;
+  border: 1px solid var(--border); border-radius: var(--radius);
+  background: var(--surface); color: var(--text-primary);
+  transition: border var(--t), box-shadow var(--t);
+}
+.jvp-field input:focus,
+.jvp-field select:focus,
+.jvp-field textarea:focus { outline: none; border-color: #aaa; box-shadow: 0 0 0 3px rgba(26,26,24,.06); }
+.jvp-field input::placeholder { color: var(--text-dim); }
+.jvp-field textarea { resize: vertical; min-height: 62px; }
+.jvp-field-hint { font-size: 11.5px; color: var(--text-dim); margin-top: 4px; }
+.jvp-section-title {
+  font-size: 11px; font-weight: 700; text-transform: uppercase;
+  letter-spacing: .08em; color: var(--text-dim);
+  margin: 18px 0 12px; padding-bottom: 7px;
+  border-bottom: 1px solid var(--border-soft);
+}
 
-    .progress-bar {
-        transition: width 0.6s ease;
-    }
+/* ─── View modal detail cells ───────────────────────────── */
+.jvp-detail-hero {
+  background: var(--green-bg); border: 1px solid #bbf7d0;
+  border-radius: 8px; padding: 18px 20px; margin-bottom: 20px;
+  display: flex; align-items: center; justify-content: space-between;
+}
+.jvp-detail-hero .label { font-size: 11px; font-weight: 700; text-transform: uppercase; letter-spacing: .06em; color: #15803d; margin-bottom: 4px; }
+.jvp-detail-hero .amount { font-size: 26px; font-weight: 600; letter-spacing: -1px; color: #166534; font-family: var(--font-mono); }
+.jvp-party-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; margin-bottom: 20px; }
+.jvp-party-box { border: 1px solid var(--border); border-radius: 8px; padding: 14px; }
+.jvp-party-box .box-label { font-size: 11px; font-weight: 700; text-transform: uppercase; letter-spacing: .06em; color: var(--text-dim); margin-bottom: 6px; }
+.jvp-party-box .box-name  { font-size: 14px; font-weight: 600; }
+.jvp-party-box .box-sub   { font-size: 12px; color: var(--text-muted); margin-top: 2px; }
+.jvp-detail-grid { display: grid; grid-template-columns: repeat(3,1fr); gap: 12px; font-size: 13px; }
+.jvp-detail-cell .dc-label { font-size: 11px; color: var(--text-dim); margin-bottom: 3px; }
+.jvp-detail-cell .dc-value { font-weight: 500; }
 
-    .badge {
-        font-size: 0.85em;
-        padding: 0.5em 0.75em;
-        border-radius: 20px;
-        font-weight: 500;
-    }
+/* ─── Toast ─────────────────────────────────────────────── */
+.jvp-toast-wrap { position: fixed; bottom: 24px; right: 24px; z-index: 99999; display: flex; flex-direction: column; gap: 8px; }
+.jvp-toast {
+  display: flex; align-items: center; gap: 10px;
+  background: var(--text-primary); color: #fff;
+  padding: 11px 16px; border-radius: 8px; font-size: 13px;
+  box-shadow: 0 4px 20px rgba(0,0,0,.25);
+  font-family: var(--font-sans);
+  animation: jvpToastIn 250ms cubic-bezier(0.16,1,0.3,1) both;
+}
+.jvp-toast.success { background: #15803d; }
+.jvp-toast.error   { background: var(--red); }
+@keyframes jvpToastIn { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
 
-    .badge-success {
-        background-color: #28a745;
-    }
+/* ─── Responsive ────────────────────────────────────────── */
+@media (max-width: 768px) {
+  .jvp-wrap { padding: 16px; }
+  .jvp-page-head { flex-direction: column; }
+  .jvp-stat-chips { flex-wrap: wrap; }
+  .jvp-form-grid, .jvp-form-three { grid-template-columns: 1fr; }
+  .jvp-party-grid, .jvp-detail-grid { grid-template-columns: 1fr; }
+  .jvp-table-footer { flex-direction: column; align-items: flex-start; }
+}
+</style>
 
-    .badge-warning {
-        background-color: #ffc107;
-        color: #212529;
-    }
+<div class="pcoded-main-container">
+  <div class="pcoded-wrapper">
+    <div class="pcoded-content">
+      <div class="pcoded-inner-content">
+        <div class="main-body">
+          <div class="page-wrapper">
+            <div class="jvp-wrap">
 
-    .badge-info {
-        background-color: #17a2b8;
-    }
+              <!-- ── Flash messages ─────────────────────────── -->
+              <?php if ($success_message): ?>
+              <div class="jvp-alert success" id="jvpAlertSuccess">
+                <svg width="15" height="15" viewBox="0 0 16 16" fill="none"><circle cx="8" cy="8" r="7" stroke="currentColor" stroke-width="1.5"/><path d="M5 8l2 2 4-4" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/></svg>
+                <?php echo htmlspecialchars($success_message); ?>
+                <button class="dismiss" onclick="this.closest('.jvp-alert').remove()">
+                  <svg width="13" height="13" viewBox="0 0 13 13" fill="none"><path d="M10 3L3 10M3 3l7 7" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/></svg>
+                </button>
+              </div>
+              <?php endif; ?>
+              <?php if ($error_message): ?>
+              <div class="jvp-alert error" id="jvpAlertError">
+                <svg width="15" height="15" viewBox="0 0 16 16" fill="none"><circle cx="8" cy="8" r="7" stroke="currentColor" stroke-width="1.5"/><path d="M8 5v3M8 10.5v.5" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/></svg>
+                <?php echo htmlspecialchars($error_message); ?>
+                <button class="dismiss" onclick="this.closest('.jvp-alert').remove()">
+                  <svg width="13" height="13" viewBox="0 0 13 13" fill="none"><path d="M10 3L3 10M3 3l7 7" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/></svg>
+                </button>
+              </div>
+              <?php endif; ?>
 
-    .table-responsive {
-        border-radius: 10px;
-        overflow-x: auto;
-        overflow-y: hidden;
-    }
-
-    .table {
-        margin-bottom: 0;
-    }
-
-    .table thead th {
-        background-color: #f8f9fa;
-        border-bottom: 2px solid #dee2e6;
-        font-weight: 600;
-        color: #495057;
-        padding: 1rem;
-    }
-
-    .table tbody tr:hover {
-        background-color: #f1f3f4;
-    }
-
-    .table tbody td {
-        padding: 1rem;
-        vertical-align: middle;
-    }
-
-    .form-control {
-        border-radius: 8px;
-        border: 1px solid #ced4da;
-        transition: border-color 0.15s ease-in-out, box-shadow 0.15s ease-in-out;
-        padding: 0.75rem;
-    }
-
-    .form-control:focus {
-        border-color: #4099ff;
-        box-shadow: 0 0 0 0.2rem rgba(64, 153, 255, 0.25);
-    }
-
-    .btn-primary {
-        background: linear-gradient(135deg, #4099ff 0%, #2ed8b6 100%);
-        border: none;
-        border-radius: 25px;
-        padding: 0.75rem 2rem;
-        font-weight: 600;
-        transition: all 0.3s ease;
-    }
-
-    .btn-primary:hover {
-        transform: translateY(-1px);
-        box-shadow: 0 4px 12px rgba(64, 153, 255, 0.3);
-    }
-
-    .btn-secondary {
-        border-radius: 25px;
-        padding: 0.75rem 2rem;
-        font-weight: 600;
-        transition: all 0.3s ease;
-    }
-
-    .alert {
-        border-radius: 10px;
-        border: none;
-        padding: 1rem 1.5rem;
-    }
-
-    .alert-info {
-        background: linear-gradient(135deg, #d1ecf1 0%, #bee5eb 100%);
-        color: #0c5460;
-    }
-
-    .alert-success {
-        background: linear-gradient(135deg, #d4edda 0%, #c3e6cb 100%);
-        color: #155724;
-    }
-
-    .alert-danger {
-        background: linear-gradient(135deg, #f8d7da 0%, #f5c6cb 100%);
-        color: #721c24;
-    }
-
-    #estimated_cost {
-        color: #28a745;
-        font-weight: bold;
-    }
-
-    .h2 {
-        font-size: 2.5rem;
-    }
-
-    .h4 {
-        font-size: 1.5rem;
-    }
-
-    .h5 {
-        font-size: 1.25rem;
-    }
-
-    .h6 {
-        font-size: 1rem;
-    }
-    </style>
-
-    <div class="pcoded-main-container">
-        <div class="pcoded-wrapper">
-            <div class="pcoded-content">
-                <div class="pcoded-inner-content">
-                    <div class="main-body">
-                        <div class="page-wrapper">
-                            <!-- [ Main Content ] start -->
-                            <div class="row">
-                                <div class="col-sm-12">
-                                    <div class="page-header card">
-                                        <div class="row align-items-center">
-                                            <div class="col-md-6">
-                                                <h5 class="mb-0"><i class="feather icon-credit-card mr-2"></i><?php echo __('jv_payments_management'); ?></h5>
-                                                <p class="mb-0 mt-1" style="font-size: 14px; opacity: 0.9;"><?php echo __('client_to_supplier_payment_management'); ?></p>
-                                            </div>
-                                            <div class="col-md-6 text-end">
-                                                <button type="button" class="btn btn-outline-secondary btn-sm" data-toggle="modal" data-target="#addClientSupplierModal">
-                                                    <i class="feather icon-plus-circle mr-1"></i><?php echo __('add_new_payment'); ?>
-                                                </button>
-                                            </div>
-                                        </div>
-                                    </div>
-
-                                    <div class="row">
-                                        <!-- Current Usage Card -->
-                                        <div class="col-md-4">
-                                            <div class="card">
-                                                <div class="card-header">
-                                                    <h5><i class="feather icon-bar-chart-2 mr-2"></i><?php echo __('current_usage'); ?></h5>
-                                                </div>
-                                                <div class="card-body">
-                                                    <div class="text-center mb-4">
-                                                        <div class="h2 font-weight-bold text-primary">
-                                                            <i class="feather icon-activity mr-2"></i><?php echo isset($csPayments) ? count($csPayments) : 0; ?>
-                                                        </div>
-                                                        <p class="text-muted mb-0"><?php echo __('total_payments'); ?></p>
-                                                    </div>
-
-                                                    <hr class="my-4">
-
-                                                    <div class="row text-center">
-                                                        <div class="col-6">
-                                                            <div class="h4 mb-1 font-weight-bold text-info"><?php echo count($clients); ?></div>
-                                                            <small class="text-muted"><i class="feather icon-users mr-1"></i><?php echo __('active_clients'); ?></small>
-                                                        </div>
-                                                        <div class="col-6">
-                                                            <div class="h4 mb-1 font-weight-bold text-success"><?php echo count($suppliers); ?></div>
-                                                            <small class="text-muted"><i class="feather icon-shopping-bag mr-1"></i><?php echo __('active_suppliers'); ?></small>
-                                                        </div>
-                                                    </div>
-                                                </div>
-                                            </div>
-                                        </div>
-
-                                        <!-- Main Content -->
-                                        <div class="col-md-8">
-                                            <?php if ($success_message): ?>
-                                            <div class="alert alert-success alert-dismissible fade show" role="alert">
-                                                <?php echo $success_message; ?>
-                                                <button type="button" class="close" data-dismiss="alert" aria-label="Close">
-                                                    <span aria-hidden="true">&times;</span>
-                                                </button>
-                                            </div>
-                                            <?php endif; ?>
-
-                                            <?php if ($error_message): ?>
-                                            <div class="alert alert-danger alert-dismissible fade show" role="alert">
-                                                <?php echo $error_message; ?>
-                                                <button type="button" class="close" data-dismiss="alert" aria-label="Close">
-                                                    <span aria-hidden="true">&times;</span>
-                                                </button>
-                                            </div>
-                                            <?php endif; ?>
-
-                                            <!-- Client to Supplier Payment Content -->
-                                            <div class="card">
-                                                <div class="card-header">
-                                                    <h5><?= __('client_supplier_jv_guide') ?></h5>
-                                                </div>
-                                                <div class="card-body">
-                                                    <div class="alert alert-info">
-                                                        <h6><?= __('client_to_supplier_jv_payment') ?></h6>
-                                                        <p><?= __('this_process_allows_clients_to_pay_suppliers_directly_from_their_account_balance_without_using_a_main_account') ?></p>
-                                                        <ul>
-                                                            <li><?= __('client_balance_will_be_reduced_by_the_specified_amount') ?></li>
-                                                            <li><?= __('supplier_balance_will_be_increased_by_the_equivalent_amount') ?></li>
-                                                            <li><?= __('if_currencies_differ_the_exchange_rate_will_be_used_for_conversion') ?></li>
-                                                            <li><?= __('transactions_will_be_recorded_for_both_client_and_supplier') ?></li>
-                                                        </ul>
-                                                    </div>
-                                                    <div class="alert alert-warning">
-                                                        <h6><?= __('important_notes') ?></h6>
-                                                        <ul>
-                                                            <li><?= __('the_exchange_rate_is_critical_when_the_client_and_supplier_use_different_currencies') ?></li>
-                                                            <li><?= __('always_verify_client_and_supplier_details_before_confirming_the_transaction') ?></li>
-                                                        </ul>
-                                                    </div>
-                                                </div>
-                                            </div>
-
-                                            <!-- Modern Payment History Table -->
-                                            <div class="card">
-                                                <div class="card-header">
-                                                    <div class="d-flex justify-content-between align-items-center">
-                                                        <div>
-                                                            <h5 class="mb-0">
-                                                                <i class="feather icon-list mr-2"></i>
-                                                                <?= __('payment_history') ?>
-                                                            </h5>
-                                                            <small class="text-muted">View and manage all client-supplier payments</small>
-                                                        </div>
-                                                        <div class="table-actions">
-                                                            <button class="btn btn-outline-primary btn-sm" onclick="window.location.reload()">
-                                                                <i class="feather icon-refresh-cw mr-1"></i> Refresh
-                                                            </button>
-                                                        </div>
-                                                    </div>
-                                                </div>
-
-                                                 <!-- Search Bar -->
-                                                 <div class="card-body border-bottom pb-3">
-                                                     <form method="GET" class="form-inline">
-                                                         <div class="form-group mb-0 flex-grow-1">
-                                                             <input 
-                                                                 type="text" 
-                                                                 name="search" 
-                                                                 class="form-control w-100" 
-                                                                 placeholder="Search by JV name, client, supplier, receipt..." 
-                                                                 value="<?= htmlspecialchars($search_query) ?>"
-                                                             >
-                                                         </div>
-                                                         <button type="submit" class="btn btn-info ml-2">
-                                                             <i class="feather icon-search"></i> Search
-                                                         </button>
-                                                         <?php if (!empty($search_query)): ?>
-                                                             <a href="jv_payments.php" class="btn btn-secondary ml-2">
-                                                                 <i class="feather icon-x"></i> Clear
-                                                             </a>
-                                                         <?php endif; ?>
-                                                     </form>
-                                                 </div>
-
-                                                 <div class="card-body table-responsive">
-                                                     <table class="table table-hover" id="clientSupplierTable">
-                                                         <thead>
-                                                             <tr>
-                                                                 <th><i class="feather icon-calendar mr-1"></i><?= __('date') ?></th>
-                                                                 <th><i class="feather icon-file-text mr-1"></i><?= __('jv_name') ?></th>
-                                                                 <th><i class="feather icon-user mr-1"></i><?= __('client') ?></th>
-                                                                 <th><i class="feather icon-shopping-bag mr-1"></i><?= __('supplier') ?></th>
-                                                                 <th><i class="feather icon-dollar-sign mr-1"></i><?= __('amount') ?></th>
-                                                                 <th><i class="feather icon-globe mr-1"></i><?= __('currency') ?></th>
-                                                                 <th><i class="feather icon-hash mr-1"></i><?= __('receipt') ?></th>
-                                                                 <th><i class="feather icon-settings mr-1"></i><?= __('actions') ?></th>
-                                                             </tr>
-                                                         </thead>
-                                                         <tbody>
-                                                                <?php
-                                                                 // Get client-supplier JV payments with pagination and search
-                                                                 $csQuery = "SELECT jp.*, c.name as client_name, s.name as supplier_name
-                                                                             FROM jv_payments jp
-                                                                             LEFT JOIN clients c ON jp.client_id = c.id
-                                                                             LEFT JOIN suppliers s ON jp.supplier_id = s.id
-                                                                             WHERE jp.tenant_id = ? AND jp.branch_id = ?" . $search_condition . "
-                                                                             ORDER BY jp.created_at DESC
-                                                                             LIMIT ? OFFSET ?";
-                                                                 try {
-                                                                     $csStmt = $pdo->prepare($csQuery);
-                                                                     $params = [$tenant_id, $branch_id];
-                                                                     if (!empty($search_query)) {
-                                                                         $search_param = '%' . $search_query . '%';
-                                                                         $params = array_merge($params, array_fill(0, 4, $search_param));
-                                                                     }
-                                                                     $params[] = $items_per_page;
-                                                                     $params[] = $offset;
-                                                                     $csStmt->execute($params);
-                                                                     $csPayments = $csStmt->fetchAll(PDO::FETCH_ASSOC);
-                                                                 } catch (PDOException $e) {
-                                                                     error_log("Error fetching client-supplier payments: " . $e->getMessage());
-                                                                     $csPayments = [];
-                                                                 }
-
-                                                                if (empty($csPayments)): ?>
-                                                                    <tr>
-                                                                        <td colspan="8" class="text-center py-5">
-                                                                            <div class="empty-state">
-                                                                                <i class="feather icon-inbox display-4 text-muted mb-3"></i>
-                                                                                <h6 class="text-muted">No payments found</h6>
-                                                                                <p class="text-muted small">Start by adding your first client-supplier payment</p>
-                                                                            </div>
-                                                                        </td>
-                                                                    </tr>
-                                                                <?php else:
-                                                                    foreach ($csPayments as $payment): ?>
-                                                                    <tr>
-                                                                        <td class="text-muted">
-                                                                            <i class="feather icon-calendar mr-1"></i>
-                                                                            <?= date('M d, Y', strtotime($payment['created_at'])) ?>
-                                                                            <br>
-                                                                            <small class="text-muted"><?= date('H:i', strtotime($payment['created_at'])) ?></small>
-                                                                        </td>
-                                                                        <td>
-                                                                            <span class="badge-primary badge-pill px-3 py-1">
-                                                                                <?= htmlspecialchars($payment['jv_name']) ?>
-                                                                            </span>
-                                                                        </td>
-                                                                        <td>
-                                                                            <i class="feather icon-user text-primary mr-1"></i>
-                                                                            <?= htmlspecialchars($payment['client_name'] ?? 'N/A') ?>
-                                                                        </td>
-                                                                        <td>
-                                                                            <i class="feather icon-shopping-bag text-success mr-1"></i>
-                                                                            <?= htmlspecialchars($payment['supplier_name'] ?? 'N/A') ?>
-                                                                        </td>
-                                                                        <td class="text-success font-weight-bold h6">
-                                                                            <?= number_format($payment['total_amount'], 2) ?>
-                                                                        </td>
-                                                                        <td>
-                                                                            <span class="badge-<?= $payment['currency'] === 'USD' ? 'info' : 'warning' ?> badge-pill px-2 py-1">
-                                                                                <?= htmlspecialchars($payment['currency']) ?>
-                                                                            </span>
-                                                                        </td>
-                                                                        <td>
-                                                                            <code class="text-muted">
-                                                                                <?= htmlspecialchars($payment['receipt']) ?>
-                                                                            </code>
-                                                                        </td>
-                                                                        <td>
-                                                                             <div class="dropdown">
-                                                                                 <button class="btn btn-icon btn-outline-primary dropdown-toggle" type="button" data-toggle="dropdown">
-                                                                                     <i class="feather icon-more-horizontal"></i>
-                                                                                 </button>
-                                                                                 <div class="dropdown-menu dropdown-menu-right">
-                                                                                     <a class="dropdown-item" href="javascript:void(0)" onclick="document.querySelector('.view-cs-btn[data-id=\'' + '<?= htmlspecialchars($payment['id']) ?>' + '\']')?.click();">
-                                                                                         <i class="feather icon-eye mr-2"></i>View Details
-                                                                                     </a>
-                                                                                     <a class="dropdown-item" href="javascript:void(0)" onclick="document.querySelector('.edit-cs-btn[data-id=\'' + '<?= htmlspecialchars($payment['id']) ?>' + '\']')?.click();">
-                                                                                         <i class="feather icon-edit-2 mr-2"></i>Edit
-                                                                                     </a>
-                                                                                     <div class="dropdown-divider"></div>
-                                                                                     <a class="dropdown-item text-danger" href="javascript:void(0)" onclick="document.querySelector('.delete-cs-btn[data-id=\'' + '<?= htmlspecialchars($payment['id']) ?>' + '\']')?.click();">
-                                                                                         <i class="feather icon-trash-2 mr-2"></i>Delete
-                                                                                     </a>
-                                                                                 </div>
-                                                                             </div>
-                                                                             <!-- Hidden buttons to maintain existing functionality -->
-                                                                             <button style="display:none;" type="button" class="btn btn-info btn-sm view-cs-btn"
-                                                                                     data-id="<?= htmlspecialchars($payment['id']) ?>">
-                                                                                 <i class="feather icon-eye"></i>
-                                                                             </button>
-                                                                             <button style="display:none;" type="button" class="btn btn-warning btn-sm edit-cs-btn"
-                                                                                     data-id="<?= htmlspecialchars($payment['id']) ?>">
-                                                                                 <i class="feather icon-edit-2"></i>
-                                                                             </button>
-                                                                             <button style="display:none;" type="button" class="btn btn-danger btn-sm delete-cs-btn"
-                                                                                     data-id="<?= htmlspecialchars($payment['id']) ?>">
-                                                                                 <i class="feather icon-trash-2"></i>
-                                                                             </button>
-                                                                         </td>
-                                                                    </tr>
-                                                                <?php endforeach;
-                                                                endif; ?>
-                                                            </tbody>
-                                                        </table>
-                                                        </div>
-                                                        <!-- Pagination Controls -->
-                                                        <div class="row mt-4 p-3">
-                                                        <div class="col-md-12">
-                                                            <nav aria-label="Page navigation">
-                                                                <ul class="pagination justify-content-center">
-                                                                    <?php
-                                                                    // Helper function to build pagination links with search parameter
-                                                                    $search_param = !empty($search_query) ? '&search=' . urlencode($search_query) : '';
-                                                                    ?>
-                                                                    <?php if ($current_page > 1): ?>
-                                                                        <li class="page-item">
-                                                                            <a class="page-link" href="?page=1<?= $search_param ?>">First</a>
-                                                                        </li>
-                                                                        <li class="page-item">
-                                                                            <a class="page-link" href="?page=<?= $current_page - 1 ?><?= $search_param ?>">Previous</a>
-                                                                        </li>
-                                                                    <?php else: ?>
-                                                                        <li class="page-item disabled">
-                                                                            <span class="page-link">First</span>
-                                                                        </li>
-                                                                        <li class="page-item disabled">
-                                                                            <span class="page-link">Previous</span>
-                                                                        </li>
-                                                                    <?php endif; ?>
-
-                                                                    <?php
-                                                                    // Show page numbers
-                                                                    $start_page = max(1, $current_page - 2);
-                                                                    $end_page = min($total_pages, $current_page + 2);
-
-                                                                    if ($start_page > 1):
-                                                                    ?>
-                                                                        <li class="page-item disabled"><span class="page-link">...</span></li>
-                                                                    <?php endif; ?>
-
-                                                                    <?php for ($i = $start_page; $i <= $end_page; $i++): ?>
-                                                                        <?php if ($i == $current_page): ?>
-                                                                            <li class="page-item active"><span class="page-link"><?= $i ?></span></li>
-                                                                        <?php else: ?>
-                                                                            <li class="page-item"><a class="page-link" href="?page=<?= $i ?><?= $search_param ?>"><?= $i ?></a></li>
-                                                                        <?php endif; ?>
-                                                                    <?php endfor; ?>
-
-                                                                    <?php if ($end_page < $total_pages): ?>
-                                                                        <li class="page-item disabled"><span class="page-link">...</span></li>
-                                                                    <?php endif; ?>
-
-                                                                    <?php if ($current_page < $total_pages): ?>
-                                                                        <li class="page-item">
-                                                                            <a class="page-link" href="?page=<?= $current_page + 1 ?><?= $search_param ?>">Next</a>
-                                                                        </li>
-                                                                        <li class="page-item">
-                                                                            <a class="page-link" href="?page=<?= $total_pages ?><?= $search_param ?>">Last</a>
-                                                                        </li>
-                                                                    <?php else: ?>
-                                                                        <li class="page-item disabled">
-                                                                            <span class="page-link">Next</span>
-                                                                        </li>
-                                                                        <li class="page-item disabled">
-                                                                            <span class="page-link">Last</span>
-                                                                        </li>
-                                                                    <?php endif; ?>
-                                                                </ul>
-                                                            </nav>
-                                                        </div>
-                                                        </div>
-                                                        </div>
-                                                        </div>
-                                                        </div>
-                                                        </div>
-                                                        </div>
-                                                        </div>
-                        </div>
-                    </div>
+              <!-- ── Page Header ────────────────────────────── -->
+              <div class="jvp-page-head">
+                <div>
+                  <div class="jvp-breadcrumb">
+                    <span><?php echo __('finance'); ?></span>
+                    <svg width="10" height="10" viewBox="0 0 10 10" fill="none"><path d="M3.5 2l3 3-3 3" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round"/></svg>
+                    <span><?php echo __('jv_payments_management'); ?></span>
+                  </div>
+                  <h1 class="jvp-title"><?php echo __('jv_payments_management'); ?></h1>
+                  <p class="jvp-subtitle"><?php echo __('client_to_supplier_payment_management'); ?></p>
                 </div>
-            </div>
-        </div>
-    </div>
 
-    <!-- Delete JV Payment Modal -->
-    <div class="modal fade" id="deleteJvModal" tabindex="-1" role="dialog">
-        <div class="modal-dialog" role="document">
-            <div class="modal-content">
-                <div class="modal-header">
-                    <h5 class="modal-title"><?= __('delete_jv_payment') ?></h5>
-                    <button type="button" class="close" data-dismiss="modal" aria-label="Close">
-                        <span aria-hidden="true">&times;</span>
-                    </button>
+                <div class="jvp-head-right">
+                  <!-- Inline stat chips -->
+                  <div class="jvp-stat-chips">
+                    <div class="jvp-stat-chip">
+                      <svg width="13" height="13" viewBox="0 0 16 16" fill="none"><path d="M2 4h12M2 8h8M2 12h10" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/></svg>
+                      <strong><?php echo $total_records; ?></strong> <?php echo __('total_payments'); ?>
+                    </div>
+                    <div class="jvp-stat-sep"></div>
+                    <div class="jvp-stat-chip">
+                      <svg width="13" height="13" viewBox="0 0 16 16" fill="none"><circle cx="8" cy="7" r="3.5" stroke="currentColor" stroke-width="1.5"/><path d="M2.5 14c0-2.5 2.5-4 5.5-4s5.5 1.5 5.5 4" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/></svg>
+                      <strong><?php echo count($clients); ?></strong> <?php echo __('active_clients'); ?>
+                    </div>
+                    <div class="jvp-stat-sep"></div>
+                    <div class="jvp-stat-chip">
+                      <svg width="13" height="13" viewBox="0 0 16 16" fill="none"><rect x="2" y="3" width="12" height="11" rx="1.5" stroke="currentColor" stroke-width="1.5"/><path d="M5 3V2M11 3V2" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/></svg>
+                      <strong><?php echo count($suppliers); ?></strong> <?php echo __('active_suppliers'); ?>
+                    </div>
+                  </div>
+
+                  <button class="jvp-btn jvp-btn-ghost" onclick="window.location.reload()">
+                    <svg width="13" height="13" viewBox="0 0 16 16" fill="none"><path d="M13.5 8a5.5 5.5 0 1 1-1.2-3.4" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/><path d="M10 2l2.5 2.5L10 7" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/></svg>
+                    Refresh
+                  </button>
+
+                  <button class="jvp-btn jvp-btn-primary" onclick="jvpOpenModal('addModal')">
+                    <svg width="13" height="13" viewBox="0 0 16 16" fill="none"><path d="M8 3v10M3 8h10" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/></svg>
+                    <?php echo __('add_new_payment'); ?>
+                  </button>
                 </div>
-                <form method="POST" action="<?= $redirect_url ?>">
-                    <div class="modal-body">
-                        <input type="hidden" name="action" value="delete">
-                        <input type="hidden" name="id" id="delete_id">
-                        <p><?= __('are_you_sure_you_want_to_delete_this_jv_payment') ?></p>
-                    </div>
-                    <div class="modal-footer">
-                        <button type="button" class="btn btn-secondary" data-dismiss="modal"><?= __('cancel') ?></button>
-                        <button type="submit" class="btn btn-danger"><?= __('delete') ?></button>
-                    </div>
+              </div>
+
+              <!-- ── Toolbar / Search ───────────────────────── -->
+              <div class="jvp-toolbar">
+                <form method="GET" style="display:flex;align-items:center;gap:8px;flex:1;flex-wrap:wrap">
+                  <div class="jvp-search-wrap">
+                    <svg width="14" height="14" viewBox="0 0 16 16" fill="none"><circle cx="7" cy="7" r="5" stroke="currentColor" stroke-width="1.5"/><path d="M11 11l3 3" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/></svg>
+                    <input type="text" name="search" class="jvp-search-input"
+                           placeholder="<?php echo __('search_by_jv_name_client_supplier_receipt'); ?>…"
+                           value="<?php echo htmlspecialchars($search_query); ?>">
+                  </div>
+                  <button type="submit" class="jvp-btn jvp-btn-ghost">
+                    <svg width="13" height="13" viewBox="0 0 16 16" fill="none"><circle cx="7" cy="7" r="5" stroke="currentColor" stroke-width="1.5"/><path d="M11 11l3 3" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/></svg>
+                    <?php echo __('search'); ?>
+                  </button>
+                  <?php if (!empty($search_query)): ?>
+                  <a href="jv_payments.php" class="jvp-btn jvp-btn-ghost">
+                    <svg width="12" height="12" viewBox="0 0 13 13" fill="none"><path d="M10 3L3 10M3 3l7 7" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/></svg>
+                    Clear
+                  </a>
+                  <?php endif; ?>
                 </form>
-            </div>
-        </div>
-    </div>
+              </div>
 
-    
-    <!-- Modern Add Client-Supplier Payment Modal -->
-    <div class="modal fade" id="addClientSupplierModal" tabindex="-1" role="dialog">
-        <div class="modal-dialog modal-lg" role="document">
-            <div class="modal-content border-0 shadow-lg">
-                <div class="modal-header bg-gradient-primary text-white border-0">
-                    <div class="modal-title-section">
-                        <h5 class="modal-title mb-1">
-                            <i class="feather icon-plus-circle mr-2"></i>
-                            <?= __('add_client_to_supplier_payment') ?>
-                        </h5>
-                        <p class="modal-subtitle mb-0 small opacity-75">Create a direct payment between client and supplier</p>
-                    </div>
-                    <button type="button" class="close text-white" data-dismiss="modal" aria-label="Close">
-                        <span aria-hidden="true">&times;</span>
-                    </button>
+              <!-- ── Table ──────────────────────────────────── -->
+              <div class="jvp-table-card">
+                <div class="jvp-table-wrap">
+                  <table class="jvp-table">
+                    <thead>
+                      <tr>
+                        <th><?php echo __('date'); ?></th>
+                        <th><?php echo __('jv_name'); ?></th>
+                        <th><?php echo __('client'); ?></th>
+                        <th><?php echo __('supplier'); ?></th>
+                        <th class="right"><?php echo __('amount'); ?></th>
+                        <th class="center"><?php echo __('currency'); ?></th>
+                        <th><?php echo __('receipt'); ?></th>
+                        <th></th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      <?php if (empty($csPayments)): ?>
+                      <tr>
+                        <td colspan="8">
+                          <div class="jvp-empty">
+                            <div class="jvp-empty-icon">
+                              <svg width="20" height="20" viewBox="0 0 20 20" fill="none"><rect x="3" y="4" width="14" height="13" rx="2" stroke="currentColor" stroke-width="1.5"/><path d="M7 4V3a1 1 0 0 1 1-1h4a1 1 0 0 1 1 1v1M7 10h6M7 13h4" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/></svg>
+                            </div>
+                            <div class="jvp-empty-title">No payments found</div>
+                            <div class="jvp-empty-sub">
+                              <?php if (!empty($search_query)): ?>
+                                No results for "<?php echo htmlspecialchars($search_query); ?>"
+                              <?php else: ?>
+                                <?php echo __('add_new_payment'); ?> to get started
+                              <?php endif; ?>
+                            </div>
+                          </div>
+                        </td>
+                      </tr>
+                      <?php else: foreach ($csPayments as $payment):
+                        $currClass = strtolower($payment['currency']) === 'usd' ? 'usd' : 'afs';
+                      ?>
+                      <tr>
+                        <td>
+                          <div class="jvp-date-main"><?php echo date('M d, Y', strtotime($payment['created_at'])); ?></div>
+                          <div class="jvp-date-sub"><?php echo date('H:i', strtotime($payment['created_at'])); ?></div>
+                        </td>
+                        <td><span class="jvp-jv-label"><?php echo htmlspecialchars($payment['jv_name']); ?></span></td>
+                        <td>
+                          <div class="jvp-party-name"><?php echo htmlspecialchars($payment['client_name'] ?? '—'); ?></div>
+                          <div class="jvp-party-role"><?php echo __('client'); ?></div>
+                        </td>
+                        <td>
+                          <div class="jvp-party-name"><?php echo htmlspecialchars($payment['supplier_name'] ?? '—'); ?></div>
+                          <div class="jvp-party-role"><?php echo __('supplier'); ?></div>
+                        </td>
+                        <td class="right"><span class="jvp-amount"><?php echo number_format($payment['total_amount'], 2); ?></span></td>
+                        <td class="center"><span class="jvp-currency-badge <?php echo $currClass; ?>"><?php echo htmlspecialchars($payment['currency']); ?></span></td>
+                        <td><span class="jvp-receipt-code"><?php echo htmlspecialchars($payment['receipt']); ?></span></td>
+                        <td>
+                          <div class="jvp-row-actions">
+                            <!-- View -->
+                            <button class="jvp-btn-icon view-cs-btn"
+                                    data-id="<?php echo $payment['id']; ?>"
+                                    title="<?php echo __('view'); ?>">
+                              <svg width="14" height="14" viewBox="0 0 16 16" fill="none"><ellipse cx="8" cy="8" rx="6" ry="4" stroke="currentColor" stroke-width="1.5"/><circle cx="8" cy="8" r="1.5" fill="currentColor"/></svg>
+                            </button>
+                            <!-- Edit -->
+                            <button class="jvp-btn-icon edit-cs-btn"
+                                    data-id="<?php echo $payment['id']; ?>"
+                                    title="<?php echo __('edit'); ?>">
+                              <svg width="14" height="14" viewBox="0 0 16 16" fill="none"><path d="M11 2.5l2.5 2.5L5 13.5H2.5V11L11 2.5z" stroke="currentColor" stroke-width="1.5" stroke-linejoin="round"/></svg>
+                            </button>
+                            <!-- Delete -->
+                            <button class="jvp-btn-icon danger delete-cs-btn"
+                                    data-id="<?php echo $payment['id']; ?>"
+                                    title="<?php echo __('delete'); ?>">
+                              <svg width="14" height="14" viewBox="0 0 16 16" fill="none"><path d="M3 5h10M6 5V3.5h4V5M6 8v4M10 8v4" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/><rect x="3" y="5" width="10" height="8" rx="1.5" stroke="currentColor" stroke-width="1.5"/></svg>
+                            </button>
+                          </div>
+                        </td>
+                      </tr>
+                      <?php endforeach; endif; ?>
+                    </tbody>
+                  </table>
                 </div>
-                <form method="POST" action="process_client_supplier_jv.php" id="clientSupplierForm">
-                    <div class="modal-body p-4">
-                        <!-- JV Name Section -->
-                        <div class="form-section mb-4">
-                            <h6 class="section-title">
-                                <i class="feather icon-file-text mr-2"></i>
-                                Payment Information
-                            </h6>
-                            <div class="form-group">
-                                <label for="jv_name" class="form-label">
-                                    <i class="feather icon-tag mr-1"></i>
-                                    <?= __('jv_name') ?>
-                                </label>
-                                <input type="text" class="form-control form-control-lg" id="jv_name" name="jv_name"
-                                       value="Client-Supplier Payment" required
-                                       placeholder="Enter payment name">
-                                <small class="form-text text-muted">A descriptive name for this payment transaction</small>
-                            </div>
-                        </div>
 
-                        <!-- Parties Section -->
-                        <div class="form-section mb-4">
-                            <h6 class="section-title">
-                                <i class="feather icon-users mr-2"></i>
-                                Transaction Parties
-                            </h6>
-                            <div class="row">
-                                <div class="col-md-6">
-                                    <div class="form-group">
-                                        <label for="client_id" class="form-label">
-                                            <i class="feather icon-user mr-1"></i>
-                                            <?= __('client') ?>
-                                        </label>
-                                        <select class="form-control form-control-lg" id="client_id" name="client_id" required>
-                                            <option value=""><?= __('select_client') ?></option>
-                                            <?php foreach ($clients as $client): ?>
-                                                <option value="<?= $client['id'] ?>" data-usd-balance="<?= $client['usd_balance'] ?>" data-afs-balance="<?= $client['afs_balance'] ?>">
-                                                    <div class="d-flex justify-content-between align-items-center">
-                                                        <span><?= htmlspecialchars($client['name']) ?></span>
-                                                        <small class="text-muted">
-                                                            USD: <?= number_format($client['usd_balance'], 2) ?>,
-                                                            AFS: <?= number_format($client['afs_balance'], 2) ?>
-                                                        </small>
-                                                    </div>
-                                                </option>
-                                            <?php endforeach; ?>
-                                        </select>
-                                        <small class="form-text text-muted">Client account to debit from</small>
-                                    </div>
-                                </div>
-                                <div class="col-md-6">
-                                    <div class="form-group">
-                                        <label for="supplier_id" class="form-label">
-                                            <i class="feather icon-shopping-bag mr-1"></i>
-                                            <?= __('supplier') ?>
-                                        </label>
-                                        <select class="form-control form-control-lg" id="supplier_id" name="supplier_id" required>
-                                            <option value=""><?= __('select_supplier') ?></option>
-                                            <?php foreach ($suppliers as $supplier): ?>
-                                                <option value="<?= $supplier['id'] ?>" data-currency="<?= $supplier['currency'] ?>" data-balance="<?= $supplier['balance'] ?>">
-                                                    <div class="d-flex justify-content-between align-items-center">
-                                                        <span><?= htmlspecialchars($supplier['name']) ?></span>
-                                                        <small class="text-muted">
-                                                            <?= number_format($supplier['balance'], 2) ?> <?= $supplier['currency'] ?>
-                                                        </small>
-                                                    </div>
-                                                </option>
-                                            <?php endforeach; ?>
-                                        </select>
-                                        <small class="form-text text-muted">Supplier account to credit to</small>
-                                    </div>
-                                </div>
-                            </div>
-                        </div>
+                <!-- Pagination footer -->
+                <div class="jvp-table-footer">
+                  <p class="jvp-table-count">
+                    <?php
+                    $from = $total_records > 0 ? $offset + 1 : 0;
+                    $to   = min($offset + $items_per_page, $total_records);
+                    ?>
+                    Showing <strong><?php echo $from; ?>–<?php echo $to; ?></strong> of <strong><?php echo $total_records; ?></strong> payments
+                  </p>
+                  <div class="jvp-pagination">
+                    <!-- Prev -->
+                    <?php if ($current_page > 1): ?>
+                      <a href="?page=1<?php echo $search_param_str; ?>" class="jvp-page-btn">
+                        <svg width="12" height="12" viewBox="0 0 12 12" fill="none"><path d="M9 2L5 6l4 4" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/></svg>
+                        <svg width="12" height="12" viewBox="0 0 12 12" fill="none"><path d="M7 2L3 6l4 4" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/></svg>
+                      </a>
+                      <a href="?page=<?php echo $current_page - 1; ?><?php echo $search_param_str; ?>" class="jvp-page-btn">
+                        <svg width="12" height="12" viewBox="0 0 12 12" fill="none"><path d="M8 2L4 6l4 4" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/></svg>
+                      </a>
+                    <?php else: ?>
+                      <span class="jvp-page-btn disabled"><svg width="12" height="12" viewBox="0 0 12 12" fill="none"><path d="M8 2L4 6l4 4" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/></svg></span>
+                    <?php endif; ?>
 
-                        <!-- Amount & Currency Section -->
-                        <div class="form-section mb-4">
-                            <h6 class="section-title">
-                                <i class="feather icon-dollar-sign mr-2"></i>
-                                Amount & Currency
-                            </h6>
-                            <div class="row">
-                                <div class="col-md-4">
-                                    <div class="form-group">
-                                        <label for="currency" class="form-label">
-                                            <i class="feather icon-globe mr-1"></i>
-                                            <?= __('currency') ?>
-                                        </label>
-                                        <select class="form-control form-control-lg" id="currency" name="currency" required>
-                                            <option value="USD">USD - US Dollar</option>
-                                            <option value="AFS">AFS - Afghani</option>
-                                        </select>
-                                    </div>
-                                </div>
-                                <div class="col-md-4">
-                                    <div class="form-group">
-                                        <label for="total_amount" class="form-label">
-                                            <i class="feather icon-credit-card mr-1"></i>
-                                            <?= __('amount') ?>
-                                        </label>
-                                        <input type="number" step="0.01" class="form-control form-control-lg"
-                                               id="total_amount" name="total_amount" required
-                                               placeholder="0.00">
-                                    </div>
-                                </div>
-                                <div class="col-md-4">
-                                    <div class="form-group">
-                                        <label for="exchange_rate" class="form-label">
-                                            <i class="feather icon-trending-up mr-1"></i>
-                                            <?= __('exchange_rate') ?>
-                                        </label>
-                                        <input type="number" step="0.00001" class="form-control form-control-lg"
-                                               id="exchange_rate" name="exchange_rate"
-                                               placeholder="1.00000">
-                                        <small class="form-text text-muted">Required if currencies differ</small>
-                                    </div>
-                                </div>
-                            </div>
-                        </div>
+                    <!-- Page numbers -->
+                    <?php
+                    $start_page = max(1, $current_page - 2);
+                    $end_page   = min($total_pages, $current_page + 2);
+                    if ($start_page > 1) echo '<span class="jvp-page-ellipsis">…</span>';
+                    for ($i = $start_page; $i <= $end_page; $i++):
+                    ?>
+                      <a href="?page=<?php echo $i; ?><?php echo $search_param_str; ?>"
+                         class="jvp-page-btn <?php echo $i == $current_page ? 'active' : ''; ?>">
+                        <?php echo $i; ?>
+                      </a>
+                    <?php endfor;
+                    if ($end_page < $total_pages) echo '<span class="jvp-page-ellipsis">…</span>';
+                    ?>
 
-                        <!-- Additional Details Section -->
-                        <div class="form-section mb-4">
-                            <h6 class="section-title">
-                                <i class="feather icon-info mr-2"></i>
-                                Additional Details
-                            </h6>
-                            <div class="row">
-                                <div class="col-md-6">
-                                    <div class="form-group">
-                                        <label for="receipt" class="form-label">
-                                            <i class="feather icon-hash mr-1"></i>
-                                            <?= __('receipt_number') ?>
-                                        </label>
-                                        <input type="text" class="form-control form-control-lg" id="receipt" name="receipt" required
-                                               placeholder="Enter receipt number">
-                                    </div>
-                                </div>
-                                <div class="col-md-6">
-                                    <div class="form-group">
-                                        <label for="remarks" class="form-label">
-                                            <i class="feather icon-message-square mr-1"></i>
-                                            <?= __('remarks') ?>
-                                        </label>
-                                        <textarea class="form-control form-control-lg" id="remarks" name="remarks"
-                                                  rows="2" placeholder="Optional notes or remarks"></textarea>
-                                    </div>
-                                </div>
-                            </div>
-                        </div>
-
-                        <!-- Balance Preview -->
-                        <div class="balance-preview bg-light rounded p-3 mb-3" id="balancePreview" style="display: none;">
-                            <h6 class="mb-3">
-                                <i class="feather icon-eye mr-2"></i>
-                                Transaction Preview
-                            </h6>
-                            <div class="row text-center">
-                                <div class="col-md-6">
-                                    <div class="balance-item">
-                                        <small class="text-muted d-block">Client Balance After</small>
-                                        <span class="client-balance-preview font-weight-bold text-primary">-</span>
-                                    </div>
-                                </div>
-                                <div class="col-md-6">
-                                    <div class="balance-item">
-                                        <small class="text-muted d-block">Supplier Balance After</small>
-                                        <span class="supplier-balance-preview font-weight-bold text-success">-</span>
-                                    </div>
-                                </div>
-                            </div>
-                        </div>
-                    </div>
-                    <div class="modal-footer border-0 bg-light">
-                        <button type="button" class="btn btn-outline-secondary btn-lg" data-dismiss="modal">
-                            <i class="feather icon-x mr-2"></i>
-                            <?= __('cancel') ?>
-                        </button>
-                        <button type="submit" class="btn btn-primary btn-lg">
-                            <i class="feather icon-check-circle mr-2"></i>
-                            <?= __('process_payment') ?>
-                        </button>
-                    </div>
-                </form>
-            </div>
-        </div>
-    </div>
-    
-    <!-- Delete Client-Supplier Payment Modal -->
-    <div class="modal fade" id="deleteCsModal" tabindex="-1" role="dialog">
-        <div class="modal-dialog" role="document">
-            <div class="modal-content">
-                <div class="modal-header">
-                    <h5 class="modal-title"><?= __('delete_client_supplier_payment') ?></h5>
-                    <button type="button" class="close" data-dismiss="modal" aria-label="Close">
-                        <span aria-hidden="true">&times;</span>
-                    </button>
+                    <!-- Next -->
+                    <?php if ($current_page < $total_pages): ?>
+                      <a href="?page=<?php echo $current_page + 1; ?><?php echo $search_param_str; ?>" class="jvp-page-btn">
+                        <svg width="12" height="12" viewBox="0 0 12 12" fill="none"><path d="M4 2l4 4-4 4" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/></svg>
+                      </a>
+                      <a href="?page=<?php echo $total_pages; ?><?php echo $search_param_str; ?>" class="jvp-page-btn">
+                        <svg width="12" height="12" viewBox="0 0 12 12" fill="none"><path d="M3 2l4 4-4 4" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/></svg>
+                        <svg width="12" height="12" viewBox="0 0 12 12" fill="none"><path d="M5 2l4 4-4 4" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/></svg>
+                      </a>
+                    <?php else: ?>
+                      <span class="jvp-page-btn disabled"><svg width="12" height="12" viewBox="0 0 12 12" fill="none"><path d="M4 2l4 4-4 4" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/></svg></span>
+                    <?php endif; ?>
+                  </div>
                 </div>
-                <form method="POST" action="process_client_supplier_jv_delete.php">
-                    <div class="modal-body">
-                        <input type="hidden" name="action" value="delete">
-                        <input type="hidden" name="id" id="delete_cs_id">
-                        <p><?= __('are_you_sure_you_want_to_delete_this_payment') ?> <?= __('this_action_will') ?>:</p>
-                        <ul>
-                            <li><?= __('return_funds_to_the_client_account') ?></li>
-                            <li><?= __('deduct_the_amount_from_the_supplier_balance') ?></li>
-                            <li><?= __('delete_all_associated_transaction_records') ?></li>
-                        </ul>
-                        <p class="text-danger"><strong><?= __('this_action_cannot_be_undone') ?></strong></p>
-                    </div>
-                    <div class="modal-footer">
-                        <button type="button" class="btn btn-secondary" data-dismiss="modal"><?= __('cancel') ?></button>
-                        <button type="submit" class="btn btn-danger"><?= __('delete') ?></button>
-                    </div>
-                </form>
-            </div>
+              </div><!-- /table-card -->
+
+            </div><!-- /jvp-wrap -->
+          </div>
         </div>
+      </div>
     </div>
-    
-
-                            <!-- Required Js -->
-    <script src="../assets/js/vendor-all.min.js"></script>
-    <script src="../assets/plugins/bootstrap/js/bootstrap.min.js"></script>
-    <script src="../assets/js/pcoded.min.js"></script>
-    
-    <!-- DataTables removed - using server-side PHP filtering -->
+  </div>
+</div>
 
 
-    <script>
-    // Button Protection System for JV Payments
-    class JvButtonProtection {
-        constructor() {
-            this.init();
-        }
+<!-- ═══════════════════════════════════════════════════════
+     ADD PAYMENT MODAL
+════════════════════════════════════════════════════════ -->
+<div class="jvp-backdrop" id="addModal" style="display:none" onclick="jvpBackdropClick(event,'addModal')">
+  <div class="jvp-modal">
+    <div class="jvp-modal-head">
+      <div>
+        <h2><?php echo __('add_client_to_supplier_payment'); ?></h2>
+        <p><?php echo __('create_a_direct_payment_between_client_and_supplier'); ?></p>
+      </div>
+      <button class="jvp-btn-icon" onclick="jvpCloseModal('addModal')">
+        <svg width="14" height="14" viewBox="0 0 14 14" fill="none"><path d="M11 3L3 11M3 3l8 8" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/></svg>
+      </button>
+    </div>
+    <form method="POST" action="process_client_supplier_jv.php" id="clientSupplierForm">
+      <div class="jvp-modal-body">
 
-        init() {
-            this.protectFormButtons();
-            this.protectDeleteButtons();
-        }
+        <div class="jvp-form-grid jvp-form-full" style="grid-template-columns:1fr">
+          <div class="jvp-field">
+            <label><?php echo __('jv_name'); ?></label>
+            <input type="text" name="jv_name" value="Client-Supplier Payment" required placeholder="Payment name">
+          </div>
+        </div>
 
-        protectButton(button, loadingText = 'Processing...', duration = 2000) {
-            if (button && !button.disabled) {
-                const originalText = button.innerHTML;
-                button.disabled = true;
-                button.innerHTML = `<i class="fas fa-spinner fa-spin mr-1"></i>${loadingText}`;
+        <div class="jvp-section-title"><?php echo __('transaction_parties'); ?></div>
+        <div class="jvp-form-grid">
+          <div class="jvp-field">
+            <label><?php echo __('client'); ?></label>
+            <select name="client_id" id="client_id" required>
+              <option value=""><?php echo __('select_client'); ?></option>
+              <?php foreach ($clients as $client): ?>
+              <option value="<?php echo $client['id']; ?>"
+                      data-usd-balance="<?php echo $client['usd_balance']; ?>"
+                      data-afs-balance="<?php echo $client['afs_balance']; ?>">
+                <?php echo htmlspecialchars($client['name']); ?>
+                (USD: <?php echo number_format($client['usd_balance'], 0); ?> / AFS: <?php echo number_format($client['afs_balance'], 0); ?>)
+              </option>
+              <?php endforeach; ?>
+            </select>
+          </div>
+          <div class="jvp-field">
+            <label><?php echo __('supplier'); ?></label>
+            <select name="supplier_id" id="supplier_id" required>
+              <option value=""><?php echo __('select_supplier'); ?></option>
+              <?php foreach ($suppliers as $supplier): ?>
+              <option value="<?php echo $supplier['id']; ?>"
+                      data-currency="<?php echo $supplier['currency']; ?>"
+                      data-balance="<?php echo $supplier['balance']; ?>">
+                <?php echo htmlspecialchars($supplier['name']); ?>
+                (<?php echo number_format($supplier['balance'], 0); ?> <?php echo $supplier['currency']; ?>)
+              </option>
+              <?php endforeach; ?>
+            </select>
+          </div>
+        </div>
 
-                setTimeout(() => {
-                    button.disabled = false;
-                    button.innerHTML = originalText;
-                }, duration);
-            }
-        }
+        <div class="jvp-section-title"><?php echo __('amount_currency'); ?></div>
+        <div class="jvp-form-grid jvp-form-three" style="grid-template-columns:1fr 1fr 1fr">
+          <div class="jvp-field">
+            <label><?php echo __('currency'); ?></label>
+            <select name="currency" id="currency">
+              <option value="USD">USD – US Dollar</option>
+              <option value="AFS">AFS – Afghani</option>
+            </select>
+          </div>
+          <div class="jvp-field">
+            <label><?php echo __('amount'); ?></label>
+            <input type="number" step="0.01" name="total_amount" id="total_amount" required placeholder="0.00">
+          </div>
+          <div class="jvp-field">
+            <label><?php echo __('exchange_rate'); ?></label>
+            <input type="number" step="0.00001" name="exchange_rate" id="exchange_rate" placeholder="1.00000">
+            <p class="jvp-field-hint"><?php echo __('required_if_currencies_differ'); ?></p>
+          </div>
+        </div>
 
-        protectFormButtons() {
-            // Protect form submit buttons
-            const formButtons = [
-                { formId: '#clientSupplierForm', buttonSelector: 'button[type="submit"]', text: 'Processing Payment...' },
-                { formId: '#editClientSupplierForm', buttonSelector: 'button[type="submit"]', text: 'Updating Payment...' }
-            ];
+        <div class="jvp-section-title"><?php echo __('additional_details'); ?></div>
+        <div class="jvp-form-grid">
+          <div class="jvp-field">
+            <label><?php echo __('receipt_number'); ?></label>
+            <input type="text" name="receipt" id="receipt" required placeholder="RCP-XXXXX">
+          </div>
+          <div class="jvp-field">
+            <label><?php echo __('remarks'); ?></label>
+            <textarea name="remarks" id="remarks" placeholder="<?php echo __('optional_notes'); ?>…"></textarea>
+          </div>
+        </div>
 
-            formButtons.forEach(({ formId, buttonSelector, text }) => {
-                const form = document.querySelector(formId);
-                if (form) {
-                    const button = form.querySelector(buttonSelector);
-                    if (button) {
-                        form.addEventListener('submit', () => {
-                            this.protectButton(button, text, 3000);
-                        });
-                    }
-                }
-            });
-        }
+      </div>
+      <div class="jvp-modal-foot">
+        <button type="button" class="jvp-btn jvp-btn-ghost" onclick="jvpCloseModal('addModal')"><?php echo __('cancel'); ?></button>
+        <button type="submit" class="jvp-btn jvp-btn-primary" id="addSubmitBtn">
+          <svg width="13" height="13" viewBox="0 0 16 16" fill="none"><path d="M13 4L6.5 11 3 7.5" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg>
+          <?php echo __('process_payment'); ?>
+        </button>
+      </div>
+    </form>
+  </div>
+</div>
 
-        protectDeleteButtons() {
-            // Protect delete buttons
-            document.addEventListener('click', (e) => {
-                if (e.target.closest('.delete-cs-btn')) {
-                    const button = e.target.closest('button');
-                    if (button) {
-                        this.protectButton(button, 'Deleting...', 2000);
-                    }
-                }
-            });
-        }
-    }
 
-    // Initialize button protection
-    const jvButtonProtection = new JvButtonProtection();
+<!-- ═══════════════════════════════════════════════════════
+     VIEW MODAL
+════════════════════════════════════════════════════════ -->
+<div class="jvp-backdrop" id="viewModal" style="display:none" onclick="jvpBackdropClick(event,'viewModal')">
+  <div class="jvp-modal">
+    <div class="jvp-modal-head">
+      <div>
+        <h2 id="viewModalTitle"><?php echo __('payment_details'); ?></h2>
+        <p id="viewModalSubtitle" style="font-family:var(--font-mono);font-size:11px"></p>
+      </div>
+      <button class="jvp-btn-icon" onclick="jvpCloseModal('viewModal')">
+        <svg width="14" height="14" viewBox="0 0 14 14" fill="none"><path d="M11 3L3 11M3 3l8 8" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/></svg>
+      </button>
+    </div>
+    <div class="jvp-modal-body" id="viewModalBody">
+      <div style="text-align:center;padding:32px 0;color:var(--text-dim)">
+        <svg width="24" height="24" viewBox="0 0 24 24" fill="none" style="animation:spin 1s linear infinite;display:inline-block"><circle cx="12" cy="12" r="10" stroke="currentColor" stroke-width="2" stroke-dasharray="40" stroke-dashoffset="10"/></svg>
+        <p style="margin-top:10px;font-size:13px"><?php echo __('loading_details'); ?>…</p>
+      </div>
+    </div>
+    <div class="jvp-modal-foot">
+      <button class="jvp-btn jvp-btn-ghost" onclick="jvpCloseModal('viewModal')"><?php echo __('close'); ?></button>
+      <button class="jvp-btn jvp-btn-ghost" id="viewEditBtn" style="display:none">
+        <svg width="13" height="13" viewBox="0 0 16 16" fill="none"><path d="M11 2.5l2.5 2.5L5 13.5H2.5V11L11 2.5z" stroke="currentColor" stroke-width="1.5" stroke-linejoin="round"/></svg>
+        <?php echo __('edit'); ?>
+      </button>
+    </div>
+  </div>
+</div>
 
-    $(document).ready(function() {
-        // DataTables removed - using server-side PHP filtering instead
-        
-        // Add click handler for table rows on small screens
-        $('#clientSupplierTable tbody').on('click', 'tr', function(e) {
-            // Only trigger if we're in responsive mode and not clicking on a button
-            if ($(window).width() < 768 && !$(e.target).closest('button').length) {
-                e.preventDefault();
-                e.stopPropagation();
-                    
-                    // Find the ID from the row's view button
-                    const viewBtn = $(this).find('.view-cs-btn');
-                    if (viewBtn.length) {
-                        const paymentId = viewBtn.data('id');
-                        // Trigger the view button click
-                        $('.view-cs-btn[data-id="' + paymentId + '"]').trigger('click');
-                    }
-                }
-        });
 
-        // Enhance View Client-Supplier Payment
-        $('.view-cs-btn').off('click').on('click', function() {
-            const jvId = $(this).data('id');
-            // Show modal with loading spinner
-            $('#viewCsModal').modal('show');
+<!-- ═══════════════════════════════════════════════════════
+     EDIT MODAL
+════════════════════════════════════════════════════════ -->
+<div class="jvp-backdrop" id="editModal" style="display:none" onclick="jvpBackdropClick(event,'editModal')">
+  <div class="jvp-modal">
+    <div class="jvp-modal-head">
+      <div>
+        <h2><?php echo __('edit_client_supplier_payment'); ?></h2>
+        <p id="editModalSubtitle" style="font-family:var(--font-mono);font-size:11px"></p>
+      </div>
+      <button class="jvp-btn-icon" onclick="jvpCloseModal('editModal')">
+        <svg width="14" height="14" viewBox="0 0 14 14" fill="none"><path d="M11 3L3 11M3 3l8 8" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/></svg>
+      </button>
+    </div>
+    <form method="POST" action="process_client_supplier_jv_update.php" id="editClientSupplierForm">
+      <div class="jvp-modal-body">
+        <input type="hidden" name="action" value="edit">
+        <input type="hidden" name="id" id="edit_id">
+        <input type="hidden" name="description" value="Client-Supplier Payment">
 
-            $.ajax({
-                url: 'get_jv_payment.php',
-                type: 'GET',
-                data: { id: jvId, type: 'client_supplier' },
-                dataType: 'json',
-                success: function(response) {
-                    if (!response.success) {
-                        $('#viewCsModal .modal-body').html(
-                            '<div class="alert alert-danger m-3">' +
-                            '<i class="feather icon-alert-triangle mr-2"></i>' +
-                            'Error: ' + response.message +
-                            '</div>'
-                        );
-                        return;
-                    }
-                    
-                    const p = response.payment;
-                    
-                    // Format numbers and dates
-                    const formattedAmount = parseFloat(p.total_amount).toLocaleString(undefined, {
-                        minimumFractionDigits: 2,
-                        maximumFractionDigits: 2
-                    });
-                    
-                    const createdDate = new Date(p.created_at);
-                    const formattedDate = createdDate.toLocaleDateString('en-US', {
-                        year: 'numeric',
-                        month: 'long',
-                        day: 'numeric',
-                        hour: '2-digit',
-                        minute: '2-digit'
-                    });
-                    
-                    // Calculate time elapsed
-                    const now = new Date();
-                    const diffTime = Math.abs(now - createdDate);
-                    const diffDays = Math.floor(diffTime / (1000 * 60 * 60 * 24));
-                    const timeElapsed = diffDays === 0 ? 'Today' : 
-                                        diffDays === 1 ? 'Yesterday' : 
-                                        diffDays + ' days ago';
-                    
-                    // Build new clean modal content
-                    let html = `
-                    <div class="payment-details">
-                        <!-- Header with payment summary -->
-                        <div class="payment-header bg-light p-4">
-                            <div class="row align-items-center">
-                                <div class="col-md-7">
-                                    <span class="mb-2">ID: ${p.id}</span>
-                                    <h4 class="mb-1">${$('<div>').text(p.jv_name).html()}</h4>
-                                    <div class="text-muted">
-                                        <i class="feather icon-calendar mr-1"></i> ${formattedDate}
-                                        <span class="ml-2">${timeElapsed}</span>
-                                    </div>
-                                </div>
-                                <div class="col-md-5 text-md-right mt-3 mt-md-0">
-                                    <h3 class="text-success mb-0">${formattedAmount} ${p.currency}</h3>
-                                    <div class="text-muted small">
-                                        <i class="feather icon-file-text mr-1"></i> ${p.receipt || 'No receipt'}
-                                    </div>
-                                </div>
-                            </div>
-                        </div>
-                        
-                        <!-- Main content -->
-                        <div class="p-4">
-                            <!-- Transaction parties -->
-                            <div class="row mb-4">
-                                <div class="col-md-6 mb-3 mb-md-0">
-                                    <div class="card border-0 shadow-sm h-100">
-                                        <div class="card-body">
-                                            <div class="d-flex align-items-center mb-3">
-                                                <div class="icon-box bg-primary text-white rounded-circle p-2 mr-3">
-                                                    <i class="feather icon-user"></i>
-                                                </div>
-                                                <h6 class="mb-0"><?= __('client') ?></h6>
-                                            </div>
-                                            <h5>${$('<div>').text(p.client_name || 'N/A').html()}</h5>
-                                            <div class="text-muted small"><?= __('paid_from') ?></div>
-                                        </div>
-                                    </div>
-                                </div>
-                                <div class="col-md-6">
-                                    <div class="card border-0 shadow-sm h-100">
-                                        <div class="card-body">
-                                            <div class="d-flex align-items-center mb-3">
-                                                <div class="icon-box bg-success text-white rounded-circle p-2 mr-3">
-                                                    <i class="feather icon-shopping-bag"></i>
-                                                </div>
-                                                <h6 class="mb-0"><?= __('supplier') ?></h6>
-                                            </div>
-                                            <h5>${$('<div>').text(p.supplier_name || 'N/A').html()}</h5>
-                                            <div class="text-muted small"><?= __('paid_to') ?></div>
-                                        </div>
-                                    </div>
-                                </div>
-                            </div>
-                            
-                            <!-- Payment details -->
-                            <div class="card border-0 shadow-sm mb-4">
-                                <div class="card-header bg-light border-0">
-                                    <h6 class="mb-0"><i class="feather icon-info mr-2"></i><?= __('payment_details') ?></h6>
-                                </div>
-                                <div class="card-body">
-                                    <div class="row">
-                                        <div class="col-md-4 mb-3">
-                                            <div class="text-muted small"><?= __('exchange_rate') ?></div>
-                                            <div class="font-weight-bold">${p.exchange_rate || 'N/A'}</div>
-                                        </div>
-                                        <div class="col-md-4 mb-3">
-                                            <div class="text-muted small"><?= __('created_by') ?></div>
-                                            <div class="font-weight-bold">${p.created_by_name || 'System'}</div>
-                                        </div>
-                                        <div class="col-md-4 mb-3">
-                                            <div class="text-muted small"><?= __('updated_at') ?></div>
-                                            <div class="font-weight-bold">${p.updated_at ? new Date(p.updated_at).toLocaleString() : 'N/A'}</div>
-                                        </div>
-                                    </div>
-                                </div>
-                            </div>
-                            
-                            <!-- Remarks -->
-                            <div class="card border-0 shadow-sm">
-                                <div class="card-header bg-light border-0">
-                                    <h6 class="mb-0"><i class="feather icon-message-square mr-2"></i><?= __('remarks') ?></h6>
-                                </div>
-                                <div class="card-body">
-                                    ${p.remarks ? 
-                                      `<p class="mb-0">${$('<div>').text(p.remarks).html()}</p>` : 
-                                      `<p class="text-muted font-italic mb-0"><?= __('no_remarks_provided') ?></p>`
-                                    }
-                                </div>
-                            </div>
-                        </div>
-                    </div>`;
-                    
-                    // Update modal content
-                    $('#viewCsModal .modal-body').html(html);
-                    
-                    // Add payment ID to modal title
-                    $('#viewCsModal .modal-title').html(
-                        `<i class="feather icon-credit-card mr-2"></i><?= __('payment_details') ?> <span class="badge-light ml-2">ID: ${p.id}</span>`
-                    );
-                    
-                    // Show action buttons and set their click handlers
-                    $('.edit-payment-btn')
-                        .removeClass('d-none')
-                        .off('click')
-                        .on('click', function() {
-                            $('#viewCsModal').modal('hide');
-                            $('.edit-cs-btn[data-id="' + p.id + '"]').trigger('click');
-                        });
-                        
-                    $('.delete-payment-btn')
-                        .removeClass('d-none')
-                        .off('click')
-                        .on('click', function() {
-                            $('#viewCsModal').modal('hide');
-                            $('.delete-cs-btn[data-id="' + p.id + '"]').trigger('click');
-                        });
-                },
-                error: function(xhr, status, error) {
-                    $('#viewCsModal .modal-body').html(
-                        '<div class="alert alert-danger m-3">' +
-                        '<i class="feather icon-alert-triangle mr-2"></i>' +
-                        '<?= __('failed_to_load_details') ?>: ' + $('<div>').text(error).html() +
-                        '<br><small><?= __('please_try_again_or_contact_support_if_the_issue_persists') ?></small>' +
-                        '</div>'
-                    );
-                }
-            });
-        });
+        <div class="jvp-form-grid" style="grid-template-columns:1fr">
+          <div class="jvp-field">
+            <label><?php echo __('jv_name'); ?></label>
+            <input type="text" name="jv_name" id="edit_jv_name" required>
+          </div>
+        </div>
 
-        // Edit Client-Supplier Payment
-        $('.edit-cs-btn').click(function() {
-            const jvId = $(this).data('id');
-            
-            // AJAX call to get JV payment details
-            $.ajax({
-                url: 'get_jv_payment.php',
-                type: 'GET',
-                data: { id: jvId, type: 'client_supplier' },
-                dataType: 'json',
-                success: function(response) {
-                    if (response.success) {
-                        const payment = response.payment;
-                        console.log("Payment data received:", payment); // Debug log
-                        
-                        // Check if this is a valid client-supplier payment
-                        if (!payment.client_id || !payment.supplier_id) {
-                            alert("<?= __('this_record_is_missing_client_or_supplier_information_and_cannot_be_edited_as_a_client_supplier_payment') ?>");
-                            return;
-                        }
-                        
-                        // Populate form fields for editing
-                        $('#edit_id').val(payment.id);
-                        $('#edit_jv_name').val(payment.jv_name);
-                        
-                        // Set client dropdown
-                        if (payment.client_id) {
-                            console.log("Client dropdown before:", $('#edit_client_id').val());
-                            
-                            // Check if the option exists, if not add it
-                            if ($('#edit_client_id option[value="' + payment.client_id + '"]').length === 0) {
-                                console.log("Adding client option for ID:", payment.client_id);
-                                // Add the current client as an option if it doesn't exist
-                                $('#edit_client_id').append(
-                                    $('<option>', {
-                                        value: payment.client_id,
-                                        text: payment.client_name || '<?= __('client') ?> #' + payment.client_id
-                                    })
-                                );
-                            }
-                            
-                            // Set the value after ensuring option exists
-                            $('#edit_client_id').val(payment.client_id);
-                            console.log("Client dropdown after:", $('#edit_client_id').val());
-                        }
-                        
-                        // Set supplier dropdown
-                        if (payment.supplier_id) {
-                            console.log("Supplier dropdown before:", $('#edit_supplier_id').val());
-                            
-                            // Check if the option exists, if not add it
-                            if ($('#edit_supplier_id option[value="' + payment.supplier_id + '"]').length === 0) {
-                                console.log("Adding supplier option for ID:", payment.supplier_id);
-                                // Add the current supplier as an option if it doesn't exist
-                                $('#edit_supplier_id').append(
-                                    $('<option>', {
-                                        value: payment.supplier_id,
-                                        text: payment.supplier_name || '<?= __('supplier') ?> #' + payment.supplier_id,
-                                        'data-currency': payment.currency // Use payment currency as fallback
-                                    })
-                                );
-                            }
-                            
-                            // Set the value after ensuring option exists
-                            $('#edit_supplier_id').val(payment.supplier_id);
-                            console.log("Supplier dropdown after:", $('#edit_supplier_id').val());
-                        }
-                        
-                        // Set other fields
-                        console.log("Setting currency to:", payment.currency);
-                        $('#edit_currency').val(payment.currency);
-                        
-                        console.log("Setting total_amount to:", payment.total_amount);
-                        $('#edit_total_amount').val(payment.total_amount);
-                        
-                        console.log("Setting exchange_rate to:", payment.exchange_rate);
-                        $('#edit_exchange_rate').val(payment.exchange_rate);
-                        
-                        console.log("Setting receipt to:", payment.receipt);
-                        $('#edit_receipt').val(payment.receipt);
-                        
-                        console.log("Setting remarks to:", payment.remarks);
-                        $('#edit_remarks').val(payment.remarks);
-                        
-                        // Verify all fields are set
-                        console.log("Final field values:");
-                        console.log("- client_id:", $('#edit_client_id').val());
-                        console.log("- supplier_id:", $('#edit_supplier_id').val());
-                        console.log("- currency:", $('#edit_currency').val());
-                        console.log("- total_amount:", $('#edit_total_amount').val());
-                        console.log("- exchange_rate:", $('#edit_exchange_rate').val());
-                        console.log("- receipt:", $('#edit_receipt').val());
-                        console.log("- remarks:", $('#edit_remarks').val());
-                        
-                        // Force currency change event to ensure exchange rate visibility is correct
-                        $('#edit_currency').trigger('change');
-                        
-                        // Update exchange rate visibility
-                        updateEditExchangeRateVisibility();
-                        
-                        // Show the modal
-                        $('#editClientSupplierModal').modal('show');
-                    } else {
-                        alert('Error: ' + response.message);
-                    }
-                },
-                error: function(xhr, status, error) {
-                    console.error("AJAX Error:", status, error);
-                    console.error("Response:", xhr.responseText);
-                    alert('<?= __('error') ?>: <?= __('failed_to_load_payment_details_for_editing') ?>');
-                }
-            });
-        });
+        <div class="jvp-section-title"><?php echo __('transaction_parties'); ?></div>
+        <div class="jvp-form-grid">
+          <div class="jvp-field">
+            <label><?php echo __('client'); ?></label>
+            <select name="client_id" id="edit_client_id" required>
+              <option value=""><?php echo __('select_client'); ?></option>
+              <?php foreach ($clients as $client): ?>
+              <option value="<?php echo $client['id']; ?>"
+                      data-usd-balance="<?php echo $client['usd_balance']; ?>"
+                      data-afs-balance="<?php echo $client['afs_balance']; ?>">
+                <?php echo htmlspecialchars($client['name']); ?>
+              </option>
+              <?php endforeach; ?>
+            </select>
+          </div>
+          <div class="jvp-field">
+            <label><?php echo __('supplier'); ?></label>
+            <select name="supplier_id" id="edit_supplier_id" required>
+              <option value=""><?php echo __('select_supplier'); ?></option>
+              <?php foreach ($suppliers as $supplier): ?>
+              <option value="<?php echo $supplier['id']; ?>"
+                      data-currency="<?php echo $supplier['currency']; ?>">
+                <?php echo htmlspecialchars($supplier['name']); ?>
+              </option>
+              <?php endforeach; ?>
+            </select>
+          </div>
+        </div>
 
-        // Delete Client-Supplier Payment
-        $('.delete-cs-btn').click(function() {
-            const jvId = $(this).data('id');
-            $('#delete_cs_id').val(jvId);
-            $('#deleteCsModal').modal('show');
-        });
+        <div class="jvp-section-title"><?php echo __('amount_currency'); ?></div>
+        <div class="jvp-form-grid" style="grid-template-columns:1fr 1fr 1fr">
+          <div class="jvp-field">
+            <label><?php echo __('currency'); ?></label>
+            <select name="currency" id="edit_currency">
+              <option value="USD">USD</option>
+              <option value="AFS">AFS</option>
+            </select>
+          </div>
+          <div class="jvp-field">
+            <label><?php echo __('amount'); ?></label>
+            <input type="number" step="0.01" name="total_amount" id="edit_total_amount" required>
+          </div>
+          <div class="jvp-field">
+            <label><?php echo __('exchange_rate'); ?></label>
+            <input type="number" step="0.00001" name="exchange_rate" id="edit_exchange_rate">
+            <p class="jvp-field-hint"><?php echo __('required_if_currencies_differ'); ?></p>
+          </div>
+        </div>
 
-        // Client-Supplier form validation
-        $('#clientSupplierForm').submit(function(e) {
-            const clientId = $('#client_id').val();
-            const supplierId = $('#supplier_id').val();
-            const amount = parseFloat($('#total_amount').val());
-            const currency = $('#currency').val();
-            const exchangeRate = parseFloat($('#exchange_rate').val());
-            
-            if (!clientId || !supplierId) {
-                alert('<?= __('please_select_both_client_and_supplier') ?>');
-                e.preventDefault();
-                return false;
-            }
-            
-            if (isNaN(amount) || amount <= 0) {
-                alert('<?= __('please_enter_a_valid_amount_greater_than_zero') ?>');
-                e.preventDefault();
-                return false;
-            }
-            
-            // Check if exchange rate is needed and provided
-            const selectedSupplier = $('#supplier_id').find('option:selected');
-            const supplierCurrency = selectedSupplier.data('currency');
-            
-            if (supplierCurrency !== currency && (isNaN(exchangeRate) || exchangeRate <= 0)) {
-                alert('<?= __('please_enter_a_valid_exchange_rate_for_currency_conversion') ?>');
-                e.preventDefault();
-                return false;
-            }
-            
-            return true;
-        });
-        
-        // Edit Client-Supplier form validation
-        $('#editClientSupplierForm').submit(function(e) {
-            const clientId = $('#edit_client_id').val();
-            const supplierId = $('#edit_supplier_id').val();
-            const amount = parseFloat($('#edit_total_amount').val());
-            const currency = $('#edit_currency').val();
-            const exchangeRate = parseFloat($('#edit_exchange_rate').val());
-            
-            console.log("Form validation checking:");
-            console.log("- clientId:", clientId);
-            console.log("- supplierId:", supplierId);
-            console.log("- amount:", amount);
-            console.log("- currency:", currency);
-            console.log("- exchangeRate:", exchangeRate);
-            
-            if (!clientId || !supplierId) {
-                alert('<?= __('please_select_both_client_and_supplier') ?>');
-                e.preventDefault();
-                return false;
-            }
-            
-            if (isNaN(amount) || amount <= 0) {
-                alert('<?= __('please_enter_a_valid_amount_greater_than_zero') ?>');
-                e.preventDefault();
-                return false;
-            }
-            
-            // Check if exchange rate is needed and provided
-            const selectedSupplier = $('#edit_supplier_id').find('option:selected');
-            const supplierCurrency = selectedSupplier.data('currency');
-            
-            console.log("- supplierCurrency:", supplierCurrency);
-            
-            if (supplierCurrency && supplierCurrency !== currency && (isNaN(exchangeRate) || exchangeRate <= 0)) {
-                alert('<?= __('please_enter_a_valid_exchange_rate_for_currency_conversion') ?>');
-                e.preventDefault();
-                return false;
-            }
-            
-            return true;
-        });
-        
-        // Handle supplier and currency change events
-        $('#supplier_id').change(function() {
-            const selectedOption = $(this).find('option:selected');
-            const supplierCurrency = selectedOption.data('currency');
-            
-            // Display the supplier currency in the form
-            $('#supplier_currency_info').text(supplierCurrency || '');
-            
-            updateExchangeRateVisibility();
-        });
-        
-        $('#cs_currency').change(function() {
-            updateExchangeRateVisibility();
-        });
-        
-        function updateExchangeRateVisibility() {
-            const selectedSupplier = $('#supplier_id').find('option:selected');
-            const supplierCurrency = selectedSupplier.data('currency');
-            const selectedCurrency = $('#cs_currency').val();
-            
-            // Show exchange rate field only if currencies are different
-            if (supplierCurrency && selectedCurrency && supplierCurrency !== selectedCurrency) {
-                $('#cs_exchange_rate').closest('.form-group').show();
-            } else {
-                $('#cs_exchange_rate').closest('.form-group').hide();
-            }
-        }
-        
-        // Handle edit form supplier and currency change events
-        $('#edit_supplier_id').change(function() {
-            const selectedOption = $(this).find('option:selected');
-            const supplierCurrency = selectedOption.data('currency');
-            
-            updateEditExchangeRateVisibility();
-        });
-        
-        $('#edit_currency').change(function() {
-            updateEditExchangeRateVisibility();
-        });
-        
-        function updateEditExchangeRateVisibility() {
-            const selectedSupplier = $('#edit_supplier_id').find('option:selected');
-            const supplierCurrency = selectedSupplier.data('currency');
-            const selectedCurrency = $('#edit_currency').val();
-            
-            // Show exchange rate field only if currencies are different
-            if (supplierCurrency && selectedCurrency && supplierCurrency !== selectedCurrency) {
-                $('#edit_exchange_rate').closest('.form-group').show();
-            } else {
-                $('#edit_exchange_rate').closest('.form-group').hide();
-            }
-        }
+        <div class="jvp-section-title"><?php echo __('additional_details'); ?></div>
+        <div class="jvp-form-grid">
+          <div class="jvp-field">
+            <label><?php echo __('receipt_number'); ?></label>
+            <input type="text" name="receipt" id="edit_receipt" required>
+          </div>
+          <div class="jvp-field">
+            <label><?php echo __('remarks'); ?></label>
+            <textarea name="remarks" id="edit_remarks"></textarea>
+          </div>
+        </div>
+      </div>
+      <div class="jvp-modal-foot">
+        <button type="button" class="jvp-btn jvp-btn-ghost" onclick="jvpCloseModal('editModal')"><?php echo __('cancel'); ?></button>
+        <button type="submit" class="jvp-btn jvp-btn-primary" id="editSubmitBtn">
+          <svg width="13" height="13" viewBox="0 0 16 16" fill="none"><path d="M13 4L6.5 11 3 7.5" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg>
+          <?php echo __('update_payment'); ?>
+        </button>
+      </div>
+    </form>
+  </div>
+</div>
+
+
+<!-- ═══════════════════════════════════════════════════════
+     DELETE MODAL
+════════════════════════════════════════════════════════ -->
+<div class="jvp-backdrop" id="deleteModal" style="display:none" onclick="jvpBackdropClick(event,'deleteModal')">
+  <div class="jvp-modal sm">
+    <div class="jvp-modal-head">
+      <div>
+        <h2><?php echo __('delete_client_supplier_payment'); ?></h2>
+        <p><?php echo __('this_action_cannot_be_undone'); ?></p>
+      </div>
+      <button class="jvp-btn-icon" onclick="jvpCloseModal('deleteModal')">
+        <svg width="14" height="14" viewBox="0 0 14 14" fill="none"><path d="M11 3L3 11M3 3l8 8" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/></svg>
+      </button>
+    </div>
+    <form method="POST" action="process_client_supplier_jv_delete.php" id="deleteForm">
+      <div class="jvp-modal-body">
+        <input type="hidden" name="action" value="delete">
+        <input type="hidden" name="id" id="delete_cs_id">
+
+        <div id="deletePreview" style="background:var(--red-bg);border:1px solid #fca5a5;border-radius:8px;padding:14px 16px;margin-bottom:16px;font-size:13px;color:#7f1d1d">
+          <!-- Filled dynamically -->
+        </div>
+
+        <p style="font-size:13px;color:var(--text-muted);line-height:1.6">
+          <?php echo __('this_action_will'); ?>:
+          <strong style="color:var(--text-primary);display:block;margin-top:6px">· <?php echo __('return_funds_to_the_client_account'); ?></strong>
+          <strong style="color:var(--text-primary);display:block">· <?php echo __('deduct_the_amount_from_the_supplier_balance'); ?></strong>
+          <strong style="color:var(--text-primary);display:block">· <?php echo __('delete_all_associated_transaction_records'); ?></strong>
+        </p>
+      </div>
+      <div class="jvp-modal-foot">
+        <button type="button" class="jvp-btn jvp-btn-ghost" onclick="jvpCloseModal('deleteModal')"><?php echo __('cancel'); ?></button>
+        <button type="submit" class="jvp-btn jvp-btn-danger" id="deleteSubmitBtn">
+          <svg width="13" height="13" viewBox="0 0 16 16" fill="none"><path d="M3 5h10M6 5V3.5h4V5M6 8v4M10 8v4" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/><rect x="3" y="5" width="10" height="8" rx="1.5" stroke="currentColor" stroke-width="1.5"/></svg>
+          <?php echo __('delete'); ?>
+        </button>
+      </div>
+    </form>
+  </div>
+</div>
+
+<!-- Toast container -->
+<div class="jvp-toast-wrap" id="jvpToastWrap"></div>
+
+<style>
+@keyframes spin { to { transform: rotate(360deg); } }
+</style>
+
+<!-- Required JS (kept from original) -->
+<script src="../assets/js/vendor-all.min.js"></script>
+<script src="../assets/plugins/bootstrap/js/bootstrap.min.js"></script>
+<script src="../assets/js/pcoded.min.js"></script>
+
+<script>
+/* ─── Modal helpers ──────────────────────────────────────── */
+function jvpOpenModal(id) {
+  document.getElementById(id).style.display = 'flex';
+  document.body.style.overflow = 'hidden';
+}
+function jvpCloseModal(id) {
+  document.getElementById(id).style.display = 'none';
+  document.body.style.overflow = '';
+}
+function jvpBackdropClick(e, id) {
+  if (e.target === document.getElementById(id)) jvpCloseModal(id);
+}
+document.addEventListener('keydown', e => {
+  if (e.key === 'Escape') {
+    ['addModal','viewModal','editModal','deleteModal'].forEach(id => {
+      const el = document.getElementById(id);
+      if (el && el.style.display !== 'none') jvpCloseModal(id);
     });
-    </script>
+  }
+});
 
-    <!-- View Client-Supplier Payment Modal -->
-    <div class="modal fade" id="viewCsModal" tabindex="-1" role="dialog">
-        <div class="modal-dialog modal-lg" role="document">
-            <div class="modal-content">
-                <div class="modal-header bg-primary text-white">
-                    <h5 class="modal-title"><i class="feather icon-credit-card mr-2"></i><?= __('payment_details') ?></h5>
-                    <button type="button" class="close text-white" data-dismiss="modal" aria-label="Close">
-                        <span aria-hidden="true">&times;</span>
-                    </button>
-                </div>
-                <div class="modal-body p-0">
-                    <!-- Content will be loaded dynamically via AJAX -->
-                    <div class="text-center p-4">
-                        <i class="fas fa-spinner fa-pulse fa-2x mb-2"></i>
-                        <p><?= __('loading_details') ?>...</p>
-                    </div>
-                </div>
-                <div class="modal-footer">
-                    <button type="button" class="btn btn-secondary" data-dismiss="modal">
-                        <i class="feather icon-x mr-1"></i><?= __('close') ?>
-                    </button>
-                    <button type="button" class="btn btn-warning edit-payment-btn d-none">
-                        <i class="feather icon-edit-2 mr-1"></i><?= __('edit') ?>
-                    </button>
-                    <button type="button" class="btn btn-danger delete-payment-btn d-none">
-                        <i class="feather icon-trash-2 mr-1"></i><?= __('delete') ?>
-                    </button>
-                </div>
-            </div>
-        </div>
-    </div>
-    
-    <!-- Edit Client-Supplier Payment Modal -->
-    <div class="modal fade" id="editClientSupplierModal" tabindex="-1" role="dialog">
-        <div class="modal-dialog" role="document">
-            <div class="modal-content">
-                <div class="modal-header">
-                    <h5 class="modal-title"><?= __('edit_client_supplier_payment') ?></h5>
-                    <button type="button" class="close" data-dismiss="modal" aria-label="Close">
-                        <span aria-hidden="true">&times;</span>
-                    </button>
-                </div>
-                <form method="POST" action="process_client_supplier_jv_update.php" id="editClientSupplierForm">
-                    <div class="modal-body">
-                        <input type="hidden" name="action" value="edit">
-                        <input type="hidden" name="id" id="edit_id">
-                        <input type="hidden" name="description" value="Client-Supplier Payment">
-                        <div class="form-group">
-                            <label for="edit_jv_name"><?= __('jv_name') ?></label>
-                            <input type="text" class="form-control" id="edit_jv_name" name="jv_name" required>
-                        </div>
-                        <div class="form-group">
-                            <label for="edit_client_id"><?= __('client') ?></label>
-                            <select class="form-control" id="edit_client_id" name="client_id" required>
-                                <option value=""><?= __('select_client') ?></option>
-                                <?php foreach ($clients as $client): ?>
-                                    <option value="<?= $client['id'] ?>">
-                                        <?= htmlspecialchars($client['name']) ?> 
-                                        (USD: <?= number_format($client['usd_balance'], 2) ?>, 
-                                        AFS: <?= number_format($client['afs_balance'], 2) ?>)
-                                    </option>
-                                <?php endforeach; ?>
-                            </select>
-                        </div>
-                        <div class="form-group">
-                            <label for="edit_supplier_id"><?= __('supplier') ?></label>
-                            <select class="form-control" id="edit_supplier_id" name="supplier_id" required>
-                                <option value=""><?= __('select_supplier') ?></option>
-                                <?php foreach ($suppliers as $supplier): ?>
-                                    <option value="<?= $supplier['id'] ?>" data-currency="<?= $supplier['currency'] ?>">
-                                        <?= htmlspecialchars($supplier['name']) ?> 
-                                        (<?= number_format($supplier['balance'], 2) ?> <?= $supplier['currency'] ?>)
-                                    </option>
-                                <?php endforeach; ?>
-                            </select>
-                        </div>
-                        <div class="form-group">
-                            <label for="edit_currency"><?= __('currency') ?></label>
-                            <select class="form-control" id="edit_currency" name="currency" required>
-                                <option value="USD"><?= __('usd') ?></option>
-                                <option value="AFS"><?= __('afs') ?></option>
-                            </select>
-                        </div>
-                        <div class="form-group">
-                            <label for="edit_total_amount"><?= __('amount') ?></label>
-                            <input type="number" step="0.01" class="form-control" id="edit_total_amount" name="total_amount" required>
-                        </div>
-                        <div class="form-group">
-                            <label for="edit_exchange_rate"><?= __('exchange_rate') ?></label>
-                            <input type="number" step="0.00001" class="form-control" id="edit_exchange_rate" name="exchange_rate">
-                        </div>
-                        <div class="form-group">
-                            <label for="edit_receipt"><?= __('receipt_number') ?></label>
-                            <input type="text" class="form-control" id="edit_receipt" name="receipt" required>
-                        </div>
-                        <div class="form-group">
-                            <label for="edit_remarks"><?= __('remarks') ?></label>
-                            <textarea class="form-control" id="edit_remarks" name="remarks" rows="2"></textarea>
-                        </div>
-                    </div>
-                    <div class="modal-footer">
-                        <button type="button" class="btn btn-secondary" data-dismiss="modal"><?= __('cancel') ?></button>
-                        <button type="submit" class="btn btn-primary"><?= __('update_payment') ?></button>
-                    </div>
-                </form>
-            </div>
-        </div>
-    </div>
-    
-    <script>
-    // Custom dropdown positioning to avoid table overflow issues
-    document.addEventListener('show.bs.dropdown', function(e) {
-        const toggle = e.relatedTarget;
-        const menu = toggle.nextElementSibling;
-        
-        if (menu && menu.classList.contains('dropdown-menu')) {
-            const rect = toggle.getBoundingClientRect();
-            
-            menu.style.position = 'fixed';
-            menu.style.top = (rect.bottom + 5) + 'px';
-            menu.style.left = (rect.right - 200) + 'px';
-            menu.style.right = 'auto';
-            
-            // Adjust if goes off-screen
-            setTimeout(() => {
-                const menuRect = menu.getBoundingClientRect();
-                if (menuRect.right > window.innerWidth) {
-                    menu.style.left = (window.innerWidth - 210) + 'px';
-                }
-                if (menuRect.bottom > window.innerHeight) {
-                    menu.style.top = (rect.top - menuRect.height - 5) + 'px';
-                }
-            }, 0);
+/* ─── Toast ──────────────────────────────────────────────── */
+function jvpToast(msg, type = 'success') {
+  const wrap = document.getElementById('jvpToastWrap');
+  const t    = document.createElement('div');
+  t.className = 'jvp-toast ' + type;
+  const icons = {
+    success: '<svg width="14" height="14" viewBox="0 0 16 16" fill="none"><circle cx="8" cy="8" r="6.5" stroke="white" stroke-width="1.5"/><path d="M5 8l2 2 4-4" stroke="white" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/></svg>',
+    error:   '<svg width="14" height="14" viewBox="0 0 16 16" fill="none"><circle cx="8" cy="8" r="6.5" stroke="white" stroke-width="1.5"/><path d="M11 5L5 11M5 5l6 6" stroke="white" stroke-width="1.5" stroke-linecap="round"/></svg>'
+  };
+  t.innerHTML = (icons[type] || '') + msg;
+  wrap.appendChild(t);
+  setTimeout(() => { t.style.opacity = '0'; t.style.transition = 'opacity 300ms'; setTimeout(() => t.remove(), 300); }, 2800);
+}
+
+/* ─── Button protection ──────────────────────────────────── */
+function jvpProtectBtn(btn, text = 'Processing…') {
+  if (!btn || btn.disabled) return;
+  const orig = btn.innerHTML;
+  btn.disabled = true;
+  btn.innerHTML = `<svg width="13" height="13" viewBox="0 0 16 16" fill="none" style="animation:spin 1s linear infinite"><circle cx="8" cy="8" r="6" stroke="currentColor" stroke-width="2" stroke-dasharray="24" stroke-dashoffset="6"/></svg> ${text}`;
+  setTimeout(() => { btn.disabled = false; btn.innerHTML = orig; }, 4000);
+}
+
+/* ─── View payment ───────────────────────────────────────── */
+document.querySelectorAll('.view-cs-btn').forEach(btn => {
+  btn.addEventListener('click', function () {
+    const id = this.dataset.id;
+    jvpOpenModal('viewModal');
+    document.getElementById('viewModalSubtitle').textContent = '';
+    document.getElementById('viewEditBtn').style.display = 'none';
+    document.getElementById('viewModalBody').innerHTML = `
+      <div style="text-align:center;padding:32px 0;color:var(--text-dim)">
+        <svg width="24" height="24" viewBox="0 0 24 24" fill="none" style="animation:spin 1s linear infinite;display:inline-block"><circle cx="12" cy="12" r="10" stroke="currentColor" stroke-width="2" stroke-dasharray="40" stroke-dashoffset="10"/></svg>
+        <p style="margin-top:10px;font-size:13px">Loading…</p>
+      </div>`;
+
+    $.ajax({
+      url: 'get_jv_payment.php',
+      type: 'GET',
+      data: { id: id, type: 'client_supplier' },
+      dataType: 'json',
+      success: function (res) {
+        if (!res.success) {
+          document.getElementById('viewModalBody').innerHTML =
+            `<div class="jvp-alert error" style="margin:0"><span>${res.message}</span></div>`;
+          return;
         }
+        const p = res.payment;
+        const createdDate = new Date(p.created_at);
+        const fmtDate  = createdDate.toLocaleDateString('en-US', { year:'numeric', month:'short', day:'numeric' });
+        const fmtTime  = createdDate.toLocaleTimeString('en-US', { hour:'2-digit', minute:'2-digit' });
+        const fmtAmt   = parseFloat(p.total_amount).toLocaleString(undefined, { minimumFractionDigits:2, maximumFractionDigits:2 });
+        const currClass = (p.currency || '').toLowerCase() === 'usd' ? 'usd' : 'afs';
+
+        document.getElementById('viewModalSubtitle').textContent = p.jv_name;
+
+        document.getElementById('viewModalBody').innerHTML = `
+          <div class="jvp-detail-hero">
+            <div>
+              <div class="label"><?php echo __('total_amount'); ?></div>
+              <div class="amount">${fmtAmt}</div>
+            </div>
+            <span class="jvp-currency-badge ${currClass}">${$('<div>').text(p.currency).html()}</span>
+          </div>
+          <div class="jvp-party-grid">
+            <div class="jvp-party-box">
+              <div class="box-label"><?php echo __('client'); ?></div>
+              <div class="box-name">${$('<div>').text(p.client_name || '—').html()}</div>
+              <div class="box-sub"><?php echo __('paid_from'); ?></div>
+            </div>
+            <div class="jvp-party-box">
+              <div class="box-label"><?php echo __('supplier'); ?></div>
+              <div class="box-name">${$('<div>').text(p.supplier_name || '—').html()}</div>
+              <div class="box-sub"><?php echo __('paid_to'); ?></div>
+            </div>
+          </div>
+          <div class="jvp-detail-grid">
+            <div class="jvp-detail-cell"><div class="dc-label"><?php echo __('exchange_rate'); ?></div><div class="dc-value">${p.exchange_rate || '—'}</div></div>
+            <div class="jvp-detail-cell"><div class="dc-label"><?php echo __('receipt'); ?></div><span class="jvp-receipt-code">${$('<div>').text(p.receipt || '—').html()}</span></div>
+            <div class="jvp-detail-cell"><div class="dc-label"><?php echo __('created_by'); ?></div><div class="dc-value">${$('<div>').text(p.created_by_name || 'System').html()}</div></div>
+            <div class="jvp-detail-cell"><div class="dc-label"><?php echo __('date'); ?></div><div class="dc-value">${fmtDate}</div></div>
+            <div class="jvp-detail-cell"><div class="dc-label"><?php echo __('time'); ?></div><div class="dc-value" style="font-family:var(--font-mono)">${fmtTime}</div></div>
+            <div class="jvp-detail-cell"><div class="dc-label"><?php echo __('remarks'); ?></div><div class="dc-value" style="color:var(--text-muted);font-style:italic">${p.remarks ? $('<div>').text(p.remarks).html() : '—'}</div></div>
+          </div>`;
+
+        // Wire up Edit button in footer
+        const editBtn = document.getElementById('viewEditBtn');
+        editBtn.style.display = 'inline-flex';
+        editBtn.onclick = function () {
+          jvpCloseModal('viewModal');
+          document.querySelector(`.edit-cs-btn[data-id="${p.id}"]`)?.click();
+        };
+      },
+      error: function () {
+        document.getElementById('viewModalBody').innerHTML =
+          `<div class="jvp-alert error" style="margin:0"><?php echo __('failed_to_load_details'); ?></div>`;
+      }
     });
-    </script>
-    
-    </body>
-    </html>
-    <!-- Delete Client-Supplier Payment Modal -->
+  });
+});
+
+/* ─── Edit payment ───────────────────────────────────────── */
+document.querySelectorAll('.edit-cs-btn').forEach(btn => {
+  btn.addEventListener('click', function () {
+    const id = this.dataset.id;
+    $.ajax({
+      url: 'get_jv_payment.php',
+      type: 'GET',
+      data: { id: id, type: 'client_supplier' },
+      dataType: 'json',
+      success: function (res) {
+        if (!res.success) { jvpToast(res.message, 'error'); return; }
+        const p = res.payment;
+
+        if (!p.client_id || !p.supplier_id) {
+          jvpToast('<?php echo __('this_record_is_missing_client_or_supplier_information_and_cannot_be_edited_as_a_client_supplier_payment'); ?>', 'error');
+          return;
+        }
+
+        document.getElementById('editModalSubtitle').textContent = p.jv_name;
+        document.getElementById('edit_id').value           = p.id;
+        document.getElementById('edit_jv_name').value      = p.jv_name;
+        document.getElementById('edit_total_amount').value = p.total_amount;
+        document.getElementById('edit_exchange_rate').value = p.exchange_rate || '';
+        document.getElementById('edit_receipt').value      = p.receipt || '';
+        document.getElementById('edit_remarks').value      = p.remarks || '';
+
+        // Set client dropdown
+        const cSel = document.getElementById('edit_client_id');
+        if (!cSel.querySelector(`option[value="${p.client_id}"]`)) {
+          const o = document.createElement('option');
+          o.value = p.client_id; o.textContent = p.client_name || 'Client #' + p.client_id;
+          cSel.appendChild(o);
+        }
+        cSel.value = p.client_id;
+
+        // Set supplier dropdown
+        const sSel = document.getElementById('edit_supplier_id');
+        if (!sSel.querySelector(`option[value="${p.supplier_id}"]`)) {
+          const o = document.createElement('option');
+          o.value = p.supplier_id; o.textContent = p.supplier_name || 'Supplier #' + p.supplier_id;
+          o.dataset.currency = p.currency;
+          sSel.appendChild(o);
+        }
+        sSel.value = p.supplier_id;
+
+        document.getElementById('edit_currency').value = p.currency;
+
+        jvpOpenModal('editModal');
+      },
+      error: function () { jvpToast('<?php echo __('error'); ?>: <?php echo __('failed_to_load_payment_details_for_editing'); ?>', 'error'); }
+    });
+  });
+});
+
+/* ─── Delete payment ─────────────────────────────────────── */
+document.querySelectorAll('.delete-cs-btn').forEach(btn => {
+  btn.addEventListener('click', function () {
+    const id = this.dataset.id;
+    // Try to get info from the table row
+    const row    = this.closest('tr');
+    const jvName = row?.querySelector('.jvp-jv-label')?.textContent?.trim() || 'Payment #' + id;
+    const amount = row?.querySelector('.jvp-amount')?.textContent?.trim() || '';
+    const curr   = row?.querySelector('.jvp-currency-badge')?.textContent?.trim() || '';
+    const client = row?.querySelectorAll('.jvp-party-name')[0]?.textContent?.trim() || '';
+    const supp   = row?.querySelectorAll('.jvp-party-name')[1]?.textContent?.trim() || '';
+
+    document.getElementById('delete_cs_id').value = id;
+    document.getElementById('deletePreview').innerHTML =
+      `<strong style="display:block;margin-bottom:4px">${jvName} — ${amount} ${curr}</strong>${client} → ${supp}`;
+
+    jvpOpenModal('deleteModal');
+  });
+});
+
+/* ─── Form validation ────────────────────────────────────── */
+document.getElementById('clientSupplierForm').addEventListener('submit', function (e) {
+  const clientId     = document.getElementById('client_id').value;
+  const supplierId   = document.getElementById('supplier_id').value;
+  const amount       = parseFloat(document.getElementById('total_amount').value);
+  const currency     = document.getElementById('currency').value;
+  const exchangeRate = parseFloat(document.getElementById('exchange_rate').value);
+  const supplierOpt  = document.getElementById('supplier_id').selectedOptions[0];
+  const supplierCurr = supplierOpt?.dataset?.currency;
+
+  if (!clientId || !supplierId) {
+    e.preventDefault();
+    jvpToast('<?php echo __('please_select_both_client_and_supplier'); ?>', 'error');
+    return;
+  }
+  if (isNaN(amount) || amount <= 0) {
+    e.preventDefault();
+    jvpToast('<?php echo __('please_enter_a_valid_amount_greater_than_zero'); ?>', 'error');
+    return;
+  }
+  if (supplierCurr && supplierCurr !== currency && (isNaN(exchangeRate) || exchangeRate <= 0)) {
+    e.preventDefault();
+    jvpToast('<?php echo __('please_enter_a_valid_exchange_rate_for_currency_conversion'); ?>', 'error');
+    return;
+  }
+  jvpProtectBtn(document.getElementById('addSubmitBtn'), 'Processing…');
+});
+
+document.getElementById('editClientSupplierForm').addEventListener('submit', function (e) {
+  const clientId     = document.getElementById('edit_client_id').value;
+  const supplierId   = document.getElementById('edit_supplier_id').value;
+  const amount       = parseFloat(document.getElementById('edit_total_amount').value);
+  const currency     = document.getElementById('edit_currency').value;
+  const exchangeRate = parseFloat(document.getElementById('edit_exchange_rate').value);
+  const supplierOpt  = document.getElementById('edit_supplier_id').selectedOptions[0];
+  const supplierCurr = supplierOpt?.dataset?.currency;
+
+  if (!clientId || !supplierId) {
+    e.preventDefault();
+    jvpToast('<?php echo __('please_select_both_client_and_supplier'); ?>', 'error');
+    return;
+  }
+  if (isNaN(amount) || amount <= 0) {
+    e.preventDefault();
+    jvpToast('<?php echo __('please_enter_a_valid_amount_greater_than_zero'); ?>', 'error');
+    return;
+  }
+  if (supplierCurr && supplierCurr !== currency && (isNaN(exchangeRate) || exchangeRate <= 0)) {
+    e.preventDefault();
+    jvpToast('<?php echo __('please_enter_a_valid_exchange_rate_for_currency_conversion'); ?>', 'error');
+    return;
+  }
+  jvpProtectBtn(document.getElementById('editSubmitBtn'), 'Updating…');
+});
+
+document.getElementById('deleteForm').addEventListener('submit', function () {
+  jvpProtectBtn(document.getElementById('deleteSubmitBtn'), 'Deleting…');
+});
+</script>
+
+</body>
+</html>

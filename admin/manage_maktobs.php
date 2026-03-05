@@ -12,9 +12,9 @@ $branch_id = $_SESSION['branch_id'];
 enforce_auth();
 
 // Check if user is logged in with proper role
-if (!isset($_SESSION['user_id']) || $_SESSION['role'] !== 'admin') {
-    // Log unauthorized access attempt
-    error_log("Unauthorized access attempt to admin dashboard: " . ($_SESSION['user_id'] ?? 'unknown') . " - IP: " . $_SERVER['REMOTE_ADDR']);
+$allowed_roles = ['admin', 'finance'];
+if (!isset($_SESSION['user_id']) || !in_array($_SESSION['role'], $allowed_roles)) {
+    error_log("Unauthorized access attempt to dashboard: " . ($_SESSION['user_id'] ?? 'unknown') . " - Role: " . ($_SESSION['role'] ?? 'unknown') . " - IP: " . $_SERVER['REMOTE_ADDR']);
     header('Location: ../login.php');
     exit();
 }
@@ -25,7 +25,7 @@ $lang = init_language();
 
 // Get any flash messages
 $success_message = isset($_SESSION['success_message']) ? $_SESSION['success_message'] : null;
-$error_message = isset($_SESSION['error_message']) ? $_SESSION['error_message'] : null;
+$error_message   = isset($_SESSION['error_message'])   ? $_SESSION['error_message']   : null;
 
 // Clear flash messages
 unset($_SESSION['success_message']);
@@ -39,1205 +39,1111 @@ require_once('../includes/SecureFileUpload.php');
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     error_log("=== MAKTOB CREATE REQUEST FROM ADMIN ===");
     error_log("Raw POST data: " . json_encode($_POST));
-    
-    // Get input data
-    $subject = $_POST['subject'] ?? '';
-    $content = $_POST['content'] ?? '';
+
+    $subject      = $_POST['subject']      ?? '';
+    $content      = $_POST['content']      ?? '';
     $company_name = $_POST['company_name'] ?? '';
-    $maktob_number = $_POST['maktob_number'] ?? '';
-    $maktob_date = $_POST['maktob_date'] ?? '';
-    $language = $_POST['language'] ?? 'english';
-    $sender_id = $_SESSION['user_id'];
+    $maktob_number= $_POST['maktob_number']?? '';
+    $maktob_date  = $_POST['maktob_date']  ?? '';
+    $language     = $_POST['language']     ?? 'english';
+    $sender_id    = $_SESSION['user_id'];
 
-    // Handle file uploads
     $file_path = null;
-    $pdf_path = null;
+    $pdf_path  = null;
 
-    // Handle PDF file upload - SECURE VERSION
-     if (isset($_FILES['pdf_file'])) {
-         $uploader = new SecureFileUpload(
-             10 * 1024 * 1024, // 10MB max size
-             'uploads/'
-         );
-         
-         $result = $uploader->upload('pdf_file', 'maktobs');
-         
-         if ($result['success']) {
-             $pdf_path = 'uploads/maktobs/' . $result['data']['filename'];
-             error_log("PDF file uploaded securely: {$result['data']['filename']}");
-         } else {
-             $_SESSION['error_message'] = 'Failed to upload PDF file: ' . $result['error'];
-             header('Location: ' . $_SERVER['PHP_SELF']);
-             exit();
-         }
-     }
+    if (isset($_FILES['pdf_file'])) {
+        $uploader = new SecureFileUpload(10 * 1024 * 1024, 'uploads/');
+        $result = $uploader->upload('pdf_file', 'maktobs');
+        if ($result['success']) {
+            $pdf_path = 'uploads/maktobs/' . $result['data']['filename'];
+        } else {
+            $_SESSION['error_message'] = 'Failed to upload PDF file: ' . $result['error'];
+            header('Location: ' . $_SERVER['PHP_SELF']); exit();
+        }
+    }
 
-    // Handle attachment upload - SECURE VERSION
-     if (isset($_FILES['attachment'])) {
-         $uploader = new SecureFileUpload(
-             10 * 1024 * 1024, // 10MB max size
-             'uploads/'
-         );
-         
-         $result = $uploader->upload('attachment', 'maktobs');
-         
-         if ($result['success']) {
-             $file_path = 'uploads/maktobs/' . $result['data']['filename'];
-             error_log("Attachment file uploaded securely: {$result['data']['filename']}");
-         } else {
-             $_SESSION['error_message'] = 'Failed to upload attachment: ' . $result['error'];
-             header('Location: ' . $_SERVER['PHP_SELF']);
-             exit();
-         }
-     }
+    if (isset($_FILES['attachment'])) {
+        $uploader = new SecureFileUpload(10 * 1024 * 1024, 'uploads/');
+        $result = $uploader->upload('attachment', 'maktobs');
+        if ($result['success']) {
+            $file_path = 'uploads/maktobs/' . $result['data']['filename'];
+        } else {
+            $_SESSION['error_message'] = 'Failed to upload attachment: ' . $result['error'];
+            header('Location: ' . $_SERVER['PHP_SELF']); exit();
+        }
+    }
 
-    error_log("Session info - tenant_id: $tenant_id, branch_id: $branch_id, user_id: $sender_id");
-
-    // Validate required fields
     if (empty($company_name)) {
-        error_log("VALIDATION FAILED: company_name is empty");
         $_SESSION['error_message'] = __('please_enter_company');
-        header('Location: ' . $_SERVER['PHP_SELF']);
-        exit();
+        header('Location: ' . $_SERVER['PHP_SELF']); exit();
     }
-
-    if (empty($subject)) {
-        error_log("VALIDATION FAILED: subject is empty");
+    if (empty($subject) || empty($content)) {
         $_SESSION['error_message'] = __('all_fields_required');
-        header('Location: ' . $_SERVER['PHP_SELF']);
-        exit();
+        header('Location: ' . $_SERVER['PHP_SELF']); exit();
     }
 
-    if (empty($content)) {
-        error_log("VALIDATION FAILED: content is empty");
-        $_SESSION['error_message'] = __('all_fields_required');
-        header('Location: ' . $_SERVER['PHP_SELF']);
-        exit();
-    }
-
-    // Auto-generate maktob_number if empty
     if (empty($maktob_number) && !empty($maktob_date)) {
         try {
             $formattedDate = str_replace('-', '', $maktob_date);
             $baseNumber = $tenant_id . '-' . $branch_id . '-' . $formattedDate . '-';
-
-            // Get next sequence number
             $stmt = $pdo->prepare("SELECT maktob_number FROM maktobs
-                                  WHERE tenant_id = ? AND branch_id = ? AND maktob_number LIKE ?
-                                  ORDER BY CAST(SUBSTRING_INDEX(maktob_number, '-', -1) AS UNSIGNED) DESC
-                                  LIMIT 1");
+                                   WHERE tenant_id = ? AND branch_id = ? AND maktob_number LIKE ?
+                                   ORDER BY CAST(SUBSTRING_INDEX(maktob_number, '-', -1) AS UNSIGNED) DESC LIMIT 1");
             $stmt->execute([$tenant_id, $branch_id, $baseNumber . '%']);
             $result = $stmt->fetch(PDO::FETCH_ASSOC);
-
             $next_sequence = 1;
             if ($result) {
-                $existing_number = $result['maktob_number'];
-                $parts = explode('-', $existing_number);
+                $parts = explode('-', $result['maktob_number']);
                 if (count($parts) >= 4) {
                     $last_part = end($parts);
-                    if (is_numeric($last_part)) {
-                        $next_sequence = intval($last_part) + 1;
-                    }
+                    if (is_numeric($last_part)) $next_sequence = intval($last_part) + 1;
                 }
             }
-
-            $formatted_sequence = str_pad($next_sequence, 3, '0', STR_PAD_LEFT);
-            $maktob_number = $baseNumber . $formatted_sequence;
+            $maktob_number = $baseNumber . str_pad($next_sequence, 3, '0', STR_PAD_LEFT);
         } catch (Exception $e) {
-            error_log("Error auto-generating maktob number: " . $e->getMessage());
             $_SESSION['error_message'] = 'Error generating maktob number';
-            header('Location: ' . $_SERVER['PHP_SELF']);
-            exit();
+            header('Location: ' . $_SERVER['PHP_SELF']); exit();
         }
     }
 
-    if (empty($maktob_number)) {
-        error_log("VALIDATION FAILED: maktob_number is empty after auto-generation");
+    if (empty($maktob_number) || empty($maktob_date) || !$sender_id) {
         $_SESSION['error_message'] = __('all_fields_required');
-        header('Location: ' . $_SERVER['PHP_SELF']);
-        exit();
+        header('Location: ' . $_SERVER['PHP_SELF']); exit();
     }
 
-    if (empty($maktob_date)) {
-        error_log("VALIDATION FAILED: maktob_date is empty");
-        $_SESSION['error_message'] = __('all_fields_required');
-        header('Location: ' . $_SERVER['PHP_SELF']);
-        exit();
-    }
-
-    if (!$sender_id) {
-        error_log("VALIDATION FAILED: sender_id not found in session");
-        $_SESSION['error_message'] = 'User session not found';
-        header('Location: ' . $_SERVER['PHP_SELF']);
-        exit();
-    }
-
-    // Validate maktob_date format
     if (!preg_match('/^\d{4}-\d{2}-\d{2}$/', $maktob_date)) {
-        error_log("VALIDATION FAILED: Invalid maktob_date format: $maktob_date");
         $_SESSION['error_message'] = 'Invalid date format. Use YYYY-MM-DD';
-        header('Location: ' . $_SERVER['PHP_SELF']);
-        exit();
+        header('Location: ' . $_SERVER['PHP_SELF']); exit();
     }
 
-    error_log("All validations passed. Proceeding with INSERT");
-
-    // Insert new maktob directly
     try {
         $query = "INSERT INTO maktobs (tenant_id, branch_id, subject, content, company_name, maktob_number, maktob_date, sender_id, status, language, file_path, pdf_path)
                   VALUES (?, ?, ?, ?, ?, ?, ?, ?, 'draft', ?, ?, ?)";
-
-        error_log("Preparing statement: $query");
         $stmt = $pdo->prepare($query);
+        $stmt->bindParam(1,  $tenant_id,     PDO::PARAM_INT);
+        $stmt->bindParam(2,  $branch_id,     PDO::PARAM_INT);
+        $stmt->bindParam(3,  $subject,       PDO::PARAM_STR);
+        $stmt->bindParam(4,  $content,       PDO::PARAM_STR);
+        $stmt->bindParam(5,  $company_name,  PDO::PARAM_STR);
+        $stmt->bindParam(6,  $maktob_number, PDO::PARAM_STR);
+        $stmt->bindParam(7,  $maktob_date,   PDO::PARAM_STR);
+        $stmt->bindParam(8,  $sender_id,     PDO::PARAM_INT);
+        $stmt->bindParam(9,  $language,      PDO::PARAM_STR);
+        $stmt->bindParam(10, $file_path,     PDO::PARAM_STR);
+        $stmt->bindParam(11, $pdf_path,      PDO::PARAM_STR);
 
-        if (!$stmt) {
-            error_log("PREPARE ERROR: " . json_encode($pdo->errorInfo()));
-            $_SESSION['error_message'] = 'Database prepare error: ' . $pdo->errorInfo()[2];
-            header('Location: ' . $_SERVER['PHP_SELF']);
-            exit();
-        }
-
-        error_log("Statement prepared. Binding parameters...");
-        $stmt->bindParam(1, $tenant_id, PDO::PARAM_INT);
-        $stmt->bindParam(2, $branch_id, PDO::PARAM_INT);
-        $stmt->bindParam(3, $subject, PDO::PARAM_STR);
-        $stmt->bindParam(4, $content, PDO::PARAM_STR);
-        $stmt->bindParam(5, $company_name, PDO::PARAM_STR);
-        $stmt->bindParam(6, $maktob_number, PDO::PARAM_STR);
-        $stmt->bindParam(7, $maktob_date, PDO::PARAM_STR);
-        $stmt->bindParam(8, $sender_id, PDO::PARAM_INT);
-        $stmt->bindParam(9, $language, PDO::PARAM_STR);
-        $stmt->bindParam(10, $file_path, PDO::PARAM_STR);
-        $stmt->bindParam(11, $pdf_path, PDO::PARAM_STR);
-
-        error_log("Parameters bound. Execution details:");
-        error_log("  tenant_id: $tenant_id (int)");
-        error_log("  branch_id: $branch_id (int)");
-        error_log("  subject: $subject");
-        error_log("  company_name: $company_name");
-        error_log("  maktob_number: $maktob_number");
-        error_log("  maktob_date: $maktob_date");
-        error_log("  sender_id: $sender_id (int)");
-        error_log("  language: $language");
-
-        error_log("Executing INSERT statement...");
         if ($stmt->execute()) {
             $insert_id = $pdo->lastInsertId();
-            error_log("=== MAKTOB CREATE SUCCESS: ID=$insert_id ===");
-
-            // Log the create action
             try {
-                $log_query = "INSERT INTO maktob_logs (tenant_id, maktob_id, user_id, action, new_values, ip_address, branch_id)
-                             VALUES (?, ?, ?, 'create', ?, ?, ?)";
-                $log_stmt = $pdo->prepare($log_query);
-                $new_values = json_encode([
-                    'subject' => $subject,
-                    'content' => $content,
-                    'company_name' => $company_name,
-                    'maktob_number' => $maktob_number,
-                    'maktob_date' => $maktob_date,
-                    'language' => $language,
-                    'file_path' => $file_path,
-                    'pdf_path' => $pdf_path
-                ]);
-                $log_stmt->execute([$tenant_id, $insert_id, $sender_id, $new_values, $_SERVER['REMOTE_ADDR'], $branch_id]);
+                $log_stmt = $pdo->prepare("INSERT INTO maktob_logs (tenant_id, maktob_id, user_id, action, new_values, ip_address, branch_id) VALUES (?, ?, ?, 'create', ?, ?, ?)");
+                $log_stmt->execute([$tenant_id, $insert_id, $sender_id, json_encode([
+                    'subject' => $subject, 'content' => $content, 'company_name' => $company_name,
+                    'maktob_number' => $maktob_number, 'maktob_date' => $maktob_date,
+                    'language' => $language, 'file_path' => $file_path, 'pdf_path' => $pdf_path
+                ]), $_SERVER['REMOTE_ADDR'], $branch_id]);
             } catch (Exception $e) {
                 error_log("Failed to log maktob creation: " . $e->getMessage());
             }
-
             $_SESSION['success_message'] = __('letter_created');
         } else {
             $errorInfo = $stmt->errorInfo();
-            error_log("=== MAKTOB EXECUTION FAILED ===");
-            error_log("SQLSTATE: " . $errorInfo[0]);
-            error_log("Driver Error Code: " . $errorInfo[1]);
-            error_log("Driver Error Message: " . $errorInfo[2]);
-            
             $_SESSION['error_message'] = __('error_creating_letter') . ": " . $errorInfo[2];
         }
     } catch (PDOException $e) {
-        error_log("=== PDO EXCEPTION DURING INSERT ===");
-        error_log("Exception Code: " . $e->getCode());
-        error_log("Exception Message: " . $e->getMessage());
-        error_log("Stack Trace: " . $e->getTraceAsString());
-        
         $_SESSION['error_message'] = __('error_creating_letter') . ": " . $e->getMessage();
     }
 
-    // Redirect back to the same page
-    header('Location: ' . $_SERVER['PHP_SELF']);
-    exit();
+    header('Location: ' . $_SERVER['PHP_SELF']); exit();
 }
 
-// Pagination settings
+// Pagination
 $items_per_page = 10;
-$current_page = isset($_GET['page']) ? max(1, intval($_GET['page'])) : 1;
-$offset = ($current_page - 1) * $items_per_page;
+$current_page   = isset($_GET['page']) ? max(1, intval($_GET['page'])) : 1;
+$offset         = ($current_page - 1) * $items_per_page;
 
-// Search functionality
-$search_query = isset($_GET['search']) ? trim($_GET['search']) : '';
-$status_filter = isset($_GET['status']) ? $_GET['status'] : '';
-$language_filter = isset($_GET['language']) ? $_GET['language'] : '';
-$sender_filter = isset($_GET['sender']) ? $_GET['sender'] : '';
-$date_from = isset($_GET['date_from']) ? $_GET['date_from'] : '';
-$date_to = isset($_GET['date_to']) ? $_GET['date_to'] : '';
+// Filters
+$search_query   = isset($_GET['search'])    ? trim($_GET['search'])    : '';
+$status_filter  = isset($_GET['status'])    ? $_GET['status']          : '';
+$language_filter= isset($_GET['language'])  ? $_GET['language']        : '';
+$sender_filter  = isset($_GET['sender'])    ? $_GET['sender']          : '';
+$date_from      = isset($_GET['date_from']) ? $_GET['date_from']       : '';
+$date_to        = isset($_GET['date_to'])   ? $_GET['date_to']         : '';
 
 $search_condition = '';
-$search_params = [];
+$search_params    = [];
 
 if (!empty($search_query)) {
     $search_condition .= " AND (m.maktob_number LIKE ? OR m.subject LIKE ? OR m.company_name LIKE ?)";
-    $search_param = '%' . $search_query . '%';
-    $search_params = array_merge($search_params, [$search_param, $search_param, $search_param]);
+    $p = '%' . $search_query . '%';
+    $search_params = array_merge($search_params, [$p, $p, $p]);
 }
+if (!empty($status_filter))   { $search_condition .= " AND m.status = ?";       $search_params[] = $status_filter; }
+if (!empty($language_filter)) { $search_condition .= " AND m.language = ?";     $search_params[] = $language_filter; }
+if (!empty($sender_filter))   { $search_condition .= " AND m.sender_id = ?";    $search_params[] = $sender_filter; }
+if (!empty($date_from))       { $search_condition .= " AND m.maktob_date >= ?"; $search_params[] = $date_from; }
+if (!empty($date_to))         { $search_condition .= " AND m.maktob_date <= ?"; $search_params[] = $date_to; }
 
-if (!empty($status_filter)) {
-    $search_condition .= " AND m.status = ?";
-    $search_params[] = $status_filter;
-}
-
-if (!empty($language_filter)) {
-    $search_condition .= " AND m.language = ?";
-    $search_params[] = $language_filter;
-}
-
-if (!empty($sender_filter)) {
-    $search_condition .= " AND m.sender_id = ?";
-    $search_params[] = $sender_filter;
-}
-
-if (!empty($date_from)) {
-    $search_condition .= " AND m.maktob_date >= ?";
-    $search_params[] = $date_from;
-}
-
-if (!empty($date_to)) {
-    $search_condition .= " AND m.maktob_date <= ?";
-    $search_params[] = $date_to;
-}
-
-// Fetch maktobs directly from database
 $recent_maktobs_result = null;
 $total_records = 0;
-$total_pages = 1;
+$total_pages   = 1;
+$stats = ['total' => 0, 'drafts' => 0, 'sent' => 0, 'archived' => 0];
 
 try {
-    // Build query
-    $query = "SELECT m.*,
-        u.name as sender_name
-        FROM maktobs m
-        JOIN users u ON m.sender_id = u.id
-        WHERE m.tenant_id = ? AND m.branch_id = ?";
+    // Stats
+    $stats_stmt = $pdo->prepare("SELECT COUNT(*) as total,
+        SUM(CASE WHEN status='draft'    THEN 1 ELSE 0 END) as drafts,
+        SUM(CASE WHEN status='sent'     THEN 1 ELSE 0 END) as sent,
+        SUM(CASE WHEN status='archived' THEN 1 ELSE 0 END) as archived
+        FROM maktobs WHERE tenant_id = ? AND branch_id = ?");
+    $stats_stmt->execute([$tenant_id, $branch_id]);
+    $stats = $stats_stmt->fetch(PDO::FETCH_ASSOC);
 
+    // Full list with filters
+    $query = "SELECT m.*, u.name as sender_name FROM maktobs m
+              JOIN users u ON m.sender_id = u.id
+              WHERE m.tenant_id = ? AND m.branch_id = ?";
     $params = [$tenant_id, $branch_id];
-
-    // Apply search filters
-    if (!empty($search_condition)) {
-        $query .= $search_condition;
-        $params = array_merge($params, $search_params);
-    }
-    
+    if (!empty($search_condition)) { $query .= $search_condition; $params = array_merge($params, $search_params); }
     $query .= " ORDER BY m.maktob_date DESC";
-    
+
     $stmt = $pdo->prepare($query);
     $stmt->execute($params);
-    $allMaktobs = $stmt->fetchAll(PDO::FETCH_ASSOC);
-    
-    // Calculate pagination
+    $allMaktobs    = $stmt->fetchAll(PDO::FETCH_ASSOC);
     $total_records = count($allMaktobs);
-    $total_pages = ceil($total_records / $items_per_page);
-    
-    // Ensure current page is valid
-    if ($current_page > $total_pages && $total_pages > 0) {
-        $current_page = $total_pages;
-    }
-    
-    // Get page data
+    $total_pages   = max(1, ceil($total_records / $items_per_page));
+    if ($current_page > $total_pages) $current_page = $total_pages;
     $paged_maktobs = array_slice($allMaktobs, $offset, $items_per_page);
 
-    // Create a mock result object that mimics mysqli_result
     class MockMysqliResult {
-        private $data;
-        private $currentIndex = 0;
-
-        public function __construct($data) {
-            $this->data = $data;
-        }
-
+        private $data; private $idx = 0;
+        public function __construct($data) { $this->data = $data; }
         public function fetch_assoc() {
-            if ($this->currentIndex < count($this->data)) {
-                $row = $this->data[$this->currentIndex];
-                $this->currentIndex++;
-                return $row;
-            }
-            return null;
+            return $this->idx < count($this->data) ? $this->data[$this->idx++] : null;
         }
     }
-
     $recent_maktobs_result = new MockMysqliResult($paged_maktobs);
 } catch (Exception $e) {
-    // Fallback to empty result
     $recent_maktobs_result = null;
 }
 
-// Include the header
+// Build pagination query string
+$qp = [];
+if (!empty($search_query))    $qp[] = 'search='    . urlencode($search_query);
+if (!empty($status_filter))   $qp[] = 'status='    . urlencode($status_filter);
+if (!empty($language_filter)) $qp[] = 'language='  . urlencode($language_filter);
+if (!empty($sender_filter))   $qp[] = 'sender='    . urlencode($sender_filter);
+if (!empty($date_from))       $qp[] = 'date_from=' . urlencode($date_from);
+if (!empty($date_to))         $qp[] = 'date_to='   . urlencode($date_to);
+$qs = !empty($qp) ? '&' . implode('&', $qp) : '';
+
 include '../includes/header.php';
-
 ?>
-    <link rel="stylesheet" href="../css/general/modal-styles.css">
-<div class="pcoded-main-container">
-    <div class="pcoded-wrapper">
-        <div class="pcoded-content">
-            <div class="pcoded-inner-content">
-                <div class="main-body">
-                    <div class="page-wrapper">
-                        <!-- [ Main Content ] start -->
-                        <div class="main-content">
-                            <div class="page-header card">
-                                <div class="row align-items-center">
-                                    <div class="col-md-6">
-                                        <h5 class="mb-0"><i class="feather icon-file-text mr-2"></i><?php echo __('manage_letters'); ?></h5>
-                                        <p class="mb-0 mt-1" style="font-size: 14px; opacity: 0.9;"><?php echo __('manage_and_view_all_letters'); ?></p>
-                                    </div>
-                                    <div class="col-md-6 text-end">
-                                        <a href="dashboard.php" class="btn btn-outline-secondary btn-sm">
-                                            <i class="feather icon-arrow-left mr-1"></i><?php echo __('back_to_dashboard'); ?>
-                                        </a>
-                                    </div>
-                                </div>
-                            </div>
-
-                            <div class="row">
-                                <div class="col-md-12">
-                                    <?php if (isset($error_message)): ?>
-                                        <div class="alert alert-danger alert-dismissible fade show" role="alert">
-                                            <strong>Error:</strong> <?php echo htmlspecialchars($error_message); ?>
-                                            <button type="button" class="close" data-dismiss="alert" aria-label="Close">
-                                                <span aria-hidden="true">&times;</span>
-                                            </button>
-                                        </div>
-                                    <?php endif; ?>
-                                    <?php if (isset($success_message)): ?>
-                                        <div class="alert alert-success alert-dismissible fade show" role="alert">
-                                            <strong>Success:</strong> <?php echo nl2br(htmlspecialchars($success_message)); ?>
-                                            <button type="button" class="close" data-dismiss="alert" aria-label="Close">
-                                                <span aria-hidden="true">&times;</span>
-                                            </button>
-                                        </div>
-                                    <?php endif; ?>
-
-                                    <!-- Dashboard Widget -->
-                                    <?php
-                                    // Get maktob statistics
-                                    try {
-                                        $stats_query = "SELECT
-                                            COUNT(*) as total,
-                                            SUM(CASE WHEN status = 'draft' THEN 1 ELSE 0 END) as drafts,
-                                            SUM(CASE WHEN status = 'sent' THEN 1 ELSE 0 END) as sent,
-                                            SUM(CASE WHEN status = 'archived' THEN 1 ELSE 0 END) as archived
-                                            FROM maktobs WHERE tenant_id = ? AND branch_id = ?";
-                                        $stats_stmt = $pdo->prepare($stats_query);
-                                        $stats_stmt->execute([$tenant_id, $branch_id]);
-                                        $stats = $stats_stmt->fetch(PDO::FETCH_ASSOC);
-
-                                        // Get recent 5 maktobs
-                                        $recent_query = "SELECT m.*, u.name as sender_name
-                                                        FROM maktobs m
-                                                        JOIN users u ON m.sender_id = u.id
-                                                        WHERE m.tenant_id = ? AND m.branch_id = ?
-                                                        ORDER BY m.created_at DESC LIMIT 5";
-                                        $recent_stmt = $pdo->prepare($recent_query);
-                                        $recent_stmt->execute([$tenant_id, $branch_id]);
-                                        $recent_maktobs = $recent_stmt->fetchAll(PDO::FETCH_ASSOC);
-                                    } catch (Exception $e) {
-                                        $stats = ['total' => 0, 'drafts' => 0, 'sent' => 0, 'archived' => 0];
-                                        $recent_maktobs = [];
-                                    }
-                                    ?>
-                                    <div class="row mb-4">
-                                        <div class="col-md-12">
-                                            <div class="card">
-                                                <div class="card-header">
-                                                    <h5><i class="feather icon-bar-chart-2 mr-2"></i>Maktob Statistics</h5>
-                                                </div>
-                                                <div class="card-body">
-                                                    <div class="row">
-                                                        <div class="col-md-3">
-                                                            <div class="text-center">
-                                                                <h3 class="text-primary"><?php echo $stats['total'] ?? 0; ?></h3>
-                                                                <p class="mb-0">Total Maktobs</p>
-                                                            </div>
-                                                        </div>
-                                                        <div class="col-md-3">
-                                                            <div class="text-center">
-                                                                <h3 class="text-warning"><?php echo $stats['drafts'] ?? 0; ?></h3>
-                                                                <p class="mb-0">Drafts</p>
-                                                            </div>
-                                                        </div>
-                                                        <div class="col-md-3">
-                                                            <div class="text-center">
-                                                                <h3 class="text-success"><?php echo $stats['sent'] ?? 0; ?></h3>
-                                                                <p class="mb-0">Sent</p>
-                                                            </div>
-                                                        </div>
-                                                        <div class="col-md-3">
-                                                            <div class="text-center">
-                                                                <h3 class="text-secondary"><?php echo $stats['archived'] ?? 0; ?></h3>
-                                                                <p class="mb-0">Archived</p>
-                                                            </div>
-                                                        </div>
-                                                    </div>
-                                                    <?php if (!empty($recent_maktobs)): ?>
-                                                    <hr>
-                                                    <h6>Recent Maktobs</h6>
-                                                    <div class="list-group list-group-flush">
-                                                        <?php foreach ($recent_maktobs as $maktob): ?>
-                                                        <div class="list-group-item px-0">
-                                                            <div class="d-flex justify-content-between align-items-center">
-                                                                <div>
-                                                                    <strong><?php echo htmlspecialchars($maktob['maktob_number']); ?></strong>
-                                                                    <br><small class="text-muted"><?php echo htmlspecialchars($maktob['subject']); ?></small>
-                                                                </div>
-                                                                <div class="text-right">
-                                                                    <span class="badge-<?php
-                                                                        echo $maktob['status'] === 'sent' ? 'success' :
-                                                                             ($maktob['status'] === 'draft' ? 'warning' : 'secondary');
-                                                                    ?>"><?php echo ucfirst($maktob['status']); ?></span>
-                                                                    <br><small class="text-muted"><?php echo date('M d', strtotime($maktob['created_at'])); ?></small>
-                                                                </div>
-                                                            </div>
-                                                        </div>
-                                                        <?php endforeach; ?>
-                                                    </div>
-                                                    <?php endif; ?>
-                                                </div>
-                                            </div>
-                                        </div>
-                                    </div>
-
-                                    <!-- Create Maktob Card -->
-                                    <div class="card">
-                                        <div class="card-header">
-                                            <h5>
-                                                <i class="feather icon-file-text mr-2"></i>
-                                                <?= __('create_new_letter') ?>
-                                            </h5>
-                                        </div>
-                                        <div class="card-body">
-                                            <form method="POST" enctype="multipart/form-data">
-                                                <div class="row">
-                                                    <div class="col-md-6">
-                                                        <div class="form-group">
-                                                            <label for="maktob_number"><?= __('letter_number') ?></label>
-                                                            <input type="text" class="form-control" id="maktob_number" name="maktob_number" required>
-                                                        </div>
-                                                        <div class="form-group">
-                                                            <label for="maktob_date"><?= __('letter_date') ?></label>
-                                                            <input type="date" class="form-control" id="maktob_date" name="maktob_date" value="<?php echo date('Y-m-d'); ?>" required>
-                                                        </div>
-                                                        <div class="form-group">
-                                                            <label for="company_name"><?= __('company_name') ?></label>
-                                                            <input type="text" class="form-control" id="company_name" name="company_name" required>
-                                                        </div>
-                                                        <div class="form-group">
-                                                            <label for="language"><?= __('language') ?></label>
-                                                            <select class="form-control" id="language" name="language" required>
-                                                                <option value="english"><?= __('english') ?></option>
-                                                                <option value="dari"><?= __('dari') ?></option>
-                                                                <option value="pashto"><?= __('pashto') ?></option>
-                                                            </select>
-                                                        </div>
-                                                        <div class="form-group">
-                                                            <label for="attachment">Supporting Documents (PDF)</label>
-                                                            <input type="file" class="form-control" id="attachment" name="attachment" accept=".pdf">
-                                                            <small class="form-text text-muted">Upload additional PDF attachments/supporting documents (optional)</small>
-                                                        </div>
-                                                    </div>
-                                                    <div class="col-md-6">
-                                                        <div class="form-group">
-                                                            <label for="subject"><?= __('subject') ?></label>
-                                                            <input type="text" class="form-control" id="subject" name="subject" required>
-                                                        </div>
-                                                        <div class="form-group">
-                                                            <label for="content"><?= __('content') ?></label>
-                                                            <textarea class="form-control" id="content" name="content" rows="5" required></textarea>
-                                                        </div>
-                                                        <button type="submit" class="btn btn-primary float-right">
-                                                            <i class="feather icon-save mr-2"></i><?= __('create_letter') ?>
-                                                        </button>
-                                                    </div>
-                                                </div>
-                                            </form>
-                                        </div>
-                                    </div>
-
-                                    <!-- Recent Maktobs Card -->
-                                    <div class="card">
-                                        <div class="card-header">
-                                            <div class="d-flex justify-content-between align-items-center">
-                                                <div>
-                                                    <h5 class="mb-0"><i class="feather icon-clock mr-2"></i><?= __('recent_letters') ?></h5>
-                                                    <small class="text-muted">Manage and view all your letters</small>
-                                                </div>
-                                            </div>
-                                        </div>
-
-                                        <!-- Search Bar -->
-                                        <div class="card-body border-bottom pb-3">
-                                            <form method="GET" class="mb-3">
-                                                <div class="row">
-                                                    <div class="col-md-6">
-                                                        <div class="form-group">
-                                                            <input
-                                                                type="text"
-                                                                name="search"
-                                                                class="form-control"
-                                                                placeholder="Search by letter number, subject, company..."
-                                                                value="<?= htmlspecialchars($search_query) ?>"
-                                                            >
-                                                        </div>
-                                                    </div>
-                                                    <div class="col-md-6">
-                                                        <div class="row">
-                                                            <div class="col-md-3">
-                                                                <div class="form-group">
-                                                                    <select name="status" class="form-control">
-                                                                        <option value="">All Status</option>
-                                                                        <option value="draft" <?= $status_filter === 'draft' ? 'selected' : '' ?>>Draft</option>
-                                                                        <option value="sent" <?= $status_filter === 'sent' ? 'selected' : '' ?>>Sent</option>
-                                                                        <option value="archived" <?= $status_filter === 'archived' ? 'selected' : '' ?>>Archived</option>
-                                                                    </select>
-                                                                </div>
-                                                            </div>
-                                                            <div class="col-md-2">
-                                                                <div class="form-group">
-                                                                    <select name="language" class="form-control">
-                                                                        <option value="">All Languages</option>
-                                                                        <option value="english" <?= $language_filter === 'english' ? 'selected' : '' ?>>English</option>
-                                                                        <option value="dari" <?= $language_filter === 'dari' ? 'selected' : '' ?>>Dari</option>
-                                                                        <option value="pashto" <?= $language_filter === 'pashto' ? 'selected' : '' ?>>Pashto</option>
-                                                                    </select>
-                                                                </div>
-                                                            </div>
-                                                            <div class="col-md-2">
-                                                                <div class="form-group">
-                                                                    <select name="sender" class="form-control">
-                                                                        <option value="">All Senders</option>
-                                                                        <?php
-                                                                        try {
-                                                                            $sender_query = "SELECT DISTINCT u.id, u.name FROM users u
-                                                                                            JOIN maktobs m ON u.id = m.sender_id
-                                                                                            WHERE m.tenant_id = ? AND m.branch_id = ?
-                                                                                            ORDER BY u.name";
-                                                                            $sender_stmt = $pdo->prepare($sender_query);
-                                                                            $sender_stmt->execute([$tenant_id, $branch_id]);
-                                                                            while ($sender = $sender_stmt->fetch(PDO::FETCH_ASSOC)) {
-                                                                                $selected = $sender_filter == $sender['id'] ? 'selected' : '';
-                                                                                echo "<option value='{$sender['id']}' {$selected}>{$sender['name']}</option>";
-                                                                            }
-                                                                        } catch (Exception $e) {
-                                                                            // Ignore errors
-                                                                        }
-                                                                        ?>
-                                                                    </select>
-                                                                </div>
-                                                            </div>
-                                                            <div class="col-md-2">
-                                                                <div class="form-group">
-                                                                    <input type="date" name="date_from" class="form-control" value="<?= htmlspecialchars($date_from) ?>" placeholder="From Date">
-                                                                </div>
-                                                            </div>
-                                                            <div class="col-md-2">
-                                                                <div class="form-group">
-                                                                    <input type="date" name="date_to" class="form-control" value="<?= htmlspecialchars($date_to) ?>" placeholder="To Date">
-                                                                </div>
-                                                            </div>
-                                                        </div>
-                                                    </div>
-                                                </div>
-                                                <div class="row">
-                                                    <div class="col-12">
-                                                        <button type="submit" class="btn btn-info">
-                                                            <i class="feather icon-search"></i> <?= __('search') ?>
-                                                        </button>
-                                                        <?php if (!empty($search_query) || !empty($status_filter) || !empty($language_filter) || !empty($sender_filter) || !empty($date_from) || !empty($date_to)): ?>
-                                                            <a href="manage_maktobs.php" class="btn btn-secondary ml-2">
-                                                                <i class="feather icon-x"></i> Clear Filters
-                                                            </a>
-                                                        <?php endif; ?>
-                                                    </div>
-                                                </div>
-                                            </form>
-                                        </div>
-
-                                        <div class="card-body p-0">
-                                            <!-- Pagination Info -->
-                                            <div class="row mb-3 p-3">
-                                                <div class="col-md-6">
-                                                    <small class="text-muted">
-                                                        <?php if ($total_records > 0): ?>
-                                                            Showing <?= $offset + 1 ?> to <?= min($offset + $items_per_page, $total_records) ?> of <?= $total_records ?> entries
-                                                        <?php else: ?>
-                                                            <?= __('no_letters_found') ?>
-                                                        <?php endif; ?>
-                                                    </small>
-                                                </div>
-                                            </div>
-
-                                            <div class="table-responsive">
-                                                <table class="table table-hover">
-                                                    <thead>
-                                                        <tr>
-                                                            <th><?= __('letter_number') ?></th>
-                                                            <th><?= __('date') ?></th>
-                                                            <th><?= __('subject') ?></th>
-                                                            <th><?= __('company_name') ?></th>
-                                                            <th><?= __('status') ?></th>
-                                                            <th><?= __('language') ?></th>
-                                                            <th><?= __('created_by') ?></th>
-                                                            <th><?= __('actions') ?></th>
-                                                        </tr>
-                                                    </thead>
-                                                    <tbody>
-                                                        <?php if ($recent_maktobs_result !== null && $total_records > 0): ?>
-                                                            <?php while ($row = $recent_maktobs_result->fetch_assoc()): ?>
-                                                        <tr>
-                                                            <td><?php echo htmlspecialchars($row['maktob_number']); ?></td>
-                                                            <td><?php echo date('Y-m-d', strtotime($row['maktob_date'])); ?></td>
-                                                            <td><?php echo htmlspecialchars($row['subject']); ?></td>
-                                                            <td><?php echo htmlspecialchars($row['company_name']); ?></td>
-                                                            <td>
-                                                                <?php if ($row['status'] === 'sent'): ?>
-                                                                    <span class="badge-success">
-                                                                        <i class="feather icon-check mr-1"></i> <?= __('sent') ?>
-                                                                    </span>
-                                                                <?php elseif ($row['status'] === 'archived'): ?>
-                                                                    <span class="badge-secondary">
-                                                                        <i class="feather icon-archive mr-1"></i> Archived
-                                                                    </span>
-                                                                <?php else: ?>
-                                                                    <span class="badge-warning">
-                                                                        <i class="feather icon-clock mr-1"></i> <?= __('draft') ?>
-                                                                    </span>
-                                                                <?php endif; ?>
-                                                            </td>
-                                                            <td>
-                                                                <?php 
-                                                                $langBadgeClass = 'primary';
-                                                                if ($row['language'] === 'dari') $langBadgeClass = 'info';
-                                                                if ($row['language'] === 'pashto') $langBadgeClass = 'warning';
-                                                                ?>
-                                                                <span class="badge-<?php echo $langBadgeClass; ?>">
-                                                                    <?= __($row['language'] ?? 'english') ?>
-                                                                </span>
-                                                            </td>
-                                                            <td><?php echo htmlspecialchars($row['sender_name']); ?></td>
-                                                            <td>
-                                                                <div class="dropdown">
-                                                                    <button class="btn btn-sm btn-outline-primary dropdown-toggle" type="button" id="dropdownMaktob<?php echo $row['id']; ?>" data-toggle="dropdown" aria-haspopup="true" aria-expanded="false">
-                                                                        <i class="feather icon-more-vertical"></i> Actions
-                                                                    </button>
-                                                                    <div class="dropdown-menu" aria-labelledby="dropdownMaktob<?php echo $row['id']; ?>">
-                                                                        <a class="dropdown-item view-maktob" href="#"
-                                                                            data-id="<?php echo $row['id']; ?>"
-                                                                            data-subject="<?php echo htmlspecialchars($row['subject']); ?>"
-                                                                            data-content="<?php echo htmlspecialchars($row['content']); ?>"
-                                                                            data-company="<?php echo htmlspecialchars($row['company_name']); ?>"
-                                                                            data-number="<?php echo htmlspecialchars($row['maktob_number']); ?>"
-                                                                            data-date="<?php echo date('F j, Y', strtotime($row['maktob_date'])); ?>"
-                                                                            data-status="<?php echo $row['status']; ?>"
-                                                                            data-language="<?php echo htmlspecialchars($row['language'] ?? 'english'); ?>"
-                                                                            data-file-path="<?php echo htmlspecialchars($row['file_path'] ?? ''); ?>"
-                                                                            data-pdf-path="<?php echo htmlspecialchars($row['pdf_path'] ?? ''); ?>">
-                                                                            <i class="feather icon-eye mr-2"></i><?= __('view') ?>
-                                                                        </a>
-                                                                        <a class="dropdown-item edit-maktob" href="#"
-                                                                            data-id="<?php echo $row['id']; ?>"
-                                                                            data-subject="<?php echo htmlspecialchars($row['subject']); ?>"
-                                                                            data-content="<?php echo htmlspecialchars($row['content']); ?>"
-                                                                            data-company="<?php echo htmlspecialchars($row['company_name']); ?>"
-                                                                            data-number="<?php echo htmlspecialchars($row['maktob_number']); ?>"
-                                                                            data-date="<?php echo $row['maktob_date']; ?>"
-                                                                            data-language="<?php echo htmlspecialchars($row['language'] ?? 'english'); ?>">
-                                                                            <i class="feather icon-edit-2 mr-2"></i><?= __('edit') ?>
-                                                                        </a>
-                                                                        <?php if ($row['status'] === 'draft'): ?>
-                                                                        <a class="dropdown-item send-maktob" href="#"
-                                                                            data-id="<?php echo $row['id']; ?>">
-                                                                            <i class="feather icon-send mr-2"></i>Send to Branch
-                                                                        </a>
-                                                                        <?php endif; ?>
-                                                                        <?php if ($row['status'] !== 'archived'): ?>
-                                                                        <a class="dropdown-item archive-maktob" href="#"
-                                                                            data-id="<?php echo $row['id']; ?>">
-                                                                            <i class="feather icon-archive mr-2"></i>Archive
-                                                                        </a>
-                                                                        <?php endif; ?>
-                                                                        <a class="dropdown-item" href="../api/maktob/download_maktob.php?id=<?php echo $row['id']; ?>" target="_blank">
-                                                                            <i class="feather icon-eye mr-2"></i>View Letter
-                                                                        </a>
-                                                                        <div class="dropdown-divider"></div>
-                                                                        <a class="dropdown-item delete-maktob" href="#"
-                                                                            data-id="<?php echo $row['id']; ?>">
-                                                                            <i class="feather icon-trash-2 mr-2"></i><?= __('delete') ?>
-                                                                        </a>
-                                                                    </div>
-                                                                </div>
-                                                            </td>
-                                                        </tr>
-                                                        <?php endwhile; ?>
-                                                            <?php else: ?>
-                                                                <tr>
-                                                                    <td colspan="9" class="text-center text-muted"><?= __('no_letters_found') ?></td>
-                                                                </tr>
-                                                            <?php endif; ?>
-                                                    </tbody>
-                                                </table>
-                                            </div>
-
-                                            <!-- Pagination Controls -->
-                                            <?php if ($total_pages > 1): ?>
-                                            <div class="card-footer d-flex justify-content-between align-items-center">
-                                                <div>
-                                                    <small class="text-muted">Page <?= $current_page ?> of <?= $total_pages ?></small>
-                                                </div>
-                                                <nav aria-label="Page navigation">
-                                                    <ul class="pagination pagination-sm mb-0">
-                                                        <?php
-                                                        // Build query string for pagination
-                                                        $query_params = [];
-                                                        if (!empty($search_query)) $query_params[] = 'search=' . urlencode($search_query);
-                                                        if (!empty($status_filter)) $query_params[] = 'status=' . urlencode($status_filter);
-                                                        if (!empty($language_filter)) $query_params[] = 'language=' . urlencode($language_filter);
-                                                        if (!empty($sender_filter)) $query_params[] = 'sender=' . urlencode($sender_filter);
-                                                        if (!empty($date_from)) $query_params[] = 'date_from=' . urlencode($date_from);
-                                                        if (!empty($date_to)) $query_params[] = 'date_to=' . urlencode($date_to);
-                                                        $query_string = !empty($query_params) ? '&' . implode('&', $query_params) : '';
-                                                        ?>
-
-                                                        <?php if ($current_page > 1): ?>
-                                                            <li class="page-item">
-                                                                <a class="page-link" href="manage_maktobs.php?page=1<?= $query_string ?>">
-                                                                    <i class="feather icon-chevrons-left"></i> <?= __('first') ?>
-                                                                </a>
-                                                            </li>
-                                                            <li class="page-item">
-                                                                <a class="page-link" href="manage_maktobs.php?page=<?= $current_page - 1 ?><?= $query_string ?>">
-                                                                    <i class="feather icon-chevron-left"></i> <?= __('previous') ?>
-                                                                </a>
-                                                            </li>
-                                                        <?php endif; ?>
-
-                                                        <?php
-                                                        $start = max(1, $current_page - 2);
-                                                        $end = min($total_pages, $current_page + 2);
-
-                                                        for ($i = $start; $i <= $end; $i++):
-                                                        ?>
-                                                            <li class="page-item <?= $i === $current_page ? 'active' : '' ?>">
-                                                                <a class="page-link" href="manage_maktobs.php?page=<?= $i ?><?= $query_string ?>">
-                                                                    <?= $i ?>
-                                                                </a>
-                                                            </li>
-                                                        <?php endfor; ?>
-
-                                                        <?php if ($current_page < $total_pages): ?>
-                                                            <li class="page-item">
-                                                                <a class="page-link" href="manage_maktobs.php?page=<?= $current_page + 1 ?><?= $query_string ?>">
-                                                                    <?= __('next') ?> <i class="feather icon-chevron-right"></i>
-                                                                </a>
-                                                            </li>
-                                                            <li class="page-item">
-                                                                <a class="page-link" href="manage_maktobs.php?page=<?= $total_pages ?><?= $query_string ?>">
-                                                                    <?= __('last') ?> <i class="feather icon-chevrons-right"></i>
-                                                                </a>
-                                                            </li>
-                                                        <?php endif; ?>
-                                                    </ul>
-                                                </nav>
-                                            </div>
-                                            <?php endif; ?>
-                                        </div>
-                                    </div>
-                                </div>
-                                            </div>
-                                        </div>
-                                    </div>
-                                </div>
-                            </div>
-                        </div>
+<link rel="stylesheet" href="../css/general/modal-styles.css">
+<link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@300;400;500;600&family=DM+Mono:wght@400;500&display=swap" rel="stylesheet">
 
 <style>
-    /* Enhanced custom styles for better layout and design */
-    .page-header.card {
-        background: linear-gradient(135deg, #4099ff 0%, #2ed8b6 100%);
-        color: #ffffff;
-        border: none;
-        margin-bottom: 20px;
-        padding: 20px !important;
-        box-shadow: 0 4px 12px rgba(0,0,0,0.15);
-        border-radius: 10px;
-    }
+:root {
+  /* Site's color palette from header-styles.css */
+  --grad-start: #4099ff;
+  --grad-end:   #2ed8b6;
+  --grad:       linear-gradient(135deg, var(--grad-start) 0%, var(--grad-end) 100%);
+  
+  --bg:        #ffffff;
+  --surface:   #f8fafc;
+  --surface2:  #f1f5f9;
+  --border:    #e5e7eb;
+  --border2:   #d1d5db;
+  --accent:    #4099ff;
+  --accent2:   #2ed8b6;
+  --warn:      #f59e0b;
+  --danger:    #ef4444;
+  --muted:     #6b7280;
+  --text:      #1f2937;
+  --text2:     #4b5563;
+  --radius:    10px;
+  --radius-lg: 14px;
+  --white:     #ffffff;
+}
+*, *::before, *::after { box-sizing: border-box; }
 
-    .page-header.card .row {
-        display: flex;
-        justify-content: space-between;
-        align-items: center;
-    }
+/* override pcoded background for this page */
+.pcoded-main-container { background: var(--bg) !important; }
+.pcoded-content        { background: var(--bg) !important; }
 
-    .page-header.card h5 {
-        color: #ffffff;
-        margin: 0;
-        font-weight: 600;
-    }
+.mk-shell {
+  max-width: 1280px;
+  margin: 0 auto;
+  padding: 24px 20px 60px;
+  font-family: 'DM Sans', sans-serif;
+  color: var(--text);
+  font-size: 14px;
+}
 
-    .page-header.card .text-end {
-        text-align: right;
-    }
+/* ── PAGE HEADER ── */
+.mk-page-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 24px;
+  padding-bottom: 18px;
+  border-bottom: 1px solid var(--border);
+}
+.mk-page-head h1 {
+  font-size: 19px;
+  font-weight: 600;
+  letter-spacing: -.3px;
+  display: flex;
+  align-items: center;
+  gap: 9px;
+  color: var(--text);
+  margin: 0;
+}
+.mk-page-head h1 svg { color: var(--accent); flex-shrink: 0; }
+.mk-page-head p { color: var(--muted); margin: 3px 0 0; font-size: 12px; }
 
-    .page-header.card .btn {
-        background: rgba(255,255,255,0.2);
-        color: #ffffff;
-        border: 1px solid rgba(255,255,255,0.3);
-        border-radius: 25px;
-        transition: all 0.3s ease;
-    }
+/* ── ALERTS ── */
+.mk-alert {
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+  padding: 11px 15px;
+  border-radius: var(--radius);
+  margin-bottom: 16px;
+  font-size: 13px;
+  border: 1px solid transparent;
+}
+.mk-alert-success { background: rgba(61,214,163,.08); border-color: rgba(61,214,163,.2); color: var(--accent2); }
+.mk-alert-danger  { background: rgba(255,92,114,.08);  border-color: rgba(255,92,114,.2);  color: var(--danger); }
+.mk-alert button  { background: none; border: none; color: inherit; opacity: .6; cursor: pointer; margin-left: auto; font-size: 16px; line-height: 1; }
+.mk-alert button:hover { opacity: 1; }
 
-    .page-header.card .btn:hover {
-        background: rgba(255,255,255,0.3);
-        border-color: rgba(255,255,255,0.5);
-        transform: translateY(-1px);
-    }
+/* ── BUTTONS ── */
+.mk-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 8px 15px;
+  border-radius: 8px;
+  font-family: 'DM Sans', sans-serif;
+  font-size: 13px;
+  font-weight: 500;
+  cursor: pointer;
+  border: 1px solid transparent;
+  transition: all .18s ease;
+  text-decoration: none;
+  white-space: nowrap;
+}
+.mk-btn-ghost   { background: var(--surface2); color: var(--text2); border-color: var(--border); }
+.mk-btn-ghost:hover { background: var(--border); color: var(--text); }
+.mk-btn-primary { background: var(--accent); color: #fff; }
+.mk-btn-primary:hover { background: var(--grad-end); transform: translateY(-1px); box-shadow: 0 4px 14px rgba(64,153,255,.3); }
+.mk-btn-sm { padding: 6px 12px; font-size: 12px; }
+.mk-btn-info { background: var(--surface2); color: var(--accent); border-color: rgba(64,153,255,.3); }
+.mk-btn-info:hover { background: rgba(64,153,255,.1); }
 
-    .card {
-        border-radius: 10px;
-        box-shadow: 0 2px 8px rgba(0,0,0,0.1);
-        transition: transform 0.2s ease-in-out, box-shadow 0.2s ease-in-out;
-        border: none;
-    }
+/* ── KPI STRIP ── */
+.mk-kpi-strip {
+  display: grid;
+  grid-template-columns: repeat(4,1fr);
+  gap: 12px;
+  margin-bottom: 20px;
+}
+.mk-kpi-card {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  padding: 15px 16px;
+  display: flex;
+  align-items: center;
+  gap: 13px;
+  transition: border-color .2s;
+}
+.mk-kpi-card:hover { border-color: var(--border2); }
+.mk-kpi-icon {
+  width: 40px; height: 40px;
+  border-radius: 8px;
+  display: grid;
+  place-items: center;
+  flex-shrink: 0;
+}
+.mk-kpi-icon.blue  { background: rgba(78,140,255,.12); color: var(--accent); }
+.mk-kpi-icon.green { background: rgba(61,214,163,.12); color: var(--accent2); }
+.mk-kpi-icon.warn  { background: rgba(245,166,35,.12);  color: var(--warn); }
+.mk-kpi-icon.muted { background: rgba(107,117,153,.12); color: var(--muted); }
+.mk-kpi-label { font-size: 10px; color: var(--muted); text-transform: uppercase; letter-spacing: .6px; margin-bottom: 2px; }
+.mk-kpi-value { font-size: 22px; font-weight: 600; font-family: 'DM Mono', monospace; line-height: 1; color: var(--text); }
 
-    .card:hover {
-        transform: translateY(-2px);
-        box-shadow: 0 4px 16px rgba(0,0,0,0.15);
-    }
+/* ── ACCORDION ── */
+.mk-accordion {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-lg);
+  margin-bottom: 20px;
+  overflow: hidden;
+}
+.mk-accordion-trigger {
+  width: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 15px 20px;
+  background: none;
+  border: none;
+  color: var(--text);
+  font-family: 'DM Sans', sans-serif;
+  font-size: 14px;
+  font-weight: 500;
+  cursor: pointer;
+  text-align: left;
+  transition: background .15s;
+}
+.mk-accordion-trigger:hover { background: var(--surface2); }
+.mk-acc-left { display: flex; align-items: center; gap: 9px; }
+.mk-acc-left svg { color: var(--accent); }
+.mk-acc-badge {
+  background: rgba(78,140,255,.15);
+  color: var(--accent);
+  font-size: 10px;
+  padding: 2px 8px;
+  border-radius: 20px;
+  font-weight: 500;
+}
+.mk-chevron { transition: transform .25s ease; color: var(--muted); }
+.mk-accordion.open .mk-chevron { transform: rotate(180deg); }
+.mk-accordion-body {
+  display: none;
+  padding: 0 20px 22px;
+  border-top: 1px solid var(--border);
+}
+.mk-accordion.open .mk-accordion-body { display: block; }
 
-    .card-header {
-        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-        color: white;
-        border-radius: 10px 10px 0 0;
-        padding: 1rem 1.5rem;
-        border: none;
-    }
+/* form */
+.mk-form-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 14px 20px;
+  margin-top: 18px;
+}
+.mk-form-group { display: flex; flex-direction: column; gap: 5px; }
+.mk-form-group.span2 { grid-column: span 2; }
+.mk-form-group label {
+  font-size: 11px;
+  font-weight: 600;
+  color: var(--muted);
+  text-transform: uppercase;
+  letter-spacing: .5px;
+  font-family: 'DM Sans', sans-serif;
+}
+.mk-shell input,
+.mk-shell select,
+.mk-shell textarea {
+  background: var(--bg);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  color: var(--text);
+  font-family: 'DM Sans', sans-serif;
+  font-size: 13px;
+  padding: 9px 12px;
+  transition: border-color .15s, box-shadow .15s;
+  outline: none;
+  width: 100%;
+}
+.mk-shell input:focus,
+.mk-shell select:focus,
+.mk-shell textarea:focus {
+  border-color: var(--accent);
+  box-shadow: 0 0 0 3px rgba(78,140,255,.1);
+}
+.mk-shell textarea { resize: vertical; min-height: 90px; }
+.mk-shell select option { background: var(--surface2); }
+.mk-shell input[type="file"]::file-selector-button {
+  background: var(--surface2);
+  border: 1px solid var(--border);
+  color: var(--text2);
+  padding: 5px 10px;
+  border-radius: 5px;
+  font-family: 'DM Sans', sans-serif;
+  font-size: 12px;
+  cursor: pointer;
+  margin-right: 10px;
+  transition: background .15s;
+}
+.mk-shell input[type="file"]::file-selector-button:hover { background: var(--border); }
+.mk-form-footer {
+  display: flex;
+  justify-content: flex-end;
+  gap: 10px;
+  margin-top: 18px;
+  padding-top: 16px;
+  border-top: 1px solid var(--border);
+}
 
-    .card-header h5 {
-        margin: 0;
-        font-weight: 600;
-        display: flex;
-        align-items: center;
-    }
+/* ── TABLE CARD ── */
+.mk-table-card {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-lg);
+  overflow: hidden;
+}
+.mk-table-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 15px 20px;
+  border-bottom: 1px solid var(--border);
+  gap: 12px;
+  flex-wrap: wrap;
+}
+.mk-table-head-left {
+  display: flex;
+  align-items: center;
+  gap: 9px;
+  font-weight: 500;
+  font-size: 14px;
+}
+.mk-table-head-left svg { color: var(--accent); }
+.mk-record-count {
+  font-size: 11px;
+  color: var(--muted);
+  background: var(--surface2);
+  border: 1px solid var(--border);
+  padding: 2px 9px;
+  border-radius: 20px;
+}
 
-    .badge {
-        font-size: 0.85em;
-        padding: 0.5em 0.75em;
-        border-radius: 20px;
-        font-weight: 500;
-    }
+/* filter bar */
+.mk-filter-bar {
+  display: flex;
+  gap: 8px;
+  padding: 12px 20px;
+  border-bottom: 1px solid var(--border);
+  flex-wrap: wrap;
+  align-items: center;
+  background: var(--bg);
+}
+.mk-filter-bar .mk-shell input,
+.mk-filter-bar input,
+.mk-filter-bar select {
+  background: var(--surface) !important;
+  border-color: var(--border) !important;
+  padding: 7px 10px;
+  font-size: 12px;
+  width: auto;
+  flex: 1;
+  min-width: 110px;
+}
+.mk-search-wrap { position: relative; flex: 1; min-width: 200px; }
+.mk-search-wrap svg {
+  position: absolute;
+  left: 10px; top: 50%;
+  transform: translateY(-50%);
+  color: var(--muted);
+  pointer-events: none;
+}
+.mk-search-wrap input { padding-left: 32px !important; }
 
-    .badge-success {
-        background-color: #28a745;
-    }
+/* table */
+.mk-table-wrap { overflow-x: auto; }
+.mk-table { width: 100%; border-collapse: collapse; }
+.mk-table thead tr { border-bottom: 1px solid var(--border); }
+.mk-table th {
+  padding: 10px 16px;
+  text-align: left;
+  font-size: 10px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: .6px;
+  color: var(--muted);
+  white-space: nowrap;
+  background: var(--bg);
+  font-family: 'DM Sans', sans-serif;
+}
+.mk-table td {
+  padding: 13px 16px;
+  border-bottom: 1px solid var(--border);
+  font-size: 13px;
+  color: var(--text2);
+  vertical-align: middle;
+  font-family: 'DM Sans', sans-serif;
+}
+.mk-table tbody tr:last-child td { border-bottom: none; }
+.mk-table tbody tr { transition: background .12s; }
+.mk-table tbody tr:hover td { background: var(--surface2); color: var(--text); }
 
-    .badge-warning {
-        background-color: #ffc107;
-        color: #212529;
-    }
+.mk-num-cell { font-family: 'DM Mono', monospace; font-size: 11px; color: var(--accent); }
+.mk-subject-cell { color: var(--text); font-weight: 500; max-width: 190px; }
+.mk-subject-cell small { display: block; font-weight: 400; color: var(--muted); font-size: 11px; margin-top: 1px; }
 
-    .badge-info {
-        background-color: #17a2b8;
-    }
+/* badges */
+.mk-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 3px 8px;
+  border-radius: 20px;
+  font-size: 11px;
+  font-weight: 500;
+}
+.mk-badge-sent     { background: rgba(61,214,163,.1);  color: var(--accent2); border: 1px solid rgba(61,214,163,.2); }
+.mk-badge-draft    { background: rgba(245,166,35,.1);   color: var(--warn);    border: 1px solid rgba(245,166,35,.2); }
+.mk-badge-archived { background: rgba(107,117,153,.1);  color: var(--muted);  border: 1px solid rgba(107,117,153,.2); }
+.mk-dot { width: 5px; height: 5px; border-radius: 50%; display: inline-block; flex-shrink: 0; }
+.mk-dot.green { background: var(--accent2); }
+.mk-dot.warn  { background: var(--warn); }
+.mk-dot.grey  { background: var(--muted); }
 
-    .table-responsive {
-        border-radius: 10px;
-    }
+.mk-lang-badge {
+  background: var(--surface2);
+  border: 1px solid var(--border);
+  color: var(--text2);
+  font-family: 'DM Mono', monospace;
+  font-size: 10px;
+  padding: 2px 6px;
+  border-radius: 4px;
+  text-transform: uppercase;
+  letter-spacing: .5px;
+}
 
-    .table {
-        margin-bottom: 0;
-    }
+/* action dropdown */
+.mk-action-menu { position: relative; display: inline-block; }
+.mk-action-btn {
+  background: var(--surface2);
+  border: 1px solid var(--border);
+  color: var(--text2);
+  padding: 5px 10px;
+  border-radius: 6px;
+  cursor: pointer;
+  font-family: 'DM Sans', sans-serif;
+  font-size: 12px;
+  transition: all .15s;
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+}
+.mk-action-btn:hover { background: var(--border); color: var(--text); }
+.mk-dropdown {
+  position: absolute;
+  right: 0; top: calc(100% + 5px);
+  background: var(--surface2);
+  border: 1px solid var(--border2);
+  border-radius: 10px;
+  min-width: 168px;
+  box-shadow: 0 8px 24px rgba(0,0,0,.45);
+  z-index: 200;
+  overflow: hidden;
+  display: none;
+}
+.mk-action-menu.open .mk-dropdown { display: block; }
+.mk-dropdown a {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 9px 14px;
+  color: var(--text2);
+  font-size: 13px;
+  text-decoration: none;
+  transition: background .12s, color .12s;
+  font-family: 'DM Sans', sans-serif;
+}
+.mk-dropdown a:hover { background: var(--border); color: var(--text); }
+.mk-dropdown a svg   { width: 13px; height: 13px; flex-shrink: 0; }
+.mk-dropdown .mk-divider { height: 1px; background: var(--border); margin: 3px 0; }
+.mk-dropdown .mk-danger  { color: var(--danger); }
+.mk-dropdown .mk-danger:hover { background: rgba(255,92,114,.08); color: var(--danger); }
 
-    .table thead th {
-        background-color: #f8f9fa;
-        border-bottom: 2px solid #dee2e6;
-        font-weight: 600;
-        color: #495057;
-        padding: 1rem;
-    }
+/* pagination */
+.mk-pagination-bar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 12px 20px;
+  border-top: 1px solid var(--border);
+  background: var(--bg);
+  flex-wrap: wrap;
+  gap: 8px;
+}
+.mk-pagination-info { font-size: 12px; color: var(--muted); }
+.mk-pagination-controls { display: flex; gap: 4px; }
+.mk-page-btn {
+  background: var(--surface2);
+  border: 1px solid var(--border);
+  color: var(--text2);
+  width: 30px; height: 30px;
+  border-radius: 6px;
+  display: grid;
+  place-items: center;
+  font-size: 12px;
+  cursor: pointer;
+  transition: all .15s;
+  font-family: 'DM Mono', monospace;
+  text-decoration: none;
+}
+.mk-page-btn:hover { background: var(--border); color: var(--text); }
+.mk-page-btn.active { background: var(--accent); color: #fff; border-color: var(--accent); }
 
-    .table tbody tr:hover {
-        background-color: #f1f3f4;
-    }
+/* empty state */
+.mk-empty {
+  text-align: center;
+  padding: 48px 20px;
+  color: var(--muted);
+}
+.mk-empty svg { margin-bottom: 12px; opacity: .35; }
+.mk-empty p   { font-size: 13px; }
 
-    .table tbody td {
-        padding: 1rem;
-        vertical-align: middle;
-    }
+/* scrollbar */
+::-webkit-scrollbar { width: 5px; height: 5px; }
+::-webkit-scrollbar-track { background: var(--bg); }
+::-webkit-scrollbar-thumb { background: var(--border2); border-radius: 3px; }
 
-    .form-control {
-        border-radius: 8px;
-        border: 1px solid #ced4da;
-        transition: border-color 0.15s ease-in-out, box-shadow 0.15s ease-in-out;
-        padding: 0.75rem;
-    }
-
-    .form-control:focus {
-        border-color: #4099ff;
-        box-shadow: 0 0 0 0.2rem rgba(64, 153, 255, 0.25);
-    }
-
-    .btn-primary {
-        background: linear-gradient(135deg, #4099ff 0%, #2ed8b6 100%);
-        border: none;
-        border-radius: 25px;
-        padding: 0.75rem 2rem;
-        font-weight: 600;
-        transition: all 0.3s ease;
-    }
-
-    .btn-primary:hover {
-        transform: translateY(-1px);
-        box-shadow: 0 4px 12px rgba(64, 153, 255, 0.3);
-    }
-
-    .btn-secondary {
-        border-radius: 25px;
-        padding: 0.75rem 2rem;
-        font-weight: 600;
-        transition: all 0.3s ease;
-    }
-
-    .alert {
-        border-radius: 10px;
-        border: none;
-        padding: 1rem 1.5rem;
-    }
-
-    .alert-info {
-        background: linear-gradient(135deg, #d1ecf1 0%, #bee5eb 100%);
-        color: #0c5460;
-    }
-
-    .alert-success {
-        background: linear-gradient(135deg, #d4edda 0%, #c3e6cb 100%);
-        color: #155724;
-    }
-
-    .alert-danger {
-        background: linear-gradient(135deg, #f8d7da 0%, #f5c6cb 100%);
-        color: #721c24;
-    }
-
-    .maktob-info p {
-        margin-bottom: 0.5rem;
-    }
-
-    .maktob-content {
-        background-color: #f8f9fa;
-        padding: 1.5rem;
-        border-radius: 0.5rem;
-        white-space: pre-wrap;
-    }
-
-    /* Mobile responsive styles */
-    @media (max-width: 768px) {
-        .page-header.card .row {
-            flex-direction: column;
-            text-align: center;
-        }
-
-        .page-header.card .text-end {
-            text-align: center;
-            margin-top: 10px;
-        }
-
-        .card-body .row .col-md-3 {
-            margin-bottom: 1rem;
-        }
-
-        .search-filters .row .col-md-3 {
-            margin-bottom: 0.5rem;
-        }
-
-        .table-responsive {
-            font-size: 0.875rem;
-        }
-
-        .table thead th,
-        .table tbody td {
-            padding: 0.5rem;
-        }
-
-        .btn {
-            padding: 0.5rem 1rem;
-            font-size: 0.875rem;
-        }
-
-        .form-control {
-            font-size: 0.875rem;
-            padding: 0.5rem;
-        }
-
-        .card-header h5 {
-            font-size: 1rem;
-        }
-
-        .dropdown-menu {
-            min-width: 150px;
-        }
-
-        .pagination {
-            flex-wrap: wrap;
-        }
-
-        .pagination .page-link {
-            padding: 0.375rem 0.5rem;
-        }
-    }
-
-    @media (max-width: 576px) {
-        .container-fluid {
-            padding-left: 10px;
-            padding-right: 10px;
-        }
-
-        .card-body {
-            padding: 1rem 0.5rem;
-        }
-
-        .search-filters .row {
-            flex-direction: column;
-        }
-
-        .search-filters .row .col-md-6 {
-            margin-bottom: 1rem;
-        }
-
-        .table-responsive {
-            border: none;
-        }
-
-        .table {
-            font-size: 0.75rem;
-        }
-
-        .badge {
-            font-size: 0.7rem;
-            padding: 0.25rem 0.5rem;
-        }
-    }
+/* responsive */
+@media (max-width: 900px) {
+  .mk-kpi-strip { grid-template-columns: 1fr 1fr; }
+  .mk-form-grid { grid-template-columns: 1fr; }
+  .mk-form-group.span2 { grid-column: span 1; }
+  .mk-table th:nth-child(6), .mk-table td:nth-child(6),
+  .mk-table th:nth-child(7), .mk-table td:nth-child(7) { display: none; }
+}
+@media (max-width: 600px) {
+  .mk-kpi-strip { grid-template-columns: 1fr 1fr; gap: 8px; }
+  .mk-table th:nth-child(4), .mk-table td:nth-child(4),
+  .mk-table th:nth-child(5), .mk-table td:nth-child(5) { display: none; }
+  .mk-filter-bar { gap: 6px; }
+}
 </style>
 
-    <?php include '../modals/maktob/view_modal.php'; ?>
-    <?php include '../modals/maktob/edit_modal.php'; ?>
-    <?php include '../modals/maktob/delete_modal.php'; ?>
+<div class="pcoded-main-container">
+ <div class="pcoded-wrapper">
+  <div class="pcoded-content">
+   <div class="pcoded-inner-content">
+    <div class="main-body">
+     <div class="page-wrapper">
 
-<!-- Required Js -->
+<div class="mk-shell">
 
-    <script src="../assets/js/vendor-all.min.js"></script>
+  <!-- ── PAGE HEADER ── -->
+  <div class="mk-page-head">
+    <div>
+      <h1>
+        <svg width="19" height="19" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/></svg>
+        <?php echo __('manage_letters'); ?>
+      </h1>
+      <p><?php echo __('manage_and_view_all_letters'); ?></p>
+    </div>
+    <a href="dashboard.php" class="mk-btn mk-btn-ghost mk-btn-sm">
+      <svg width="13" height="13" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><line x1="19" y1="12" x2="5" y2="12"/><polyline points="12 19 5 12 12 5"/></svg>
+      <?php echo __('back_to_dashboard'); ?>
+    </a>
+  </div>
+
+  <!-- ── ALERTS ── -->
+  <?php if ($error_message): ?>
+  <div class="mk-alert mk-alert-danger">
+    <svg width="15" height="15" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>
+    <?php echo htmlspecialchars($error_message); ?>
+    <button onclick="this.closest('.mk-alert').remove()">&times;</button>
+  </div>
+  <?php endif; ?>
+  <?php if ($success_message): ?>
+  <div class="mk-alert mk-alert-success">
+    <svg width="15" height="15" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><polyline points="20 6 9 17 4 12"/></svg>
+    <?php echo nl2br(htmlspecialchars($success_message)); ?>
+    <button onclick="this.closest('.mk-alert').remove()">&times;</button>
+  </div>
+  <?php endif; ?>
+
+  <!-- ── KPI STRIP ── -->
+  <div class="mk-kpi-strip">
+    <div class="mk-kpi-card">
+      <div class="mk-kpi-icon blue">
+        <svg width="17" height="17" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/></svg>
+      </div>
+      <div>
+        <div class="mk-kpi-label">Total</div>
+        <div class="mk-kpi-value"><?php echo $stats['total'] ?? 0; ?></div>
+      </div>
+    </div>
+    <div class="mk-kpi-card">
+      <div class="mk-kpi-icon warn">
+        <svg width="17" height="17" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>
+      </div>
+      <div>
+        <div class="mk-kpi-label">Drafts</div>
+        <div class="mk-kpi-value"><?php echo $stats['drafts'] ?? 0; ?></div>
+      </div>
+    </div>
+    <div class="mk-kpi-card">
+      <div class="mk-kpi-icon green">
+        <svg width="17" height="17" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><line x1="22" y1="2" x2="11" y2="13"/><polygon points="22 2 15 22 11 13 2 9 22 2"/></svg>
+      </div>
+      <div>
+        <div class="mk-kpi-label">Sent</div>
+        <div class="mk-kpi-value"><?php echo $stats['sent'] ?? 0; ?></div>
+      </div>
+    </div>
+    <div class="mk-kpi-card">
+      <div class="mk-kpi-icon muted">
+        <svg width="17" height="17" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><polyline points="21 8 21 21 3 21 3 8"/><rect x="1" y="3" width="22" height="5"/><line x1="10" y1="12" x2="14" y2="12"/></svg>
+      </div>
+      <div>
+        <div class="mk-kpi-label">Archived</div>
+        <div class="mk-kpi-value"><?php echo $stats['archived'] ?? 0; ?></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ── ACCORDION: CREATE FORM ── -->
+  <div class="mk-accordion" id="mkCreateAccordion">
+    <button class="mk-accordion-trigger" type="button" onclick="mkToggleAccordion()">
+      <span class="mk-acc-left">
+        <svg width="15" height="15" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="16"/><line x1="8" y1="12" x2="16" y2="12"/></svg>
+        <?php echo __('create_new_letter'); ?>
+        <span class="mk-acc-badge">New</span>
+      </span>
+      <svg class="mk-chevron" width="15" height="15" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><polyline points="6 9 12 15 18 9"/></svg>
+    </button>
+    <div class="mk-accordion-body">
+      <form method="POST" enctype="multipart/form-data">
+        <div class="mk-form-grid">
+          <div class="mk-form-group">
+            <label for="maktob_number"><?php echo __('letter_number'); ?></label>
+            <input type="text" id="maktob_number" name="maktob_number" placeholder="Auto-generated on date select">
+          </div>
+          <div class="mk-form-group">
+            <label for="maktob_date"><?php echo __('letter_date'); ?></label>
+            <input type="date" id="maktob_date" name="maktob_date" value="<?php echo date('Y-m-d'); ?>">
+          </div>
+          <div class="mk-form-group">
+            <label for="company_name"><?php echo __('company_name'); ?></label>
+            <input type="text" id="company_name" name="company_name" placeholder="Recipient company">
+          </div>
+          <div class="mk-form-group">
+            <label for="language"><?php echo __('language'); ?></label>
+            <select id="language" name="language">
+              <option value="english"><?php echo __('english'); ?></option>
+              <option value="dari"><?php echo __('dari'); ?></option>
+              <option value="pashto"><?php echo __('pashto'); ?></option>
+            </select>
+          </div>
+          <div class="mk-form-group span2">
+            <label for="subject"><?php echo __('subject'); ?></label>
+            <input type="text" id="subject" name="subject" placeholder="Letter subject">
+          </div>
+          <div class="mk-form-group span2">
+            <label for="content"><?php echo __('content'); ?></label>
+            <textarea id="content" name="content" placeholder="Write the body of the letter here…"></textarea>
+          </div>
+          <div class="mk-form-group">
+            <label for="pdf_file">PDF Letter File</label>
+            <input type="file" id="pdf_file" name="pdf_file" accept=".pdf">
+          </div>
+          <div class="mk-form-group">
+            <label for="attachment">Supporting Documents</label>
+            <input type="file" id="attachment" name="attachment" accept=".pdf">
+          </div>
+        </div>
+        <div class="mk-form-footer">
+          <button type="button" class="mk-btn mk-btn-ghost" onclick="mkToggleAccordion()">Cancel</button>
+          <button type="submit" class="mk-btn mk-btn-primary">
+            <svg width="13" height="13" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z"/><polyline points="17 21 17 13 7 13 7 21"/><polyline points="7 3 7 8 15 8"/></svg>
+            <?php echo __('create_letter'); ?>
+          </button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <!-- ── TABLE CARD ── -->
+  <div class="mk-table-card">
+    <!-- Card header -->
+    <div class="mk-table-head">
+      <div class="mk-table-head-left">
+        <svg width="15" height="15" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><line x1="8" y1="6" x2="21" y2="6"/><line x1="8" y1="12" x2="21" y2="12"/><line x1="8" y1="18" x2="21" y2="18"/><line x1="3" y1="6" x2="3.01" y2="6"/><line x1="3" y1="12" x2="3.01" y2="12"/><line x1="3" y1="18" x2="3.01" y2="18"/></svg>
+        <?php echo __('recent_letters'); ?>
+        <span class="mk-record-count"><?php echo $total_records; ?> entries</span>
+      </div>
+      <button class="mk-btn mk-btn-primary mk-btn-sm" type="button" onclick="mkToggleAccordion(true)">
+        <svg width="12" height="12" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
+        <?php echo __('create_new_letter'); ?>
+      </button>
+    </div>
+
+    <!-- Filter bar -->
+    <form method="GET">
+      <div class="mk-filter-bar">
+        <div class="mk-search-wrap">
+          <svg width="13" height="13" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
+          <input type="text" name="search" placeholder="Search number, subject, company…" value="<?php echo htmlspecialchars($search_query); ?>">
+        </div>
+        <select name="status" style="min-width:110px; flex:0;">
+          <option value="">All Status</option>
+          <option value="draft"    <?php echo $status_filter==='draft'    ? 'selected':''; ?>>Draft</option>
+          <option value="sent"     <?php echo $status_filter==='sent'     ? 'selected':''; ?>>Sent</option>
+          <option value="archived" <?php echo $status_filter==='archived' ? 'selected':''; ?>>Archived</option>
+        </select>
+        <select name="language" style="min-width:120px; flex:0;">
+          <option value="">All Languages</option>
+          <option value="english" <?php echo $language_filter==='english' ? 'selected':''; ?>>English</option>
+          <option value="dari"    <?php echo $language_filter==='dari'    ? 'selected':''; ?>>Dari</option>
+          <option value="pashto"  <?php echo $language_filter==='pashto'  ? 'selected':''; ?>>Pashto</option>
+        </select>
+        <select name="sender" style="min-width:130px; flex:0;">
+          <option value="">All Senders</option>
+          <?php
+          try {
+            $ss = $pdo->prepare("SELECT DISTINCT u.id, u.name FROM users u JOIN maktobs m ON u.id = m.sender_id WHERE m.tenant_id = ? AND m.branch_id = ? ORDER BY u.name");
+            $ss->execute([$tenant_id, $branch_id]);
+            while ($s = $ss->fetch(PDO::FETCH_ASSOC)) {
+              $sel = $sender_filter == $s['id'] ? 'selected' : '';
+              echo "<option value='{$s['id']}' {$sel}>" . htmlspecialchars($s['name']) . "</option>";
+            }
+          } catch (Exception $e) {}
+          ?>
+        </select>
+        <input type="date" name="date_from" value="<?php echo htmlspecialchars($date_from); ?>" style="min-width:140px; flex:0;">
+        <input type="date" name="date_to"   value="<?php echo htmlspecialchars($date_to);   ?>" style="min-width:140px; flex:0;">
+        <button type="submit" class="mk-btn mk-btn-info mk-btn-sm">
+          <svg width="12" height="12" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><polygon points="22 3 2 3 10 12.46 10 19 14 21 14 12.46 22 3"/></svg>
+          <?php echo __('search'); ?>
+        </button>
+        <?php if (!empty($search_query)||!empty($status_filter)||!empty($language_filter)||!empty($sender_filter)||!empty($date_from)||!empty($date_to)): ?>
+        <a href="manage_maktobs.php" class="mk-btn mk-btn-ghost mk-btn-sm">
+          <svg width="12" height="12" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+          Clear
+        </a>
+        <?php endif; ?>
+      </div>
+    </form>
+
+    <!-- Table -->
+    <div class="mk-table-wrap">
+      <table class="mk-table">
+        <thead>
+          <tr>
+            <th><?php echo __('letter_number'); ?></th>
+            <th><?php echo __('date'); ?></th>
+            <th><?php echo __('subject'); ?></th>
+            <th><?php echo __('company_name'); ?></th>
+            <th><?php echo __('status'); ?></th>
+            <th><?php echo __('language'); ?></th>
+            <th><?php echo __('created_by'); ?></th>
+            <th style="text-align:right"><?php echo __('actions'); ?></th>
+          </tr>
+        </thead>
+        <tbody>
+        <?php if ($recent_maktobs_result !== null && $total_records > 0): ?>
+          <?php while ($row = $recent_maktobs_result->fetch_assoc()): ?>
+          <tr>
+            <td class="mk-num-cell"><?php echo htmlspecialchars($row['maktob_number']); ?></td>
+            <td><?php echo date('Y-m-d', strtotime($row['maktob_date'])); ?></td>
+            <td class="mk-subject-cell">
+              <?php echo htmlspecialchars($row['subject']); ?>
+              <small><?php echo htmlspecialchars($row['company_name']); ?></small>
+            </td>
+            <td><?php echo htmlspecialchars($row['company_name']); ?></td>
+            <td>
+              <?php if ($row['status'] === 'sent'): ?>
+                <span class="mk-badge mk-badge-sent"><span class="mk-dot green"></span><?php echo __('sent'); ?></span>
+              <?php elseif ($row['status'] === 'archived'): ?>
+                <span class="mk-badge mk-badge-archived"><span class="mk-dot grey"></span>Archived</span>
+              <?php else: ?>
+                <span class="mk-badge mk-badge-draft"><span class="mk-dot warn"></span><?php echo __('draft'); ?></span>
+              <?php endif; ?>
+            </td>
+            <td>
+              <?php
+                $langMap = ['english'=>'EN','dari'=>'DR','pashto'=>'PS'];
+                $langCode = $langMap[$row['language'] ?? 'english'] ?? strtoupper(substr($row['language']??'EN',0,2));
+              ?>
+              <span class="mk-lang-badge"><?php echo $langCode; ?></span>
+            </td>
+            <td><?php echo htmlspecialchars($row['sender_name']); ?></td>
+            <td style="text-align:right">
+              <div class="mk-action-menu" onclick="mkToggleMenu(this)">
+                <button class="mk-action-btn" type="button">
+                  Actions
+                  <svg width="11" height="11" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><polyline points="6 9 12 15 18 9"/></svg>
+                </button>
+                <div class="mk-dropdown">
+                  <a href="#" class="view-maktob"
+                    data-id="<?php echo $row['id']; ?>"
+                    data-subject="<?php echo htmlspecialchars($row['subject']); ?>"
+                    data-content="<?php echo htmlspecialchars($row['content']); ?>"
+                    data-company="<?php echo htmlspecialchars($row['company_name']); ?>"
+                    data-number="<?php echo htmlspecialchars($row['maktob_number']); ?>"
+                    data-date="<?php echo date('F j, Y', strtotime($row['maktob_date'])); ?>"
+                    data-status="<?php echo $row['status']; ?>"
+                    data-language="<?php echo htmlspecialchars($row['language'] ?? 'english'); ?>"
+                    data-file-path="<?php echo htmlspecialchars($row['file_path'] ?? ''); ?>"
+                    data-pdf-path="<?php echo htmlspecialchars($row['pdf_path'] ?? ''); ?>">
+                    <svg fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg>
+                    <?php echo __('view'); ?>
+                  </a>
+                  <a href="#" class="edit-maktob"
+                    data-id="<?php echo $row['id']; ?>"
+                    data-subject="<?php echo htmlspecialchars($row['subject']); ?>"
+                    data-content="<?php echo htmlspecialchars($row['content']); ?>"
+                    data-company="<?php echo htmlspecialchars($row['company_name']); ?>"
+                    data-number="<?php echo htmlspecialchars($row['maktob_number']); ?>"
+                    data-date="<?php echo $row['maktob_date']; ?>"
+                    data-language="<?php echo htmlspecialchars($row['language'] ?? 'english'); ?>">
+                    <svg fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg>
+                    <?php echo __('edit'); ?>
+                  </a>
+                  <?php if ($row['status'] === 'draft'): ?>
+                  <a href="#" class="send-maktob" data-id="<?php echo $row['id']; ?>">
+                    <svg fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><line x1="22" y1="2" x2="11" y2="13"/><polygon points="22 2 15 22 11 13 2 9 22 2"/></svg>
+                    Send to Branch
+                  </a>
+                  <?php endif; ?>
+                  <?php if ($row['status'] !== 'archived'): ?>
+                  <a href="#" class="archive-maktob" data-id="<?php echo $row['id']; ?>">
+                    <svg fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><polyline points="21 8 21 21 3 21 3 8"/><rect x="1" y="3" width="22" height="5"/></svg>
+                    Archive
+                  </a>
+                  <?php endif; ?>
+                  <a href="../api/maktob/download_maktob.php?id=<?php echo $row['id']; ?>" target="_blank">
+                    <svg fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/></svg>
+                    View PDF
+                  </a>
+                  <div class="mk-divider"></div>
+                  <a href="#" class="mk-danger delete-maktob" data-id="<?php echo $row['id']; ?>">
+                    <svg fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6"/></svg>
+                    <?php echo __('delete'); ?>
+                  </a>
+                </div>
+              </div>
+            </td>
+          </tr>
+          <?php endwhile; ?>
+        <?php else: ?>
+          <tr>
+            <td colspan="8">
+              <div class="mk-empty">
+                <svg width="40" height="40" fill="none" stroke="currentColor" stroke-width="1.5" viewBox="0 0 24 24"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/></svg>
+                <p><?php echo __('no_letters_found'); ?></p>
+              </div>
+            </td>
+          </tr>
+        <?php endif; ?>
+        </tbody>
+      </table>
+    </div>
+
+    <!-- Pagination -->
+    <?php if ($total_pages > 1): ?>
+    <div class="mk-pagination-bar">
+      <div class="mk-pagination-info">
+        Showing <?php echo $offset + 1; ?>–<?php echo min($offset + $items_per_page, $total_records); ?> of <?php echo $total_records; ?> entries
+      </div>
+      <div class="mk-pagination-controls">
+        <?php if ($current_page > 1): ?>
+          <a class="mk-page-btn" href="manage_maktobs.php?page=1<?php echo $qs; ?>" title="First">«</a>
+          <a class="mk-page-btn" href="manage_maktobs.php?page=<?php echo $current_page-1; ?><?php echo $qs; ?>" title="Prev">‹</a>
+        <?php endif; ?>
+        <?php for ($i = max(1,$current_page-2); $i <= min($total_pages,$current_page+2); $i++): ?>
+          <a class="mk-page-btn <?php echo $i===$current_page?'active':''; ?>" href="manage_maktobs.php?page=<?php echo $i.$qs; ?>"><?php echo $i; ?></a>
+        <?php endfor; ?>
+        <?php if ($current_page < $total_pages): ?>
+          <a class="mk-page-btn" href="manage_maktobs.php?page=<?php echo $current_page+1; ?><?php echo $qs; ?>" title="Next">›</a>
+          <a class="mk-page-btn" href="manage_maktobs.php?page=<?php echo $total_pages.$qs; ?>" title="Last">»</a>
+        <?php endif; ?>
+      </div>
+    </div>
+    <?php endif; ?>
+  </div><!-- /.mk-table-card -->
+
+</div><!-- /.mk-shell -->
+
+     </div>
+    </div>
+   </div>
+  </div>
+ </div>
+</div>
+
+<?php include '../modals/maktob/view_modal.php'; ?>
+<?php include '../modals/maktob/edit_modal.php'; ?>
+<?php include '../modals/maktob/delete_modal.php'; ?>
+
+<script src="../assets/js/vendor-all.min.js"></script>
 <script src="../assets/plugins/bootstrap/js/bootstrap.min.js"></script>
 <script src="../assets/js/pcoded.min.js"></script>
 <script src="../js/maktob/main.js"></script>
 
 <script>
-// Handle send maktob action
-$(document).on('click', '.send-maktob', function(e) {
-    e.preventDefault();
-    var maktobId = $(this).data('id');
+// ── Accordion ──
+function mkToggleAccordion(forceOpen) {
+  var acc = document.getElementById('mkCreateAccordion');
+  if (forceOpen) {
+    acc.classList.add('open');
+    acc.scrollIntoView({ behavior: 'smooth', block: 'start' });
+  } else {
+    acc.classList.toggle('open');
+  }
+}
 
-    if (confirm('Are you sure you want to send this maktob to branch?')) {
-        $.ajax({
-            url: '../api/maktob/update_status.php',
-            method: 'POST',
-            data: {
-                id: maktobId,
-                action: 'send'
-            },
-            success: function(response) {
-                if (response.success) {
-                    location.reload();
-                } else {
-                    alert('Error: ' + response.message);
-                }
-            },
-            error: function() {
-                alert('Error updating maktob status');
-            }
-        });
-    }
+// ── Action menus ──
+function mkToggleMenu(el) {
+  document.querySelectorAll('.mk-action-menu.open').forEach(function(m) {
+    if (m !== el) m.classList.remove('open');
+  });
+  el.classList.toggle('open');
+}
+document.addEventListener('click', function(e) {
+  if (!e.target.closest('.mk-action-menu')) {
+    document.querySelectorAll('.mk-action-menu.open').forEach(function(m) { m.classList.remove('open'); });
+  }
 });
 
-// Handle archive maktob action
-$(document).on('click', '.archive-maktob', function(e) {
-    e.preventDefault();
-    var maktobId = $(this).data('id');
-
-    if (confirm('Are you sure you want to archive this maktob?')) {
-        $.ajax({
-            url: '../api/maktob/update_status.php',
-            method: 'POST',
-            data: {
-                id: maktobId,
-                action: 'archive'
-            },
-            success: function(response) {
-                if (response.success) {
-                    location.reload();
-                } else {
-                    alert('Error: ' + response.message);
-                }
-            },
-            error: function() {
-                alert('Error updating maktob status');
-            }
-        });
+// ── Auto-generate maktob number ──
+$(document).ready(function () {
+  function generateMaktobNumber() {
+    var date = $('#maktob_date').val();
+    if (date && $('#maktob_number').val() === '') {
+      var tenantId  = <?php echo (int)$tenant_id; ?>;
+      var branchId  = <?php echo (int)$branch_id; ?>;
+      var formatted = date.replace(/-/g, '');
+      var base      = tenantId + '-' + branchId + '-' + formatted + '-';
+      $.ajax({
+        url: '../api/maktob/get_next_number.php',
+        method: 'POST',
+        data: { base_number: base },
+        success: function (r) { if (r.number) $('#maktob_number').val(r.number); }
+      });
     }
+  }
+  $('#maktob_date').on('change blur', function () { setTimeout(generateMaktobNumber, 400); });
+  if ($('#maktob_date').val() && $('#maktob_number').val() === '') generateMaktobNumber();
 });
 
-// Auto-generate maktob number
-$(document).ready(function() {
-    function generateMaktobNumber() {
-        var date = $('#maktob_date').val();
-        if (date && $('#maktob_number').val() === '') {
-            // Generate number in format: TENANT-BRANCH-YYYYMMDD-001
-            var tenantId = <?php echo $tenant_id; ?>;
-            var branchId = <?php echo $branch_id; ?>;
-            var formattedDate = date.replace(/-/g, '');
-            var baseNumber = tenantId + '-' + branchId + '-' + formattedDate + '-';
-
-            // Get next sequence number
-            $.ajax({
-                url: '../api/maktob/get_next_number.php',
-                method: 'POST',
-                data: { base_number: baseNumber },
-                success: function(response) {
-                    if (response.number) {
-                        $('#maktob_number').val(response.number);
-                    }
-                }
-            });
-        }
-    }
-
-    // Generate on date change
-    $('#maktob_date').on('change', generateMaktobNumber);
-
-    // Generate on date input/blur if number is empty
-    $('#maktob_date').on('blur input', function() {
-        setTimeout(generateMaktobNumber, 500); // Small delay to avoid too many requests
+// ── Send maktob ──
+$(document).on('click', '.send-maktob', function (e) {
+  e.preventDefault();
+  var id = $(this).data('id');
+  if (confirm('Are you sure you want to send this maktob to branch?')) {
+    $.ajax({
+      url: '../api/maktob/update_status.php',
+      method: 'POST',
+      data: { id: id, action: 'send' },
+      success: function (r) { r.success ? location.reload() : alert('Error: ' + r.message); },
+      error: function () { alert('Error updating maktob status'); }
     });
+  }
+});
 
-    // Generate on page load if date is set and number is empty
-    if ($('#maktob_date').val() && $('#maktob_number').val() === '') {
-        generateMaktobNumber();
-    }
+// ── Archive maktob ──
+$(document).on('click', '.archive-maktob', function (e) {
+  e.preventDefault();
+  var id = $(this).data('id');
+  if (confirm('Are you sure you want to archive this maktob?')) {
+    $.ajax({
+      url: '../api/maktob/update_status.php',
+      method: 'POST',
+      data: { id: id, action: 'archive' },
+      success: function (r) { r.success ? location.reload() : alert('Error: ' + r.message); },
+      error: function () { alert('Error updating maktob status'); }
+    });
+  }
 });
 </script>
 

@@ -75,6 +75,7 @@ try {
     }
 
     $umrah_id         = $booking_data['booking_id'];
+    $family_id        = $booking_data['family_id'];
     $soldTo           = $booking_data['sold_to'];
     $total_base_price = $booking_data['price'];
     $total_sold_price = $booking_data['sold_price'];
@@ -247,7 +248,21 @@ try {
     ");
     $stmt_update->execute([$umrah_id, $tenant_id, $branch_id]);
 
-    // ─── 10. Activity log ────────────────────────────────────────────────────────
+    // ─── 10. Update family totals after approval ─────────────────────────────────
+    // Family calculations happen ONLY at approval time
+    $stmt_family = $pdo->prepare("
+        UPDATE families f
+        SET
+            f.total_members = (SELECT COUNT(*) FROM umrah_bookings WHERE family_id = f.family_id AND tenant_id = ? AND branch_id = ? AND status = 'active'),
+            f.total_price = (SELECT SUM(COALESCE(sold_price, 0)) FROM umrah_bookings WHERE family_id = f.family_id AND tenant_id = ? AND branch_id = ? AND status = 'active'),
+            f.total_paid = (SELECT SUM(COALESCE(paid, 0)) FROM umrah_bookings WHERE family_id = f.family_id AND tenant_id = ? AND branch_id = ? AND status = 'active'),
+            f.total_paid_to_bank = (SELECT SUM(COALESCE(received_bank_payment, 0)) FROM umrah_bookings WHERE family_id = f.family_id AND tenant_id = ? AND branch_id = ? AND status = 'active'),
+            f.total_due = (SELECT SUM(COALESCE(due, 0)) FROM umrah_bookings WHERE family_id = f.family_id AND tenant_id = ? AND branch_id = ? AND status = 'active')
+        WHERE f.family_id = ? AND f.tenant_id = ? AND f.branch_id = ?
+    ");
+    $stmt_family->execute([$tenant_id, $branch_id, $tenant_id, $branch_id, $tenant_id, $branch_id, $tenant_id, $branch_id, $tenant_id, $branch_id, $family_id, $tenant_id, $branch_id]);
+
+    // ─── 11. Activity log ────────────────────────────────────────────────────────
     $ip_address = $_SERVER['REMOTE_ADDR']     ?? '';
     $user_agent = $_SERVER['HTTP_USER_AGENT'] ?? '';
     $old_values = json_encode(['status' => 'pending', 'transactions_created' => false]);

@@ -256,31 +256,34 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
                             session_regenerate_id(true);
 
                             // Redirect based on role
-                             switch(strtolower($role)) {
-                                 case 'super_admin':
-                                     header("location: super_admin/dashboard.php");
-                                     break;
-                                 case 'tenant_super_admin':
-                                     header("location: tenant_super_admin/dashboard.php");
-                                     break;
-                                 case 'admin':
-                                     header("location: admin/dashboard.php");
-                                     break;
-                                 case 'sales':
-                                     header("location: sales/dashboard.php");
-                                     break;
-                                 case 'finance':
-                                     header("location: finance/dashboard.php");
-                                     break;
-                                 case 'umrah':
-                                     header("location: umrah/dashboard.php");
-                                     break;
-                                 case 'visa':
-                                     header("location: visa/dashboard.php");
-                                     break;
-                                 default:
-                                     header("location: user/dashboard.php");
-                             }
+                              switch(strtolower($role)) {
+                                  case 'super_admin':
+                                      header("location: super_admin/dashboard.php");
+                                      break;
+                                  case 'tenant_super_admin':
+                                      header("location: tenant_super_admin/dashboard.php");
+                                      break;
+                                  case 'sales_agent':
+                                      header("location: sales_agent/dashboard.php");
+                                      break;
+                                  case 'admin':
+                                      header("location: admin/dashboard.php");
+                                      break;
+                                  case 'sales':
+                                      header("location: admin/dashboard.php");
+                                      break;
+                                  case 'finance':
+                                      header("location: admin/dashboard.php");
+                                      break;
+                                  case 'umrah':
+                                      header("location: admin/dashboard.php");
+                                      break;
+                                  case 'staff':
+                                      header("location: admin/dashboard.php");
+                                      break;
+                                  default:
+                                      header("location: user/dashboard.php");
+                              }
                             exit;
                         } else {
                             recordFailedAttempt($email, $conection_db);
@@ -419,20 +422,23 @@ function completeLogin() {
              case 'tenant_super_admin':
                  header("location: tenant_super_admin/dashboard.php");
                  break;
+             case 'sales_agent':
+                 header("location: sales_agent/dashboard.php");
+                 break;
              case 'admin':
                  header("location: admin/dashboard.php");
                  break;
              case 'sales':
-                 header("location: sales/dashboard.php");
+                 header("location: admin/dashboard.php");
                  break;
              case 'finance':
-                 header("location: finance/dashboard.php");
+                 header("location: admin/dashboard.php");
                  break;
              case 'umrah':
-                 header("location: umrah/dashboard.php");
+                 header("location: admin/dashboard.php");
                  break;
-             case 'visa':
-                 header("location: visa/dashboard.php");
+             case 'staff':
+                 header("location: admin/dashboard.php");
                  break;
              default:
                  header("location: user/dashboard.php");

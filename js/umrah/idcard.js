@@ -37,6 +37,75 @@ function selectForIdCard(bookingId, pilgrName) {
     updateIdCardSelection();
 }
 
+// Bulk select all members from a family for ID cards (up to 8 limit)
+function selectAllFamilyForIdCard(familyId) {
+    const membersSection = document.getElementById('members-grid-' + familyId);
+    if (!membersSection) return;
+
+    const btn = document.querySelector('.selectAllIdCardBtn[data-family-id="' + familyId + '"]');
+    const checkboxes = membersSection.querySelectorAll('.member-checkbox');
+    const activeCheckboxes = Array.from(checkboxes).filter(cb => cb.getAttribute('data-status') === 'active');
+    
+    // Check if all active members are already selected
+    const allSelected = activeCheckboxes.every(cb => {
+        const bookingId = cb.getAttribute('data-booking-id');
+        return selectedPilgrims.findIndex(p => p.id == bookingId) !== -1;
+    });
+
+    if (allSelected) {
+        // Deselect all
+        activeCheckboxes.forEach(checkbox => {
+            const bookingId = checkbox.getAttribute('data-booking-id');
+            const index = selectedPilgrims.findIndex(p => p.id == bookingId);
+            if (index !== -1) {
+                selectedPilgrims.splice(index, 1);
+            }
+            checkbox.checked = false;
+        });
+        if (btn) btn.innerHTML = '<i class="fas fa-id-card mr-1"></i>Select All for ID Cards';
+        showToast('info', 'Deselected all members from ID cards');
+    } else {
+        // Select all active members
+        let addedCount = 0;
+        let skippedCount = 0;
+
+        activeCheckboxes.forEach(checkbox => {
+            // Stop if limit reached
+            if (selectedPilgrims.length >= 8) {
+                skippedCount++;
+                return;
+            }
+
+            const bookingId = checkbox.getAttribute('data-booking-id');
+            const memberName = checkbox.closest('.member-card')?.querySelector('.member-name')?.textContent || 'Member';
+            
+            const existingIndex = selectedPilgrims.findIndex(p => p.id == bookingId);
+            if (existingIndex === -1) {
+                selectedPilgrims.push({
+                    id: bookingId,
+                    name: memberName,
+                    photoPath: null,
+                    visaPath: null
+                });
+                // Fetch member documents
+                fetchMemberDocuments(bookingId);
+                addedCount++;
+            }
+            checkbox.checked = true;
+        });
+
+        let message = `Added ${addedCount} pilgrim(s) for ID cards`;
+        if (skippedCount > 0) {
+            message += ` (${skippedCount} skipped - limit of 8 reached)`;
+        }
+        if (addedCount > 0) {
+            showToast('success', message);
+        }
+        if (btn) btn.innerHTML = '<i class="fas fa-id-card mr-1"></i>Deselect All for ID Cards';
+    }
+    updateIdCardSelection();
+}
+
 // Fetch member documents from the API
 function fetchMemberDocuments(bookingId) {
     fetch(`../api/get_member_documents.php?booking_id=${bookingId}`)
@@ -97,17 +166,27 @@ function updateSelectedPilgrimsList() {
     
     listContainer.innerHTML = '';
     
-    selectedPilgrims.forEach(pilgrim => {
+    if (selectedPilgrims.length === 0) {
+        listContainer.innerHTML = '<div class="col-12 text-center text-muted py-3"><i class="fas fa-info-circle mr-2"></i>No pilgrims selected yet</div>';
+        return;
+    }
+    
+    selectedPilgrims.forEach((pilgrim, index) => {
         const pilgrimCard = document.createElement('div');
-        pilgrimCard.className = 'col-md-3 mb-2';
+        pilgrimCard.className = 'col-md-4 col-sm-6 mb-2';
         pilgrimCard.innerHTML = `
-            <div class="card border-primary">
-                <div class="card-body p-2 text-center">
-                    <small class="text-primary font-weight-bold">${pilgrim.name}</small>
-                    <button type="button" class="btn btn-sm btn-outline-danger ml-2" 
-                            onclick="removeFromIdCardSelection(${pilgrim.id})" title="Remove">
-                        <i class="feather icon-x"></i>
-                    </button>
+            <div class="card border-info shadow-sm">
+                <div class="card-body p-2">
+                    <div class="d-flex justify-content-between align-items-start">
+                        <div class="flex-grow-1">
+                            <small class="text-info font-weight-bold d-block">${pilgrim.name}</small>
+                            <small class="text-muted">#${index + 1}</small>
+                        </div>
+                        <button type="button" class="btn btn-sm btn-outline-danger" 
+                                onclick="removeFromIdCardSelection(${pilgrim.id})" title="Remove">
+                            <i class="feather icon-x"></i>
+                        </button>
+                    </div>
                 </div>
             </div>
         `;

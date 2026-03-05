@@ -1,59 +1,74 @@
 <?php
-// Include necessary files
-require_once('../../includes/db.php');
+error_reporting(E_ALL);
+ini_set('display_errors', 0);
+ini_set('log_errors', 1);
 
-// Enforce authentication
-enforce_auth();
+ob_start();
 
-// Set header for JSON response
-header('Content-Type: application/json');
-$tenant_id = $_SESSION['tenant_id'];
-$branch_id = $_SESSION['branch_id'];
-
-// Check if it's a POST request
-if ($_SERVER['REQUEST_METHOD'] !== 'POST') {
-    echo json_encode([
-        'success' => false,
-        'message' => 'Invalid request method'
-    ]);
-    exit();
-}
-
-// Get POST data
-$action = isset($_POST['action']) ? $_POST['action'] : '';
-$new_status = isset($_POST['new_status']) ? $_POST['new_status'] : '';
-$bookings_json = isset($_POST['bookings']) ? $_POST['bookings'] : '';
-$reason = isset($_POST['reason']) ? $_POST['reason'] : '';
-
-// Validate required fields
-if (!$action || !$new_status || empty($bookings_json) || empty($reason)) {
-    echo json_encode([
-        'success' => false,
-        'message' => 'Missing or invalid required fields'
-    ]);
-    exit();
-}
-
-// Validate action
-if (!in_array($action, ['cancel', 'reapply'])) {
-    echo json_encode([
-        'success' => false,
-        'message' => 'Invalid action specified'
-    ]);
-    exit();
-}
-
-// Validate new status
-if (!in_array($new_status, ['cancelled', 'active'])) {
-    echo json_encode([
-        'success' => false,
-        'message' => 'Invalid status specified'
-    ]);
-    exit();
-}
-
-// Parse bookings data
 try {
+    // Include necessary files
+    require_once '../../admin/security.php';
+    require_once '../../includes/db.php';
+    
+    // Enforce authentication
+    enforce_auth();
+    
+    // Set header for JSON response
+    header('Content-Type: application/json');
+    $tenant_id = $_SESSION['tenant_id'];
+    $branch_id = $_SESSION['branch_id'];
+
+    // Check if it's a POST request
+    if ($_SERVER['REQUEST_METHOD'] !== 'POST') {
+        ob_end_clean();
+        http_response_code(400);
+        echo json_encode([
+            'success' => false,
+            'message' => 'Invalid request method'
+        ]);
+        exit();
+    }
+
+    // Get POST data
+    $action = isset($_POST['action']) ? $_POST['action'] : '';
+    $new_status = isset($_POST['new_status']) ? $_POST['new_status'] : '';
+    $bookings_json = isset($_POST['bookings']) ? $_POST['bookings'] : '';
+    $reason = isset($_POST['reason']) ? $_POST['reason'] : '';
+
+    // Validate required fields
+    if (!$action || !$new_status || empty($bookings_json) || empty($reason)) {
+        ob_end_clean();
+        http_response_code(400);
+        echo json_encode([
+            'success' => false,
+            'message' => 'Missing or invalid required fields'
+        ]);
+        exit();
+    }
+
+    // Validate action
+    if (!in_array($action, ['cancel', 'reapply'])) {
+        ob_end_clean();
+        http_response_code(400);
+        echo json_encode([
+            'success' => false,
+            'message' => 'Invalid action specified'
+        ]);
+        exit();
+    }
+
+    // Validate new status
+    if (!in_array($new_status, ['cancelled', 'active'])) {
+        ob_end_clean();
+        http_response_code(400);
+        echo json_encode([
+            'success' => false,
+            'message' => 'Invalid status specified'
+        ]);
+        exit();
+    }
+
+    // Parse bookings data
     $bookings = json_decode($bookings_json, true);
     if (json_last_error() !== JSON_ERROR_NONE) {
         throw new Exception('Invalid bookings data format');
@@ -62,15 +77,6 @@ try {
     if (empty($bookings) || !is_array($bookings)) {
         throw new Exception('No bookings data provided');
     }
-} catch (Exception $e) {
-    echo json_encode([
-        'success' => false,
-        'message' => 'Error parsing bookings data: ' . $e->getMessage()
-    ]);
-    exit();
-}
-
-try {
     // Begin transaction
     $pdo->beginTransaction();
 
@@ -222,31 +228,31 @@ try {
                     'bulk_operation' => true
                 ]);
 
+                $activity_action = ($action === 'cancel') ? 'bulk_cancel_umrah_booking' : 'bulk_reapply_umrah_booking';
+                $ip_address = $_SERVER['REMOTE_ADDR'] ?? 'unknown';
+                $user_agent = $_SERVER['HTTP_USER_AGENT'] ?? 'unknown';
+                $table_name = 'umrah_bookings';
+
                 $activity_log_stmt = $pdo->prepare("
                     INSERT INTO activity_log
                     (user_id, action, table_name, record_id, old_values, new_values, ip_address, user_agent, created_at, tenant_id, branch_id)
                     VALUES (?, ?, ?, ?, ?, ?, ?, ?, NOW(), ?, ?)
                 ");
 
-                $activity_action = ($action === 'cancel') ? 'bulk_cancel_umrah_booking' : 'bulk_reapply_umrah_booking';
-                $ip_address = $_SERVER['REMOTE_ADDR'] ?? 'unknown';
-                $user_agent = $_SERVER['HTTP_USER_AGENT'] ?? 'unknown';
-
                 $activity_log_stmt->bindParam(1, $_SESSION['user_id'], PDO::PARAM_INT);
                 $activity_log_stmt->bindParam(2, $activity_action, PDO::PARAM_STR);
-                $activity_log_stmt->bindParam(3, $booking_id, PDO::PARAM_INT);
-                $activity_log_stmt->bindParam(4, $old_values, PDO::PARAM_STR);
-                $activity_log_stmt->bindParam(5, $new_values, PDO::PARAM_STR);
-                $activity_log_stmt->bindParam(6, $ip_address, PDO::PARAM_STR);
-                $activity_log_stmt->bindParam(7, $user_agent, PDO::PARAM_STR);
-                $activity_log_stmt->bindParam(8, $tenant_id, PDO::PARAM_INT);
-                $activity_log_stmt->bindParam(9, $branch_id, PDO::PARAM_INT);
+                $activity_log_stmt->bindParam(3, $table_name, PDO::PARAM_STR);
+                $activity_log_stmt->bindParam(4, $booking_id, PDO::PARAM_INT);
+                $activity_log_stmt->bindParam(5, $old_values, PDO::PARAM_STR);
+                $activity_log_stmt->bindParam(6, $new_values, PDO::PARAM_STR);
+                $activity_log_stmt->bindParam(7, $ip_address, PDO::PARAM_STR);
+                $activity_log_stmt->bindParam(8, $user_agent, PDO::PARAM_STR);
+                $activity_log_stmt->bindParam(9, $tenant_id, PDO::PARAM_INT);
+                $activity_log_stmt->bindParam(10, $branch_id, PDO::PARAM_INT);
 
                 if (!$activity_log_stmt->execute()) {
-                    error_log("Failed to insert activity log for bulk booking #{$booking_id}: " . $activity_log_stmt->error);
+                    error_log("Failed to insert activity log for bulk booking #{$booking_id}");
                 }
-
-                $activity_log_stmt->close();
             } catch (Exception $e) {
                 // Activity log is critical but don't break the process if it fails
                 error_log("Activity logging failed for bulk booking #{$booking_id}: " . $e->getMessage());
@@ -258,6 +264,10 @@ try {
             $errors[] = "Error processing booking #{$booking_id}: " . $e->getMessage();
         }
     }
+
+    // Note: Family totals are calculated ONLY at booking approval time.
+    // When cancelling/reapplying, only the booking status and profit are updated.
+    // Family calculations will be recalculated through the approval workflow.
 
     // Check if we processed any bookings successfully
     if ($processed_count === 0) {
@@ -283,6 +293,8 @@ try {
         $message .= ". Some bookings had errors: " . implode('; ', $errors);
     }
 
+    ob_end_clean();
+    http_response_code(200);
     echo json_encode([
         'success' => true,
         'message' => $message,
@@ -294,13 +306,18 @@ try {
 
 } catch (Exception $e) {
     // Rollback transaction on error
-    $pdo->rollBack();
+    if ($pdo->inTransaction()) {
+        $pdo->rollBack();
+    }
 
+    ob_end_clean();
+    http_response_code(500);
     echo json_encode([
         'success' => false,
         'message' => 'Error processing bulk ' . $action . ': ' . $e->getMessage(),
         'processed_count' => isset($processed_count) ? $processed_count : 0,
-        'errors' => isset($errors) ? $errors : []
+        'errors' => isset($errors) ? $errors : [],
+        'trace' => $e->getFile() . ' on line ' . $e->getLine()
     ]);
 }
 ?>

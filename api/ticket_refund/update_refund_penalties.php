@@ -11,7 +11,6 @@ $tenant_id = $_SESSION['tenant_id'];
 $branch_id = $_SESSION['branch_id'];
 // update_refund_penalties.php
 require_once('../../includes/db.php');
-require_once('../../includes/conn.php'); // Adding mysqli connection for compatibility
 
 // Validate refund_amount
 $refund_amount = isset($_POST['refund_amount']) ? DbSecurity::validateInput($_POST['refund_amount'], 'float', ['min' => 0]) : null;

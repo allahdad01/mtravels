@@ -16,22 +16,32 @@ $(document).off('submit', '#umrahForm').on('submit', '#umrahForm', function(even
     })
     .then(response => response.json())
     .then(data => {
-
-        if (data.success) {
-            alert("Umrah record added successfully");
-            location.reload();
-        } else {
-            alert("error: " + (data.message || "Failed to add record"));
-            submitBtn.disabled = false;
-            submitBtn.innerHTML = originalHtml;
-        }
-    })
-    .catch(error => {
-
-        alert("an_error_occurred");
-        submitBtn.disabled = false;
-        submitBtn.innerHTML = originalHtml;
-    });
+         if (data.success) {
+             showToast('success', 'Umrah record added successfully');
+             const familyId = $('#familyId').val();
+             event.target.reset();
+             $('#umrahModal').modal('hide');
+             setTimeout(() => {
+                 // Reload the family members section
+                 if (familyId && typeof loadFamilyMembers === 'function') {
+                     loadFamilyMembers(familyId);
+                 }
+                 // Also refresh the main families table for updated counts
+                 if (typeof refreshFamiliesTable === 'function') {
+                     refreshFamiliesTable();
+                 }
+             }, 500);
+         } else {
+             showToast('error', data.message || 'Failed to add record');
+             submitBtn.disabled = false;
+             submitBtn.innerHTML = originalHtml;
+         }
+     })
+     .catch(error => {
+         showToast('error', 'An error occurred');
+         submitBtn.disabled = false;
+         submitBtn.innerHTML = originalHtml;
+     });
 });
 
 // Use .off() to remove any existing handlers before attaching new ones
@@ -49,22 +59,23 @@ $('#editFamilyForm').off('submit').on('submit', function(e) {
         data: form.serialize(),
         dataType: 'json',
         success: function(response) {
-            if (response.status === "success") {
-                alert(response.message);
-                location.reload();
-            } else {
-                alert("error: " + response.message);
-
-                submitButton.prop('disabled', false);
-                submitButton.html('Save changes');
-            }
-        },
-        error: function(xhr, status, error) {
-            alert("an_error_occurred");
-
-            submitButton.prop('disabled', false);
-            submitButton.html('Save changes');
-        }
+             if (response.status === "success") {
+                 showToast('success', response.message);
+                 $('#editFamilyModal').modal('hide');
+                 setTimeout(() => {
+                     refreshFamiliesTable();
+                 }, 1000);
+             } else {
+                 showToast('error', response.message);
+                 submitButton.prop('disabled', false);
+                 submitButton.html('Save changes');
+             }
+         },
+         error: function(xhr, status, error) {
+             showToast('error', 'An error occurred');
+             submitButton.prop('disabled', false);
+             submitButton.html('Save changes');
+         }
     });
 });
 
@@ -90,23 +101,25 @@ $(document).ready(function() {
             contentType: false,
             success: function(response) {
                 try {
-                    const result = JSON.parse(response);
-                    if (result.success) {
-                        alert('Transaction added successfully');
-                        $('#addTransactionForm').collapse('hide');
-                        $('#umrahTransactionForm')[0].reset();
-                        fetchTransactions(umrahId, parseFloat($('#totalAmount').text().replace('$', '')));
-                    } else {
-                        alert('error: ' + (result.message || 'Failed to add transaction'));
-                        submitBtn.prop('disabled', false);
-                        submitBtn.html(originalHtml);
-                    }
-                } catch (e) {
-
-                    alert('Error processing the request');
-                    submitBtn.prop('disabled', false);
-                    submitBtn.html(originalHtml);
-                }
+                     const result = JSON.parse(response);
+                     if (result.success) {
+                         showToast('success', 'Transaction added successfully');
+                         $('#addTransactionForm').collapse('hide');
+                         $('#umrahTransactionForm')[0].reset();
+                         fetchTransactions(umrahId, parseFloat($('#totalAmount').text().replace('$', '')));
+                         setTimeout(() => {
+                             refreshFamiliesTable();
+                         }, 1000);
+                     } else {
+                         showToast('error', result.message || 'Failed to add transaction');
+                         submitBtn.prop('disabled', false);
+                         submitBtn.html(originalHtml);
+                     }
+                 } catch (e) {
+                     showToast('error', 'Error processing the request');
+                     submitBtn.prop('disabled', false);
+                     submitBtn.html(originalHtml);
+                 }
             },
             error: function(xhr, status, error) {
 
@@ -211,17 +224,19 @@ function deleteBooking(bookingId) {
         return;
     }
 
-    const deleteBtn = event.target.closest('button');
+    const deleteBtn = event.target.closest('a');
     if (deleteBtn) {
         const originalHtml = deleteBtn.innerHTML;
-        deleteBtn.disabled = true;
-        deleteBtn.innerHTML = '<i class="feather icon-loader"></i> Deleting...';
+        deleteBtn.style.pointerEvents = 'none';
+        deleteBtn.style.opacity = '0.5';
+        deleteBtn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Deleting...';
     }
 
     fetch("../api/umrah/delete_booking.php", {
         method: "POST",
         headers: {
             "Content-Type": "application/x-www-form-urlencoded",
+            "X-CSRF-Token": window.csrfToken || ''
         },
         body: "booking_id=" + encodeURIComponent(bookingId),
     })
@@ -233,7 +248,8 @@ function deleteBooking(bookingId) {
         } else {
             alert("error: " + (data.message || "Failed to delete booking"));
             if (deleteBtn) {
-                deleteBtn.disabled = false;
+                deleteBtn.style.pointerEvents = 'auto';
+                deleteBtn.style.opacity = '1';
                 deleteBtn.innerHTML = originalHtml;
             }
         }
@@ -257,7 +273,10 @@ function deleteTransaction(transactionId) {
         
         fetch('../api/umrah/delete_umrah_transaction.php', {
             method: 'POST',
-            body: JSON.stringify({ transaction_id: transactionId }),
+            body: JSON.stringify({ 
+                transaction_id: transactionId,
+                csrf_token: window.csrfToken || ''
+            }),
             headers: { 'Content-Type': 'application/json' }
         })
         .then(response => response.json())

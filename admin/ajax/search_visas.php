@@ -12,7 +12,7 @@ require_once '../security.php';
 enforce_auth();
 
 // Database connection
-require_once '../../includes/conn.php';
+require_once '../../includes/db.php';
 
 // Initialize response array
 $response = [
@@ -71,30 +71,16 @@ if (isset($_GET['passport']) || isset($_GET['applicant'])) {
         $response['debug'][] = "Query: " . $query;
 
         // Prepare and execute the statement
-        $stmt = $conn->prepare($query);
-        if ($stmt === false) {
-            throw new Exception("Prepare failed: " . $conn->error);
-        }
+         $stmt = $pdo->prepare($query);
+         if ($stmt === false) {
+             throw new Exception("Prepare failed");
+         }
 
-        if (!empty($params)) {
-            $bind_result = $stmt->bind_param($types, ...$params);
-            if ($bind_result === false) {
-                throw new Exception("Bind param failed: " . $stmt->error);
-            }
-        }
+         $stmt->execute($params);
+         $result = $stmt;
 
-        $execute_result = $stmt->execute();
-        if ($execute_result === false) {
-            throw new Exception("Execute failed: " . $stmt->error);
-        }
-
-        $result = $stmt->get_result();
-        if ($result === false) {
-            throw new Exception("Get result failed: " . $stmt->error);
-        }
-
-        // Fetch results
-        while ($row = $result->fetch_assoc()) {
+         // Fetch results
+         while ($row = $result->fetch(PDO::FETCH_ASSOC)) {
             $response['visas'][] = [
                 'id' => $row['id'],
                 'title' => $row['title'],
@@ -117,9 +103,7 @@ if (isset($_GET['passport']) || isset($_GET['applicant'])) {
             $response['message'] = 'No visas found matching your search criteria.';
         } else {
             $response['message'] = count($response['visas']) . ' visa(s) found.';
-        }
-        
-        $stmt->close();
+            }
         
     } catch (Exception $e) {
         $response['success'] = false;

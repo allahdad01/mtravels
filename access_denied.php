@@ -93,29 +93,32 @@ if ($logged_in) {
                             <p>Your current role (<?= htmlspecialchars($role) ?>) does not have the required permissions.</p>
                             <?php 
                             // Determine correct dashboard based on role
-                            $dashboard_url = '';
-                            switch(strtolower($role)) {
-                                case 'admin':
-                                    $dashboard_url = 'admin/dashboard.php';
-                                    break;
-                                case 'sales':
-                                    $dashboard_url = 'sales/dashboard.php';
-                                    break;
-                                case 'finance':
-                                    $dashboard_url = 'finance/dashboard.php';
-                                    break;
-                                case 'umrah':
-                                    $dashboard_url = 'umrah/dashboard.php';
-                                    break;
-                                case 'visa':
-                                    $dashboard_url = 'visa/dashboard.php';
-                                    break;
-                                case 'client':
-                                    $dashboard_url = 'client/dashboard.php';
-                                    break;
-                                default:
-                                    $dashboard_url = 'login.php';
-                            }
+                             $dashboard_url = '';
+                             switch(strtolower($role)) {
+                                 case 'admin':
+                                     $dashboard_url = 'admin/dashboard.php';
+                                     break;
+                                 case 'staff':
+                                     $dashboard_url = 'admin/dashboard.php';
+                                     break;
+                                 case 'sales':
+                                     $dashboard_url = 'sales/dashboard.php';
+                                     break;
+                                 case 'finance':
+                                     $dashboard_url = 'finance/dashboard.php';
+                                     break;
+                                 case 'umrah':
+                                     $dashboard_url = 'umrah/dashboard.php';
+                                     break;
+                                 case 'visa':
+                                     $dashboard_url = 'visa/dashboard.php';
+                                     break;
+                                 case 'client':
+                                     $dashboard_url = 'client/dashboard.php';
+                                     break;
+                                 default:
+                                     $dashboard_url = 'login.php';
+                             }
                             ?>
                             <a href="<?= $dashboard_url ?>" class="btn btn-primary btn-back">
                                 <i class="fas fa-home"></i> Return to Dashboard

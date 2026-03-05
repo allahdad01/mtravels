@@ -1678,6 +1678,223 @@ function sendTicketNotificationWithAttachment($email, $name, $subject, $body, $a
     } catch (Exception $e) {
         error_log("Email sending failed: " . $mail->ErrorInfo);
         return false;
-    }
-}
-?>
+        }
+        }
+
+        // Send Sales Agent Credentials Email
+        function sendSalesAgentCredentialsEmail($email, $name, $password) {
+        $subject = "Your Sales Agent Account Credentials - MTravels";
+        
+        $body = "
+        <html>
+        <head>
+        <style>
+           body { font-family: Arial, sans-serif; }
+           .container { max-width: 600px; margin: 0 auto; padding: 20px; }
+           .header { background-color: #007bff; color: white; padding: 20px; border-radius: 5px; margin-bottom: 20px; }
+           .content { background-color: #f8f9fa; padding: 20px; border-radius: 5px; }
+           .credentials { background-color: white; padding: 15px; border-left: 4px solid #007bff; margin: 20px 0; }
+           .footer { margin-top: 20px; font-size: 12px; color: #666; }
+        </style>
+        </head>
+        <body>
+        <div class='container'>
+           <div class='header'>
+               <h2>Welcome to MTravels Sales Agent Program</h2>
+           </div>
+           <div class='content'>
+               <p>Dear " . htmlspecialchars($name) . ",</p>
+               <p>Your sales agent account has been created successfully. Below are your login credentials:</p>
+               
+               <div class='credentials'>
+                   <p><strong>Email:</strong> " . htmlspecialchars($email) . "</p>
+                   <p><strong>Password:</strong> " . htmlspecialchars($password) . "</p>
+                   <p><strong>Login URL:</strong> https://" . $_SERVER['HTTP_HOST'] . "/login.php</p>
+               </div>
+               
+               <p><strong>Important Security Notes:</strong></p>
+               <ul>
+                   <li>Please change your password after your first login</li>
+                   <li>Keep your credentials confidential</li>
+                   <li>Do not share your login information with others</li>
+                   <li>Enable two-factor authentication for added security</li>
+               </ul>
+               
+               <p>As a sales agent, you will be able to:</p>
+               <ul>
+                   <li>Track your subscription sales</li>
+                   <li>Monitor commission earnings</li>
+                   <li>Manage client relationships</li>
+                   <li>Access performance reports</li>
+               </ul>
+               
+               <p>If you have any questions or need assistance, please contact our support team.</p>
+           </div>
+           <div class='footer'>
+               <p>This is an automated email. Please do not reply directly to this email.</p>
+               <p>© " . date('Y') . " MTravels. All rights reserved.</p>
+           </div>
+        </div>
+        </body>
+        </html>
+        ";
+        
+        return sendEmail($email, $subject, $body, true, 'sales_agent_credentials', $name);
+        }
+
+        // Send Sales Agent Tenant Assignment Notification
+        function sendSalesAgentTenantAssignment($agent_email, $agent_name, $tenant_name, $subscription_details = []) {
+        $subject = "New Tenant Assignment - " . htmlspecialchars($tenant_name) . " | MTravels";
+        
+        $commission_rate = $subscription_details['commission_rate'] ?? 'N/A';
+        $start_date = $subscription_details['start_date'] ?? date('Y-m-d');
+        
+        $body = "
+        <html>
+        <head>
+        <style>
+           body { font-family: Arial, sans-serif; }
+           .container { max-width: 600px; margin: 0 auto; padding: 20px; }
+           .header { background-color: #28a745; color: white; padding: 20px; border-radius: 5px; margin-bottom: 20px; }
+           .content { background-color: #f8f9fa; padding: 20px; border-radius: 5px; }
+           .tenant-info { background-color: white; padding: 15px; border-left: 4px solid #28a745; margin: 20px 0; }
+        </style>
+        </head>
+        <body>
+        <div class='container'>
+           <div class='header'>
+               <h2>New Tenant Assignment</h2>
+           </div>
+           <div class='content'>
+               <p>Dear " . htmlspecialchars($agent_name) . ",</p>
+               <p>Great news! A new tenant has been assigned to your account:</p>
+               
+               <div class='tenant-info'>
+                   <p><strong>Tenant Name:</strong> " . htmlspecialchars($tenant_name) . "</p>
+                   <p><strong>Commission Rate:</strong> " . htmlspecialchars($commission_rate) . "%</p>
+                   <p><strong>Subscription Start Date:</strong> " . htmlspecialchars($start_date) . "</p>
+               </div>
+               
+               <p>You can now manage this tenant and track commission earnings through your dashboard.</p>
+               <p>Log in to your sales agent account to view more details.</p>
+           </div>
+        </div>
+        </body>
+        </html>
+        ";
+        
+        return sendEmail($agent_email, $subject, $body, true, 'sales_agent_tenant_assignment', $agent_name);
+        }
+
+        // Send Commission Notification
+        function sendCommissionNotification($agent_email, $agent_name, $commission_data = []) {
+        $period = $commission_data['period'] ?? date('F Y');
+        $amount = $commission_data['amount'] ?? 0;
+        $rate = $commission_data['rate'] ?? 0;
+        
+        $subject = "Commission Statement - " . $period . " | MTravels";
+        
+        $body = "
+        <html>
+        <head>
+        <style>
+           body { font-family: Arial, sans-serif; }
+           .container { max-width: 600px; margin: 0 auto; padding: 20px; }
+           .header { background-color: #ffc107; color: #333; padding: 20px; border-radius: 5px; margin-bottom: 20px; }
+           .content { background-color: #f8f9fa; padding: 20px; border-radius: 5px; }
+           .commission-box { background-color: white; padding: 20px; border-radius: 5px; border: 2px solid #ffc107; margin: 20px 0; text-align: center; }
+           .commission-box h3 { color: #ffc107; margin: 0; }
+           .amount { font-size: 28px; color: #28a745; font-weight: bold; }
+        </style>
+        </head>
+        <body>
+        <div class='container'>
+           <div class='header'>
+               <h2>Commission Statement</h2>
+           </div>
+           <div class='content'>
+               <p>Dear " . htmlspecialchars($agent_name) . ",</p>
+               <p>Here is your commission statement for <strong>" . htmlspecialchars($period) . "</strong>:</p>
+               
+               <div class='commission-box'>
+                   <h3>Commission Earned</h3>
+                   <div class='amount'>\$" . number_format($amount, 2) . "</div>
+                   <p>Commission Rate: " . htmlspecialchars($rate) . "%</p>
+               </div>
+               
+               <p>Log in to your dashboard to view detailed breakdown and transaction history.</p>
+           </div>
+        </div>
+        </body>
+        </html>
+        ";
+        
+        return sendEmail($agent_email, $subject, $body, true, 'commission_notification', $agent_name);
+        }
+
+        // Send New Tenant Notification to Super Admin
+        function sendNewTenantNotificationToAdmin($agent_name, $agent_email, $tenant_name, $tenant_email, $plan, $billing_cycle, $contact_person, $temp_password) {
+        $subject = "New Tenant Created - " . htmlspecialchars($tenant_name) . " | MTravels";
+        
+        $body = "
+        <html>
+        <head>
+        <style>
+           body { font-family: Arial, sans-serif; }
+           .container { max-width: 600px; margin: 0 auto; padding: 20px; }
+           .header { background-color: #28a745; color: white; padding: 20px; border-radius: 5px; margin-bottom: 20px; }
+           .content { background-color: #f8f9fa; padding: 20px; border-radius: 5px; }
+           .info-box { background-color: white; padding: 15px; border-left: 4px solid #28a745; margin: 15px 0; }
+           .credentials { background-color: #fff3cd; padding: 15px; border-radius: 5px; margin: 15px 0; }
+        </style>
+        </head>
+        <body>
+        <div class='container'>
+           <div class='header'>
+               <h2>New Tenant Created</h2>
+           </div>
+           <div class='content'>
+               <p>Hi Admin,</p>
+               <p>A new tenant has been created by sales agent <strong>" . htmlspecialchars($agent_name) . "</strong>:</p>
+               
+               <div class='info-box'>
+                   <h4>Tenant Information</h4>
+                   <p><strong>Tenant Name:</strong> " . htmlspecialchars($tenant_name) . "</p>
+                   <p><strong>Email:</strong> " . htmlspecialchars($tenant_email) . "</p>
+                   <p><strong>Contact Person:</strong> " . htmlspecialchars($contact_person ?: 'Not provided') . "</p>
+               </div>
+               
+               <div class='info-box'>
+                   <h4>Subscription Details</h4>
+                   <p><strong>Plan:</strong> " . ucfirst($plan) . "</p>
+                   <p><strong>Billing Cycle:</strong> " . ucfirst($billing_cycle) . "</p>
+                   <p><strong>Sales Agent:</strong> " . htmlspecialchars($agent_name) . " (" . htmlspecialchars($agent_email) . ")</p>
+               </div>
+
+               <div class='credentials'>
+                   <h4>Temporary Login Credentials</h4>
+                   <p><strong>Email:</strong> " . htmlspecialchars($tenant_email) . "</p>
+                   <p><strong>Temporary Password:</strong> " . htmlspecialchars($temp_password) . "</p>
+                   <p><small>Tenant should change this password on first login.</small></p>
+               </div>
+               
+               <p>The tenant account is now active and can start using the system immediately.</p>
+               <p>You can manage this tenant and review its details in your admin dashboard.</p>
+           </div>
+        </div>
+        </body>
+        </html>
+        ";
+        
+        // Send to all super admins
+        $stmt = $GLOBALS['pdo']->prepare("SELECT email FROM users WHERE role = 'super_admin'");
+        $stmt->execute();
+        $admins = $stmt->fetchAll();
+        
+        foreach ($admins as $admin) {
+            sendEmail($admin['email'], $subject, $body, true, 'new_tenant_notification', 'Admin');
+        }
+        
+        return true;
+        }
+        ?>

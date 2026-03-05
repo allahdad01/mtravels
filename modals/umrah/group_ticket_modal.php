@@ -24,10 +24,32 @@
                     </div>
                 </div>
 
-                <form id="groupTicketForm" action="../api/umrah/generate_group_ticket.php" method="post" target="_blank">
+                <!-- Flight Date & Return Date (Required) -->
+                <div class="card mb-3 border-warning">
+                    <div class="card-header bg-warning text-dark">
+                        <h6 class="mb-0"><i class="fas fa-calendar-alt mr-2"></i>Flight Dates (Required)</h6>
+                    </div>
+                    <div class="card-body">
+                        <div class="row">
+                            <div class="form-group col-md-6">
+                                <label for="groupFlightDate"><?= __('flight_date') ?> *</label>
+                                <input type="date" class="form-control" id="groupFlightDate" name="group_flight_date" required>
+                            </div>
+                            <div class="form-group col-md-6">
+                                <label for="groupReturnDate"><?= __('return_date') ?> *</label>
+                                <input type="date" class="form-control" id="groupReturnDate" name="group_return_date" required>
+                            </div>
+                        </div>
+                        <small class="form-text text-muted">These dates will be applied to all selected members</small>
+                    </div>
+                </div>
+
+                <form id="groupTicketForm">
                     <!-- CSRF Protection -->
                     <input type="hidden" name="csrf_token" value="<?php echo h($_SESSION['csrf_token'] ?? ''); ?>">
                     <input type="hidden" name="selected_members" id="selectedGroupMembersInput">
+                    <input type="hidden" name="flight_date" id="groupFlightDateInput">
+                    <input type="hidden" name="return_date" id="groupReturnDateInput">
 
                     <!-- Airline & PNR -->
                     <div class="row">
@@ -339,7 +361,7 @@
                     <i class="feather icon-x mr-2"></i><?= __('cancel') ?>
                 </button>
                 <button type="button" class="btn btn-primary" id="generateGroupTicketBtn" disabled>
-                    <i class="feather icon-printer mr-2"></i><?= __('generate_group_ticket') ?>
+                    <i class="fas fa-save mr-2"></i>Save & Generate Group Ticket
                 </button>
             </div>
         </div>

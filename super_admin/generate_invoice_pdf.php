@@ -4,22 +4,26 @@ if (session_status() === PHP_SESSION_NONE) {
     session_start();
 }
 
+// Database connection
+require_once '../config.php';
+require_once '../includes/db.php';
+
+// Include security module
+require_once 'security.php';
+
 // Check if user is logged in with proper role
 if (!isset($_SESSION['user_id']) || !isset($_SESSION['role'])) {
     header('Location: ../login.php');
     exit();
 }
 
-// Only super_admin or tenant_admin can access
-if (!in_array($_SESSION['role'], ['super_admin', 'tenant_admin'])) {
-    error_log("Unauthorized PDF access attempt: User {$_SESSION['user_id']} - IP: {$_SERVER['REMOTE_ADDR']}");
-    header('Location: ../login.php');
+// Only super_admin can access this endpoint
+// Tenant admins should use their own invoice generation with proper tenant isolation
+if ($_SESSION['role'] !== 'super_admin' || !is_null($_SESSION['tenant_id'])) {
+    error_log("Unauthorized PDF access attempt: User {$_SESSION['user_id']}, Role: {$_SESSION['role']}, Tenant ID: {$_SESSION['tenant_id']} - IP: {$_SERVER['REMOTE_ADDR']}");
+    header('Location: ../access_denied.php');
     exit();
 }
-
-// Database connection
-require_once '../config.php';
-require_once '../includes/db.php';
 
 // Check if $pdo is available
 if (!isset($pdo) || !$pdo) {
@@ -67,15 +71,9 @@ if ($payment_id > 0) {
             die('Payment record not found');
         }
         
-        // SECURITY: Verify user has access to this payment
-        if ($_SESSION['role'] === 'tenant_admin') {
-            // Tenant admins can only access payments from their own tenant
-            if ($payment_record['tenant_id'] != $_SESSION['tenant_id']) {
-                error_log("SECURITY: Unauthorized payment access - User: {$_SESSION['user_id']}, Payment: {$payment_id}, Tenant: {$payment_record['tenant_id']}, User Tenant: {$_SESSION['tenant_id']}");
-                die('Unauthorized access to this payment');
-            }
-        }
-        // Super admins can access all payments
+        // SECURITY: Only super admins can access payments
+         // This endpoint is for super admin only
+         error_log("Payment invoice accessed by super admin: {$_SESSION['user_id']}, Payment: {$payment_id}");
         
         // Use payment record data
         $subscription_id = $payment_record['subscription_id'];

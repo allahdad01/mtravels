@@ -534,7 +534,7 @@ if (isset($_GET['payment'], $_GET['subscription_id'])) {
                                                 <?php endif; ?>
 
                                                     <form method="post" action="process_subscription_payment.php" class="mt-3">
-                                                         <input type="hidden" name="csrf_token" value="<?php echo $_SESSION['csrf_token']; ?>">
+                                                         <input type="hidden" name="csrf_token" value="<?= htmlspecialchars($csrf_token, ENT_QUOTES, 'UTF-8') ?>">
                                                          <input type="hidden" name="subscription_id" value="<?php echo $subscription['id']; ?>">
                                                          <input type="hidden" name="amount" value="<?php echo $totalAmount; ?>">
                                                          <input type="hidden" name="currency" value="<?php echo $subscription['currency']; ?>">

@@ -21,7 +21,11 @@ $message = '';
 $messageType = '';
 
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
-    if (isset($_POST['action'])) {
+    // Validate CSRF token for all POST requests
+    if (!CsrfProtection::validateToken($_POST['csrf_token'] ?? null)) {
+        $message = 'Security token validation failed. Please try again.';
+        $messageType = 'danger';
+    } elseif (isset($_POST['action'])) {
         switch ($_POST['action']) {
             case 'create':
                 // Create new user
@@ -39,13 +43,21 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 } elseif (!filter_var($email, FILTER_VALIDATE_EMAIL)) {
                     $message = 'Please enter a valid email address.';
                     $messageType = 'danger';
-                } elseif (strlen($password) < 6) {
-                    $message = 'Password must be at least 6 characters long.';
+                } elseif (strlen($password) < 12) {
+                    $message = 'Password must be at least 12 characters long.';
                     $messageType = 'danger';
                 } elseif (!$canAddMoreUsers) {
                     $message = 'You have reached your user limit (' . $usageStats['max_users'] . ' users). Please request additional user slots.';
                     $messageType = 'danger';
                 } else {
+                    // Validate password strength using PasswordValidator
+                    require_once '../includes/PasswordValidator.php';
+                    $validation = PasswordValidator::validate($password);
+                    
+                    if (!$validation['valid']) {
+                        $message = 'Password does not meet requirements: ' . implode(', ', $validation['errors']);
+                        $messageType = 'danger';
+                    } else {
                     try {
                         // Check if email already exists
                         $stmt = $pdo->prepare("SELECT id FROM users WHERE email = ? AND tenant_id = ?");
@@ -78,6 +90,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                     } catch (PDOException $e) {
                         $message = 'Error creating user: ' . $e->getMessage();
                         $messageType = 'danger';
+                    }
                     }
                 }
                 break;
@@ -150,10 +163,18 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 if (!$user_id || empty($new_password)) {
                     $message = 'User ID and new password are required.';
                     $messageType = 'danger';
-                } elseif (strlen($new_password) < 6) {
-                    $message = 'Password must be at least 6 characters long.';
+                } elseif (strlen($new_password) < 12) {
+                    $message = 'Password must be at least 12 characters long.';
                     $messageType = 'danger';
                 } else {
+                    // Validate password strength
+                    require_once '../includes/PasswordValidator.php';
+                    $validation = PasswordValidator::validate($new_password);
+                    
+                    if (!$validation['valid']) {
+                        $message = 'Password does not meet requirements: ' . implode(', ', $validation['errors']);
+                        $messageType = 'danger';
+                    } else {
                     try {
                         $hashed_password = password_hash($new_password, PASSWORD_DEFAULT);
 
@@ -168,6 +189,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                     } catch (PDOException $e) {
                         $message = 'Error resetting password: ' . $e->getMessage();
                         $messageType = 'danger';
+                    }
                     }
                 }
                 break;
@@ -758,6 +780,7 @@ function logActivity($pdo, $tenant_id, $user_id, $action, $table_name, $record_i
             </div>
             <form method="POST">
                 <input type="hidden" name="action" value="create">
+                <input type="hidden" name="csrf_token" value="<?= htmlspecialchars($csrf_token, ENT_QUOTES, 'UTF-8') ?>">
                 <div class="modal-body">
                     <div class="row">
                         <div class="col-md-6">
@@ -777,8 +800,8 @@ function logActivity($pdo, $tenant_id, $user_id, $action, $table_name, $record_i
                         <div class="col-md-6">
                             <div class="form-group">
                                 <label for="userPassword">Password *</label>
-                                <input type="password" class="form-control" id="userPassword" name="password" required minlength="6">
-                                <small class="form-text text-muted">Minimum 6 characters</small>
+                                <input type="password" class="form-control" id="userPassword" name="password" required minlength="12">
+                                <small class="form-text text-muted">Minimum 12 characters with uppercase, lowercase, numbers, and special characters (!@#$%^&*...)</small>
                             </div>
                         </div>
                         <div class="col-md-6">
@@ -839,6 +862,7 @@ function logActivity($pdo, $tenant_id, $user_id, $action, $table_name, $record_i
             <form method="POST" id="editUserForm">
                 <input type="hidden" name="action" value="update">
                 <input type="hidden" name="user_id" id="editUserId">
+                <input type="hidden" name="csrf_token" value="<?= htmlspecialchars($csrf_token, ENT_QUOTES, 'UTF-8') ?>">
                 <div class="modal-body">
                     <div class="row">
                         <div class="col-md-6">
@@ -922,12 +946,13 @@ function logActivity($pdo, $tenant_id, $user_id, $action, $table_name, $record_i
             <form method="POST" id="resetPasswordForm">
                 <input type="hidden" name="action" value="reset_password">
                 <input type="hidden" name="user_id" id="resetUserId">
+                <input type="hidden" name="csrf_token" value="<?= htmlspecialchars($csrf_token, ENT_QUOTES, 'UTF-8') ?>">
                 <div class="modal-body">
                     <p>Reset password for user: <strong id="resetUserName"></strong></p>
                     <div class="form-group">
                         <label for="newPassword">New Password *</label>
-                        <input type="password" class="form-control" id="newPassword" name="new_password" required minlength="6">
-                        <small class="form-text text-muted">Minimum 6 characters</small>
+                        <input type="password" class="form-control" id="newPassword" name="new_password" required minlength="12">
+                        <small class="form-text text-muted">Minimum 12 characters with uppercase, lowercase, numbers, and special characters (!@#$%^&*...)</small>
                     </div>
                     <div class="alert alert-warning">
                         <i class="feather icon-alert-triangle"></i>

@@ -77,15 +77,55 @@
                         <!-- Date Change Details Section -->
                         <div id="dateChangeDetailsContainer" class="mt-4" style="display: none;">
                             <input type="hidden" id="selectedTicketId" name="ticketId">
+                            <input type="hidden" id="ticketTripType" name="ticketTripType">
                             <input type="hidden" name="status" value="Date Changed">
                             <input type="hidden" name="csrf_token" value="<?= $_SESSION['csrf_token'] ?>">
                             
+                            <!-- Date Type Selection (for round-trip) -->
+                            <div id="dateTypeSelectionGroup" class="row mb-3" style="display: none;">
+                                <div class="col-md-12">
+                                    <label><?= __('select_date_to_change') ?></label>
+                                    <div class="custom-control custom-radio">
+                                        <input type="radio" class="custom-control-input" id="changeDepartureOnly" name="dateType" value="departure" checked>
+                                        <label class="custom-control-label" for="changeDepartureOnly">
+                                            <?= __('departure_date_only') ?>
+                                        </label>
+                                    </div>
+                                    <div class="custom-control custom-radio">
+                                        <input type="radio" class="custom-control-input" id="changeReturnOnly" name="dateType" value="return">
+                                        <label class="custom-control-label" for="changeReturnOnly">
+                                            <?= __('return_date_only') ?>
+                                        </label>
+                                    </div>
+                                    <div class="custom-control custom-radio">
+                                        <input type="radio" class="custom-control-input" id="changeBothDates" name="dateType" value="both">
+                                        <label class="custom-control-label" for="changeBothDates">
+                                            <?= __('both_dates') ?>
+                                        </label>
+                                    </div>
+                                </div>
+                            </div>
+                            
                             <div class="row">
                                 <div class="col-md-12">
-                                    <div class="form-group">
+                                    <div class="form-group" id="departureGroup">
                                         <label for="departureDate"><?= __('new_departure_date') ?></label>
                                         <input type="date" class="form-control" id="departureDate" 
-                                               name="departureDate" required
+                                               name="departureDate"
+                                               min="<?= date('Y-m-d') ?>">
+                                        <div class="invalid-feedback">
+                                            <?= __('please_select_future_date') ?>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <div class="row" id="returnGroup" style="display: none;">
+                                <div class="col-md-12">
+                                    <div class="form-group">
+                                        <label for="returnDate"><?= __('new_return_date') ?></label>
+                                        <input type="date" class="form-control" id="returnDate" 
+                                               name="returnDate"
                                                min="<?= date('Y-m-d') ?>">
                                         <div class="invalid-feedback">
                                             <?= __('please_select_future_date') ?>

@@ -1,23 +1,20 @@
 <?php
-// Include security module
 require_once 'security.php';
-
-// Enforce authentication
+require_once '../includes/language_helpers.php';
 enforce_auth();
 $tenant_id = $_SESSION['tenant_id'];
 $branch_id = $_SESSION['branch_id'];
 
-
-// Check if user is logged in
-if (!isset($_SESSION['user_id'])  || $_SESSION['role'] !== 'admin') {
+$allowed_roles = ['admin', 'finance', 'sales'];
+if (!isset($_SESSION['user_id']) || !in_array($_SESSION['role'], $allowed_roles)) {
+    error_log("Unauthorized access attempt to dashboard: " . ($_SESSION['user_id'] ?? 'unknown') . " - Role: " . ($_SESSION['role'] ?? 'unknown') . " - IP: " . $_SERVER['REMOTE_ADDR']);
     header('Location: ../login.php');
     exit();
 }
 
-// Include database connection
-include '../includes/db.php';
+require_once('../includes/db.php');
+$canEdit = in_array($_SESSION['role'], ['admin', 'finance']);
 
-// Initialize variables
 $visaId = isset($_GET['id']) ? intval($_GET['id']) : 0;
 $visaData = null;
 $clientTransactions = [];
@@ -25,572 +22,1106 @@ $supplierTransactions = [];
 $mainAccountTransactions = [];
 $error = null;
 
-// Check if ID is provided
 if (!$visaId) {
     $error = "No visa application ID provided";
 } else {
-    // Get visa application details with related info
-    $visaQuery = "SELECT
-            va.*,
-            c.name AS client_name,
-            c.email AS client_email,
-            c.phone AS client_phone,
-            s.name AS supplier_name,
-            s.email AS supplier_email,
-            s.phone AS supplier_phone
+    $visaQuery = "SELECT va.*, c.name AS client_name, c.email AS client_email, c.phone AS client_phone, s.name AS supplier_name, s.email AS supplier_email, s.phone AS supplier_phone
         FROM visa_applications va
         LEFT JOIN clients c ON va.sold_to = c.id
         LEFT JOIN suppliers s ON va.supplier = s.id
         WHERE va.id = ? AND va.tenant_id = ? AND va.branch_id = ? AND (c.id IS NULL OR c.branch_id = ?) AND (s.id IS NULL OR s.branch_id = ?)";
-
     $stmt = $pdo->prepare($visaQuery);
     $stmt->execute([$visaId, $tenant_id, $branch_id, $branch_id, $branch_id]);
     $visaData = $stmt->fetch(PDO::FETCH_ASSOC);
-    
+
     if (!$visaData) {
         $error = "Visa application not found";
     } else {
-        // Get main account transactions related to this visa
-        $mainAccountTransQuery = "SELECT
-                'Main Account' AS transaction_type,
-                mat.id,
-                mat.type,
-                mat.amount,
-                mat.currency,
-                mat.description,
-                mat.transaction_of,
-                mat.created_at AS transaction_date
-            FROM main_account_transactions mat
-            WHERE mat.reference_id = ? AND mat.transaction_of = 'visa_sale' AND mat.tenant_id = ? AND mat.branch_id = ?
-            ORDER BY mat.created_at DESC";
-
-        $stmt = $pdo->prepare($mainAccountTransQuery);
+        $stmt = $pdo->prepare("SELECT 'Main Account' AS transaction_type, mat.id, mat.type, mat.amount, mat.currency, mat.description, mat.transaction_of, mat.created_at AS transaction_date FROM main_account_transactions mat WHERE mat.reference_id = ? AND mat.transaction_of = 'visa_sale' AND mat.tenant_id = ? AND mat.branch_id = ? ORDER BY mat.created_at DESC");
         $stmt->execute([$visaId, $tenant_id, $branch_id]);
         $mainAccountTransactions = $stmt->fetchAll(PDO::FETCH_ASSOC);
-        
-        // Get client transactions related to this visa
-        $clientTransQuery = "SELECT
-                'Client' AS transaction_type,
-                ct.id,
-                ct.type,
-                ct.amount,
-                ct.currency,
-                ct.description,
-                ct.transaction_of,
-                ct.created_at AS transaction_date
-            FROM client_transactions ct
-            WHERE ct.reference_id = ? AND ct.transaction_of = 'visa_sale' AND ct.tenant_id = ? AND ct.branch_id = ?
-            ORDER BY ct.created_at DESC";
 
-        $stmt = $pdo->prepare($clientTransQuery);
+        $stmt = $pdo->prepare("SELECT 'Client' AS transaction_type, ct.id, ct.type, ct.amount, ct.currency, ct.description, ct.transaction_of, ct.created_at AS transaction_date FROM client_transactions ct WHERE ct.reference_id = ? AND ct.transaction_of = 'visa_sale' AND ct.tenant_id = ? AND ct.branch_id = ? ORDER BY ct.created_at DESC");
         $stmt->execute([$visaId, $tenant_id, $branch_id]);
         $clientTransactions = $stmt->fetchAll(PDO::FETCH_ASSOC);
-        
-        // Get supplier transactions related to this visa
-        $supplierTransQuery = "SELECT
-                'Supplier' AS transaction_type,
-                st.id,
-                st.transaction_type AS type,
-                st.amount,
-                st.remarks AS description,
-                st.transaction_of,
-                st.transaction_date
-            FROM supplier_transactions st
-            WHERE st.reference_id = ? AND st.transaction_of = 'visa_sale' AND st.tenant_id = ? AND st.branch_id = ?
-            ORDER BY st.transaction_date DESC";
 
-        $stmt = $pdo->prepare($supplierTransQuery);
+        $stmt = $pdo->prepare("SELECT 'Supplier' AS transaction_type, st.id, st.transaction_type AS type, st.amount, st.remarks AS description, st.transaction_of, st.transaction_date FROM supplier_transactions st WHERE st.reference_id = ? AND st.transaction_of = 'visa_sale' AND st.tenant_id = ? AND st.branch_id = ? ORDER BY st.transaction_date DESC");
         $stmt->execute([$visaId, $tenant_id, $branch_id]);
         $supplierTransactions = $stmt->fetchAll(PDO::FETCH_ASSOC);
     }
 }
 
-// Include the header
 include '../includes/header.php';
+
+// helpers
+$s      = $visaData['status'] ?? '';
+$scls   = match(strtolower($s)) {
+    'approved'   => 'st-approved',
+    'processing' => 'st-processing',
+    'rejected'   => 'st-rejected',
+    'pending'    => 'st-pending',
+    default      => 'st-default'
+};
+
+$allTx = array_merge($clientTransactions, $supplierTransactions, $mainAccountTransactions);
+usort($allTx, fn($a,$b) => strtotime($b['transaction_date']) - strtotime($a['transaction_date']));
 ?>
+<link href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@700;900&family=IBM+Plex+Mono:wght@400;500;600&family=Outfit:wght@300;400;500;600&display=swap" rel="stylesheet">
 <style>
-/* Apply gradient background to card headers matching the sidebar */
-.card-header {
-    background: linear-gradient(135deg, #4099ff 0%, #2ed8b6 100%) !important;
-    color: #ffffff !important;
-    border-bottom: none !important;
+/* ═══════════════════════════════════════════════════
+   VISA DOCUMENT THEME
+   The detail page IS the visa — passport-page layout
+   with MRZ strip, hologram effect, stamps, watermark
+═══════════════════════════════════════════════════ */
+:root {
+    --grad:      linear-gradient(135deg, #4099ff 0%, #2ed8b6 100%);
+    --grad-r:    linear-gradient(135deg, #2ed8b6 0%, #4099ff 100%);
+    --navy:      #0d1f3c;
+    --navy2:     #162b50;
+    --gold:      #c8a84b;
+    --gold-lt:   #f5e6b8;
+    --teal:      #2ed8b6;
+    --blue:      #4099ff;
+    --bg:        #e8edf5;
+    --surface:   #ffffff;
+    --border:    #dde3ef;
+    --text-1:    #0d1f3c;
+    --text-2:    #3d5278;
+    --text-3:    #8899bb;
+    --green:     #10b981;
+    --red:       #ef4444;
+    --amber:     #f59e0b;
+    --font-disp: 'Playfair Display', serif;
+    --font-body: 'Outfit', sans-serif;
+    --font-mono: 'IBM Plex Mono', monospace;
 }
 
-.card-header h5 {
-    color: #ffffff !important;
-    margin-bottom: 0 !important;
+* { box-sizing: border-box; }
+body, .pcoded-main-container { background: var(--bg) !important; font-family: var(--font-body) !important; }
+
+/* ── PAGE CHROME ───────────────────────────── */
+.vp-wrap {
+    max-width: 960px;
+    margin: 0 auto;
+    padding: 28px 20px 60px;
+    animation: vpFade .5s ease both;
 }
 
-.card-header .card-header-right {
-    color: #ffffff !important;
+.vp-topbar {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    margin-bottom: 28px;
+    flex-wrap: wrap;
+    gap: 12px;
 }
 
-.card-header .card-header-right .btn {
-    color: #ffffff !important;
-    border-color: rgba(255, 255, 255, 0.3) !important;
+.vp-back {
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    padding: 9px 20px;
+    background: var(--surface);
+    border: 1.5px solid var(--border);
+    border-radius: 50px;
+    font-size: 13px;
+    font-weight: 500;
+    color: var(--text-2);
+    text-decoration: none;
+    transition: all .2s;
+    box-shadow: 0 2px 8px rgba(0,0,0,.06);
+}
+.vp-back:hover { border-color: var(--blue); color: var(--blue); transform: translateX(-3px); text-decoration: none; }
+
+/* ── THE VISA DOCUMENT ─────────────────────── */
+.visa-doc {
+    background: var(--surface);
+    border-radius: 20px;
+    overflow: hidden;
+    box-shadow:
+        0 2px 4px rgba(0,0,0,.04),
+        0 8px 32px rgba(13,31,60,.12),
+        0 32px 64px rgba(13,31,60,.08);
+    position: relative;
+    margin-bottom: 28px;
+    border: 1.5px solid rgba(200,168,75,.25);
 }
 
-.card-header .card-header-right .btn:hover {
-    background: rgba(255, 255, 255, 0.1) !important;
-    border-color: rgba(255, 255, 255, 0.5) !important;
+/* subtle diagonal security pattern */
+.visa-doc::before {
+    content: '';
+    position: absolute;
+    inset: 0;
+    background-image:
+        repeating-linear-gradient(
+            58deg,
+            transparent,
+            transparent 18px,
+            rgba(64,153,255,.022) 18px,
+            rgba(64,153,255,.022) 19px
+        ),
+        repeating-linear-gradient(
+            -58deg,
+            transparent,
+            transparent 18px,
+            rgba(46,216,182,.018) 18px,
+            rgba(46,216,182,.018) 19px
+        );
+    pointer-events: none;
+    z-index: 0;
 }
+
+/* ── VISA HEADER BAND ──────────────────────── */
+.visa-header-band {
+    background: var(--navy);
+    background-image:
+        radial-gradient(ellipse at 20% 50%, rgba(64,153,255,.18) 0%, transparent 60%),
+        radial-gradient(ellipse at 80% 50%, rgba(46,216,182,.14) 0%, transparent 60%);
+    padding: 0 32px;
+    display: flex;
+    align-items: stretch;
+    gap: 0;
+    position: relative;
+    overflow: hidden;
+    min-height: 110px;
+    z-index: 1;
+}
+
+/* watermark globe in header */
+.visa-header-band::after {
+    content: '⬡';
+    position: absolute;
+    right: -20px;
+    top: 50%;
+    transform: translateY(-50%);
+    font-size: 220px;
+    color: rgba(255,255,255,.03);
+    line-height: 1;
+    pointer-events: none;
+    font-family: var(--font-mono);
+}
+
+.visa-header-left {
+    display: flex;
+    align-items: center;
+    gap: 20px;
+    flex: 1;
+    padding: 20px 0;
+}
+
+.visa-emblem {
+    width: 68px; height: 68px;
+    border-radius: 50%;
+    background: var(--grad);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    flex-shrink: 0;
+    box-shadow: 0 0 0 3px rgba(255,255,255,.1), 0 0 0 6px rgba(64,153,255,.2), 0 8px 24px rgba(64,153,255,.4);
+    font-size: 28px;
+    color: #fff;
+    position: relative;
+}
+.visa-emblem::after {
+    content: '';
+    position: absolute;
+    inset: -4px;
+    border-radius: 50%;
+    border: 1px dashed rgba(255,255,255,.2);
+}
+
+.visa-header-titles {}
+.visa-doc-type {
+    font-family: var(--font-mono);
+    font-size: 10px;
+    letter-spacing: .2em;
+    color: var(--teal);
+    text-transform: uppercase;
+    margin-bottom: 4px;
+    opacity: .9;
+}
+.visa-country-name {
+    font-family: var(--font-disp);
+    font-size: 22px;
+    color: #fff;
+    line-height: 1.1;
+    font-weight: 900;
+}
+.visa-subtitle {
+    font-size: 11px;
+    color: rgba(255,255,255,.45);
+    letter-spacing: .06em;
+    text-transform: uppercase;
+    margin-top: 3px;
+    font-family: var(--font-mono);
+}
+
+.visa-header-right {
+    display: flex;
+    align-items: center;
+    gap: 20px;
+    padding: 20px 0;
+    flex-shrink: 0;
+}
+
+/* status stamp */
+.visa-stamp {
+    width: 80px; height: 80px;
+    border-radius: 50%;
+    border: 3px solid currentColor;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    font-family: var(--font-mono);
+    font-size: 9px;
+    font-weight: 600;
+    letter-spacing: .08em;
+    text-transform: uppercase;
+    transform: rotate(-12deg);
+    position: relative;
+    flex-shrink: 0;
+}
+.visa-stamp::before {
+    content: '';
+    position: absolute;
+    inset: 4px;
+    border-radius: 50%;
+    border: 1px solid currentColor;
+    opacity: .4;
+}
+.stamp-approved   { color: #4ade80; border-color: #4ade80; }
+.stamp-processing { color: #fcd34d; border-color: #fcd34d; }
+.stamp-rejected   { color: #f87171; border-color: #f87171; }
+.stamp-pending    { color: #93c5fd; border-color: #93c5fd; }
+.stamp-default    { color: rgba(255,255,255,.4); border-color: rgba(255,255,255,.4); }
+.visa-stamp-text  { font-size: 11px; font-weight: 700; letter-spacing: .06em; }
+.visa-stamp-sub   { font-size: 7.5px; opacity: .7; }
+
+/* visa number top-right */
+.visa-number {
+    text-align: right;
+}
+.visa-number-label {
+    font-family: var(--font-mono);
+    font-size: 9px;
+    color: rgba(255,255,255,.4);
+    letter-spacing: .12em;
+    text-transform: uppercase;
+    margin-bottom: 3px;
+}
+.visa-number-val {
+    font-family: var(--font-mono);
+    font-size: 18px;
+    font-weight: 600;
+    background: var(--grad);
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    background-clip: text;
+    letter-spacing: .08em;
+}
+
+/* ── VISA BODY ─────────────────────────────── */
+.visa-body {
+    padding: 28px 32px 0;
+    position: relative;
+    z-index: 1;
+}
+
+/* ── PHOTO + FIELDS ROW ────────────────────── */
+.visa-main-row {
+    display: grid;
+    grid-template-columns: 110px 1fr 1fr;
+    gap: 28px;
+    margin-bottom: 24px;
+    align-items: start;
+}
+
+@media (max-width: 680px) {
+    .visa-main-row { grid-template-columns: 1fr 1fr; }
+    .visa-photo-col { display: none; }
+}
+
+/* photo placeholder */
+.visa-photo-col {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 8px;
+}
+.visa-photo {
+    width: 100px; height: 120px;
+    background: linear-gradient(160deg, #e8edf5, #d0d9ee);
+    border-radius: 8px;
+    border: 2px solid var(--border);
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    color: var(--text-3);
+    font-size: 11px;
+    gap: 6px;
+    position: relative;
+    overflow: hidden;
+}
+.visa-photo::after {
+    content: '';
+    position: absolute;
+    inset: 0;
+    background: repeating-linear-gradient(
+        45deg, transparent, transparent 4px,
+        rgba(64,153,255,.04) 4px, rgba(64,153,255,.04) 5px
+    );
+}
+.visa-photo i { font-size: 32px; opacity: .3; }
+.visa-photo-label {
+    font-size: 10px;
+    color: var(--text-3);
+    text-align: center;
+    font-family: var(--font-mono);
+    letter-spacing: .06em;
+}
+
+/* field groups */
+.visa-field-group {}
+.visa-field-group-title {
+    font-size: 10px;
+    font-weight: 700;
+    letter-spacing: .14em;
+    text-transform: uppercase;
+    color: var(--blue);
+    margin-bottom: 12px;
+    padding-bottom: 6px;
+    border-bottom: 1.5px solid rgba(64,153,255,.15);
+    display: flex;
+    align-items: center;
+    gap: 7px;
+}
+.visa-field-group-title::before {
+    content: '';
+    width: 14px; height: 2px;
+    background: var(--grad);
+    border-radius: 2px;
+    display: block;
+}
+
+.visa-field {
+    margin-bottom: 14px;
+}
+.visa-field-label {
+    font-family: var(--font-mono);
+    font-size: 9px;
+    letter-spacing: .16em;
+    text-transform: uppercase;
+    color: var(--text-3);
+    margin-bottom: 3px;
+}
+.visa-field-value {
+    font-size: 13.5px;
+    font-weight: 600;
+    color: var(--text-1);
+    line-height: 1.3;
+}
+.visa-field-value.mono { font-family: var(--font-mono); font-size: 13px; letter-spacing: .04em; }
+.visa-field-value .nil { color: var(--text-3); font-weight: 400; font-style: italic; font-size: 12px; }
+
+/* ── FINANCIAL ROW ─────────────────────────── */
+.visa-financial-band {
+    background: linear-gradient(135deg, var(--navy) 0%, var(--navy2) 100%);
+    margin: 0 -32px;
+    padding: 20px 32px;
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 1px;
+    position: relative;
+    overflow: hidden;
+}
+.visa-financial-band::before {
+    content: '';
+    position: absolute;
+    inset: 0;
+    background: repeating-linear-gradient(
+        90deg,
+        transparent, transparent 1fr,
+        rgba(255,255,255,.04) 1fr, rgba(255,255,255,.04) calc(1fr + 1px)
+    );
+}
+@media (max-width: 600px) { .visa-financial-band { grid-template-columns: 1fr; } }
+
+.visa-fin-item {
+    padding: 12px 20px;
+    border-right: 1px solid rgba(255,255,255,.08);
+    position: relative;
+    z-index: 1;
+}
+.visa-fin-item:last-child { border-right: none; }
+.visa-fin-label {
+    font-family: var(--font-mono);
+    font-size: 9px;
+    letter-spacing: .16em;
+    text-transform: uppercase;
+    color: rgba(255,255,255,.4);
+    margin-bottom: 6px;
+}
+.visa-fin-value {
+    font-family: var(--font-mono);
+    font-size: 20px;
+    font-weight: 600;
+    color: #fff;
+}
+.visa-fin-value.profit-pos { background: linear-gradient(90deg, var(--teal), #34d399); -webkit-background-clip: text; -webkit-text-fill-color: transparent; background-clip: text; }
+.visa-fin-value.profit-neg { color: #f87171; }
+.visa-fin-currency {
+    font-size: 11px;
+    color: rgba(255,255,255,.4);
+    margin-top: 3px;
+    font-family: var(--font-mono);
+    letter-spacing: .08em;
+}
+
+/* ── PARTY ROW ─────────────────────────────── */
+.visa-parties {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 20px;
+    padding: 24px 0;
+}
+@media (max-width: 600px) { .visa-parties { grid-template-columns: 1fr; } }
+
+.visa-party-card {
+    background: linear-gradient(135deg, #f7f9fd, #eef2fb);
+    border-radius: 12px;
+    border: 1.5px solid var(--border);
+    padding: 16px 18px;
+    position: relative;
+    overflow: hidden;
+}
+.visa-party-card::before {
+    content: '';
+    position: absolute;
+    top: 0; left: 0; right: 0;
+    height: 3px;
+    background: var(--grad);
+    border-radius: 12px 12px 0 0;
+}
+.visa-party-role {
+    font-family: var(--font-mono);
+    font-size: 9px;
+    letter-spacing: .2em;
+    text-transform: uppercase;
+    color: var(--blue);
+    margin-bottom: 10px;
+}
+.visa-party-name-big {
+    font-size: 15px;
+    font-weight: 700;
+    color: var(--text-1);
+    margin-bottom: 6px;
+}
+.visa-party-meta {
+    font-size: 12px;
+    color: var(--text-3);
+    display: flex;
+    flex-direction: column;
+    gap: 3px;
+}
+.visa-party-meta span { display: flex; align-items: center; gap: 6px; }
+.visa-party-link {
+    display: inline-flex;
+    align-items: center;
+    gap: 5px;
+    margin-top: 12px;
+    padding: 6px 14px;
+    border-radius: 50px;
+    background: var(--surface);
+    border: 1.5px solid rgba(64,153,255,.25);
+    color: var(--blue);
+    font-size: 11.5px;
+    font-weight: 600;
+    text-decoration: none;
+    transition: all .2s;
+}
+.visa-party-link:hover { background: var(--blue); color: #fff; border-color: var(--blue); text-decoration: none; }
+.visa-party-none { color: var(--text-3); font-size: 12.5px; font-style: italic; }
+
+/* ── REMARKS ───────────────────────────────── */
+.visa-remarks-section {
+    padding: 0 0 24px;
+}
+.visa-remarks-box {
+    background: rgba(64,153,255,.04);
+    border: 1px solid rgba(64,153,255,.12);
+    border-radius: 10px;
+    padding: 14px 18px;
+    font-size: 13px;
+    color: var(--text-2);
+    line-height: 1.7;
+}
+
+/* ── MRZ STRIP ─────────────────────────────── */
+.visa-mrz {
+    background: #f0f3f9;
+    border-top: 1.5px solid var(--border);
+    padding: 14px 32px;
+    font-family: var(--font-mono);
+    font-size: 11px;
+    color: var(--text-3);
+    letter-spacing: .12em;
+    line-height: 1.8;
+    position: relative;
+    z-index: 1;
+    overflow: hidden;
+}
+.visa-mrz::before {
+    content: 'MACHINE READABLE ZONE';
+    display: block;
+    font-size: 8px;
+    letter-spacing: .25em;
+    color: var(--text-3);
+    margin-bottom: 6px;
+    opacity: .6;
+}
+.mrz-line {
+    display: block;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: clip;
+    color: var(--navy);
+    opacity: .55;
+    font-size: 10.5px;
+}
+
+/* hologram shimmer overlay in bottom-right */
+.visa-holo {
+    position: absolute;
+    bottom: 12px; right: 24px;
+    width: 56px; height: 56px;
+    border-radius: 50%;
+    background:
+        conic-gradient(
+            from 0deg,
+            rgba(64,153,255,.7),
+            rgba(46,216,182,.7),
+            rgba(200,168,75,.5),
+            rgba(64,153,255,.7)
+        );
+    opacity: .25;
+    filter: blur(1px);
+    animation: holoSpin 6s linear infinite;
+}
+@keyframes holoSpin { to { transform: rotate(360deg); } }
+
+/* ── LEDGER / TRANSACTIONS ─────────────────── */
+.vp-ledger {
+    background: var(--surface);
+    border-radius: 20px;
+    border: 1.5px solid var(--border);
+    box-shadow: 0 4px 20px rgba(13,31,60,.07);
+    overflow: hidden;
+    margin-bottom: 28px;
+}
+
+.vp-ledger-header {
+    background: var(--navy);
+    background-image: radial-gradient(ellipse at 20% 50%, rgba(64,153,255,.15) 0%, transparent 60%);
+    padding: 16px 28px;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    flex-wrap: wrap;
+    gap: 12px;
+}
+.vp-ledger-title {
+    font-family: var(--font-mono);
+    font-size: 11px;
+    letter-spacing: .2em;
+    text-transform: uppercase;
+    color: rgba(255,255,255,.9);
+    display: flex;
+    align-items: center;
+    gap: 10px;
+}
+.vp-ledger-title::before {
+    content: '';
+    width: 20px; height: 2px;
+    background: var(--grad);
+    display: block;
+    border-radius: 2px;
+}
+
+.vp-filter-pills {
+    display: flex;
+    gap: 6px;
+    flex-wrap: wrap;
+}
+.vp-pill {
+    padding: 5px 14px;
+    border-radius: 50px;
+    font-size: 11px;
+    font-weight: 600;
+    cursor: pointer;
+    border: 1.5px solid rgba(255,255,255,.15);
+    background: transparent;
+    color: rgba(255,255,255,.55);
+    transition: all .2s;
+    font-family: var(--font-body);
+    display: flex;
+    align-items: center;
+    gap: 5px;
+}
+.vp-pill:hover { border-color: rgba(255,255,255,.4); color: rgba(255,255,255,.85); }
+.vp-pill.active {
+    background: var(--grad);
+    border-color: transparent;
+    color: #fff;
+    box-shadow: 0 3px 12px rgba(64,153,255,.4);
+}
+.vp-pill-ct {
+    background: rgba(255,255,255,.15);
+    border-radius: 50px;
+    padding: 1px 7px;
+    font-size: 10px;
+}
+.vp-pill.active .vp-pill-ct { background: rgba(255,255,255,.25); }
+
+.vp-ledger-body { padding: 20px 28px 24px; }
+
+/* ledger table */
+.vp-ltable {
+    width: 100%;
+    border-collapse: separate;
+    border-spacing: 0 5px;
+}
+.vp-ltable thead th {
+    font-family: var(--font-mono);
+    font-size: 9px;
+    letter-spacing: .15em;
+    text-transform: uppercase;
+    color: var(--text-3);
+    padding: 4px 12px;
+    font-weight: 600;
+    background: transparent;
+    border: none;
+}
+.vp-ltable tbody tr {
+    background: #f7f9fd;
+    transition: background .15s;
+}
+.vp-ltable tbody tr:hover { background: rgba(64,153,255,.06); }
+.vp-ltable tbody td {
+    padding: 11px 12px;
+    border: none;
+    font-size: 13px;
+    color: var(--text-2);
+    vertical-align: middle;
+}
+.vp-ltable tbody td:first-child { border-radius: 8px 0 0 8px; }
+.vp-ltable tbody td:last-child  { border-radius: 0 8px 8px 0; }
+
+.lt-date { font-family: var(--font-mono); font-size: 11.5px; color: var(--text-3); }
+
+.lt-party {
+    display: inline-flex; align-items: center; gap: 5px;
+    padding: 3px 10px; border-radius: 50px;
+    font-size: 11px; font-weight: 600;
+}
+.lt-party-client   { background: rgba(64,153,255,.1); color: #2563eb; }
+.lt-party-supplier { background: rgba(245,158,11,.1); color: #b45309; }
+.lt-party-main     { background: rgba(99,102,241,.1); color: #4f46e5; }
+
+.lt-type {
+    display: inline-flex; align-items: center;
+    padding: 3px 10px; border-radius: 50px;
+    font-size: 11px; font-weight: 600;
+}
+.lt-credit { background: rgba(16,185,129,.1); color: #059669; }
+.lt-debit  { background: rgba(239,68,68,.1);  color: #dc2626; }
+
+.lt-amt { font-family: var(--font-mono); font-size: 13px; font-weight: 600; }
+.lt-pos  { color: var(--green); }
+.lt-neg  { color: var(--red); }
+
+.vp-empty {
+    text-align: center;
+    padding: 48px 20px;
+    color: var(--text-3);
+    font-size: 13px;
+}
+.vp-empty i { font-size: 36px; display: block; margin-bottom: 12px; opacity: .3; }
+
+/* ── ANIMATIONS ────────────────────────────── */
+@keyframes vpFade {
+    from { opacity: 0; transform: translateY(16px); }
+    to   { opacity: 1; transform: translateY(0); }
+}
+
+/* perforated left edge */
+.visa-doc-perforated {
+    position: absolute;
+    left: 0; top: 0; bottom: 0;
+    width: 18px;
+    display: flex;
+    flex-direction: column;
+    justify-content: space-around;
+    align-items: center;
+    pointer-events: none;
+    z-index: 2;
+}
+.perf-hole {
+    width: 10px; height: 10px;
+    border-radius: 50%;
+    background: var(--bg);
+    box-shadow: inset 0 1px 2px rgba(0,0,0,.12);
+}
+
+/* corner bracket accents */
+.visa-corner {
+    position: absolute;
+    width: 22px; height: 22px;
+    border-color: rgba(200,168,75,.35);
+    border-style: solid;
+    z-index: 2;
+}
+.visa-corner-tl { top: 10px; left: 24px; border-width: 2px 0 0 2px; }
+.visa-corner-tr { top: 10px; right: 10px; border-width: 2px 2px 0 0; }
+.visa-corner-bl { bottom: 10px; left: 24px; border-width: 0 0 2px 2px; }
+.visa-corner-br { bottom: 10px; right: 10px; border-width: 0 2px 2px 0; }
 </style>
+
 <div class="pcoded-main-container">
+  <div class="pcoded-wrapper">
     <div class="pcoded-content">
-        <div class="page-header">
-            <div class="page-block">
-                <div class="row align-items-center">
-                    <div class="col-md-12">
-                        <div class="page-header-title">
-                            <h5 class="m-b-10"><?= __('visa_application_details') ?></h5>
-                        </div>
-                        <ul class="breadcrumb">
-                            <li class="breadcrumb-item"><a href="index.php"><i class="feather icon-home"></i></a></li>
-                            <li class="breadcrumb-item"><a href="search.php"><?= __('search') ?></a></li>
-                            <li class="breadcrumb-item"><a href="javascript:"><?= __('visa_application_details') ?></a></li>
-                        </ul>
+      <div class="pcoded-inner-content">
+        <div class="main-body">
+          <div class="page-wrapper">
+          <div class="vp-wrap">
+
+            <?php if ($error): ?>
+              <div class="alert alert-danger"><?= h($error) ?></div>
+              <a href="search.php" class="vp-back">← <?= __('back_to_search') ?></a>
+            <?php else: ?>
+
+            <!-- TOPBAR -->
+            <div class="vp-topbar">
+              <a href="search.php" class="vp-back">
+                <i class="feather icon-arrow-left"></i> <?= __('back_to_search') ?>
+              </a>
+            </div>
+
+            <!-- ══════════════════════════════════
+                 THE VISA DOCUMENT
+            ══════════════════════════════════ -->
+            <div class="visa-doc">
+
+              <!-- perforated edge -->
+              <div class="visa-doc-perforated">
+                <?php for($i=0;$i<14;$i++): ?><div class="perf-hole"></div><?php endfor; ?>
+              </div>
+
+              <!-- corner brackets -->
+              <div class="visa-corner visa-corner-tl"></div>
+              <div class="visa-corner visa-corner-tr"></div>
+              <div class="visa-corner visa-corner-bl"></div>
+              <div class="visa-corner visa-corner-br"></div>
+
+              <!-- hologram spot -->
+              <div class="visa-holo"></div>
+
+              <!-- ── HEADER BAND ── -->
+              <div class="visa-header-band">
+                <div class="visa-header-left">
+                  <div class="visa-emblem">
+                    <i class="feather icon-globe"></i>
+                  </div>
+                  <div class="visa-header-titles">
+                    <div class="visa-doc-type">Travel Document · Visa</div>
+                    <div class="visa-country-name">
+                      <?= !empty($visaData['country']) ? h($visaData['country']) : __('visa_application') ?>
                     </div>
+                    <div class="visa-subtitle"><?= h($visaData['visa_type'] ?? __('general_visa')) ?></div>
+                  </div>
                 </div>
-            </div>
-        </div>
+                <div class="visa-header-right">
+                  <div class="visa-number">
+                    <div class="visa-number-label"><?= __('application_no') ?></div>
+                    <div class="visa-number-val"><?= str_pad($visaId, 8, '0', STR_PAD_LEFT) ?></div>
+                  </div>
+                  <?php
+                    $stampClass = match(strtolower($s)) {
+                      'approved'   => 'stamp-approved',
+                      'processing' => 'stamp-processing',
+                      'rejected'   => 'stamp-rejected',
+                      'pending'    => 'stamp-pending',
+                      default      => 'stamp-default'
+                    };
+                  ?>
+                  <div class="visa-stamp <?= $stampClass ?>">
+                    <span class="visa-stamp-text"><?= h($s ?: 'N/A') ?></span>
+                    <span class="visa-stamp-sub">STATUS</span>
+                  </div>
+                </div>
+              </div>
 
-        <div class="row">
-            <div class="col-md-12">
-                <?php if ($error): ?>
-                    <div class="alert alert-danger"><?php echo h($error); ?></div>
-                    <a href="search.php" class="btn btn-primary"><?= __('back_to_search') ?></a>
-                <?php else: ?>
-                    <!-- Visa Application Information Card -->
-                    <div class="card">
-                        <div class="card-header">
-                            <h5>
-                                <i class="feather icon-file-text mr-2"></i>
-                                <?= __('visa_application_information') ?>
-                                <span class="float-right">
-                                    <span class="badge-<?php 
-                                        if ($visaData['status'] == 'Approved') echo 'success';
-                                        elseif ($visaData['status'] == 'Processing') echo 'warning';
-                                        elseif ($visaData['status'] == 'Rejected') echo 'danger';
-                                        elseif ($visaData['status'] == 'Pending') echo 'info';
-                                        else echo 'secondary';
-                                    ?>">
-                                        <?php echo h($visaData['status']); ?>
-                                    </span>
-                                </span>
-                            </h5>
-                        </div>
-                        <div class="card-body">
-                            <div class="row">
-                                <div class="col-md-6">
-                                    <div class="table-responsive">
-                                        <table class="table table-bordered">
-                                            <tr>
-                                                <th style="width: 40%"><?= __('applicant_name') ?></th>
-                                                <td><?php echo isset($visaData['applicant_name']) && $visaData['applicant_name'] !== null ? htmlspecialchars($visaData['applicant_name']) : '—'; ?></td>
-                                            </tr>
-                                            <tr>
-                                                <th><?= __('passport_number') ?></th>
-                                                <td><?php echo isset($visaData['passport_number']) && $visaData['passport_number'] !== null ? htmlspecialchars($visaData['passport_number']) : '—'; ?></td>
-                                            </tr>
-                                            <tr>
-                                                <th><?= __('phone') ?></th>
-                                                <td><?php echo isset($visaData['phone']) && $visaData['phone'] !== null ? htmlspecialchars($visaData['phone']) : '—'; ?></td>
-                                            </tr>
-                                            <tr>
-                                                <th><?= __('country') ?></th>
-                                                <td><?php echo isset($visaData['country']) && $visaData['country'] !== null ? htmlspecialchars($visaData['country']) : '—'; ?></td>
-                                            </tr>
-                                            <tr>
-                                                <th><?= __('visa_type') ?></th>
-                                                <td><?php echo isset($visaData['visa_type']) && $visaData['visa_type'] !== null ? htmlspecialchars($visaData['visa_type']) : '—'; ?></td>
-                                            </tr>
-                                        </table>
-                                    </div>
-                                </div>
-                                <div class="col-md-6">
-                                    <div class="table-responsive">
-                                        <table class="table table-bordered">
-                                            <tr>
-                                                <th style="width: 40%"><?= __('sold_amount') ?></th>
-                                                <td>
-                                                    <strong>
-                                                        <?php echo isset($visaData['currency']) && isset($visaData['sold']) ? 
-                                                            htmlspecialchars($visaData['currency']) . ' ' . htmlspecialchars($visaData['sold']) : '—'; ?>
-                                                    </strong>
-                                                </td>
-                                            </tr>
-                                            <tr>
-                                                <th><?= __('base_amount') ?></th>
-                                                <td><?php echo isset($visaData['currency']) && isset($visaData['base']) ? 
-                                                    htmlspecialchars($visaData['currency']) . ' ' . htmlspecialchars($visaData['base']) : '—'; ?></td>
-                                            </tr>
-                                            <tr>
-                                                <th><?= __('profit') ?></th>
-                                                <td class="<?php echo (isset($visaData['profit']) && $visaData['profit'] > 0) ? 'text-success' : 'text-danger'; ?>">
-                                                    <strong>
-                                                        <?php 
-                                                        if (isset($visaData['currency']) && isset($visaData['profit'])) {
-                                                            echo htmlspecialchars($visaData['currency']) . ' ' . 
-                                                                htmlspecialchars($visaData['profit']);
-                                                        } else {
-                                                            echo '—';
-                                                        }
-                                                        ?>
-                                                    </strong>
-                                                </td>
-                                            </tr>
-                                            <tr>
-                                                <th><?= __('applied_date') ?></th>
-                                                <td>
-                                                    <?php 
-                                                    if (!empty($visaData['applied_date'])) {
-                                                        echo date('Y-m-d', strtotime($visaData['applied_date']));
-                                                    } else {
-                                                        echo '<span class="text-muted">Not Available</span>';
-                                                    }
-                                                    ?>
-                                                </td>
-                                            </tr>
-                                            <tr>
-                                                <th><?= __('issued_date') ?></th>
-                                                <td>
-                                                    <?php 
-                                                    if (!empty($visaData['issued_date'])) {
-                                                        echo date('Y-m-d', strtotime($visaData['issued_date']));
-                                                    } else {
-                                                        echo '<span class="text-muted">Not Issued Yet</span>';
-                                                    }
-                                                    ?>
-                                                </td>
-                                            </tr>
-                                            <tr>
-                                                <th><?= __('status') ?></th>
-                                                <td>
-                                                    <span class="badge-<?php 
-                                                        if ($visaData['status'] == 'Approved') echo 'success';
-                                                        elseif ($visaData['status'] == 'Processing') echo 'warning';
-                                                        elseif ($visaData['status'] == 'Rejected') echo 'danger';
-                                                        elseif ($visaData['status'] == 'Pending') echo 'info';
-                                                        else echo 'secondary';
-                                                    ?>">
-                                                        <?php echo isset($visaData['status']) ? htmlspecialchars($visaData['status']) : '—'; ?>
-                                                    </span>
-                                                </td>
-                                            </tr>
-                                            <tr>
-                                                <th><?= __('created_at') ?></th>
-                                                <td><?php echo isset($visaData['created_at']) ? date('Y-m-d H:i', strtotime($visaData['created_at'])) : '—'; ?></td>
-                                            </tr>
-                                        </table>
-                                    </div>
-                                </div>
-                            </div>
+              <!-- ── BODY ── -->
+              <div class="visa-body">
 
-                            <!-- Client & Supplier Information -->
-                            <div class="row mt-3">
-                                <div class="col-md-6">
-                                    <div class="card bg-light">
-                                        <div class="card-body">
-                                            <h6 class="card-title"><i class="feather icon-user mr-2"></i><?= __('client_information') ?></h6>
-                                            <?php if (isset($visaData['client_id']) && !empty($visaData['client_id'])): ?>
-                                                <p><strong><?= __('name') ?>:</strong> <?php echo isset($visaData['client_name']) ? htmlspecialchars($visaData['client_name']) : '—'; ?></p>
-                                                <p><strong><?= __('email') ?>:</strong> <?php echo isset($visaData['client_email']) ? htmlspecialchars($visaData['client_email']) : '—'; ?></p>
-                                                <p><strong><?= __('phone') ?>:</strong> <?php echo isset($visaData['client_phone']) ? htmlspecialchars($visaData['client_phone']) : '—'; ?></p>
-                                                <a href="client_detail.php?id=<?php echo h($visaData['client_id']); ?>" class="btn btn-sm btn-primary">
-                                                    <i class="feather icon-external-link mr-1"></i> <?= __('view_client_details') ?>
-                                                </a>
-                                            <?php else: ?>
-                                                <p class="text-muted"><?= __('no_client_associated_with_this_application') ?></p>
-                                            <?php endif; ?>
-                                        </div>
-                                    </div>
-                                </div>
-                                
-                                <div class="col-md-6">
-                                    <div class="card bg-light">
-                                        <div class="card-body">
-                                            <h6 class="card-title"><i class="feather icon-briefcase mr-2"></i><?= __('supplier_information') ?></h6>
-                                            <?php if (isset($visaData['supplier_id']) && !empty($visaData['supplier_id'])): ?>
-                                                <p><strong><?= __('name') ?>:</strong> <?php echo isset($visaData['supplier_name']) ? htmlspecialchars($visaData['supplier_name']) : '—'; ?></p>
-                                                <p><strong><?= __('email') ?>:</strong> <?php echo isset($visaData['supplier_email']) ? htmlspecialchars($visaData['supplier_email']) : '—'; ?></p>
-                                                <p><strong><?= __('phone') ?>:</strong> <?php echo isset($visaData['supplier_phone']) ? htmlspecialchars($visaData['supplier_phone']) : '—'; ?></p>
-                                                <a href="supplier_detail.php?id=<?php echo h($visaData['supplier_id']); ?>" class="btn btn-sm btn-primary">
-                                                    <i class="feather icon-external-link mr-1"></i> <?= __('view_supplier_details') ?>
-                                                </a>
-                                            <?php else: ?>
-                                                <p class="text-muted"><?= __('no_supplier_associated_with_this_application') ?></p>
-                                            <?php endif; ?>
-                                        </div>
-                                    </div>
-                                </div>
-                            </div>
+                <!-- Main applicant + dates row -->
+                <div class="visa-main-row">
 
-                            <?php if (!empty($visaData['remarks'])): ?>
-                            <div class="row mt-3">
-                                <div class="col-md-12">
-                                    <div class="card bg-light">
-                                        <div class="card-body">
-                                            <h6 class="card-title"><i class="feather icon-info mr-2"></i><?= __('remarks') ?></h6>
-                                            <p class="card-text"><?php echo nl2br(htmlspecialchars($visaData['remarks'])); ?></p>
-                                        </div>
-                                    </div>
-                                </div>
-                            </div>
-                            <?php endif; ?>
-                        </div>
+                  <!-- Photo placeholder -->
+                  <div class="visa-photo-col">
+                    <div class="visa-photo">
+                      <i class="feather icon-user"></i>
                     </div>
+                    <div class="visa-photo-label">PHOTO</div>
+                  </div>
 
-                    <!-- Transactions History -->
-                    <div class="card">
-                        <div class="card-header">
-                            <h5><i class="feather icon-activity mr-2"></i><?= __('transaction_history') ?></h5>
-                        </div>
-                        <div class="card-body">
-                            <ul class="nav nav-tabs mb-3" id="transactionTab" role="tablist">
-                                <li class="nav-item">
-                                    <a class="nav-link active" id="client-tab" data-toggle="tab" href="#client" role="tab"><?= __('client_transactions') ?></a>
-                                </li>
-                                <li class="nav-item">
-                                    <a class="nav-link" id="supplier-tab" data-toggle="tab" href="#supplier" role="tab"><?= __('supplier_transactions') ?></a>
-                                </li>
-                                <li class="nav-item">
-                                    <a class="nav-link" id="main-account-tab" data-toggle="tab" href="#main-account" role="tab"><?= __('main_account_transactions') ?></a>
-                                </li>
-                                <li class="nav-item">
-                                    <a class="nav-link" id="all-tab" data-toggle="tab" href="#all" role="tab"><?= __('all_transactions') ?></a>
-                                </li>
-                            </ul>
-                            <div class="tab-content" id="transactionTabContent">
-                                <!-- Client Transactions -->
-                                <div class="tab-pane fade show active" id="client" role="tabpanel">
-                                    <?php if (!empty($clientTransactions)): ?>
-                                    <div class="table-responsive">
-                                        <table class="table table-hover">
-                                            <thead>
-                                                <tr>
-                                                    <th><?= __('date') ?></th>
-                                                    <th><?= __('transaction_type') ?></th>
-                                                    <th><?= __('type') ?></th>
-                                                    <th><?= __('amount') ?></th>
-                                                    <th><?= __('description') ?></th>
-                                                </tr>
-                                            </thead>
-                                            <tbody>
-                                                <?php foreach ($clientTransactions as $transaction): ?>
-                                                <tr>
-                                                    <td><?php echo date('Y-m-d', strtotime($transaction['transaction_date'])); ?></td>
-                                                    <td>
-                                                        <span class="badge-info">Visa</span>
-                                                    </td>
-                                                    <td><?php echo isset($transaction['type']) ? ucfirst(strtolower($transaction['type'])) : '—'; ?></td>
-                                                    <td>
-                                                        <span class="<?php echo (isset($transaction['type']) && strtolower($transaction['type']) == 'debit') ? 'text-danger' : 'text-success'; ?>">
-                                                            <?php 
-                                                            if (isset($transaction['currency']) && isset($transaction['amount'])) {
-                                                                echo htmlspecialchars($transaction['currency']) . ' ' . htmlspecialchars($transaction['amount']);
-                                                            } else {
-                                                                echo '—';
-                                                            }
-                                                            ?>
-                                                        </span>
-                                                    </td>
-                                                    <td><?php echo isset($transaction['description']) ? htmlspecialchars($transaction['description']) : '—'; ?></td>
-                                                </tr>
-                                                <?php endforeach; ?>
-                                            </tbody>
-                                        </table>
-                                    </div>
-                                    <?php else: ?>
-                                    <div class="alert alert-info"><?= __('no_client_transactions_found_for_this_application') ?></div>
-                                    <?php endif; ?>
-                                </div>
-                                
-                                <!-- Supplier Transactions -->
-                                <div class="tab-pane fade" id="supplier" role="tabpanel">
-                                    <?php if (!empty($supplierTransactions)): ?>
-                                    <div class="table-responsive">
-                                        <table class="table table-hover">
-                                            <thead>
-                                                <tr>
-                                                    <th><?= __('date') ?></th>
-                                                    <th><?= __('transaction_type') ?></th>
-                                                    <th><?= __('type') ?></th>
-                                                    <th><?= __('amount') ?></th>
-                                                    <th><?= __('description') ?></th>
-                                                </tr>
-                                            </thead>
-                                            <tbody>
-                                                <?php foreach ($supplierTransactions as $transaction): ?>
-                                                <tr>
-                                                    <td><?php echo date('Y-m-d', strtotime($transaction['transaction_date'])); ?></td>
-                                                    <td>
-                                                        <span class="badge-info">Visa</span>
-                                                    </td>
-                                                    <td><?php echo isset($transaction['type']) ? ucfirst(strtolower($transaction['type'])) : '—'; ?></td>
-                                                    <td>
-                                                        <span class="<?php echo (isset($transaction['type']) && strtolower($transaction['type']) == 'debit') ? 'text-danger' : 'text-success'; ?>">
-                                                            <?php 
-                                                            if (isset($transaction['currency']) && isset($transaction['amount'])) {
-                                                                echo htmlspecialchars($transaction['currency']) . ' ' . htmlspecialchars($transaction['amount']);
-                                                            } else {
-                                                                echo '—';
-                                                            }
-                                                            ?>
-                                                        </span>
-                                                    </td>
-                                                    <td><?php echo isset($transaction['description']) ? htmlspecialchars($transaction['description']) : '—'; ?></td>
-                                                </tr>
-                                                <?php endforeach; ?>
-                                            </tbody>
-                                        </table>
-                                    </div>
-                                    <?php else: ?>
-                                    <div class="alert alert-info"><?= __('no_supplier_transactions_found_for_this_application') ?></div>
-                                    <?php endif; ?>
-                                </div>
-                                
-                                <!-- Main Account Transactions -->
-                                <div class="tab-pane fade" id="main-account" role="tabpanel">
-                                    <?php if (!empty($mainAccountTransactions)): ?>
-                                    <div class="table-responsive">
-                                        <table class="table table-hover">
-                                            <thead>
-                                                <tr>
-                                                    <th><?= __('date') ?></th>
-                                                    <th><?= __('transaction_type') ?></th>
-                                                    <th><?= __('type') ?></th>
-                                                    <th><?= __('amount') ?></th>
-                                                    <th><?= __('description') ?></th>
-                                                </tr>
-                                            </thead>
-                                            <tbody>
-                                                <?php foreach ($mainAccountTransactions as $transaction): ?>
-                                                <tr>
-                                                    <td><?php echo date('Y-m-d', strtotime($transaction['transaction_date'])); ?></td>
-                                                    <td>
-                                                        <span class="badge-info">Visa</span>
-                                                    </td>
-                                                    <td><?php echo isset($transaction['type']) ? ucfirst(strtolower($transaction['type'])) : '—'; ?></td>
-                                                    <td>
-                                                        <span class="<?php echo (isset($transaction['type']) && strtolower($transaction['type']) == 'debit') ? 'text-danger' : 'text-success'; ?>">
-                                                            <?php 
-                                                            if (isset($transaction['currency']) && isset($transaction['amount'])) {
-                                                                echo htmlspecialchars($transaction['currency']) . ' ' . htmlspecialchars($transaction['amount']);
-                                                            } else {
-                                                                echo '—';
-                                                            }
-                                                            ?>
-                                                        </span>
-                                                    </td>
-                                                    <td><?php echo isset($transaction['description']) ? htmlspecialchars($transaction['description']) : '—'; ?></td>
-                                                </tr>
-                                                <?php endforeach; ?>
-                                            </tbody>
-                                        </table>
-                                    </div>
-                                    <?php else: ?>
-                                    <div class="alert alert-info"><?= __('no_main_account_transactions_found_for_this_application') ?></div>
-                                    <?php endif; ?>
-                                </div>
-                                
-                                <!-- All Transactions -->
-                                <div class="tab-pane fade" id="all" role="tabpanel">
-                                    <?php if (!empty($clientTransactions) || !empty($supplierTransactions) || !empty($mainAccountTransactions)): ?>
-                                    <div class="table-responsive">
-                                        <table class="table table-hover">
-                                            <thead>
-                                                <tr>
-                                                        <th><?= __('date') ?></th>
-                                                    <th><?= __('type') ?></th>
-                                                    <th><?= __('party') ?></th>
-                                                    <th><?= __('transaction') ?></th>
-                                                    <th><?= __('amount') ?></th>
-                                                    <th><?= __('description') ?></th>
-                                                </tr>
-                                            </thead>
-                                            <tbody>
-                                                <?php 
-                                                $allTransactions = array_merge($clientTransactions, $supplierTransactions, $mainAccountTransactions);
-                                                
-                                                // Sort by date, most recent first
-                                                usort($allTransactions, function($a, $b) {
-                                                    return strtotime($b['transaction_date']) - strtotime($a['transaction_date']);
-                                                });
-                                                
-                                                foreach ($allTransactions as $transaction): 
-                                                ?>
-                                                <tr>
-                                                    <td><?php echo date('Y-m-d', strtotime($transaction['transaction_date'])); ?></td>
-                                                    <td>
-                                                        <span class="badge-info">Visa</span>
-                                                    </td>
-                                                    <td>
-                                                        <span class="badge-<?php 
-                                                            if ($transaction['transaction_type'] == 'Client') echo 'primary';
-                                                            elseif ($transaction['transaction_type'] == 'Supplier') echo 'warning';
-                                                            elseif ($transaction['transaction_type'] == 'Main Account') echo 'info';
-                                                            else echo 'secondary';
-                                                        ?>">
-                                                                <?php echo h($transaction['transaction_type']); ?>
-                                                        </span>
-                                                    </td>
-                                                    <td><?php echo isset($transaction['type']) ? ucfirst(strtolower($transaction['type'])) : '—'; ?></td>
-                                                    <td>
-                                                        <span class="<?php echo (isset($transaction['type']) && strtolower($transaction['type']) == 'debit') ? 'text-danger' : 'text-success'; ?>">
-                                                            <?php 
-                                                            if (isset($transaction['currency']) && isset($transaction['amount'])) {
-                                                                echo htmlspecialchars($transaction['currency']) . ' ' . htmlspecialchars($transaction['amount']);
-                                                            } else {
-                                                                echo '—';
-                                                            }
-                                                            ?>
-                                                        </span>
-                                                    </td>
-                                                    <td><?php echo isset($transaction['description']) ? htmlspecialchars($transaction['description']) : '—'; ?></td>
-                                                </tr>
-                                                <?php endforeach; ?>
-                                            </tbody>
-                                        </table>
-                                    </div>
-                                    <?php else: ?>
-                                    <div class="alert alert-info"><?= __('no_transactions_found_for_this_application') ?></div>
-                                    <?php endif; ?>
-                                </div>
-                            </div>
-                        </div>
+                  <!-- Applicant fields -->
+                  <div class="visa-field-group">
+                    <div class="visa-field-group-title"><?= __('applicant_details') ?></div>
+
+                    <div class="visa-field">
+                      <div class="visa-field-label"><?= __('surname_given_names') ?></div>
+                      <div class="visa-field-value"><?= !empty($visaData['applicant_name']) ? h($visaData['applicant_name']) : '<span class="nil">—</span>' ?></div>
                     </div>
-                    
-                    <!-- Action Buttons -->
-                    <div class="row mb-4">
-                        <div class="col-md-12">
-                            <a href="search.php" class="btn btn-secondary">
-                                <i class="feather icon-arrow-left mr-1"></i> <?= __('back_to_search') ?>
-                            </a>
-                            
-                        </div>
+                    <div class="visa-field">
+                      <div class="visa-field-label"><?= __('passport_number') ?></div>
+                      <div class="visa-field-value mono"><?= !empty($visaData['passport_number']) ? h($visaData['passport_number']) : '<span class="nil">—</span>' ?></div>
                     </div>
-                    
-                    
+                    <div class="visa-field">
+                      <div class="visa-field-label"><?= __('phone') ?></div>
+                      <div class="visa-field-value"><?= !empty($visaData['phone']) ? h($visaData['phone']) : '<span class="nil">—</span>' ?></div>
+                    </div>
+                  </div>
+
+                  <!-- Dates + type -->
+                  <div class="visa-field-group">
+                    <div class="visa-field-group-title"><?= __('visa_details') ?></div>
+
+                    <div class="visa-field">
+                      <div class="visa-field-label"><?= __('visa_type') ?></div>
+                      <div class="visa-field-value"><?= !empty($visaData['visa_type']) ? h($visaData['visa_type']) : '<span class="nil">—</span>' ?></div>
+                    </div>
+                    <div class="visa-field">
+                      <div class="visa-field-label"><?= __('date_of_application') ?></div>
+                      <div class="visa-field-value mono">
+                        <?= !empty($visaData['applied_date']) ? date('d MMM Y', strtotime($visaData['applied_date'])) : '<span class="nil">' . __('not_available') . '</span>' ?>
+                      </div>
+                    </div>
+                    <div class="visa-field">
+                      <div class="visa-field-label"><?= __('date_of_issue') ?></div>
+                      <div class="visa-field-value mono">
+                        <?= !empty($visaData['issued_date']) ? date('d M Y', strtotime($visaData['issued_date'])) : '<span class="nil">' . __('not_issued_yet') . '</span>' ?>
+                      </div>
+                    </div>
+                    <div class="visa-field">
+                      <div class="visa-field-label"><?= __('created_at') ?></div>
+                      <div class="visa-field-value mono" style="font-size:12px;">
+                        <?= isset($visaData['created_at']) ? date('d M Y · H:i', strtotime($visaData['created_at'])) : '—' ?>
+                      </div>
+                    </div>
+                  </div>
+
+                </div><!-- end visa-main-row -->
+
+                <!-- ── FINANCIAL DARK BAND ── -->
+                <div class="visa-financial-band">
+                  <div class="visa-fin-item">
+                    <div class="visa-fin-label"><?= __('sold_amount') ?></div>
+                    <div class="visa-fin-value">
+                      <?= isset($visaData['sold']) ? h($visaData['sold']) : '—' ?>
+                    </div>
+                    <div class="visa-fin-currency"><?= isset($visaData['currency']) ? h($visaData['currency']) : '' ?> · <?= __('charged_to_client') ?></div>
+                  </div>
+                  <div class="visa-fin-item">
+                    <div class="visa-fin-label"><?= __('base_cost') ?></div>
+                    <div class="visa-fin-value">
+                      <?= isset($visaData['base']) ? h($visaData['base']) : '—' ?>
+                    </div>
+                    <div class="visa-fin-currency"><?= isset($visaData['currency']) ? h($visaData['currency']) : '' ?> · <?= __('supplier_cost') ?></div>
+                  </div>
+                  <div class="visa-fin-item">
+                    <div class="visa-fin-label"><?= __('net_profit') ?></div>
+                    <?php $p = $visaData['profit'] ?? null; $profitCls = ($p !== null && $p > 0) ? 'profit-pos' : (($p < 0) ? 'profit-neg' : ''); ?>
+                    <div class="visa-fin-value <?= $profitCls ?>">
+                      <?= $p !== null ? h($p) : '—' ?>
+                    </div>
+                    <div class="visa-fin-currency"><?= isset($visaData['currency']) ? h($visaData['currency']) : '' ?> · <?= __('margin') ?></div>
+                  </div>
+                </div>
+
+                <!-- ── PARTIES ── -->
+                <div class="visa-parties">
+
+                  <div class="visa-party-card">
+                    <div class="visa-party-role"><i class="feather icon-user" style="font-size:10px;margin-right:4px"></i><?= __('sold_to_client') ?></div>
+                    <?php if (!empty($visaData['sold_to'])): ?>
+                      <div class="visa-party-name-big"><?= h($visaData['client_name'] ?? '—') ?></div>
+                      <div class="visa-party-meta">
+                        <?php if (!empty($visaData['client_email'])): ?>
+                          <span><i class="feather icon-mail" style="font-size:11px;opacity:.5"></i><?= h($visaData['client_email']) ?></span>
+                        <?php endif; ?>
+                        <?php if (!empty($visaData['client_phone'])): ?>
+                          <span><i class="feather icon-phone" style="font-size:11px;opacity:.5"></i><?= h($visaData['client_phone']) ?></span>
+                        <?php endif; ?>
+                      </div>
+                      <a href="client_detail.php?id=<?= h($visaData['sold_to']) ?>" class="visa-party-link">
+                        <i class="feather icon-external-link" style="font-size:11px"></i> <?= __('view_profile') ?>
+                      </a>
+                    <?php else: ?>
+                      <div class="visa-party-none"><?= __('no_client_associated') ?></div>
+                    <?php endif; ?>
+                  </div>
+
+                  <div class="visa-party-card">
+                    <div class="visa-party-role"><i class="feather icon-briefcase" style="font-size:10px;margin-right:4px"></i><?= __('supplier') ?></div>
+                    <?php if (!empty($visaData['supplier'])): ?>
+                      <div class="visa-party-name-big"><?= h($visaData['supplier_name'] ?? '—') ?></div>
+                      <div class="visa-party-meta">
+                        <?php if (!empty($visaData['supplier_email'])): ?>
+                          <span><i class="feather icon-mail" style="font-size:11px;opacity:.5"></i><?= h($visaData['supplier_email']) ?></span>
+                        <?php endif; ?>
+                        <?php if (!empty($visaData['supplier_phone'])): ?>
+                          <span><i class="feather icon-phone" style="font-size:11px;opacity:.5"></i><?= h($visaData['supplier_phone']) ?></span>
+                        <?php endif; ?>
+                      </div>
+                      <a href="supplier_detail.php?id=<?= h($visaData['supplier']) ?>" class="visa-party-link">
+                        <i class="feather icon-external-link" style="font-size:11px"></i> <?= __('view_profile') ?>
+                      </a>
+                    <?php else: ?>
+                      <div class="visa-party-none"><?= __('no_supplier_associated') ?></div>
+                    <?php endif; ?>
+                  </div>
+
+                </div>
+
+                <!-- REMARKS -->
+                <?php if (!empty($visaData['remarks'])): ?>
+                <div class="visa-remarks-section">
+                  <div class="visa-field-group-title" style="margin-bottom:10px;"><?= __('remarks') ?></div>
+                  <div class="visa-remarks-box"><?= nl2br(htmlspecialchars($visaData['remarks'])) ?></div>
+                </div>
                 <?php endif; ?>
+
+              </div><!-- end visa-body -->
+
+              <!-- ── MRZ STRIP ── -->
+              <?php
+                $applicantUpper = strtoupper(str_replace(' ', '<', $visaData['applicant_name'] ?? 'UNKNOWN'));
+                $passportPad    = str_pad(strtoupper($visaData['passport_number'] ?? ''), 9, '<');
+                $countryCode    = strtoupper(substr($visaData['country'] ?? 'XXX', 0, 3));
+                $visaNum        = str_pad($visaId, 9, '0', STR_PAD_LEFT);
+                $mrzLine1       = 'V<' . $countryCode . str_pad($applicantUpper, 39, '<');
+                $mrzLine2       = $visaNum . '0' . $countryCode . '0000000' . 'M' . '9912310' . str_pad('', 14, '<') . '0';
+              ?>
+              <div class="visa-mrz">
+                <span class="mrz-line"><?= h(substr($mrzLine1, 0, 44)) ?></span>
+                <span class="mrz-line"><?= h(substr($mrzLine2, 0, 44)) ?></span>
+              </div>
+
+            </div><!-- end visa-doc -->
+
+
+            <!-- ══════════════════════════════════
+                 TRANSACTION LEDGER
+            ══════════════════════════════════ -->
+            <?php
+              $cCount = count($clientTransactions);
+              $sCount = count($supplierTransactions);
+              $mCount = count($mainAccountTransactions);
+              $aCount = count($allTx);
+            ?>
+            <div class="vp-ledger">
+              <div class="vp-ledger-header">
+                <div class="vp-ledger-title"><?= __('transaction_ledger') ?></div>
+                <div class="vp-filter-pills">
+                  <button class="vp-pill active" data-filter="all">
+                    <?= __('all') ?> <span class="vp-pill-ct"><?= $aCount ?></span>
+                  </button>
+                  <button class="vp-pill" data-filter="client">
+                    <?= __('client') ?> <span class="vp-pill-ct"><?= $cCount ?></span>
+                  </button>
+                  <button class="vp-pill" data-filter="supplier">
+                    <?= __('supplier') ?> <span class="vp-pill-ct"><?= $sCount ?></span>
+                  </button>
+                  <button class="vp-pill" data-filter="main">
+                    <?= __('main_account') ?> <span class="vp-pill-ct"><?= $mCount ?></span>
+                  </button>
+                </div>
+              </div>
+
+              <div class="vp-ledger-body">
+                <?php if ($aCount > 0): ?>
+                <div class="table-responsive">
+                  <table class="vp-ltable" id="ltTable">
+                    <thead>
+                      <tr>
+                        <th><?= __('date') ?></th>
+                        <th><?= __('party') ?></th>
+                        <th><?= __('type') ?></th>
+                        <th><?= __('amount') ?></th>
+                        <th><?= __('description') ?></th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      <?php foreach ($allTx as $tx):
+                        $party     = $tx['transaction_type'] ?? '';
+                        $pf        = match($party) { 'Client'=>'client','Supplier'=>'supplier','Main Account'=>'main',default=>'main' };
+                        $type      = strtolower($tx['type'] ?? '');
+                        $isDebit   = ($type === 'debit');
+                        $pbadge    = match($party) { 'Client'=>'lt-party-client','Supplier'=>'lt-party-supplier','Main Account'=>'lt-party-main',default=>'' };
+                      ?>
+                      <tr data-party="<?= $pf ?>">
+                        <td class="lt-date"><?= date('d M Y', strtotime($tx['transaction_date'])) ?></td>
+                        <td><span class="lt-party <?= $pbadge ?>"><?= h($party) ?></span></td>
+                        <td><span class="lt-type <?= $isDebit ? 'lt-debit' : 'lt-credit' ?>"><?= ucfirst($type ?: '—') ?></span></td>
+                        <td>
+                          <span class="lt-amt <?= $isDebit ? 'lt-neg' : 'lt-pos' ?>">
+                            <?= (isset($tx['currency']) && isset($tx['amount'])) ? h($tx['currency']).' '.h($tx['amount']) : '—' ?>
+                          </span>
+                        </td>
+                        <td style="font-size:12.5px;color:var(--text-2);"><?= h($tx['description'] ?? '—') ?></td>
+                      </tr>
+                      <?php endforeach; ?>
+                    </tbody>
+                  </table>
+                </div>
+                <?php else: ?>
+                <div class="vp-empty">
+                  <i class="feather icon-inbox"></i>
+                  <?= __('no_transactions_found_for_this_application') ?>
+                </div>
+                <?php endif; ?>
+              </div>
             </div>
-        </div>
+
+            <?php endif; // end !$error ?>
+
+          </div><!-- vp-wrap -->
+          </div><!-- page-wrapper -->
+        </div><!-- main-body -->
+      </div>
     </div>
+  </div>
 </div>
 
-                            <!-- Required Js -->
-    <script src="../assets/js/vendor-all.min.js"></script>
-    <script src="../assets/plugins/bootstrap/js/bootstrap.min.js"></script>
-    <script src="../assets/js/pcoded.min.js"></script>
-
-
-<script>
-    $(document).ready(function() {
-        // Manual initialization of Bootstrap tabs
-        $('#transactionTab a').click(function(e) {
-            e.preventDefault();
-            $(this).tab('show');
-        });
-    });
-</script>
-
 <?php include '../includes/admin_footer.php'; ?>
+<script src="../assets/js/vendor-all.min.js"></script>
+<script src="../assets/plugins/bootstrap/js/bootstrap.min.js"></script>
+<script src="../assets/js/pcoded.min.js"></script>
+<script>
+(function () {
+  const pills = document.querySelectorAll('.vp-pill');
+  const rows  = document.querySelectorAll('#ltTable tbody tr');
+  pills.forEach(pill => {
+    pill.addEventListener('click', () => {
+      pills.forEach(p => p.classList.remove('active'));
+      pill.classList.add('active');
+      const f = pill.dataset.filter;
+      rows.forEach(row => {
+        row.style.display = (f === 'all' || row.dataset.party === f) ? '' : 'none';
+      });
+    });
+  });
+})();
+</script>

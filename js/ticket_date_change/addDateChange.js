@@ -241,30 +241,88 @@ $(document).ready(function() {
         // Clear any previous alerts
         $modalAlertContainer.empty();
         
-        // Set form values - using correct field names from your HTML
-        $('#selectedTicketId').val(ticketId);
-        $('#base').val(price);
-        $('#sold').val(sold);
-        
-        // Set default values for other required fields
-        $('#supplier_penalty').val('0.00');
-        $('#service_penalty').val('0.00');
-        
-        // Highlight selected ticket
-        $('.select-ticket').removeClass('btn-success').addClass('btn-primary');
-        $('.select-ticket').html(`<i class="feather icon-check mr-1"></i>${translations.select}`);
-        $btn.removeClass('btn-primary').addClass('btn-success').html('<i class="feather icon-check mr-1"></i>Selected');
-        
-        // Show the date change details section
-        $dateChangeDetailsContainer.show();
-        $saveDateChangeBtn.show();
-        
-        
-        // Scroll to the details section
-        $dateChangeDetailsContainer[0].scrollIntoView({ behavior: 'smooth' });
-        
-        showAlert(`Ticket selected for ${$btn.closest('tr').find('h6').text()}`, 'success');
+        // Fetch ticket details to get trip_type
+        $.ajax({
+            url: '../api/ticket/get_ticket_details.php',
+            type: 'GET',
+            data: { ticketId: ticketId },
+            dataType: 'json',
+            success: function(response) {
+                if (response.success && response.ticket) {
+                    const tripType = response.ticket.trip_type || 'one_way';
+                    
+                    // Set form values - using correct field names from your HTML
+                    $('#selectedTicketId').val(ticketId);
+                    $('#ticketTripType').val(tripType);
+                    $('#base').val(price);
+                    $('#sold').val(sold);
+                    
+                    // Set default values for other required fields
+                    $('#supplier_penalty').val('0.00');
+                    $('#service_penalty').val('0.00');
+                    
+                    // Show/hide date type selection based on trip type
+                    if (tripType === 'round_trip') {
+                        $('#dateTypeSelectionGroup').show();
+                        $('#departureGroup').show();
+                        $('#returnGroup').hide();
+                        updateDateChangeFields();
+                    } else {
+                        $('#dateTypeSelectionGroup').hide();
+                        $('#departureGroup').show();
+                        $('#returnGroup').hide();
+                        $('#departureDate').prop('required', true);
+                        $('#returnDate').prop('required', false);
+                    }
+                    
+                    // Highlight selected ticket
+                    $('.select-ticket').removeClass('btn-success').addClass('btn-primary');
+                    $('.select-ticket').html(`<i class="feather icon-check mr-1"></i>${translations.select}`);
+                    $btn.removeClass('btn-primary').addClass('btn-success').html('<i class="feather icon-check mr-1"></i>Selected');
+                    
+                    // Show the date change details section
+                    $dateChangeDetailsContainer.show();
+                    $saveDateChangeBtn.show();
+                    
+                    // Scroll to the details section
+                    $dateChangeDetailsContainer[0].scrollIntoView({ behavior: 'smooth' });
+                    
+                    showAlert(`Ticket selected for ${$btn.closest('tr').find('h6').text()}`, 'success');
+                } else {
+                    showAlert('Failed to fetch ticket details', 'warning');
+                }
+            },
+            error: function() {
+                showAlert('Error fetching ticket details', 'danger');
+            }
+        });
     });
+
+    // Handle date type selection changes
+    $(document).on('change', 'input[name="dateType"]', function() {
+        updateDateChangeFields();
+    });
+
+    function updateDateChangeFields() {
+        const dateType = $('input[name="dateType"]:checked').val();
+        
+        if (dateType === 'departure') {
+            $('#departureGroup').show();
+            $('#returnGroup').hide();
+            $('#departureDate').prop('required', true);
+            $('#returnDate').prop('required', false);
+        } else if (dateType === 'return') {
+            $('#departureGroup').hide();
+            $('#returnGroup').show();
+            $('#departureDate').prop('required', false);
+            $('#returnDate').prop('required', true);
+        } else if (dateType === 'both') {
+            $('#departureGroup').show();
+            $('#returnGroup').show();
+            $('#departureDate').prop('required', true);
+            $('#returnDate').prop('required', true);
+        }
+    }
 
     // Form validation and submission
     $form.on('submit', function(e) {
@@ -273,22 +331,40 @@ $(document).ready(function() {
 
         
         // Check if a ticket is selected
-        if (!$('#selectedTicketId').val()) {
-            showAlert('Please select a ticket first', 'warning');
-            return;
-        }
-        
-        // Basic form validation
-        let isValid = true;
-        const requiredFields = [
-            { id: 'selectedTicketId', name: 'Ticket' },
-            { id: 'departureDate', name: 'Departure Date' },
-            { id: 'supplier_penalty', name: 'Supplier Penalty' },
-            { id: 'service_penalty', name: 'Service Penalty' },
-            { id: 'base', name: 'Base Price' },
-            { id: 'sold', name: 'Sold Price' },
-            { id: 'description', name: 'Description' }
-        ];
+         if (!$('#selectedTicketId').val()) {
+             showAlert('Please select a ticket first', 'warning');
+             return;
+         }
+         
+         // Get date type for validation
+         const dateType = $('input[name="dateType"]:checked').val() || 'departure';
+         const departureDateVal = $('#departureDate').val();
+         const returnDateVal = $('#returnDate').val();
+         
+         // Validate that at least one date is provided based on selection
+         if (dateType === 'departure' && !departureDateVal) {
+             showAlert('Please enter the new departure date', 'warning');
+             return;
+         }
+         if (dateType === 'return' && !returnDateVal) {
+             showAlert('Please enter the new return date', 'warning');
+             return;
+         }
+         if (dateType === 'both' && (!departureDateVal || !returnDateVal)) {
+             showAlert('Please enter both departure and return dates', 'warning');
+             return;
+         }
+         
+         // Basic form validation
+         let isValid = true;
+         const requiredFields = [
+             { id: 'selectedTicketId', name: 'Ticket' },
+             { id: 'supplier_penalty', name: 'Supplier Penalty' },
+             { id: 'service_penalty', name: 'Service Penalty' },
+             { id: 'base', name: 'Base Price' },
+             { id: 'sold', name: 'Sold Price' },
+             { id: 'description', name: 'Description' }
+         ];
         
         const errors = [];
         

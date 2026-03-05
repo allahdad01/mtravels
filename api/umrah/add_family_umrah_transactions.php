@@ -316,6 +316,38 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             }
         }
 
+        // Update family totals for all processed members if they are active
+        if ($processed_members > 0) {
+            // Get all unique family_ids for the processed members that are active
+            $stmt_get_families = $pdo->prepare("
+                SELECT DISTINCT family_id FROM umrah_bookings 
+                WHERE family_id IN (
+                    SELECT DISTINCT family_id FROM umrah_bookings WHERE tenant_id = ? AND branch_id = ? AND status = 'active'
+                )
+                AND tenant_id = ? AND branch_id = ?
+            ");
+            $stmt_get_families->bindParam(1, $tenant_id, PDO::PARAM_INT);
+            $stmt_get_families->bindParam(2, $branch_id, PDO::PARAM_INT);
+            $stmt_get_families->bindParam(3, $tenant_id, PDO::PARAM_INT);
+            $stmt_get_families->bindParam(4, $branch_id, PDO::PARAM_INT);
+            $stmt_get_families->execute();
+            $families = $stmt_get_families->fetchAll(PDO::FETCH_ASSOC);
+            
+            // Update totals for each affected family
+            foreach ($families as $family) {
+                $affected_family_id = $family['family_id'];
+                $stmt_update_family = $pdo->prepare("
+                    UPDATE families f
+                    SET
+                        f.total_paid = (SELECT SUM(COALESCE(paid, 0)) FROM umrah_bookings WHERE family_id = f.family_id AND tenant_id = ? AND branch_id = ? AND status = 'active'),
+                        f.total_paid_to_bank = (SELECT SUM(COALESCE(received_bank_payment, 0)) FROM umrah_bookings WHERE family_id = f.family_id AND tenant_id = ? AND branch_id = ? AND status = 'active'),
+                        f.total_due = (SELECT SUM(COALESCE(due, 0)) FROM umrah_bookings WHERE family_id = f.family_id AND tenant_id = ? AND branch_id = ? AND status = 'active')
+                    WHERE f.family_id = ? AND f.tenant_id = ? AND f.branch_id = ?
+                ");
+                $stmt_update_family->execute([$tenant_id, $branch_id, $tenant_id, $branch_id, $tenant_id, $branch_id, $affected_family_id, $tenant_id, $branch_id]);
+            }
+        }
+
         // Create individual notifications for each processed member (like single transactions)
         if ($processed_members > 0) {
             $recipient_role = "admin";

@@ -1,3 +1,4 @@
+
 <?php
 // Start session if not already started
 if (session_status() === PHP_SESSION_NONE) {
@@ -106,199 +107,207 @@ $avgAFS = $afsCount > 0 ? $totalAmountByAFS / $afsCount : 0;
                         <div class="page-wrapper">
                             <!-- [ Main Content ] start -->
                             <div class="main-content">
-                                <!-- Page Header with Gradient -->
-                                <div class="page-header card">
-                                    <div class="row align-items-center">
-                                        <div class="col-md-6">
-                                            <h5 class="mb-0"><i class="feather icon-credit-card mr-2"></i><?php echo __('system_expenses'); ?></h5>
-                                            <p class="mb-0 mt-1" style="font-size: 14px; opacity: 0.9;"><?php echo __('manage_system_expenses'); ?></p>
+                                <!-- Page Header -->
+                                <div class="sa-page-header">
+                                    <div class="sph-content">
+                                        <div class="sph-icon">
+                                            <i class="feather icon-credit-card"></i>
                                         </div>
-                                        <div class="col-md-6 text-end">
-                                            <div class="btn-group">
-                                                <button type="button" class="btn btn-outline-light btn-sm" data-toggle="modal" data-target="#addExpenseModal">
-                                                    <i class="feather icon-plus mr-1"></i><?php echo __('add_expense'); ?>
-                                                </button>
-                                                <button type="button" class="btn btn-outline-light btn-sm" data-toggle="modal" data-target="#manageCategories">
-                                                    <i class="feather icon-settings mr-1"></i><?php echo __('manage_categories'); ?>
-                                                </button>
-                                            </div>
+                                        <div class="sph-text">
+                                            <h1><?php echo __('system_expenses'); ?></h1>
+                                            <p><?php echo __('manage_system_expenses'); ?></p>
                                         </div>
+                                    </div>
+                                    <div class="sph-actions">
+                                        <button type="button" class="sa-btn-header sa-btn-header-primary" data-toggle="modal" data-target="#addExpenseModal">
+                                            <i class="feather icon-plus"></i>
+                                            <span><?php echo __('add_expense'); ?></span>
+                                        </button>
+                                        <button type="button" class="sa-btn-header sa-btn-header-secondary" data-toggle="modal" data-target="#manageCategories">
+                                            <i class="feather icon-settings"></i>
+                                            <span><?php echo __('manage_categories'); ?></span>
+                                        </button>
                                     </div>
                                 </div>
 
                                 <!-- Filter Section -->
-                                <div class="row mb-4">
-                                    <div class="col-md-12">
-                                        <div class="card">
-                                            <div class="card-header">
-                                                <h5><i class="feather icon-filter mr-2"></i><?php echo __('filters'); ?></h5>
+                                <div class="sa-card" style="margin-bottom: 20px;">
+                                    <div class="sa-card-body">
+                                        <form id="filterForm" method="GET" class="sa-search-filter">
+                                            <div class="sa-search-group">
+                                                <div>
+                                                    <label class="sa-search-label"><?php echo __('from_date'); ?></label>
+                                                    <input type="date" name="startDate" class="sa-search-input" value="<?php echo htmlspecialchars($startDate); ?>">
+                                                </div>
+                                                <div>
+                                                    <label class="sa-search-label"><?php echo __('to_date'); ?></label>
+                                                    <input type="date" name="endDate" class="sa-search-input" value="<?php echo htmlspecialchars($endDate); ?>">
+                                                </div>
+                                                <div>
+                                                    <label class="sa-search-label"><?php echo __('category'); ?></label>
+                                                    <select name="category" class="sa-search-input">
+                                                        <option value=""><?php echo __('all_categories'); ?></option>
+                                                        <?php foreach ($categories as $cat): ?>
+                                                        <option value="<?php echo $cat['id']; ?>" <?php echo $categoryFilter == $cat['id'] ? 'selected' : ''; ?>>
+                                                            <?php echo htmlspecialchars($cat['name']); ?>
+                                                        </option>
+                                                        <?php endforeach; ?>
+                                                    </select>
+                                                </div>
+                                                <div class="sa-filter-actions">
+                                                    <button type="submit" class="sa-btn sa-btn-primary">
+                                                        <i class="feather icon-search"></i> <?php echo __('apply_filter'); ?>
+                                                    </button>
+                                                    <a href="system_expenses.php" class="sa-btn sa-btn-ghost">
+                                                        <i class="feather icon-refresh-ccw"></i> <?php echo __('reset'); ?>
+                                                    </a>
+                                                </div>
                                             </div>
-                                            <div class="card-body">
-                                                <form id="filterForm" method="GET" class="form-row">
-                                                    <div class="col-md-3">
-                                                        <label class="small font-weight-bold"><?php echo __('from_date'); ?></label>
-                                                        <input type="date" name="startDate" class="form-control form-control-sm" value="<?php echo htmlspecialchars($startDate); ?>">
-                                                    </div>
-                                                    <div class="col-md-3">
-                                                        <label class="small font-weight-bold"><?php echo __('to_date'); ?></label>
-                                                        <input type="date" name="endDate" class="form-control form-control-sm" value="<?php echo htmlspecialchars($endDate); ?>">
-                                                    </div>
-                                                    <div class="col-md-3">
-                                                        <label class="small font-weight-bold"><?php echo __('category'); ?></label>
-                                                        <select name="category" class="form-control form-control-sm">
-                                                            <option value=""><?php echo __('all_categories'); ?></option>
-                                                            <?php foreach ($categories as $cat): ?>
-                                                            <option value="<?php echo $cat['id']; ?>" <?php echo $categoryFilter == $cat['id'] ? 'selected' : ''; ?>>
-                                                                <?php echo htmlspecialchars($cat['name']); ?>
-                                                            </option>
-                                                            <?php endforeach; ?>
-                                                        </select>
-                                                    </div>
-                                                    <div class="col-md-3 d-flex align-items-end">
-                                                        <button type="submit" class="btn btn-primary btn-sm mr-2">
-                                                            <i class="feather icon-search mr-1"></i><?php echo __('apply_filter'); ?>
-                                                        </button>
-                                                        <a href="system_expenses.php" class="btn btn-secondary btn-sm">
-                                                            <i class="feather icon-refresh-ccw mr-1"></i><?php echo __('reset'); ?>
-                                                        </a>
-                                                    </div>
-                                                </form>
-                                            </div>
-                                        </div>
+                                        </form>
                                     </div>
                                 </div>
 
                                 <!-- Summary Cards -->
                                 <div class="row mb-4">
                                     <div class="col-md-3">
-                                        <div class="card">
-                                            <div class="card-body text-center">
-                                                <h6 class="text-muted mb-3"><?php echo __('total_expenses'); ?></h6>
-                                                <div class="h4 font-weight-bold text-primary mb-2">
+                                        <div class="sa-summary-card sa-summary-card-primary">
+                                            <div class="ssc-icon">
+                                                <i class="feather icon-credit-card"></i>
+                                            </div>
+                                            <div class="ssc-content">
+                                                <span class="ssc-label"><?php echo __('total_expenses'); ?></span>
+                                                <div class="ssc-value">
                                                     <?php if ($totalAmountByUSD > 0): ?>
-                                                    $ <?php echo number_format($totalAmountByUSD, 2); ?>
+                                                    <span class="currency-usd">$ <?php echo number_format($totalAmountByUSD, 2); ?></span>
                                                     <?php endif; ?>
                                                     <?php if ($totalAmountByAFS > 0): ?>
-                                                    <br> ؋ <?php echo number_format($totalAmountByAFS, 2); ?>
+                                                    <span class="currency-afs">؋ <?php echo number_format($totalAmountByAFS, 2); ?></span>
                                                     <?php endif; ?>
                                                     <?php if ($totalAmountByUSD == 0 && $totalAmountByAFS == 0): ?>
-                                                    -
+                                                    <span class="currency-na">-</span>
                                                     <?php endif; ?>
                                                 </div>
-                                                <span class="badge badge-primary badge-pill"><?php echo count($expenses); ?> <?php echo __('expenses'); ?></span>
+                                                <span class="ssc-badge"><?php echo count($expenses); ?> <?php echo __('expenses'); ?></span>
                                             </div>
                                         </div>
                                     </div>
                                     <div class="col-md-3">
-                                        <div class="card">
-                                            <div class="card-body text-center">
-                                                <h6 class="text-muted mb-3"><?php echo __('number_of_expenses'); ?></h6>
-                                                <div class="h2 font-weight-bold text-success"><?php echo count($expenses); ?></div>
-                                                <span class="badge badge-success badge-pill"><?php echo $usdCount; ?> USD | <?php echo $afsCount; ?> AFS</span>
+                                        <div class="sa-summary-card sa-summary-card-success">
+                                            <div class="ssc-icon">
+                                                <i class="feather icon-list"></i>
+                                            </div>
+                                            <div class="ssc-content">
+                                                <span class="ssc-label"><?php echo __('number_of_expenses'); ?></span>
+                                                <div class="ssc-value ssc-value-large"><?php echo count($expenses); ?></div>
+                                                <span class="ssc-badge"><?php echo $usdCount; ?> USD | <?php echo $afsCount; ?> AFS</span>
                                             </div>
                                         </div>
                                     </div>
                                     <div class="col-md-3">
-                                        <div class="card">
-                                            <div class="card-body text-center">
-                                                <h6 class="text-muted mb-3"><?php echo __('average_expense'); ?></h6>
-                                                <div class="h4 font-weight-bold text-info mb-2">
+                                        <div class="sa-summary-card sa-summary-card-info">
+                                            <div class="ssc-icon">
+                                                <i class="feather icon-trending-up"></i>
+                                            </div>
+                                            <div class="ssc-content">
+                                                <span class="ssc-label"><?php echo __('average_expense'); ?></span>
+                                                <div class="ssc-value">
                                                     <?php if ($avgUSD > 0): ?>
-                                                    $ <?php echo number_format($avgUSD, 2); ?>
+                                                    <span class="currency-usd">$ <?php echo number_format($avgUSD, 2); ?></span>
                                                     <?php endif; ?>
                                                     <?php if ($avgAFS > 0): ?>
-                                                    <br> ؋ <?php echo number_format($avgAFS, 2); ?>
+                                                    <span class="currency-afs">؋ <?php echo number_format($avgAFS, 2); ?></span>
                                                     <?php endif; ?>
                                                     <?php if ($avgUSD == 0 && $avgAFS == 0): ?>
-                                                    -
+                                                    <span class="currency-na">-</span>
                                                     <?php endif; ?>
                                                 </div>
-                                                <span class="badge badge-info badge-pill"><?php echo __('per_expense'); ?></span>
+                                                <span class="ssc-badge"><?php echo __('per_expense'); ?></span>
                                             </div>
                                         </div>
                                     </div>
                                     <div class="col-md-3">
-                                        <div class="card">
-                                            <div class="card-body text-center">
-                                                <h6 class="text-muted mb-3"><?php echo __('categories_used'); ?></h6>
-                                                <div class="h2 font-weight-bold text-warning"><?php echo count($categoryTotals); ?></div>
-                                                <span class="badge badge-warning badge-pill"><?php echo __('categories'); ?></span>
+                                        <div class="sa-summary-card sa-summary-card-warning">
+                                            <div class="ssc-icon">
+                                                <i class="feather icon-tag"></i>
+                                            </div>
+                                            <div class="ssc-content">
+                                                <span class="ssc-label"><?php echo __('categories_used'); ?></span>
+                                                <div class="ssc-value ssc-value-large"><?php echo count($categoryTotals); ?></div>
+                                                <span class="ssc-badge"><?php echo __('categories'); ?></span>
                                             </div>
                                         </div>
                                     </div>
                                 </div>
 
-                                <!-- Expenses Table -->
-                                <div class="row mb-4">
-                                    <div class="col-md-12">
-                                        <div class="card">
-                                            <div class="card-header">
-                                                <h5><i class="feather icon-list mr-2"></i><?php echo __('expense_list'); ?>
-                                                    <span class="badge badge-primary badge-pill ml-2"><?php echo count($expenses); ?></span>
-                                                </h5>
-                                            </div>
-                                            <div class="card-body table-responsive">
-                                                <table class="table table-hover">
-                                                    <thead>
-                                                        <tr>
-                                                            <th><i class="feather icon-calendar mr-1"></i><?php echo __('date'); ?></th>
-                                                            <th><i class="feather icon-tag mr-1"></i><?php echo __('category'); ?></th>
-                                                            <th><i class="feather icon-file-text mr-1"></i><?php echo __('description'); ?></th>
-                                                            <th class="text-right"><i class="feather icon-dollar-sign mr-1"></i><?php echo __('amount'); ?></th>
-                                                            <th><i class="feather icon-credit-card mr-1"></i><?php echo __('currency'); ?></th>
-                                                            <th><i class="feather icon-user mr-1"></i><?php echo __('created_by'); ?></th>
-                                                            <th><i class="feather icon-settings mr-1"></i><?php echo __('actions'); ?></th>
-                                                        </tr>
-                                                    </thead>
-                                                    <tbody>
-                                                        <?php if (!empty($expenses)): ?>
-                                                            <?php foreach ($expenses as $expense): ?>
-                                                            <tr>
-                                                                <td class="font-weight-medium"><?php echo date('M d, Y', strtotime($expense['date'])); ?></td>
-                                                                <td>
-                                                                    <span class="badge badge-primary badge-pill">
-                                                                        <?php echo htmlspecialchars($expense['category_name']); ?>
-                                                                    </span>
-                                                                </td>
-                                                                <td style="max-width: 250px; white-space: normal;">
-                                                                    <?php echo htmlspecialchars(substr($expense['description'], 0, 50)); ?>
-                                                                    <?php echo strlen($expense['description']) > 50 ? '...' : ''; ?>
-                                                                </td>
-                                                                <td class="text-right font-weight-bold text-success">
-                                                                    <?php echo formatCurrency($expense['amount'], $expense['currency']); ?>
-                                                                </td>
-                                                                <td>
-                                                                    <span class="badge <?php echo $expense['currency'] === 'USD' ? 'badge-info' : 'badge-success'; ?> badge-pill">
-                                                                        <?php echo htmlspecialchars($expense['currency']); ?>
-                                                                    </span>
-                                                                </td>
-                                                                <td class="text-muted"><?php echo htmlspecialchars($expense['created_by_name'] ?? 'System'); ?></td>
-                                                                <td>
-                                                                    <button class="btn btn-sm btn-info edit-expense" data-id="<?php echo $expense['id']; ?>" data-toggle="modal" data-target="#editExpenseModal" title="<?php echo __('edit'); ?>">
-                                                                        <i class="feather icon-edit"></i>
-                                                                    </button>
-                                                                    <button class="btn btn-sm btn-danger delete-expense" data-id="<?php echo $expense['id']; ?>" title="<?php echo __('delete'); ?>">
-                                                                        <i class="feather icon-trash-2"></i>
-                                                                    </button>
-                                                                </td>
-                                                            </tr>
-                                                            <?php endforeach; ?>
-                                                        <?php else: ?>
-                                                            <tr>
-                                                                <td colspan="7" class="text-center text-muted py-5">
-                                                                    <i class="feather icon-inbox mr-2"></i><?php echo __('no_expenses_found'); ?>
-                                                                </td>
-                                                            </tr>
-                                                        <?php endif; ?>
-                                                    </tbody>
-                                                </table>
-                                            </div>
-                                        </div>
+                                <!-- Expenses Header -->
+                                <div class="sa-shdr" style="margin-bottom: 16px;">
+                                    <div>
+                                        <h2><?php echo __('expense_list'); ?></h2>
+                                        <p style="margin: 4px 0 0 0; font-size: 0.75rem; color: var(--muted);"><?php echo count($expenses); ?> expenses found</p>
                                     </div>
                                 </div>
+
+                                <!-- Expenses Cards -->
+                                <?php if (empty($expenses)): ?>
+                                <div class="sa-card">
+                                    <div class="sa-card-body" style="text-align: center; padding: 40px 20px; color: var(--muted);">
+                                        <div style="font-size: 2rem; margin-bottom: 12px;">💰</div>
+                                        <div style="font-weight: 600; margin-bottom: 4px;"><?php echo __('no_expenses_found'); ?></div>
+                                        <div style="font-size: 0.8rem;">No expenses found for the selected period.</div>
+                                    </div>
+                                </div>
+                                <?php else: ?>
+                                <div class="sa-expense-list">
+                                    <?php foreach ($expenses as $expense): ?>
+                                    <div class="sa-expense-card">
+                                        <div class="sec-header">
+                                            <div class="sec-info">
+                                                <h4><?php echo date('M d, Y', strtotime($expense['date'])); ?></h4>
+                                                <p class="sec-category">
+                                                    <i class="feather icon-tag"></i>
+                                                    <?php echo htmlspecialchars($expense['category_name']); ?>
+                                                </p>
+                                            </div>
+                                            <div class="sec-amount">
+                                                <span class="amount-value"><?php echo formatCurrency($expense['amount'], $expense['currency']); ?></span>
+                                                <span class="pill <?php echo $expense['currency'] === 'USD' ? 'pill-blue' : 'pill-green'; ?>">
+                                                    <?php echo htmlspecialchars($expense['currency']); ?>
+                                                </span>
+                                            </div>
+                                        </div>
+                                        
+                                        <div class="sec-details">
+                                            <div class="sec-detail-item">
+                                                <span class="sec-detail-label">Description</span>
+                                                <span class="sec-detail-value"><?php echo htmlspecialchars($expense['description']); ?></span>
+                                            </div>
+                                            <div class="sec-detail-item">
+                                                <span class="sec-detail-label">Created By</span>
+                                                <span class="sec-detail-value"><?php echo htmlspecialchars($expense['created_by_name'] ?? 'System'); ?></span>
+                                            </div>
+                                        </div>
+                                        
+                                        <div class="sec-actions">
+                                            <button class="sa-btn sa-btn-small sa-btn-info edit-expense" data-id="<?php echo $expense['id']; ?>" data-toggle="modal" data-target="#editExpenseModal">
+                                                <i class="feather icon-edit"></i> Edit
+                                            </button>
+                                            <button class="sa-btn sa-btn-small sa-btn-danger delete-expense" data-id="<?php echo $expense['id']; ?>">
+                                                <i class="feather icon-trash-2"></i> Delete
+                                            </button>
+                                        </div>
+                                    </div>
+                                    <?php endforeach; ?>
+                                </div>
+                                <?php endif; ?>
 
                                 <!-- Category Summary -->
                                 <?php if (!empty($categoryTotals)): ?>
+                                <div class="sa-shdr" style="margin-top: 30px; margin-bottom: 16px;">
+                                    <div>
+                                        <h2><?php echo __('expense_by_category'); ?></h2>
+                                        <p style="margin: 4px 0 0 0; font-size: 0.75rem; color: var(--muted);">Expense breakdown by category</p>
+                                    </div>
+                                </div>
                                 <div class="row">
                                     <div class="col-md-12">
                                         <div class="card">
@@ -754,6 +763,547 @@ $avgAFS = $afsCount > 0 ? $totalAmountByAFS / $afsCount : 0;
 
     /* Border utilities */
     .border { border: 1px solid #dee2e6 !important; }
+
+    /* ─── ROOT VARIABLES ─────────────────────────────────── */
+    :root {
+        --muted: #999;
+        --surface: #ffffff;
+        --surface2: #f5f5f5;
+        --border: #e0e0e0;
+        --text: #333333;
+        --green: #28a745;
+        --red: #dc3545;
+    }
+
+    /* ─── EXPENSE CARD STYLES ───────────────────────────── */
+    .sa-expense-list {
+        display: flex;
+        flex-direction: column;
+        gap: 16px;
+    }
+
+    .sa-expense-card {
+        background: white;
+        border: 1px solid #e0e0e0;
+        border-radius: 10px;
+        padding: 20px;
+        transition: all 0.2s ease;
+    }
+
+    .sa-expense-card:hover {
+        border-color: rgba(64, 153, 255, 0.3);
+        box-shadow: 0 4px 16px rgba(64, 153, 255, 0.15);
+    }
+
+    .sec-header {
+        display: flex;
+        justify-content: space-between;
+        align-items: flex-start;
+        margin-bottom: 16px;
+        padding-bottom: 16px;
+        border-bottom: 1px solid #e0e0e0;
+    }
+
+    .sec-info h4 {
+        font-size: 1.1rem;
+        font-weight: 600;
+        margin: 0 0 6px 0;
+        color: #333;
+    }
+
+    .sec-category {
+        font-size: 0.85rem;
+        color: #999;
+        margin: 0;
+        display: flex;
+        align-items: center;
+        gap: 6px;
+    }
+
+    .sec-amount {
+        text-align: right;
+    }
+
+    .amount-value {
+        font-size: 1.4rem;
+        font-weight: 700;
+        color: #2ed8b6;
+        display: block;
+    }
+
+    .sec-details {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+        gap: 16px;
+        margin-bottom: 16px;
+    }
+
+    .sec-detail-item {
+        display: flex;
+        flex-direction: column;
+        gap: 4px;
+    }
+
+    .sec-detail-label {
+        font-size: 0.75rem;
+        color: #999;
+        font-weight: 600;
+        text-transform: uppercase;
+    }
+
+    .sec-detail-value {
+        font-size: 0.9rem;
+        font-weight: 500;
+        color: #444;
+    }
+
+    .sec-actions {
+        display: flex;
+        gap: 8px;
+        justify-content: flex-end;
+    }
+
+    /* ─── PILLS ────────────────────────────────────────── */
+    .pill {
+        font-size: 0.62rem;
+        font-weight: 700;
+        padding: 3px 8px;
+        border-radius: 20px;
+        text-transform: uppercase;
+        letter-spacing: 0.04em;
+        white-space: nowrap;
+    }
+
+    .pill-green {
+        background: rgba(16,185,129,0.12);
+        color: #10b981;
+    }
+
+    .pill-blue {
+        background: rgba(59,130,246,0.12);
+        color: #3b82f6;
+    }
+
+    /* ─── SECTION HEADER ───────────────────────────────── */
+    .sa-shdr {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        margin-bottom: 1.5rem;
+    }
+
+    .sa-shdr h2 {
+        font-size: 1.5rem;
+        font-weight: 600;
+        margin: 0;
+        color: #333;
+    }
+
+    .sa-shdr p {
+        margin: 4px 0 0 0;
+        font-size: 0.75rem;
+        color: #999;
+    }
+
+    /* ─── CARDS ──────────────────────────────────────── */
+    .sa-card {
+        background: white;
+        border-radius: 10px;
+        box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+        transition: transform 0.2s ease-in-out, box-shadow 0.2s ease-in-out;
+        border: none;
+    }
+
+    .sa-card:hover {
+        transform: translateY(-2px);
+        box-shadow: 0 4px 16px rgba(0,0,0,0.15);
+    }
+
+    .sa-card-body {
+        padding: 1.5rem;
+    }
+
+    /* ─── BUTTONS ──────────────────────────────────── */
+    .sa-btn {
+        padding: 0.75rem 1.5rem;
+        border-radius: 8px;
+        border: none;
+        font-weight: 500;
+        cursor: pointer;
+        transition: all 0.3s ease;
+        text-decoration: none;
+        display: inline-block;
+        font-size: 0.9rem;
+    }
+
+    .sa-btn-small {
+        padding: 6px 12px;
+        font-size: 0.75rem;
+    }
+
+    .sa-btn-info {
+        background: linear-gradient(135deg, #11cdef 0%, #2dd4bf 100%);
+        color: white;
+    }
+
+    .sa-btn-info:hover {
+        transform: translateY(-2px);
+        box-shadow: 0 4px 12px rgba(17, 207, 239, 0.3);
+    }
+
+    .sa-btn-danger {
+        background: linear-gradient(135deg, #ef4444 0%, #f87171 100%);
+        color: white;
+    }
+
+    .sa-btn-danger:hover {
+        transform: translateY(-2px);
+        box-shadow: 0 4px 12px rgba(239, 68, 68, 0.3);
+    }
+
+    /* ─── RESPONSIVE ────────────────────────────────── */
+    @media (max-width: 768px) {
+        .sec-header {
+            flex-direction: column;
+        }
+        
+        .sec-amount {
+            text-align: left;
+            margin-top: 12px;
+        }
+        
+        .sec-details {
+            grid-template-columns: 1fr;
+        }
+        
+        .sec-actions {
+            width: 100%;
+        }
+    }
+
+    /* ─── SEARCH & FILTER ────────────────────────────── */
+    .sa-search-filter {
+        display: flex;
+        gap: 1rem;
+        align-items: flex-end;
+        flex-wrap: wrap;
+    }
+
+    .sa-search-group {
+        display: flex;
+        gap: 1rem;
+        align-items: flex-end;
+        flex: 1;
+        flex-wrap: wrap;
+    }
+
+    .sa-search-group > div {
+        flex: 1;
+        min-width: 120px;
+    }
+
+    .sa-search-label {
+        font-size: 0.75rem;
+        color: #666;
+        font-weight: 600;
+        margin-bottom: 4px;
+        display: block;
+    }
+
+    .sa-search-input {
+        width: 100%;
+        padding: 0.75rem;
+        border: 1px solid #ced4da;
+        border-radius: 8px;
+        font-size: 0.9rem;
+        transition: border-color 0.15s ease-in-out, box-shadow 0.15s ease-in-out;
+    }
+
+    .sa-search-input:focus {
+        outline: none;
+        border-color: #4099ff;
+        box-shadow: 0 0 0 0.2rem rgba(64, 153, 255, 0.25);
+    }
+
+    .sa-filter-actions {
+        display: flex;
+        gap: 8px;
+        align-items: flex-end;
+    }
+
+    .sa-btn-ghost {
+        background: #f0f0f0;
+        color: #333;
+        border: 1px solid #e0e0e0;
+    }
+
+    .sa-btn-ghost:hover {
+        background: #e8e8e8;
+        border-color: #d0d0d0;
+    }
+
+    /* ─── PAGE HEADER ─────────────────────────────────── */
+    .sa-page-header {
+        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        border-radius: 16px;
+        padding: 24px 28px;
+        margin-bottom: 24px;
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        box-shadow: 0 4px 20px rgba(102, 126, 234, 0.35);
+    }
+
+    .sa-page-header .sph-content {
+        display: flex;
+        align-items: center;
+        gap: 18px;
+    }
+
+    .sa-page-header .sph-icon {
+        width: 56px;
+        height: 56px;
+        background: rgba(255, 255, 255, 0.2);
+        border-radius: 14px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-size: 1.6rem;
+        color: white;
+        backdrop-filter: blur(4px);
+    }
+
+    .sa-page-header .sph-text h1 {
+        margin: 0 0 4px 0;
+        font-size: 1.5rem;
+        font-weight: 700;
+        color: white;
+        letter-spacing: -0.02em;
+    }
+
+    .sa-page-header .sph-text p {
+        margin: 0;
+        font-size: 0.875rem;
+        color: rgba(255, 255, 255, 0.85);
+    }
+
+    .sa-page-header .sph-actions {
+        display: flex;
+        gap: 12px;
+    }
+
+    .sa-page-header .sa-btn-header {
+        display: flex;
+        align-items: center;
+        gap: 8px;
+        padding: 10px 18px;
+        border-radius: 10px;
+        font-size: 0.875rem;
+        font-weight: 600;
+        cursor: pointer;
+        transition: all 0.3s ease;
+        border: none;
+        text-decoration: none;
+    }
+
+    .sa-page-header .sa-btn-header-primary {
+        background: white;
+        color: #667eea;
+    }
+
+    .sa-page-header .sa-btn-header-primary:hover {
+        background: rgba(255, 255, 255, 0.9);
+        transform: translateY(-2px);
+        box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+    }
+
+    .sa-page-header .sa-btn-header-secondary {
+        background: rgba(255, 255, 255, 0.2);
+        color: white;
+        border: 1px solid rgba(255, 255, 255, 0.3);
+    }
+
+    .sa-page-header .sa-btn-header-secondary:hover {
+        background: rgba(255, 255, 255, 0.3);
+        transform: translateY(-2px);
+    }
+
+    @media (max-width: 768px) {
+        .sa-page-header {
+            flex-direction: column;
+            align-items: stretch;
+            gap: 16px;
+        }
+        
+        .sa-page-header .sph-actions {
+            flex-direction: column;
+        }
+        
+        .sa-page-header .sa-btn-header {
+            justify-content: center;
+        }
+    }
+
+    /* ─── SUMMARY CARDS ──────────────────────────────── */
+    .sa-summary-card {
+        background: white;
+        border-radius: 12px;
+        padding: 20px;
+        display: flex;
+        align-items: flex-start;
+        gap: 16px;
+        box-shadow: 0 2px 12px rgba(0,0,0,0.08);
+        transition: all 0.3s ease;
+        border: 1px solid #eee;
+        height: 100%;
+    }
+
+    .sa-summary-card:hover {
+        transform: translateY(-4px);
+        box-shadow: 0 8px 24px rgba(0,0,0,0.12);
+    }
+
+    .sa-summary-card .ssc-icon {
+        width: 48px;
+        height: 48px;
+        border-radius: 12px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-size: 1.4rem;
+        flex-shrink: 0;
+    }
+
+    .sa-summary-card .ssc-content {
+        flex: 1;
+        display: flex;
+        flex-direction: column;
+        gap: 6px;
+    }
+
+    .sa-summary-card .ssc-label {
+        font-size: 0.75rem;
+        color: #888;
+        font-weight: 600;
+        text-transform: uppercase;
+        letter-spacing: 0.04em;
+    }
+
+    .sa-summary-card .ssc-value {
+        font-size: 1.25rem;
+        font-weight: 700;
+        color: #333;
+        display: flex;
+        flex-direction: column;
+        gap: 2px;
+    }
+
+    .sa-summary-card .ssc-value-large {
+        font-size: 2rem;
+    }
+
+    .sa-summary-card .ssc-badge {
+        font-size: 0.7rem;
+        font-weight: 600;
+        padding: 4px 10px;
+        border-radius: 20px;
+        display: inline-block;
+        width: fit-content;
+    }
+
+    .currency-usd {
+        color: #3b82f6;
+    }
+
+    .currency-afs {
+        color: #10b981;
+    }
+
+    .currency-na {
+        color: #999;
+    }
+
+    /* Primary Card */
+    .sa-summary-card-primary {
+        border-left: 4px solid #667eea;
+    }
+
+    .sa-summary-card-primary .ssc-icon {
+        background: rgba(102, 126, 234, 0.12);
+        color: #667eea;
+    }
+
+    .sa-summary-card-primary .ssc-badge {
+        background: rgba(102, 126, 234, 0.12);
+        color: #667eea;
+    }
+
+    /* Success Card */
+    .sa-summary-card-success {
+        border-left: 4px solid #28a745;
+    }
+
+    .sa-summary-card-success .ssc-icon {
+        background: rgba(40, 167, 69, 0.12);
+        color: #28a745;
+    }
+
+    .sa-summary-card-success .ssc-badge {
+        background: rgba(40, 167, 69, 0.12);
+        color: #28a745;
+    }
+
+    /* Info Card */
+    .sa-summary-card-info {
+        border-left: 4px solid #17a2b8;
+    }
+
+    .sa-summary-card-info .ssc-icon {
+        background: rgba(23, 162, 184, 0.12);
+        color: #17a2b8;
+    }
+
+    .sa-summary-card-info .ssc-badge {
+        background: rgba(23, 162, 184, 0.12);
+        color: #17a2b8;
+    }
+
+    /* Warning Card */
+    .sa-summary-card-warning {
+        border-left: 4px solid #ffc107;
+    }
+
+    .sa-summary-card-warning .ssc-icon {
+        background: rgba(255, 193, 7, 0.12);
+        color: #d99e00;
+    }
+
+    .sa-summary-card-warning .ssc-badge {
+        background: rgba(255, 193, 7, 0.12);
+        color: #d99e00;
+    }
+
+    /* Responsive */
+    @media (max-width: 768px) {
+        .sa-summary-card {
+            flex-direction: column;
+            align-items: stretch;
+        }
+        
+        .sa-summary-card .ssc-icon {
+            width: 40px;
+            height: 40px;
+            font-size: 1.2rem;
+        }
+        
+        .sa-summary-card .ssc-value {
+            font-size: 1.1rem;
+        }
+        
+        .sa-summary-card .ssc-value-large {
+            font-size: 1.5rem;
+        }
+    }
     </style>
 
     <script>

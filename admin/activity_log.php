@@ -44,947 +44,1042 @@ $records_per_page = 50;
 $page = InputValidator::getInt($_GET['page'] ?? '', 1, 1, 9999);
 $offset = ($page - 1) * $records_per_page;
 
-// Handle activity log filtering - validate all parameters
-$date_from = InputValidator::getDate(
-    $_GET['date_from'] ?? '',
-    'Y-m-d',
-    date('Y-m-d', strtotime('-30 days'))
-);
-$date_to = InputValidator::getDate(
-    $_GET['date_to'] ?? '',
-    'Y-m-d',
-    date('Y-m-d')
-);
-$user_id = InputValidator::getInt($_GET['user_id'] ?? '', 0, 0);
-$action = InputValidator::getString($_GET['action'] ?? '', 50);
+// Handle activity log filtering
+$date_from = InputValidator::getDate($_GET['date_from'] ?? '', 'Y-m-d', date('Y-m-d', strtotime('-30 days')));
+$date_to   = InputValidator::getDate($_GET['date_to'] ?? '', 'Y-m-d', date('Y-m-d'));
+$user_id   = InputValidator::getInt($_GET['user_id'] ?? '', 0, 0);
+$action    = InputValidator::getString($_GET['action'] ?? '', 50);
 $table_name = InputValidator::getString($_GET['table_name'] ?? '', 50);
 
 // Get all users for filter dropdown
-$users_query = "SELECT id, name FROM users WHERE tenant_id = ? AND branch_id = ? ORDER BY name";
-$users_stmt = $pdo->prepare($users_query);
-$users_stmt->bindParam(1, $tenant_id, PDO::PARAM_INT);
-$users_stmt->bindParam(2, $branch_id, PDO::PARAM_INT);
-$users_stmt->execute();
+$users_stmt = $pdo->prepare("SELECT id, name FROM users WHERE tenant_id = ? AND branch_id = ? ORDER BY name");
+$users_stmt->execute([$tenant_id, $branch_id]);
 $users = $users_stmt->fetchAll(PDO::FETCH_ASSOC);
 
-// Build base query for counting total records
-$count_query = "SELECT COUNT(*) as total 
-                FROM activity_log a 
-                WHERE a.created_at BETWEEN ? AND DATE_ADD(?, INTERVAL 1 DAY) AND a.tenant_id = ?";
+// Count query
+$count_query = "SELECT COUNT(*) as total FROM activity_log a WHERE a.created_at BETWEEN ? AND DATE_ADD(?, INTERVAL 1 DAY) AND a.tenant_id = ?";
 $count_params = [$date_from, $date_to, $tenant_id];
-$count_types = "sss";
+if ($user_id > 0) { $count_query .= " AND a.user_id = ?"; $count_params[] = $user_id; }
+if (!empty($action)) { $count_query .= " AND a.action = ?"; $count_params[] = $action; }
+if (!empty($table_name)) { $count_query .= " AND a.table_name = ?"; $count_params[] = $table_name; }
 
-if ($user_id > 0) {
-    $count_query .= " AND a.user_id = ?";
-    $count_params[] = $user_id;
-    $count_types .= "i";
-}
-
-if (!empty($action)) {
-    $count_query .= " AND a.action = ?";
-    $count_params[] = $action;
-    $count_types .= "s";
-}
-
-if (!empty($table_name)) {
-    $count_query .= " AND a.table_name = ?";
-    $count_params[] = $table_name;
-    $count_types .= "s";
-}
-
-// Get total records count
 $count_stmt = $pdo->prepare($count_query);
 $count_stmt->execute($count_params);
-$count_result = $count_stmt->fetch(PDO::FETCH_ASSOC);
-$total_records = $count_result['total'];
+$total_records = $count_stmt->fetch(PDO::FETCH_ASSOC)['total'];
 $total_pages = ceil($total_records / $records_per_page);
 
-// Build query for activity logs with pagination
-$query = "SELECT a.*, u.name as user_name
-          FROM activity_log a 
-          LEFT JOIN users u ON a.user_id = u.id 
-          WHERE a.created_at BETWEEN ? AND DATE_ADD(?, INTERVAL 1 DAY) AND a.tenant_id = ? AND a.branch_id = ?";
+// Main data query
+$query = "SELECT a.*, u.name as user_name FROM activity_log a LEFT JOIN users u ON a.user_id = u.id WHERE a.created_at BETWEEN ? AND DATE_ADD(?, INTERVAL 1 DAY) AND a.tenant_id = ? AND a.branch_id = ?";
 $params = [$date_from, $date_to, $tenant_id, $branch_id];
-$types = "ssss";
-
-if ($user_id > 0) {
-    $query .= " AND a.user_id = ?";
-    $params[] = $user_id;
-    $types .= "i";
-}
-
-if (!empty($action)) {
-    $query .= " AND a.action = ?";
-    $params[] = $action;
-    $types .= "s";
-}
-
-if (!empty($table_name)) {
-    $query .= " AND a.table_name = ?";
-    $params[] = $table_name;
-    $types .= "s";
-}
-
+if ($user_id > 0) { $query .= " AND a.user_id = ?"; $params[] = $user_id; }
+if (!empty($action)) { $query .= " AND a.action = ?"; $params[] = $action; }
+if (!empty($table_name)) { $query .= " AND a.table_name = ?"; $params[] = $table_name; }
 $query .= " ORDER BY a.created_at DESC LIMIT ? OFFSET ?";
 $params[] = $records_per_page;
 $params[] = $offset;
-$types .= "ii";
 
-// Prepare and execute the query
 $stmt = $pdo->prepare($query);
 $stmt->execute($params);
 $logs = $stmt->fetchAll(PDO::FETCH_ASSOC);
 
-// Get actions for filter dropdown
-$actions_query = "SELECT DISTINCT action FROM activity_log WHERE tenant_id = ? AND branch_id = ? ORDER BY action";
-$actions_stmt = $pdo->prepare($actions_query);
-$actions_stmt->bindParam(1, $tenant_id, PDO::PARAM_INT);
-$actions_stmt->bindParam(2, $branch_id, PDO::PARAM_INT);
-$actions_stmt->execute();
-$actions_result = $actions_stmt->fetchAll(PDO::FETCH_ASSOC);
-$actions = array_column($actions_result, 'action');
+// Dropdowns
+$actions_stmt = $pdo->prepare("SELECT DISTINCT action FROM activity_log WHERE tenant_id = ? AND branch_id = ? ORDER BY action");
+$actions_stmt->execute([$tenant_id, $branch_id]);
+$actions = array_column($actions_stmt->fetchAll(PDO::FETCH_ASSOC), 'action');
 
-// Get table names for filter dropdown
-$tables_query = "SELECT DISTINCT table_name FROM activity_log WHERE tenant_id = ? AND branch_id = ? ORDER BY table_name";
-$tables_stmt = $pdo->prepare($tables_query);
-$tables_stmt->bindParam(1, $tenant_id, PDO::PARAM_INT);
-$tables_stmt->bindParam(2, $branch_id, PDO::PARAM_INT);
-$tables_stmt->execute();
-$tables_result = $tables_stmt->fetchAll(PDO::FETCH_ASSOC);
-$tables = array_column($tables_result, 'table_name');
+$tables_stmt = $pdo->prepare("SELECT DISTINCT table_name FROM activity_log WHERE tenant_id = ? AND branch_id = ? ORDER BY table_name");
+$tables_stmt->execute([$tenant_id, $branch_id]);
+$tables = array_column($tables_stmt->fetchAll(PDO::FETCH_ASSOC), 'table_name');
 
-// Handle log deletion
+// Handle single log deletion
 if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['delete_log'])) {
     $log_id = $_POST['log_id'];
-    
     try {
         $stmt = $pdo->prepare("DELETE FROM activity_log WHERE id = ? AND tenant_id = ? AND branch_id = ?");
-        $stmt->bindParam(1, $log_id, PDO::PARAM_INT);
-        $stmt->bindParam(2, $tenant_id, PDO::PARAM_INT);
-        $stmt->bindParam(3, $branch_id, PDO::PARAM_INT);
-        $stmt->execute();
+        $stmt->execute([$log_id, $tenant_id, $branch_id]);
         $_SESSION['success_message'] = "Log entry deleted successfully!";
-        header('Location: ' . $redirect_url);
-        exit();
     } catch (PDOException $e) {
         $_SESSION['error_message'] = "Error deleting log entry: " . $e->getMessage();
-        header('Location: ' . $redirect_url);
-        exit();
     }
+    header('Location: ' . $redirect_url);
+    exit();
 }
 
 // Handle bulk log deletion
 if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['bulk_delete'])) {
     $delete_before_date = $_POST['delete_before_date'];
-    
     try {
         $stmt = $pdo->prepare("DELETE FROM activity_log WHERE created_at < ? AND tenant_id = ? AND branch_id = ?");
-        $stmt->bindParam(1, $delete_before_date, PDO::PARAM_STR);
-        $stmt->bindParam(2, $tenant_id, PDO::PARAM_INT);
-        $stmt->bindParam(3, $branch_id, PDO::PARAM_INT);
-        $stmt->execute();
-        $affected_rows = $stmt->affected_rows;
+        $stmt->execute([$delete_before_date, $tenant_id, $branch_id]);
+        $affected_rows = $stmt->rowCount();
         $_SESSION['success_message'] = "$affected_rows log entries deleted successfully!";
-        header('Location: ' . $redirect_url);
-        exit();
     } catch (PDOException $e) {
         $_SESSION['error_message'] = "Error deleting log entries: " . $e->getMessage();
-        header('Location: ' . $redirect_url);
-        exit();
     }
+    header('Location: ' . $redirect_url);
+    exit();
 }
 
-// Fetch user data with proper error handling
+// Fetch current user
 try {
     $stmt = $pdo->prepare("SELECT * FROM users WHERE id = ? AND tenant_id = ? AND branch_id = ?");
     $stmt->execute([$_SESSION['user_id'], $tenant_id, $branch_id]);
     $user = $stmt->fetch(PDO::FETCH_ASSOC);
-
-    if (!$user) {
-        // Log the error
-        error_log("User not found: " . $_SESSION['user_id']);
-        
-        // For debugging
-        echo "<!-- Debug: User ID = " . $_SESSION['user_id'] . " -->";
-        echo "<!-- Debug: SQL = SELECT * FROM users WHERE id = " . $_SESSION['user_id'] . " -->";
-        
-        // Redirect to login if user not found
-        session_destroy();
-        header('Location: ../login.php');
-        exit();
-    }
-
+    if (!$user) { session_destroy(); header('Location: ../login.php'); exit(); }
 } catch (PDOException $e) {
-    // Log the error
     error_log("Database Error: " . $e->getMessage());
-    
-    // For debugging
-    echo "<!-- Debug: Database Error = " . $e->getMessage() . " -->";
-    
     $user = null;
 }
-
 ?>
 
 <?php include '../includes/header.php'; ?>
 
 <style>
-/* Enhanced custom styles for better layout and design */
-.page-header.card {
-    background: linear-gradient(135deg, #4099ff 0%, #2ed8b6 100%);
-    color: #ffffff;
-    border: none;
-    margin-bottom: 20px;
-    padding: 20px !important;
-    box-shadow: 0 4px 12px rgba(0,0,0,0.15);
-    border-radius: 10px;
+/* ── Corporate / Enterprise Design System ── */
+:root {
+    --color-bg:           #f0f2f5;
+    --color-surface:      #ffffff;
+    --color-border:       #d9dde3;
+    --color-border-light: #eaecef;
+    --color-text-primary: #1a1f2e;
+    --color-text-secondary: #5a6272;
+    --color-text-muted:   #9aa1b0;
+    --color-accent:       #2563eb;
+    --color-accent-hover: #1d4ed8;
+    --color-accent-light: #eff6ff;
+    --color-danger:       #dc2626;
+    --color-danger-light: #fef2f2;
+    --color-success:      #16a34a;
+    --color-success-light:#f0fdf4;
+    --color-warning:      #d97706;
+    --color-warning-light:#fffbeb;
+    --color-info:         #0891b2;
+    --color-info-light:   #ecfeff;
+    --radius-sm:          4px;
+    --radius-md:          6px;
+    --radius-lg:          8px;
+    --shadow-sm:          0 1px 3px rgba(0,0,0,0.08), 0 1px 2px rgba(0,0,0,0.04);
+    --shadow-md:          0 4px 6px rgba(0,0,0,0.06), 0 2px 4px rgba(0,0,0,0.04);
+    --font-mono:          'JetBrains Mono', 'Fira Code', 'Consolas', monospace;
 }
 
-.page-header.card .row {
+/* ── Page Layout ── */
+.al-page { background: var(--color-bg); min-height: 100vh; padding: 0; }
+
+/* ── Top Bar ── */
+.al-topbar {
+    background: var(--color-surface);
+    border-bottom: 1px solid var(--color-border);
+    padding: 14px 24px;
     display: flex;
+    align-items: center;
     justify-content: space-between;
-    align-items: center;
+    gap: 16px;
+    position: sticky;
+    top: 0;
+    z-index: 100;
+    box-shadow: var(--shadow-sm);
 }
-
-.page-header.card h5 {
-    color: #ffffff;
-    margin: 0;
-    font-weight: 600;
-}
-
-.page-header.card .text-end {
-    text-align: right;
-}
-
-.page-header.card .btn {
-    background: rgba(255,255,255,0.2);
-    color: #ffffff;
-    border: 1px solid rgba(255,255,255,0.3);
-    border-radius: 25px;
-}
-
-.page-header.card .btn:hover {
-    background: rgba(255,255,255,0.3);
-    border-color: rgba(255,255,255,0.5);
-}
-
-.card {
-    border-radius: 10px;
-    box-shadow: 0 2px 8px rgba(0,0,0,0.1);
-    border: none;
-}
-
-.card-header {
-    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-    color: white;
-    border-radius: 10px 10px 0 0;
-    padding: 1rem 1.5rem;
-    border: none;
-}
-
-.card-header h5 {
-    margin: 0;
-    font-weight: 600;
+.al-topbar-left {
     display: flex;
     align-items: center;
+    gap: 10px;
+}
+.al-topbar-icon {
+    width: 32px; height: 32px;
+    background: var(--color-accent);
+    border-radius: var(--radius-md);
+    display: flex; align-items: center; justify-content: center;
+    color: #fff;
+    font-size: 15px;
+    flex-shrink: 0;
+}
+.al-topbar-title {
+    font-size: 15px;
+    font-weight: 600;
+    color: var(--color-text-primary);
+    margin: 0;
+    line-height: 1;
+}
+.al-topbar-subtitle {
+    font-size: 12px;
+    color: var(--color-text-muted);
+    margin: 0;
+    margin-top: 2px;
+}
+.al-topbar-right {
+    display: flex;
+    align-items: center;
+    gap: 8px;
 }
 
-.progress {
-    border-radius: 15px;
+/* ── Buttons ── */
+.al-btn {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    padding: 7px 14px;
+    font-size: 13px;
+    font-weight: 500;
+    border-radius: var(--radius-md);
+    border: 1px solid transparent;
+    cursor: pointer;
+    line-height: 1.4;
+    transition: background 0.15s, border-color 0.15s, box-shadow 0.15s;
+    text-decoration: none;
+    white-space: nowrap;
+}
+.al-btn-primary {
+    background: var(--color-accent);
+    color: #fff;
+    border-color: var(--color-accent);
+}
+.al-btn-primary:hover { background: var(--color-accent-hover); border-color: var(--color-accent-hover); color: #fff; }
+.al-btn-ghost {
+    background: transparent;
+    color: var(--color-text-secondary);
+    border-color: var(--color-border);
+}
+.al-btn-ghost:hover { background: var(--color-bg); color: var(--color-text-primary); }
+.al-btn-danger {
+    background: var(--color-danger);
+    color: #fff;
+    border-color: var(--color-danger);
+}
+.al-btn-danger:hover { background: #b91c1c; border-color: #b91c1c; color: #fff; }
+.al-btn-danger-ghost {
+    background: transparent;
+    color: var(--color-danger);
+    border-color: #fca5a5;
+}
+.al-btn-danger-ghost:hover { background: var(--color-danger-light); }
+.al-btn-sm {
+    padding: 4px 9px;
+    font-size: 12px;
+    gap: 4px;
+}
+.al-btn-icon {
+    padding: 5px 8px;
+    min-width: 0;
+}
+
+/* ── Alerts ── */
+.al-alert {
+    display: flex;
+    align-items: flex-start;
+    gap: 10px;
+    padding: 11px 14px;
+    border-radius: var(--radius-md);
+    font-size: 13px;
+    margin: 16px 24px 0;
+    border: 1px solid;
+}
+.al-alert-success { background: var(--color-success-light); color: #14532d; border-color: #bbf7d0; }
+.al-alert-danger   { background: var(--color-danger-light);  color: #7f1d1d; border-color: #fecaca; }
+
+/* ── Filter Bar (collapsible) ── */
+.al-filter-bar {
+    background: var(--color-surface);
+    border-bottom: 1px solid var(--color-border);
+    padding: 0 24px;
     overflow: hidden;
-    box-shadow: inset 0 1px 2px rgba(0,0,0,0.1);
+    transition: max-height 0.25s ease, padding 0.25s ease;
+    max-height: 0;
+}
+.al-filter-bar.open {
+    max-height: 120px;
+    padding: 14px 24px;
+}
+.al-filter-row {
+    display: flex;
+    align-items: flex-end;
+    gap: 10px;
+    flex-wrap: wrap;
+}
+.al-filter-group {
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+    flex: 1;
+    min-width: 120px;
+    max-width: 200px;
+}
+.al-filter-group label {
+    font-size: 11px;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.04em;
+    color: var(--color-text-muted);
+    margin: 0;
+}
+.al-filter-group .form-control {
+    height: 32px;
+    font-size: 13px;
+    padding: 4px 10px;
+    border: 1px solid var(--color-border);
+    border-radius: var(--radius-md);
+    color: var(--color-text-primary);
+    background: var(--color-surface);
+    box-shadow: none;
+    transition: border-color 0.15s;
+}
+.al-filter-group .form-control:focus {
+    border-color: var(--color-accent);
+    box-shadow: 0 0 0 2px rgba(37,99,235,0.12);
+    outline: none;
+}
+.al-filter-actions {
+    display: flex;
+    gap: 6px;
+    padding-bottom: 0;
+    flex-shrink: 0;
 }
 
-.progress-bar {
-    transition: width 0.6s ease;
+/* ── Table Toolbar ── */
+.al-table-toolbar {
+    background: var(--color-surface);
+    border-bottom: 1px solid var(--color-border-light);
+    padding: 10px 16px;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 12px;
 }
-
-.t {
-    font-size: 0.85em;
-    padding: 0.5em 0.75em;
+.al-table-meta {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+}
+.al-table-meta-count {
+    font-size: 13px;
+    font-weight: 600;
+    color: var(--color-text-primary);
+}
+.al-table-meta-page {
+    font-size: 12px;
+    color: var(--color-text-muted);
+    background: var(--color-bg);
+    border: 1px solid var(--color-border);
     border-radius: 20px;
+    padding: 2px 10px;
+}
+.al-search-wrap {
+    position: relative;
+    width: 220px;
+}
+.al-search-wrap input {
+    width: 100%;
+    height: 30px;
+    font-size: 12px;
+    padding: 4px 10px 4px 30px;
+    border: 1px solid var(--color-border);
+    border-radius: var(--radius-md);
+    background: var(--color-bg);
+    color: var(--color-text-primary);
+    transition: border-color 0.15s, background 0.15s;
+}
+.al-search-wrap input:focus {
+    outline: none;
+    border-color: var(--color-accent);
+    background: var(--color-surface);
+    box-shadow: 0 0 0 2px rgba(37,99,235,0.12);
+}
+.al-search-icon {
+    position: absolute;
+    left: 9px; top: 50%;
+    transform: translateY(-50%);
+    color: var(--color-text-muted);
+    font-size: 12px;
+    pointer-events: none;
+}
+
+/* ── Table ── */
+.al-table-wrap {
+    background: var(--color-surface);
+    border-radius: var(--radius-lg);
+    border: 1px solid var(--color-border);
+    box-shadow: var(--shadow-sm);
+    overflow: hidden;
+    margin: 16px 24px;
+}
+.al-table {
+    width: 100%;
+    border-collapse: collapse;
+    font-size: 13px;
+}
+.al-table thead th {
+    background: #f8f9fb;
+    border-bottom: 1px solid var(--color-border);
+    padding: 9px 12px;
+    font-size: 11px;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+    color: var(--color-text-muted);
+    white-space: nowrap;
+    text-align: left;
+}
+.al-table thead th:first-child { padding-left: 16px; }
+.al-table thead th:last-child { padding-right: 16px; text-align: right; }
+.al-table tbody tr { border-bottom: 1px solid var(--color-border-light); }
+.al-table tbody tr:last-child { border-bottom: none; }
+.al-table tbody tr:hover { background: #f5f7fa; }
+.al-table tbody td {
+    padding: 9px 12px;
+    color: var(--color-text-primary);
+    vertical-align: middle;
+}
+.al-table tbody td:first-child { padding-left: 16px; }
+.al-table tbody td:last-child { padding-right: 16px; text-align: right; }
+
+/* ── Datetime cell ── */
+.al-datetime {
+    font-family: var(--font-mono);
+    font-size: 12px;
+    color: var(--color-text-secondary);
+    white-space: nowrap;
+}
+
+/* ── User cell ── */
+.al-user {
+    display: flex;
+    align-items: center;
+    gap: 7px;
+}
+.al-user-avatar {
+    width: 24px; height: 24px;
+    border-radius: 50%;
+    background: var(--color-accent-light);
+    color: var(--color-accent);
+    font-size: 10px;
+    font-weight: 700;
+    display: flex; align-items: center; justify-content: center;
+    flex-shrink: 0;
+    text-transform: uppercase;
+}
+.al-user-name {
+    max-width: 130px;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+    color: var(--color-text-primary);
     font-weight: 500;
 }
 
-.badge-success {
-    background-color: #28a745;
-}
-
-.badge-warning {
-    background-color: #ffc107;
-    color: #212529;
-}
-
-.badge-info {
-    background-color: #17a2b8;
-}
-
-.badge-primary {
-    background-color: #007bff;
-}
-
-.badge-secondary {
-    background-color: #6c757d;
-}
-
-.badge-danger {
-    background-color: #dc3545;
-}
-
-.table-responsive {
-    border-radius: 10px;
-
-}
-
-.table {
-    margin-bottom: 0;
-}
-
-.table thead th {
-    background-color: #f8f9fa;
-    border-bottom: 2px solid #dee2e6;
+/* ── Action Badges ── */
+.al-badge {
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+    padding: 2px 8px;
+    font-size: 11px;
     font-weight: 600;
-    color: #495057;
-    padding: 1rem;
+    border-radius: 4px;
+    letter-spacing: 0.02em;
+    text-transform: uppercase;
+    white-space: nowrap;
 }
+.al-badge-login    { background: var(--color-success-light); color: var(--color-success); }
+.al-badge-logout   { background: var(--color-warning-light); color: var(--color-warning); }
+.al-badge-create,
+.al-badge-insert   { background: var(--color-accent-light);  color: var(--color-accent); }
+.al-badge-update   { background: var(--color-info-light);    color: var(--color-info); }
+.al-badge-delete   { background: var(--color-danger-light);  color: var(--color-danger); }
+.al-badge-default  { background: #f1f3f6;                   color: var(--color-text-secondary); }
 
-.table tbody tr:hover {
-    background-color: #f1f3f4;
+/* ── Table / IP mono ── */
+.al-mono {
+    font-family: var(--font-mono);
+    font-size: 12px;
+    color: var(--color-text-secondary);
 }
+.al-record-id { color: var(--color-text-muted); font-size: 12px; font-family: var(--font-mono); }
 
-.table tbody td {
-    padding: 1rem;
-    vertical-align: middle;
+/* ── Row actions ── */
+.al-row-actions { display: flex; align-items: center; justify-content: flex-end; gap: 4px; }
+
+/* ── Empty state ── */
+.al-empty {
+    text-align: center;
+    padding: 60px 24px;
 }
+.al-empty-icon { font-size: 2.5rem; color: var(--color-text-muted); margin-bottom: 12px; }
+.al-empty-title { font-size: 15px; font-weight: 600; color: var(--color-text-secondary); margin: 0 0 6px; }
+.al-empty-sub { font-size: 13px; color: var(--color-text-muted); margin: 0; }
 
-.form-control {
-    border-radius: 8px;
-    border: 1px solid #ced4da;
-    padding: 0.75rem;
+/* ── Pagination ── */
+.al-pagination {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 4px;
+    padding: 12px 16px;
+    border-top: 1px solid var(--color-border-light);
+    background: #fafbfc;
 }
-
-.form-control:focus {
-    border-color: #4099ff;
-    box-shadow: 0 0 0 0.2rem rgba(64, 153, 255, 0.25);
+.al-page-item a, .al-page-item span {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    min-width: 30px;
+    height: 30px;
+    padding: 0 8px;
+    font-size: 12px;
+    font-weight: 500;
+    border: 1px solid var(--color-border);
+    border-radius: var(--radius-md);
+    color: var(--color-text-secondary);
+    text-decoration: none;
+    background: var(--color-surface);
+    transition: all 0.15s;
 }
+.al-page-item a:hover { background: var(--color-bg); border-color: var(--color-accent); color: var(--color-accent); }
+.al-page-item.active span { background: var(--color-accent); color: #fff; border-color: var(--color-accent); font-weight: 600; }
 
-.btn-primary {
-    background: linear-gradient(135deg, #4099ff 0%, #2ed8b6 100%);
+/* ── Shared Modals ── */
+.al-modal-backdrop {
+    display: none;
+    position: fixed;
+    inset: 0;
+    background: rgba(15,23,42,0.45);
+    z-index: 1040;
+    backdrop-filter: blur(2px);
+}
+.al-modal-backdrop.show { display: flex; align-items: center; justify-content: center; }
+.al-modal {
+    background: var(--color-surface);
+    border-radius: var(--radius-lg);
+    box-shadow: 0 20px 60px rgba(0,0,0,0.2);
+    width: 100%;
+    max-width: 600px;
+    margin: 24px;
+    overflow: hidden;
+    max-height: 90vh;
+    display: flex;
+    flex-direction: column;
+}
+.al-modal-lg { max-width: 800px; }
+.al-modal-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 14px 20px;
+    border-bottom: 1px solid var(--color-border);
+    background: #fafbfc;
+    flex-shrink: 0;
+}
+.al-modal-header h5 {
+    margin: 0;
+    font-size: 14px;
+    font-weight: 700;
+    color: var(--color-text-primary);
+    display: flex;
+    align-items: center;
+    gap: 8px;
+}
+.al-modal-close {
+    background: none;
     border: none;
-    border-radius: 25px;
-    padding: 0.75rem 2rem;
-    font-weight: 600;
-    transition: all 0.3s ease;
+    color: var(--color-text-muted);
+    font-size: 18px;
+    cursor: pointer;
+    padding: 2px 6px;
+    border-radius: var(--radius-sm);
+    line-height: 1;
 }
-
-.btn-primary:hover {
-    transform: translateY(-1px);
-    box-shadow: 0 4px 12px rgba(64, 153, 255, 0.3);
-}
-
-.btn-secondary {
-    border-radius: 25px;
-    padding: 0.75rem 2rem;
-    font-weight: 600;
-    transition: all 0.3s ease;
-}
-
-.btn-warning {
-    background: linear-gradient(135deg, #ffc107 0%, #ff8c00 100%);
-    border: none;
-    border-radius: 25px;
-    padding: 0.75rem 2rem;
-    font-weight: 600;
-    transition: all 0.3s ease;
-    color: #212529;
-}
-
-.btn-warning:hover {
-    transform: translateY(-1px);
-    box-shadow: 0 4px 12px rgba(255, 193, 7, 0.3);
-}
-
-.btn-danger {
-    background: linear-gradient(135deg, #dc3545 0%, #c82333 100%);
-    border: none;
-    border-radius: 25px;
-    padding: 0.75rem 2rem;
-    font-weight: 600;
-    transition: all 0.3s ease;
-}
-
-.btn-danger:hover {
-    transform: translateY(-1px);
-    box-shadow: 0 4px 12px rgba(220, 53, 69, 0.3);
-}
-
-.btn-info {
-    background: linear-gradient(135deg, #17a2b8 0%, #138496 100%);
-    border: none;
-    border-radius: 25px;
-    padding: 0.75rem 2rem;
-    font-weight: 600;
-    transition: all 0.3s ease;
-}
-
-.btn-info:hover {
-    transform: translateY(-1px);
-    box-shadow: 0 4px 12px rgba(23, 162, 184, 0.3);
-}
-
-.btn-success {
-    background: linear-gradient(135deg, #28a745 0%, #218838 100%);
-    border: none;
-    border-radius: 25px;
-    padding: 0.75rem 2rem;
-    font-weight: 600;
-    transition: all 0.3s ease;
-}
-
-.btn-success:hover {
-    transform: translateY(-1px);
-    box-shadow: 0 4px 12px rgba(40, 167, 69, 0.3);
-}
-
-.alert {
-    border-radius: 10px;
-    border: none;
-    padding: 1rem 1.5rem;
-}
-
-.alert-info {
-    background: linear-gradient(135deg, #d1ecf1 0%, #bee5eb 100%);
-    color: #0c5460;
-}
-
-.alert-success {
-    background: linear-gradient(135deg, #d4edda 0%, #c3e6cb 100%);
-    color: #155724;
-}
-
-.alert-danger {
-    background: linear-gradient(135deg, #f8d7da 0%, #f5c6cb 100%);
-    color: #721c24;
-}
-
-.alert-warning {
-    background: linear-gradient(135deg, #fff3cd 0%, #ffeaa7 100%);
-    color: #856404;
-}
-
-
-.modal-header {
-    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-    color: white;
-    border-radius: 10px 10px 0 0;
-    border: none;
-    padding: 1rem 1.5rem;
-}
-
-.modal-header .close {
-    color: white;
-    opacity: 0.8;
-}
-
-.modal-body {
-    padding: 1.5rem;
-}
-
-.modal-body p {
-    word-break: break-word;
-    overflow-wrap: break-word;
-}
-
-.modal-footer {
-    border-top: none;
-    border-radius: 0 0 10px 10px;
-    padding: 1rem 1.5rem;
-}
-
-.h2 {
-    font-size: 2.5rem;
-}
-
-.h4 {
-    font-size: 1.5rem;
-}
-
-.h5 {
-    font-size: 1.25rem;
-}
-
-.h6 {
-    font-size: 1rem;
-}
-
-.user-agent-info {
-    word-break: break-all;
-    max-width: 100%;
-    display: inline-block;
-    white-space: normal;
-}
-
-.user-agent-wrapper {
-    max-height: 100px;
+.al-modal-close:hover { background: var(--color-bg); color: var(--color-text-primary); }
+.al-modal-body {
+    padding: 20px;
     overflow-y: auto;
 }
+.al-modal-footer {
+    display: flex;
+    justify-content: flex-end;
+    gap: 8px;
+    padding: 12px 20px;
+    border-top: 1px solid var(--color-border);
+    background: #fafbfc;
+    flex-shrink: 0;
+}
+
+/* ── Detail Grid ── */
+.al-detail-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 0;
+    border: 1px solid var(--color-border);
+    border-radius: var(--radius-md);
+    overflow: hidden;
+    margin-bottom: 16px;
+    font-size: 13px;
+}
+.al-detail-row {
+    display: contents;
+}
+.al-detail-label {
+    background: #f8f9fb;
+    border-bottom: 1px solid var(--color-border-light);
+    border-right: 1px solid var(--color-border-light);
+    padding: 8px 12px;
+    font-size: 11px;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.04em;
+    color: var(--color-text-muted);
+}
+.al-detail-value {
+    background: var(--color-surface);
+    border-bottom: 1px solid var(--color-border-light);
+    padding: 8px 12px;
+    color: var(--color-text-primary);
+    font-size: 13px;
+    word-break: break-word;
+}
+.al-detail-label:nth-last-child(-n+2), 
+.al-detail-value:last-child { border-bottom: none; }
+
+/* ── JSON Diff ── */
+.al-diff-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 12px;
+}
+.al-diff-panel h6 {
+    font-size: 11px;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+    color: var(--color-text-muted);
+    margin: 0 0 6px;
+}
+.al-diff-panel pre {
+    background: #0d1117;
+    color: #e6edf3;
+    border-radius: var(--radius-md);
+    padding: 12px;
+    font-family: var(--font-mono);
+    font-size: 12px;
+    margin: 0;
+    overflow: auto;
+    max-height: 260px;
+    border: 1px solid var(--color-border);
+}
+
+/* ── Delete confirm ── */
+.al-delete-warning {
+    display: flex;
+    gap: 10px;
+    background: var(--color-danger-light);
+    border: 1px solid #fecaca;
+    border-radius: var(--radius-md);
+    padding: 12px 14px;
+    font-size: 13px;
+    color: #7f1d1d;
+    margin-bottom: 4px;
+}
+.al-delete-warning-icon { font-size: 16px; flex-shrink: 0; margin-top: 1px; }
+.al-confirm-text { font-size: 14px; color: var(--color-text-primary); margin-bottom: 12px; }
+
+/* ── Filter toggle button state ── */
+.al-filter-toggle.active {
+    background: var(--color-accent-light);
+    color: var(--color-accent);
+    border-color: #bfdbfe;
+}
+
+
 </style>
-
-<!-- [ Main Content ] start -->
+<!-- pcoded wrapper so header.php layout works -->
 <div class="pcoded-main-container">
-    <div class="pcoded-wrapper">
-        <div class="pcoded-content">
-            <div class="pcoded-inner-content">
-                <div class="main-body">
-                    <div class="page-wrapper">
-                        <!-- [ Main Content ] start -->
-                            <div class="page-header card">
-                                <div class="row align-items-center">
-                                    <div class="col-md-6">
-                                        <h5 class="mb-0"><i class="feather icon-activity mr-2"></i><?= __('activity_log') ?></h5>
-                                    </div>
-                                    <div class="col-md-6 text-end">
-                                        <?php if (!empty($logs)): ?>
-                                        <button type="button" class="btn btn-danger" data-toggle="modal" data-target="#bulkDeleteModal">
-                                            <i class="feather icon-trash-2 mr-1"></i> <?= __('bulk_delete') ?>
-                                        </button>
-                                        <?php endif; ?>
-                                    </div>
-                                </div>
-                            </div>
-                            
-                            <?php if (isset($success_message)): ?>
-                                <div class="alert alert-success"><?php echo h($success_message); ?></div>
-                            <?php endif; ?>
-                            
-                            <?php if (isset($error_message)): ?>
-                                <div class="alert alert-danger"><?php echo h($error_message); ?></div>
-                            <?php endif; ?>
-                            
-                            <!-- Filters Section -->
-                            <div class="card mb-4">
-                                <div class="card-header">
-                                    <h5 class="mb-0"><i class="feather icon-filter mr-2"></i><?= __('filter_logs') ?></h5>
-                                </div>
-                                <div class="card-body">
-                                    <form method="GET" action="activity_log.php">
-                                        <div class="row">
-                                            <div class="col-md-3 mb-3">
-                                                <label for="date_from"><?= __('date_from') ?></label>
-                                                <input type="date" class="form-control" id="date_from" name="date_from" value="<?php echo h($date_from); ?>">
-                                            </div>
-                                            <div class="col-md-3 mb-3">
-                                                <label for="date_to"><?= __('date_to') ?></label>
-                                                <input type="date" class="form-control" id="date_to" name="date_to" value="<?php echo h($date_to); ?>">
-                                            </div>
-                                            <div class="col-md-2 mb-3">
-                                                <label for="user_id"><?= __('user') ?></label>
-                                                <select class="form-control" id="user_id" name="user_id">
-                                                    <option value="0"><?= __('all_users') ?></option>
-                                                    <?php foreach ($users as $u): ?>
-                                                        <option value="<?php echo h($u['id']); ?>" <?php echo $user_id == $u['id'] ? 'selected' : ''; ?>>
-                                                            <?php echo h($u['name']); ?>
-                                                        </option>
-                                                    <?php endforeach; ?>
-                                                </select>
-                                            </div>
-                                            <div class="col-md-2 mb-3">
-                                                <label for="action"><?= __('action') ?></label>
-                                                <select class="form-control" id="action" name="action">
-                                                    <option value=""><?= __('all_actions') ?></option>
-                                                    <?php foreach ($actions as $act): ?>
-                                                        <option value="<?php echo h($act); ?>" <?php echo $action == $act ? 'selected' : ''; ?>>
-                                                            <?php echo h(ucfirst($act)); ?>
-                                                        </option>
-                                                    <?php endforeach; ?>
-                                                </select>
-                                            </div>
-                                            <div class="col-md-2 mb-3">
-                                                <label for="table_name"><?= __('table') ?></label>
-                                                <select class="form-control" id="table_name" name="table_name">
-                                                    <option value=""><?= __('all_tables') ?></option>
-                                                    <?php foreach ($tables as $tbl): ?>
-                                                        <option value="<?php echo h($tbl); ?>" <?php echo $table_name == $tbl ? 'selected' : ''; ?>>
-                                                            <?php echo h($tbl); ?>
-                                                        </option>
-                                                    <?php endforeach; ?>
-                                                </select>
-                                            </div>
-                                        </div>
-                                        <div class="text-right">
-                                            <button type="submit" class="btn btn-primary">
-                                                <i class="feather icon-filter mr-1"></i><?= __('apply_filters') ?>
-                                            </button>
-                                            <a href="activity_log.php" class="btn btn-secondary ml-2">
-                                                <i class="feather icon-refresh-cw mr-1"></i><?= __('reset') ?>
-                                            </a>
-                                        </div>
-                                    </form>
-                                </div>
-                            </div>
-                            
-                            <!-- Bulk Delete Modal -->
-                            <div class="modal" id="bulkDeleteModal" tabindex="-1" role="dialog" aria-labelledby="bulkDeleteModalLabel" aria-hidden="true">
-                                <div class="modal-dialog" role="document">
-                                    <div class="modal-content">
-                                        <div class="modal-header">
-                                            <h5 class="modal-title" id="bulkDeleteModalLabel"><?= __('bulk_delete_log_entries') ?></h5>
-                                            <button type="button" class="close" data-dismiss="modal" aria-label="Close">
-                                                <span aria-hidden="true">&times;</span>
-                                            </button>
-                                        </div>
-                                        <form method="POST">
-                                            <!-- CSRF Protection -->
-                                            <input type="hidden" name="csrf_token" value="<?php echo h($_SESSION['csrf_token']); ?>">
-                                            
-                                            <div class="modal-body">
-                                                <div class="alert alert-warning">
-                                                    <i class="feather icon-alert-triangle mr-1"></i>
-                                                    <?= __('warning_this_action_will_permanently_delete_all_log_entries_before_the_selected_date') ?>
-                                                </div>
-                                                
-                                                <div class="mb-3">
-                                                    <label class="form-label"><?= __('delete_logs_before_date') ?> *</label>
-                                                    <input type="date" class="form-control" name="delete_before_date" required>
-                                                </div>
-                                            </div>
-                                            <div class="modal-footer">
-                                                <button type="button" class="btn btn-secondary" data-dismiss="modal"><?= __('cancel') ?></button>
-                                                <button type="submit" name="bulk_delete" class="btn btn-danger"><?= __('delete_logs') ?></button>
-                                            </div>
-                                        </form>
-                                    </div>
-                                </div>
-                            </div>
-                            
-                            <div class="card">
-                                <div class="card-header">
-                                    <div class="row align-items-center">
-                                        <div class="col">
-                                            <h5 class="mb-0 text-primary">
-                                                <i class="feather icon-activity mr-2"></i><?= __('activity_logs') ?>
-                                                <span class="ml-2"><?php echo $total_records; ?> <?= __('entries') ?></span>
-                                                <span class="ml-2"><?= __('page') ?> <?php echo $page; ?> <?= __('of') ?> <?php echo $total_pages; ?></span>
-                                            </h5>
-                                        </div>
-                                        <div class="col-auto">
-                                            <div class="input-group">
-                                                <input type="text" class="form-control" id="logSearch" placeholder="<?= __('search_logs') ?>...">
-                                                <div class="input-group-append">
-                                                    <span class="input-group-text bg-primary border-primary text-white">
-                                                        <i class="feather icon-search"></i>
-                                                    </span>
-                                                </div>
-                                            </div>
-                                        </div>
-                                    </div>
-                                </div>
-                                <div class="card-body p-0">
-                                    <div class="table-responsive">
-                                        <table class="table table-hover table-striped mb-0" id="logsTable">
-                                            <thead class="thead-light">
-                                                <tr>
-                                                    <th class="border-top-0">
-                                                        <div class="d-flex align-items-center">
-                                                            <i class="feather icon-clock mr-2 text-muted"></i><?= __('date_time') ?>
-                                                        </div>
-                                                    </th>
-                                                    <th class="border-top-0">
-                                                        <div class="d-flex align-items-center">
-                                                            <i class="feather icon-user mr-2 text-muted"></i><?= __('user') ?>
-                                                        </div>
-                                                    </th>
-                                                    <th class="border-top-0">
-                                                        <div class="d-flex align-items-center">
-                                                            <i class="feather icon-tag mr-2 text-muted"></i><?= __('action') ?>
-                                                        </div>
-                                                    </th>
-                                                    <th class="border-top-0">
-                                                        <div class="d-flex align-items-center">
-                                                            <i class="feather icon-database mr-2 text-muted"></i><?= __('table') ?>
-                                                        </div>
-                                                    </th>
-                                                    <th class="border-top-0">
-                                                        <div class="d-flex align-items-center">
-                                                            <i class="feather icon-hash mr-2 text-muted"></i><?= __('record_id') ?>
-                                                        </div>
-                                                    </th>
-                                                    <th class="border-top-0">
-                                                        <div class="d-flex align-items-center">
-                                                                <i class="feather icon-monitor mr-2 text-muted"></i><?= __('ip_address') ?>
-                                                        </div>
-                                                    </th>
-                                                    <th class="border-top-0 text-center"><?= __('actions') ?></th>
-                                                </tr>
-                                            </thead>
-                                            <tbody>
-                                                <?php if (count($logs) > 0): ?>
-                                                    <?php foreach ($logs as $log): ?>
-                                                        <tr class="log-row">
-                                                            <td><?php echo h(date('Y-m-d H:i:s', strtotime($log['created_at']))); ?></td>
-                                                            <td>
-                                                                <span class="d-inline-block text-truncate" style="max-width: 150px;">
-                                                                    <?php echo h($log['user_name']); ?>
-                                                                </span>
-                                                            </td>
-                                                            <td>
-                                                                <?php 
-                                                                $badge_class = 'badge-secondary';
-                                                                if ($log['action'] == 'login') $badge_class = 'badge-success';
-                                                                if ($log['action'] == 'logout') $badge_class = 'badge-warning';
-                                                                if ($log['action'] == 'create') $badge_class = 'badge-primary';
-                                                                if ($log['action'] == 'update') $badge_class = 'badge-info';
-                                                                if ($log['action'] == 'delete') $badge_class = 'badge-danger';
-                                                                if ($log['action'] == 'insert') $badge_class = 'badge-primary';
-                                                                ?>
-                                                                <span class="t <?php echo $badge_class; ?>">
-                                                                    <?php echo h(ucfirst($log['action'])); ?>
-                                                                </span>
-                                                            </td>
-                                                            <td><?php echo h($log['table_name']); ?></td>
-                                                            <td><?php echo h($log['record_id']); ?></td>
-                                                            <td><?php echo h($log['ip_address']); ?></td>
-                                                            <td class="text-center">
-                                                                <div class="btn-group">
-                                                                    <button type="button" class="btn btn-sm btn-info" data-toggle="modal" data-target="#viewLogModal<?php echo h($log['id']); ?>">
-                                                                        <i class="feather icon-eye"></i>
-                                                                    </button>
-                                                                    <button type="button" class="btn btn-sm btn-danger" data-toggle="modal" data-target="#deleteLogModal<?php echo h($log['id']); ?>">
-                                                                        <i class="feather icon-trash-2"></i>
-                                                                    </button>
-                                                                </div>
-                                                                
-                                                                <!-- View Log Modal -->
-                                                                <div class="modal" id="viewLogModal<?php echo h($log['id']); ?>" tabindex="-1" role="dialog" aria-labelledby="viewLogModalLabel<?php echo h($log['id']); ?>" aria-hidden="true">
-                                                                    <div class="modal-dialog modal-lg" role="document">
-                                                                        <div class="modal-content">
-                                                                            <div class="modal-header">
-                                                                                <h5 class="modal-title" id="viewLogModalLabel<?php echo h($log['id']); ?>"><?= __('log_details') ?></h5>
-                                                                                <button type="button" class="close" data-dismiss="modal" aria-label="Close">
-                                                                                    <span aria-hidden="true">&times;</span>
-                                                                                </button>
-                                                                            </div>
-                                                                            <div class="modal-body">
-                                                                                <div class="row">
-                                                                                    <div class="col-md-6">
-                                                                                        <p><strong><?= __('date_time') ?>:</strong> <?php echo h(date('Y-m-d H:i:s', strtotime($log['created_at']))); ?></p>
-                                                                                        <p><strong><?= __('user') ?>:</strong> <?php echo h($log['user_name']); ?></p>
-                                                                                        <p><strong><?= __('action') ?>:</strong> <?php echo h(ucfirst($log['action'])); ?></p>
-                                                                                        <p><strong><?= __('table') ?>:</strong> <?php echo h($log['table_name']); ?></p>
-                                                                                        <p><strong><?= __('record_id') ?>:</strong> <?php echo h($log['record_id']); ?></p>
-                                                                                    </div>
-                                                                                    <div class="col-md-6">
-                                                                                        <p><strong><?= __('ip_address') ?>:</strong> <?php echo h($log['ip_address']); ?></p>
-                                                                                        <p class="user-agent-wrapper"><strong><?= __('user_agent') ?>:</strong> <span class="user-agent-info">
-                                                                                            <?php echo h($log['user_agent']); ?></span></p>
-                                                                                    </div>
-                                                                                </div>
-                                                                                <hr>
-                                                                                <div class="row">
-                                                                                    <div class="col-md-6">
-                                                                                        <h6><?= __('old_values') ?>:</h6>
-                                                                                        <div class="p-3 bg-light rounded json-content">
-                                                                                            <pre class="mb-0"><?php 
-                                                                                            // Check if the value is not null before decoding
-                                                                                            if ($log['old_values'] !== null && $log['old_values'] !== '') {
-                                                                                                // Decode the JSON with UTF-8 handling
-                                                                                                $old_values = json_decode($log['old_values'], true);
-                                                                                                if ($old_values !== null) {
-                                                                                                    echo h(json_encode($old_values, JSON_PRETTY_PRINT | JSON_UNESCAPED_UNICODE));
-                                                                                                } else {
-                                                                                                    // Fallback if JSON is invalid
-                                                                                                    echo h($log['old_values']);
-                                                                                                }
-                                                                                            } else {
-                                                                                                    echo '<em class="text-muted">'.__('no_data').'</em>';
-                                                                                            }
-                                                                                            ?>
-                                                                                            </pre>
-                                                                                        </div>
-                                                                                    </div>
-                                                                                    <div class="col-md-6">
-                                                                                        <h6><?= __('new_values') ?>:</h6>
-                                                                                        <div class="p-3 bg-light rounded json-content">
-                                                                                            <pre class="mb-0"><?php 
-                                                                                            // Check if the value is not null before decoding
-                                                                                            if ($log['new_values'] !== null && $log['new_values'] !== '') {
-                                                                                                // Decode the JSON with UTF-8 handling
-                                                                                                $new_values = json_decode($log['new_values'], true);
-                                                                                                if ($new_values !== null) {
-                                                                                                    echo h(json_encode($new_values, JSON_PRETTY_PRINT | JSON_UNESCAPED_UNICODE));
-                                                                                                } else {
-                                                                                                    // Fallback if JSON is invalid
-                                                                                                    echo h($log['new_values']);
-                                                                                                }
-                                                                                            } else {
-                                                                                                        echo '<em class="text-muted">'.__('no_data').'</em>';
-                                                                                            }
-                                                                                            ?>
-                                                                                            </pre>
-                                                                                        </div>
-                                                                                    </div>
-                                                                                </div>
-                                                                            </div>
-                                                                            <div class="modal-footer">
-                                                                                <button type="button" class="btn btn-secondary" data-dismiss="modal"><?= __('close') ?></button>
-                                                                            </div>
-                                                                        </div>
-                                                                    </div>
-                                                                </div>
-                                                                
-                                                                <!-- Delete Log Modal -->
-                                                                <div class="modal" id="deleteLogModal<?php echo h($log['id']); ?>" tabindex="-1" role="dialog" aria-labelledby="deleteLogModalLabel<?php echo h($log['id']); ?>" aria-hidden="true">
-                                                                    <div class="modal-dialog" role="document">
-                                                                        <div class="modal-content">
-                                                                            <div class="modal-header">
-                                                                                <h5 class="modal-title" id="deleteLogModalLabel<?php echo h($log['id']); ?>"><?= __('confirm_deletion') ?></h5>
-                                                                                <button type="button" class="close" data-dismiss="modal" aria-label="Close">
-                                                                                    <span aria-hidden="true">&times;</span>
-                                                                                </button>
-                                                                            </div>
-                                                                            <form method="POST">
-                                                                                <!-- CSRF Protection -->
-                                                                                <input type="hidden" name="csrf_token" value="<?php echo h($_SESSION['csrf_token']); ?>">
-                                                                                <input type="hidden" name="log_id" value="<?php echo h($log['id']); ?>">
-                                                                                <div class="modal-body">
-                                                                                    <p><?= __('are_you_sure_you_want_to_delete_this_log_entry') ?></p>
-                                                                                    <div class="alert alert-warning">
-                                                                                        <i class="feather icon-alert-triangle mr-1"></i>
-                                                                                        <?= __('this_action_cannot_be_undone') ?>
-                                                                                    </div>
-                                                                                </div>
-                                                                                <div class="modal-footer">
-                                                                                    <button type="button" class="btn btn-secondary" data-dismiss="modal"><?= __('cancel') ?></button>
-                                                                                    <button type="submit" name="delete_log" class="btn btn-danger"><?= __('delete') ?></button>
-                                                                                </div>
-                                                                            </form>
-                                                                        </div>
-                                                                    </div>
-                                                                </div>
-                                                            </td>
-                                                        </tr>
-                                                    <?php endforeach; ?>
-                                                <?php else: ?>
-                                                    <tr>
-                                                        <td colspan="7" class="text-center py-4">
-                                                            <div class="d-flex flex-column align-items-center">
-                                                                <i class="feather icon-alert-circle text-muted" style="font-size: 3rem;"></i>
-                                                                <h5 class="mt-3"><?= __('no_log_entries_found') ?></h5>
-                                                                <p class="text-muted"><?= __('try_adjusting_your_filters_or_check_back_later') ?></p>
-                                                            </div>
-                                                        </td>
-                                                    </tr>
-                                                <?php endif; ?>
-                                            </tbody>
-                                        </table>
-                                    </div>
-                                </div>
-                                <!-- Pagination -->
-                                <?php if ($total_pages > 1): ?>
-                                <div class="card-footer bg-white">
-                                    <nav aria-label="Page navigation">
-                                        <ul class="pagination justify-content-center mb-0">
-                                            <?php if ($page > 1): ?>
-                                            <li class="page-item">
-                                                <a class="page-link" href="<?php echo $_SERVER['PHP_SELF']; ?>?page=1<?php 
-                                                    $params = $_GET;
-                                                    unset($params['page']);
-                                                    echo !empty($params) ? '&' . http_build_query($params) : ''; 
-                                                ?>" aria-label="<?= __('first') ?>">
-                                                    <span aria-hidden="true">&laquo;&laquo;</span>
-                                                </a>
-                                            </li>
-                                            <li class="page-item">
-                                                <a class="page-link" href="<?php echo $_SERVER['PHP_SELF']; ?>?page=<?php echo $page - 1; ?><?php 
-                                                    $params = $_GET;
-                                                    unset($params['page']);
-                                                    echo !empty($params) ? '&' . http_build_query($params) : ''; 
-                                                ?>" aria-label="<?= __('previous') ?>">
-                                                    <span aria-hidden="true">&laquo;</span>
-                                                </a>
-                                            </li>
-                                            <?php endif; ?>
+<div class="pcoded-wrapper">
+<div class="al-page">
 
-                                            <?php
-                                            $start_page = max(1, $page - 2);
-                                            $end_page = min($total_pages, $page + 2);
-                                            
-                                            for ($i = $start_page; $i <= $end_page; $i++): 
-                                            ?>
-                                            <li class="page-item <?php echo $i == $page ? 'active' : ''; ?>">
-                                                <a class="page-link" href="<?php echo $_SERVER['PHP_SELF']; ?>?page=<?php echo $i; ?><?php 
-                                                    $params = $_GET;
-                                                    unset($params['page']);
-                                                    echo !empty($params) ? '&' . http_build_query($params) : ''; 
-                                                ?>"><?php echo $i; ?></a>
-                                            </li>
-                                            <?php endfor; ?>
+    <!-- ── Top Bar ── -->
+    <div class="al-topbar">
+        <div class="al-topbar-left">
+            <div class="al-topbar-icon"><i class="feather icon-activity"></i></div>
+            <div>
+                <div class="al-topbar-title"><?= __('activity_log') ?></div>
+                <div class="al-topbar-subtitle"><?= __('audit trail and user actions') ?></div>
+            </div>
+        </div>
+        <div class="al-topbar-right">
+            <button id="filterToggleBtn" class="al-btn al-btn-ghost al-filter-toggle" onclick="toggleFilters()">
+                <i class="feather icon-filter"></i> <?= __('filter_logs') ?>
+            </button>
+            <?php if (!empty($logs)): ?>
+            <button class="al-btn al-btn-danger-ghost" onclick="openBulkDeleteModal()">
+                <i class="feather icon-trash-2"></i> <?= __('bulk_delete') ?>
+            </button>
+            <?php endif; ?>
+        </div>
+    </div>
 
-                                            <?php if ($page < $total_pages): ?>
-                                            <li class="page-item">
-                                                <a class="page-link" href="<?php echo $_SERVER['PHP_SELF']; ?>?page=<?php echo $page + 1; ?><?php 
-                                                    $params = $_GET;
-                                                    unset($params['page']);
-                                                    echo !empty($params) ? '&' . http_build_query($params) : ''; 
-                                                ?>" aria-label="<?= __('next') ?>">
-                                                    <span aria-hidden="true">&raquo;</span>
-                                                </a>
-                                            </li>
-                                            <li class="page-item">
-                                                <a class="page-link" href="<?php echo $_SERVER['PHP_SELF']; ?>?page=<?php echo $total_pages; ?><?php 
-                                                    $params = $_GET;
-                                                    unset($params['page']);
-                                                    echo !empty($params) ? '&' . http_build_query($params) : ''; 
-                                                    ?>" aria-label="<?= __('last') ?>">
-                                                    <span aria-hidden="true">&raquo;&raquo;</span>
-                                                </a>
-                                            </li>
-                                            <?php endif; ?>
-                                        </ul>
-                                    </nav>
-                                </div>
-                                <?php endif; ?>
-                            </div>
-                        
-                        <!-- [ Main Content ] end -->
-                    </div>
+    <?php if ($success_message): ?>
+        <div class="al-alert al-alert-success"><i class="feather icon-check-circle"></i> <?= h($success_message) ?></div>
+    <?php endif; ?>
+    <?php if ($error_message): ?>
+        <div class="al-alert al-alert-danger"><i class="feather icon-alert-circle"></i> <?= h($error_message) ?></div>
+    <?php endif; ?>
+
+    <!-- ── Collapsible Filter Bar ── -->
+    <div class="al-filter-bar" id="filterBar">
+        <form method="GET" action="activity_log.php">
+            <div class="al-filter-row">
+                <div class="al-filter-group">
+                    <label><?= __('date_from') ?></label>
+                    <input type="date" class="form-control" name="date_from" value="<?= h($date_from) ?>">
+                </div>
+                <div class="al-filter-group">
+                    <label><?= __('date_to') ?></label>
+                    <input type="date" class="form-control" name="date_to" value="<?= h($date_to) ?>">
+                </div>
+                <div class="al-filter-group">
+                    <label><?= __('user') ?></label>
+                    <select class="form-control" name="user_id">
+                        <option value="0"><?= __('all_users') ?></option>
+                        <?php foreach ($users as $u): ?>
+                            <option value="<?= h($u['id']) ?>" <?= $user_id == $u['id'] ? 'selected' : '' ?>><?= h($u['name']) ?></option>
+                        <?php endforeach; ?>
+                    </select>
+                </div>
+                <div class="al-filter-group">
+                    <label><?= __('action') ?></label>
+                    <select class="form-control" name="action">
+                        <option value=""><?= __('all_actions') ?></option>
+                        <?php foreach ($actions as $act): ?>
+                            <option value="<?= h($act) ?>" <?= $action == $act ? 'selected' : '' ?>><?= h(ucfirst($act)) ?></option>
+                        <?php endforeach; ?>
+                    </select>
+                </div>
+                <div class="al-filter-group">
+                    <label><?= __('table') ?></label>
+                    <select class="form-control" name="table_name">
+                        <option value=""><?= __('all_tables') ?></option>
+                        <?php foreach ($tables as $tbl): ?>
+                            <option value="<?= h($tbl) ?>" <?= $table_name == $tbl ? 'selected' : '' ?>><?= h($tbl) ?></option>
+                        <?php endforeach; ?>
+                    </select>
+                </div>
+                <div class="al-filter-actions">
+                    <button type="submit" class="al-btn al-btn-primary"><i class="feather icon-search"></i> <?= __('apply_filters') ?></button>
+                    <a href="activity_log.php" class="al-btn al-btn-ghost"><i class="feather icon-x"></i> <?= __('reset') ?></a>
                 </div>
             </div>
+        </form>
+    </div>
+
+    <!-- ── Table Card ── -->
+    <div class="al-table-wrap">
+        <!-- Toolbar -->
+        <div class="al-table-toolbar">
+            <div class="al-table-meta">
+                <span class="al-table-meta-count"><?= number_format($total_records) ?> <?= __('entries') ?></span>
+                <?php if ($total_pages > 1): ?>
+                    <span class="al-table-meta-page"><?= __('page') ?> <?= $page ?> / <?= $total_pages ?></span>
+                <?php endif; ?>
+            </div>
+            <div class="al-search-wrap">
+                <i class="feather icon-search al-search-icon"></i>
+                <input type="text" id="logSearch" placeholder="<?= __('search_logs') ?>…">
+            </div>
+        </div>
+
+        <!-- Table -->
+        <div style="overflow-x:auto;">
+            <table class="al-table" id="logsTable">
+                <thead>
+                    <tr>
+                        <th><?= __('date_time') ?></th>
+                        <th><?= __('user') ?></th>
+                        <th><?= __('action') ?></th>
+                        <th><?= __('table') ?></th>
+                        <th><?= __('record_id') ?></th>
+                        <th><?= __('ip_address') ?></th>
+                        <th><?= __('actions') ?></th>
+                    </tr>
+                </thead>
+                <tbody>
+                <?php if (count($logs) > 0): ?>
+                    <?php foreach ($logs as $log): ?>
+                    <?php
+                        $badge = match($log['action']) {
+                            'login'  => 'login',
+                            'logout' => 'logout',
+                            'create' => 'create',
+                            'insert' => 'insert',
+                            'update' => 'update',
+                            'delete' => 'delete',
+                            default  => 'default'
+                        };
+                        $initials = strtoupper(substr($log['user_name'] ?? '?', 0, 2));
+                    ?>
+                    <tr class="log-row"
+                        data-id="<?= h($log['id']) ?>"
+                        data-datetime="<?= h(date('Y-m-d H:i:s', strtotime($log['created_at']))) ?>"
+                        data-user="<?= h($log['user_name']) ?>"
+                        data-action="<?= h($log['action']) ?>"
+                        data-action-badge="<?= $badge ?>"
+                        data-table="<?= h($log['table_name']) ?>"
+                        data-record="<?= h($log['record_id']) ?>"
+                        data-ip="<?= h($log['ip_address']) ?>"
+                        data-ua="<?= h($log['user_agent']) ?>"
+                        data-old='<?= h($log['old_values'] ?? '') ?>'
+                        data-new='<?= h($log['new_values'] ?? '') ?>'>
+                        <td><span class="al-datetime"><?= h(date('Y-m-d H:i:s', strtotime($log['created_at']))) ?></span></td>
+                        <td>
+                            <div class="al-user">
+                                <div class="al-user-avatar"><?= h($initials) ?></div>
+                                <span class="al-user-name" title="<?= h($log['user_name']) ?>"><?= h($log['user_name']) ?></span>
+                            </div>
+                        </td>
+                        <td><span class="al-badge al-badge-<?= $badge ?>"><?= h(ucfirst($log['action'])) ?></span></td>
+                        <td><span class="al-mono"><?= h($log['table_name']) ?></span></td>
+                        <td><span class="al-record-id"><?= h($log['record_id']) ?></span></td>
+                        <td><span class="al-mono"><?= h($log['ip_address']) ?></span></td>
+                        <td>
+                            <div class="al-row-actions">
+                                <button class="al-btn al-btn-ghost al-btn-sm al-btn-icon" title="<?= __('view') ?>" onclick="openViewModal(this.closest('tr'))">
+                                    <i class="feather icon-eye"></i>
+                                </button>
+                                <button class="al-btn al-btn-danger-ghost al-btn-sm al-btn-icon" title="<?= __('delete') ?>" onclick="openDeleteModal(this.closest('tr'))">
+                                    <i class="feather icon-trash-2"></i>
+                                </button>
+                            </div>
+                        </td>
+                    </tr>
+                    <?php endforeach; ?>
+                <?php else: ?>
+                    <tr>
+                        <td colspan="7">
+                            <div class="al-empty">
+                                <div class="al-empty-icon"><i class="feather icon-inbox"></i></div>
+                                <p class="al-empty-title"><?= __('no_log_entries_found') ?></p>
+                                <p class="al-empty-sub"><?= __('try_adjusting_your_filters_or_check_back_later') ?></p>
+                            </div>
+                        </td>
+                    </tr>
+                <?php endif; ?>
+                </tbody>
+            </table>
+        </div>
+
+        <!-- Pagination -->
+        <?php if ($total_pages > 1):
+            $base_params = $_GET; unset($base_params['page']);
+            $qs = !empty($base_params) ? '&' . http_build_query($base_params) : '';
+        ?>
+        <div class="al-pagination">
+            <?php if ($page > 1): ?>
+                <span class="al-page-item"><a href="?page=1<?= $qs ?>">&laquo;&laquo;</a></span>
+                <span class="al-page-item"><a href="?page=<?= $page-1 ?><?= $qs ?>">&laquo;</a></span>
+            <?php endif; ?>
+            <?php for ($i = max(1,$page-2); $i <= min($total_pages,$page+2); $i++): ?>
+                <span class="al-page-item <?= $i==$page?'active':'' ?>">
+                    <?= $i==$page ? "<span>$i</span>" : "<a href='?page=$i$qs'>$i</a>" ?>
+                </span>
+            <?php endfor; ?>
+            <?php if ($page < $total_pages): ?>
+                <span class="al-page-item"><a href="?page=<?= $page+1 ?><?= $qs ?>">&raquo;</a></span>
+                <span class="al-page-item"><a href="?page=<?= $total_pages ?><?= $qs ?>">&raquo;&raquo;</a></span>
+            <?php endif; ?>
+        </div>
+        <?php endif; ?>
+    </div>
+
+</div><!-- /.al-page -->
+</div></div>
+
+<!-- ══════════════════════════════════════════
+     SHARED MODAL: View Log Detail
+══════════════════════════════════════════ -->
+<div class="al-modal-backdrop" id="viewModalBackdrop" onclick="closeViewModal(event)">
+    <div class="al-modal al-modal-lg" onclick="event.stopPropagation()">
+        <div class="al-modal-header">
+            <h5><i class="feather icon-activity"></i> <?= __('log_details') ?></h5>
+            <button class="al-modal-close" onclick="closeViewModal()">&times;</button>
+        </div>
+        <div class="al-modal-body">
+            <div class="al-detail-grid" id="viewDetailGrid"></div>
+            <div class="al-diff-grid" id="viewDiffGrid"></div>
+        </div>
+        <div class="al-modal-footer">
+            <button class="al-btn al-btn-ghost" onclick="closeViewModal()"><?= __('close') ?></button>
         </div>
     </div>
 </div>
-<!-- [ Main Content ] end -->
 
-<!-- Required Js -->
+<!-- ══════════════════════════════════════════
+     SHARED MODAL: Delete Log Entry
+══════════════════════════════════════════ -->
+<div class="al-modal-backdrop" id="deleteModalBackdrop" onclick="closeDeleteModal(event)">
+    <div class="al-modal" onclick="event.stopPropagation()">
+        <div class="al-modal-header">
+            <h5><i class="feather icon-trash-2"></i> <?= __('confirm_deletion') ?></h5>
+            <button class="al-modal-close" onclick="closeDeleteModal()">&times;</button>
+        </div>
+        <form method="POST">
+            <input type="hidden" name="csrf_token" value="<?= h($_SESSION['csrf_token']) ?>">
+            <input type="hidden" name="log_id" id="deleteLogId">
+            <div class="al-modal-body">
+                <p class="al-confirm-text"><?= __('are_you_sure_you_want_to_delete_this_log_entry') ?></p>
+                <div class="al-delete-warning">
+                    <span class="al-delete-warning-icon"><i class="feather icon-alert-triangle"></i></span>
+                    <span><?= __('this_action_cannot_be_undone') ?></span>
+                </div>
+            </div>
+            <div class="al-modal-footer">
+                <button type="button" class="al-btn al-btn-ghost" onclick="closeDeleteModal()"><?= __('cancel') ?></button>
+                <button type="submit" name="delete_log" class="al-btn al-btn-danger"><?= __('delete') ?></button>
+            </div>
+        </form>
+    </div>
+</div>
 
-    <script src="../assets/js/vendor-all.min.js"></script>
+<!-- ══════════════════════════════════════════
+     SHARED MODAL: Bulk Delete
+══════════════════════════════════════════ -->
+<div class="al-modal-backdrop" id="bulkDeleteBackdrop" onclick="closeBulkDeleteModal(event)">
+    <div class="al-modal" onclick="event.stopPropagation()">
+        <div class="al-modal-header">
+            <h5><i class="feather icon-trash-2"></i> <?= __('bulk_delete_log_entries') ?></h5>
+            <button class="al-modal-close" onclick="closeBulkDeleteModal()">&times;</button>
+        </div>
+        <form method="POST">
+            <input type="hidden" name="csrf_token" value="<?= h($_SESSION['csrf_token']) ?>">
+            <div class="al-modal-body">
+                <div class="al-delete-warning" style="margin-bottom:16px;">
+                    <span class="al-delete-warning-icon"><i class="feather icon-alert-triangle"></i></span>
+                    <span><?= __('warning_this_action_will_permanently_delete_all_log_entries_before_the_selected_date') ?></span>
+                </div>
+                <div class="al-filter-group" style="max-width:100%;">
+                    <label><?= __('delete_logs_before_date') ?> *</label>
+                    <input type="date" class="form-control" name="delete_before_date" required style="height:36px;font-size:13px;">
+                </div>
+            </div>
+            <div class="al-modal-footer">
+                <button type="button" class="al-btn al-btn-ghost" onclick="closeBulkDeleteModal()"><?= __('cancel') ?></button>
+                <button type="submit" name="bulk_delete" class="al-btn al-btn-danger"><?= __('delete_logs') ?></button>
+            </div>
+        </form>
+    </div>
+</div>
+
+<script src="../assets/js/vendor-all.min.js"></script>
 <script src="../assets/plugins/bootstrap/js/bootstrap.min.js"></script>
 <script src="../assets/js/pcoded.min.js"></script>
 
-
-
 <script>
-document.addEventListener('DOMContentLoaded', function() {
-    // Search functionality
-    const searchInput = document.getElementById('logSearch');
-    if (searchInput) {
-        searchInput.addEventListener('keyup', function() {
-            const searchTerm = this.value.toLowerCase();
-            const rows = document.querySelectorAll('.log-row');
-            
-            rows.forEach(row => {
-                const text = row.textContent.toLowerCase();
-                row.style.display = text.includes(searchTerm) ? '' : 'none';
-            });
-        });
-    }
-    
-    // Initialize tooltips
-    if (typeof $().tooltip === 'function') {
-        $('[data-toggle="tooltip"]').tooltip();
-    }
-});
-</script>
+// ── Filter toggle ──────────────────────────────────────
+function toggleFilters() {
+    const bar = document.getElementById('filterBar');
+    const btn = document.getElementById('filterToggleBtn');
+    bar.classList.toggle('open');
+    btn.classList.toggle('active');
+}
 
+// Auto-open filters if any are active
+(function() {
+    const params = new URLSearchParams(window.location.search);
+    const filterKeys = ['user_id','action','table_name'];
+    // Also check if dates differ from defaults
+    const hasFilter = filterKeys.some(k => params.has(k) && params.get(k) !== '' && params.get(k) !== '0');
+    if (hasFilter) toggleFilters();
+})();
+
+// ── Live search ────────────────────────────────────────
+document.getElementById('logSearch').addEventListener('input', function() {
+    const q = this.value.toLowerCase();
+    document.querySelectorAll('.log-row').forEach(row => {
+        row.style.display = row.textContent.toLowerCase().includes(q) ? '' : 'none';
+    });
+});
+
+// ── View Modal ─────────────────────────────────────────
+function openViewModal(row) {
+    const d = row.dataset;
+
+    // Build detail grid
+    const fields = [
+        ['<?= __('date_time') ?>',  d.datetime],
+        ['<?= __('user') ?>',       d.user],
+        ['<?= __('action') ?>',     `<span class="al-badge al-badge-${d.actionBadge}">${capitalise(d.action)}</span>`],
+        ['<?= __('table') ?>',      `<span class="al-mono">${esc(d.table)}</span>`],
+        ['<?= __('record_id') ?>', `<span class="al-record-id">${esc(d.record)}</span>`],
+        ['<?= __('ip_address') ?>', `<span class="al-mono">${esc(d.ip)}</span>`],
+        ['<?= __('user_agent') ?>',  esc(d.ua)],
+    ];
+    const grid = document.getElementById('viewDetailGrid');
+    grid.innerHTML = fields.map(([label, val]) =>
+        `<div class="al-detail-label">${label}</div><div class="al-detail-value">${val}</div>`
+    ).join('');
+
+    // Build diff panels
+    const oldVal = tryParseJSON(d.old);
+    const newVal = tryParseJSON(d.new);
+    const diffGrid = document.getElementById('viewDiffGrid');
+    diffGrid.innerHTML = `
+        <div class="al-diff-panel">
+            <h6><?= __('old_values') ?></h6>
+            <pre>${oldVal ? esc(JSON.stringify(oldVal, null, 2)) : '<em style="color:#8b949e"><?= __('no_data') ?></em>'}</pre>
+        </div>
+        <div class="al-diff-panel">
+            <h6><?= __('new_values') ?></h6>
+            <pre>${newVal ? esc(JSON.stringify(newVal, null, 2)) : '<em style="color:#8b949e"><?= __('no_data') ?></em>'}</pre>
+        </div>
+    `;
+
+    document.getElementById('viewModalBackdrop').classList.add('show');
+    document.body.style.overflow = 'hidden';
+}
+function closeViewModal(e) {
+    if (e && e.target !== document.getElementById('viewModalBackdrop')) return;
+    document.getElementById('viewModalBackdrop').classList.remove('show');
+    document.body.style.overflow = '';
+}
+
+// ── Delete Modal ───────────────────────────────────────
+function openDeleteModal(row) {
+    document.getElementById('deleteLogId').value = row.dataset.id;
+    document.getElementById('deleteModalBackdrop').classList.add('show');
+    document.body.style.overflow = 'hidden';
+}
+function closeDeleteModal(e) {
+    if (e && e.target !== document.getElementById('deleteModalBackdrop')) return;
+    document.getElementById('deleteModalBackdrop').classList.remove('show');
+    document.body.style.overflow = '';
+}
+
+// ── Bulk Delete Modal ──────────────────────────────────
+function openBulkDeleteModal() {
+    document.getElementById('bulkDeleteBackdrop').classList.add('show');
+    document.body.style.overflow = 'hidden';
+}
+function closeBulkDeleteModal(e) {
+    if (e && e.target !== document.getElementById('bulkDeleteBackdrop')) return;
+    document.getElementById('bulkDeleteBackdrop').classList.remove('show');
+    document.body.style.overflow = '';
+}
+
+// ── Keyboard: Escape closes any open modal ─────────────
+document.addEventListener('keydown', e => {
+    if (e.key !== 'Escape') return;
+    closeViewModal();
+    closeDeleteModal();
+    closeBulkDeleteModal();
+    document.body.style.overflow = '';
+});
+
+// ── Helpers ────────────────────────────────────────────
+function esc(str) {
+    if (!str) return '';
+    return String(str).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+}
+function capitalise(s) { return s ? s.charAt(0).toUpperCase() + s.slice(1) : ''; }
+function tryParseJSON(str) {
+    if (!str) return null;
+    try { return JSON.parse(str); } catch { return null; }
+}
+</script>
 </body>
-</html> 
+</html>

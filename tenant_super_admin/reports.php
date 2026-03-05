@@ -279,6 +279,7 @@ $totals = [
     'date_change_profit_afs' => 0,
     'total_revenue_usd' => 0,
     'total_revenue_afs' => 0,
+    'total_revenue' => 0,
     'total_users' => 0
 ];
 
@@ -314,6 +315,9 @@ foreach ($branchReports as $report) {
     $totals['total_revenue_afs'] += $report['total_revenue_afs'] ?? 0;
     $totals['total_users'] += $report['total_users'];
 }
+
+// Calculate total_revenue as sum of USD values
+$totals['total_revenue'] = $totals['total_revenue_usd'];
 
 // Handle comparison data
 $comparisonData = null;
@@ -1513,7 +1517,7 @@ if (!empty($comparison_period)) {
                                         <i class="feather icon-trending-up"></i>
                                         <strong>Total Bookings:</strong>
                                         <?php
-                                        $totalBookings = $totals['ticket_bookings'] + $totalReservations + $totalTicketWeights + $totals['hotel_bookings'] + $totals['visa_applications'] + $totals['umrah_bookings'] + $totalAdditionalPayments + $totalRefunded + $totalDateChanges;
+                                        $totalBookings = $totals['ticket_bookings'] + $totals['ticket_reservations'] + $totals['ticket_weights'] + $totals['hotel_bookings'] + $totals['visa_applications'] + $totals['umrah_bookings'] + $totals['additional_payments'] + $totals['refunded_tickets'] + $totals['date_change_tickets'];
                                         echo $totalBookings . ' transactions';
                                         ?>
                                     </div>

@@ -167,165 +167,472 @@ include '../includes/header.php';
 ?>
 
 <style>
-/* Enhanced custom styles for better layout and design */
-.page-header.card {
-    background: linear-gradient(135deg, #4099ff 0%, #2ed8b6 100%);
-    color: #ffffff;
-    border: none;
-    margin-bottom: 20px;
-    padding: 20px !important;
-    box-shadow: 0 4px 12px rgba(0,0,0,0.15);
-    border-radius: 10px;
+/* ===== VARIABLES ===== */
+:root {
+    --ma-primary: #4099ff;
+    --ma-primary-light: #e3f2fd;
+    --ma-secondary: #2ed8b6;
+    --ma-success: #10b981;
+    --ma-warning: #f59e0b;
+    --ma-danger: #ef4444;
+    --ma-info: #3b82f6;
+    --ma-gray-50: #f9fafb;
+    --ma-gray-100: #f3f4f6;
+    --ma-gray-200: #e5e7eb;
+    --ma-gray-300: #d1d5db;
+    --ma-gray-400: #9ca3af;
+    --ma-gray-500: #6b7280;
+    --ma-gray-600: #4b5563;
+    --ma-gray-700: #374151;
+    --ma-gray-800: #1f2937;
+    --ma-gray-900: #111827;
+    --ma-radius: 12px;
+    --ma-transition: 0.3s cubic-bezier(0.4, 0, 0.2, 1);
 }
 
-.page-header.card .row {
+/* ===== LAYOUT ===== */
+.pcoded-main-container {
+    width: calc(100% - 264px);
+    min-height: 100vh;
+    background: var(--ma-gray-50);
+    margin-right: 0;
+}
+
+.pcoded-wrapper, .pcoded-content, .pcoded-inner-content {
+    width: 100%;
+}
+
+.main-body, .page-wrapper {
+    width: 100%;
+    min-height: auto;
+}
+
+.main-content {
+    width: 100%;
+    min-height: auto;
+}
+
+/* Collapsed sidebar state */
+.pcoded-wrapper.navbar-collapsed .pcoded-main-container {
+    width: calc(100% - 70px);
+}
+
+/* Mobile: full width */
+@media (max-width: 991px) {
+    .pcoded-main-container,
+    .pcoded-wrapper.navbar-collapsed .pcoded-main-container {
+        width: 100%;
+    }
+}
+
+.main-content {
+    padding: 32px 28px;
+}
+
+/* ===== HERO SECTION ===== */
+.ma-hero {
+    background: #fff;
+    border-radius: var(--ma-radius);
+    padding: 40px;
+    margin-bottom: 32px;
+    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+    position: relative;
+    overflow: hidden;
+}
+
+.ma-hero-bg {
+    position: absolute;
+    top: 0;
+    right: 0;
+    width: 400px;
+    height: 100%;
+    opacity: 0.05;
+    pointer-events: none;
+}
+
+.ma-hero-circle {
+    position: absolute;
+    border-radius: 50%;
+    background: var(--ma-primary);
+}
+
+.ma-hero-circle.c1 {
+    width: 300px;
+    height: 300px;
+    top: -50px;
+    right: -100px;
+}
+
+.ma-hero-circle.c2 {
+    width: 150px;
+    height: 150px;
+    bottom: -30px;
+    right: 50px;
+}
+
+.ma-hero-content {
+    position: relative;
+    z-index: 1;
     display: flex;
     justify-content: space-between;
     align-items: center;
 }
 
-.page-header.card h5 {
-    color: #ffffff;
-    margin: 0;
+.ma-hero-left {
+    flex: 1;
+}
+
+.ma-hero-badge {
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    background: var(--ma-primary-light);
+    color: var(--ma-primary);
+    padding: 8px 16px;
+    border-radius: 8px;
+    font-size: 13px;
     font-weight: 600;
+    margin-bottom: 12px;
 }
 
-.page-header.card .text-end {
-    text-align: right;
+.ma-hero-badge i {
+    font-size: 16px;
 }
 
-.page-header.card .btn {
-    background: rgba(255,255,255,0.2);
-    color: #ffffff;
-    border: 1px solid rgba(255,255,255,0.3);
-    border-radius: 25px;
-    transition: all 0.3s ease;
+.ma-hero h1 {
+    font-size: 32px;
+    font-weight: 700;
+    color: var(--ma-gray-900);
+    margin: 0 0 8px;
+    line-height: 1.2;
 }
 
-.page-header.card .btn:hover {
-    background: rgba(255,255,255,0.3);
-    border-color: rgba(255,255,255,0.5);
-    transform: translateY(-1px);
+.ma-hero p {
+    color: var(--ma-gray-500);
+    font-size: 16px;
+    margin: 0;
+    line-height: 1.5;
 }
 
-.card {
-    border-radius: 10px;
-    box-shadow: 0 2px 8px rgba(0,0,0,0.1);
-    transition: transform 0.2s ease-in-out, box-shadow 0.2s ease-in-out;
+.ma-hero-actions {
+    display: flex;
+    gap: 12px;
+    margin-top: 24px;
+}
+
+.ma-hero-btn {
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    padding: 12px 24px;
+    border-radius: 8px;
+    font-size: 14px;
+    font-weight: 600;
     border: none;
+    cursor: pointer;
+    text-decoration: none;
+    transition: var(--ma-transition);
 }
 
-.card:hover {
+.ma-hero-btn.primary {
+    background: var(--ma-primary);
+    color: #fff;
+}
+
+.ma-hero-btn.primary:hover {
+    background: #2d7dd9;
     transform: translateY(-2px);
-    box-shadow: 0 4px 16px rgba(0,0,0,0.15);
 }
 
-.card-header {
-    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-    color: white;
-    border-radius: 10px 10px 0 0;
-    padding: 1rem 1.5rem;
-    border: none;
+.ma-hero-btn.secondary {
+    background: var(--ma-gray-100);
+    color: var(--ma-gray-700);
 }
 
-.card-header h5 {
-    margin: 0;
-    font-weight: 600;
+.ma-hero-btn.secondary:hover {
+    background: var(--ma-gray-200);
+}
+
+.ma-hero-btn.outline {
+    background: transparent;
+    color: var(--ma-gray-600);
+    border: 1px solid var(--ma-gray-300);
+}
+
+.ma-hero-btn.outline:hover {
+    border-color: var(--ma-primary);
+    color: var(--ma-primary);
+    background: var(--ma-primary-light);
+}
+
+/* ===== FORM SECTION ===== */
+.ma-form-card {
+    background: #fff;
+    border-radius: var(--ma-radius);
+    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+    overflow: hidden;
+    margin-bottom: 24px;
+    animation: fadeInUp 0.5s ease forwards;
+}
+
+.ma-form-header {
+    background: linear-gradient(135deg, var(--ma-primary) 0%, var(--ma-secondary) 100%);
+    color: #fff;
+    padding: 20px 28px;
     display: flex;
     align-items: center;
+    gap: 12px;
+    font-size: 18px;
+    font-weight: 700;
 }
 
-.form-control {
-    border-radius: 8px;
-    border: 1px solid #ced4da;
-    transition: border-color 0.15s ease-in-out, box-shadow 0.15s ease-in-out;
-    padding: 0.75rem;
+.ma-form-header i {
+    font-size: 20px;
 }
 
-.form-control:focus {
-    border-color: #4099ff;
-    box-shadow: 0 0 0 0.2rem rgba(64, 153, 255, 0.25);
+.ma-form-body {
+    padding: 28px;
 }
 
-.btn-primary {
-    background: linear-gradient(135deg, #4099ff 0%, #2ed8b6 100%);
-    border: none;
-    border-radius: 25px;
-    padding: 0.75rem 2rem;
+.ma-form-group {
+    margin-bottom: 24px;
+}
+
+.ma-form-group label {
+    display: block;
     font-weight: 600;
-    transition: all 0.3s ease;
+    color: var(--ma-gray-700);
+    margin-bottom: 8px;
+    font-size: 14px;
 }
 
-.btn-primary:hover {
-    transform: translateY(-1px);
+.ma-form-group label i {
+    color: var(--ma-primary);
+    margin-right: 4px;
+}
+
+.ma-form-control {
+    width: 100%;
+    padding: 12px 16px;
+    border: 1px solid var(--ma-gray-300);
+    border-radius: 8px;
+    font-size: 14px;
+    transition: var(--ma-transition);
+    font-family: inherit;
+}
+
+.ma-form-control:focus {
+    outline: none;
+    border-color: var(--ma-primary);
+    box-shadow: 0 0 0 3px rgba(64, 153, 255, 0.1);
+}
+
+.ma-form-small {
+    display: block;
+    color: var(--ma-gray-500);
+    font-size: 12px;
+    margin-top: 4px;
+}
+
+.ma-form-actions {
+    display: flex;
+    gap: 12px;
+    margin-top: 32px;
+    padding-top: 24px;
+    border-top: 1px solid var(--ma-gray-200);
+}
+
+.ma-btn {
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    padding: 12px 24px;
+    border: none;
+    border-radius: 8px;
+    font-size: 14px;
+    font-weight: 600;
+    cursor: pointer;
+    transition: var(--ma-transition);
+    text-decoration: none;
+}
+
+.ma-btn.primary {
+    background: var(--ma-primary);
+    color: #fff;
+}
+
+.ma-btn.primary:hover {
+    background: #2d7dd9;
+    transform: translateY(-2px);
     box-shadow: 0 4px 12px rgba(64, 153, 255, 0.3);
 }
 
-.btn-secondary {
-    border-radius: 25px;
-    padding: 0.75rem 2rem;
+.ma-btn.secondary {
+    background: var(--ma-gray-200);
+    color: var(--ma-gray-700);
+}
+
+.ma-btn.secondary:hover {
+    background: var(--ma-gray-300);
+}
+
+/* ===== INFO CARD ===== */
+.ma-info-card {
+    background: #fff;
+    border-radius: var(--ma-radius);
+    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+    overflow: hidden;
+    margin-bottom: 24px;
+}
+
+.ma-info-header {
+    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    color: #fff;
+    padding: 20px 28px;
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    font-size: 16px;
+    font-weight: 700;
+}
+
+.ma-info-header i {
+    font-size: 18px;
+}
+
+.ma-info-body {
+    padding: 28px;
+}
+
+.ma-info-row {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 24px;
+    margin-bottom: 20px;
+}
+
+.ma-info-item h6 {
+    color: var(--ma-gray-500);
+    font-size: 12px;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+    margin-bottom: 6px;
+}
+
+.ma-info-item p {
+    color: var(--ma-gray-900);
+    font-size: 16px;
     font-weight: 600;
-    transition: all 0.3s ease;
+    margin: 0;
 }
 
-.alert {
-    border-radius: 10px;
-    border: none;
-    padding: 1rem 1.5rem;
+.ma-info-divider {
+    height: 1px;
+    background: var(--ma-gray-200);
+    margin: 20px 0;
 }
 
-.alert-success {
-    background: linear-gradient(135deg, #d4edda 0%, #c3e6cb 100%);
-    color: #155724;
-}
-
-.alert-danger {
-    background: linear-gradient(135deg, #f8d7da 0%, #f5c6cb 100%);
-    color: #721c24;
-}
-
-.status-present {
-    background-color: #28a745;
-    color: white;
-}
-
-.status-late {
-    background-color: #ffc107;
-    color: black;
-}
-
-.status-half-day {
-    background-color: #17a2b8;
-    color: white;
-}
-
-.status-absent {
-    background-color: #dc3545;
-    color: white;
-}
-
-.badge {
-    font-size: 0.85em;
-    padding: 0.5em 0.75em;
+.ma-badge {
+    display: inline-block;
+    padding: 6px 14px;
     border-radius: 20px;
-    font-weight: 500;
+    font-size: 13px;
+    font-weight: 600;
 }
 
-.h2 {
-    font-size: 2.5rem;
+.ma-badge.present {
+    background: rgba(16, 185, 129, 0.1);
+    color: #10b981;
 }
 
-.h4 {
-    font-size: 1.5rem;
+.ma-badge.late {
+    background: rgba(245, 158, 11, 0.1);
+    color: #f59e0b;
 }
 
-.h5 {
-    font-size: 1.25rem;
+.ma-badge.half {
+    background: rgba(59, 130, 246, 0.1);
+    color: #3b82f6;
 }
 
-.h6 {
-    font-size: 1rem;
+.ma-badge.absent {
+    background: rgba(239, 68, 68, 0.1);
+    color: #ef4444;
 }
+
+/* ===== RESPONSIVE ===== */
+@media (max-width: 992px) {
+    .main-content {
+        padding: 24px 16px;
+    }
+
+    .ma-hero {
+        padding: 28px;
+    }
+
+    .ma-hero-content {
+        flex-direction: column;
+        gap: 20px;
+    }
+
+    .ma-hero-actions {
+        width: 100%;
+        justify-content: center;
+    }
+
+    .ma-hero h1 {
+        font-size: 24px;
+    }
+
+    .ma-info-row {
+        grid-template-columns: 1fr;
+    }
+}
+
+@media (max-width: 768px) {
+    .ma-form-body {
+        padding: 20px;
+    }
+
+    .ma-form-header {
+        padding: 16px 20px;
+    }
+
+    .ma-info-header {
+        padding: 16px 20px;
+    }
+
+    .ma-hero-actions {
+        flex-wrap: wrap;
+    }
+
+    .ma-hero-btn {
+        flex: 1;
+        min-width: 140px;
+        justify-content: center;
+    }
+
+    .ma-btn {
+        flex: 1;
+    }
+}
+
+/* ===== ANIMATIONS ===== */
+@keyframes fadeInUp {
+    from {
+        opacity: 0;
+        transform: translateY(12px);
+    }
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
+}
+
+.ma-hero { animation: fadeInUp 0.4s ease forwards; }
+.ma-info-card { animation: fadeInUp 0.4s ease forwards; animation-delay: 0.1s; opacity: 0; }
+.ma-form-card { animation: fadeInUp 0.5s ease forwards; animation-delay: 0.2s; opacity: 0; }
 </style>
 
 <div class="pcoded-main-container">
@@ -335,64 +642,76 @@ include '../includes/header.php';
                 <div class="main-body">
                     <div class="page-wrapper">
                         <div class="main-content">
-                            <div class="page-header card">
-                                <div class="row align-items-center">
-                                    <div class="col-md-6">
-                                        <h5 class="mb-0"><i class="feather icon-edit mr-2"></i><?php echo __('edit_attendance'); ?></h5>
-                                        <p class="mb-0 mt-1" style="font-size: 14px; opacity: 0.9;"><?php echo __('edit_attendance_for'); ?> <?php echo htmlspecialchars($attendance['user_name']); ?> - <?php echo date('M d, Y', strtotime($attendance['date'])); ?></p>
+
+                            <!-- ========== HERO ========== -->
+                            <div class="ma-hero">
+                                <div class="ma-hero-bg">
+                                    <div class="ma-hero-circle c1"></div>
+                                    <div class="ma-hero-circle c2"></div>
+                                </div>
+                                <div class="ma-hero-content">
+                                    <div class="ma-hero-left">
+                                        <span class="ma-hero-badge">
+                                            <i class="feather icon-edit"></i>
+                                            <?php echo __('admin_panel'); ?>
+                                        </span>
+                                        <h1><?php echo __('edit_attendance'); ?></h1>
+                                        <p><?php echo __('edit_attendance_for'); ?> <strong><?php echo htmlspecialchars($attendance['user_name']); ?></strong> - <?php echo date('M d, Y', strtotime($attendance['date'])); ?></p>
                                     </div>
-                                    <div class="col-md-6 text-end">
-                                        <a href="manage_attendance.php" class="btn btn-outline-secondary btn-sm">
-                                            <i class="feather icon-arrow-left mr-1"></i><?php echo __('back_to_manage_attendance'); ?>
+                                    <div class="ma-hero-actions">
+                                        <a href="manage_attendance.php" class="ma-hero-btn secondary">
+                                            <i class="feather icon-arrow-left"></i>
+                                            <?php echo __('back_to_manage_attendance'); ?>
                                         </a>
                                     </div>
                                 </div>
                             </div>
 
                             <div class="row">
-                                <!-- Current Attendance Info -->
+                                <!-- Current Information Card -->
                                 <div class="col-md-4">
-                                    <div class="card">
-                                        <div class="card-header">
-                                            <h5><i class="feather icon-info mr-2"></i><?php echo __('current_information'); ?></h5>
+                                    <div class="ma-info-card">
+                                        <div class="ma-info-header">
+                                            <i class="feather icon-info"></i>
+                                            <?php echo __('current_information'); ?>
                                         </div>
-                                        <div class="card-body">
-                                            <div class="text-center mb-4">
-                                                <h6><?php echo htmlspecialchars($attendance['user_name']); ?></h6>
-                                                <p class="text-muted"><?php echo htmlspecialchars($attendance['email']); ?></p>
-                                                <div class="mb-3">
-                                                    <span class="badge status-<?php echo strtolower($attendance['status']); ?>">
-                                                        <?php echo __($attendance['status']); ?>
+                                        <div class="ma-info-body">
+                                            <div style="text-align: center; margin-bottom: 20px;">
+                                                <h6 style="margin: 0 0 4px; color: var(--ma-gray-700);"><?php echo htmlspecialchars($attendance['user_name']); ?></h6>
+                                                <p style="margin: 0; color: var(--ma-gray-400); font-size: 13px;"><?php echo htmlspecialchars($attendance['email']); ?></p>
+                                                <div style="margin-top: 12px;">
+                                                    <span class="ma-badge <?php echo strtolower($attendance['status']); ?>">
+                                                        <?php echo __(strtolower($attendance['status'])); ?>
                                                     </span>
                                                 </div>
                                             </div>
 
-                                            <hr>
+                                            <div class="ma-info-divider"></div>
 
-                                            <div class="row text-center">
-                                                <div class="col-6">
+                                            <div class="ma-info-row">
+                                                <div>
                                                     <h6><?php echo __('check_in'); ?></h6>
-                                                    <span class="h5"><?php echo $attendance['check_in_time'] ? date('H:i', strtotime($attendance['check_in_time'])) : '-'; ?></span>
+                                                    <p><?php echo $attendance['check_in_time'] ? date('H:i', strtotime($attendance['check_in_time'])) : '-'; ?></p>
                                                 </div>
-                                                <div class="col-6">
+                                                <div>
                                                     <h6><?php echo __('check_out'); ?></h6>
-                                                    <span class="h5"><?php echo $attendance['check_out_time'] ? date('H:i', strtotime($attendance['check_out_time'])) : '-'; ?></span>
+                                                    <p><?php echo $attendance['check_out_time'] ? date('H:i', strtotime($attendance['check_out_time'])) : '-'; ?></p>
                                                 </div>
                                             </div>
 
                                             <?php if ($attendance['working_minutes'] > 0): ?>
-                                            <hr>
-                                            <div class="text-center">
+                                            <div class="ma-info-divider"></div>
+                                            <div>
                                                 <h6><?php echo __('working_minutes'); ?></h6>
-                                                <span class="h4"><?php echo $attendance['working_minutes']; ?> min</span>
+                                                <p><?php echo $attendance['working_minutes']; ?> min</p>
                                             </div>
                                             <?php endif; ?>
 
                                             <?php if ($attendance_settings): ?>
-                                            <hr>
-                                            <div class="text-center">
+                                            <div class="ma-info-divider"></div>
+                                            <div>
                                                 <h6><?php echo __('office_hours'); ?></h6>
-                                                <small><?php echo date('H:i', strtotime($attendance_settings['office_start_time'])); ?> - <?php echo date('H:i', strtotime($attendance_settings['office_end_time'])); ?></small>
+                                                <p><?php echo date('H:i', strtotime($attendance_settings['office_start_time'])); ?> - <?php echo date('H:i', strtotime($attendance_settings['office_end_time'])); ?></p>
                                             </div>
                                             <?php endif; ?>
                                         </div>
@@ -402,54 +721,63 @@ include '../includes/header.php';
                                 <!-- Edit Form -->
                                 <div class="col-md-8">
                                     <?php if (isset($error)): ?>
-                                    <div class="alert alert-danger alert-dismissible fade show" role="alert">
+                                    <div style="
+                                        background: #fee2e2; border: 1px solid #fecaca; color: #dc2626;
+                                        padding: 14px 16px; border-radius: 8px; margin-bottom: 20px; font-size: 14px;
+                                    ">
+                                        <i class="feather icon-alert-circle" style="margin-right: 8px;"></i>
                                         <?php echo $error; ?>
-                                        <button type="button" class="close" data-dismiss="alert" aria-label="Close">
-                                            <span aria-hidden="true">&times;</span>
-                                        </button>
                                     </div>
                                     <?php endif; ?>
 
                                     <?php if (isset($success)): ?>
-                                    <div class="alert alert-success alert-dismissible fade show" role="alert">
+                                    <div style="
+                                        background: #dcfce7; border: 1px solid #bbf7d0; color: #16a34a;
+                                        padding: 14px 16px; border-radius: 8px; margin-bottom: 20px; font-size: 14px;
+                                    ">
+                                        <i class="feather icon-check-circle" style="margin-right: 8px;"></i>
                                         <?php echo $success; ?>
-                                        <button type="button" class="close" data-dismiss="alert" aria-label="Close">
-                                            <span aria-hidden="true">&times;</span>
-                                        </button>
                                     </div>
                                     <?php endif; ?>
 
-                                    <div class="card">
-                                        <div class="card-header">
-                                            <h5><i class="feather icon-edit-2 mr-2"></i><?php echo __('edit_attendance_details'); ?></h5>
+                                    <div class="ma-form-card">
+                                        <div class="ma-form-header">
+                                            <i class="feather icon-edit-2"></i>
+                                            <?php echo __('edit_attendance_details'); ?>
                                         </div>
-                                        <div class="card-body">
+                                        <div class="ma-form-body">
                                             <form method="POST" action="">
                                                 <input type="hidden" name="csrf_token" value="<?php echo $_SESSION['csrf_token']; ?>">
                                                 <input type="hidden" name="update_attendance" value="1">
 
                                                 <div class="row">
                                                     <div class="col-md-6">
-                                                        <div class="form-group">
-                                                            <label for="check_in_time"><i class="feather icon-log-in mr-2"></i><?php echo __('check_in_time'); ?></label>
-                                                            <input type="time" class="form-control" id="check_in_time" name="check_in_time"
+                                                        <div class="ma-form-group">
+                                                            <label for="check_in_time">
+                                                                <i class="feather icon-log-in"></i><?php echo __('check_in_time'); ?>
+                                                            </label>
+                                                            <input type="time" class="ma-form-control" id="check_in_time" name="check_in_time"
                                                                    value="<?php echo $attendance['check_in_time'] ? date('H:i', strtotime($attendance['check_in_time'])) : ''; ?>">
-                                                            <small class="form-text text-muted"><?php echo __('leave_empty_if_not_checked_in'); ?></small>
+                                                            <small class="ma-form-small"><?php echo __('leave_empty_if_not_checked_in'); ?></small>
                                                         </div>
                                                     </div>
                                                     <div class="col-md-6">
-                                                        <div class="form-group">
-                                                            <label for="check_out_time"><i class="feather icon-log-out mr-2"></i><?php echo __('check_out_time'); ?></label>
-                                                            <input type="time" class="form-control" id="check_out_time" name="check_out_time"
+                                                        <div class="ma-form-group">
+                                                            <label for="check_out_time">
+                                                                <i class="feather icon-log-out"></i><?php echo __('check_out_time'); ?>
+                                                            </label>
+                                                            <input type="time" class="ma-form-control" id="check_out_time" name="check_out_time"
                                                                    value="<?php echo $attendance['check_out_time'] ? date('H:i', strtotime($attendance['check_out_time'])) : ''; ?>">
-                                                            <small class="form-text text-muted"><?php echo __('leave_empty_if_not_checked_out'); ?></small>
+                                                            <small class="ma-form-small"><?php echo __('leave_empty_if_not_checked_out'); ?></small>
                                                         </div>
                                                     </div>
                                                 </div>
 
-                                                <div class="form-group">
-                                                    <label for="status"><i class="feather icon-tag mr-2"></i><?php echo __('status'); ?> <span class="text-danger">*</span></label>
-                                                    <select class="form-control" id="status" name="status" required>
+                                                <div class="ma-form-group">
+                                                    <label for="status">
+                                                        <i class="feather icon-tag"></i><?php echo __('status'); ?> <span style="color: var(--ma-danger);">*</span>
+                                                    </label>
+                                                    <select class="ma-form-control" id="status" name="status" required>
                                                         <option value=""><?php echo __('select_status'); ?></option>
                                                         <option value="present" <?php echo $attendance['status'] === 'present' ? 'selected' : ''; ?>><?php echo __('present'); ?></option>
                                                         <option value="late" <?php echo $attendance['status'] === 'late' ? 'selected' : ''; ?>><?php echo __('late'); ?></option>
@@ -458,18 +786,21 @@ include '../includes/header.php';
                                                     </select>
                                                 </div>
 
-                                                <div class="form-group">
-                                                    <label for="notes"><i class="feather icon-file-text mr-2"></i><?php echo __('notes'); ?></label>
-                                                    <textarea class="form-control" id="notes" name="notes" rows="3"
+                                                <div class="ma-form-group">
+                                                    <label for="notes">
+                                                        <i class="feather icon-file-text"></i><?php echo __('notes'); ?>
+                                                    </label>
+                                                    <textarea class="ma-form-control" id="notes" name="notes" rows="3"
+                                                              style="resize: vertical; min-height: 100px;"
                                                               placeholder="<?php echo __('add_notes_here'); ?>"><?php echo htmlspecialchars($attendance['notes'] ?? ''); ?></textarea>
                                                 </div>
 
-                                                <div class="form-group mt-4">
-                                                    <button type="submit" class="btn btn-primary">
-                                                        <i class="feather icon-save mr-2"></i><?php echo __('update_attendance'); ?>
+                                                <div class="ma-form-actions">
+                                                    <button type="submit" class="ma-btn primary">
+                                                        <i class="feather icon-save"></i><?php echo __('update_attendance'); ?>
                                                     </button>
-                                                    <a href="manage_attendance.php" class="btn btn-secondary ml-2">
-                                                        <i class="feather icon-x mr-2"></i><?php echo __('cancel'); ?>
+                                                    <a href="manage_attendance.php" class="ma-btn secondary">
+                                                        <i class="feather icon-x"></i><?php echo __('cancel'); ?>
                                                     </a>
                                                 </div>
                                             </form>
@@ -478,24 +809,25 @@ include '../includes/header.php';
 
                                     <!-- Attendance Rules Reference -->
                                     <?php if ($attendance_settings): ?>
-                                    <div class="card mt-3">
-                                        <div class="card-header">
-                                            <h5><i class="feather icon-info mr-2"></i><?php echo __('attendance_rules_reference'); ?></h5>
+                                    <div class="ma-info-card">
+                                        <div class="ma-info-header">
+                                            <i class="feather icon-info"></i>
+                                            <?php echo __('attendance_rules_reference'); ?>
                                         </div>
-                                        <div class="card-body">
-                                            <div class="row">
-                                                <div class="col-md-6">
+                                        <div class="ma-info-body">
+                                            <div class="ma-info-row">
+                                                <div>
                                                     <h6><?php echo __('office_hours'); ?></h6>
                                                     <p><?php echo date('H:i', strtotime($attendance_settings['office_start_time'])); ?> - <?php echo date('H:i', strtotime($attendance_settings['office_end_time'])); ?></p>
 
-                                                    <h6><?php echo __('late_threshold'); ?></h6>
+                                                    <h6 style="margin-top: 16px;"><?php echo __('late_threshold'); ?></h6>
                                                     <p><?php echo $attendance_settings['late_after_minutes']; ?> <?php echo __('minutes_after_start'); ?></p>
                                                 </div>
-                                                <div class="col-md-6">
+                                                <div>
                                                     <h6><?php echo __('half_day_minimum'); ?></h6>
                                                     <p><?php echo $attendance_settings['half_day_minutes']; ?> <?php echo __('minutes'); ?></p>
 
-                                                    <h6><?php echo __('working_days'); ?></h6>
+                                                    <h6 style="margin-top: 16px;"><?php echo __('working_days'); ?></h6>
                                                     <p><?php echo $attendance_settings['working_days']; ?></p>
                                                 </div>
                                             </div>
@@ -511,6 +843,8 @@ include '../includes/header.php';
         </div>
     </div>
 </div>
+
+
 
 <script>
 // Auto-calculate working minutes when times change

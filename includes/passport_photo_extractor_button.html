@@ -1,0 +1,20 @@
+<!-- Passport Photo Extraction Button -->
+<!-- Add this to member details modal or document upload section -->
+
+<button type="button" class="btn btn-sm btn-info" 
+        onclick="if(passportPhotoExtractor) passportPhotoExtractor.openFor('{BOOKING_ID}');"
+        title="Extract photo from passport document">
+    <i class="fas fa-camera"></i> Extract Photo from Passport
+</button>
+
+<!-- Alternative: Full extraction workflow button -->
+<div class="mt-2">
+    <small class="text-muted">
+        <strong>Extract Photo from Passport:</strong>
+        <ol style="margin-top: 5px;">
+            <li>Upload the passport image</li>
+            <li>Use the crop tool to select just the photo area</li>
+            <li>Save the extracted photo</li>
+        </ol>
+    </small>
+</div>

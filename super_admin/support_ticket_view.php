@@ -49,7 +49,7 @@ if (!$ticket) {
     exit();
 }
 
-$replies = $ticketManager->getTicketReplies($ticket_id);
+$replies = $ticketManager->getTicketReplies($ticket_id, true);
 $message = '';
 $alert_type = '';
 
@@ -59,10 +59,10 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action'])) {
     
     if ($action === 'update_status') {
         $status = trim($_POST['status'] ?? '');
-        $resolution_notes = !empty($_POST['resolution_notes']) ? trim($_POST['resolution_notes']) : null;
         
         if (in_array($status, ['open', 'in_progress', 'resolved', 'closed'])) {
-            if ($ticketManager->updateTicketStatus($ticket_id, $status, $user_id, $resolution_notes)) {
+            $result = $ticketManager->updateTicketStatus($ticket_id, $status, $user_id);
+            if ($result['success'] ?? false) {
                 $message = 'Ticket status updated successfully';
                 $alert_type = 'success';
                 $ticket = $ticketManager->getTicketDetails($ticket_id);
@@ -93,20 +93,12 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action'])) {
             $message = 'Reply cannot be empty';
             $alert_type = 'danger';
         } else {
-            $replyData = [
-                'replied_by_type' => 'super_admin',
-                'replied_by_id' => $user_id,
-                'replied_by_name' => $user_name,
-                'reply_text' => $reply_text
-            ];
+            $result = $ticketManager->addReply($ticket_id, $user_id, $reply_text);
             
-            $result = $ticketManager->addReply($ticket_id, $replyData);
-            
-            if ($result['success']) {
+            if ($result['success'] ?? false) {
                 $message = 'Reply added successfully';
                 $alert_type = 'success';
-                $replies = $ticketManager->getTicketReplies($ticket_id);
-                $_POST['reply_text'] = '';
+                $replies = $ticketManager->getTicketReplies($ticket_id, true);
             } else {
                 $message = 'Failed to add reply: ' . ($result['error'] ?? '');
                 $alert_type = 'danger';
@@ -118,127 +110,256 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action'])) {
 include '../includes/header_super_admin.php';
 ?>
 
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Sora:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
 <style>
-.card-header {
-    background: linear-gradient(135deg, #4099ff 0%, #2ed8b6 100%) !important;
-    color: #ffffff !important;
-    border-bottom: none !important;
+/* ─── TOKENS ─────────────────────────────────────────────── */
+:root {
+  --bg:       #f8fafc;
+  --surface:  #ffffff;
+  --surface2: #f1f5f9;
+  --border:   #e5e7eb;
+  --text:     #1f2937;
+  --muted:    #6b7280;
+  --accent:   #4099ff;
+  --accent2:  #2ed8b6;
+  --green:    #10b981;
+  --amber:    #f59e0b;
+  --red:      #ef4444;
+  --blue:     #3b82f6;
+  --purple:   #8b5cf6;
+  --orange:   #f97316;
+  --radius:   14px;
 }
 
-.card-header h5 {
-    color: #ffffff !important;
-    margin-bottom: 0 !important;
+/* ─── RESET / BASE ───────────────────────────────────────── */
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+html { font-size: 14px; }
+body {
+  font-family: 'Sora', sans-serif;
+  background: var(--bg);
+  color: var(--text);
+  min-height: 100vh;
 }
 
-.info-row {
+/* ─── MAIN WRAPPER ───────────────────────────────────────── */
+.sa-wrap { display: flex; flex-direction: column; min-height: 100vh; }
+
+/* ─── CONTENT ────────────────────────────────────────────── */
+.sa-content { 
+    padding: 24px 28px; 
+    display: flex; 
+    flex-direction: column; 
+    gap: 24px; 
+}
+
+/* ─── CARD ───────────────────────────────────────────────── */
+.sa-card {
+  background: var(--surface); 
+  border: 1px solid var(--border);
+  border-left: 4px solid var(--accent);
+  border-radius: var(--radius); 
+  overflow: hidden;
+  transition: all .2s;
+  box-shadow: 0 1px 3px rgba(0,0,0,0.04);
+  margin-bottom: 24px;
+}
+.sa-card:last-child { margin-bottom: 0; }
+.sa-card:hover { 
+    border-left-color: var(--accent2);
+    transform: translateY(-2px);
+    box-shadow: 0 4px 12px rgba(0,0,0,0.08);
+}
+.sa-card-hdr {
+  padding: 16px 24px; 
+  border-bottom: 1px solid var(--border);
+  display: flex; 
+  align-items: center; 
+  justify-content: space-between;
+  background: linear-gradient(135deg, rgba(108,99,255,0.04), rgba(46,216,182,0.02));
+}
+.sa-card-hdr h3 { 
+    font-size: .95rem; 
+    font-weight: 600; 
+    color: var(--text);
+    display: flex;
+    align-items: center;
+    letter-spacing: -0.01em;
+}
+.sa-card-body { 
+    padding: 24px; 
+}
+
+/* Card colors */
+.sa-card:nth-child(1) { border-left-color: #6366f1; }
+.sa-card:nth-child(2) { border-left-color: #10b981; }
+.sa-card:nth-child(3) { border-left-color: #f59e0b; }
+
+/* ─── BUTTON ─────────────────────────────────────────────── */
+.sa-btn {
+  font-size: .8rem; font-weight: 600; font-family: 'Sora', sans-serif;
+  padding: 8px 16px; border-radius: 20px; cursor: pointer; border: none;
+  display: inline-flex; align-items: center; gap: 6px; text-decoration: none;
+  transition: all .15s;
+}
+.sa-btn-primary {
+  background: linear-gradient(135deg, var(--accent), var(--accent2)); color: #fff;
+}
+.sa-btn-primary:hover { opacity: .85; transform: translateY(-1px); }
+.sa-btn-ghost {
+  background: var(--surface2); color: var(--muted); border: 1px solid var(--border);
+}
+.sa-btn-ghost:hover { color: var(--text); border-color: var(--accent); }
+.sa-btn-warning {
+  background: linear-gradient(135deg, var(--amber), #fbbf24); color: white;
+}
+
+/* ─── FORM STYLES ────────────────────────────────────────── */
+.form-group { margin-bottom: 16px; }
+
+.form-label {
+    display: block;
+    font-weight: 600;
+    color: var(--text);
+    margin-bottom: 6px;
+    font-size: 0.8rem;
+}
+
+.form-control {
+    width: 100%;
+    padding: 10px 14px;
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    font-size: 0.85rem;
+    transition: all .15s ease;
+    background: var(--surface2);
+    color: var(--text);
+    font-family: 'Sora', sans-serif;
+}
+
+.form-control:focus {
+    outline: none;
+    border-color: var(--accent);
+    box-shadow: 0 0 0 3px rgba(108,99,255,.15);
+    background: var(--surface);
+}
+
+/* ─── BADGES ─────────────────────────────────────────────── */
+.badge-custom {
+    font-size: 0.7rem;
+    font-weight: 600;
+    padding: 4px 10px;
+    border-radius: 20px;
+    text-transform: uppercase;
+    letter-spacing: 0.03em;
+}
+.badge-priority.urgent { background: rgba(239,68,68,.15); color: var(--red); }
+.badge-priority.high { background: rgba(249,115,22,.15); color: var(--orange); }
+.badge-priority.medium { background: rgba(245,158,11,.15); color: var(--amber); }
+.badge-priority.low { background: rgba(16,185,129,.15); color: var(--green); }
+.badge-status.open { background: rgba(239,68,68,.15); color: var(--red); }
+.badge-status.in_progress { background: rgba(245,158,11,.15); color: var(--amber); }
+.badge-status.resolved { background: rgba(16,185,129,.15); color: var(--green); }
+.badge-status.closed { background: rgba(107,114,128,.15); color: var(--muted); }
+
+/* ─── INFO GRID ─────────────────────────────────────────── */
+.info-grid {
     display: grid;
-    grid-template-columns: 1fr 1fr;
+    grid-template-columns: repeat(2, 1fr);
     gap: 20px;
-    margin-bottom: 15px;
 }
-
+@media (max-width: 576px) {
+    .info-grid { grid-template-columns: 1fr; }
+}
 .info-item label {
     font-weight: 600;
-    color: #666;
-    font-size: 11px;
+    color: var(--muted);
+    font-size: 0.7rem;
     text-transform: uppercase;
     display: block;
-    margin-bottom: 5px;
+    margin-bottom: 4px;
 }
-
 .info-item p {
     margin: 0;
-    color: #333;
+    color: var(--text);
+    font-size: 0.9rem;
 }
 
+/* ─── DESCRIPTION ─────────────────────────────────────────── */
+.description-box {
+    background: var(--surface2);
+    padding: 20px;
+    border-radius: 10px;
+    margin-top: 16px;
+    line-height: 1.7;
+    color: var(--text);
+}
+
+/* ─── REPLY ─────────────────────────────────────────────── */
 .reply-item {
-    background: #f8f9fa;
-    padding: 15px;
-    border-radius: 6px;
-    margin-bottom: 15px;
-    border-left: 4px solid #4099ff;
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-left: 3px solid var(--accent);
+    border-radius: 10px;
+    padding: 16px;
+    margin-bottom: 12px;
 }
-
+.reply-item:last-child { margin-bottom: 0; }
 .reply-header {
     display: flex;
     justify-content: space-between;
     align-items: center;
     margin-bottom: 10px;
     flex-wrap: wrap;
+    gap: 8px;
 }
-
 .reply-author {
     font-weight: 600;
-    color: #007bff;
+    color: var(--accent);
 }
-
-.reply-type-badge {
-    font-size: 10px;
-    padding: 3px 8px;
-    margin-left: 8px;
+.reply-time {
+    font-size: 0.75rem;
+    color: var(--muted);
+    font-family: 'JetBrains Mono', monospace;
 }
-
 .reply-text {
-    color: #333;
+    color: var(--text);
     line-height: 1.6;
 }
 
-.reply-time {
-    font-size: 12px;
-    color: #999;
-}
-
-.screenshot {
-    max-width: 400px;
-    margin: 15px 0;
-    border: 1px solid #ddd;
-    border-radius: 6px;
-    padding: 10px;
-    background: #f9f9f9;
-}
-
-.screenshot img {
-    max-width: 100%;
-    height: auto;
-    border-radius: 4px;
-}
-
-.description-section {
-    background: #f8f9fa;
-    padding: 20px;
-    border-radius: 6px;
+/* ─── ALERT ─────────────────────────────────────────────── */
+.alert-box {
+    padding: 14px 18px;
+    border-radius: 10px;
     margin-bottom: 20px;
+    font-size: 0.85rem;
+    display: flex;
+    align-items: center;
+    gap: 10px;
+}
+.alert-box.success {
+    background: rgba(16,185,129,.1);
+    border: 1px solid rgba(16,185,129,.3);
+    color: var(--green);
+}
+.alert-box.danger {
+    background: rgba(239,68,68,.1);
+    border: 1px solid rgba(239,68,68,.3);
+    color: var(--red);
 }
 
-.textarea-resize {
-    resize: vertical;
-    min-height: 100px;
-}
+/* ─── SCROLLBAR ──────────────────────────────────────────── */
+::-webkit-scrollbar { width: 5px; height: 5px; }
+::-webkit-scrollbar-track { background: transparent; }
+::-webkit-scrollbar-thumb { background: var(--surface2); border-radius: 10px; }
 
-.status-badge-lg {
-    font-size: 12px;
-    padding: 6px 12px;
-    margin-right: 8px;
-    margin-bottom: 8px;
-}
-
-.control-section {
-    margin-bottom: 20px;
-    padding-bottom: 20px;
-    border-bottom: 1px solid #eee;
-}
-
-.control-section:last-child {
-    border-bottom: none;
-    margin-bottom: 0;
-    padding-bottom: 0;
-}
-
-.control-label {
-    font-weight: 600;
-    margin-bottom: 10px;
-    color: #333;
-}
+/* ─── PCODED LAYOUT INTEGRATION ──────────────────────────── */
+body { background: var(--bg) !important; }
+.pcoded-main-container, .pcoded-wrapper, .pcoded-content, .pcoded-inner-content { background: var(--bg) !important; }
+.page-header { background: transparent !important; border: none !important; box-shadow: none !important; }
+.page-header h5 { color: var(--text) !important; }
+.breadcrumb { background: transparent !important; }
+.breadcrumb-item a, .breadcrumb-item.active { color: var(--muted) !important; }
 </style>
 
 <div class="pcoded-main-container">
@@ -248,12 +369,12 @@ include '../includes/header_super_admin.php';
                 <div class="row align-items-center">
                     <div class="col-md-12">
                         <div class="page-header-title">
-                            <h5 class="m-b-10">Ticket Details: <?php echo htmlspecialchars($ticket['ticket_number']); ?></h5>
+                            <h5 class="m-b-10">Ticket: <?= htmlspecialchars($ticket['ticket_number'] ?? '') ?></h5>
                         </div>
                         <ul class="breadcrumb">
                             <li class="breadcrumb-item"><a href="dashboard.php"><i class="feather icon-home"></i></a></li>
                             <li class="breadcrumb-item"><a href="support_tickets_list.php">Support Tickets</a></li>
-                            <li class="breadcrumb-item"><a href="javascript:"><?php echo htmlspecialchars($ticket['ticket_number']); ?></a></li>
+                            <li class="breadcrumb-item"><a href="#!"><?= htmlspecialchars($ticket['ticket_number'] ?? '') ?></a></li>
                         </ul>
                     </div>
                 </div>
@@ -261,219 +382,144 @@ include '../includes/header_super_admin.php';
         </div>
 
         <?php if (!empty($message)): ?>
-            <div class="alert alert-<?php echo $alert_type; ?> alert-dismissible fade show" role="alert">
-                <i class="fas fa-<?php echo $alert_type === 'success' ? 'check-circle' : 'exclamation-circle'; ?> mr-2"></i>
-                <?php echo $message; ?>
-                <button type="button" class="close" data-dismiss="alert" aria-label="Close">
-                    <span aria-hidden="true">&times;</span>
-                </button>
+            <div class="alert-box <?= $alert_type ?>">
+                <i class="feather <?= $alert_type === 'success' ? 'icon-check-circle' : 'icon-alert-circle' ?>"></i>
+                <?= htmlspecialchars($message) ?>
             </div>
         <?php endif; ?>
 
-        <div class="row">
-            <div class="col-lg-8">
-                <div class="card">
-                    <div class="card-header">
-                        <h5><?php echo htmlspecialchars($ticket['subject']); ?></h5>
-                        <div class="mt-2">
-                            <span class="badge badge-info status-badge-lg"><?php echo htmlspecialchars($ticket['ticket_number']); ?></span>
-                            <span class="badge badge-<?php 
-                                echo $ticket['status'] === 'open' ? 'primary' : 
-                                ($ticket['status'] === 'in_progress' ? 'warning' : 
-                                ($ticket['status'] === 'resolved' ? 'success' : 'secondary')); 
-                            ?> status-badge-lg">
-                                <?php echo ucfirst($ticket['status']); ?>
-                            </span>
-                            <span class="badge badge-<?php 
-                                echo $ticket['priority'] === 'urgent' ? 'danger' : 
-                                ($ticket['priority'] === 'high' ? 'warning' : 
-                                ($ticket['priority'] === 'medium' ? 'info' : 'success')); 
-                            ?> status-badge-lg">
-                                <?php echo ucfirst($ticket['priority']); ?> Priority
-                            </span>
-                        </div>
-                    </div>
-                    <div class="card-body">
-                        <h6 class="mb-3">Ticket Information</h6>
-                        <div class="info-row">
-                            <div class="info-item">
-                                <label>Category</label>
-                                <p><?php echo htmlspecialchars($ticket['category']); ?></p>
+        <div class="sa-wrap">
+            <div class="sa-content">
+                <div style="display:grid;grid-template-columns:2fr 1fr;gap:24px">
+                    <div>
+                        <!-- Ticket Details Card -->
+                        <div class="sa-card">
+                            <div class="sa-card-hdr">
+                                <h3><i class="feather icon-file-text" style="margin-right:8px"></i><?= htmlspecialchars($ticket['title'] ?? 'No Title') ?></h3>
+                                <div>
+                                    <span class="badge-custom badge-priority <?= $ticket['priority'] ?? 'medium' ?>"><?= ucfirst($ticket['priority'] ?? 'medium') ?></span>
+                                    <span class="badge-custom badge-status <?= $ticket['status'] ?? 'open' ?>"><?= str_replace('_', ' ', ucfirst($ticket['status'] ?? 'open')) ?></span>
+                                </div>
                             </div>
-                            <div class="info-item">
-                                <label>Submitted By</label>
-                                <p><?php echo htmlspecialchars($ticket['submitted_by_name']); ?></p>
-                            </div>
-                        </div>
-                        <div class="info-row">
-                            <div class="info-item">
-                                <label>Email</label>
-                                <p>
-                                    <a href="mailto:<?php echo htmlspecialchars($ticket['submitted_by_email']); ?>">
-                                        <?php echo htmlspecialchars($ticket['submitted_by_email']); ?>
-                                    </a>
-                                </p>
-                            </div>
-                            <div class="info-item">
-                                <label>Type</label>
-                                <p><?php echo ucfirst(str_replace('_', ' ', $ticket['submitted_by_type'])); ?></p>
-                            </div>
-                        </div>
-                        <div class="info-row">
-                            <div class="info-item">
-                                <label>Created</label>
-                                <p><?php echo date('M d, Y H:i', strtotime($ticket['created_at'])); ?></p>
-                            </div>
-                            <div class="info-item">
-                                <label>Last Updated</label>
-                                <p><?php echo date('M d, Y H:i', strtotime($ticket['updated_at'])); ?></p>
+                            <div class="sa-card-body">
+                                <h6 style="font-size:0.8rem;color:var(--muted);text-transform:uppercase;margin-bottom:16px">Ticket Information</h6>
+                                <div class="info-grid">
+                                    <div class="info-item">
+                                        <label>Category</label>
+                                        <p><?= htmlspecialchars($ticket['category_name'] ?? 'N/A') ?></p>
+                                    </div>
+                                    <div class="info-item">
+                                        <label>Submitted By</label>
+                                        <p><?= htmlspecialchars($ticket['created_by_name'] ?? 'Unknown') ?></p>
+                                    </div>
+                                    <div class="info-item">
+                                        <label>Email</label>
+                                        <p><a href="mailto:<?= htmlspecialchars($ticket['created_by_email'] ?? '') ?>" style="color:var(--accent)"><?= htmlspecialchars($ticket['created_by_email'] ?? 'N/A') ?></a></p>
+                                    </div>
+                                    <div class="info-item">
+                                        <label>Created</label>
+                                        <p><?= date('M d, Y H:i', strtotime($ticket['created_at'] ?? date('Y-m-d H:i:s'))) ?></p>
+                                    </div>
+                                </div>
+
+                                <h6 style="font-size:0.8rem;color:var(--muted);text-transform:uppercase;margin-top:24px;margin-bottom:12px">Description</h6>
+                                <div class="description-box">
+                                    <?= nl2br(htmlspecialchars($ticket['description'] ?? 'No description')) ?>
+                                </div>
                             </div>
                         </div>
 
-                        <h6 class="mt-4 mb-3">Description</h6>
-                        <div class="description-section">
-                            <?php echo nl2br(htmlspecialchars($ticket['description'])); ?>
-                        </div>
-
-                        <?php if ($ticket['screenshot_path']): ?>
-                            <h6 class="mt-4 mb-3">Attached Screenshot</h6>
-                            <div class="screenshot">
-                                <img src="../<?php echo htmlspecialchars($ticket['screenshot_path']); ?>" alt="Screenshot">
+                        <!-- Replies Card -->
+                        <div class="sa-card">
+                            <div class="sa-card-hdr">
+                                <h3><i class="feather icon-message-circle" style="margin-right:8px"></i>Replies</h3>
                             </div>
-                        <?php endif; ?>
-                    </div>
-                </div>
-
-                <div class="card mt-4">
-                    <div class="card-header">
-                        <h5>Updates & Replies</h5>
-                    </div>
-                    <div class="card-body">
-                        <?php if (empty($replies)): ?>
-                            <p class="text-muted text-center py-4">No replies yet.</p>
-                        <?php else: ?>
-                            <div class="replies-container">
-                                <?php foreach ($replies as $reply): ?>
+                            <div class="sa-card-body">
+                                <?php if (empty($replies)): ?>
+                                    <p style="color:var(--muted);text-align:center;padding:24px">No replies yet.</p>
+                                <?php else: ?>
+                                    <?php foreach ($replies as $reply): ?>
                                     <div class="reply-item">
                                         <div class="reply-header">
                                             <div>
-                                                <span class="reply-author"><?php echo htmlspecialchars($reply['replied_by_name']); ?></span>
-                                                <span class="badge badge-secondary reply-type-badge">
-                                                    <?php echo ucfirst(str_replace('_', ' ', $reply['replied_by_type'])); ?>
-                                                </span>
+                                                <span class="reply-author"><?= htmlspecialchars($reply['replied_by_name'] ?? 'Unknown') ?></span>
+                                            <?php if (!empty($reply['is_internal_note']) && $reply['is_internal_note']): ?>
+                                                <span class="badge-custom" style="background:rgba(139,92,246,.15);color:var(--purple)">Internal</span>
+                                            <?php endif; ?>
                                             </div>
-                                            <span class="reply-time"><?php echo date('M d, Y H:i', strtotime($reply['created_at'])); ?></span>
+                                            <span class="reply-time"><?= date('M d, Y H:i', strtotime($reply['created_at'] ?? date('Y-m-d H:i:s'))) ?></span>
                                         </div>
                                         <div class="reply-text">
-                                            <?php echo nl2br(htmlspecialchars($reply['reply_text'])); ?>
+                                            <?= nl2br(htmlspecialchars($reply['reply_text'] ?? '')) ?>
                                         </div>
                                     </div>
-                                <?php endforeach; ?>
+                                    <?php endforeach; ?>
+                                <?php endif; ?>
+
+                                <div style="margin-top:24px;padding-top:24px;border-top:1px solid var(--border)">
+                                    <h6 style="font-size:0.8rem;color:var(--muted);text-transform:uppercase;margin-bottom:12px">Add Reply</h6>
+                                    <form method="POST">
+                                        <input type="hidden" name="action" value="add_reply">
+                                        <div class="form-group">
+                                            <textarea class="form-control" name="reply_text" rows="3" placeholder="Type your response..." required></textarea>
+                                        </div>
+                                        <button type="submit" class="sa-btn sa-btn-primary">
+                                            <i class="feather icon-send"></i> Send Reply
+                                        </button>
+                                    </form>
+                                </div>
                             </div>
-                        <?php endif; ?>
+                        </div>
+                    </div>
 
-                        <div class="mt-4 pt-3 border-top">
-                            <h6 class="mb-3">Add Reply</h6>
-                            <form method="POST">
-                                <input type="hidden" name="action" value="add_reply">
-                                <div class="form-group">
-                                    <textarea class="form-control textarea-resize" name="reply_text" 
-                                              placeholder="Type your response..." required></textarea>
+                    <div>
+                        <!-- Status Management Card -->
+                        <div class="sa-card">
+                            <div class="sa-card-hdr">
+                                <h3><i class="feather icon-settings" style="margin-right:8px"></i>Status Management</h3>
+                            </div>
+                            <div class="sa-card-body">
+                                <div style="margin-bottom:20px;padding-bottom:20px;border-bottom:1px solid var(--border)">
+                                    <div class="form-label">Update Status</div>
+                                    <form method="POST">
+                                        <input type="hidden" name="action" value="update_status">
+                                        <div class="form-group">
+                                            <select name="status" class="form-control" required>
+                                                <option value="open" <?= ($ticket['status'] ?? '') === 'open' ? 'selected' : '' ?>>Open</option>
+                                                <option value="in_progress" <?= ($ticket['status'] ?? '') === 'in_progress' ? 'selected' : '' ?>>In Progress</option>
+                                                <option value="resolved" <?= ($ticket['status'] ?? '') === 'resolved' ? 'selected' : '' ?>>Resolved</option>
+                                                <option value="closed" <?= ($ticket['status'] ?? '') === 'closed' ? 'selected' : '' ?>>Closed</option>
+                                            </select>
+                                        </div>
+                                        <button type="submit" class="sa-btn sa-btn-primary" style="width:100%;justify-content:center">
+                                            <i class="feather icon-save"></i> Update Status
+                                        </button>
+                                    </form>
                                 </div>
-                                <button type="submit" class="btn btn-primary">
-                                    <i class="fas fa-send mr-2"></i>Send Reply
-                                </button>
-                            </form>
-                        </div>
-                    </div>
-                </div>
-            </div>
 
-            <div class="col-lg-4">
-                <!-- Status Control -->
-                <div class="card">
-                    <div class="card-header">
-                        <h5>Status Management</h5>
-                    </div>
-                    <div class="card-body">
-                        <div class="control-section">
-                            <div class="control-label">Update Status</div>
-                            <form method="POST">
-                                <input type="hidden" name="action" value="update_status">
-                                <div class="form-group">
-                                    <select name="status" class="form-control form-control-sm" required>
-                                        <option value="open" <?php echo $ticket['status'] === 'open' ? 'selected' : ''; ?>>Open</option>
-                                        <option value="in_progress" <?php echo $ticket['status'] === 'in_progress' ? 'selected' : ''; ?>>In Progress</option>
-                                        <option value="resolved" <?php echo $ticket['status'] === 'resolved' ? 'selected' : ''; ?>>Resolved</option>
-                                        <option value="closed" <?php echo $ticket['status'] === 'closed' ? 'selected' : ''; ?>>Closed</option>
-                                    </select>
+                                <div>
+                                    <div class="form-label">Update Priority</div>
+                                    <form method="POST">
+                                        <input type="hidden" name="action" value="update_priority">
+                                        <div class="form-group">
+                                            <select name="priority" class="form-control" required>
+                                                <option value="low" <?= ($ticket['priority'] ?? '') === 'low' ? 'selected' : '' ?>>Low</option>
+                                                <option value="medium" <?= ($ticket['priority'] ?? '') === 'medium' ? 'selected' : '' ?>>Medium</option>
+                                                <option value="high" <?= ($ticket['priority'] ?? '') === 'high' ? 'selected' : '' ?>>High</option>
+                                                <option value="urgent" <?= ($ticket['priority'] ?? '') === 'urgent' ? 'selected' : '' ?>>Urgent</option>
+                                            </select>
+                                        </div>
+                                        <button type="submit" class="sa-btn sa-btn-warning" style="width:100%;justify-content:center">
+                                            <i class="feather icon-alert-triangle"></i> Update Priority
+                                        </button>
+                                    </form>
                                 </div>
-                                <div class="form-group">
-                                    <textarea class="form-control form-control-sm" name="resolution_notes" 
-                                              rows="2" placeholder="Resolution notes (optional)"></textarea>
-                                </div>
-                                <button type="submit" class="btn btn-primary btn-sm btn-block">
-                                    <i class="fas fa-save mr-2"></i>Update Status
-                                </button>
-                            </form>
+                            </div>
                         </div>
 
-                        <div class="control-section">
-                            <div class="control-label">Update Priority</div>
-                            <form method="POST">
-                                <input type="hidden" name="action" value="update_priority">
-                                <div class="form-group">
-                                    <select name="priority" class="form-control form-control-sm" required>
-                                        <option value="low" <?php echo $ticket['priority'] === 'low' ? 'selected' : ''; ?>>Low</option>
-                                        <option value="medium" <?php echo $ticket['priority'] === 'medium' ? 'selected' : ''; ?>>Medium</option>
-                                        <option value="high" <?php echo $ticket['priority'] === 'high' ? 'selected' : ''; ?>>High</option>
-                                        <option value="urgent" <?php echo $ticket['priority'] === 'urgent' ? 'selected' : ''; ?>>Urgent</option>
-                                    </select>
-                                </div>
-                                <button type="submit" class="btn btn-warning btn-sm btn-block">
-                                    <i class="fas fa-exclamation-triangle mr-2"></i>Update Priority
-                                </button>
-                            </form>
-                        </div>
-                    </div>
-                </div>
-
-                <div class="card mt-3">
-                    <div class="card-header">
-                        <h5>Ticket Meta</h5>
-                    </div>
-                    <div class="card-body">
-                        <div class="mb-3">
-                            <label class="text-muted mb-2" style="font-size: 11px; text-transform: uppercase;">Current Status</label>
-                            <p class="mb-0">
-                                <span class="badge badge-<?php 
-                                    echo $ticket['status'] === 'open' ? 'primary' : 
-                                    ($ticket['status'] === 'in_progress' ? 'warning' : 
-                                    ($ticket['status'] === 'resolved' ? 'success' : 'secondary')); 
-                                ?>">
-                                    <?php echo ucfirst($ticket['status']); ?>
-                                </span>
-                            </p>
-                        </div>
-                        <div class="mb-3">
-                            <label class="text-muted mb-2" style="font-size: 11px; text-transform: uppercase;">Priority Level</label>
-                            <p class="mb-0">
-                                <span class="badge badge-<?php 
-                                    echo $ticket['priority'] === 'urgent' ? 'danger' : 
-                                    ($ticket['priority'] === 'high' ? 'warning' : 
-                                    ($ticket['priority'] === 'medium' ? 'info' : 'success')); 
-                                ?>">
-                                    <?php echo ucfirst($ticket['priority']); ?>
-                                </span>
-                            </p>
-                        </div>
-                    </div>
-                </div>
-
-                <div class="card mt-3">
-                    <div class="card-body">
-                        <a href="support_tickets_list.php" class="btn btn-secondary btn-block">
-                            <i class="fas fa-arrow-left mr-2"></i>Back to Tickets
+                        <!-- Back Button -->
+                        <a href="support_tickets_list.php" class="sa-btn sa-btn-ghost" style="width:100%;justify-content:center">
+                            <i class="feather icon-arrow-left"></i> Back to Tickets
                         </a>
                     </div>
                 </div>
@@ -481,5 +527,8 @@ include '../includes/header_super_admin.php';
         </div>
     </div>
 </div>
-
+    <!-- Required Js -->
+    <script src="../assets/js/vendor-all.min.js"></script>
+    <script src="../assets/plugins/bootstrap/js/bootstrap.min.js"></script>
+    <script src="../assets/js/pcoded.min.js"></script>
 <?php include '../includes/admin_footer.php'; ?>

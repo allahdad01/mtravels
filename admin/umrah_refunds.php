@@ -9,14 +9,22 @@ require_once '../includes/language_helpers.php';
 enforce_auth();
 $tenant_id = $_SESSION['tenant_id'];
 $branch_id = $_SESSION['branch_id'];
-// Check if user is logged in
-if (!isset($_SESSION['user_id']) || $_SESSION['role'] !== 'admin') {
+
+// Check if user is logged in with proper role
+$allowed_roles = ['admin', 'finance', 'sales', 'umrah'];
+if (!isset($_SESSION['user_id']) || !in_array($_SESSION['role'], $allowed_roles)) {
+    // Log unauthorized access attempt
+    error_log("Unauthorized access attempt to dashboard: " . ($_SESSION['user_id'] ?? 'unknown') . " - Role: " . ($_SESSION['role'] ?? 'unknown') . " - IP: " . $_SERVER['REMOTE_ADDR']);
     header('Location: ../login.php');
     exit();
 }
 
 // Database connection
 require_once('../includes/db.php');
+
+// Check if user is admin or finance
+$canEdit = in_array($_SESSION['role'], ['admin', 'finance']);
+
 // Pagination setup
 $page = isset($_GET['page']) ? (int)$_GET['page'] : 1;
 $recordsPerPage = 10;
@@ -82,189 +90,95 @@ if ($tableExists) {
 
 ?>
 
-
-    <style>
-        /* Modern Refunds Page Styles */
-        .refunds-container {
-            background-color: #f8f9fe;
-            border-radius: 12px;
-            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
-        }
-
-        .refunds-header {
-            background: linear-gradient(135deg, #4099ff, #73b4ff);
-            color: white;
-            padding: 1.5rem;
-            border-top-left-radius: 12px;
-            border-top-right-radius: 12px;
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-        }
-
-        .refunds-header h5 {
-            margin: 0;
-            display: flex;
-            align-items: center;
-            font-weight: 600;
-        }
-
-        .refunds-header .btn-group .btn {
-            background-color: rgba(255, 255, 255, 0.2);
-            border: none;
-            color: white;
-            transition: all 0.3s ease;
-        }
-
-        .refunds-header .btn-group .btn:hover {
-            background-color: rgba(255, 255, 255, 0.3);
-        }
-
-        .refunds-table {
-            background-color: white;
-            border-bottom-left-radius: 12px;
-            border-bottom-right-radius: 12px;
-        }
-
-        .refunds-table thead {
-            background-color: #f1f3f9;
-            color: #4099ff;
-        }
-
-        .refunds-table tbody tr {
-            transition: background-color 0.3s ease;
-        }
-
-        .refunds-table tbody tr:hover {
-            background-color: rgba(64, 153, 255, 0.05);
-        }
-
-        .refund-status-badge {
-            padding: 0.25rem 0.5rem;
-            border-radius: 4px;
-            font-size: 0.8rem;
-            font-weight: 600;
-            text-transform: uppercase;
-        }
-
-        .refund-status-full {
-            background-color: rgba(255, 87, 34, 0.1);
-            color: #FF5722;
-        }
-
-        .refund-status-partial {
-            background-color: rgba(255, 152, 0, 0.1);
-            color: #FF9800;
-        }
-
-        .refund-actions .dropdown-menu {
-            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
-            border: none;
-        }
-
-        .refund-actions .dropdown-item {
-            transition: all 0.3s ease;
-        }
-
-        .refund-actions .dropdown-item:hover {
-            background-color: #f1f3f9;
-            transform: translateX(5px);
-        }
-
-        @media (max-width: 768px) {
-            .refunds-header {
-                flex-direction: column;
-                text-align: center;
-            }
-
-            .refunds-header .btn-group {
-                margin-top: 1rem;
-            }
-        }
-
-      
-
-    </style>
-
-    <?php include '../includes/header.php'; ?>
-    <link rel="stylesheet" href="../css/general/modal-styles.css">
-    
-    <style>
-/* Apply gradient background to card headers matching the sidebar */
-.card-header {
-    background: linear-gradient(135deg, #4099ff 0%, #2ed8b6 100%) !important;
-    color: #ffffff !important;
-    border-bottom: none !important;
+<?php include '../includes/header.php'; ?>
+<script src="../assets/plugins/jquery/js/jquery.min.js"></script>
+<link rel="stylesheet" href="../css/general/modal-styles.css">
+<link rel="stylesheet" href="../css/umrah/umrah-enhanced.css">
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/sweetalert2@11.7.32/dist/sweetalert2.min.css">
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+<style>
+/* Status badges - specific to refunds */
+.refund-status-badge {
+    padding: 0.25rem 0.5rem;
+    border-radius: 4px;
+    font-size: 0.8rem;
+    font-weight: 600;
+    text-transform: uppercase;
 }
 
-.card-header h5 {
-    color: #ffffff !important;
-    margin-bottom: 0 !important;
+.refund-status-full {
+    background-color: rgba(255, 87, 34, 0.1);
+    color: #FF5722;
 }
 
-.card-header .card-header-right {
-    color: #ffffff !important;
+.refund-status-partial {
+    background-color: rgba(255, 152, 0, 0.1);
+    color: #FF9800;
 }
 
-.card-header .card-header-right .btn {
-    color: #ffffff !important;
-    border-color: rgba(255, 255, 255, 0.3) !important;
+/* Fix SweetAlert2 z-index to appear above Bootstrap modals */
+.swal2-container {
+    z-index: 1200 !important;
 }
 
-.card-header .card-header-right .btn:hover {
-    background: rgba(255, 255, 255, 0.1) !important;
-    border-color: rgba(255, 255, 255, 0.5) !important;
+/* Ensure SweetAlert2 inputs are focusable and interactive */
+.swal2-container input,
+.swal2-container textarea,
+.swal2-container select {
+    pointer-events: auto !important;
+    z-index: 1201 !important;
+}
+
+.swal2-container .form-group {
+    margin-bottom: 1rem;
+}
+
+.swal2-container label {
+    display: block;
+    margin-bottom: 0.5rem;
+    font-weight: 600;
+    color: #495057;
 }
 </style>
-    <!-- [ Main Content ] start -->
-    <div class="pcoded-main-container">
-        <div class="pcoded-wrapper">
-            <div class="pcoded-content">
-                <div class="pcoded-inner-content">
-                    <!-- [ breadcrumb ] start -->
-                    <div class="page-header">
-                        <div class="page-block">
-                            <div class="row align-items-center">
-                                <div class="col-md-12">
-                                    <div class="page-header-title">
-                                        <h5 class="m-b-10"><?= __('umrah_refunds') ?></h5>
+<!-- [ Main Content ] start -->
+<div class="pcoded-main-container">
+    <div class="pcoded-wrapper">
+        <div class="pcoded-content">
+            <div class="pcoded-inner-content">
+                <!-- Enhanced Page Header -->
+                <div class="enhanced-page-header">
+                    <div class="container-fluid">
+                        <div class="row align-items-center">
+                            <div class="col-md-6">
+                                <div class="page-title-wrapper">
+                                    <i class="fas fa-undo page-icon"></i>
+                                    <div>
+                                        <h2 class="page-title"><?= __('umrah_refunds') ?></h2>
+                                        <p class="page-subtitle"><?= __('manage_umrah_refund_records') ?></p>
                                     </div>
-                                    <ul class="breadcrumb">
-                                        <li class="breadcrumb-item"><a href="dashboard.php"><i class="feather icon-home"></i></a></li>
-                                        <li class="breadcrumb-item"><a href="umrah.php"><?= __('umrah_management') ?></a></li>
-                                        <li class="breadcrumb-item"><a href="javascript:"><?= __('umrah_refunds') ?></a></li>
-                                    </ul>
                                 </div>
+                            </div>
+                            <div class="col-md-6 text-right">
+                                <button class="btn btn-gradient-primary" onclick="location.reload()">
+                                    <i class="fas fa-sync mr-2"></i><?= __('refresh') ?>
+                                </button>
                             </div>
                         </div>
                     </div>
-                    <!-- [ breadcrumb ] end -->
-                    <div class="main-body">
-                        <div class="page-wrapper">
-                            <!-- [ Main Content ] start -->
-                            <div class="row">
-                                <div class="col-sm-12">
-                                    <div class="card refunds-container">
-                                        
-                                        <!-- Refunds Page Header -->
-                                        <div class="refunds-header">
-                                            <!-- Page Title -->
-                                            <h5>
-                                                <i class="feather icon-refresh-cw mr-2"></i>
-                                                <?= __('umrah_refund_records') ?>
-                                            </h5>
-                                        </div>
-
-                                        <!-- Refunds Table Container -->
-                                        <div class="card-body p-0 refunds-table">
-                                            <!-- No Refunds Message -->
-                                            <?php if (!$tableExists || empty($refunds)): ?>
-                                                <div class="alert alert-info m-3">
-                                                    <i class="feather icon-info mr-2"></i>
-                                                    <?= __('no_umrah_refunds_have_been_processed_yet') ?>
-                                                </div>
-                                            <?php else: ?>
-                                                <div class="table-responsive">
+                </div>
+                    <!-- Refunds Table -->
+                    <div class="container-fluid px-4">
+                        <!-- No Refunds Message -->
+                        <?php if (!$tableExists || empty($refunds)): ?>
+                            <div class="empty-state">
+                                <div class="empty-state-icon">
+                                    <i class="fas fa-info-circle"></i>
+                                </div>
+                                <h3 class="text-muted mt-3"><?= __('no_umrah_refunds_have_been_processed_yet') ?></h3>
+                            </div>
+                        <?php else: ?>
+                            <div class="table-responsive card">
                                                     <table class="table table-hover mb-0" id="umrahRefundsTable">
                                                         <thead>
                                                             <tr>
@@ -338,21 +252,23 @@ if ($tableExists) {
                                                                                 <a class="dropdown-item" href="umrah.php?id=<?= $refund['booking_id'] ?>">
                                                                                     <i class="feather icon-file-text text-info mr-2"></i><?= __('view_booking') ?>
                                                                                 </a>
-                                                                                <?php if (!empty($refund['transaction_id'])): ?>
+                                                                                <?php if (!empty($refund['transaction_id']) && $canEdit): ?>
                                                                                     <a class="dropdown-item" href="javascript:void(0)" onclick="viewTransaction(<?= $refund['transaction_id'] ?>)">
                                                                                         <i class="feather icon-credit-card text-success mr-2"></i><?= __('view_transaction') ?>
                                                                                     </a>
                                                                                 <?php endif; ?>
-                                                                                <?php if ($refund['processed'] != 1): ?>
+                                                                                <?php if ($refund['processed'] != 1 && $canEdit): ?>
                                                                                     <a class="dropdown-item" href="javascript:void(0)" 
                                                                                        onclick="processRefundTransaction(<?= $refund['id'] ?>)">
                                                                                         <i class="feather icon-check-circle text-primary mr-2"></i><?= __('process_payment') ?>
                                                                                     </a>
                                                                                 <?php endif; ?>
-                                                                                <a class="dropdown-item text-danger" href="javascript:void(0)" 
-                                                                                   onclick="deleteRefund(<?= $refund['id'] ?>)">
-                                                                                    <i class="feather icon-trash-2 mr-2"></i><?= __('delete_refund') ?>
-                                                                                </a>
+                                                                                 <?php if ($canEdit): ?>
+                                                                                 <a class="dropdown-item text-danger" href="javascript:void(0)" 
+                                                                                    onclick="deleteRefund(<?= $refund['id'] ?>)">
+                                                                                     <i class="feather icon-trash-2 mr-2"></i><?= __('delete_refund') ?>
+                                                                                 </a>
+                                                                                 <?php endif; ?>
                                                                                 <a class="dropdown-item" href="javascript:void(0)" onclick="printRefundAgreement(<?= $refund['id'] ?>)">
                                                                                     <i class="fas fa-print text-info mr-2"></i><?= __('print_agreement') ?>
                                                                                 </a>
@@ -363,100 +279,96 @@ if ($tableExists) {
                                                             <?php endforeach; ?>
                                                         </tbody>
                                                     </table>
-                                                    
+                                                    </div>
+
                                                     <!-- Pagination Controls -->
-                                                    <nav aria-label="Umrah Refunds pagination" class="mt-3">
-                                                        <ul class="pagination justify-content-center">
-                                                            <?php if ($page > 1): ?>
-                                                                <li class="page-item">
-                                                                    <a class="page-link" href="?page=1" aria-label="First">
-                                                                        <span aria-hidden="true">&laquo;&laquo;</span>
-                                                                    </a>
-                                                                </li>
-                                                                <li class="page-item">
-                                                                    <a class="page-link" href="?page=<?= $page - 1 ?>" aria-label="Previous">
-                                                                        <span aria-hidden="true">&laquo;</span>
-                                                                    </a>
-                                                                </li>
-                                                            <?php endif; ?>
+                                                    <nav aria-label="Umrah Refunds pagination" class="p-3">
+                                                    <ul class="pagination justify-content-center">
+                                                        <?php if ($page > 1): ?>
+                                                            <li class="page-item">
+                                                                <a class="page-link" href="?page=1" aria-label="First">
+                                                                    <span aria-hidden="true">&laquo;&laquo;</span>
+                                                                </a>
+                                                            </li>
+                                                            <li class="page-item">
+                                                                <a class="page-link" href="?page=<?= $page - 1 ?>" aria-label="Previous">
+                                                                    <span aria-hidden="true">&laquo;</span>
+                                                                </a>
+                                                            </li>
+                                                        <?php endif; ?>
 
-                                                            <?php 
-                                                            // Show page numbers
-                                                            $startPage = max(1, $page - 2);
-                                                            $endPage = min($totalPages, $page + 2);
-                                                            
-                                                            for ($i = $startPage; $i <= $endPage; $i++): ?>
-                                                                <li class="page-item <?= $i == $page ? 'active' : '' ?>">
-                                                                    <a class="page-link" href="?page=<?= $i ?>"><?= $i ?></a>
-                                                                </li>
-                                                            <?php endfor; ?>
-
-                                                            <?php if ($page < $totalPages): ?>
-                                                                <li class="page-item">
-                                                                    <a class="page-link" href="?page=<?= $page + 1 ?>" aria-label="Next">
-                                                                        <span aria-hidden="true">&raquo;</span>
-                                                                    </a>
-                                                                </li>
-                                                                <li class="page-item">
-                                                                    <a class="page-link" href="?page=<?= $totalPages ?>" aria-label="Last">
-                                                                        <span aria-hidden="true">&raquo;&raquo;</span>
-                                                                    </a>
-                                                                </li>
-                                                            <?php endif; ?>
-                                                        </ul>
+                                                        <?php 
+                                                        // Show page numbers
+                                                        $startPage = max(1, $page - 2);
+                                                        $endPage = min($totalPages, $page + 2);
                                                         
-                                                        <!-- Pagination Info -->
-                                                        <div class="text-center mt-2 text-muted">
-                                                            <?= sprintf(__('showing_page_x_of_y'), $page, $totalPages) ?> 
-                                                            (<?= sprintf(__('total_x_refunds'), $totalRefunds) ?>)
-                                                        </div>
-                                                    </nav>
-                                                </div>
-                                            <?php endif; ?>
-                                        </div>
-                                    </div>
-                                </div>
-                            </div>
-                            <!-- [ Main Content ] end -->
-                        </div>
-                    </div>
+                                                        for ($i = $startPage; $i <= $endPage; $i++): ?>
+                                                            <li class="page-item <?= $i == $page ? 'active' : '' ?>">
+                                                                <a class="page-link" href="?page=<?= $i ?>"><?= $i ?></a>
+                                                            </li>
+                                                        <?php endfor; ?>
+
+                                                        <?php if ($page < $totalPages): ?>
+                                                            <li class="page-item">
+                                                                <a class="page-link" href="?page=<?= $page + 1 ?>" aria-label="Next">
+                                                                    <span aria-hidden="true">&raquo;</span>
+                                                                </a>
+                                                            </li>
+                                                            <li class="page-item">
+                                                                <a class="page-link" href="?page=<?= $totalPages ?>" aria-label="Last">
+                                                                    <span aria-hidden="true">&raquo;&raquo;</span>
+                                                                </a>
+                                                            </li>
+                                                        <?php endif; ?>
+                                                    </ul>
+                                                    
+                                                    <!-- Pagination Info -->
+                                                    <div class="text-center mt-2 text-muted">
+                                                        <?= sprintf(__('showing_page_x_of_y'), $page, $totalPages) ?> 
+                                                        (<?= sprintf(__('total_x_refunds'), $totalRefunds) ?>)
+                                                    </div>
+                        </nav>
+                    <?php endif; ?>
                 </div>
             </div>
         </div>
     </div>
-    <!-- [ Main Content ] end -->
 
 
-    <?php include '../modals/umrah_refund/transaction_modal.php'; ?>
-    <?php include '../modals/umrah_refund/edit_transaction_modal.php'; ?>
+<?php include '../modals/umrah_refund/transaction_modal.php'; ?>
+<?php include '../modals/umrah_refund/edit_transaction_modal.php'; ?>
 
-    <!-- Required Js -->
-    <script src="../assets/js/vendor-all.min.js"></script>
-    <script src="../assets/plugins/bootstrap/js/bootstrap.min.js"></script>
-    <script src="../assets/js/pcoded.min.js"></script>
+<!-- Required Scripts -->
+<script src="../assets/js/vendor-all.min.js"></script>
+<script src="../assets/plugins/bootstrap/js/bootstrap.min.js"></script>
+<script src="../assets/js/pcoded.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/select2@4.1.0-rc.0/dist/js/select2.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/sweetalert2@11.7.32/dist/sweetalert2.all.min.js"></script>
 
-    <!-- SweetAlert2 -->
-    <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
+<script src="../js/umrah_refund/transaction_manager.js"></script>
+<script src="../js/umrah_refund/umrah_management.js"></script>
 
-    <!-- Add SweetAlert2 for better alerts -->
-    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/sweetalert2@11/dist/sweetalert2.min.css">
-    <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11/dist/sweetalert2.all.min.js"></script>
+<!-- Custom Scripts -->
+<script>
+    // Set CSRF token
+    window.csrfToken = '<?php echo $_SESSION['csrf_token']; ?>';
 
-    <!-- DataTables removed - using server-side PHP filtering -->
+    // Toast notification function
+    function showToast(type, message) {
+        const Toast = Swal.mixin({
+            toast: true,
+            position: 'top-end',
+            showConfirmButton: false,
+            timer: 3000,
+            timerProgressBar: true
+        });
 
-    <!-- Add Animate.css for smooth animations -->
-    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/animate.css/4.1.1/animate.min.css">
-    <script src="../js/umrah_refund/transaction_manager.js"></script>
-    <script src="../js/umrah_refund/umrah_management.js"></script>
-
-
-    <script>
-    // DataTables removed - using server-side PHP filtering instead
-    </script>
-
-
-
-<!-- Include Admin Footer -->
+        Toast.fire({
+            icon: type,
+            title: message
+        });
+    }
+</script>
 <?php include '../includes/admin_footer.php'; ?>
 
 

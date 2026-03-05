@@ -13,13 +13,6 @@ $branch_id = $_SESSION['branch_id'];
 // Enforce authentication
 enforce_auth();
 
-// ✅ CSRF Token Validation
-if (!verify_csrf_token()) {
-    http_response_code(403);
-    echo json_encode(['success' => false, 'message' => 'Security validation failed. Please try again.']);
-    exit;
-}
-
 $username = isset($_SESSION["name"]) ? $_SESSION["name"] : "Unknown User";
 // Connect using PDO
 require_once '../../includes/db.php';
@@ -41,10 +34,19 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 
         $transaction_id = isset($data['transaction_id']) ? intval($data['transaction_id']) : 0;
         $umrah_id = isset($data['umrah_id']) ? intval($data['umrah_id']) : 0;
+        $csrf_token = isset($data['csrf_token']) ? $data['csrf_token'] : '';
     } else {
         // Handle form data input
         $transaction_id = isset($_POST['transaction_id']) ? intval($_POST['transaction_id']) : 0;
         $umrah_id = isset($_POST['umrah_id']) ? intval($_POST['umrah_id']) : 0;
+        $csrf_token = isset($_POST['csrf_token']) ? $_POST['csrf_token'] : '';
+    }
+
+    // ✅ CSRF Token Validation (after parsing JSON/form data)
+    if (!verify_csrf_token($csrf_token)) {
+        http_response_code(403);
+        echo json_encode(['success' => false, 'message' => 'Security validation failed. Please try again.']);
+        exit;
     }
 
     // Validate input
@@ -339,14 +341,50 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 
         // Update the paid amount in umrah_bookings
         $new_paid = $current_paid - $converted_payment_amount; // Subtracting the converted payment amount reverses it
-        $stmt_update_paid = $pdo->prepare("UPDATE umrah_bookings SET paid = ? WHERE booking_id = ? AND tenant_id = ? AND branch_id = ?");
+        
+        // Get the sold_price to recalculate due
+        $stmt_get_sold_price = $pdo->prepare("SELECT sold_price FROM umrah_bookings WHERE booking_id = ? AND tenant_id = ? AND branch_id = ?");
+        $stmt_get_sold_price->bindParam(1, $umrah_id, PDO::PARAM_INT);
+        $stmt_get_sold_price->bindParam(2, $tenant_id, PDO::PARAM_INT);
+        $stmt_get_sold_price->bindParam(3, $branch_id, PDO::PARAM_INT);
+        $stmt_get_sold_price->execute();
+        $sold_price_result = $stmt_get_sold_price->fetch(PDO::FETCH_ASSOC);
+        $sold_price = floatval($sold_price_result['sold_price'] ?? 0);
+        
+        // Calculate new due: due = sold_price - new_paid
+        $new_due = $sold_price - $new_paid;
+        
+        // Update paid and due amounts
+        $stmt_update_paid = $pdo->prepare("UPDATE umrah_bookings SET paid = ?, due = ? WHERE booking_id = ? AND tenant_id = ? AND branch_id = ?");
         $stmt_update_paid->bindParam(1, $new_paid, PDO::PARAM_STR);
-        $stmt_update_paid->bindParam(2, $umrah_id, PDO::PARAM_INT);
-        $stmt_update_paid->bindParam(3, $tenant_id, PDO::PARAM_INT);
-        $stmt_update_paid->bindParam(4, $branch_id, PDO::PARAM_INT);
+        $stmt_update_paid->bindParam(2, $new_due, PDO::PARAM_STR);
+        $stmt_update_paid->bindParam(3, $umrah_id, PDO::PARAM_INT);
+        $stmt_update_paid->bindParam(4, $tenant_id, PDO::PARAM_INT);
+        $stmt_update_paid->bindParam(5, $branch_id, PDO::PARAM_INT);
 
         if (!$stmt_update_paid->execute()) {
             throw new PDOException("Failed to update paid amount");
+        }
+
+        // Update family totals if booking is active
+        $stmt_check_booking = $pdo->prepare("SELECT family_id, status FROM umrah_bookings WHERE booking_id = ? AND tenant_id = ? AND branch_id = ?");
+        $stmt_check_booking->bindParam(1, $umrah_id, PDO::PARAM_INT);
+        $stmt_check_booking->bindParam(2, $tenant_id, PDO::PARAM_INT);
+        $stmt_check_booking->bindParam(3, $branch_id, PDO::PARAM_INT);
+        $stmt_check_booking->execute();
+        $booking_check = $stmt_check_booking->fetch(PDO::FETCH_ASSOC);
+        
+        if ($booking_check && $booking_check['status'] === 'active') {
+            $family_id = $booking_check['family_id'];
+            $stmt_update_family = $pdo->prepare("
+                UPDATE families f
+                SET
+                    f.total_paid = (SELECT SUM(COALESCE(paid, 0)) FROM umrah_bookings WHERE family_id = f.family_id AND tenant_id = ? AND branch_id = ?),
+                    f.total_paid_to_bank = (SELECT SUM(COALESCE(received_bank_payment, 0)) FROM umrah_bookings WHERE family_id = f.family_id AND tenant_id = ? AND branch_id = ?),
+                    f.total_due = (SELECT SUM(COALESCE(due, 0)) FROM umrah_bookings WHERE family_id = f.family_id AND tenant_id = ? AND branch_id = ?)
+                WHERE f.family_id = ? AND f.tenant_id = ? AND f.branch_id = ?
+            ");
+            $stmt_update_family->execute([$tenant_id, $branch_id, $tenant_id, $branch_id, $tenant_id, $branch_id, $family_id, $tenant_id, $branch_id]);
         }
 
         // Delete the transaction

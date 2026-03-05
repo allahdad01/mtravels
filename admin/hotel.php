@@ -13,8 +13,10 @@ require_once '../includes/language_helpers.php';
 // Enforce authentication
 enforce_auth();
 
-// Check if user is logged in
-if (!isset($_SESSION['user_id'])  || $_SESSION['role'] !== 'admin') {
+// Check if user is logged in with proper role
+$allowed_roles = ['admin', 'finance', 'sales'];
+if (!isset($_SESSION['user_id']) || !in_array($_SESSION['role'], $allowed_roles)) {
+    error_log("Unauthorized access attempt to dashboard: " . ($_SESSION['user_id'] ?? 'unknown') . " - Role: " . ($_SESSION['role'] ?? 'unknown') . " - IP: " . $_SERVER['REMOTE_ADDR']);
     header('Location: ../login.php');
     exit();
 }
@@ -22,7 +24,10 @@ if (!isset($_SESSION['user_id'])  || $_SESSION['role'] !== 'admin') {
 // Database connection
 require_once('../includes/db.php');
 
-// Load hotel bookings using handler (similar to ticket listing)
+// Check if user is admin or finance
+$canEdit = in_array($_SESSION['role'], ['admin', 'finance']);
+
+// Load hotel bookings using handler
 include '../api/hotel/hotel_handler.php';
 
 // Include utility functions
@@ -34,13 +39,10 @@ $paginationPattern = empty($search)
 
 ?>
 
-
-
-
 <?php include '../includes/header.php'; ?>
 
 <link rel="stylesheet" href="../css/general/modal-styles.css">
-
+<link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@300;400;500;600&family=Playfair+Display:wght@600&display=swap" rel="stylesheet">
 
 <!-- Main Content -->
 <div class="pcoded-main-container">
@@ -49,245 +51,305 @@ $paginationPattern = empty($search)
             <div class="pcoded-inner-content">
                 <div class="main-body">
                     <div class="page-wrapper">
-                        <!-- Enhanced Page Header -->
-                        <div class="page-header card">
-                            <div class="row align-items-center">
-                                <div class="col-md-6">
-                                    <h5 class="mb-0"><i class="feather icon-list mr-2"></i><?= __('hotel_bookings') ?></h5>
-                                    <p class="mb-0 mt-1" style="font-size: 14px; opacity: 0.9;"><?= __('manage_hotel_bookings_efficiently') ?></p>
-                                </div>
-                                <div class="col-md-6 text-end">
-                                    <a href="dashboard.php" class="btn btn-outline-secondary btn-sm">
-                                        <i class="feather icon-arrow-left mr-1"></i><?= __('back_to_dashboard') ?>
-                                    </a>
-                                </div>
-                            </div>
-                        </div>
 
-                        <!-- Dashboard Stats -->
-                        <div class="row mb-4">
-                            <div class="col-md-3">
-                                <div class="card">
-                                    <div class="card-body text-center">
-                                        <i class="feather icon-users mb-3 text-primary" style="font-size: 32px;"></i>
-                                        <h3 class="mb-1"><?= number_format($totalRecords) ?></h3>
-                                        <p class="text-muted mb-0"><?= __('total_bookings') ?></p>
-                                    </div>
-                                </div>
+                        <!-- Page Header -->
+                        <div class="hb-page-header">
+                            <div class="hb-page-header-left">
+                                <h1><i class="fa-solid fa-hotel"></i><?= __('hotel_bookings') ?></h1>
+                                <p><?= __('manage_hotel_bookings_efficiently') ?></p>
                             </div>
-                            <!-- Add more stat cards as needed -->
+                            <div class="hb-page-header-right">
+                                <a href="dashboard.php" class="hb-btn-back">
+                                    <i class="feather icon-arrow-left"></i><?= __('back_to_dashboard') ?>
+                                </a>
+                                <button class="hb-btn-new" data-toggle="modal" data-target="#addBookingModal">
+                                    <i class="feather icon-plus"></i><?= __('new_booking') ?>
+                                </button>
+                            </div>
                         </div>
 
                         <!-- Toast Container -->
                         <div class="toast-container"></div>
 
-                        <!-- Main Card -->
-                        <div class="card shadow-sm fade-in">
-                                <!-- Enhanced Card Header with Actions -->
-                                <div class="card-header">
-                                    <h5><i class="feather icon-list mr-2"></i><?= __('hotel_bookings') ?></h5>
-                                </div>
-                                <div class="card-body">
-                                    <div class="row mb-3">
-                                        <div class="col-md-6">
-                                            <form class="input-group" method="get">
-                                                <input type="text"
-                                                       class="form-control form-control-lg"
-                                                       id="searchBookings"
-                                                       name="search"
-                                                       value="<?= htmlspecialchars($search ?? '') ?>"
-                                                       placeholder="<?= __('search_bookings') ?>">
-                                                <div class="input-group-append">
-                                                    <button class="btn btn-primary" type="submit">
-                                                        <i class="feather icon-search mr-1"></i><?= __('search') ?>
-                                                    </button>
-                                                    <?php if (!empty($search)): ?>
-                                                        <a href="hotel.php" class="btn btn-outline-secondary">
-                                                            <i class="feather icon-x mr-1"></i><?= __('clear') ?>
-                                                        </a>
-                                                    <?php endif; ?>
-                                                </div>
-                                            </form>
-                                        </div>
-                                        <div class="col-md-6 text-end">
-                                            <div class="d-flex flex-row justify-content-end">
-                                                <button class="btn btn-primary btn-lg" data-toggle="modal" data-target="#addBookingModal">
-                                                    <i class="feather icon-plus mr-1"></i><?= __('new_booking') ?>
-                                                </button>
-                                            </div>
-                                        </div>
-                                    </div>
-                                </div>
-
-                                <!-- Enhanced Table Container -->
-                                <div class="table-responsive" style="max-height: 60vh; overflow-y: auto;">
-                                    <table class="table table-hover mb-0" id="bookingsTable" style="min-width: 1200px;">
-                                        <thead>
-                                            <tr>
-                                                <th><?= __('booking_id') ?></th>
-                                                <th><?= __('guest') ?></th>
-                                                <th><?= __('check_in_out') ?></th>
-                                                <th><?= __('room_details') ?></th>
-                                                <th><?= __('amount') ?></th>
-                                                <th><?= __('status') ?></th>
-                                                <th class="text-center"><?= __('actions') ?></th>
-                                            </tr>
-                                        </thead>
-                                        <tbody id="bookingsTableBody">
-                                            <?php if (!empty($bookings)): ?>
-                                                <?php foreach ($bookings as $booking): ?>
-                                                    <tr class="align-middle">
-    
-                                                        <td data-label="<?= __('booking_id') ?>">
-                                                            <span class="font-weight-bold text-primary">#<?= getValue($booking, 'order_id') ?></span>
-                                                        </td>
-                                                        <td data-label="<?= __('guest') ?>">
-                                                            <div class="d-flex align-items-center">
-                                                                <div>
-                                                                    <span class="d-block font-weight-medium"><?= getValue($booking, 'guest_name') ?></span>
-                                                                    <small class="text-muted">
-                                                                        <i class="feather icon-phone mr-1"></i>
-                                                                        <?= getValue($booking, 'contact_no') ?>
-                                                                    </small>
-                                                                </div>
-                                                            </div>
-                                                        </td>
-                                                        <td data-label="<?= __('check_in_out') ?>">
-                                                            <div class="d-flex align-items-center">
-                                                                <i class="feather icon-calendar text-primary mr-2"></i>
-                                                                <div>
-                                                                    <div class="d-flex align-items-center mb-1">
-                                                                        <span class="mr-2">IN</span>
-                                                                        <span><?= getValue($booking, 'check_in_date') ? date('M d, Y', strtotime($booking['check_in_date'])) : 'N/A' ?></span>
-                                                                    </div>
-                                                                    <div class="d-flex align-items-center">
-                                                                        <span class="mr-2">OUT</span>
-                                                                        <span><?= getValue($booking, 'check_out_date') ? date('M d, Y', strtotime($booking['check_out_date'])) : 'N/A' ?></span>
-                                                                    </div>
-                                                                </div>
-                                                            </div>
-                                                        </td>
-                                                        <td data-label="<?= __('room_details') ?>">
-                                                            <div class="d-flex align-items-center">
-                                                                <i class="feather icon-home text-info mr-2"></i>
-                                                                <span><?= getValue($booking, 'accommodation_details') ?></span>
-                                                            </div>
-                                                        </td>
-                                                        <td data-label="<?= __('amount') ?>">
-                                                            <div class="d-flex flex-column">
-                                                                <h6 class="mb-1 text-primary">
-                                                                    <?= getValue($booking, 'currency') ?> <?= number_format(getValue($booking, 'sold_amount', 0), 2) ?>
-                                                                </h6>
-                                                                <small class="text-success">
-                                                                    <i class="feather icon-trending-up mr-1"></i>
-                                                                    Profit: <?= getValue($booking, 'currency') ?> <?= number_format(getValue($booking, 'profit', 0), 2) ?>
-                                                                </small>
-                                                            </div>
-                                                        </td>
-                                                        <td data-label="<?= __('status') ?>">
-                                                            <div class="d-flex flex-column">
-                                                                <div class="mb-1">
-                                                                    <span class="status-dot status-active"></span>
-                                                                    <span>Sold to: <?= getValue($booking, 'client_name') ?></span>
-                                                                </div>
-                                                                <small class="text-muted">
-                                                                    <i class="feather icon-user mr-1"></i>
-                                                                    <?= __('created_by') ?>: <?= htmlspecialchars($booking['created_by']) ?>
-                                                                </small>
-                                                            </div>
-                                                        </td>
-                                                        <td data-label="<?= __('actions') ?>">
-                                                            <div class="d-flex justify-content-end">
-                                                                <button type="button" class="btn btn-icon btn-light mr-2"
-                                                                        onclick="viewBooking(<?= $booking['id'] ?>)"
-                                                                        title="<?= __('view_details') ?>">
-                                                                    <i class="feather icon-eye text-info"></i>
-                                                                </button>
-                                                                <button type="button" class="btn btn-icon btn-light mr-2"
-                                                                        onclick="editBooking(<?= $booking['id'] ?>)"
-                                                                        title="<?= __('edit_booking') ?>">
-                                                                    <i class="feather icon-edit-2 text-warning"></i>
-                                                                </button>
-                                                                <?php
-                                                                $isAgencyClient = false;
-                                                                if (!empty($booking['sold_to'])) {
-                                                                    try {
-                                                                        $clientStmt = $pdo->prepare("SELECT client_type FROM clients WHERE id = ? AND tenant_id = ? AND branch_id = ?");
-                                                                        $clientStmt->execute([$booking['sold_to'], $tenant_id, $branch_id]);
-                                                                        $clientRow = $clientStmt->fetch(PDO::FETCH_ASSOC);
-                                                                        if ($clientRow) {
-                                                                            $isAgencyClient = ($clientRow['client_type'] === 'agency');
-                                                                        }
-                                                                    } catch (PDOException $e) {
-                                                                        error_log("Error checking client type: " . $e->getMessage());
-                                                                    }
-                                                                }
-                                                                if ($isAgencyClient): ?>
-                                                                <button type="button" class="btn btn-icon btn-light mr-2"
-                                                                        onclick="manageTransactions(<?= $booking['id'] ?>)"
-                                                                        title="<?= __('manage_transactions') ?>">
-                                                                    <i class="fas fa-dollar-sign text-success"></i>
-                                                                </button>
-                                                                <?php endif; ?>
-                                                                <div class="dropdown">
-                                                                    <button type="button" class="btn btn-icon btn-light"
-                                                                            data-toggle="dropdown" aria-haspopup="true"
-                                                                            aria-expanded="false">
-                                                                        <i class="feather icon-more-vertical"></i>
-                                                                    </button>
-                                                                    <div class="dropdown-menu dropdown-menu-right">
-                                                                        <a class="dropdown-item text-danger" href="#"
-                                                                           onclick="deleteBooking(<?= $booking['id'] ?>)">
-                                                                            <i class="feather icon-trash-2 mr-2"></i>
-                                                                            <?= __('delete_booking') ?>
-                                                                        </a>
-                                                                        <a class="dropdown-item" href="#"
-                                                                           onclick="openRefundModal(<?= $booking['id'] ?>, <?= $booking['sold_amount'] ?>, <?= $booking['profit'] ?>, '<?= $booking['currency'] ?>')">
-                                                                            <i class="feather icon-refresh-ccw mr-2"></i>
-                                                                            <?= __('process_refund') ?>
-                                                                        </a>
-                                                                    </div>
-                                                                </div>
-                                                            </div>
-                                                        </td>
-                                                    </tr>
-                                                <?php endforeach; ?>
-                                            <?php else: ?>
-                                                <tr>
-                                                    <td colspan="8" class="text-center py-5" data-label="">
-                                                        
-                                                        <h5 class="text-muted mb-2"><?= __('no_bookings_found') ?></h5>
-                                                        <p class="text-muted mb-3"><?= __('start_by_adding_your_first_hotel_booking') ?></p>
-                                                        <button class="btn btn-primary" data-toggle="modal" data-target="#addBookingModal">
-                                                            <i class="feather icon-plus mr-1"></i><?= __('add_new_booking') ?>
-                                                        </button>
-                                                    </td>
-                                                </tr>
-                                            <?php endif; ?>
-                                        </tbody>
-                                    </table>
-                                </div>
-
-                                <!-- Enhanced Pagination -->
-                                <?php if (!empty($bookings)): ?>
-                                <div class="card-footer bg-white border-top">
-                                    <div class="row align-items-center">
-                                        <div class="col">
-                                            <p class="text-muted mb-0">
-                                                <?= generatePageInfo($currentPage, $itemsPerPage, $totalRecords) ?>
-                                            </p>
-                                        </div>
-                                        <div class="col-auto">
-                                            <nav>
-                                                <?= generatePagination($currentPage, $totalPages, $paginationPattern) ?>
-                                            </nav>
-                                        </div>
-                                    </div>
-                                </div>
+                        <!-- Toolbar -->
+                        <div class="hb-toolbar">
+                            <form class="hb-search-wrap" method="get">
+                                <i class="feather icon-search"></i>
+                                <input type="text"
+                                       id="searchBookings"
+                                       name="search"
+                                       value="<?= htmlspecialchars($search ?? '') ?>"
+                                       placeholder="<?= __('search_bookings') ?>…">
+                                <?php if (!empty($search)): ?>
+                                    <a href="hotel.php" class="hb-clear-btn" title="<?= __('clear') ?>">
+                                        <i class="feather icon-x"></i>
+                                    </a>
                                 <?php endif; ?>
+                            </form>
+                            <div class="hb-filter-tabs">
+                                <button class="hb-filter-tab active" data-filter="all">All</button>
+                                <button class="hb-filter-tab" data-filter="confirmed">Confirmed</button>
+                                <button class="hb-filter-tab" data-filter="pending">Pending</button>
+                                <button class="hb-filter-tab" data-filter="cancelled">Cancelled</button>
                             </div>
                         </div>
-                    </div>
+
+                        <!-- Column Headers -->
+                        <div class="hb-list-header">
+                            <div class="lh-bar"></div>
+                            <div class="lh-icon"></div>
+                            <div class="lh-guest">Guest</div>
+                            <div class="lh-room">Room</div>
+                            <div class="lh-dates">Dates</div>
+                            <div class="lh-price">Amount</div>
+                            <div class="lh-status">Status</div>
+                            <div class="lh-actions"></div>
+                        </div>
+
+                        <!-- Bookings List -->
+                        <div class="hb-list" id="bookingsContainer">
+                            <?php if (!empty($bookings)): ?>
+                                <?php foreach ($bookings as $i => $booking): ?>
+                                    <?php
+                                    // Check agency client
+                                    $isAgencyClient = false;
+                                    if (!empty($booking['sold_to'])) {
+                                        try {
+                                            $clientStmt = $pdo->prepare("SELECT client_type FROM clients WHERE id = ? AND tenant_id = ? AND branch_id = ?");
+                                            $clientStmt->execute([$booking['sold_to'], $tenant_id, $branch_id]);
+                                            $clientRow = $clientStmt->fetch(PDO::FETCH_ASSOC);
+                                            if ($clientRow) {
+                                                $isAgencyClient = ($clientRow['client_type'] === 'agency');
+                                            }
+                                        } catch (PDOException $e) {
+                                            error_log("Error checking client type: " . $e->getMessage());
+                                        }
+                                    }
+
+                                    // Compute nights
+                                    $nights = '';
+                                    if (!empty($booking['check_in_date']) && !empty($booking['check_out_date'])) {
+                                        $cin  = new DateTime($booking['check_in_date']);
+                                        $cout = new DateTime($booking['check_out_date']);
+                                        $nights = $cin->diff($cout)->days;
+                                    }
+
+                                    // Status — default confirmed; extend as needed
+                                    $status     = $booking['status'] ?? 'confirmed';
+                                    $statusMap  = [
+                                        'confirmed' => ['label' => 'Confirmed', 'class' => 'hb-status-confirmed', 'bar' => 'linear-gradient(180deg,#1a56db 0%,#7c3aed 100%)'],
+                                        'pending'   => ['label' => 'Pending',   'class' => 'hb-status-pending',   'bar' => 'linear-gradient(180deg,#d97706 0%,#f59e0b 100%)'],
+                                        'cancelled' => ['label' => 'Cancelled', 'class' => 'hb-status-cancelled', 'bar' => '#d1d5db'],
+                                    ];
+                                    $statusInfo = $statusMap[$status] ?? $statusMap['confirmed'];
+                                    $isCancelled = ($status === 'cancelled');
+
+                                    // Icon colour per status
+                                    $iconStyle = match($status) {
+                                        'pending'   => 'background:#fffbeb; color:#d97706;',
+                                        'cancelled' => 'background:#f9fafb; color:#9ca3af;',
+                                        default     => 'background:#eff3ff; color:#1a56db;',
+                                    };
+                                    ?>
+                                    <div class="hb-row<?= $isCancelled ? ' hb-row-cancelled' : '' ?>" 
+                                         data-booking-id="<?= $booking['id'] ?>"
+                                         data-status="<?= htmlspecialchars($status) ?>"
+                                         style="animation-delay: <?= $i * 0.04 ?>s">
+
+                                        <!-- Accent Bar -->
+                                        <div class="hb-accent-bar" style="background: <?= $statusInfo['bar'] ?>;"></div>
+
+                                        <!-- Hotel Icon -->
+                                        <div class="hb-icon-cell">
+                                            <div class="hb-hotel-icon" style="<?= $iconStyle ?>">
+                                                <i class="feather icon-home"></i>
+                                            </div>
+                                        </div>
+
+                                        <!-- Guest -->
+                                        <div class="hb-guest-cell">
+                                            <div class="hb-guest-name"><?= htmlspecialchars(getValue($booking, 'guest_name')) ?></div>
+                                            <div class="hb-guest-meta">
+                                                <?php if (!empty($booking['contact_no'])): ?>
+                                                <span><i class="feather icon-phone"></i><?= htmlspecialchars($booking['contact_no']) ?></span>
+                                                <?php endif; ?>
+                                                <?php if (!empty($booking['client_name'])): ?>
+                                                <span><i class="feather icon-briefcase"></i><?= htmlspecialchars($booking['client_name']) ?></span>
+                                                <?php endif; ?>
+                                            </div>
+                                            <div class="hb-order-id <?= $isCancelled ? 'hb-order-id-muted' : '' ?>">
+                                                <i class="feather icon-hash"></i><?= htmlspecialchars(getValue($booking, 'order_id')) ?>
+                                            </div>
+                                        </div>
+
+                                        <!-- Room -->
+                                        <div class="hb-room-cell">
+                                            <div class="hb-cell-label">Room</div>
+                                            <div class="hb-room-name"><?= htmlspecialchars(getValue($booking, 'accommodation_details')) ?></div>
+                                        </div>
+
+                                        <!-- Dates -->
+                                        <div class="hb-dates-cell">
+                                            <div class="hb-cell-label">Stay</div>
+                                            <div class="hb-dates-track">
+                                                <div class="hb-date-block">
+                                                    <span class="hb-date-day">
+                                                        <?= !empty($booking['check_in_date']) ? date('d', strtotime($booking['check_in_date'])) : '—' ?>
+                                                    </span>
+                                                    <span class="hb-date-month">
+                                                        <?= !empty($booking['check_in_date']) ? date('M Y', strtotime($booking['check_in_date'])) : '' ?>
+                                                    </span>
+                                                </div>
+                                                <div class="hb-arrow"><i class="feather icon-arrow-right"></i></div>
+                                                <div class="hb-date-block">
+                                                    <span class="hb-date-day">
+                                                        <?= !empty($booking['check_out_date']) ? date('d', strtotime($booking['check_out_date'])) : '—' ?>
+                                                    </span>
+                                                    <span class="hb-date-month">
+                                                        <?= !empty($booking['check_out_date']) ? date('M Y', strtotime($booking['check_out_date'])) : '' ?>
+                                                    </span>
+                                                </div>
+                                                <?php if ($nights !== ''): ?>
+                                                <span class="hb-nights-pill">
+                                                    <i class="feather icon-moon"></i><?= $nights ?>n
+                                                </span>
+                                                <?php endif; ?>
+                                            </div>
+                                        </div>
+
+                                        <!-- Price -->
+                                        <div class="hb-price-cell">
+                                            <div class="hb-price-amount <?= $isCancelled ? 'hb-muted' : '' ?>">
+                                                <span class="hb-currency"><?= htmlspecialchars(getValue($booking, 'currency')) ?></span>
+                                                <?= number_format(getValue($booking, 'sold_amount', 0), 2) ?>
+                                            </div>
+                                            <?php if (!$isCancelled): ?>
+                                            <div class="hb-profit-row">
+                                                <i class="feather icon-trending-up"></i>
+                                                <span>+ <?= getValue($booking, 'currency') ?> <?= number_format(getValue($booking, 'profit', 0), 2) ?></span>
+                                            </div>
+                                            <?php else: ?>
+                                            <div class="hb-profit-row hb-refunded">
+                                                <i class="feather icon-minus"></i><span>Refunded</span>
+                                            </div>
+                                            <?php endif; ?>
+                                        </div>
+
+                                        <!-- Status + Created By -->
+                                        <div class="hb-status-cell">
+                                            <span class="hb-status-pill <?= $statusInfo['class'] ?>">
+                                                <span class="hb-dot"></span><?= $statusInfo['label'] ?>
+                                            </span>
+                                            <div class="hb-created-by">
+                                                <i class="feather icon-user"></i>
+                                                <?= htmlspecialchars($booking['created_by'] ?? '') ?>
+                                            </div>
+                                        </div>
+
+                                        <!-- Actions -->
+                                        <div class="hb-actions-cell">
+                                            <button class="hb-btn-icon hb-view"
+                                                    data-tip="<?= __('view_details') ?>"
+                                                    onclick="viewBooking(<?= $booking['id'] ?>)">
+                                                <i class="feather icon-eye"></i>
+                                            </button>
+
+                                            <?php if ($canEdit && !$isCancelled): ?>
+                                            <button class="hb-btn-icon hb-edit"
+                                                    data-tip="<?= __('edit_booking') ?>"
+                                                    onclick="editBooking(<?= $booking['id'] ?>)">
+                                                <i class="feather icon-edit-2"></i>
+                                            </button>
+                                            <?php endif; ?>
+
+                                            <?php if ($isAgencyClient && $canEdit): ?>
+                                            <button class="hb-btn-icon hb-trans"
+                                                    data-tip="<?= __('manage_transactions') ?>"
+                                                    onclick="manageTransactions(<?= $booking['id'] ?>)">
+                                                <i class="fas fa-dollar-sign"></i>
+                                            </button>
+                                            <?php endif; ?>
+
+                                            <div class="hb-dropdown-wrap">
+                                                <button class="hb-btn-icon hb-more"
+                                                        data-tip="More"
+                                                        onclick="toggleHbDropdown(this)">
+                                                    <i class="feather icon-more-vertical"></i>
+                                                </button>
+                                                <div class="hb-dropdown-menu">
+                                                    <button class="hb-dropdown-item"
+                                                            onclick="openRefundModal(<?= $booking['id'] ?>, <?= $booking['sold_amount'] ?>, <?= $booking['profit'] ?>, '<?= $booking['currency'] ?>')">
+                                                        <i class="feather icon-refresh-ccw"></i><?= __('process_refund') ?>
+                                                    </button>
+                                                    <?php if ($canEdit): ?>
+                                                    <button class="hb-dropdown-item hb-danger"
+                                                            onclick="deleteBooking(<?= $booking['id'] ?>)">
+                                                        <i class="feather icon-trash-2"></i><?= __('delete_booking') ?>
+                                                    </button>
+                                                    <?php endif; ?>
+                                                </div>
+                                            </div>
+                                        </div>
+
+                                    </div><!-- /.hb-row -->
+                                <?php endforeach; ?>
+
+                            <?php else: ?>
+                                <div class="hb-empty">
+                                    <i class="feather icon-inbox"></i>
+                                    <h4><?= __('no_bookings_found') ?></h4>
+                                    <p><?= __('start_by_adding_your_first_hotel_booking') ?></p>
+                                    <button class="hb-btn-new mt-3" data-toggle="modal" data-target="#addBookingModal">
+                                        <i class="feather icon-plus"></i><?= __('add_new_booking') ?>
+                                    </button>
+                                </div>
+                            <?php endif; ?>
+                        </div>
+
+                        <!-- Pagination -->
+                        <?php if (!empty($bookings) && isset($totalPages) && $totalPages > 1): ?>
+                        <div class="hb-pagination">
+                            <span class="hb-pagination-info">
+                                <?php
+                                if (isset($currentPage, $itemsPerPage, $totalRecords)) {
+                                    $startRecord = (($currentPage - 1) * $itemsPerPage) + 1;
+                                    $endRecord   = min($currentPage * $itemsPerPage, $totalRecords);
+                                    echo sprintf('Showing %d–%d of %d entries', $startRecord, $endRecord, $totalRecords);
+                                }
+                                ?>
+                            </span>
+                            <nav class="hb-pager">
+                                <?php
+                                $prevDisabled = ($currentPage <= 1) ? 'disabled' : '';
+                                echo '<a class="hb-page-btn ' . $prevDisabled . '" href="' . ($prevDisabled ? '#' : $paginationPattern . ($currentPage - 1)) . '"><i class="feather icon-chevron-left"></i></a>';
+
+                                $maxPages  = 5;
+                                $startPage = max(1, min($currentPage - floor($maxPages / 2), $totalPages - $maxPages + 1));
+                                $endPage   = min($startPage + $maxPages - 1, $totalPages);
+
+                                if ($startPage > 1) {
+                                    echo '<a class="hb-page-btn" href="' . $paginationPattern . '1">1</a>';
+                                    if ($startPage > 2) echo '<span class="hb-page-ellipsis">…</span>';
+                                }
+
+                                for ($p = $startPage; $p <= $endPage; $p++) {
+                                    $activeClass = ($p == $currentPage) ? 'hb-page-active' : '';
+                                    echo '<a class="hb-page-btn ' . $activeClass . '" href="' . $paginationPattern . $p . '">' . $p . '</a>';
+                                }
+
+                                if ($endPage < $totalPages) {
+                                    if ($endPage < $totalPages - 1) echo '<span class="hb-page-ellipsis">…</span>';
+                                    echo '<a class="hb-page-btn" href="' . $paginationPattern . $totalPages . '">' . $totalPages . '</a>';
+                                }
+
+                                $nextDisabled = ($currentPage >= $totalPages) ? 'disabled' : '';
+                                echo '<a class="hb-page-btn ' . $nextDisabled . '" href="' . ($nextDisabled ? '#' : $paginationPattern . ($currentPage + 1)) . '"><i class="feather icon-chevron-right"></i></a>';
+                                ?>
+                            </nav>
+                        </div>
+                        <?php endif; ?>
+
+                    </div><!-- /.page-wrapper -->
                 </div>
             </div>
         </div>
@@ -302,683 +364,725 @@ $paginationPattern = empty($search)
 <?php include '../modals/hotel/view_details_modal.php'; ?>
 <?php include '../modals/hotel/multi_ticket.php'; ?>
 
-
-
-
-
 <style>
-    /* Enhanced custom styles for better layout and design */
-    .page-header.card {
-        background: linear-gradient(135deg, #4099ff 0%, #2ed8b6 100%);
-        color: #ffffff;
-        border: none;
-        margin-bottom: 20px;
-        padding: 20px !important;
-        box-shadow: 0 4px 12px rgba(0,0,0,0.15);
-        border-radius: 10px;
-    }
-
-    .page-header.card .row {
-        display: flex;
-        justify-content: space-between;
-        align-items: center;
-    }
-
-    .page-header.card h5 {
-        color: #ffffff;
-        margin: 0;
-        font-weight: 600;
-    }
-
-    .page-header.card .text-end {
-        text-align: right;
-    }
-
-    .page-header.card .btn {
-        background: rgba(255,255,255,0.2);
-        color: #ffffff;
-        border: 1px solid rgba(255,255,255,0.3);
-        border-radius: 25px;
-        transition: all 0.3s ease;
-    }
-
-    .page-header.card .btn:hover {
-        background: rgba(255,255,255,0.3);
-        border-color: rgba(255,255,255,0.5);
-        transform: translateY(-1px);
-    }
-
-    .card {
-        border-radius: 10px;
-        box-shadow: 0 2px 8px rgba(0,0,0,0.1);
-        transition: transform 0.2s ease-in-out, box-shadow 0.2s ease-in-out;
-        border: none;
-    }
-
-    .card:hover {
-        transform: translateY(-2px);
-        box-shadow: 0 4px 16px rgba(0,0,0,0.15);
-    }
-
-    .card-header {
-        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-        color: white;
-        border-radius: 10px 10px 0 0;
-        padding: 1rem 1.5rem;
-        border: none;
-    }
-
-    .card-header h5 {
-        margin: 0;
-        font-weight: 600;
-        display: flex;
-        align-items: center;
-    }
-
-    .progress {
-        border-radius: 15px;
-        overflow: hidden;
-        box-shadow: inset 0 1px 2px rgba(0,0,0,0.1);
-    }
-
-    .progress-bar {
-        transition: width 0.6s ease;
-    }
-
-    .badge {
-        font-size: 0.85em;
-        padding: 0.5em 0.75em;
-        border-radius: 20px;
-        font-weight: 500;
-    }
-
-    .badge-success {
-        background-color: #28a745;
-    }
-
-    .badge-warning {
-        background-color: #ffc107;
-        color: #212529;
-    }
-
-    .badge-info {
-        background-color: #17a2b8;
-    }
-
-    .table-responsive {
-        border-radius: 10px;
-        overflow: hidden;
-        border: 1px solid #dee2e6;
-        max-height: 60vh;
-        overflow-x: auto;
-        overflow-y: auto;
-    }
-    
-    /* Enhanced table responsiveness */
-    .table-responsive::-webkit-scrollbar {
-        height: 8px;
-    }
-    
-    /* Enhanced table header styling */
-    .table thead th {
-        position: sticky;
-        top: 0;
-        z-index: 10;
-        background-color: #f8f9fa;
-    }
-    
-    /* Better mobile table header visibility */
-    @media (max-width: 576px) {
-        .table thead th {
-            position: relative;
-            background-color: #e9ecef;
-            font-size: 0.7rem;
-            padding: 0.25rem 0.5rem;
-        }
-    }
-    
-    .table-responsive::-webkit-scrollbar-track {
-        background: #f1f1f1;
-        border-radius: 4px;
-    }
-    
-    .table-responsive::-webkit-scrollbar-thumb {
-        background: #c1c1c1;
-        border-radius: 4px;
-    }
-    
-    .table-responsive::-webkit-scrollbar-thumb:hover {
-        background: #a8a8a8;
-    }
-    
-    /* Mobile responsive adjustments */
-    @media (max-width: 768px) {
-        .table-responsive {
-            max-height: 50vh;
-        }
-        
-        .table tbody td {
-            padding: 0.75rem 0.5rem;
-            font-size: 0.875rem;
-        }
-        
-        .table thead th {
-            padding: 0.75rem 0.5rem;
-            font-size: 0.75rem;
-        }
-        
-        /* Enable horizontal scrolling on small screens */
-        @media (max-width: 576px) {
-            .table-responsive {
-                max-height: 50vh;
-                overflow-x: auto;
-                overflow-y: auto;
-            }
-            
-            .table {
-                min-width: 1000px; /* Ensure table has minimum width for horizontal scrolling */
-            }
-            
-            .table tbody td {
-                padding: 0.5rem 0.25rem;
-                font-size: 0.8rem;
-                white-space: nowrap; /* Prevent text wrapping */
-            }
-            
-            .table thead th {
-                padding: 0.5rem 0.25rem;
-                font-size: 0.75rem;
-                white-space: nowrap; /* Prevent header text wrapping */
-            }
-            
-            /* Keep table rows as blocks but allow horizontal scrolling */
-            .table tbody tr {
-                display: table-row;
-            }
-        }
-        
-        /* Extra small screens - more aggressive horizontal scrolling */
-        @media (max-width: 425px) {
-            .table-responsive {
-                max-height: 45vh;
-            }
-            
-            .table {
-                min-width: 900px;
-            }
-            
-            .table tbody td {
-                padding: 0.4rem 0.2rem;
-                font-size: 0.75rem;
-            }
-            
-            .table thead th {
-                padding: 0.4rem 0.2rem;
-                font-size: 0.7rem;
-            }
-        }
-        
-        /* Mobile layout improvements for search and buttons */
-        @media (max-width: 768px) {
-            .card-body .row.mb-3 {
-                flex-direction: column;
-            }
-            
-            .card-body .row.mb-3 .col-md-6 {
-                width: 100%;
-                margin-bottom: 1rem;
-            }
-            
-            .card-body .row.mb-3 .col-md-6:last-child {
-                margin-bottom: 0;
-                text-align: left;
-            }
-            
-            .card-body .row.mb-3 .d-flex.flex-row.justify-content-end {
-                justify-content: flex-start !important;
-            }
-            
-            .form-control.form-control-lg {
-                font-size: 1rem;
-                padding: 0.75rem;
-            }
-            
-            .btn.btn-primary.btn-lg,
-            .btn.btn-outline-secondary {
-                font-size: 0.875rem;
-                padding: 0.5rem 1rem;
-                width: 100%;
-                margin-bottom: 0.5rem;
-            }
-            
-            .btn-group .btn:not(:last-child) {
-                margin-right: 0;
-            }
-        }
-        
-        /* Very small screens */
-        @media (max-width: 425px) {
-            .form-control.form-control-lg {
-                font-size: 0.875rem;
-                padding: 0.625rem;
-            }
-            
-            .btn.btn-primary.btn-lg,
-            .btn.btn-outline-secondary {
-                font-size: 0.8rem;
-                padding: 0.5rem 0.75rem;
-            }
-        }
-    }
-
-    .table {
-        margin-bottom: 0;
-    }
-
-    .table thead th {
-        background-color: #f8f9fa;
-        border-bottom: 2px solid #dee2e6;
-        font-weight: 600;
-        color: #495057;
-        padding: 1rem;
-    }
-
-    .table tbody tr:hover {
-        background-color: #f1f3f4;
-    }
-
-    .table tbody td {
-        padding: 1rem;
-        vertical-align: middle;
-    }
-
-    .form-control {
-        border-radius: 8px;
-        border: 1px solid #ced4da;
-        transition: border-color 0.15s ease-in-out, box-shadow 0.15s ease-in-out;
-        padding: 0.75rem;
-    }
-
-    .form-control:focus {
-        border-color: #4099ff;
-        box-shadow: 0 0 0 0.2rem rgba(64, 153, 255, 0.25);
-    }
-
-    .btn-primary {
-        background: linear-gradient(135deg, #4099ff 0%, #2ed8b6 100%);
-        border: none;
-        border-radius: 25px;
-        padding: 0.75rem 2rem;
-        font-weight: 600;
-        transition: all 0.3s ease;
-    }
-
-    .btn-primary:hover {
-        transform: translateY(-1px);
-        box-shadow: 0 4px 12px rgba(64, 153, 255, 0.3);
-    }
-
-    .btn-secondary {
-        border-radius: 25px;
-        padding: 0.75rem 2rem;
-        font-weight: 600;
-        transition: all 0.3s ease;
-    }
-
-    .alert {
-        border-radius: 10px;
-        border: none;
-        padding: 1rem 1.5rem;
-    }
-
-    .alert-info {
-        background: linear-gradient(135deg, #d1ecf1 0%, #bee5eb 100%);
-        color: #0c5460;
-    }
-
-    .alert-success {
-        background: linear-gradient(135deg, #d4edda 0%, #c3e6cb 100%);
-        color: #155724;
-    }
-
-    .alert-danger {
-        background: linear-gradient(135deg, #f8d7da 0%, #f5c6cb 100%);
-        color: #721c24;
-    }
-
-    #estimated_cost {
-        color: #28a745;
-        font-weight: bold;
-    }
-
-    .h2 {
-        font-size: 2.5rem;
-    }
-
-    .h4 {
-        font-size: 1.5rem;
-    }
-
-    .h5 {
-        font-size: 1.25rem;
-    }
-
-    .h6 {
-        font-size: 1rem;
-    }
-
-    /* Additional Hotel-specific styles */
-    .stat-card {
-        transition: transform 0.2s ease-in-out, box-shadow 0.2s ease-in-out;
-        border-radius: 10px;
-        box-shadow: 0 2px 8px rgba(0,0,0,0.1);
-        border: none;
-    }
-
-    .stat-card:hover {
-        transform: translateY(-2px);
-        box-shadow: 0 4px 16px rgba(0,0,0,0.15);
-    }
-
-    .booking-summary {
-        background: linear-gradient(to right, #f8f9fa, #ffffff);
-    }
-
-    .payment-section {
-        padding: 0.5rem 0;
-        transition: all 0.3s ease;
-    }
-
-    .payment-section:not(:last-child) {
-        border-bottom: 1px solid #e9ecef;
-    }
-
-    /* Animation for New Transactions */
-    @keyframes highlightRow {
-        from { background-color: rgba(64, 153, 255, 0.1); }
-        to { background-color: transparent; }
-    }
-
-    .new-transaction {
-        animation: highlightRow 2s ease-out;
-    }
-
-    /* Custom Scrollbar for Modal Body */
-    .modal-body {
-        max-height: 75vh;
-        overflow-y: auto;
-    }
-
-    .modal-body::-webkit-scrollbar {
-        width: 6px;
-    }
-
-    .modal-body::-webkit-scrollbar-track {
-        background: #f1f1f1;
-    }
-
-    .modal-body::-webkit-scrollbar-thumb {
-        background: #888;
-        border-radius: 3px;
-    }
-
-    .modal-body::-webkit-scrollbar-thumb:hover {
-        background: #555;
-    }
-
-    /* Form Validation Styles */
-    .was-validated .form-control:invalid:focus,
-    .form-control.is-invalid:focus {
-        border-color: var(--danger-color);
-        box-shadow: 0 0 0 0.2rem rgba(255, 83, 112, 0.25);
-    }
-
-    .was-validated .form-control:valid:focus,
-    .form-control.is-valid:focus {
-        border-color: var(--success-color);
-        box-shadow: 0 0 0 0.2rem rgba(46, 216, 182, 0.25);
-    }
-
-    /* Enhanced Button States */
-    .btn {
-        position: relative;
-        overflow: hidden;
-    }
-
-    .btn::after {
-        content: '';
-        position: absolute;
-        top: 50%;
-        left: 50%;
-        width: 5px;
-        height: 5px;
-        background: rgba(255, 255, 255, 0.5);
-        opacity: 0;
-        border-radius: 100%;
-        transform: scale(1, 1) translate(-50%);
-        transform-origin: 50% 50%;
-    }
-
-    .btn:focus:not(:active)::after {
-        animation: ripple 1s ease-out;
-    }
-
-    @keyframes ripple {
-        0% {
-            transform: scale(0, 0);
-            opacity: 0.5;
-        }
-        100% {
-            transform: scale(20, 20);
-            opacity: 0;
-        }
-    }
-
-
-    /* Refund Modal Styles */
-    .btn-group-toggle .btn {
-        transition: all 0.2s ease;
-    }
-
-    .btn-group-toggle .btn:not(:disabled):not(.disabled).active {
-        background-color: var(--primary-color);
-        border-color: var(--primary-color);
-        color: white;
-    }
-
-    .btn-outline-primary {
-        color: var(--primary-color);
-        border-color: var(--primary-color);
-    }
-
-    .btn-outline-primary:hover {
-        background-color: var(--primary-color);
-        border-color: var(--primary-color);
-        color: white;
-    }
-
-    /* Loading State */
-    .btn.loading {
-        position: relative;
-        color: transparent !important;
-    }
-
-    .btn.loading::after {
-        content: '';
-        position: absolute;
-        width: 16px;
-        height: 16px;
-        top: 50%;
-        left: 50%;
-        margin-top: -8px;
-        margin-left: -8px;
-        border: 2px solid rgba(255, 255, 255, 0.3);
-        border-radius: 50%;
-        border-top-color: white;
-        animation: spin 1s ease-in-out infinite;
-    }
-
-    @keyframes spin {
-        to { transform: rotate(360deg); }
-    }
-
-    .toast-container {
-        position: fixed;
-        top: 20px;
-        right: 20px;
-        z-index: 9999;
-        max-width: 350px;
-    }
-
-    .toast {
-        position: relative;
-        background-color: #fff;
-        border-radius: 8px;
-        box-shadow: 0 8px 16px rgba(0, 0, 0, 0.15);
-        margin-bottom: 10px;
-        overflow: hidden;
-        opacity: 0;
-        transform: translateX(40px);
-        transition: all 0.3s ease;
-        border-left: 4px solid transparent;
-        padding: 15px;
-    }
-
-    .toast-showing {
-        opacity: 1;
-        transform: translateX(0);
-    }
-
-    .toast-removing {
-        opacity: 0;
-        transform: translateY(-20px);
-    }
-
-    .toast-success {
-        border-left-color: #10b981;
-    }
-
-    .toast-error {
-        border-left-color: #ef4444;
-    }
-
-    .toast-warning {
-        border-left-color: #f59e0b;
-    }
-
-    .toast-info {
-        border-left-color: #3b82f6;
-    }
-
-    .toast-title {
-        display: flex;
-        align-items: center;
-        font-weight: 600;
-        margin-bottom: 5px;
-    }
-
-    .toast-message {
-        word-break: break-word;
-        line-height: 1.5;
-        color: #64748b;
-    }
-
-    /* Enhanced Form Styles */
-    .form-control:focus {
-        border-color: var(--primary-color);
-        box-shadow: 0 0 0 0.2rem rgba(64, 153, 255, 0.25);
-    }
-
-    .input-group-text {
-        background-color: #f8f9fa;
-        border-color: #e9ecef;
-    }
-
-    /* Toast Close Button */
-    .toast .close {
-        background: none;
-        border: none;
-        font-size: 1.5rem;
-        line-height: 1;
-        color: #6c757d;
-        opacity: 0.7;
-        padding: 0;
-        margin-left: auto;
-    }
-
-    .toast .close:hover {
-        color: #000;
-        opacity: 1;
-    }
-
-    /* Tooltip Enhancements */
-    .tooltip {
-        font-size: 0.75rem;
-    }
-
-    .tooltip-inner {
-        padding: 0.5rem 1rem;
-        box-shadow: 0 0.125rem 0.25rem rgba(0, 0, 0, 0.075);
-    }
-    #floatingActionButton .btn {
-  width: 56px;
-  height: 56px;
-  border-radius: 50%;
-
+/* ═══════════════════════════════════════════════════════
+   Hotel Bookings — Row Card Design
+   Prefixed with hb- to avoid conflicts with existing CSS
+   ═══════════════════════════════════════════════════════ */
+
+:root {
+    --hb-bg:         #f0f2f7;
+    --hb-surface:    #ffffff;
+    --hb-border:     #e4e8f0;
+    --hb-text-1:     #111827;
+    --hb-text-2:     #4b5563;
+    --hb-text-3:     #9ca3af;
+    --hb-accent:     #1a56db;
+    --hb-accent-lt:  #eff3ff;
+    --hb-green:      #059669;
+    --hb-green-lt:   #ecfdf5;
+    --hb-amber:      #d97706;
+    --hb-amber-lt:   #fffbeb;
+    --hb-red:        #dc2626;
+    --hb-red-lt:     #fef2f2;
+    --hb-radius:     14px;
+    --hb-shadow:     0 1px 3px rgba(0,0,0,.07), 0 4px 12px rgba(0,0,0,.06);
+    --hb-shadow-hover: 0 4px 8px rgba(0,0,0,.08), 0 14px 28px rgba(0,0,0,.1);
+}
+
+/* ── Page Header ─────────────────────────────────────────── */
+.hb-page-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    margin-bottom: 24px;
+    flex-wrap: wrap;
+    gap: 14px;
+}
+.hb-page-header-left h1 {
+    font-family: 'Playfair Display', Georgia, serif;
+    font-size: 1.65rem;
+    font-weight: 600;
+    color: var(--hb-text-1);
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    margin: 0;
+}
+.hb-page-header-left h1 i {
+    color: var(--hb-accent);
+    font-size: 1.3rem;
+}
+.hb-page-header-left p {
+    color: var(--hb-text-3);
+    font-size: .85rem;
+    margin: 3px 0 0;
+}
+.hb-page-header-right {
+    display: flex;
+    gap: 10px;
+    align-items: center;
+    flex-wrap: wrap;
+}
+.hb-btn-back {
+    display: inline-flex;
+    align-items: center;
+    gap: 7px;
+    padding: 9px 18px;
+    border-radius: 10px;
+    border: 1px solid var(--hb-border);
+    background: var(--hb-surface);
+    color: var(--hb-text-2);
+    font-size: .85rem;
+    font-weight: 500;
+    text-decoration: none;
+    transition: all .2s;
+}
+.hb-btn-back:hover {
+    border-color: var(--hb-accent);
+    color: var(--hb-accent);
+    text-decoration: none;
+}
+.hb-btn-new {
+    display: inline-flex;
+    align-items: center;
+    gap: 7px;
+    padding: 10px 20px;
+    border-radius: 10px;
+    border: none;
+    background: var(--hb-accent);
+    color: #fff;
+    font-size: .875rem;
+    font-weight: 600;
+    cursor: pointer;
+    transition: background .2s, transform .15s, box-shadow .2s;
+    box-shadow: 0 2px 8px rgba(26,86,219,.28);
+    font-family: inherit;
+}
+.hb-btn-new:hover {
+    background: #1648c2;
+    transform: translateY(-1px);
+    box-shadow: 0 4px 16px rgba(26,86,219,.35);
+    color: #fff;
+    text-decoration: none;
+}
+
+/* ── Toolbar ─────────────────────────────────────────────── */
+.hb-toolbar {
+    display: flex;
+    gap: 12px;
+    margin-bottom: 18px;
+    flex-wrap: wrap;
+    align-items: center;
+}
+.hb-search-wrap {
+    position: relative;
+    flex: 1;
+    min-width: 220px;
+    max-width: 380px;
+}
+.hb-search-wrap > i.feather {
+    position: absolute;
+    left: 13px;
+    top: 50%;
+    transform: translateY(-50%);
+    color: var(--hb-text-3);
+    font-size: .85rem;
+    pointer-events: none;
+}
+.hb-search-wrap input {
+    width: 100%;
+    padding: 10px 38px 10px 38px;
+    border: 1px solid var(--hb-border);
+    border-radius: 10px;
+    font-family: inherit;
+    font-size: .875rem;
+    background: var(--hb-surface);
+    color: var(--hb-text-1);
+    outline: none;
+    box-shadow: var(--hb-shadow);
+    transition: border-color .2s, box-shadow .2s;
+}
+.hb-search-wrap input:focus {
+    border-color: var(--hb-accent);
+    box-shadow: 0 0 0 3px rgba(26,86,219,.12);
+}
+.hb-clear-btn {
+    position: absolute;
+    right: 10px;
+    top: 50%;
+    transform: translateY(-50%);
+    color: var(--hb-text-3);
+    font-size: .85rem;
+    display: flex;
+    align-items: center;
+    padding: 4px;
+    border-radius: 4px;
+    transition: color .2s;
+}
+.hb-clear-btn:hover { color: var(--hb-red); }
+.hb-filter-tabs {
+    display: flex;
+    gap: 6px;
+    flex-wrap: wrap;
+}
+.hb-filter-tab {
+    padding: 8px 16px;
+    border-radius: 8px;
+    border: 1px solid var(--hb-border);
+    background: var(--hb-surface);
+    font-family: inherit;
+    font-size: .8rem;
+    font-weight: 500;
+    color: var(--hb-text-2);
+    cursor: pointer;
+    transition: all .2s;
+    box-shadow: var(--hb-shadow);
+}
+.hb-filter-tab.active,
+.hb-filter-tab:hover {
+    background: var(--hb-accent-lt);
+    border-color: #c7d7fb;
+    color: var(--hb-accent);
+}
+
+/* ── Column Headers ──────────────────────────────────────── */
+.hb-list-header {
+    display: grid;
+    grid-template-columns: 6px 52px 1fr 190px 210px 150px 155px 140px;
+    align-items: center;
+    padding: 0 0 8px;
+}
+.hb-list-header > div {
+    font-size: .68rem;
+    font-weight: 700;
+    letter-spacing: .07em;
+    text-transform: uppercase;
+    color: var(--hb-text-3);
+    padding: 0 12px;
+}
+.hb-list-header .lh-bar,
+.hb-list-header .lh-icon { padding: 0; }
+.hb-list-header .lh-guest { padding-left: 16px; }
+.hb-list-header .lh-price { text-align: right; }
+.hb-list-header .lh-actions { padding-right: 16px; }
+
+/* ── List Wrapper ────────────────────────────────────────── */
+.hb-list {
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+}
+
+/* ── Booking Row ─────────────────────────────────────────── */
+.hb-row {
+    display: grid;
+    grid-template-columns: 6px 52px 1fr 190px 210px 150px 155px 140px;
+    align-items: center;
+    background: var(--hb-surface);
+    border-radius: var(--hb-radius);
+    border: 1px solid var(--hb-border);
+    box-shadow: var(--hb-shadow);
+    overflow: visible;
+    transition: box-shadow .25s, transform .25s;
+    animation: hbFadeUp .35s ease both;
+    min-height: 88px;
+    position: relative;
+}
+.hb-row:hover {
+    box-shadow: var(--hb-shadow-hover);
+    transform: translateY(-2px);
+}
+.hb-row-cancelled {
+    opacity: .72;
+}
+
+@keyframes hbFadeUp {
+    from { opacity: 0; transform: translateY(10px); }
+    to   { opacity: 1; transform: translateY(0); }
+}
+
+/* ── Accent Bar ──────────────────────────────────────────── */
+.hb-accent-bar {
+    height: 100%;
+    min-height: 88px;
+    border-radius: var(--hb-radius) 0 0 var(--hb-radius);
+}
+
+/* ── Icon Cell ───────────────────────────────────────────── */
+.hb-icon-cell {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 0 0 0 10px;
+}
+.hb-hotel-icon {
+    width: 38px;
+    height: 38px;
+    border-radius: 10px;
+    background: var(--hb-accent-lt);
+    color: var(--hb-accent);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: .95rem;
+    flex-shrink: 0;
+}
+
+/* ── Guest Cell ──────────────────────────────────────────── */
+.hb-guest-cell {
+    padding: 14px 12px 14px 16px;
+    min-width: 0;
+}
+.hb-guest-name {
+    font-weight: 600;
+    font-size: .9375rem;
+    color: var(--hb-text-1);
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+.hb-row-cancelled .hb-guest-name {
+    text-decoration: line-through;
+    color: var(--hb-text-3);
+}
+.hb-guest-meta {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    margin-top: 4px;
+    flex-wrap: wrap;
+}
+.hb-guest-meta span {
+    display: inline-flex;
+    align-items: center;
+    gap: 5px;
+    font-size: .78rem;
+    color: var(--hb-text-3);
+    white-space: nowrap;
+}
+.hb-guest-meta span .feather { font-size: .72rem; }
+.hb-order-id {
+    display: inline-flex;
+    align-items: center;
+    gap: 3px;
+    margin-top: 6px;
+    font-size: .73rem;
+    font-weight: 700;
+    color: var(--hb-accent);
+    background: var(--hb-accent-lt);
+    padding: 2px 8px;
+    border-radius: 20px;
+}
+.hb-order-id.hb-order-id-muted {
+    color: var(--hb-text-3);
+    background: #f3f4f6;
+}
+.hb-order-id .feather { font-size: .65rem; }
+
+/* ── Shared Cell Styles ──────────────────────────────────── */
+.hb-room-cell,
+.hb-dates-cell,
+.hb-price-cell,
+.hb-status-cell {
+    padding: 14px 12px;
+    border-left: 1px solid var(--hb-border);
+    min-width: 0;
+}
+.hb-cell-label {
+    font-size: .68rem;
+    font-weight: 700;
+    letter-spacing: .06em;
+    text-transform: uppercase;
+    color: var(--hb-text-3);
+    margin-bottom: 5px;
+}
+
+/* ── Room Cell ───────────────────────────────────────────── */
+.hb-room-name {
+    font-size: .875rem;
+    font-weight: 500;
+    color: var(--hb-text-1);
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+/* ── Dates Cell ──────────────────────────────────────────── */
+.hb-dates-track {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    flex-wrap: nowrap;
+}
+.hb-date-block { flex-shrink: 0; }
+.hb-date-day {
+    display: block;
+    font-size: 1.05rem;
+    font-weight: 700;
+    color: var(--hb-text-1);
+    line-height: 1;
+}
+.hb-date-month {
+    display: block;
+    font-size: .68rem;
+    color: var(--hb-text-3);
+    text-transform: uppercase;
+    letter-spacing: .04em;
+    margin-top: 2px;
+}
+.hb-arrow {
+    color: var(--hb-text-3);
+    font-size: .75rem;
+    flex-shrink: 0;
+    display: flex;
+    align-items: center;
+}
+.hb-nights-pill {
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+    background: #f3f4f6;
+    border-radius: 20px;
+    padding: 3px 8px;
+    font-size: .72rem;
+    font-weight: 700;
+    color: var(--hb-text-2);
+    white-space: nowrap;
+    flex-shrink: 0;
+}
+.hb-nights-pill .feather { font-size: .65rem; }
+
+/* ── Price Cell ──────────────────────────────────────────── */
+.hb-price-cell { text-align: right; }
+.hb-price-amount {
+    font-size: 1.05rem;
+    font-weight: 700;
+    color: var(--hb-text-1);
+    letter-spacing: -.2px;
+    white-space: nowrap;
+}
+.hb-price-amount.hb-muted { color: var(--hb-text-3); }
+.hb-currency {
+    font-size: .72rem;
+    font-weight: 500;
+    color: var(--hb-text-3);
+    margin-right: 2px;
+}
+.hb-profit-row {
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+    margin-top: 5px;
+    background: var(--hb-green-lt);
+    padding: 2px 8px;
+    border-radius: 20px;
+}
+.hb-profit-row .feather { font-size: .65rem; color: var(--hb-green); }
+.hb-profit-row span { font-size: .73rem; font-weight: 600; color: var(--hb-green); }
+.hb-profit-row.hb-refunded { background: #f3f4f6; }
+.hb-profit-row.hb-refunded .feather { color: var(--hb-text-3); }
+.hb-profit-row.hb-refunded span { color: var(--hb-text-3); }
+
+/* ── Status Cell ─────────────────────────────────────────── */
+.hb-status-pill {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    padding: 4px 10px;
+    border-radius: 20px;
+    font-size: .75rem;
+    font-weight: 600;
+    white-space: nowrap;
+}
+.hb-dot {
+    width: 6px; height: 6px;
+    border-radius: 50%;
+    flex-shrink: 0;
+}
+.hb-status-confirmed { background: var(--hb-green-lt); color: var(--hb-green); }
+.hb-status-confirmed .hb-dot {
+    background: var(--hb-green);
+    box-shadow: 0 0 0 2px rgba(5,150,105,.2);
+    animation: hbPulse 2s infinite;
+}
+.hb-status-pending { background: var(--hb-amber-lt); color: var(--hb-amber); }
+.hb-status-pending .hb-dot { background: var(--hb-amber); }
+.hb-status-cancelled { background: #f3f4f6; color: var(--hb-text-3); }
+.hb-status-cancelled .hb-dot { background: var(--hb-text-3); }
+
+@keyframes hbPulse {
+    0%, 100% { box-shadow: 0 0 0 2px rgba(5,150,105,.2); }
+    50%       { box-shadow: 0 0 0 4px rgba(5,150,105,.08); }
+}
+
+.hb-created-by {
+    display: flex;
+    align-items: center;
+    gap: 4px;
+    font-size: .78rem;
+    color: var(--hb-text-3);
+    margin-top: 6px;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+.hb-created-by .feather { font-size: .7rem; flex-shrink: 0; }
+
+/* ── Actions Cell ────────────────────────────────────────── */
+.hb-actions-cell {
+    padding: 14px 14px 14px 12px;
+    display: flex;
+    align-items: center;
+    justify-content: flex-end;
+    gap: 6px;
+    border-left: 1px solid var(--hb-border);
+    flex-wrap: wrap;
+    min-width: 0;
+}
+.hb-btn-icon {
+    width: 34px;
+    height: 34px;
+    border-radius: 8px;
+    border: 1px solid var(--hb-border);
+    background: var(--hb-surface);
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    font-size: .8rem;
+    cursor: pointer;
+    transition: all .18s;
+    color: var(--hb-text-2);
+    position: relative;
+    flex-shrink: 0;
+}
+.hb-btn-icon:hover { border-color: transparent; }
+.hb-btn-icon.hb-view  { color: var(--hb-accent); }
+.hb-btn-icon.hb-view:hover  { background: var(--hb-accent-lt); }
+.hb-btn-icon.hb-edit  { color: var(--hb-amber); }
+.hb-btn-icon.hb-edit:hover  { background: var(--hb-amber-lt); }
+.hb-btn-icon.hb-trans  { color: var(--hb-green); }
+.hb-btn-icon.hb-trans:hover { background: var(--hb-green-lt); }
+.hb-btn-icon.hb-more:hover  { background: #f3f4f6; color: var(--hb-text-1); }
+
+/* Tooltip */
+.hb-btn-icon[data-tip]::after {
+    content: attr(data-tip);
+    position: absolute;
+    bottom: calc(100% + 7px);
+    left: 50%;
+    transform: translateX(-50%);
+    background: #1f2937;
+    color: #fff;
+    font-size: .68rem;
+    padding: 3px 8px;
+    border-radius: 5px;
+    white-space: nowrap;
+    opacity: 0;
+    pointer-events: none;
+    transition: opacity .15s;
+    z-index: 200;
+}
+.hb-btn-icon[data-tip]:hover::after { opacity: 1; }
+
+/* ── Dropdown ────────────────────────────────────────────── */
+.hb-dropdown-wrap { position: relative; }
+.hb-dropdown-menu {
+    position: absolute;
+    right: 0;
+    top: calc(100% + 6px);
+    background: var(--hb-surface);
+    border: 1px solid var(--hb-border);
+    border-radius: 10px;
+    box-shadow: 0 8px 24px rgba(0,0,0,.12);
+    min-width: 168px;
+    z-index: 150;
+    display: none;
+    overflow: hidden;
+}
+.hb-dropdown-menu.open { display: block; }
+.hb-dropdown-item {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    padding: 10px 14px;
+    font-size: .8rem;
+    color: var(--hb-text-2);
+    cursor: pointer;
+    transition: background .15s;
+    border: none;
+    background: none;
+    width: 100%;
+    text-align: left;
+    font-family: inherit;
+}
+.hb-dropdown-item:hover { background: #f9fafb; }
+.hb-dropdown-item.hb-danger { color: var(--hb-red); }
+.hb-dropdown-item.hb-danger:hover { background: var(--hb-red-lt); }
+.hb-dropdown-item .feather { width: 14px; font-size: .8rem; flex-shrink: 0; }
+
+/* ── Empty State ─────────────────────────────────────────── */
+.hb-empty {
+    background: var(--hb-surface);
+    border: 1px dashed var(--hb-border);
+    border-radius: var(--hb-radius);
+    padding: 64px 24px;
+    text-align: center;
+    color: var(--hb-text-3);
+}
+.hb-empty .feather { font-size: 2.5rem; display: block; margin: 0 auto 14px; }
+.hb-empty h4 { font-size: 1rem; font-weight: 600; color: var(--hb-text-2); margin-bottom: 6px; }
+.hb-empty p  { font-size: .875rem; }
+
+/* ── Pagination ──────────────────────────────────────────── */
+.hb-pagination {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    margin-top: 20px;
+    flex-wrap: wrap;
+    gap: 12px;
+}
+.hb-pagination-info {
+    font-size: .8rem;
+    color: var(--hb-text-3);
+}
+.hb-pager {
+    display: flex;
+    gap: 5px;
+    align-items: center;
+}
+.hb-page-btn {
+    min-width: 34px;
+    height: 34px;
+    padding: 0 8px;
+    border-radius: 8px;
+    border: 1px solid var(--hb-border);
+    background: var(--hb-surface);
+    color: var(--hb-text-2);
+    font-size: .82rem;
+    font-weight: 500;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    text-decoration: none;
+    transition: all .18s;
+    cursor: pointer;
+}
+.hb-page-btn:hover:not(.disabled):not(.hb-page-active) {
+    border-color: var(--hb-accent);
+    color: var(--hb-accent);
+    text-decoration: none;
+}
+.hb-page-btn.hb-page-active {
+    background: var(--hb-accent);
+    border-color: var(--hb-accent);
+    color: #fff;
+    box-shadow: 0 2px 8px rgba(26,86,219,.28);
+}
+.hb-page-btn.disabled {
+    opacity: .4;
+    pointer-events: none;
+}
+.hb-page-ellipsis {
+    color: var(--hb-text-3);
+    font-size: .8rem;
+    padding: 0 4px;
+    display: inline-flex;
+    align-items: center;
+}
+
+/* ── Responsive ──────────────────────────────────────────── */
+@media (max-width: 1200px) {
+    .hb-row,
+    .hb-list-header {
+        grid-template-columns: 6px 48px 1fr 170px 190px 140px auto;
+    }
+    .hb-status-cell,
+    .hb-list-header .lh-status { display: none; }
+}
+
+@media (max-width: 960px) {
+    .hb-row,
+    .hb-list-header {
+        grid-template-columns: 6px 0 1fr 170px 140px auto;
+    }
+    .hb-icon-cell,
+    .hb-list-header .lh-icon { display: none; }
+    .hb-dates-cell,
+    .hb-list-header .lh-dates { display: none; }
+}
+
+@media (max-width: 700px) {
+    .hb-row,
+    .hb-list-header {
+        grid-template-columns: 6px 1fr auto;
+    }
+    .hb-room-cell,
+    .hb-price-cell,
+    .hb-list-header .lh-room,
+    .hb-list-header .lh-price { display: none; }
+    .hb-list-header { display: none; }
+    .hb-actions-cell { border-left: none; }
+}
+
+@media (max-width: 480px) {
+    .hb-page-header { flex-direction: column; align-items: flex-start; }
+    .hb-page-header-right { width: 100%; }
+    .hb-btn-new,
+    .hb-btn-back { width: 100%; justify-content: center; }
+    .hb-toolbar { flex-direction: column; }
+    .hb-search-wrap { max-width: 100%; }
+}
+
+/* ── Toast (keep existing) ───────────────────────────────── */
+.toast-container {
+    position: fixed;
+    top: 20px;
+    right: 20px;
+    z-index: 9999;
+    max-width: 350px;
 }
 </style>
 
 <script>
-    // Enhanced JavaScript for better user experience
-    document.addEventListener('DOMContentLoaded', function() {
-        // Add hover effects to cards
-        const cards = document.querySelectorAll('.card');
-        cards.forEach(card => {
-            card.addEventListener('mouseenter', function() {
-                this.style.transform = 'translateY(-2px)';
-                this.style.boxShadow = '0 4px 16px rgba(0,0,0,0.15)';
-            });
-            
-            card.addEventListener('mouseleave', function() {
-                this.style.transform = 'translateY(0)';
-                this.style.boxShadow = '0 2px 8px rgba(0,0,0,0.1)';
-            });
-        });
-        
-        // Enhanced search functionality
-        const searchInput = document.getElementById('searchBookings');
-        if (searchInput) {
-            searchInput.addEventListener('input', function() {
-                // Add subtle animation to search input
-                this.style.borderColor = '#4099ff';
-                this.style.boxShadow = '0 0 0 0.2rem rgba(64, 153, 255, 0.25)';
-                
-                setTimeout(() => {
-                    this.style.borderColor = '#ced4da';
-                    this.style.boxShadow = 'none';
-                }, 1000);
-            });
-        }
-        
-        // Enhanced button animations
-        const buttons = document.querySelectorAll('.btn');
-        buttons.forEach(btn => {
-            btn.addEventListener('click', function() {
-                this.style.transform = 'scale(0.98)';
-                setTimeout(() => {
-                    this.style.transform = 'scale(1)';
-                }, 150);
+function toggleHbDropdown(btn) {
+    const menu = btn.nextElementSibling;
+    document.querySelectorAll('.hb-dropdown-menu').forEach(m => {
+        if (m !== menu) m.classList.remove('open');
+    });
+    menu.classList.toggle('open');
+}
+
+document.addEventListener('click', function(e) {
+    if (!e.target.closest('.hb-dropdown-wrap')) {
+        document.querySelectorAll('.hb-dropdown-menu').forEach(m => m.classList.remove('open'));
+    }
+});
+
+// Filter tabs — client-side show/hide by data-status
+document.addEventListener('DOMContentLoaded', function() {
+    document.querySelectorAll('.hb-filter-tab').forEach(tab => {
+        tab.addEventListener('click', function() {
+            document.querySelectorAll('.hb-filter-tab').forEach(t => t.classList.remove('active'));
+            this.classList.add('active');
+
+            const filter = this.dataset.filter;
+            document.querySelectorAll('.hb-row').forEach(row => {
+                if (filter === 'all' || row.dataset.status === filter) {
+                    row.style.display = '';
+                } else {
+                    row.style.display = 'none';
+                }
             });
         });
     });
+});
 </script>
 
-<!-- Required Scripts -->
-    <script src="../assets/js/vendor-all.min.js"></script>
+<script src="../assets/js/vendor-all.min.js"></script>
 <script src="../assets/plugins/bootstrap/js/bootstrap.min.js"></script>
 <script src="../assets/js/pcoded.min.js"></script>
-
-<!-- Custom Scripts -->
 <script src="../js/hotel/transactions.js"></script>
 <script src="../js/hotel/bookings.js"></script>
 <script src="../js/hotel/invoices.js"></script>
@@ -988,8 +1092,6 @@ $paginationPattern = empty($search)
 <script src="../js/hotel/extra.js"></script>
 <script src="../js/hotel/refund_modal.js"></script>
 
-<!-- Include Admin Footer -->
 <?php include '../includes/admin_footer.php'; ?>
-
 </body>
 </html>

@@ -19,8 +19,11 @@ if (session_status() === PHP_SESSION_NONE) {
     session_start();
 }
 
-// Check if user is logged in
-if (!isset($_SESSION['user_id'])  || $_SESSION['role'] !== 'admin') {
+// Check if user is logged in with proper role
+$allowed_roles = ['admin', 'finance'];
+if (!isset($_SESSION['user_id']) || !in_array($_SESSION['role'], $allowed_roles)) {
+    // Log unauthorized access attempt
+    error_log("Unauthorized access attempt to dashboard: " . ($_SESSION['user_id'] ?? 'unknown') . " - Role: " . ($_SESSION['role'] ?? 'unknown') . " - IP: " . $_SERVER['REMOTE_ADDR']);
     header('Location: ../login.php');
     exit();
 }
@@ -34,6 +37,9 @@ $tenant_id = $_SESSION['tenant_id'];
 $branch_id = $_SESSION['branch_id'];
 require_once '../includes/db.php';
 include '../api/debtor/debtors_handler.php';
+
+// Check if user is admin
+$isAdmin = $_SESSION['role'] === 'admin';
 
 // Fetch debtors list
 $status_filter = isset($_GET['status']) && $_GET['status'] === 'inactive' ? 'inactive' : 'active';
@@ -91,336 +97,331 @@ try {
 
 
     <?php include '../includes/header.php'; ?>
-<!-- Custom CSS for Debtors Page -->
-
 <link rel="stylesheet" href="../css/general/modal-styles.css">
 <link rel="stylesheet" href="../css/debtors/styles.css">
 
-<!-- Add this right before the closing </body> tag -->
-<!-- Toast Container -->
-<div class="toast-container"></div>
-<!-- SweetAlert2 CSS -->
-<link rel="stylesheet" href="../assets/plugins/sweetalert2/sweetalert2.min.css">
+<link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;600&display=swap" rel="stylesheet">
+
+<style>
+:root {
+  --primary:#4099ff;--primary-dark:#2563eb;--primary-light:#60a5fa;
+  --accent:#2ed8b6;--accent-dark:#14b8a6;--accent-light:#5eead4;
+  --violet:#7c3aed;--violet-light:#a78bfa;--indigo:#4f46e5;
+  --sky:#0ea5e9;--emerald:#10b981;--amber:#f59e0b;
+  --rose:#f43f5e;--orange:#f97316;--pink:#ec4899;--teal:#14b8a6;
+  --bg:#f8fafc;--surface:#ffffff;--surface2:#f1f5f9;--surface3:#e2e8f0;
+  --border:rgba(0,0,0,0.08);
+  --text:#1e293b;--text-muted:#64748b;
+  --grad-start:#4099ff;--grad-end:#2ed8b6;--grad:linear-gradient(135deg,var(--grad-start) 0%,var(--grad-end) 100%);
+}
+.pcoded-main-container{background:var(--bg)!important;display:flex;flex-direction:column;min-height:100vh;}
+.pcoded-wrapper{display:flex;flex-direction:column;flex:1;}
+.pcoded-content,.pcoded-inner-content{background:transparent!important;flex:1;display:flex;flex-direction:column;}
+.main-body{flex:1;display:flex;flex-direction:column;}
+.page-wrapper{flex:1;display:flex;flex-direction:column;}
+.container{padding-left:20px;padding-right:20px;}
+.dash-wrap{font-family:'Plus Jakarta Sans',sans-serif;color:var(--text);padding:28px 20px;position:relative;}
+
+@media (max-width: 768px) {
+  .container {
+    padding-left: 16px;
+    padding-right: 16px;
+  }
+  .dash-wrap {
+    padding: 20px 16px;
+  }
+}
+
+@media (max-width: 480px) {
+  .container {
+    padding-left: 12px;
+    padding-right: 12px;
+  }
+  .dash-wrap {
+    padding: 16px 12px;
+  }
+}
+.dash-wrap::before{content:'';position:fixed;inset:0;pointer-events:none;z-index:0;background:radial-gradient(ellipse 80% 60% at 10% 0%,rgba(124,58,237,.15) 0%,transparent 60%),radial-gradient(ellipse 60% 50% at 90% 10%,rgba(14,165,233,.12) 0%,transparent 55%),radial-gradient(ellipse 50% 40% at 50% 100%,rgba(16,185,129,.08) 0%,transparent 50%);}
+.dash-inner{position:relative;z-index:1;}
+.sec-label{font-size:11px;font-weight:700;letter-spacing:1.5px;text-transform:uppercase;color:var(--text-muted);margin-bottom:14px;display:flex;align-items:center;gap:8px;}
+.sec-label::after{content:'';flex:1;height:1px;background:var(--border);}
+.d-card{background:var(--surface);border:1px solid var(--border);border-radius:20px;padding:24px;margin-bottom:22px;}
+.d-card-header{display:flex;justify-content:space-between;align-items:center;margin-bottom:18px;flex-wrap:wrap;gap:12px;}
+.d-card-title{font-size:15px;font-weight:800;display:flex;align-items:center;gap:10px;color:var(--text);}
+.ci{width:32px;height:32px;border-radius:9px;display:flex;align-items:center;justify-content:center;font-size:13px;}
+.ci-violet{background:rgba(124,58,237,.2);color:var(--violet-light);}
+.ci-sky{background:rgba(14,165,233,.2);color:var(--sky);}
+.ci-emerald{background:rgba(16,185,129,.2);color:var(--emerald);}
+.ci-amber{background:rgba(245,158,11,.2);color:var(--amber);}
+.ci-rose{background:rgba(244,63,94,.2);color:var(--rose);}
+.dbtn{display:inline-flex;align-items:center;gap:7px;padding:9px 16px;border-radius:10px;font-size:13px;font-weight:600;font-family:inherit;cursor:pointer;border:none;transition:all .2s;text-decoration:none;}
+.dbtn-ghost{background:var(--surface2);color:var(--text);border:1px solid var(--border);}
+.dbtn-ghost:hover{background:var(--surface3);transform:translateY(-1px);color:var(--text);}
+.dbtn-primary{background:var(--grad);color:#fff;box-shadow:0 4px 20px rgba(64,153,255,.35);}
+.dbtn-primary:hover{transform:translateY(-2px);color:#fff;}
+.d-alert{border-radius:14px;padding:16px 20px;margin-bottom:12px;display:flex;align-items:flex-start;gap:14px;border:1px solid;animation:slideIn .4s ease;}
+@keyframes slideIn{from{opacity:0;transform:translateY(-8px)}to{opacity:1;transform:translateY(0)}}
+.d-alert-warning{background:rgba(245,158,11,.1);border-color:rgba(245,158,11,.3);}
+.d-alert-danger{background:rgba(244,63,94,.1);border-color:rgba(244,63,94,.3);}
+
+/* Debtor cards grid */
+.debtor-grid{display:flex;flex-direction:column;gap:12px;margin-bottom:22px;}
+.debtor-card{background:var(--surface);border:1px solid var(--border);border-radius:16px;padding:16px;position:relative;overflow:hidden;transition:transform .2s,border-color .2s,box-shadow .2s;cursor:pointer;display:grid;grid-template-columns:auto 1fr auto auto auto 1fr auto;align-items:center;gap:16px;}
+.debtor-card:hover{transform:translateY(-2px);border-color:rgba(64,153,255,.4);box-shadow:0 8px 30px rgba(64,153,255,.12);}
+.debtor-card::before{content:'';position:absolute;top:0;left:0;right:0;height:3px;background:var(--grad);}
+
+/* Mobile Responsive */
+@media (max-width: 768px) {
+  .debtor-card{
+    grid-template-columns: auto 1fr;
+    gap: 12px;
+    padding: 14px;
+  }
+  .debtor-card > div:nth-child(2),
+  .debtor-card > div:nth-child(3),
+  .debtor-card > div:nth-child(4),
+  .debtor-card > div:nth-child(5),
+  .debtor-card > div:nth-child(6) {
+    grid-column: 1 / -1;
+  }
+  .dc-actions {
+    grid-column: 1 / -1;
+    margin-top: 8px;
+    justify-content: flex-start;
+  }
+  .dc-stats {
+    grid-column: 1 / -1;
+    flex-wrap: wrap;
+    gap: 12px;
+  }
+}
+
+@media (max-width: 480px) {
+  .debtor-card{
+    grid-template-columns: 1fr;
+    gap: 10px;
+    padding: 12px;
+  }
+  .debtor-card > div {
+    grid-column: 1 / -1;
+  }
+  .dc-icon {
+    width: 32px;
+    height: 32px;
+    font-size: 14px;
+  }
+  .dc-label {
+    font-size: 9px;
+  }
+  .dc-name {
+    font-size: 13px;
+  }
+  .dc-balance {
+    font-size: 14px;
+  }
+  .dc-btn {
+    padding: 6px 10px;
+    font-size: 11px;
+  }
+  .dc-btn span {
+    display: none;
+  }
+  .dc-btn i {
+    margin-right: 0;
+  }
+}
+.dc-icon{width:36px;height:36px;border-radius:10px;display:flex;align-items:center;justify-content:center;font-size:16px;background:rgba(64,153,255,.15);color:var(--sky);flex-shrink:0;}
+.dc-label{font-size:10px;font-weight:700;letter-spacing:1px;text-transform:uppercase;color:var(--text-muted);margin-bottom:4px;}
+.dc-name{font-size:14px;font-weight:700;color:var(--text);word-break:break-word;}
+.dc-balance{font-size:16px;font-weight:800;font-family:'JetBrains Mono',monospace;letter-spacing:-.5px;white-space:nowrap;}
+.dc-currency{font-size:12px;color:var(--text-muted);font-weight:600;white-space:nowrap;}
+.dc-status{display:inline-flex;align-items:center;gap:5px;font-size:11px;font-weight:700;padding:4px 12px;border-radius:20px;white-space:nowrap;}
+.dc-status.active{background:rgba(16,185,129,.15);color:var(--emerald);}
+.dc-status.inactive{background:rgba(244,63,94,.15);color:var(--rose);}
+.dc-actions{display:flex;gap:6px;flex-wrap:wrap;flex-shrink:0;align-items:center;}
+.dc-btn{display:inline-flex;align-items:center;justify-content:center;gap:6px;padding:7px 12px;border-radius:8px;font-size:12px;font-weight:600;border:none;cursor:pointer;transition:all .2s;font-family:inherit;flex-shrink:0;white-space:nowrap;}
+.dc-btn span{display:inline-block;}
+.dc-btn-primary{background:var(--grad);color:#fff;}
+.dc-btn-primary:hover{transform:translateY(-1px);box-shadow:0 4px 12px rgba(64,153,255,.3);}
+.dc-btn-info{background:rgba(14,165,233,.15);color:var(--sky);border:1px solid rgba(14,165,233,.3);}
+.dc-btn-info:hover{background:rgba(14,165,233,.25);border-color:rgba(14,165,233,.5);}
+.dc-btn-warning{background:rgba(245,158,11,.15);color:var(--amber);border:1px solid rgba(245,158,11,.3);}
+.dc-btn-warning:hover{background:rgba(245,158,11,.25);border-color:rgba(245,158,11,.5);}
+.dc-btn-danger{background:rgba(244,63,94,.15);color:var(--rose);border:1px solid rgba(244,63,94,.3);}
+.dc-btn-danger:hover{background:rgba(244,63,94,.25);border-color:rgba(244,63,94,.5);}
+
+.dc-stats{display:flex;gap:16px;font-size:12px;}
+.dc-stat{white-space:nowrap;}
+
+.dash-header{display:flex;justify-content:space-between;align-items:center;margin-bottom:28px;gap:20px;flex-wrap:wrap;}
+.dash-header h1{font-size:26px;font-weight:800;margin:0;display:flex;align-items:center;gap:12px;color:var(--text);}
+.dash-header p{font-size:14px;color:var(--text-muted);margin:8px 0 0 38px;line-height:1.4;}
+.header-actions{display:flex;gap:12px;flex-wrap:wrap;}
+
+@media (max-width: 768px) {
+  .dash-header{flex-direction:column;align-items:flex-start;}
+  .dash-header h1{font-size:20px;}
+  .header-actions{width:100%;}
+  .header-actions .dbtn{width:100%;justify-content:center;}
+}
+
+.d-alert-icon{width:40px;height:40px;border-radius:10px;display:flex;align-items:center;justify-content:center;flex-shrink:0;font-size:18px;}
+.d-alert-title{font-size:13px;font-weight:700;margin-bottom:2px;}
+.dash-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(240px,1fr));gap:18px;margin-bottom:28px;}
+.dash-stat-card{background:var(--surface);border:1px solid var(--border);border-radius:16px;padding:20px;position:relative;overflow:hidden;}
+.dash-stat-card::before{content:'';position:absolute;top:0;right:0;width:80px;height:80px;border-radius:50%;background:radial-gradient(circle,rgba(64,153,255,.1) 0%,transparent 100%);pointer-events:none;}
+.dsc-title{font-size:12px;font-weight:600;text-transform:uppercase;letter-spacing:1px;color:var(--text-muted);margin-bottom:12px;position:relative;z-index:1;}
+.dsc-value{font-size:24px;font-weight:800;color:var(--text);margin-bottom:8px;position:relative;z-index:1;}
+.dsc-change{font-size:12px;color:var(--emerald);display:flex;align-items:center;gap:4px;}
+.dsc-change.negative{color:var(--rose);}
+
+.status-tabs{display:flex;gap:0;border-bottom:2px solid var(--border);margin-bottom:24px;}
+.status-tab{flex:1;padding:14px 16px;text-align:center;font-size:13px;font-weight:600;color:var(--text-muted);text-decoration:none;border-bottom:3px solid transparent;transition:all .3s;position:relative;}
+.status-tab:hover{color:var(--text);background:var(--surface2);}
+.status-tab.active{color:var(--primary);border-bottom-color:var(--primary);}
+.status-tab i{margin-right:6px;}
+
+.cc-stat-label,.dc-stat-label{font-size:10px;font-weight:700;letter-spacing:1px;text-transform:uppercase;color:var(--text-muted);}
+.cc-stat-value,.dc-stat-value{font-size:13px;color:var(--text);margin-top:2px;word-break:break-word;}
+</style>
+
  <!-- [ Main Content ] start -->
     <div class="pcoded-main-container">
         <div class="pcoded-wrapper">
                 <div class="pcoded-inner-content">
                     <div class="main-body">
                         <div class="page-wrapper">
-                            <!-- [ Main Content ] start -->
-                            <div class="container-fluid">
+                            <div class="container mt-4">
                                 <!-- Page Header -->
-                                <div class="page-header card">
-                                    <div class="row align-items-center">
-                                        <div class="col-md-6">
-                                            <h5 class="mb-0"><i class="feather icon-users mr-2"></i><?= __('debtors_management') ?></h5>
-                                            <p class="mb-0 mt-1" style="font-size: 14px; opacity: 0.9;">Manage your debtors and track payments</p>
-                                        </div>
-                                        <div class="col-md-6 text-end">
-                                            <button type="button" class="btn btn-success" data-toggle="modal" data-target="#addDebtorModal">
-                                                <i class="feather icon-plus mr-1"></i><?= __('add_new_debtor') ?>
-                                            </button>
-                                        </div>
+                                <div class="dash-header">
+                                    <div>
+                                        <h1><i class="fas fa-people-arrows mr-2"></i><?= __('debtors_management') ?></h1>
+                                        <p><?= __('manage_your_debtors_and_track_payments') ?></p>
+                                    </div>
+                                    <div class="header-actions">
+                                        <button type="button" class="dbtn dbtn-primary" data-toggle="modal" data-target="#addDebtorModal">
+                                            <i class="fas fa-plus"></i><?= __('add_new_debtor') ?>
+                                        </button>
                                     </div>
                                 </div>
     
                                 <?php if (isset($success_message)): ?>
-                                    <div class="alert alert-success"><?php echo h($success_message); ?></div>
-                                <?php endif; ?>
-                                
-                                <?php if (isset($error_message)): ?>
-                                    <div class="alert alert-danger"><?php echo h($error_message); ?></div>
-                                <?php endif; ?>
-                                
-                                <!-- Total Debts by Currency Section -->
-                                <?php if (!empty($currency_totals)): ?>
-                                <div class="row mb-4">
-                                    <div class="col-md-12">
-                                        <div class="card">
-                                            <div class="card-header">
-                                                <h5><i class="feather icon-dollar-sign mr-2"></i><?= __('total_debts_by_currency') ?></h5>
-                                            </div>
-                                            <div class="card-body">
-                                                <table class="table table-borderless">
-                                                    <tbody>
-                                                        <?php foreach ($currency_totals as $currency => $total): ?>
-                                                        <tr>
-                                                            <td class="py-3"><i class="feather icon-credit-card mr-2 text-primary"></i><?php echo htmlspecialchars($currency); ?></td>
-                                                            <td class="text-right py-3 font-weight-bold text-success h5"><?php echo number_format($total, 2); ?> <?php echo htmlspecialchars($currency); ?></td>
-                                                        </tr>
-                                                        <?php endforeach; ?>
-                                                    </tbody>
-                                                </table>
-                                                <div class="alert alert-light border mt-3">
-                                                    <p class="text-muted mb-0 text-center">
-                                                        <i class="feather icon-info mr-2"></i><?= __('total_debts_across_all_debtors') ?>
-                                                    </p>
-                                                </div>
-                                            </div>
+                                     <div class="d-alert d-alert-warning" style="background:rgba(16,185,129,.1);border-color:rgba(16,185,129,.3);">
+                                        <div class="d-alert-icon" style="background:rgba(16,185,129,.2);color:var(--emerald);"><i class="fas fa-check-circle"></i></div>
+                                        <div>
+                                            <div class="d-alert-title" style="color:var(--emerald);"><?= __('success') ?></div>
+                                            <div style="font-size:13px;color:var(--text);"><?php echo h($success_message); ?></div>
                                         </div>
-                                    </div>
-                                </div>
-                                <?php endif; ?>
-                                
-                                <!-- Debtors Summary Section -->
-                                <div class="row mb-4">
-                                    <div class="col-md-12">
-                                        <div class="card">
-                                            <div class="card-header">
-                                                <h5><i class="feather icon-bar-chart-2 mr-2"></i><?= __('debtors_summary') ?></h5>
-                                            </div>
-                                            <div class="card-body">
-                                                <div class="text-center mb-4">
-                                                    <div class="h2 font-weight-bold text-primary">
-                                                        <i class="feather icon-users mr-2"></i><?php echo $active_count; ?>
-                                                        <span class="text-muted h4">/ <?php echo $active_count + $inactive_count; ?></span>
-                                                    </div>
-                                                    <p class="text-muted mb-0"><?= __('total_debtors') ?></p>
-                                                </div>
-
-                                                <div class="progress mb-4" style="height: 30px; border-radius: 15px;">
-                                                    <div class="progress-bar <?php echo $active_count >= ($active_count + $inactive_count) * 0.9 ? 'bg-danger' : ($active_count >= ($active_count + $inactive_count) * 0.75 ? 'bg-warning' : 'bg-success'); ?>"
-                                                         role="progressbar"
-                                                         style="width: <?php echo ($active_count + $inactive_count) > 0 ? min(100, ($active_count / ($active_count + $inactive_count)) * 100) : 0; ?>%; border-radius: 15px;">
-                                                        <span class="font-weight-bold"><?php echo ($active_count + $inactive_count) > 0 ? round(($active_count / ($active_count + $inactive_count)) * 100) : 0; ?>%</span>
-                                                    </div>
-                                                </div>
-
-                                                <hr class="my-4">
-
-                                                <div class="row text-center">
-                                                    <div class="col-6">
-                                                        <div class="h4 mb-1 font-weight-bold text-info"><?php echo $active_count; ?></div>
-                                                        <small class="text-muted"><i class="feather icon-user-check mr-1"></i><?= __('active_debtors') ?></small>
-                                                    </div>
-                                                    <div class="col-6">
-                                                        <div class="h4 mb-1 font-weight-bold text-success"><?php echo $inactive_count; ?></div>
-                                                        <small class="text-muted"><i class="feather icon-user-minus mr-1"></i><?= __('inactive_debtors') ?></small>
-                                                    </div>
-                                                </div>
-
-                                                <hr class="my-4">
-
-                                                <div class="text-center">
-                                                    <span class="badge badge-info badge-pill px-3 py-2 h6">
-                                                        <i class="feather icon-package mr-1"></i><?= __('status') ?>: <?= ucfirst($status_filter) ?>
-                                                    </span>
-                                                </div>
-                                            </div>
+                                     </div>
+                                 <?php endif; ?>
+                                 
+                                 <?php if (isset($error_message)): ?>
+                                      <div class="d-alert d-alert-danger" style="background:rgba(244,63,94,.1);border-color:rgba(244,63,94,.3);">
+                                        <div class="d-alert-icon" style="background:rgba(244,63,94,.2);color:var(--rose);"><i class="fas fa-exclamation-circle"></i></div>
+                                        <div>
+                                            <div class="d-alert-title" style="color:var(--rose);"><?= __('error') ?></div>
+                                            <div style="font-size:13px;color:var(--text);"><?php echo h($error_message); ?></div>
                                         </div>
-                                    </div>
-                                </div>
-
+                                     </div>
+                                 <?php endif; ?>
+                                
                                 <!-- Status Toggle Tabs -->
-                                <div class="row mb-4">
-                                    <div class="col-12">
-                                        <div class="card">
-                                            <div class="card-header">
-                                                <h5><i class="feather icon-filter mr-2"></i><?= __('status_filter') ?></h5>
-                                            </div>
-                                            <div class="card-body">
-                                                <ul class="nav nav-pills card-header-pills flex-column flex-sm-row" id="debtorTabs" role="tablist">
-                                                    <li class="nav-item flex-fill text-center">
-                                                        <a class="nav-link <?php echo h($status_filter) === 'active' ? 'active' : ''; ?> rounded-pill" href="debtors.php">
-                                                            <i class="feather icon-user-check mr-2"></i>
-                                                            <span><?= __('active_debtors') ?></span>
-                                                            <span class="badge badge-light ml-2"><?php echo $active_count; ?></span>
-                                                        </a>
-                                                    </li>
-                                                    <li class="nav-item flex-fill text-center">
-                                                        <a class="nav-link <?php echo h($status_filter) === 'inactive' ? 'active' : ''; ?> rounded-pill" href="debtors.php?status=inactive">
-                                                            <i class="feather icon-user-minus mr-2"></i>
-                                                            <span><?= __('inactive_debtors') ?></span>
-                                                            <span class="badge badge-light ml-2"><?php echo $inactive_count; ?></span>
-                                                        </a>
-                                                    </li>
-                                                </ul>
-                                            </div>
-                                        </div>
-                                    </div>
-                                </div>
-
-                        
-                                <div class="card">
-                                    <div class="card-header">
-                                        <h5><i class="feather icon-users mr-2"></i><?= __(ucfirst($status_filter ?? 'active') . '_debtors') ?></h5>
-                                    </div>
-                                    <div class="card-body">
-                                        <div class="table-responsive">
-                                            <table class="table table-hover table-striped">
-                                                <thead class="thead-light">
-                                                    <tr>
-                                                        <th>
-                                                            <div class="d-flex align-items-center">
-                                                                <i class="feather icon-user mr-2 text-muted"></i><?= __('name') ?>
-                                                            </div>
-                                                        </th>
-                                                        <th>
-                                                            <div class="d-flex align-items-center">
-                                                                <i class="feather icon-mail mr-2 text-muted"></i><?= __('email') ?>
-                                                            </div>
-                                                        </th>
-                                                        <th>
-                                                            <div class="d-flex align-items-center">
-                                                                <i class="feather icon-phone mr-2 text-muted"></i><?= __('phone') ?>
-                                                            </div>
-                                                        </th>
-                                                        <th>
-                                                            <div class="d-flex align-items-center">
-                                                                <i class="feather icon-map-pin mr-2 text-muted"></i><?= __('address') ?>
-                                                            </div>
-                                                        </th>
-                                                        <th>
-                                                            <div class="d-flex align-items-center">
-                                                                <i class="feather icon-credit-card mr-2 text-muted"></i><?= __('balance') ?>
-                                                            </div>
-                                                        </th>
-                                                        <th>
-                                                            <div class="d-flex align-items-center">
-                                                                <i class="feather icon-dollar-sign mr-2 text-muted"></i><?= __('currency') ?>
-                                                            </div>
-                                                        </th>
-                                                        <th class="text-center"><?= __('actions') ?></th>
-                                                    </tr>
-                                                </thead>
-                                                <tbody>
+                                <div class="dash-wrap" style="padding:0;">
+                                <div class="dash-inner">
+                                       <div class="status-tabs">
+                                           <a href="debtors.php" class="status-tab <?php echo h($status_filter) === 'active' ? 'active' : ''; ?>">
+                                               <i class="fas fa-user-check mr-2"></i><?= __('active_debtors') ?> <span style="margin-left:6px;font-weight:700;"><?php echo $active_count; ?></span>
+                                           </a>
+                                           <a href="debtors.php?status=inactive" class="status-tab <?php echo h($status_filter) === 'inactive' ? 'active' : ''; ?>">
+                                               <i class="fas fa-user-minus mr-2"></i><?= __('inactive_debtors') ?> <span style="margin-left:6px;font-weight:700;"><?php echo $inactive_count; ?></span>
+                                           </a>
+                                       </div>
+                                
+                                <!-- Debtors Cards Grid -->
+                                <div class="sec-label"><i class="fas fa-people-arrows"></i> <?= __($status_filter . '_debtors') ?></div>
+                                
+                                <div class="debtor-grid">
                                                     <?php if (!empty($debtors) && count($debtors) > 0): ?>
                                                         <?php foreach ($debtors as $debtor): ?>
-                                                            <tr class="debtor-row">
-                                                                <td>
-                                                                    <div class="d-flex align-items-center">
-                                                                        <div>
-                                                                            <h6 class="mb-0"><?php echo htmlspecialchars($debtor['name']); ?></h6>
-                                                                        </div>
+                                                            <div class="debtor-card">
+                                                                <div class="dc-icon"><i class="fas fa-user-tie"></i></div>
+                                                                <div style="min-width:150px;">
+                                                                    <div class="dc-label"><?= __('name') ?></div>
+                                                                    <div class="dc-name"><?php echo htmlspecialchars($debtor['name']); ?></div>
+                                                                </div>
+                                                                <div style="min-width:120px;">
+                                                                    <div class="dc-label"><?= __('balance') ?></div>
+                                                                    <div class="dc-balance"><?php echo number_format($debtor['balance'], 2); ?></div>
+                                                                    <div class="dc-currency"><?php echo htmlspecialchars($debtor['currency']); ?></div>
+                                                                </div>
+                                                                <div style="min-width:110px;">
+                                                                    <div class="dc-label"><?= __('status') ?></div>
+                                                                    <div class="dc-status <?php echo h($debtor['status']); ?>">
+                                                                        <i class="fas <?php echo h($debtor['status']) === 'active' ? 'fa-check-circle' : 'fa-times-circle'; ?>"></i>
+                                                                        <?= ucfirst(__($debtor['status'])) ?>
                                                                     </div>
-                                                                </td>
-                                                                <td>
+                                                                </div>
+                                                                <div class="dc-stats">
                                                                     <?php if (!empty($debtor['email'])): ?>
-                                                                        <a href="mailto:<?php echo htmlspecialchars($debtor['email']); ?>" class="text-body">
-                                                                            <?php echo htmlspecialchars($debtor['email']); ?>
-                                                                        </a>
-                                                                    <?php else: ?>
-                                                                        <span class="text-muted"><?= __('not_provided') ?></span>
+                                                                    <div class="dc-stat">
+                                                                        <div class="dc-stat-label"><i class="fas fa-envelope"></i> <?= __('email') ?></div>
+                                                                        <div class="dc-stat-value"><?php echo htmlspecialchars($debtor['email']); ?></div>
+                                                                    </div>
                                                                     <?php endif; ?>
-                                                                </td>
-                                                                <td>
                                                                     <?php if (!empty($debtor['phone'])): ?>
-                                                                        <a href="tel:<?php echo htmlspecialchars($debtor['phone']); ?>" class="text-body">
-                                                                            <?php echo htmlspecialchars($debtor['phone']); ?>
-                                                                        </a>
-                                                                    <?php else: ?>
-                                                                        <span class="text-muted"><?= __('not_provided') ?></span>
-                                                                    <?php endif; ?>
-                                                                </td>
-                                                                <td>
-                                                                    <?php if (!empty($debtor['address'])): ?>
-                                                                        <span class="text-truncate d-inline-block" style="max-width: 150px;" title="<?php echo htmlspecialchars($debtor['address']); ?>">
-                                                                            <?php echo htmlspecialchars($debtor['address']); ?>
-                                                                        </span>
-                                                                    <?php else: ?>
-                                                                        <span class="text-muted"><?= __('not_provided') ?></span>
-                                                                    <?php endif; ?>
-                                                                </td>
-                                                                <td>
-                                                                    <div class="d-flex align-items-center">
-                                                                        <?php if ($debtor['balance'] <= 0): ?>
-                                                                            <span class="mr-2"><?= __('paid') ?></span>
-                                                                        <?php elseif ($debtor['balance'] > 0): ?>
-                                                                            <span class="mr-2"><?= __('pending') ?></span>
-                                                                        <?php endif; ?>
-                                                                        <span class="font-weight-medium">
-                                                                            <?php echo number_format($debtor['balance'], 2); ?>
-                                                                        </span>
+                                                                    <div class="dc-stat">
+                                                                        <div class="dc-stat-label"><i class="fas fa-phone"></i> <?= __('phone') ?></div>
+                                                                        <div class="dc-stat-value"><?php echo htmlspecialchars($debtor['phone']); ?></div>
                                                                     </div>
-                                                                </td>
-                                                                <td>
-                                                                    <span class="">
-                                                                        <?php echo htmlspecialchars($debtor['currency']); ?>
-                                                                    </span>
-                                                                </td>
-                                                                <td>
-                                                                    <div class="d-flex justify-content-center">
-                                                                        <div class="dropdown">
-                                                                            <button class="btn btn-primary btn-sm dropdown-toggle" type="button" id="debtorDropdown<?php echo h($debtor['id']); ?>" data-toggle="dropdown" aria-haspopup="true" aria-expanded="false">
-                                                                                <i class="feather icon-more-vertical"></i> <?= __('actions') ?>
-                                                                            </button>
-                                                                            <div class="dropdown-menu dropdown-menu-right" aria-labelledby="debtorDropdown<?php echo h($debtor['id']); ?>">
-                                                                                <?php if ($status_filter === 'active'): ?>
-                                                                                    <button type="button" class="dropdown-item" data-toggle="modal" data-target="#paymentModal<?php echo h($debtor['id']); ?>">
-                                                                                        <i class="feather icon-credit-card mr-2"></i><?= __('process_payment') ?>
-                                                                                    </button>
-                                                                                    <button type="button" class="dropdown-item" data-toggle="modal" data-target="#transactionsModal<?php echo h($debtor['id']); ?>">
-                                                                                        <i class="feather icon-list mr-2"></i><?= __('view_transactions') ?>
-                                                                                    </button>
-                                                                                    <button type="button" class="dropdown-item" data-toggle="modal" data-target="#editDebtorModal<?php echo h($debtor['id']); ?>">
-                                                                                        <i class="feather icon-edit-2 mr-2"></i><?= __('edit_debtor') ?>
-                                                                                    </button>
-                                                                                    <a href="../api/debtor/print_debtor_statement.php?id=<?php echo h($debtor['id']); ?>" class="dropdown-item" target="_blank">
-                                                                                        <i class="feather icon-printer mr-2"></i><?= __('print_statement') ?>
-                                                                                    </a>
-                                                                                    <a href="../api/debtor/print_agreement.php?id=<?php echo h($debtor['id']); ?>" class="dropdown-item" target="_blank">
-                                                                                        <i class="feather icon-file-text mr-2"></i><?= __('print_agreement') ?>
-                                                                                    </a>
-                                                                                    <div class="dropdown-divider"></div>
-                                                                                    <?php if ($debtor['balance'] <= 0): ?>
-                                                                                        <form method="POST" class="d-inline deactivate-form" onsubmit="return confirm('<?= __('confirm_deactivate_debtor') ?>');">
-                                                                                            <input type="hidden" name="csrf_token" value="<?php echo h($_SESSION['csrf_token']); ?>">
-                                                                                            <input type="hidden" name="deactivate_debtor" value="1">
-                                                                                            <input type="hidden" name="debtor_id" value="<?php echo h($debtor['id']); ?>">
-                                                                                            <button type="submit" class="dropdown-item text-warning">
-                                                                                                <i class="feather icon-user-x mr-2"></i><?= __('deactivate_debtor') ?>
-                                                                                            </button>
-                                                                                        </form>
-                                                                                    <?php endif; ?>
-                                                                                    <button type="button" class="dropdown-item text-danger delete-debtor-btn" data-debtor-id="<?php echo h($debtor['id']); ?>" data-debtor-name="<?php echo htmlspecialchars($debtor['name']); ?>">
-                                                                                        <i class="feather icon-trash-2 mr-2"></i><?= __('delete_debtor') ?>
-                                                                                    </button>
-                                                                                <?php else: ?>
-                                                                                    <button type="button" class="dropdown-item" data-toggle="modal" data-target="#transactionsModal<?php echo h($debtor['id']); ?>">
-                                                                                        <i class="feather icon-list mr-2"></i><?= __('view_transactions') ?>
-                                                                                    </button>
-                                                                                    <a href="print_debtor_statement.php?id=<?php echo h($debtor['id']); ?>" class="dropdown-item" target="_blank">
-                                                                                        <i class="feather icon-printer mr-2"></i><?= __('print_statement') ?>
-                                                                                    </a>
-                                                                                    <div class="dropdown-divider"></div>
-                                                                                    <form method="POST" class="d-inline reactivate-form" onsubmit="return confirm('<?= __('confirm_reactivate_debtor') ?>');">
-                                                                                        <input type="hidden" name="csrf_token" value="<?php echo h($_SESSION['csrf_token']); ?>">
-                                                                                        <input type="hidden" name="reactivate_debtor" value="1">
-                                                                                        <input type="hidden" name="debtor_id" value="<?php echo h($debtor['id']); ?>">
-                                                                                        <button type="submit" class="dropdown-item text-success">
-                                                                                            <i class="feather icon-user-check mr-2"></i><?= __('reactivate_debtor') ?>
-                                                                                        </button>
-                                                                                    </form>
-                                                                                <?php endif; ?>
-                                                                            </div>
-                                                                        </div>
-                                                                    </div>
-                                                                </td>
-                                                            </tr>
+                                                                    <?php endif; ?>
+                                                                </div>
+                                                                <div class="dc-actions">
+                                                                    <button class="dc-btn dc-btn-primary" data-toggle="modal" data-target="#paymentModal<?php echo h($debtor['id']); ?>" title="<?= __('process_payment') ?>" data-bs-toggle="tooltip" data-placement="top">
+                                                                        <i class="fas fa-credit-card"></i>
+                                                                        <span><?= __('pay') ?></span>
+                                                                    </button>
+                                                                    <button class="dc-btn dc-btn-info" data-toggle="modal" data-target="#transactionsModal<?php echo h($debtor['id']); ?>" title="<?= __('view_transactions') ?>" data-bs-toggle="tooltip" data-placement="top">
+                                                                        <i class="fas fa-list"></i>
+                                                                        <span><?= __('transactions') ?></span>
+                                                                    </button>
+                                                                    <a href="../api/debtor/print_debtor_statement.php?id=<?php echo h($debtor['id']); ?>" class="dc-btn dc-btn-warning" target="_blank" title="<?= __('print_statement') ?>" data-bs-toggle="tooltip" data-placement="top">
+                                                                        <i class="fas fa-print"></i>
+                                                                        <span><?= __('print') ?></span>
+                                                                    </a>
+                                                                    <button class="dc-btn dc-btn-info" data-toggle="modal" data-target="#editDebtorModal<?php echo h($debtor['id']); ?>" title="<?= __('edit_debtor') ?>" data-bs-toggle="tooltip" data-placement="top">
+                                                                        <i class="fas fa-edit"></i>
+                                                                        <span><?= __('edit') ?></span>
+                                                                    </button>
+                                                                    <?php if ($isAdmin): ?>
+                                                                    <button class="dc-btn dc-btn-danger" onclick="if(confirm('<?= __('are_you_sure') ?>')){ document.querySelector('form.delete-form-<?php echo h($debtor['id']); ?>').submit(); }" title="<?= __('delete_debtor') ?>" data-bs-toggle="tooltip" data-placement="top">
+                                                                        <i class="fas fa-trash"></i>
+                                                                        <span><?= __('delete') ?></span>
+                                                                    </button>
+                                                                    <form method="POST" class="d-none delete-form-<?php echo h($debtor['id']); ?>">
+                                                                        <input type="hidden" name="csrf_token" value="<?php echo h($_SESSION['csrf_token']); ?>">
+                                                                        <input type="hidden" name="delete_debtor" value="1">
+                                                                        <input type="hidden" name="debtor_id" value="<?php echo h($debtor['id']); ?>">
+                                                                    </form>
+                                                                    <?php endif; ?>
+                                                                </div>
+                                                            </div>
                                                         <?php endforeach; ?>
                                                     <?php else: ?>
-                                                        <tr>
-                                                            <td colspan="7" class="text-center py-5">
-                                                                <div class="empty-state">
-                                                                    <i class="feather icon-users text-muted" style="font-size: 48px;"></i>
-                                                                    <h5 class="mt-3"><?= __('no_debtors_found', ['status' => h($status_filter)]) ?></h5>
-                                                                    <p class="text-muted">
-                                                                        <?php if ($status_filter === 'active'): ?>
-                                                                            <?= __('add_debtors_to_start') ?>
-                                                                        <?php else: ?>
-                                                                            <?= __('deactivated_debtors_appear_here') ?>
-                                                                        <?php endif; ?>
-                                                                    </p>
-                                                                </div>
-                                                            </td>
-                                                        </tr>
+                                                        <div style="grid-column:1/-1;text-align:center;padding:40px 20px;">
+                                                            <i class="fas fa-inbox" style="font-size:48px;color:var(--text-muted);margin-bottom:16px;display:block;"></i>
+                                                            <p style="color:var(--text-muted);font-size:14px;">
+                                                                <?php if ($status_filter === 'active'): ?>
+                                                                    <?= __("add_new_debtors_to_start_tracking_your_debts") ?>
+                                                                <?php else: ?>
+                                                                    <?= __("deactivated_debtors_will_appear_here") ?>
+                                                                <?php endif; ?>
+                                                            </p>
+                                                        </div>
                                                     <?php endif; ?>
-                                                </tbody>
-                                            </table>
-                                        </div>
-                                        
-                                        <!-- Pagination -->
-                                        <div class="mt-3 mt-md-4">
+                                                    </div>
+                                                    
+                                                    <!-- Pagination -->
+                                                    <div class="mt-3 mt-md-4">
                                             <nav aria-label="Page navigation">
                                                 <ul class="pagination pagination-sm justify-content-center flex-wrap">
                                                     <?php
@@ -492,11 +493,17 @@ try {
                                                     <?= __('showing') ?> <?= count($debtors) ?> <?= __('of') ?> <?= $total_count ?> <?= __('debtors') ?> |
                                                     <?= __('page') ?> <?= $current_page ?> <?= __('of') ?> <?= $total_pages ?>
                                                 </small>
-                                            </div>
-                                        </div>
-                                    </div>
-                                </div>
-                                <!-- Add Debtor Modal -->
+                                                </div>
+                                                </div>
+                                                </div>
+                                                </div>
+                                                </div>
+                                                </div>
+                                                </div>
+                                                </div>
+                                                </div>
+                                                
+                                                <!-- Add Debtor Modal -->
                                 <div class="modal fade" id="addDebtorModal" tabindex="-1" role="dialog" aria-hidden="true">
                                     <div class="modal-dialog modal-dialog-centered" role="document">
                                         <div class="modal-content">
@@ -771,16 +778,18 @@ try {
                                                                         </button>';
                                                                         echo '<button class="btn btn-info btn-sm mr-1" title="Print Receipt"
                                                                         onclick="printDebtorReceipt('.$transaction['id'].')">
-                                                                    <i class="feather icon-printer"></i>
-                                                                </button>';
-                                                                        // Delete button with toast notification
-                                                                        echo '<button type="button" class="btn btn-danger btn-sm delete-transaction-btn" 
-                                                                            data-transaction-id="' . $transaction['id'] . '"
-                                                                            data-debtor-id="' . $debtor['id'] . '"
-                                                                            data-amount="' . $transaction['amount'] . '"
-                                                                            data-currency="' . $transaction['currency'] . '">
-                                                                            <i class="feather icon-trash"></i> ' . __('delete') . '
+                                                                        <i class="feather icon-printer"></i>
                                                                         </button>';
+                                                                         // Delete button (admin only) with toast notification
+                                                                         if ($isAdmin) {
+                                                                             echo '<button type="button" class="btn btn-danger btn-sm delete-transaction-btn" 
+                                                                                 data-transaction-id="' . $transaction['id'] . '"
+                                                                                 data-debtor-id="' . $debtor['id'] . '"
+                                                                                 data-amount="' . $transaction['amount'] . '"
+                                                                                 data-currency="' . $transaction['currency'] . '">
+                                                                                 <i class="feather icon-trash"></i> ' . __('delete') . '
+                                                                             </button>';
+                                                                         }
                                                                         echo '</div>';
                                                                         echo '</td>';
                                                                         echo '</tr>';

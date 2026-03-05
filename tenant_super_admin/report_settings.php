@@ -13,6 +13,10 @@ $error_message = '';
 
 // Handle form submission
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
+    // Validate CSRF token for all POST requests
+    if (!CsrfProtection::validateToken($_POST['csrf_token'] ?? null)) {
+        $error_message = 'Security token validation failed. Please try again.';
+    } else {
     try {
         // Check if settings exist
         $stmt = $pdo->prepare("SELECT id FROM report_settings WHERE tenant_id = ?");
@@ -83,6 +87,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     } catch (Exception $e) {
         error_log("Report settings error: " . $e->getMessage());
         $error_message = "Error saving settings: " . $e->getMessage();
+    }
     }
 }
 
@@ -186,6 +191,7 @@ $reportLogs = $stmt->fetchAll(PDO::FETCH_ASSOC);
                     </div>
                     <div class="card-body">
                         <form method="POST" action="">
+                            <input type="hidden" name="csrf_token" value="<?= htmlspecialchars($csrf_token, ENT_QUOTES, 'UTF-8') ?>">
                             <div class="form-group">
                                 <div class="custom-control custom-checkbox">
                                     <input type="checkbox" class="custom-control-input" id="monthly_report_enabled"

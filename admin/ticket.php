@@ -14,13 +14,18 @@ require_once('../includes/db.php');
 $tenant_id = $_SESSION['tenant_id'];
 $branch_id = $_SESSION['branch_id'];
 
-// Check if user is logged in
-if (!isset($_SESSION['user_id'])  || $_SESSION['role'] !== 'admin') {
+// Check if user is logged in with proper role
+$allowed_roles = ['admin', 'finance', 'sales'];
+if (!isset($_SESSION['user_id']) || !in_array($_SESSION['role'], $allowed_roles)) {
+    // Log unauthorized access attempt
+    error_log("Unauthorized access attempt to dashboard: " . ($_SESSION['user_id'] ?? 'unknown') . " - Role: " . ($_SESSION['role'] ?? 'unknown') . " - IP: " . $_SERVER['REMOTE_ADDR']);
     header('Location: ../login.php');
     exit();
 }
-
 include '../api/ticket/ticket_handler.php';
+
+// Check if user is admin or finance
+$canEdit = in_array($_SESSION['role'], ['admin', 'finance']);
 ?>
 
 <?php 
@@ -36,28 +41,255 @@ include '../includes/header.php';
 <style>
 /* Apply gradient background to card headers matching the sidebar */
 .card-header {
-    background: linear-gradient(135deg, #4099ff 0%, #2ed8b6 100%) !important;
-    color: #ffffff !important;
-    border-bottom: none !important;
+background: linear-gradient(135deg, #4099ff 0%, #2ed8b6 100%) !important;
+color: #ffffff !important;
+border-bottom: none !important;
 }
 
 .card-header h5 {
-    color: #ffffff !important;
-    margin-bottom: 0 !important;
+color: #ffffff !important;
+margin-bottom: 0 !important;
 }
 
 .card-header .card-header-right {
-    color: #ffffff !important;
+color: #ffffff !important;
 }
 
 .card-header .card-header-right .btn {
-    color: #ffffff !important;
-    border-color: rgba(255, 255, 255, 0.3) !important;
+color: #ffffff !important;
+border-color: rgba(255, 255, 255, 0.3) !important;
 }
 
 .card-header .card-header-right .btn:hover {
 background: rgba(255, 255, 255, 0.1) !important;
 border-color: rgba(255, 255, 255, 0.5) !important;
+}
+
+/* Ticket Card Styles */
+.ticket-card-container {
+display: flex;
+flex-direction: column;
+gap: 16px;
+}
+
+.ticket-card {
+display: grid;
+grid-template-columns: 1fr 140px;
+border-radius: 10px;
+overflow: hidden;
+background: #e8edf2;
+box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+transition: all 0.3s ease;
+}
+
+.ticket-card:hover {
+box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+}
+
+.ticket-card-main {
+display: grid;
+grid-template-columns: 1fr auto;
+align-items: center;
+padding: 18px 22px;
+position: relative;
+}
+
+.ticket-card-main::after {
+content: '';
+position: absolute;
+right: 0;
+top: 10%;
+height: 80%;
+border-right: 2px dashed rgba(255,255,255,0.5);
+}
+
+.ticket-card-main.status-paid {
+    background: #8db87a;
+}
+
+.ticket-card-main.status-partial {
+    background: #d4a574;
+}
+
+.ticket-card-main.status-unpaid {
+    background: #e07a7a;
+}
+
+.ticket-card-main.status-neutral {
+    background: #6b8fb3;
+}
+
+.ticket-card-left {
+display: flex;
+flex-direction: column;
+gap: 12px;
+}
+
+.ticket-card-header {
+display: flex;
+gap: 12px;
+align-items: flex-start;
+}
+
+.ticket-card-status-dots {
+display: flex;
+gap: 6px;
+align-items: center;
+padding-top: 2px;
+}
+
+.ticket-card-dot {
+width: 8px;
+height: 8px;
+border-radius: 50%;
+background: rgba(255,255,255,0.7);
+}
+
+.ticket-card-dot.primary {
+width: 10px;
+height: 10px;
+background: rgba(255,255,255,0.9);
+}
+
+.ticket-card-title {
+font-size: 18px;
+font-weight: 700;
+color: #fff;
+letter-spacing: 0.5px;
+line-height: 1;
+display: flex;
+align-items: center;
+gap: 8px;
+}
+
+.ticket-card-title span {
+display: block;
+width: 24px;
+height: 2px;
+background: rgba(255,255,255,0.8);
+}
+
+.ticket-card-id {
+font-size: 11px;
+color: rgba(255,255,255,0.85);
+font-weight: 500;
+}
+
+.ticket-card-details {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 12px 16px;
+    color: rgba(255,255,255,0.9);
+    font-size: 12px;
+    margin-top: 8px;
+}
+
+.ticket-card-detail-item {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+}
+
+.ticket-card-detail-label {
+    font-weight: 600;
+    font-size: 10px;
+    text-transform: uppercase;
+    opacity: 0.8;
+    min-width: fit-content;
+}
+
+.ticket-card-right {
+display: flex;
+flex-direction: column;
+gap: 8px;
+}
+
+.ticket-card-price-box {
+background: #fff;
+border-radius: 8px;
+padding: 10px 14px;
+font-size: 28px;
+font-weight: 700;
+color: #2d3f52;
+letter-spacing: -0.5px;
+text-align: center;
+}
+
+.ticket-card-price-meta {
+display: flex;
+gap: 4px;
+align-items: center;
+font-size: 9px;
+color: rgba(255,255,255,0.75);
+}
+
+.ticket-card-meta-dot {
+width: 5px;
+height: 5px;
+border-radius: 50%;
+background: rgba(255,255,255,0.7);
+}
+
+.ticket-card-stub {
+    background: #e2e8ed;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    padding: 12px 8px;
+    gap: 6px;
+}
+
+.ticket-card-actions {
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+    width: 100%;
+}
+
+.ticket-card-action-btn {
+    background: #4099ff;
+    border: none;
+    color: #fff;
+    padding: 8px 12px;
+    border-radius: 4px;
+    font-size: 12px;
+    cursor: pointer;
+    transition: all 0.2s;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 100%;
+}
+
+.ticket-card-action-btn:hover {
+    background: #2e7dd9;
+    transform: scale(1.05);
+}
+
+@media (max-width: 768px) {
+.ticket-card {
+    grid-template-columns: 1fr;
+}
+
+.ticket-card-main {
+    grid-template-columns: 1fr;
+}
+
+.ticket-card-main::after {
+    display: none;
+}
+
+.ticket-card-stub {
+    padding: 8px 12px;
+}
+
+.ticket-card-actions {
+    position: relative;
+    top: auto;
+    right: auto;
+    margin-top: 8px;
+}
 }
 </style>
 <!-- [ Main Content ] start -->
@@ -182,230 +414,178 @@ border-color: rgba(255, 255, 255, 0.5) !important;
                                         </div>
                                     </div>
 
-                                    <!-- Tickets Table Section -->
-                                    <div class="card">
-                                        <div class="card-body p-0">
-                                            <div class="table-responsive">
-                                                <table class="table table-hover">
-                                                    <thead>
-                                                        <tr>
-                                                            <th class="text-center" width="50">#</th>
-                                                            <th width="100"><?= __('action') ?></th>
-                                                            <th width="60" class="text-center"><?= __('payment') ?></th>
-                                                            <th><?= __('passenger_info') ?></th>
-                                                            <th><?= __('flight_details') ?></th>
-                                                            <th><?= __('booking_info') ?></th>
-                                                            <th class="text-right"><?= __('amount') ?></th>
-                                                        </tr>
-                                                    </thead>
-                                                    <tbody id="ticketTable">
-                                                        <?php 
-                                                        $counter = 1;
-                                                        foreach ($tickets as $ticket): 
-                                                            $isAgencyClient = false;
-                                                            $soldTo = $ticket['ticket']['sold_to'];
-                                                            $clientStmt = $pdo->prepare("SELECT client_type FROM clients WHERE name = ? AND tenant_id = ? AND branch_id = ?");
-                                                            $clientStmt->bindParam(1, $soldTo, PDO::PARAM_STR);
-                                                            $clientStmt->bindParam(2, $tenant_id, PDO::PARAM_INT);
-                                                            $clientStmt->bindParam(3, $branch_id, PDO::PARAM_INT);
-                                                            $clientStmt->execute();
-                                                            $clientRow = $clientStmt->fetch(PDO::FETCH_ASSOC);
-                                                            if ($clientRow) {
-                                                                $isAgencyClient = ($clientRow['client_type'] === 'agency');
-                                                            }
-                                                        ?>
-                                                        <tr>
-                                                            <td class="text-center"><?= $counter++ ?></td>
-                                                            <td>
-                                                                <div class="dropdown">
-                                                                    <button class="btn btn-secondary btn-sm dropdown-toggle" type="button" id="actionDropdown<?= $ticket['ticket']['id'] ?>" data-toggle="dropdown">
-                                                                        <i class="feather icon-more-vertical"></i>
-                                                                    </button>
-                                                                    <div class="dropdown-menu dropdown-menu-right">
-                                                                        <button class="dropdown-item view-details" data-ticket='<?= json_encode($ticket) ?>'>
-                                                                            <i class="feather icon-eye text-primary mr-2"></i> <?= __('view_details') ?>
-                                                                        </button>
-                                                                        <button class="dropdown-item" onclick="editTicket(<?= $ticket['ticket']['id'] ?>)">
-                                                                            <i class="feather icon-edit-2 text-warning mr-2"></i> <?= __('edit') ?>
-                                                                        </button>
-                                                                        <?php if ($isAgencyClient): ?>
-                                                                        <button class="dropdown-item" onclick="manageTransactions(<?= $ticket['ticket']['id'] ?>)">
-                                                                            <i class="fas fa-dollar-sign text-success mr-2"></i> <?= __('manage_transactions') ?>
-                                                                        </button>
-                                                                        <?php endif; ?>
-                                                                        <div class="dropdown-divider"></div>
-                                                                        <button class="dropdown-item text-danger" onclick="deleteTicket(<?= $ticket['ticket']['id'] ?>)">
-                                                                            <i class="feather icon-trash-2 mr-2"></i> <?= __('delete') ?>
-                                                                        </button>
-                                                                    </div>
-                                                                </div>
-                                                            </td>
-                                                            <td class="text-center">
-                                                            <?php
-                                                            // Get client type from clients table
-                                                            $soldTo = $ticket['ticket']['sold_to'];
-                                                            $isAgencyClient = false;
-
-                                                            // Check if client is an agency
-                                                            $clientStmt = $pdo->prepare("SELECT client_type FROM clients WHERE name = ? AND tenant_id = ? AND branch_id = ?");
-                                                            $clientStmt->bindParam(1, $soldTo, PDO::PARAM_STR);
-                                                            $clientStmt->bindParam(2, $tenant_id, PDO::PARAM_INT);
-                                                            $clientStmt->bindParam(3, $branch_id, PDO::PARAM_INT);
-                                                            $clientStmt->execute();
-                                                            $clientRow = $clientStmt->fetch(PDO::FETCH_ASSOC);
-                                                            if ($clientRow) {
-                                                                $isAgencyClient = ($clientRow['client_type'] === 'agency');
-                                                            }
-
-                                                            if ($isAgencyClient) {
-                                                                // Calculate payment status using transaction-specific exchange rates
-                                                                $baseCurrency = $ticket['ticket']['currency'];
-                                                                $soldAmount = floatval($ticket['ticket']['sold']);
-                                                                $totalPaidInBase = 0.0;
-
-                                                                // Get ticket ID
-                                                                $ticketId = $ticket['ticket']['id'];
-
-                                                                // Query transactions from main_account_transactions table
-                                                                $transactionStmt = $pdo->prepare("SELECT * FROM main_account_transactions WHERE
-                                                                    transaction_of = 'ticket_sale'
-                                                                    AND reference_id = ? AND tenant_id = ? AND branch_id = ?");
-                                                                $transactionStmt->bindParam(1, $ticketId, PDO::PARAM_INT);
-                                                                $transactionStmt->bindParam(2, $tenant_id, PDO::PARAM_INT);
-                                                                $transactionStmt->bindParam(3, $branch_id, PDO::PARAM_INT);
-                                                                $transactionStmt->execute();
-                                                                $transactions = $transactionStmt->fetchAll(PDO::FETCH_ASSOC);
-
-                                                                if ($transactions && count($transactions) > 0) {
-                                                                    foreach ($transactions as $transaction) {
-                                                                        $amount = floatval($transaction['amount']);
-                                                                        $transCurrency = $transaction['currency'];
-                                                                        $transExchangeRate = isset($transaction['exchange_rate']) && $transaction['exchange_rate'] > 0 ? floatval($transaction['exchange_rate']) : 1.0;
-
-                                                                        $convertedAmount = 0.0;
-
-                                                                        if ($transCurrency === $baseCurrency) {
-                                                                            $convertedAmount = $amount;
-                                                                        } else {
-                                                                            if ($baseCurrency === 'AFS') {
-                                                                                $convertedAmount = $amount * $transExchangeRate;
-                                                                            } else {
-                                                                                $convertedAmount = $amount / $transExchangeRate;
-                                                                            }
-                                                                        }
-
-                                                                        $totalPaidInBase += $convertedAmount;
-                                                                    }
-                                                                }
-
-                                                                // Status icon based on payment status
-                                                                if ($totalPaidInBase <= 0) {
-                                                                    echo '<i class="fas fa-circle text-danger" title="No payment received"></i>';
-                                                                } elseif ($totalPaidInBase < $soldAmount) {
-                                                                    // Partial payment
-                                                                    $percentage = round(($totalPaidInBase / $soldAmount) * 100);
-                                                                    echo '<i class="fas fa-circle text-warning" style="color: #ffc107 !important;"
-                                                                        title="Partial payment: ' . $baseCurrency . ' ' . number_format($totalPaidInBase, 2) . ' / ' . $baseCurrency . ' ' .
-                                                                        number_format($soldAmount, 2) . ' (' . $percentage . '%)"></i>';
-                                                                } elseif (abs($totalPaidInBase - $soldAmount) < 0.01) {
-                                                                    // Fully paid (with a small tolerance for floating-point comparison)
-                                                                    echo '<i class="fas fa-circle text-success" title="Fully paid"></i>';
-                                                                } else {
-                                                                    // Overpaid
-                                                                    echo '<i class="fas fa-circle text-success"
-                                                                        title="Fully paid (overpaid by ' . $baseCurrency . ' ' .
-                                                                        number_format($totalPaidInBase - $soldAmount, 2) . ')"></i>';
-                                                                }
-                                                            } else {
-                                                                // Not an agency client - show neutral icon
-                                                                echo '<i class="fas fa-minus text-muted" title="Not an agency client"></i>';
-                                                            }
-                                                            ?>
-                                                            </td>
-
-
-                                                            <td>
-                                                                <div class="passenger-info">
-                                                                    
-                                                                    <div class="passenger-info__details">
-                                                                        <div class="passenger-info__name">
-                                                                            <?= htmlspecialchars($ticket['ticket']['title']) ?> <?= htmlspecialchars($ticket['ticket']['passenger_name']) ?>
-                                                                        </div>
-                                                                        <div class="passenger-info__pnr">
-                                                                            PNR: <?= htmlspecialchars($ticket['ticket']['pnr']) ?>
-                                                                        </div>
-                                                                    </div>
-                                                                </div>
-                                                            </td> 
-                                                            <td>
-                                                                <div class="flight-info">
-                                                                    <div class="flight-info__segment">
-                                                                        <div class="flight-info__city">
-                                                                            <?= htmlspecialchars($ticket['ticket']['origin']) ?> - <?= htmlspecialchars($ticket['ticket']['destination']) ?>
-                                                                        </div>
-                                                                        <?php if ($ticket['ticket']['trip_type'] === 'round_trip'): ?>
-                                                                            <div class="flight-info__city mt-2">
-                                                                                <?= htmlspecialchars($ticket['ticket']['destination']) ?> - <?= htmlspecialchars($ticket['ticket']['return_destination']) ?>
-                                                                            </div>
-                                                                        <?php endif; ?>
-                                                                        <div class="flight-info__airline">
-                                                                            <?= htmlspecialchars($ticket['ticket']['airline']) ?>
-                                                                        </div>
-                                                                    </div>
-                                                                </div>
-                                                            </td>
-                                                            <td>
-                                                                <div class="booking-info">
-                                                                    <div class="booking-info__date">
-                                                                        <i class="feather icon-calendar text-muted mr-1"></i>
-                                                                        <?= htmlspecialchars($ticket['ticket']['issue_date']) ?>
-                                                                    </div>
-                                                                    <div class="booking-info__flight-date">
-                                                                        <i class="feather icon-plane text-muted mr-1"></i>
-                                                                        <?= htmlspecialchars($ticket['ticket']['departure_date']) ?>
-                                                                        <?php if (!empty($ticket['ticket']['departure_time'])): ?> at <?= htmlspecialchars($ticket['ticket']['departure_time']) ?><?php endif; ?>
-                                                                        <?php if ($ticket['ticket']['trip_type'] === 'round_trip'): ?>
-                                                                            <br>
-                                                                            <i class="feather icon-plane text-muted mr-1"></i>
-                                                                            <?= htmlspecialchars($ticket['ticket']['return_date']) ?>
-                                                                            <?php if (!empty($ticket['ticket']['return_departure_time'])): ?> at <?= htmlspecialchars($ticket['ticket']['return_departure_time']) ?><?php endif; ?>
-                                                                        <?php endif; ?>
-                                                                    </div>
-                                                                </div>
-                                                            </td>
-                                                            <td class="text-right">
-                                                                <div class="ticket-amount">
-                                                                    <div class="ticket-amount__value">
-                                                                        <?= htmlspecialchars($ticket['ticket']['currency']) ?> <?= number_format($ticket['ticket']['sold'], 2) ?>
-                                                                    </div>
-                                                                    <?php if ($ticket['refund_data']): ?>
-                                                                        <div class="ticket-amount__refund text-danger">
-                                                                            <small>
-                                                                                <?= __('refunded') ?>: <?= htmlspecialchars($ticket['refund_data']['currency']) ?> <?= number_format($ticket['refund_data']['refund_to_passenger'], 2) ?>
-                                                                            </small>
-                                                                        </div>
-                                                                    <?php endif; ?>
-                                                                    <?php if ($ticket['date_change_data']): ?>
-                                                                        <div class="ticket-amount__date-change text-warning">
-                                                                            <small>
-                                                                                <?= __('date_change') ?>: <?= htmlspecialchars($ticket['date_change_data']['currency']) ?> <?= number_format($ticket['date_change_data']['supplier_penalty'] + $ticket['date_change_data']['service_penalty'], 2) ?>
-                                                                            </small>
-                                                                        </div>
-                                                                    <?php endif; ?>
-                                                                    <?php if ($ticket['ticket']['weight_count'] > 0): ?>
-                                                                        <div class="ticket-amount__weight text-info">
-                                                                            <small>
-                                                                                <?= __('weight') ?>: <?= htmlspecialchars($ticket['ticket']['weight_count']) ?> items, <?= number_format($ticket['ticket']['total_weight'], 2) ?> kg
-                                                                            </small>
-                                                                        </div>
-                                                                    <?php endif; ?>
-                                                                </div>
-                                                            </td>
-                                                        </tr>
-                                                        <?php endforeach; ?>
-                                                    </tbody>
-                                                </table>
-                                            </div>
+                                    <!-- Tickets Card Section -->
+                                     <div class="card">
+                                         <div class="card-body">
+                                             <div class="ticket-card-container" id="ticketTable">
+                                                 <?php 
+                                                 $counter = 1;
+                                                 foreach ($tickets as $ticket): 
+                                                     $isAgencyClient = false;
+                                                     $soldTo = $ticket['ticket']['sold_to'];
+                                                     $clientStmt = $pdo->prepare("SELECT client_type FROM clients WHERE name = ? AND tenant_id = ? AND branch_id = ?");
+                                                     $clientStmt->bindParam(1, $soldTo, PDO::PARAM_STR);
+                                                     $clientStmt->bindParam(2, $tenant_id, PDO::PARAM_INT);
+                                                     $clientStmt->bindParam(3, $branch_id, PDO::PARAM_INT);
+                                                     $clientStmt->execute();
+                                                     $clientRow = $clientStmt->fetch(PDO::FETCH_ASSOC);
+                                                     if ($clientRow) {
+                                                         $isAgencyClient = ($clientRow['client_type'] === 'agency');
+                                                     }
+                                                     
+                                                     // Determine payment status
+                                                     $paymentStatus = 'neutral';
+                                                     $totalPaidInBase = 0;
+                                                     $baseCurrency = $ticket['ticket']['currency'];
+                                                     $soldAmount = floatval($ticket['ticket']['sold']);
+                                                     $ticketId = $ticket['ticket']['id'];
+                                                     
+                                                     if ($isAgencyClient) {
+                                                         // Query transactions from database
+                                                         $transactionStmt = $pdo->prepare("SELECT * FROM main_account_transactions WHERE
+                                                             transaction_of = 'ticket_sale'
+                                                             AND reference_id = ? AND tenant_id = ? AND branch_id = ?");
+                                                         $transactionStmt->bindParam(1, $ticketId, PDO::PARAM_INT);
+                                                         $transactionStmt->bindParam(2, $tenant_id, PDO::PARAM_INT);
+                                                         $transactionStmt->bindParam(3, $branch_id, PDO::PARAM_INT);
+                                                         $transactionStmt->execute();
+                                                         $transactions = $transactionStmt->fetchAll(PDO::FETCH_ASSOC);
+                                                         
+                                                         if ($transactions && count($transactions) > 0) {
+                                                             foreach ($transactions as $transaction) {
+                                                                 $amount = floatval($transaction['amount']);
+                                                                 $transCurrency = $transaction['currency'];
+                                                                 $transExchangeRate = isset($transaction['exchange_rate']) && $transaction['exchange_rate'] > 0 ? floatval($transaction['exchange_rate']) : 1.0;
+                                                                 
+                                                                 $convertedAmount = 0.0;
+                                                                 
+                                                                 if ($transCurrency === $baseCurrency) {
+                                                                     $convertedAmount = $amount;
+                                                                 } else {
+                                                                     if ($baseCurrency === 'AFS') {
+                                                                         $convertedAmount = $amount * $transExchangeRate;
+                                                                     } else {
+                                                                         $convertedAmount = $amount / $transExchangeRate;
+                                                                     }
+                                                                 }
+                                                                 
+                                                                 $totalPaidInBase += $convertedAmount;
+                                                             }
+                                                         }
+                                                         
+                                                         if ($totalPaidInBase <= 0) {
+                                                             $paymentStatus = 'unpaid';
+                                                         } elseif ($totalPaidInBase < $soldAmount) {
+                                                             $paymentStatus = 'partial';
+                                                         } else {
+                                                             $paymentStatus = 'paid';
+                                                         }
+                                                     }
+                                                 ?>
+                                                 <div class="ticket-card">
+                                                     <div class="ticket-card-main status-<?= $paymentStatus ?>">
+                                                         <div class="ticket-card-left">
+                                                             <div class="ticket-card-header">
+                                                                 <div class="ticket-card-status-dots">
+                                                                     <div class="ticket-card-dot primary"></div>
+                                                                     <div class="ticket-card-dot"></div>
+                                                                     <div class="ticket-card-dot"></div>
+                                                                     <div class="ticket-card-dot"></div>
+                                                                 </div>
+                                                             </div>
+                                                             <div>
+                                                                 <div class="ticket-card-title">
+                                                                     TICKET
+                                                                     <span></span>
+                                                                 </div>
+                                                                 <div class="ticket-card-id"><?= htmlspecialchars($ticket['ticket']['pnr']) ?></div>
+                                                             </div>
+                                                             <div class="ticket-card-details">
+                                                                 <div class="ticket-card-detail-item">
+                                                                     <span class="ticket-card-detail-label"><?= __('sold_to') ?>:</span>
+                                                                     <span><?= htmlspecialchars($ticket['ticket']['sold_to']) ?></span>
+                                                                 </div>
+                                                                 <div class="ticket-card-detail-item">
+                                                                     <span class="ticket-card-detail-label"><?= __('passenger') ?>:</span>
+                                                                     <span><?= htmlspecialchars($ticket['ticket']['title']) ?> <?= htmlspecialchars($ticket['ticket']['passenger_name']) ?></span>
+                                                                 </div>
+                                                                 <div class="ticket-card-detail-item">
+                                                                     <span class="ticket-card-detail-label"><?= __('route') ?>:</span>
+                                                                     <span><?= htmlspecialchars($ticket['ticket']['origin']) ?> → <?= htmlspecialchars($ticket['ticket']['destination']) ?></span>
+                                                                 </div>
+                                                                 <div class="ticket-card-detail-item">
+                                                                     <span class="ticket-card-detail-label"><?= __('airline') ?>:</span>
+                                                                     <span><?= htmlspecialchars($ticket['ticket']['airline']) ?></span>
+                                                                 </div>
+                                                                 <div class="ticket-card-detail-item">
+                                                                     <span class="ticket-card-detail-label"><?= __('issue_date') ?>:</span>
+                                                                     <span><?= htmlspecialchars($ticket['ticket']['issue_date']) ?></span>
+                                                                 </div>
+                                                                 <div class="ticket-card-detail-item">
+                                                                     <span class="ticket-card-detail-label"><?= __('departure') ?>:</span>
+                                                                     <span><?= htmlspecialchars($ticket['ticket']['departure_date']) ?><?php if (!empty($ticket['ticket']['departure_time'])): ?> @ <?= htmlspecialchars($ticket['ticket']['departure_time']) ?><?php endif; ?></span>
+                                                                 </div>
+                                                                 <?php if ($ticket['ticket']['trip_type'] === 'round_trip'): ?>
+                                                                 <div class="ticket-card-detail-item">
+                                                                     <span class="ticket-card-detail-label"><?= __('return') ?>:</span>
+                                                                     <span><?= htmlspecialchars($ticket['ticket']['return_date']) ?><?php if (!empty($ticket['ticket']['return_departure_time'])): ?> @ <?= htmlspecialchars($ticket['ticket']['return_departure_time']) ?><?php endif; ?></span>
+                                                                 </div>
+                                                                 <?php endif; ?>
+                                                                 <?php if ($ticket['refund_data']): ?>
+                                                                 <div class="ticket-card-detail-item" style="color: #ff6b6b;">
+                                                                     <span class="ticket-card-detail-label"><?= __('refunded') ?>:</span>
+                                                                     <span><?= htmlspecialchars($ticket['refund_data']['currency']) ?> <?= number_format($ticket['refund_data']['refund_to_passenger'], 2) ?></span>
+                                                                 </div>
+                                                                 <?php endif; ?>
+                                                                 <?php if ($ticket['date_change_data']): ?>
+                                                                 <div class="ticket-card-detail-item" style="color: #ffc107;">
+                                                                     <span class="ticket-card-detail-label"><?= __('date_change') ?>:</span>
+                                                                     <span><?= htmlspecialchars($ticket['date_change_data']['currency']) ?> <?= number_format($ticket['date_change_data']['supplier_penalty'] + $ticket['date_change_data']['service_penalty'], 2) ?></span>
+                                                                 </div>
+                                                                 <?php endif; ?>
+                                                                 <?php if ($ticket['ticket']['weight_count'] > 0): ?>
+                                                                 <div class="ticket-card-detail-item">
+                                                                     <span class="ticket-card-detail-label"><?= __('weight') ?>:</span>
+                                                                     <span><?= htmlspecialchars($ticket['ticket']['weight_count']) ?> items, <?= number_format($ticket['ticket']['total_weight'], 2) ?> kg</span>
+                                                                 </div>
+                                                                 <?php endif; ?>
+                                                             </div>
+                                                         </div>
+                                                         <div class="ticket-card-right">
+                                                             <div class="ticket-card-price-box"><?= number_format($ticket['ticket']['sold'], 2) ?></div>
+                                                             <div class="ticket-card-price-meta">
+                                                                 <div class="ticket-card-meta-dot"></div>
+                                                                 <div class="ticket-card-meta-dot"></div>
+                                                                 <div class="ticket-card-meta-dot"></div>
+                                                                 <span><?= htmlspecialchars($baseCurrency) ?></span>
+                                                             </div>
+                                                         </div>
+                                                     </div>
+                                                     <div class="ticket-card-stub">
+                                                         <div class="ticket-card-actions" style="display: flex; flex-direction: column; gap: 6px;">
+                                                             <button class="ticket-card-action-btn view-details" data-ticket='<?= json_encode($ticket) ?>' title="<?= __('view_details') ?>" style="width: 100%;">
+                                                                 <i class="feather icon-eye"></i>
+                                                             </button>
+                                                             <?php if ($canEdit): ?>
+                                                             <button class="ticket-card-action-btn" onclick="editTicket(<?= $ticket['ticket']['id'] ?>)" title="<?= __('edit') ?>" style="width: 100%;">
+                                                                 <i class="feather icon-edit-2"></i>
+                                                             </button>
+                                                             <?php endif; ?>
+                                                             <?php if ($isAgencyClient && $canEdit): ?>
+                                                             <button class="ticket-card-action-btn" onclick="manageTransactions(<?= $ticket['ticket']['id'] ?>)" title="<?= __('manage_transactions') ?>" style="width: 100%;">
+                                                                 <i class="fas fa-dollar-sign"></i>
+                                                             </button>
+                                                             <?php endif; ?>
+                                                             <?php if ($canEdit): ?>
+                                                             <button class="ticket-card-action-btn" onclick="deleteTicket(<?= $ticket['ticket']['id'] ?>)" title="<?= __('delete') ?>" style="width: 100%;">
+                                                                 <i class="feather icon-trash-2"></i>
+                                                             </button>
+                                                             <?php endif; ?>
+                                                         </div>
+                                                     </div>
+                                                 </div>
+                                                 <?php endforeach; ?>
+                                             </div>
 
                                             <!-- Pagination -->
                                             <div class="card-footer bg-white">
@@ -531,6 +711,7 @@ border-color: rgba(255, 255, 255, 0.5) !important;
                                     <script src="../js/ticket/toast.js"></script>
                                     <script src="../js/ticket/pdf-ticket-extract.js"></script>
                                     <script src="../js/ticket/client-phone-autofill.js"></script>
+                                    <script src="../js/ticket/refresh-table.js"></script>
 
 
 </body>

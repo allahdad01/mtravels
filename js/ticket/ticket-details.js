@@ -77,9 +77,53 @@ $(document).ready(function () {
         $('#dateChangeBase').val($('#detailsModal #base-price').text());
         $('#dateChangeDescription').val($('#detailsModal #description').text());
         $('#dateChangeDepartureDate').val('');  // Empty the departure date for the user to enter
+        $('#dateChangeReturnDate').val('');  // Empty the return date for the user to enter
+
+        // Reset date type selection
+        $('#changeDepartureOnly').prop('checked', true);
+        
+        // Show/hide date type selection and return date field based on trip type
+        if (ticketData.ticket.trip_type === 'round_trip') {
+            $('#dateTypeSelectionGroup').show();
+            $('#departureGroup').show();
+            $('#returnDateGroup').hide();
+            updateDateChangeFields();
+        } else {
+            $('#dateTypeSelectionGroup').hide();
+            $('#departureGroup').show();
+            $('#returnDateGroup').hide();
+            $('#dateChangeDepartureDate').prop('required', true);
+            $('#dateChangeReturnDate').prop('required', false);
+        }
 
         $('#dateChangeModal').modal('show');
     });
+
+    // Handle date type selection changes
+    $(document).on('change', 'input[name="dateType"]', function() {
+        updateDateChangeFields();
+    });
+
+    function updateDateChangeFields() {
+        const dateType = $('input[name="dateType"]:checked').val();
+        
+        if (dateType === 'departure') {
+            $('#departureGroup').show();
+            $('#returnDateGroup').hide();
+            $('#dateChangeDepartureDate').prop('required', true);
+            $('#dateChangeReturnDate').prop('required', false);
+        } else if (dateType === 'return') {
+            $('#departureGroup').hide();
+            $('#returnDateGroup').show();
+            $('#dateChangeDepartureDate').prop('required', false);
+            $('#dateChangeReturnDate').prop('required', true);
+        } else if (dateType === 'both') {
+            $('#departureGroup').show();
+            $('#returnDateGroup').show();
+            $('#dateChangeDepartureDate').prop('required', true);
+            $('#dateChangeReturnDate').prop('required', true);
+        }
+    }
 
     // Open Refund Modal
     $('#refundBtn').click(function () {
@@ -150,6 +194,25 @@ $(document).ready(function () {
     // Submit Date Change Form
     $('#dateChangeForm').submit(function (e) {
         e.preventDefault();
+        
+        const dateType = $('input[name="dateType"]:checked').val();
+        const departureDateVal = $('#dateChangeDepartureDate').val();
+        const returnDateVal = $('#dateChangeReturnDate').val();
+        
+        // Validate that at least one date is provided
+        if (dateType === 'departure' && !departureDateVal) {
+            showToast('Please enter the new departure date', 'error');
+            return;
+        }
+        if (dateType === 'return' && !returnDateVal) {
+            showToast('Please enter the new return date', 'error');
+            return;
+        }
+        if (dateType === 'both' && (!departureDateVal || !returnDateVal)) {
+            showToast('Please enter both departure and return dates', 'error');
+            return;
+        }
+        
         const formData = $(this).serialize();
 
         $.ajax({
@@ -157,10 +220,12 @@ $(document).ready(function () {
             method: 'POST',
             data: formData,
             success: function (response) {
-
                 if ($.trim(response) === 'success') { // Trim whitespace
                     showToast('Date change recorded successfully', 'success');
                     $('#dateChangeModal').modal('hide');
+                    setTimeout(() => {
+                        refreshTicketTable();
+                    }, 1000);
                 } else {
                     showToast('Error recording date change: ' + response, 'error');
                 }
@@ -192,10 +257,12 @@ $(document).ready(function () {
             method: 'POST',
             data: formData,
             success: function (response) {
-
                 if ($.trim(response) === 'success') {
                     showToast('Refund recorded successfully', 'success');
                     $('#refundModal').modal('hide');
+                    setTimeout(() => {
+                        refreshTicketTable();
+                    }, 1000);
                 } else {
                     showToast('Error recording refund', 'error');
                 }

@@ -24,10 +24,51 @@ if (!isset($_GET['account_id']) || !is_numeric($_GET['account_id'])) {
 
 $accountId = intval($_GET['account_id']);
 
+// Get pagination parameters
+$page = isset($_GET['page']) ? max(1, intval($_GET['page'])) : 1;
+$perPage = 50;
+$offset = ($page - 1) * $perPage;
+
 // Database connection
 require_once('../../includes/db.php');
 
-// Prepare and execute query
+// Get filter parameters
+$currency = isset($_GET['currency']) && $_GET['currency'] !== 'all' ? $_GET['currency'] : null;
+$receipt = isset($_GET['receipt']) ? trim($_GET['receipt']) : null;
+$startDate = isset($_GET['startDate']) ? $_GET['startDate'] : null;
+$endDate = isset($_GET['endDate']) ? $_GET['endDate'] : null;
+
+// Build WHERE clause with filters
+$whereConditions = ["mt.main_account_id = ? AND mt.tenant_id = ? AND mt.branch_id = ?"];
+$params = [$accountId, $tenant_id, $branch_id];
+
+if ($currency) {
+    $whereConditions[] = "mt.currency = ?";
+    $params[] = $currency;
+}
+
+if ($receipt) {
+    $whereConditions[] = "mt.receipt LIKE ?";
+    $params[] = '%' . $receipt . '%';
+}
+
+if ($startDate && $endDate) {
+    $whereConditions[] = "DATE(mt.created_at) BETWEEN ? AND ?";
+    $params[] = $startDate;
+    $params[] = $endDate;
+}
+
+$whereClause = implode(' AND ', $whereConditions);
+
+// Count total transactions with filters
+$countQuery = "SELECT COUNT(*) as total FROM main_account_transactions mt
+              WHERE " . $whereClause;
+$countStmt = $pdo->prepare($countQuery);
+$countStmt->execute($params);
+$totalTransactions = $countStmt->fetch(PDO::FETCH_ASSOC)['total'];
+$totalPages = ceil($totalTransactions / $perPage);
+
+// Prepare and execute query with pagination and filters
 $query = "SELECT mt.*, 
             CASE 
                             WHEN mt.transaction_of = 'ticket_sale' THEN CONCAT(tb.passenger_name) 
@@ -51,17 +92,27 @@ $query = "SELECT mt.*,
           LEFT JOIN hotel_bookings hb ON mt.reference_id = hb.id AND mt.transaction_of = 'hotel'
           LEFT JOIN hotel_refunds hr ON mt.reference_id = hr.id AND mt.transaction_of = 'hotel_refund'
           LEFT JOIN users usr ON usr.id = mt.reference_id AND mt.transaction_of = 'fund'
-          WHERE mt.main_account_id = ? AND mt.tenant_id = ? AND mt.branch_id = ?
-          ORDER BY mt.id DESC";
-$stmt = $pdo->prepare($query);
-$stmt->bindParam(1, $accountId, PDO::PARAM_INT);
-$stmt->bindParam(2, $tenant_id, PDO::PARAM_INT);
-$stmt->bindParam(3, $branch_id, PDO::PARAM_INT);
-$stmt->execute();
+          WHERE " . $whereClause . "
+          ORDER BY mt.id DESC
+          LIMIT ? OFFSET ?";
 
-// Fetch all transactions
+$stmt = $pdo->prepare($query);
+// Add LIMIT and OFFSET parameters
+$allParams = array_merge($params, [$perPage, $offset]);
+$stmt->execute($allParams);
+
+// Fetch transactions for current page
 $transactions = $stmt->fetchAll(PDO::FETCH_ASSOC);
 
-// Return transactions as JSON
+// Return transactions as JSON with pagination metadata
 header('Content-Type: application/json');
-echo json_encode($transactions);
+echo json_encode([
+    'data' => $transactions,
+    'pagination' => [
+        'current_page' => $page,
+        'per_page' => $perPage,
+        'total' => $totalTransactions,
+        'total_pages' => $totalPages,
+        'offset' => $offset
+    ]
+]);

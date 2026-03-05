@@ -78,7 +78,8 @@ function loadTransactionHistory(umrahId) {
                 type: 'debit',
                 currency: transaction.payment_currency || 'USD',
                 amount: transaction.payment_amount || 0,
-                exchange_rate: transaction.exchange_rate
+                exchange_rate: transaction.exchange_rate,
+                to: transaction.transaction_to || 'Internal Account'
             }));
             
             try {
@@ -86,7 +87,7 @@ function loadTransactionHistory(umrahId) {
                 tbody.empty();
 
                 if (!Array.isArray(transactions) || transactions.length === 0) {
-                    tbody.html('<tr><td colspan="6" class="text-center">No transactions found</td></tr>');
+                    tbody.html('<tr><td colspan="7" class="text-center">No transactions found</td></tr>');
                     $('#exchangeRateDisplay').text('No exchange rates found');
                     $('#exchangedAmount').text('No conversions available');
                     return;
@@ -123,6 +124,7 @@ function loadTransactionHistory(umrahId) {
                             <td>${tx.created_at}</td>
                             <td>${tx.description || ''}</td>
                             <td>${tx.type === 'credit' ? 'Received' : 'Paid'}</td>
+                            <td>${tx.to || 'Internal Account'}</td>
                             <td>${currency} ${amount.toFixed(2)}</td>
                             <td>${exchangeRate || 'N/A'}</td>
                             <td class="text-center">
@@ -233,15 +235,25 @@ function deleteTransaction(transactionId) {
     // Get umrah ID from the modal
     const umrahId = document.getElementById('transactionUmrahId').textContent;
     
-    // Send delete transaction request with JSON format
+    // Ensure CSRF token is available
+    if (!window.csrfToken) {
+        alert('CSRF token not available. Please refresh the page and try again.');
+        deleteBtn.disabled = false;
+        deleteBtn.innerHTML = originalHtml;
+        return;
+    }
+    
+    // Send delete transaction request with JSON format (including CSRF token)
     fetch('../api/umrah/delete_umrah_transaction.php', {
         method: 'POST',
         headers: {
-            'Content-Type': 'application/json'
+            'Content-Type': 'application/json',
+            'X-CSRF-Token': window.csrfToken
         },
         body: JSON.stringify({ 
             transaction_id: transactionId,
-            umrah_id: umrahId
+            umrah_id: umrahId,
+            csrf_token: window.csrfToken
         })
     })
     .then(response => response.json())

@@ -109,7 +109,8 @@ class ChatAPI {
         try {
             const formData = new URLSearchParams({
                 to_user_id: contactId,
-                content: content
+                content: content,
+                csrf_token: window.csrfToken || ''
             });
 
             const response = await fetch('api/messages.php', {
@@ -204,7 +205,8 @@ class ChatAPI {
         try {
             const formData = new URLSearchParams({
                 action: 'mark_seen',
-                peer_id: contactId
+                peer_id: contactId,
+                csrf_token: window.csrfToken || ''
             });
 
             return await fetch('api/messages.php', {
@@ -265,6 +267,7 @@ class ChatAPI {
             formData.append('to_user_id', contactId);
             formData.append('audio', audioBlob, `voice-${Date.now()}.webm`);
             formData.append('duration', duration);
+            formData.append('csrf_token', window.csrfToken || '');
 
             const response = await fetch('api/voice_messages.php', {
                 method: 'POST',
@@ -312,7 +315,8 @@ class ChatAPI {
         try {
             const formData = new URLSearchParams({
                 action: 'block',
-                target_id: userId
+                target_id: userId,
+                csrf_token: window.csrfToken || ''
             });
 
             const response = await fetch('api/chat_prefs.php', {
@@ -342,7 +346,8 @@ class ChatAPI {
         try {
             const formData = new URLSearchParams({
                 action: 'unblock',
-                target_id: userId
+                target_id: userId,
+                csrf_token: window.csrfToken || ''
             });
 
             const response = await fetch('api/chat_prefs.php', {
@@ -372,7 +377,8 @@ class ChatAPI {
         try {
             const formData = new URLSearchParams({
                 action: 'mute',
-                target_id: userId
+                target_id: userId,
+                csrf_token: window.csrfToken || ''
             });
 
             const response = await fetch('api/chat_prefs.php', {
@@ -402,7 +408,8 @@ class ChatAPI {
         try {
             const formData = new URLSearchParams({
                 action: 'unmute',
-                target_id: userId
+                target_id: userId,
+                csrf_token: window.csrfToken || ''
             });
 
             const response = await fetch('api/chat_prefs.php', {
@@ -432,7 +439,8 @@ class ChatAPI {
         try {
             const formData = new URLSearchParams({
                 peer_id: contactId,
-                typing: isTyping ? '1' : '0'
+                typing: isTyping ? '1' : '0',
+                csrf_token: window.csrfToken || ''
             });
 
             return await fetch('api/messages.php', {
@@ -476,7 +484,8 @@ class ChatAPI {
             const formData = new URLSearchParams({
                 action: 'add',
                 message_id: messageId,
-                emoji: emoji
+                emoji: emoji,
+                csrf_token: window.csrfToken || ''
             });
 
             return await fetch('api/chat/reactions.php', {

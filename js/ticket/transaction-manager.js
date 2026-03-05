@@ -141,43 +141,43 @@ const transactionManager = {
         const self = this;
 
         $.ajax({
-            url: '../api/ticket/add_ticket_payment.php',
-            type: 'POST',
-            data: ajaxData,
-            dataType: 'json',
-            timeout: 30000, // 30 second timeout
-            success: function(response) {
-                if (response.success) {
-                    $('#addTransactionForm').collapse('hide');
-                    self.loadTransactionHistory(formData.booking_id);
-                    alert('Transaction added successfully');
-                    $('#hotelTransactionForm')[0].reset();
-                    self.setDefaultDateTime();
-                    $('#exchangeRateField').hide();
-                    $('#transactionExchangeRate').attr('required', false);
-                    $('#transactionExchangeRate').val('');
-                } else {
-                    alert('Error adding transaction: ' + (response.message || 'Unknown error'));
-                }
-            },
-            error: function(xhr, status, error) {
-
-
-                
-                // Show appropriate error message
-                if (status === 'timeout') {
-                    alert('Request timed out. Please check your connection and try again.');
-                } else {
-                    alert('Error adding transaction. Please try again.');
-                }
-            },
-            complete: function() {
-                // CRITICAL: Always re-enable form in complete callback
-                // This runs whether success or error
-                self.isSubmitting = false;
-                self.setSubmitButtonState(false);
-            }
-        });
+             url: '../api/ticket/add_ticket_payment.php',
+             type: 'POST',
+             data: ajaxData,
+             dataType: 'json',
+             timeout: 30000, // 30 second timeout
+             success: function(response) {
+                 if (response.success) {
+                     $('#addTransactionForm').collapse('hide');
+                     self.loadTransactionHistory(formData.booking_id);
+                     showToast('Transaction added successfully', 'success');
+                     $('#hotelTransactionForm')[0].reset();
+                     self.setDefaultDateTime();
+                     $('#exchangeRateField').hide();
+                     $('#transactionExchangeRate').attr('required', false);
+                     $('#transactionExchangeRate').val('');
+                     setTimeout(() => {
+                         refreshTicketTable();
+                     }, 1000);
+                 } else {
+                     showToast('Error adding transaction: ' + (response.message || 'Unknown error'), 'error');
+                 }
+             },
+             error: function(xhr, status, error) {
+                 // Show appropriate error message
+                 if (status === 'timeout') {
+                     showToast('Request timed out. Please check your connection and try again.', 'error');
+                 } else {
+                     showToast('Error adding transaction. Please try again.', 'error');
+                 }
+             },
+             complete: function() {
+                 // CRITICAL: Always re-enable form in complete callback
+                 // This runs whether success or error
+                 self.isSubmitting = false;
+                 self.setSubmitButtonState(false);
+             }
+         });
 
         return false;
     },

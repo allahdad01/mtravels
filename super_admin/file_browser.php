@@ -69,9 +69,29 @@ function deleteDirectory($dir) {
     return rmdir($dir);
 }
 
-// Initialize variables
-$searchQuery = isset($_GET['search']) ? trim($_GET['search']) : '';
-$currentFolder = isset($_GET['folder']) ? trim($_GET['folder']) : '';
+// Initialize variables with validation
+$raw_search = isset($_GET['search']) ? trim($_GET['search']) : '';
+$raw_folder = isset($_GET['folder']) ? trim($_GET['folder']) : '';
+
+// Validate search input
+if (!empty($raw_search)) {
+    $searchQuery = validate_input_length($raw_search, 255);
+    if ($searchQuery === null) {
+        $searchQuery = '';
+    }
+} else {
+    $searchQuery = '';
+}
+
+// Validate folder input
+if (!empty($raw_folder)) {
+    $currentFolder = validate_input_length($raw_folder, 500);
+    if ($currentFolder === null) {
+        $currentFolder = '';
+    }
+} else {
+    $currentFolder = '';
+}
 
 // Get safe uploads directory using validation function
 $uploadsDir = getSafeUploadsDir();
@@ -112,8 +132,9 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action'])) {
         $fullPath = $uploadsDir . '/' . $itemPath;
         
         // Validate path is within uploads directory
+        $realUploadsPath = realpath($uploadsDir);
         $realItemPath = realpath($fullPath);
-        if ($realItemPath === false || strpos($realItemPath, $realUploadsPath) !== 0) {
+        if ($realItemPath === false || $realUploadsPath === false || strpos($realItemPath, $realUploadsPath) !== 0) {
             $response['message'] = 'Invalid path';
         } else {
             if (is_dir($fullPath)) {

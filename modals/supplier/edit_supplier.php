@@ -59,13 +59,7 @@
                                 </select>
                             </div>
                         </div>
-                        <div class="col-md-6">
-                            <div class="form-group mb-3">
-                                <label class="form-label"><?= __('balance') ?></label>
-                                <input type="number" step="0.000001" class="form-control" id="editBalance" 
-                                       name="balance" required>
-                            </div>
-                        </div>
+
                     </div>
                     <div class="form-group mb-3">
                         <label class="form-label"><?= __('address') ?></label>

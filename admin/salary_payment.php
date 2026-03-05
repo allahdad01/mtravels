@@ -1,1149 +1,971 @@
 <?php
-// Initialize the session
 session_start();
 
-// Check if the user is logged in, if not then redirect to login page
-if (!isset($_SESSION["loggedin"]) || $_SESSION["loggedin"] !== true || $_SESSION["role"] !== "admin") {
-    header("location: ../access_denied.php");
-    exit;
+$allowed_roles = ['admin', 'finance'];
+if (!isset($_SESSION['user_id']) || !in_array($_SESSION['role'], $allowed_roles)) {
+    error_log("Unauthorized access attempt: " . ($_SESSION['user_id'] ?? 'unknown') . " - Role: " . ($_SESSION['role'] ?? 'unknown') . " - IP: " . $_SERVER['REMOTE_ADDR']);
+    header('Location: ../login.php');
+    exit();
 }
 $tenant_id = $_SESSION['tenant_id'];
 $branch_id = $_SESSION['branch_id'];
-// Include config file
+
 require_once "../includes/db.php";
 
-// Define variables and initialize with empty values
 $user_id = $main_account_id = $amount = $currency = $payment_type = $description = $payment_for_month = "";
-$user_id_err = $main_account_id_err = $amount_err = $currency_err = $payment_type_err = $payment_for_month_err = "";
+$user_id_err = $main_account_id_err = $amount_err = $payment_for_month_err = "";
 
-// Generate receipt number
 function generateReceiptNumber() {
     return "SP" . date("YmdHis");
 }
 
-// Processing form data when form is submitted
 if ($_SERVER["REQUEST_METHOD"] == "POST") {
-    // Validate user ID
-    if (empty($_POST["user_id"])) {
-        $user_id_err = "Please select an employee.";
-    } else {
-        $user_id = $_POST["user_id"];
-    }
-    
-    // Validate main account
-    if (empty($_POST["main_account_id"])) {
-        $main_account_id_err = "Please select a main account.";
-    } else {
-        $main_account_id = $_POST["main_account_id"];
-    }
-    
-    // Validate amount
-    if (empty($_POST["amount"])) {
-        $amount_err = "Please enter the payment amount.";
-    } else if (!is_numeric($_POST["amount"]) || floatval($_POST["amount"]) <= 0) {
-        $amount_err = "Payment amount must be a positive number.";
+    if (empty($_POST["user_id"]))          { $user_id_err = "Please select an employee."; }
+    else                                   { $user_id = $_POST["user_id"]; }
+
+    if (empty($_POST["main_account_id"])) { $main_account_id_err = "Please select an account."; }
+    else                                  { $main_account_id = $_POST["main_account_id"]; }
+
+    if (empty($_POST["amount"]) || !is_numeric($_POST["amount"]) || floatval($_POST["amount"]) <= 0) {
+        $amount_err = "Please enter a valid positive amount.";
     } else {
         $amount = floatval($_POST["amount"]);
     }
-    
-    // Validate payment for month
-    if (empty($_POST["payment_for_month"])) {
-        $payment_for_month_err = "Please enter the month this payment is for.";
-    } else {
-        $payment_for_month = $_POST["payment_for_month"] . "-01"; // Convert to YYYY-MM-01 format
-    }
-    
-    // Set other values
-    $currency = $_POST["currency"];
-    $payment_type = $_POST["payment_type"];
-    $description = $_POST["description"];
-    $payment_date = date("Y-m-d");
-    $receipt = generateReceiptNumber();
-    // New: number of months to pay (defaults to 1)
-    $months_to_pay = isset($_POST['months_to_pay']) ? (int)$_POST['months_to_pay'] : 1;
-    if ($months_to_pay < 1) { $months_to_pay = 1; }
-    
-    // Check input errors before inserting in database
+
+    if (empty($_POST["payment_for_month"])) { $payment_for_month_err = "Please select the payment month."; }
+    else                                    { $payment_for_month = $_POST["payment_for_month"] . "-01"; }
+
+    $currency      = $_POST["currency"];
+    $payment_type  = $_POST["payment_type"];
+    $description   = $_POST["description"];
+    $payment_date  = date("Y-m-d");
+    $receipt       = generateReceiptNumber();
+    $months_to_pay = max(1, (int)($_POST['months_to_pay'] ?? 1));
+
     if (empty($user_id_err) && empty($main_account_id_err) && empty($amount_err) && empty($payment_for_month_err)) {
-        // Start transaction
         $pdo->beginTransaction();
-        
         try {
-            // Get current main account balance
-             $sql = "SELECT usd_balance, afs_balance FROM main_account WHERE id = ? AND tenant_id = ? AND branch_id = ?";
-             $stmt = $pdo->prepare($sql);
-             $stmt->bindParam(1, $main_account_id, PDO::PARAM_INT);
-             $stmt->bindParam(2, $tenant_id, PDO::PARAM_INT);
-             $stmt->bindParam(3, $branch_id, PDO::PARAM_INT);
-             $stmt->execute();
-             $result = $stmt->fetch(PDO::FETCH_ASSOC);
+            $stmt = $pdo->prepare("SELECT usd_balance, afs_balance FROM main_account WHERE id=? AND tenant_id=? AND branch_id=?");
+            $stmt->execute([$main_account_id, $tenant_id, $branch_id]);
+            $result = $stmt->fetch(PDO::FETCH_ASSOC);
 
-             if ($result) {
-                 $usd_balance = $result['usd_balance'];
-                 $afs_balance = $result['afs_balance'];
-                
-                // Calculate starting balance and total deduction
-                $starting_balance = ($currency == "USD") ? $usd_balance : $afs_balance;
-                $total_deduction = $amount * $months_to_pay;
+            if ($result) {
+                $starting_balance = ($currency == "USD") ? $result['usd_balance'] : $result['afs_balance'];
+                $total_deduction  = $amount * $months_to_pay;
 
-                // Loop through each month and create individual payment + transaction
                 for ($i = 0; $i < $months_to_pay; $i++) {
                     $this_month_for = date('Y-m-01', strtotime("+{$i} month", strtotime($payment_for_month)));
-                    $this_receipt = $receipt . '-' . ($i + 1);
+                    $this_receipt   = $receipt . '-' . ($i + 1);
 
-                    // Insert into salary_payments (one row per month)
-                    $insert_sql = "INSERT INTO salary_payments (user_id, main_account_id, amount, currency, payment_date,
-                                   payment_for_month, payment_type, description, receipt, tenant_id, branch_id)
-                                   VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)";
-
-                    $insert_stmt = $pdo->prepare($insert_sql);
-                    $insert_stmt->bindParam(1, $user_id, PDO::PARAM_INT);
-                    $insert_stmt->bindParam(2, $main_account_id, PDO::PARAM_INT);
-                    $insert_stmt->bindParam(3, $amount, PDO::PARAM_STR);
-                    $insert_stmt->bindParam(4, $currency, PDO::PARAM_STR);
-                    $insert_stmt->bindParam(5, $payment_date, PDO::PARAM_STR);
-                    $insert_stmt->bindParam(6, $this_month_for, PDO::PARAM_STR);
-                    $insert_stmt->bindParam(7, $payment_type, PDO::PARAM_STR);
-                    $insert_stmt->bindParam(8, $description, PDO::PARAM_STR);
-                    $insert_stmt->bindParam(9, $this_receipt, PDO::PARAM_STR);
-                    $insert_stmt->bindParam(10, $tenant_id, PDO::PARAM_INT);
-                    $insert_stmt->bindParam(11, $branch_id, PDO::PARAM_INT);
-                    $insert_stmt->execute();
-
-                    // Get the inserted payment ID
+                    $ins = $pdo->prepare("INSERT INTO salary_payments (user_id,main_account_id,amount,currency,payment_date,payment_for_month,payment_type,description,receipt,tenant_id,branch_id) VALUES (?,?,?,?,?,?,?,?,?,?,?)");
+                    $ins->execute([$user_id,$main_account_id,$amount,$currency,$payment_date,$this_month_for,$payment_type,$description,$this_receipt,$tenant_id,$branch_id]);
                     $payment_id = $pdo->lastInsertId();
 
-                    // Running balance after this month's payment
                     $running_balance = $starting_balance - ($amount * ($i + 1));
+                    $trx = $pdo->prepare("INSERT INTO main_account_transactions (main_account_id,type,amount,balance,currency,description,transaction_of,reference_id,receipt,tenant_id,branch_id) VALUES (?,'debit',?,?,?,?,'salary_payment',?,?,?,?)");
+                    $trx->execute([$main_account_id,$amount,$running_balance,$currency,$description,$payment_id,$this_receipt,$tenant_id,$branch_id]);
 
-                    // Insert into main_account_transactions (one per month)
-                    $transaction_sql = "INSERT INTO main_account_transactions (main_account_id, type, amount, balance, currency,
-                                       description, transaction_of, reference_id, receipt, tenant_id, branch_id)
-                                       VALUES (?, 'debit', ?, ?, ?, ?, 'salary_payment', ?, ?, ?, ?)";
-
-                    $transaction_stmt = $pdo->prepare($transaction_sql);
-                    $transaction_stmt->bindParam(1, $main_account_id, PDO::PARAM_INT);
-                    $transaction_stmt->bindParam(2, $amount, PDO::PARAM_STR);
-                    $transaction_stmt->bindParam(3, $running_balance, PDO::PARAM_STR);
-                    $transaction_stmt->bindParam(4, $currency, PDO::PARAM_STR);
-                    $transaction_stmt->bindParam(5, $description, PDO::PARAM_STR);
-                    $transaction_stmt->bindParam(6, $payment_id, PDO::PARAM_INT);
-                    $transaction_stmt->bindParam(7, $this_receipt, PDO::PARAM_STR);
-                    $transaction_stmt->bindParam(8, $tenant_id, PDO::PARAM_INT);
-                    $transaction_stmt->bindParam(9, $branch_id, PDO::PARAM_INT);
-                    $transaction_stmt->execute();
-
-                    // If this is a regular payment, deduct advances per month
                     if ($payment_type == 'regular') {
-                        $advance_sql = "SELECT id, amount, amount_paid FROM salary_advances
-                                       WHERE user_id = ? AND currency = ? AND repayment_status != 'paid' AND tenant_id = ? AND branch_id = ?";
-                        $advance_stmt = $pdo->prepare($advance_sql);
-                        $advance_stmt->bindParam(1, $user_id, PDO::PARAM_INT);
-                        $advance_stmt->bindParam(2, $currency, PDO::PARAM_STR);
-                        $advance_stmt->bindParam(3, $tenant_id, PDO::PARAM_INT);
-                        $advance_stmt->bindParam(4, $branch_id, PDO::PARAM_INT);
-                        $advance_stmt->execute();
-                        $advance_result = $advance_stmt->fetchAll();
-
-                        foreach ($advance_result as $advance_row) {
-                            $advance_id = $advance_row['id'];
-                            $advance_amount = $advance_row['amount'];
-                            $amount_paid_adv = $advance_row['amount_paid'];
-                            $remaining = $advance_amount - $amount_paid_adv;
+                        $adv = $pdo->prepare("SELECT id,amount,amount_paid FROM salary_advances WHERE user_id=? AND currency=? AND repayment_status!='paid' AND tenant_id=? AND branch_id=?");
+                        $adv->execute([$user_id,$currency,$tenant_id,$branch_id]);
+                        foreach ($adv->fetchAll() as $ar) {
+                            $remaining = $ar['amount'] - $ar['amount_paid'];
                             $deduction = min($amount, $remaining);
                             if ($deduction > 0) {
-                                $new_paid = $amount_paid_adv + $deduction;
-                                $status = ($new_paid >= $advance_amount) ? 'paid' : 'partially_paid';
-                                $update_advance_sql = "UPDATE salary_advances SET amount_paid = ?, repayment_status = ? WHERE id = ? AND tenant_id = ? AND branch_id = ?";
-                                $update_advance_stmt = $pdo->prepare($update_advance_sql);
-                                $update_advance_stmt->bindParam(1, $new_paid, PDO::PARAM_STR);
-                                $update_advance_stmt->bindParam(2, $status, PDO::PARAM_STR);
-                                $update_advance_stmt->bindParam(3, $advance_id, PDO::PARAM_INT);
-                                $update_advance_stmt->bindParam(4, $tenant_id, PDO::PARAM_INT);
-                                $update_advance_stmt->bindParam(5, $branch_id, PDO::PARAM_INT);
-                                $update_advance_stmt->execute();
+                                $new_paid = $ar['amount_paid'] + $deduction;
+                                $status_adv = ($new_paid >= $ar['amount']) ? 'paid' : 'partially_paid';
+                                $pdo->prepare("UPDATE salary_advances SET amount_paid=?,repayment_status=? WHERE id=? AND tenant_id=? AND branch_id=?")->execute([$new_paid,$status_adv,$ar['id'],$tenant_id,$branch_id]);
                             }
                         }
                     }
                 }
 
-                // After creating all payments + transactions, update the main account balance once by total
-                $update_sql = ($currency == "USD")
-                    ? "UPDATE main_account SET usd_balance = usd_balance - ? WHERE id = ? AND tenant_id = ? AND branch_id = ?"
-                    : "UPDATE main_account SET afs_balance = afs_balance - ? WHERE id = ? AND tenant_id = ? AND branch_id = ?";
-                $update_stmt = $pdo->prepare($update_sql);
-                $update_stmt->bindParam(1, $total_deduction, PDO::PARAM_STR);
-                $update_stmt->bindParam(2, $main_account_id, PDO::PARAM_INT);
-                $update_stmt->bindParam(3, $tenant_id, PDO::PARAM_INT);
-                $update_stmt->bindParam(4, $branch_id, PDO::PARAM_INT);
-                $update_stmt->execute();
-
-                // Commit transaction
+                $upd = ($currency == "USD")
+                    ? "UPDATE main_account SET usd_balance=usd_balance-? WHERE id=? AND tenant_id=? AND branch_id=?"
+                    : "UPDATE main_account SET afs_balance=afs_balance-? WHERE id=? AND tenant_id=? AND branch_id=?";
+                $pdo->prepare($upd)->execute([$total_deduction,$main_account_id,$tenant_id,$branch_id]);
                 $pdo->commit();
-                
-                // Send email notification to employee
+
                 require_once '../includes/functions.php';
-
-                // Get employee email and name
-                $email_sql = "SELECT email, name FROM users WHERE id = ? AND tenant_id = ? AND branch_id = ?";
-                $email_stmt = $pdo->prepare($email_sql);
-                $email_stmt->bindParam(1, $user_id, PDO::PARAM_INT);
-                $email_stmt->bindParam(2, $tenant_id, PDO::PARAM_INT);
-                $email_stmt->bindParam(3, $branch_id, PDO::PARAM_INT);
-                $email_stmt->execute();
-                $email_result = $email_stmt->fetch(PDO::FETCH_ASSOC);
-
-                if ($email_result) {
-                    $employee_email = $email_result['email'];
-                    $employee_name = $email_result['name'];
-                    
-                    if (!empty($employee_email)) {
-                        // For regular payments, we create notifications for each month
-                        if ($payment_type == 'regular' && $months_to_pay > 1) {
-                            // Send notifications for each month
-                            for ($i = 0; $i < $months_to_pay; $i++) {
-                                $this_month_for = date('Y-m-01', strtotime("+{$i} month", strtotime($payment_for_month)));
-                                $this_receipt = $receipt . '-' . ($i + 1);
-                                
-                                // Get the specific payment ID for this month
-                                $payment_id_sql = "SELECT id FROM salary_payments WHERE user_id = ? AND payment_for_month = ? AND receipt = ? AND tenant_id = ? AND branch_id = ?";
-                                $payment_id_stmt = $pdo->prepare($payment_id_sql);
-                                $payment_id_stmt->bindParam(1, $user_id, PDO::PARAM_INT);
-                                $payment_id_stmt->bindParam(2, $this_month_for, PDO::PARAM_STR);
-                                $payment_id_stmt->bindParam(3, $this_receipt, PDO::PARAM_STR);
-                                $payment_id_stmt->bindParam(4, $tenant_id, PDO::PARAM_INT);
-                                $payment_id_stmt->bindParam(5, $branch_id, PDO::PARAM_INT);
-                                $payment_id_stmt->execute();
-                                $payment_id_result = $payment_id_stmt->fetch(PDO::FETCH_ASSOC);
-
-                                if ($payment_id_result) {
-                                    $payment_id = $payment_id_result['id'];
-                                    
-                                    sendSalaryPaymentNotification(
-                                        $employee_email,
-                                        $employee_name,
-                                        $payment_id,
-                                        $amount,
-                                        $currency,
-                                        $payment_date,
-                                        date('Y-m', strtotime($this_month_for)),
-                                        $payment_type,
-                                        $description,
-                                        $this_receipt
-                                    );
-                                }
-                                // No need to close PDO statements explicitly
-                            }
-                        } else {
-                            // For single payments (including advances, bonuses, other), use the last inserted payment ID
-                            $last_payment_id = $pdo->lastInsertId();
-                            
-                            sendSalaryPaymentNotification(
-                                $employee_email,
-                                $employee_name,
-                                $last_payment_id,
-                                $amount,
-                                $currency,
-                                $payment_date,
-                                date('Y-m', strtotime($payment_for_month)),
-                                $payment_type,
-                                $description,
-                                $receipt
-                            );
-                        }
-                    }
+                $er = $pdo->prepare("SELECT email,name FROM users WHERE id=? AND tenant_id=? AND branch_id=?");
+                $er->execute([$user_id,$tenant_id,$branch_id]);
+                $emp = $er->fetch(PDO::FETCH_ASSOC);
+                if ($emp && !empty($emp['email'])) {
+                    sendSalaryPaymentNotification($emp['email'],$emp['name'],$payment_id,$amount,$currency,$payment_date,date('Y-m',strtotime($payment_for_month)),$payment_type,$description,$receipt);
                 }
-                // No need to close PDO statements explicitly
-                
-                // Redirect to success page
+
                 header("location: salary_payment.php?success=1");
                 exit();
             } else {
                 throw new Exception("Main account not found.");
             }
         } catch (Exception $e) {
-            // Roll back transaction on error
             $pdo->rollBack();
-            echo "Error: " . $e->getMessage();
+            $error_message = "Error: " . $e->getMessage();
         }
     }
-    
-    // PDO connection will be closed automatically when script ends
+}
+
+// Fetch active employees with salary records
+try {
+    $emp_stmt = $pdo->query("SELECT u.id, u.name, sm.base_salary, sm.currency FROM users u JOIN salary_management sm ON u.id=sm.user_id WHERE sm.status='active' AND u.fired=0 AND u.tenant_id={$tenant_id} AND u.branch_id={$branch_id} ORDER BY u.name");
+    $employees = $emp_stmt->fetchAll(PDO::FETCH_ASSOC);
+} catch (Exception $e) { $employees = []; }
+
+// Fetch accounts
+try {
+    $acc_stmt = $pdo->prepare("SELECT id,name,usd_balance,afs_balance FROM main_account WHERE status='active' AND tenant_id=?");
+    $acc_stmt->execute([$tenant_id]);
+    $accounts = $acc_stmt->fetchAll(PDO::FETCH_ASSOC);
+} catch (Exception $e) { $accounts = []; }
+
+// Fetch payment history (paginated)
+$page     = max(1, (int)($_GET['page'] ?? 1));
+$per_page = 12;
+$offset   = ($page - 1) * $per_page;
+
+try {
+    $cnt = $pdo->prepare("SELECT COUNT(*) FROM salary_payments WHERE tenant_id=? AND branch_id=?");
+    $cnt->execute([$tenant_id,$branch_id]);
+    $total_rows  = $cnt->fetchColumn();
+    $total_pages = ceil($total_rows / $per_page);
+
+    $hist = $pdo->prepare("SELECT sp.*,u.name as employee_name,ma.name as account_name FROM salary_payments sp JOIN users u ON sp.user_id=u.id JOIN main_account ma ON sp.main_account_id=ma.id WHERE sp.tenant_id=? AND sp.branch_id=? ORDER BY sp.created_at DESC LIMIT ? OFFSET ?");
+    $hist->execute([$tenant_id,$branch_id,$per_page,$offset]);
+    $payments = $hist->fetchAll(PDO::FETCH_ASSOC);
+} catch (Exception $e) {
+    $payments = [];
+    $total_pages = 1;
 }
 ?>
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Salary Payment</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@300;400;500;600&family=Syne:wght@600;700;800&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="../assets/css/style.css">
 
-
-    <style>
-        .description-cell {
-            max-width: 200px;
-            white-space: nowrap;
-            overflow: hidden;
-            text-overflow: ellipsis;
-            cursor: help;
-        }
-        
-        /* Make sure the table is responsive */
-        .table-responsive {
-            overflow-x: auto;
-        }
-        
-        /* Ensure consistent column widths */
-        .table th, .table td {
-            vertical-align: middle;
-        }
-    </style>
-
-
-    <!-- [ Header ] start -->
-    <?php include("../includes/header.php"); ?>
-    <link rel="stylesheet" href="../css/general/modal-styles.css">
-    <!-- [ Header ] end -->
-    <style>
-/* Apply gradient background to card headers matching the sidebar */
-.card-header {
-    background: linear-gradient(135deg, #4099ff 0%, #2ed8b6 100%) !important;
-    color: #ffffff !important;
-    border-bottom: none !important;
+<style>
+/* ── Design tokens (shared with salary_management.php) ── */
+:root {
+    --ink:       #0f1117;
+    --surface:   #ffffff;
+    --muted:     #f4f5f7;
+    --border:    #e8eaed;
+    --accent:    #3d6cff;
+    --accent2:   #00d9a6;
+    --warn:      #ff9f43;
+    --danger:    #ff4757;
+    --text-sub:  #6b7280;
+    --radius:    12px;
+    --shadow-sm: 0 1px 3px rgba(0,0,0,.06), 0 1px 2px rgba(0,0,0,.04);
+    --shadow-md: 0 4px 16px rgba(0,0,0,.08);
+    --shadow-lg: 0 12px 40px rgba(0,0,0,.12);
 }
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+body{font-family:'DM Sans',sans-serif;background:#f0f2f5;color:var(--ink)}
 
-.card-header h5 {
-    color: #ffffff !important;
-    margin-bottom: 0 !important;
-}
+/* ── Page wrapper ── */
+.sp-page{padding:28px 32px;max-width:1400px}
 
-.card-header .card-header-right {
-    color: #ffffff !important;
-}
+/* ── Page hero ── */
+.page-hero{display:flex;justify-content:space-between;align-items:flex-end;margin-bottom:28px;flex-wrap:wrap;gap:16px}
+.page-hero-title{font-family:'Syne',sans-serif;font-size:26px;font-weight:800;color:var(--ink);letter-spacing:-.5px;line-height:1.1}
+.page-hero-subtitle{font-size:13px;color:var(--text-sub);margin-top:4px;font-weight:400}
+.hero-actions{display:flex;gap:10px;flex-wrap:wrap}
 
-.card-header .card-header-right .btn {
-    color: #ffffff !important;
-    border-color: rgba(255, 255, 255, 0.3) !important;
-}
+/* ── Two-column layout ── */
+.sp-grid{display:grid;grid-template-columns:420px 1fr;gap:24px;align-items:start}
+@media(max-width:1100px){.sp-grid{grid-template-columns:1fr}}
 
-.card-header .card-header-right .btn:hover {
-    background: rgba(255, 255, 255, 0.1) !important;
-    border-color: rgba(255, 255, 255, 0.5) !important;
+/* ── Card ── */
+.sm-card{background:var(--surface);border-radius:var(--radius);border:1px solid var(--border);box-shadow:var(--shadow-sm);overflow:hidden;margin-bottom:24px}
+.sm-card-header{display:flex;justify-content:space-between;align-items:center;padding:18px 24px;border-bottom:1px solid var(--border);background:var(--surface);flex-wrap:wrap;gap:12px}
+.sm-card-title{font-family:'Syne',sans-serif;font-size:15px;font-weight:700;color:var(--ink);display:flex;align-items:center;gap:8px}
+.sm-card-title svg{color:var(--accent);flex-shrink:0}
+.sm-card-body{padding:24px}
+
+/* ── Buttons ── */
+.btn-sm-primary{display:inline-flex;align-items:center;gap:6px;background:var(--accent);color:#fff;border:none;border-radius:8px;padding:9px 16px;font-size:13px;font-weight:500;font-family:'DM Sans',sans-serif;cursor:pointer;transition:background .18s,transform .12s;text-decoration:none;white-space:nowrap}
+.btn-sm-primary:hover{background:#2d5be0;color:#fff;transform:translateY(-1px)}
+.btn-sm-ghost{display:inline-flex;align-items:center;gap:6px;background:transparent;color:var(--text-sub);border:1px solid var(--border);border-radius:8px;padding:9px 16px;font-size:13px;font-weight:500;font-family:'DM Sans',sans-serif;cursor:pointer;transition:all .18s;text-decoration:none;white-space:nowrap}
+.btn-sm-ghost:hover{background:var(--muted);color:var(--ink);border-color:#d0d5dd}
+.btn-sm-danger{display:inline-flex;align-items:center;gap:6px;background:rgba(255,71,87,.1);color:var(--danger);border:1px solid rgba(255,71,87,.2);border-radius:8px;padding:9px 16px;font-size:13px;font-weight:500;font-family:'DM Sans',sans-serif;cursor:pointer;transition:all .18s;text-decoration:none;white-space:nowrap}
+.btn-sm-danger:hover{background:rgba(255,71,87,.18);color:var(--danger)}
+.btn-process{display:flex;align-items:center;justify-content:center;gap:8px;width:100%;background:linear-gradient(135deg,var(--accent),#5b85ff);color:#fff;border:none;border-radius:10px;padding:13px;font-size:14px;font-weight:600;font-family:'DM Sans',sans-serif;cursor:pointer;box-shadow:0 4px 14px rgba(61,108,255,.35);transition:box-shadow .2s,transform .15s;margin-top:4px}
+.btn-process:hover{box-shadow:0 6px 20px rgba(61,108,255,.45);transform:translateY(-1px)}
+.btn-process:disabled{opacity:.6;cursor:not-allowed;transform:none}
+
+/* ── Form fields ── */
+.field-group{display:flex;flex-direction:column;gap:4px;margin-bottom:16px}
+.field-label{font-size:12px;font-weight:600;color:var(--text-sub);text-transform:uppercase;letter-spacing:.5px}
+.field-control{height:42px;padding:0 12px;font-size:14px;font-family:'DM Sans',sans-serif;color:var(--ink);background:var(--surface);border:1.5px solid var(--border);border-radius:8px;outline:none;transition:border-color .18s,box-shadow .18s;width:100%}
+.field-control:focus{border-color:var(--accent);box-shadow:0 0 0 3px rgba(61,108,255,.12)}
+.field-control.is-invalid{border-color:var(--danger)}
+textarea.field-control{height:auto;padding:10px 12px;resize:vertical}
+.field-error{font-size:12px;color:var(--danger);margin-top:2px}
+.field-row{display:grid;grid-template-columns:1fr 1fr;gap:14px}
+.field-row-3{display:grid;grid-template-columns:1fr 1fr 1fr;gap:14px}
+
+/* ── Salary breakdown panel ── */
+.breakdown-panel{background:linear-gradient(135deg,#eef2ff,#f0fdf9);border:1px solid #dbe4ff;border-radius:10px;padding:16px;margin-top:-4px;margin-bottom:16px;animation:fadeIn .25s ease}
+@keyframes fadeIn{from{opacity:0;transform:translateY(-4px)}to{opacity:1;transform:translateY(0)}}
+.breakdown-title{font-family:'Syne',sans-serif;font-size:12px;font-weight:700;color:var(--accent);text-transform:uppercase;letter-spacing:.5px;margin-bottom:10px;display:flex;align-items:center;gap:6px}
+.breakdown-row{display:flex;justify-content:space-between;align-items:center;padding:5px 0;font-size:13px;border-bottom:1px solid rgba(0,0,0,.05)}
+.breakdown-row:last-child{border-bottom:none;font-weight:700;font-size:13.5px;padding-top:8px;margin-top:4px}
+.breakdown-row.credit{color:#00a880}
+.breakdown-row.debit{color:#cc2233}
+.breakdown-row.warn{color:#cc7a00}
+.total-hint{font-size:12px;color:var(--text-sub);margin-top:6px;padding:7px 10px;background:var(--muted);border-radius:6px;display:none}
+.total-hint.visible{display:block}
+
+/* ── Alert banners ── */
+.alert-banner{display:flex;align-items:flex-start;gap:12px;padding:14px 16px;border-radius:10px;font-size:13.5px;margin-bottom:16px}
+.alert-banner svg{flex-shrink:0;margin-top:1px}
+.alert-success{background:rgba(0,217,166,.1);border:1px solid rgba(0,217,166,.25);color:#00816d}
+.alert-warning{background:rgba(255,159,67,.1);border:1px solid rgba(255,159,67,.25);color:#7a4b00}
+.alert-danger{background:rgba(255,71,87,.1);border:1px solid rgba(255,71,87,.25);color:#8b0011}
+
+/* ── Table ── */
+.sm-table{width:100%;border-collapse:separate;border-spacing:0;font-size:13.5px}
+.sm-table thead th{background:var(--muted);color:var(--text-sub);font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.7px;padding:11px 16px;border-bottom:1px solid var(--border);white-space:nowrap}
+.sm-table thead th:first-child{border-radius:8px 0 0 0}
+.sm-table thead th:last-child{border-radius:0 8px 0 0}
+.sm-table tbody tr{transition:background .15s}
+.sm-table tbody tr:hover td{background:#f8f9ff}
+.sm-table tbody td{padding:12px 16px;border-bottom:1px solid var(--border);vertical-align:middle;color:var(--ink)}
+.receipt-code{font-size:11px;color:var(--text-sub);font-family:monospace;margin-top:2px}
+
+/* ── Employee cell ── */
+.employee-cell{display:flex;align-items:center;gap:10px}
+.emp-avatar{width:32px;height:32px;border-radius:50%;background:linear-gradient(135deg,var(--accent),#5b85ff);color:#fff;font-size:12px;font-weight:700;display:flex;align-items:center;justify-content:center;flex-shrink:0;font-family:'Syne',sans-serif}
+.emp-name{font-weight:500;font-size:13.5px}
+
+/* ── Badges ── */
+.badge{display:inline-flex;align-items:center;gap:4px;padding:3px 9px;border-radius:50px;font-size:11.5px;font-weight:600;white-space:nowrap}
+.badge-regular{background:rgba(61,108,255,.1);color:var(--accent)}
+.badge-bonus{background:rgba(0,217,166,.13);color:#00a880}
+.badge-advance{background:rgba(255,159,67,.13);color:#cc7a00}
+.badge-other{background:#f0f0f0;color:#555}
+
+/* ── Row action buttons ── */
+.row-actions{display:flex;gap:4px;justify-content:center}
+.action-btn{width:30px;height:30px;border-radius:7px;border:1px solid var(--border);background:var(--surface);cursor:pointer;display:flex;align-items:center;justify-content:center;transition:all .15s;text-decoration:none;color:var(--text-sub)}
+.action-btn:hover{color:var(--ink);border-color:#aaa;background:var(--muted)}
+.action-btn.edit:hover{color:var(--accent);border-color:var(--accent);background:rgba(61,108,255,.07)}
+.action-btn.del:hover{color:var(--danger);border-color:var(--danger);background:rgba(255,71,87,.07)}
+
+/* ── Month filter bar ── */
+.table-toolbar{display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:12px;margin-bottom:0}
+.search-wrap{position:relative;flex:1;min-width:200px;max-width:280px}
+.search-wrap svg{position:absolute;left:10px;top:50%;transform:translateY(-50%);color:var(--text-sub);pointer-events:none}
+.search-input{height:38px;padding:0 12px 0 34px;font-size:13.5px;font-family:'DM Sans',sans-serif;color:var(--ink);background:var(--surface);border:1.5px solid var(--border);border-radius:8px;outline:none;transition:border-color .18s;width:100%}
+.search-input:focus{border-color:var(--accent);box-shadow:0 0 0 3px rgba(61,108,255,.1)}
+.filter-select{height:38px;padding:0 10px;font-size:13px;font-family:'DM Sans',sans-serif;color:var(--ink);background:var(--surface);border:1.5px solid var(--border);border-radius:8px;outline:none;cursor:pointer;transition:border-color .18s}
+.filter-select:focus{border-color:var(--accent)}
+
+/* ── Pagination ── */
+.pagination-wrap{display:flex;justify-content:space-between;align-items:center;padding:14px 20px;border-top:1px solid var(--border);font-size:13px;color:var(--text-sub);flex-wrap:wrap;gap:8px}
+.pagination{display:flex;gap:4px;list-style:none;margin:0;padding:0}
+.page-item a,.page-item span{display:inline-flex;align-items:center;justify-content:center;width:32px;height:32px;border-radius:7px;font-size:13px;text-decoration:none;color:var(--text-sub);border:1px solid var(--border);background:var(--surface);transition:all .15s}
+.page-item.active a,.page-item.active span{background:var(--accent);color:#fff;border-color:var(--accent)}
+.page-item a:hover{background:var(--muted);color:var(--ink)}
+.page-item.disabled span{opacity:.4;cursor:default}
+
+/* ── Modal ── */
+.sm-modal-backdrop{display:none;position:fixed;inset:0;background:rgba(15,17,23,.5);backdrop-filter:blur(4px);z-index:1050;align-items:center;justify-content:center}
+.sm-modal-backdrop.open{display:flex}
+.sm-modal{background:var(--surface);border-radius:16px;width:100%;max-width:500px;margin:16px;box-shadow:var(--shadow-lg);animation:modalIn .25s cubic-bezier(.34,1.56,.64,1)}
+@keyframes modalIn{from{transform:scale(.95) translateY(8px);opacity:0}to{transform:scale(1) translateY(0);opacity:1}}
+.sm-modal-header{display:flex;justify-content:space-between;align-items:center;padding:20px 24px 16px;border-bottom:1px solid var(--border)}
+.sm-modal-title{font-family:'Syne',sans-serif;font-size:17px;font-weight:700;color:var(--ink)}
+.modal-close{width:32px;height:32px;border-radius:8px;border:1px solid var(--border);background:transparent;cursor:pointer;display:flex;align-items:center;justify-content:center;color:var(--text-sub);transition:all .15s}
+.modal-close:hover{background:var(--muted);color:var(--ink)}
+.sm-modal-body{padding:24px}
+.sm-modal-footer{display:flex;justify-content:flex-end;gap:10px;padding:16px 24px;border-top:1px solid var(--border);background:var(--muted);border-radius:0 0 16px 16px}
+
+/* ── Confirm modal ── */
+.confirm-icon{width:52px;height:52px;border-radius:50%;background:rgba(255,71,87,.12);display:flex;align-items:center;justify-content:center;margin:0 auto 16px;color:var(--danger);font-size:22px}
+
+/* ── Toast ── */
+.toast-wrap{position:fixed;top:24px;right:24px;z-index:9999}
+.toast-msg{background:var(--surface);border-radius:10px;padding:14px 18px;box-shadow:var(--shadow-lg);display:flex;align-items:center;gap:10px;font-size:13.5px;font-weight:500;border-left:3px solid var(--accent2);animation:slideIn .3s ease;min-width:240px}
+.toast-msg.error{border-left-color:var(--danger)}
+@keyframes slideIn{from{transform:translateX(30px);opacity:0}to{transform:translateX(0);opacity:1}}
+
+/* ── Salary already paid warn ── */
+.already-paid-banner{background:rgba(255,159,67,.08);border:1px solid rgba(255,159,67,.3);border-radius:10px;padding:14px 16px;margin-bottom:16px;font-size:13px;color:#7a4b00;display:none}
+.already-paid-banner.visible{display:block}
+
+@media(max-width:768px){
+    .sp-page{padding:16px}
+    .field-row,.field-row-3{grid-template-columns:1fr}
+    .page-hero{flex-direction:column;align-items:flex-start}
 }
 </style>
-    <!-- [ Main Content ] start -->
-    <div class="pcoded-main-container">
-        <div class="pcoded-content">
-            <!-- [ breadcrumb ] start -->
-            <div class="page-header">
-                <div class="page-block">
-                    <div class="row align-items-center">
-                        <div class="col-md-12">
-                            <div class="page-header-title">
-                                <h5 class="m-b-10"><?= __('salary_payment') ?></h5>
-                            </div>
-                            <ul class="breadcrumb">
-                                <li class="breadcrumb-item"><a href="../index.php"><i class="feather icon-home"></i></a></li>
-                                <li class="breadcrumb-item"><a href="salary_management.php"><?= __('salary_management') ?></a></li>
-                                <li class="breadcrumb-item"><a href="#!"><?= __('salary_payment') ?></a></li>
-                            </ul>
-                        </div>
-                    </div>
-                </div>
-            </div>
-            <!-- [ breadcrumb ] end -->
-            <!-- [ Main Content ] start -->
-            <div class="row">
-                <!-- [ form-element ] start -->
-                <div class="col-sm-12">
-                    <div class="card">
-                        <div class="card-header">
-                            <h5><?= __('process_salary_payment') ?></h5>
-                        </div>
-                        <div class="card-body">
-                            <?php if (isset($_GET['success']) && $_GET['success'] == 1): ?>
-                            <div class="alert alert-success" role="alert">
-                                <?= __('salary_payment_processed_successfully') ?>
-                            </div>
-                            <?php endif; ?>
-                            
-                            <form action="<?php echo htmlspecialchars($_SERVER["PHP_SELF"]); ?>" method="post">
-                                <div class="row">
-                                    <div class="col-md-6">
-                                        <div class="form-group">
-                                            <label for="user_id"><?= __('employee') ?></label>
-                                            <select class="form-control <?php echo (!empty($user_id_err)) ? 'is-invalid' : ''; ?>" id="user_id" name="user_id" required>
-                                                <option value=""><?= __('select_employee') ?></option>
-                                                <?php
-                                                // Get all employees with salary records
-                                                $sql = "SELECT u.id, u.name, sm.base_salary, sm.currency
-                                                        FROM users u
-                                                        JOIN salary_management sm ON u.id = sm.user_id
-                                                        WHERE sm.status = 'active' and u.fired = 0
-                                                        ORDER BY u.name";
-                                                $result = $pdo->query($sql);
-                                                while ($row = $result->fetch(PDO::FETCH_ASSOC)) {
-                                                    echo "<option value='" . $row['id'] . "' data-base-salary='" . $row['base_salary'] . "' data-currency='" . $row['currency'] . "'>" . $row['name'] . "</option>";
-                                                }
-                                                ?>
-                                            </select>
-                                            <div class="invalid-feedback"><?php echo $user_id_err; ?></div>
-                                        </div>
-                                    </div>
-                                    <div class="col-md-6">
-                                        <div class="form-group">
-                                            <label for="main_account_id"><?= __('select_account') ?></label>
-                                            <select class="form-control <?php echo (!empty($main_account_id_err)) ? 'is-invalid' : ''; ?>" id="main_account_id" name="main_account_id" required>
-                                                <option value=""><?= __('select_account') ?></option>
-                                                <?php
-                                                // Get all main accounts
-                                                $sql = "SELECT id, name, usd_balance, afs_balance FROM main_account where status = 'active' and tenant_id = ?";
-                                                $stmt = $pdo->prepare($sql);
-                                                $stmt->bindParam(1, $tenant_id, PDO::PARAM_INT);
-                                                $stmt->execute();
-                                                $result = $stmt->fetchAll(PDO::FETCH_ASSOC);
-                                                foreach ($result as $row) {
-                                                    echo "<option value='" . $row['id'] . "' data-usd='" . $row['usd_balance'] . "' data-afs='" . $row['afs_balance'] . "'>" . $row['name'] . "</option>";
-                                                }
-                                                ?>
-                                            </select>
-                                            <div class="invalid-feedback"><?php echo $main_account_id_err; ?></div>
-                                        </div>
-                                    </div>
-                                    <div class="col-md-4">
-                                        <div class="form-group">
-                                            <label for="payment_for_month"><?= __('payment_for_month') ?></label>
-                                            <input type="month" class="form-control <?php echo (!empty($payment_for_month_err)) ? 'is-invalid' : ''; ?>" id="payment_for_month" name="payment_for_month" value="<?php echo date('Y-m'); ?>" required>
-                                            <div class="invalid-feedback"><?php echo $payment_for_month_err; ?></div>
-                                        </div>
-                                    </div>
-                                    <div class="col-md-4">
-                                        <div class="form-group">
-                                            <label for="months_to_pay"><?= __('months_to_pay') ?></label>
-                                            <input type="number" class="form-control" id="months_to_pay" name="months_to_pay" min="1" step="1" value="1">
-                                        </div>
-                                    </div>
-                                    <div class="col-md-4">
-                                        <div class="form-group">
-                                            <label for="amount"><?= __('amount') ?></label>
-                                            <input type="number" class="form-control <?php echo (!empty($amount_err)) ? 'is-invalid' : ''; ?>" id="amount" name="amount" step="0.01" value="<?php echo $amount; ?>" required>
-                                            <div class="invalid-feedback"><?php echo $amount_err; ?></div>
-                                        </div>
-                                    </div>
-                                    <div class="col-md-12">
-                                        <div class="form-group">
-                                            <small class="text-muted" id="totalAmountHint"></small>
-                                        </div>
-                                    </div>
-                                    <div class="col-md-4">
-                                        <div class="form-group">
-                                            <label for="currency"><?= __('currency') ?></label>
-                                            <select class="form-control" id="currency" name="currency">
-                                                <option value="USD" <?php echo ($currency == "USD") ? "selected" : ""; ?>>USD</option>
-                                                <option value="AFS" <?php echo ($currency == "AFS") ? "selected" : ""; ?>>AFS</option>
-                                            </select>
-                                        </div>
-                                    </div>
-                                    <div class="col-md-4">
-                                        <div class="form-group">
-                                            <label for="payment_type"><?= __('payment_type') ?></label>
-                                            <select class="form-control" id="payment_type" name="payment_type">
-                                                <option value="regular" <?php echo ($payment_type == "regular") ? "selected" : ""; ?>><?= __('regular_salary') ?></option>
-                                                <option value="bonus" <?php echo ($payment_type == "bonus") ? "selected" : ""; ?>><?= __('bonus') ?></option>
-                                                <option value="advance" <?php echo ($payment_type == "advance") ? "selected" : ""; ?>><?= __('advance') ?></option>
-                                                <option value="other" <?php echo ($payment_type == "other") ? "selected" : ""; ?>><?= __('other') ?></option>
-                                            </select>
-                                        </div>
-                                    </div>
-                                    <div class="col-md-8">
-                                        <div class="form-group">
-                                            <label for="description"><?= __('description') ?></label>
-                                            <input type="text" class="form-control" id="description" name="description" value="<?php echo $description; ?>">
-                                        </div>
-                                    </div>
-                                    <div class="col-md-12">
-                                        <button type="submit" class="btn btn-primary"><?= __('process_payment') ?></button>
-                                        <a href="salary_management.php" class="btn btn-secondary"><?= __('back_to_salary_management') ?></a>
-                                    </div>
-                                </div>
-                            </form>
-                        </div>
-                    </div>
-                </div>
-                <!-- [ form-element ] end -->
 
-                <!-- [ Payment History ] start -->
-                <div class="col-sm-12">
-                    <div class="card">
-                        <div class="card-header">
-                            <h5><?= __('salary_payment_history') ?></h5>
-                        </div>
-                        <div class="card-body">
-                            <!-- Month filter -->
-                            <div class="row mb-4">
-                                <div class="col-md-4">
-                                    <div class="form-group">
-                                        <label for="month-filter"><?= __('filter_by_month') ?></label>
-                                        <select class="form-control" id="month-filter">
-                                            <option value="all"><?= __('all_records') ?></option>
-                                            <?php
-                                            // Generate last 12 months options
-                                            for ($i = 0; $i < 12; $i++) {
-                                                $monthValue = date('Y-m', strtotime("-$i months"));
-                                                $monthLabel = date('F Y', strtotime("-$i months"));
-                                                $selected = ($i === 0) ? 'selected' : ''; // Select current month by default
-                                                echo "<option value=\"$monthValue\" $selected>$monthLabel</option>";
-                                            }
-                                            ?>
-                                        </select>
-                                    </div>
-                                </div>
-                                <div class="col-md-2 d-flex align-items-end">
-                                    <button type="button" id="reset-filter" class="btn btn-outline-secondary">
-                                        <i class="feather icon-refresh-cw"></i> <?= __('reset') ?>
-                                    </button>
-                                </div>
-                            </div>
-                            
-                            <div class="dt-responsive table-responsive">
-                                <table id="payment-list-table" class="table nowrap">
-                                    <thead>
-                                        <tr>
-                                            <th><?= __('id') ?></th>
-                                            <th><?= __('employee') ?></th>
-                                            <th><?= __('account') ?></th>
-                                            <th><?= __('amount') ?></th>
-                                            
-                                            <th><?= __('type') ?></th>
-                                            <th><?= __('payment_date') ?></th>
-                                            <th><?= __('for_month') ?></th>
-                                            
-                                            <th><?= __('description') ?></th>
-                                            <th><?= __('actions') ?></th>
-                                        </tr>
-                                    </thead>
-                                    <tbody>
-                                        <?php
-                                        // Pagination setup
-                                        $page = isset($_GET['page']) ? (int)$_GET['page'] : 1;
-                                        $per_page = 10;
-                                        $offset = ($page - 1) * $per_page;
-                                        
-                                        // Get total count
-                                        $count_sql = "SELECT COUNT(*) as total FROM salary_payments WHERE tenant_id = ? AND branch_id = ?";
-                                        $count_stmt = $pdo->prepare($count_sql);
-                                        $count_stmt->execute([$tenant_id, $branch_id]);
-                                        $total_rows = $count_stmt->fetch(PDO::FETCH_ASSOC)['total'];
-                                        $total_pages = ceil($total_rows / $per_page);
-                                        
-                                        // Get paginated salary payments
-                                        $sql = "SELECT sp.*, u.name as employee_name, ma.name as account_name
-                                                FROM salary_payments sp
-                                                JOIN users u ON sp.user_id = u.id
-                                                JOIN main_account ma ON sp.main_account_id = ma.id
-                                                WHERE sp.tenant_id = ? AND sp.branch_id = ?
-                                                ORDER BY sp.created_at DESC
-                                                LIMIT ? OFFSET ?";
-                                        $stmt = $pdo->prepare($sql);
-                                        $stmt->execute([$tenant_id, $branch_id, $per_page, $offset]);
-                                        while ($row = $stmt->fetch(PDO::FETCH_ASSOC)) {
-                                            echo "<tr>";
-                                            echo "<td>" . $row['id'] . "</td>";
-                                            echo "<td>" . $row['employee_name'] . "</td>";
-                                            echo "<td>" . $row['account_name'] . "</td>";
-                                            echo "<td>" . number_format($row['amount'], 2) . " " . $row['currency'] . " <br>
-                                            <small class='text-muted'>" . $row['receipt'] . "</small>
-                                            </td>";
-                                            
-                                            echo "<td>" . ucfirst($row['payment_type']) . "</td>";
-                                            echo "<td>" . date('Y-m-d', strtotime($row['payment_date'])) . "</td>";
-                                            echo "<td>" . date('Y-m', strtotime($row['payment_for_month'])) . "</td>";
-                                            echo "<td class='description-cell' title='" . htmlspecialchars($row['description']) . "'>" 
-                                                . (strlen($row['description']) > 50 ? substr(htmlspecialchars($row['description']), 0, 50) . '...' : htmlspecialchars($row['description'])) 
-                                                . "</td>";
-                                            echo "<td>
-                                                    <button type='button' 
-                                                            class='btn btn-danger btn-sm delete-payment'
-                                                            data-payment-id='" . $row['id'] . "'
-                                                            data-amount='" . $row['amount'] . "'
-                                                            data-main-account-id='" . $row['main_account_id'] . "'>
-                                                            <i class='feather icon-trash-2'></i> <?= __('delete') ?>
-                                                    </button>
-                                                    <button type='button' 
-                                                            class='btn btn-info btn-sm edit-payment'
-                                                            data-payment-id='" . $row['id'] . "'
-                                                            data-amount='" . $row['amount'] . "'
-                                                            data-currency='" . $row['currency'] . "'
-                                                            data-date='" . date('Y-m-d', strtotime($row['payment_date'])) . "'
-                                                            data-description='" . htmlspecialchars($row['description']) . "'
-                                                            data-payment-type='" . $row['payment_type'] . "'
-                                                            data-user-id='" . $row['user_id'] . "'
-                                                            data-main-account-id='" . $row['main_account_id'] . "'>
-                                                            <i class='feather icon-edit-2'></i> <?= __('edit') ?>
-                                                    </button>
-                                                  </td>";
-                                            echo "</tr>";
-                                        }
-                                        ?>
-                                        </tbody>
-                                        </table>
-                                        </div>
-                                        
-                                        <!-- Pagination -->
-                                        <?php if ($total_pages > 1): ?>
-                                        <nav aria-label="Page navigation">
-                                        <ul class="pagination pagination-sm justify-content-center mt-3">
-                                        <?php if ($page > 1): ?>
-                                        <li class="page-item">
-                                            <a class="page-link" href="?page=1">First</a>
-                                        </li>
-                                        <li class="page-item">
-                                            <a class="page-link" href="?page=<?php echo $page - 1; ?>">Previous</a>
-                                        </li>
-                                        <?php endif; ?>
-                                        
-                                        <?php for ($i = 1; $i <= $total_pages; $i++): ?>
-                                        <li class="page-item <?php echo $i == $page ? 'active' : ''; ?>">
-                                            <a class="page-link" href="?page=<?php echo $i; ?>"><?php echo $i; ?></a>
-                                        </li>
-                                        <?php endfor; ?>
-                                        
-                                        <?php if ($page < $total_pages): ?>
-                                        <li class="page-item">
-                                            <a class="page-link" href="?page=<?php echo $page + 1; ?>">Next</a>
-                                        </li>
-                                        <li class="page-item">
-                                            <a class="page-link" href="?page=<?php echo $total_pages; ?>">Last</a>
-                                        </li>
-                                        <?php endif; ?>
-                                        </ul>
-                                        </nav>
-                                        <?php endif; ?>
-                                        </div>
-                                        </div>
-                                        </div>
-                                        <!-- [ Payment History ] end -->
-            </div>
-            <!-- [ Main Content ] end -->
+<?php include("../includes/header.php"); ?>
+
+<div class="pcoded-main-container">
+<div class="pcoded-content">
+<div class="sp-page">
+
+    <!-- Toast -->
+    <div class="toast-wrap" id="toastWrap" style="display:none">
+        <div class="toast-msg" id="toastMsg">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="20 6 9 17 4 12"/></svg>
+            <span id="toastText"></span>
         </div>
     </div>
-    <!-- [ Main Content ] end -->
 
-    <!-- Edit Payment Modal -->
-    <div class="modal fade" id="editPaymentModal" tabindex="-1" role="dialog" aria-labelledby="editPaymentModalLabel" aria-hidden="true">
-        <div class="modal-dialog modal-dialog-centered" role="document">
-            <div class="modal-content">
-                <div class="modal-header bg-info text-white">
-                    <h5 class="modal-title" id="editPaymentModalLabel">
-                        <i class="feather icon-edit-2 mr-2"></i><?= __('edit_salary_payment') ?>
-                    </h5>
-                    <button type="button" class="close text-white" data-dismiss="modal" aria-label="Close">
-                        <span aria-hidden="true">&times;</span>
-                    </button>
+    <!-- Page Hero -->
+    <div class="page-hero">
+        <div>
+            <div class="page-hero-title">Process Salary Payment</div>
+            <div class="page-hero-subtitle">Pay individual employees or batch process multiple months</div>
+        </div>
+        <div class="hero-actions">
+            <a href="salary_management.php" class="btn-sm-ghost">
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="19" y1="12" x2="5" y2="12"/><polyline points="12 19 5 12 12 5"/></svg>
+                Back to Management
+            </a>
+        </div>
+    </div>
+
+    <!-- Two column layout -->
+    <div class="sp-grid">
+
+        <!-- LEFT: Payment Form -->
+        <div>
+            <div class="sm-card">
+                <div class="sm-card-header">
+                    <div class="sm-card-title">
+                        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="12" y1="1" x2="12" y2="23"/><path d="M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"/></svg>
+                        New Payment
+                    </div>
                 </div>
-                <div class="modal-body">
-                    <form id="editPaymentForm">
-                        <input type="hidden" id="edit_payment_id" name="payment_id">
-                        <input type="hidden" id="edit_user_id" name="user_id">
-                        <input type="hidden" id="edit_original_amount" name="original_amount">
-                        <input type="hidden" id="edit_main_account_id" name="main_account_id">
-                        
-                        <div class="form-group">
-                            <label for="edit_payment_amount"><?= __('amount') ?></label>
-                            <div class="input-group">
-                                <input type="number" class="form-control" id="edit_payment_amount" name="payment_amount" step="0.01" required>
-                                <div class="input-group-append">
-                                    <span class="input-group-text" id="edit_currency_display">USD</span>
-                                </div>
+                <div class="sm-card-body">
+
+                    <?php if (isset($_GET['success'])): ?>
+                    <div class="alert-banner alert-success">
+                        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="20 6 9 17 4 12"/></svg>
+                        <span>Payment processed successfully. Email notification sent.</span>
+                    </div>
+                    <?php endif; ?>
+
+                    <?php if (!empty($error_message)): ?>
+                    <div class="alert-banner alert-danger">
+                        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>
+                        <span><?= htmlspecialchars($error_message) ?></span>
+                    </div>
+                    <?php endif; ?>
+
+                    <div class="already-paid-banner" id="alreadyPaidBanner"></div>
+
+                    <form action="<?= htmlspecialchars($_SERVER["PHP_SELF"]) ?>" method="post" id="paymentForm">
+
+                        <!-- Employee -->
+                        <div class="field-group">
+                            <label class="field-label">Employee</label>
+                            <select class="field-control <?= !empty($user_id_err) ? 'is-invalid' : '' ?>" id="user_id" name="user_id" required>
+                                <option value="">Select employee…</option>
+                                <?php foreach ($employees as $emp): ?>
+                                <option value="<?= $emp['id'] ?>"
+                                    data-base-salary="<?= $emp['base_salary'] ?>"
+                                    data-currency="<?= $emp['currency'] ?>"
+                                    <?= $user_id == $emp['id'] ? 'selected' : '' ?>>
+                                    <?= htmlspecialchars($emp['name']) ?>
+                                </option>
+                                <?php endforeach; ?>
+                            </select>
+                            <?php if (!empty($user_id_err)): ?><div class="field-error"><?= $user_id_err ?></div><?php endif; ?>
+                        </div>
+
+                        <!-- Account -->
+                        <div class="field-group">
+                            <label class="field-label">Account</label>
+                            <select class="field-control <?= !empty($main_account_id_err) ? 'is-invalid' : '' ?>" id="main_account_id" name="main_account_id" required>
+                                <option value="">Select account…</option>
+                                <?php foreach ($accounts as $acc): ?>
+                                <option value="<?= $acc['id'] ?>"
+                                    data-usd="<?= $acc['usd_balance'] ?>"
+                                    data-afs="<?= $acc['afs_balance'] ?>"
+                                    <?= $main_account_id == $acc['id'] ? 'selected' : '' ?>>
+                                    <?= htmlspecialchars($acc['name']) ?>
+                                </option>
+                                <?php endforeach; ?>
+                            </select>
+                            <?php if (!empty($main_account_id_err)): ?><div class="field-error"><?= $main_account_id_err ?></div><?php endif; ?>
+                        </div>
+
+                        <!-- Month + Months to pay -->
+                        <div class="field-row">
+                            <div class="field-group">
+                                <label class="field-label">Payment For Month</label>
+                                <input type="month" class="field-control <?= !empty($payment_for_month_err) ? 'is-invalid' : '' ?>"
+                                       id="payment_for_month" name="payment_for_month" value="<?= date('Y-m') ?>" required>
+                                <?php if (!empty($payment_for_month_err)): ?><div class="field-error"><?= $payment_for_month_err ?></div><?php endif; ?>
                             </div>
-                            <input type="hidden" id="edit_currency" name="currency">
+                            <div class="field-group">
+                                <label class="field-label">Months to Pay</label>
+                                <input type="number" class="field-control" id="months_to_pay" name="months_to_pay" min="1" step="1" value="1">
+                            </div>
                         </div>
-                        
-                        <div class="form-group">
-                            <label for="edit_payment_date"><?= __('payment_date') ?></label>
-                            <input type="date" class="form-control" id="edit_payment_date" name="payment_date" required>
+
+                        <!-- Amount + Currency -->
+                        <div class="field-row">
+                            <div class="field-group">
+                                <label class="field-label">Amount</label>
+                                <input type="number" class="field-control <?= !empty($amount_err) ? 'is-invalid' : '' ?>"
+                                       id="amount" name="amount" step="0.01" value="<?= $amount ?>" required>
+                                <?php if (!empty($amount_err)): ?><div class="field-error"><?= $amount_err ?></div><?php endif; ?>
+                            </div>
+                            <div class="field-group">
+                                <label class="field-label">Currency</label>
+                                <select class="field-control" id="currency" name="currency">
+                                    <option value="USD" <?= $currency == 'USD' ? 'selected' : '' ?>>USD — Dollar</option>
+                                    <option value="AFS" <?= $currency == 'AFS' ? 'selected' : '' ?>>AFS — Afghani</option>
+                                </select>
+                            </div>
                         </div>
-                        
-                        <div class="form-group">
-                            <label for="edit_payment_type"><?= __('payment_type') ?></label>
-                            <select class="form-control" id="edit_payment_type" name="payment_type">
-                                <option value="regular"><?= __('regular_salary') ?></option>
-                                <option value="bonus"><?= __('bonus') ?></option>
-                                <option value="advance"><?= __('advance') ?></option>
-                                <option value="other"><?= __('other') ?></option>
+
+                        <!-- Total hint -->
+                        <div class="total-hint" id="totalHint"></div>
+
+                        <!-- Salary Breakdown (populated via JS) -->
+                        <div id="breakdownPanel" style="display:none" class="breakdown-panel">
+                            <div class="breakdown-title">
+                                <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><line x1="8" y1="6" x2="21" y2="6"/><line x1="8" y1="12" x2="21" y2="12"/><line x1="8" y1="18" x2="21" y2="18"/><line x1="3" y1="6" x2="3.01" y2="6"/><line x1="3" y1="12" x2="3.01" y2="12"/><line x1="3" y1="18" x2="3.01" y2="18"/></svg>
+                                Salary Breakdown
+                            </div>
+                            <div id="breakdownRows"></div>
+                        </div>
+
+                        <!-- Absence warning (populated via JS) -->
+                        <div id="absenceWarning" style="display:none" class="alert-banner alert-warning">
+                            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg>
+                            <span id="absenceText"></span>
+                        </div>
+
+                        <!-- Payment Type -->
+                        <div class="field-group">
+                            <label class="field-label">Payment Type</label>
+                            <select class="field-control" id="payment_type" name="payment_type">
+                                <option value="regular" <?= $payment_type == 'regular' ? 'selected' : '' ?>>Regular Salary</option>
+                                <option value="bonus"   <?= $payment_type == 'bonus'   ? 'selected' : '' ?>>Bonus</option>
+                                <option value="advance" <?= $payment_type == 'advance' ? 'selected' : '' ?>>Advance</option>
+                                <option value="other"   <?= $payment_type == 'other'   ? 'selected' : '' ?>>Other</option>
                             </select>
                         </div>
-                        
-                        <div class="form-group">
-                            <label for="edit_payment_description"><?= __('description') ?></label>
-                            <textarea class="form-control" id="edit_payment_description" name="payment_description" rows="3"></textarea>
+
+                        <!-- Description -->
+                        <div class="field-group">
+                            <label class="field-label">Description</label>
+                            <input type="text" class="field-control" id="description" name="description" value="<?= htmlspecialchars($description) ?>" placeholder="Optional note…">
                         </div>
+
+                        <button type="submit" class="btn-process" id="submitBtn">
+                            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="20 6 9 17 4 12"/></svg>
+                            Process Payment
+                        </button>
                     </form>
-                </div>
-                <div class="modal-footer">
-                    <button type="button" class="btn btn-secondary" data-dismiss="modal">
-                        <i class="feather icon-x mr-2"></i><?= __('cancel') ?>
-                    </button>
-                    <button type="button" class="btn btn-info" id="savePaymentChanges">
-                        <i class="feather icon-save mr-2"></i><?= __('save_changes') ?>
-                    </button>
                 </div>
             </div>
         </div>
+
+        <!-- RIGHT: Payment History -->
+        <div>
+            <div class="sm-card">
+                <div class="sm-card-header">
+                    <div class="sm-card-title">
+                        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="4" width="18" height="18" rx="2" ry="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg>
+                        Payment History
+                    </div>
+                    <div class="table-toolbar">
+                        <div class="search-wrap">
+                            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
+                            <input type="text" class="search-input" id="histSearch" placeholder="Search employee…">
+                        </div>
+                        <select class="filter-select" id="monthFilter">
+                            <option value="">All months</option>
+                            <?php for ($i = 0; $i < 12; $i++):
+                                $mv = date('Y-m', strtotime("-$i months"));
+                                $ml = date('F Y', strtotime("-$i months"));
+                                $sel = $i === 0 ? 'selected' : '';
+                            ?>
+                            <option value="<?= $mv ?>" <?= $sel ?>><?= $ml ?></option>
+                            <?php endfor; ?>
+                        </select>
+                        <select class="filter-select" id="typeFilter">
+                            <option value="">All types</option>
+                            <option value="regular">Regular</option>
+                            <option value="bonus">Bonus</option>
+                            <option value="advance">Advance</option>
+                            <option value="other">Other</option>
+                        </select>
+                    </div>
+                </div>
+                <div style="overflow-x:auto">
+                    <table class="sm-table" id="histTable">
+                        <thead>
+                            <tr>
+                                <th>Employee</th>
+                                <th>Amount</th>
+                                <th>Type</th>
+                                <th>Account</th>
+                                <th>For Month</th>
+                                <th>Paid On</th>
+                                <th style="text-align:center">Actions</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                        <?php if (empty($payments)): ?>
+                            <tr><td colspan="7" style="text-align:center;padding:48px;color:var(--text-sub)">
+                                <div style="font-size:28px;margin-bottom:8px">💳</div>
+                                <div style="font-weight:600">No payment records yet</div>
+                            </td></tr>
+                        <?php else: ?>
+                        <?php foreach ($payments as $row):
+                            $initials = strtoupper(substr($row['employee_name'], 0, 1));
+                            $typeMap = ['regular' => 'badge-regular', 'bonus' => 'badge-bonus', 'advance' => 'badge-advance', 'other' => 'badge-other'];
+                            $badgeClass = $typeMap[$row['payment_type']] ?? 'badge-other';
+                        ?>
+                        <tr data-name="<?= strtolower($row['employee_name']) ?>"
+                            data-month="<?= date('Y-m', strtotime($row['payment_for_month'])) ?>"
+                            data-type="<?= $row['payment_type'] ?>">
+                            <td>
+                                <div class="employee-cell">
+                                    <div class="emp-avatar"><?= $initials ?></div>
+                                    <div>
+                                        <div class="emp-name"><?= htmlspecialchars($row['employee_name']) ?></div>
+                                        <div class="receipt-code"><?= htmlspecialchars($row['receipt']) ?></div>
+                                    </div>
+                                </div>
+                            </td>
+                            <td>
+                                <span style="font-family:'Syne',sans-serif;font-weight:600;font-size:14px"><?= number_format($row['amount'], 2) ?></span>
+                                <span style="font-size:11px;color:var(--text-sub);margin-left:3px"><?= $row['currency'] ?></span>
+                            </td>
+                            <td><span class="badge <?= $badgeClass ?>"><?= ucfirst($row['payment_type']) ?></span></td>
+                            <td style="font-size:12.5px;color:var(--text-sub)"><?= htmlspecialchars($row['account_name']) ?></td>
+                            <td style="font-size:13px;color:var(--text-sub)"><?= date('M Y', strtotime($row['payment_for_month'])) ?></td>
+                            <td style="font-size:13px;color:var(--text-sub)"><?= date('M d, Y', strtotime($row['payment_date'])) ?></td>
+                            <td>
+                                <div class="row-actions">
+                                    <button class="action-btn edit open-edit"
+                                        title="Edit"
+                                        data-id="<?= $row['id'] ?>"
+                                        data-amount="<?= $row['amount'] ?>"
+                                        data-currency="<?= $row['currency'] ?>"
+                                        data-date="<?= date('Y-m-d', strtotime($row['payment_date'])) ?>"
+                                        data-description="<?= htmlspecialchars($row['description'], ENT_QUOTES) ?>"
+                                        data-type="<?= $row['payment_type'] ?>"
+                                        data-user-id="<?= $row['user_id'] ?>"
+                                        data-account-id="<?= $row['main_account_id'] ?>">
+                                        <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg>
+                                    </button>
+                                    <button class="action-btn del open-delete"
+                                        title="Delete"
+                                        data-id="<?= $row['id'] ?>"
+                                        data-amount="<?= $row['amount'] ?>"
+                                        data-account-id="<?= $row['main_account_id'] ?>"
+                                        data-name="<?= htmlspecialchars($row['employee_name'], ENT_QUOTES) ?>">
+                                        <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6"/><path d="M10 11v6"/><path d="M14 11v6"/><path d="M9 6V4h6v2"/></svg>
+                                    </button>
+                                </div>
+                            </td>
+                        </tr>
+                        <?php endforeach; ?>
+                        <?php endif; ?>
+                        </tbody>
+                    </table>
+                </div>
+                <!-- Pagination -->
+                <?php if ($total_pages > 1): ?>
+                <div class="pagination-wrap">
+                    <span><?= $total_rows ?> total records</span>
+                    <ul class="pagination">
+                        <?php if ($page > 1): ?>
+                        <li class="page-item"><a href="?page=<?= $page - 1 ?>">‹</a></li>
+                        <?php else: ?>
+                        <li class="page-item disabled"><span>‹</span></li>
+                        <?php endif; ?>
+                        <?php for ($i = max(1, $page - 2); $i <= min($total_pages, $page + 2); $i++): ?>
+                        <li class="page-item <?= $i == $page ? 'active' : '' ?>">
+                            <a href="?page=<?= $i ?>"><?= $i ?></a>
+                        </li>
+                        <?php endfor; ?>
+                        <?php if ($page < $total_pages): ?>
+                        <li class="page-item"><a href="?page=<?= $page + 1 ?>">›</a></li>
+                        <?php else: ?>
+                        <li class="page-item disabled"><span>›</span></li>
+                        <?php endif; ?>
+                    </ul>
+                </div>
+                <?php endif; ?>
+            </div>
+        </div>
+
+    </div><!-- end sp-grid -->
+
+</div><!-- end sp-page -->
+</div>
+</div>
+
+<!-- ════════════════════════════════
+     EDIT PAYMENT MODAL
+════════════════════════════════ -->
+<div class="sm-modal-backdrop" id="editModalBackdrop">
+    <div class="sm-modal">
+        <div class="sm-modal-header">
+            <div class="sm-modal-title">Edit Payment</div>
+            <button class="modal-close" onclick="closeModal('editModalBackdrop')">
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+            </button>
+        </div>
+        <form id="editPaymentForm">
+            <input type="hidden" id="edit_payment_id"      name="payment_id">
+            <input type="hidden" id="edit_user_id"         name="user_id">
+            <input type="hidden" id="edit_original_amount" name="original_amount">
+            <input type="hidden" id="edit_main_account_id" name="main_account_id">
+            <input type="hidden" id="edit_currency"        name="currency">
+            <div class="sm-modal-body">
+                <div class="field-row" style="margin-bottom:14px">
+                    <div class="field-group" style="margin-bottom:0">
+                        <label class="field-label">Amount</label>
+                        <input type="number" class="field-control" id="edit_payment_amount" name="payment_amount" step="0.01" required>
+                    </div>
+                    <div class="field-group" style="margin-bottom:0">
+                        <label class="field-label">Currency</label>
+                        <input type="text" class="field-control" id="edit_currency_display" readonly style="background:var(--muted);color:var(--text-sub)">
+                    </div>
+                </div>
+                <div class="field-row" style="margin-bottom:14px">
+                    <div class="field-group" style="margin-bottom:0">
+                        <label class="field-label">Payment Date</label>
+                        <input type="date" class="field-control" id="edit_payment_date" name="payment_date" required>
+                    </div>
+                    <div class="field-group" style="margin-bottom:0">
+                        <label class="field-label">Payment Type</label>
+                        <select class="field-control" id="edit_payment_type" name="payment_type">
+                            <option value="regular">Regular Salary</option>
+                            <option value="bonus">Bonus</option>
+                            <option value="advance">Advance</option>
+                            <option value="other">Other</option>
+                        </select>
+                    </div>
+                </div>
+                <div class="field-group" style="margin-bottom:0">
+                    <label class="field-label">Description</label>
+                    <textarea class="field-control" id="edit_payment_description" name="payment_description" rows="3"></textarea>
+                </div>
+            </div>
+            <div class="sm-modal-footer">
+                <button type="button" class="btn-sm-ghost" onclick="closeModal('editModalBackdrop')">Cancel</button>
+                <button type="button" class="btn-sm-primary" id="saveEditBtn">
+                    <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z"/><polyline points="17 21 17 13 7 13 7 21"/></svg>
+                    Save Changes
+                </button>
+            </div>
+        </form>
     </div>
+</div>
 
+<!-- ════════════════════════════════
+     DELETE CONFIRM MODAL
+════════════════════════════════ -->
+<div class="sm-modal-backdrop" id="deleteModalBackdrop">
+    <div class="sm-modal" style="max-width:420px">
+        <div class="sm-modal-body" style="padding:32px 28px;text-align:center">
+            <div class="confirm-icon">
+                <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6"/><path d="M9 6V4h6v2"/></svg>
+            </div>
+            <div style="font-family:'Syne',sans-serif;font-size:17px;font-weight:700;margin-bottom:8px">Delete Payment?</div>
+            <div style="font-size:13.5px;color:var(--text-sub);margin-bottom:24px" id="deleteConfirmText">
+                This will reverse the deduction from the account and cannot be undone.
+            </div>
+            <div style="display:flex;gap:10px;justify-content:center">
+                <button class="btn-sm-ghost" onclick="closeModal('deleteModalBackdrop')">Cancel</button>
+                <button class="btn-sm-danger" id="confirmDeleteBtn" style="background:var(--danger);color:#fff;border-color:var(--danger);box-shadow:0 4px 14px rgba(255,71,87,.3)">
+                    Yes, Delete
+                </button>
+            </div>
+        </div>
+    </div>
+</div>
 
-
-<!-- Include Admin Footer -->
 <?php include '../includes/admin_footer.php'; ?>
+<script src="../assets/js/vendor-all.min.js"></script>
+<script src="../assets/plugins/bootstrap/js/bootstrap.min.js"></script>
+<script src="../assets/js/pcoded.min.js"></script>
 
-    <!-- Required Js -->
+<script>
+// ── Modal helpers ─────────────────────────────────
+function closeModal(id) {
+    document.getElementById(id).classList.remove('open');
+}
+document.querySelectorAll('.sm-modal-backdrop').forEach(backdrop => {
+    backdrop.addEventListener('click', function(e) {
+        if (e.target === this) this.classList.remove('open');
+    });
+});
 
-    
-    <!-- Custom scripts -->
-    <script src="../assets/js/vendor-all.min.js"></script>
-    <script src="../assets/plugins/bootstrap/js/bootstrap.min.js"></script>
-    <script src="../assets/js/pcoded.min.js"></script>
+// ── Toast ─────────────────────────────────────────
+function showToast(msg, isError = false) {
+    const wrap = document.getElementById('toastWrap');
+    const box  = document.getElementById('toastMsg');
+    document.getElementById('toastText').textContent = msg;
+    box.className = 'toast-msg' + (isError ? ' error' : '');
+    wrap.style.display = 'block';
+    setTimeout(() => { wrap.style.display = 'none'; }, 3500);
+}
+<?php if (isset($_GET['success'])): ?>
+document.addEventListener('DOMContentLoaded', () => showToast('Payment processed successfully!'));
+<?php endif; ?>
 
-    <script>
-        $(document).ready(function() {
-            // Simple jQuery filtering
-            // (DataTable removed - using PHP pagination instead)
-            var $rows = $('#payment-list-table tbody tr');
-            
-            // Filter table when month changes
-            $('#month-filter').on('change', function() {
-                var selectedMonth = $(this).val();
-                
-                if (selectedMonth === 'all') {
-                    // Show all rows
-                    $rows.show();
-                } else {
-                    // Hide all rows first
-                    $rows.hide();
-                    
-                    // Show only rows that match the selected month
-                    $rows.each(function() {
-                        // Check both payment date (column 5) and for month (column 6)
-                        var paymentDateCell = $(this).find('td:eq(5)').text().trim(); // 6th column (index 5) contains the payment date
-                        var forMonthCell = $(this).find('td:eq(6)').text().trim(); // 7th column (index 6) contains the for month
-                        
-                        var matchPaymentDate = false;
-                        var matchForMonth = false;
-                        
-                        // Check payment date
-                        if (paymentDateCell && paymentDateCell.length >= 7) {
-                            var paymentDateYearMonth = paymentDateCell.substring(0, 7); // Extract YYYY-MM
-                            if (paymentDateYearMonth === selectedMonth) {
-                                matchPaymentDate = true;
-                            }
-                        }
-                        
-                        // Check for month
-                        if (forMonthCell && forMonthCell.length >= 7) {
-                            if (forMonthCell === selectedMonth) {
-                                matchForMonth = true;
-                            }
-                        }
-                        
-                        // Show if either date matches
-                        if (matchPaymentDate || matchForMonth) {
-                            $(this).show();
-                        }
-                    });
-                }
-            });
-            
-            // Reset filter button
-            $('#reset-filter').on('click', function() {
-                $('#month-filter').val('all');
-                $rows.show();
-            });
-            
-            // Apply initial filter if not "all"
-            var initialMonth = $('#month-filter').val();
-            if (initialMonth !== 'all') {
-                $('#month-filter').trigger('change');
+// ── Table live filter ─────────────────────────────
+const histRows    = document.querySelectorAll('#histTable tbody tr[data-name]');
+const histSearch  = document.getElementById('histSearch');
+const monthFilter = document.getElementById('monthFilter');
+const typeFilter  = document.getElementById('typeFilter');
+
+function filterHistory() {
+    const q  = histSearch.value.toLowerCase().trim();
+    const mo = monthFilter.value;
+    const ty = typeFilter.value;
+    histRows.forEach(row => {
+        const nm = !q  || row.dataset.name.includes(q);
+        const mm = !mo || row.dataset.month === mo;
+        const tt = !ty || row.dataset.type  === ty;
+        row.style.display = nm && mm && tt ? '' : 'none';
+    });
+}
+histSearch.addEventListener('input',   filterHistory);
+monthFilter.addEventListener('change', filterHistory);
+typeFilter.addEventListener('change',  filterHistory);
+filterHistory(); // apply initial (current month selected)
+
+// ── Total hint ────────────────────────────────────
+function updateTotalHint() {
+    const amount  = parseFloat(document.getElementById('amount').value) || 0;
+    const months  = parseInt(document.getElementById('months_to_pay').value) || 1;
+    const cur     = document.getElementById('currency').value;
+    const hint    = document.getElementById('totalHint');
+    if (amount > 0 && months > 1) {
+        hint.textContent = `Total: ${(amount * months).toFixed(2)} ${cur} across ${months} months`;
+        hint.classList.add('visible');
+    } else {
+        hint.classList.remove('visible');
+    }
+}
+['amount','months_to_pay','currency'].forEach(id => {
+    document.getElementById(id).addEventListener('input', updateTotalHint);
+    document.getElementById(id).addEventListener('change', updateTotalHint);
+});
+
+// ── Auto description on payment type change ───────
+document.getElementById('payment_type').addEventListener('change', function() {
+    const map = { regular: 'Regular Salary Payment', bonus: 'Bonus Payment', advance: 'Salary Advance' };
+    document.getElementById('description').value = map[this.value] || '';
+});
+
+// ── Employee select → fetch salary details ────────
+document.getElementById('user_id').addEventListener('change', fetchSalaryDetails);
+document.getElementById('payment_for_month').addEventListener('change', fetchSalaryDetails);
+
+function fetchSalaryDetails() {
+    const sel      = document.getElementById('user_id');
+    const opt      = sel.options[sel.selectedIndex];
+    const userId   = opt.value;
+    const baseSal  = parseFloat(opt.dataset.baseSalary) || 0;
+    const currency = opt.dataset.currency || 'USD';
+    const month    = document.getElementById('payment_for_month').value;
+
+    // Hide breakdown
+    document.getElementById('breakdownPanel').style.display = 'none';
+    document.getElementById('absenceWarning').style.display = 'none';
+    document.getElementById('alreadyPaidBanner').classList.remove('visible');
+
+    if (!userId || !baseSal) return;
+
+    document.getElementById('currency').value = currency;
+
+    $.ajax({
+        url: 'get_salary_details.php',
+        type: 'POST',
+        dataType: 'json',
+        data: { user_id: userId, currency: currency, payment_for_month: month },
+        success: function(data) {
+            if (data.error) { console.error(data.error); return; }
+
+            const advances   = parseFloat(data.totalAdvances)   || 0;
+            const deductions = parseFloat(data.totalDeductions)  || 0;
+            const bonuses    = parseFloat(data.totalBonuses)     || 0;
+            const net        = Math.max(0, baseSal - advances - deductions + bonuses);
+
+            // Already paid banner
+            if (data.salaryAlreadyPaid) {
+                const banner = document.getElementById('alreadyPaidBanner');
+                banner.innerHTML = `⚠️ Salary already processed for this month — <strong>${data.existingPayment.amount} ${currency}</strong> on ${data.existingPayment.payment_date}.`;
+                banner.classList.add('visible');
+                document.getElementById('submitBtn').disabled = (document.getElementById('payment_type').value === 'regular');
+            } else {
+                document.getElementById('submitBtn').disabled = false;
             }
-            
-            // Auto-fill salary amount when employee is selected
-            $('#user_id').change(function() {
-                var selectedOption = $(this).find('option:selected');
-                var userId = selectedOption.val();
-                var baseSalary = parseFloat(selectedOption.data('base-salary')) || 0;
-                var currency = selectedOption.data('currency');
 
-                // Clear previous breakdown and absence info
-                $('.salary-breakdown').remove();
-                $('.absence-info').remove();
-                
-                if (baseSalary && userId) {
-                    // Get advances, deductions, and bonuses via AJAX
-                    $.ajax({
-                        url: 'get_salary_details.php',
-                        type: 'POST',
-                        dataType: 'json', // Explicitly expect JSON response
-                        data: {
-                            user_id: userId,
-                            currency: currency,
-                            payment_for_month: $('#payment_for_month').val()
-                        },
-                        success: function(data) {
-                            // No need to parse, jQuery will do it automatically with dataType: 'json'
-                            if(data.error) {
-                                console.error('Server error:', data.error);
-                                return;
-                            }
-                            
-                            var totalAdvances = parseFloat(data.totalAdvances) || 0;
-                            var totalDeductions = parseFloat(data.totalDeductions) || 0;
-                            var totalBonuses = parseFloat(data.totalBonuses) || 0;
-                            var hasAttendanceFeature = data.has_attendance_feature || false;
-                            var absentDays = parseInt(data.absent_days) || 0;
-                            var absenceAlreadyDeducted = data.absence_already_deducted || false;
+            // Set amount
+            document.getElementById('amount').value = net.toFixed(2);
+            document.getElementById('amount').dataset.maxAmount = net;
 
-                            // Calculate remaining amount
-                            var remainingAmount = baseSalary - totalAdvances - totalDeductions + totalBonuses;
-                            remainingAmount = Math.max(0, remainingAmount); // Ensure it's not negative
-                            
-                            // Check if salary is already paid
-                            if (data.salaryAlreadyPaid) {
-                                // Show warning and disable the form
-                                var warningHtml = '<div class="alert alert-warning" role="alert">';
-                                warningHtml += '<i class="feather icon-alert-triangle mr-2"></i>';
-                                warningHtml += '<?= __('salary_already_paid_for_this_month') ?>';
-                                warningHtml += '<br><strong><?= __('payment_details') ?>:</strong>';
-                                warningHtml += '<ul class="mb-0 mt-2">';
-                                warningHtml += '<li><?= __('amount') ?>: ' + data.existingPayment.amount + ' ' + currency + '</li>';
-                                warningHtml += '<li><?= __('payment_date') ?>: ' + data.existingPayment.payment_date + '</li>';
-                                warningHtml += '</ul>';
-                                warningHtml += '</div>';
-                                
-                                // Remove any existing warning
-                                $('.salary-already-paid-warning').remove();
-                                
-                                // Add warning before the form
-                                $('form').before(warningHtml);
-                                
-                                // Disable form elements if payment type is regular
-                                if ($('#payment_type').val() === 'regular') {
-                                    $('#amount').prop('disabled', true);
-                                    $('button[type="submit"]').prop('disabled', true);
-                                }
-                            } else {
-                                // Remove any existing warning
-                                $('.salary-already-paid-warning').remove();
-                                
-                                // Enable form elements
-                                $('#amount').prop('disabled', false);
-                                $('button[type="submit"]').prop('disabled', false);
-                            }
-                            
-                            // Update form fields
-                            $('#amount').val(remainingAmount.toFixed(2));
-                            $('#currency').val(currency);
-                            
-                            // Show breakdown
-                            var breakdownHtml = '<div class="salary-breakdown mt-2 p-3 border rounded bg-light">';
-                            breakdownHtml += '<h6 class="text-primary mb-2"><i class="feather icon-list mr-1"></i><?= __('salary_breakdown') ?></h6>';
-                            breakdownHtml += '<div class="table-responsive">';
-                            breakdownHtml += '<table class="table table-sm table-borderless mb-0">';
-                            breakdownHtml += '<tr><td><?= __('base_salary') ?></td><td class="text-right">+ ' + baseSalary.toFixed(2) + ' ' + currency + '</td></tr>';
-                            if(totalBonuses > 0) {
-                                breakdownHtml += '<tr class="text-success"><td><?= __('bonuses') ?></td><td class="text-right">+ ' + totalBonuses.toFixed(2) + ' ' + currency + '</td></tr>';
-                            }
-                            if(totalDeductions > 0) {
-                                breakdownHtml += '<tr class="text-danger"><td><?= __('deductions') ?></td><td class="text-right">- ' + totalDeductions.toFixed(2) + ' ' + currency + '</td></tr>';
-                            }
-                            if(totalAdvances > 0) {
-                                breakdownHtml += '<tr class="text-warning"><td><?= __('advances_this_month') ?></td><td class="text-right">- ' + totalAdvances.toFixed(2) + ' ' + currency + '</td></tr>';
-                            }
-                            breakdownHtml += '<tr class="font-weight-bold border-top"><td><?= __('remaining_amount') ?></td><td class="text-right">' + remainingAmount.toFixed(2) + ' ' + currency + '</td></tr>';
-                            breakdownHtml += '</table>';
-                            breakdownHtml += '</div>';
-                            breakdownHtml += '</div>';
-                            
-                            // Remove any existing breakdown and add new one
-                            $('.salary-breakdown').remove();
-                            $('#amount').parent().after(breakdownHtml);
+            // Build breakdown
+            let rows = '';
+            rows += `<div class="breakdown-row"><span>Base Salary</span><span>+ ${baseSal.toFixed(2)} ${currency}</span></div>`;
+            if (bonuses > 0)    rows += `<div class="breakdown-row credit"><span>Bonuses</span><span>+ ${bonuses.toFixed(2)} ${currency}</span></div>`;
+            if (deductions > 0) rows += `<div class="breakdown-row debit"><span>Deductions</span><span>− ${deductions.toFixed(2)} ${currency}</span></div>`;
+            if (advances > 0)   rows += `<div class="breakdown-row warn"><span>Advance Deductions</span><span>− ${advances.toFixed(2)} ${currency}</span></div>`;
+            rows += `<div class="breakdown-row"><span>Net Payable</span><span>${net.toFixed(2)} ${currency}</span></div>`;
+            document.getElementById('breakdownRows').innerHTML = rows;
+            document.getElementById('breakdownPanel').style.display = 'block';
 
-                            // Handle attendance deduction if feature is enabled
-                            $('.absence-info').remove(); // Remove any existing
-                            if (data.has_attendance_feature && data.absent_days > 0 && !data.absence_already_deducted) {
-                                var deductionAmount = (baseSalary / 30) * data.absent_days;
-                                var absenceHtml = '<div class="alert alert-warning mt-2 absence-info">';
-                                absenceHtml += '<i class="feather icon-alert-triangle mr-2"></i>';
-                                absenceHtml += 'Employee has ' + data.absent_days + ' absent days this month. ';
-                                absenceHtml += 'Potential deduction: ' + deductionAmount.toFixed(2) + ' ' + currency + ' ';
-                                absenceHtml += '<button type="button" class="btn btn-sm btn-danger ml-2" id="deduct-absence-btn" ';
-                                absenceHtml += 'data-absent-days="' + data.absent_days + '" ';
-                                absenceHtml += 'data-base-salary="' + baseSalary + '" ';
-                                absenceHtml += 'data-currency="' + currency + '" ';
-                                absenceHtml += 'data-payment-month="' + $('#payment_for_month').val() + '" ';
-                                absenceHtml += 'data-user-id="' + userId + '">Deduct for Absence</button>';
-                                absenceHtml += '</div>';
-                                $('.salary-breakdown').after(absenceHtml);
-                            }
-
-                            // Store the values for validation
-                            $('#amount').data('max-amount', remainingAmount);
-                        },
-                        error: function(xhr, status, error) {
-                            console.error('AJAX Error:', {
-                                status: status,
-                                error: error,
-                                response: xhr.responseText
-                            });
-                            // Log the actual response for debugging
-                            console.log('Raw response:', xhr.responseText);
-                            
-                            // If error, just set base salary
-                            $('#amount').val(baseSalary.toFixed(2));
-                            $('#currency').val(currency);
-                            
-                            // Show error message to user
-                            alert('<?= __('error_fetching_salary_details') ?>');
-                        }
-                    });
-                }
-            });
-            
-            // Add amount validation
-            $('#amount').on('input', function() {
-                var enteredAmount = parseFloat($(this).val()) || 0;
-                var maxAmount = parseFloat($(this).data('max-amount')) || 0;
-                
-                if(enteredAmount > maxAmount) {
-                    $(this).addClass('is-invalid');
-                    if(!$(this).next('.invalid-feedback').length) {
-                        $(this).after('<div class="invalid-feedback">Amount cannot exceed ' + maxAmount.toFixed(2) + '</div>');
-                    }
-                } else {
-                    $(this).removeClass('is-invalid');
-                    $(this).next('.invalid-feedback').remove();
-                }
-            });
-
-            // Update total amount hint when amount or months change
-            function updateTotalHint() {
-                var amount = parseFloat($('#amount').val()) || 0;
-                var months = parseInt($('#months_to_pay').val(), 10) || 1;
-                var currency = $('#currency').val();
-                var total = amount * months;
-                if (amount > 0 && months > 0) {
-                    $('#totalAmountHint').text('<?= __('total_payment') ?>: ' + total.toFixed(2) + ' ' + currency + ' (<?= __('months') ?>: ' + months + ')');
-                } else {
-                    $('#totalAmountHint').text('');
-                }
+            // Absence warning
+            if (data.has_attendance_feature && data.absent_days > 0 && !data.absence_already_deducted) {
+                const dedAmt = ((baseSal / 30) * data.absent_days).toFixed(2);
+                document.getElementById('absenceText').innerHTML =
+                    `Employee has <strong>${data.absent_days} absent days</strong> this month. Potential absence deduction: <strong>${dedAmt} ${currency}</strong>.
+                    <button type="button" onclick="deductAbsence(${userId},'${currency}',${baseSal},${data.absent_days},'${month}')"
+                        style="margin-left:8px;background:var(--danger);color:#fff;border:none;border-radius:6px;padding:4px 10px;font-size:12px;cursor:pointer;font-family:'DM Sans',sans-serif">
+                        Apply Deduction
+                    </button>`;
+                document.getElementById('absenceWarning').style.display = 'flex';
             }
-            $('#amount, #months_to_pay, #currency').on('input change', updateTotalHint);
+
             updateTotalHint();
-            
-            // Update calculations when payment month changes
-            $('#payment_for_month').change(function() {
-                $('#user_id').trigger('change');
-            });
-            
-            // Validate if account has enough balance
-            $('#main_account_id, #amount, #currency').change(function() {
-                var selectedAccount = $('#main_account_id').find('option:selected');
-                var amount = parseFloat($('#amount').val()) || 0;
-                var currency = $('#currency').val();
-                
-                if (selectedAccount.val() && amount > 0) {
-                    var accountBalance = (currency == 'USD') ? 
-                        parseFloat(selectedAccount.data('usd')) : 
-                        parseFloat(selectedAccount.data('afs'));
-                    
-                    if (amount > accountBalance) {
-                        alert('<?= __('warning_the_selected_account_does_not_have_enough_balance_for_this_payment') ?>');
-                    }
-                }
-            });
-            
-            // Handle payment type
-            $('#payment_type').change(function() {
-                var paymentType = $(this).val();
-                var description = $('#description');
-                
-                if (paymentType == 'regular') {
-                    description.val('<?= __('regular_salary_payment') ?>');
-                } else if (paymentType == 'bonus') {
-                    description.val('<?= __('bonus_payment') ?>');
-                } else if (paymentType == 'advance') {
-                    description.val('<?= __('salary_advance') ?>');
+        },
+        error: function() { showToast('Failed to load salary details.', true); }
+    });
+}
+
+// ── Absence deduction ─────────────────────────────
+function deductAbsence(userId, currency, baseSalary, absentDays, paymentMonth) {
+    $.ajax({
+        url: 'deduct_absence.php',
+        type: 'POST',
+        data: { user_id: userId, payment_for_month: paymentMonth, absent_days: absentDays, base_salary: baseSalary, currency: currency },
+        success: function(res) {
+            try {
+                const r = JSON.parse(res);
+                if (r.success) {
+                    showToast(`Absence deduction of ${r.deducted_amount} ${currency} applied.`);
+                    fetchSalaryDetails();
                 } else {
-                    description.val('');
+                    showToast(r.message || 'Failed to create deduction.', true);
                 }
-            });
+            } catch(e) { showToast('Error processing response.', true); }
+        },
+        error: function() { showToast('Network error.', true); }
+    });
+}
 
-            // Handle deduct absence
-            $(document).on('click', '#deduct-absence-btn', function() {
-                var btn = $(this);
-                var absentDays = btn.data('absent-days');
-                var baseSalary = btn.data('base-salary');
-                var currency = btn.data('currency');
-                var paymentMonth = btn.data('payment-month');
-                var userId = btn.data('user-id');
+// ── Account balance warning ───────────────────────
+['main_account_id','amount','currency'].forEach(id => {
+    document.getElementById(id).addEventListener('change', function() {
+        const sel = document.getElementById('main_account_id');
+        const opt = sel.options[sel.selectedIndex];
+        if (!opt.value) return;
+        const amount  = parseFloat(document.getElementById('amount').value) || 0;
+        const cur     = document.getElementById('currency').value;
+        const balance = cur === 'USD' ? parseFloat(opt.dataset.usd) : parseFloat(opt.dataset.afs);
+        if (amount > balance) {
+            showToast(`⚠️ Account balance (${balance.toFixed(2)} ${cur}) is less than payment amount.`, true);
+        }
+    });
+});
 
-                if (confirm('Are you sure you want to deduct for ' + absentDays + ' absent days?')) {
-                    // Disable button
-                    btn.prop('disabled', true).html('<i class="feather icon-loader"></i> Processing...');
+// ── Edit modal ────────────────────────────────────
+document.querySelectorAll('.open-edit').forEach(btn => {
+    btn.addEventListener('click', function() {
+        document.getElementById('edit_payment_id').value      = this.dataset.id;
+        document.getElementById('edit_user_id').value         = this.dataset.userId;
+        document.getElementById('edit_payment_amount').value  = this.dataset.amount;
+        document.getElementById('edit_original_amount').value = this.dataset.amount;
+        document.getElementById('edit_currency').value        = this.dataset.currency;
+        document.getElementById('edit_currency_display').value= this.dataset.currency;
+        document.getElementById('edit_payment_date').value    = this.dataset.date;
+        document.getElementById('edit_payment_description').value = this.dataset.description;
+        document.getElementById('edit_payment_type').value    = this.dataset.type;
+        document.getElementById('edit_main_account_id').value = this.dataset.accountId;
+        document.getElementById('editModalBackdrop').classList.add('open');
+    });
+});
 
-                    $.ajax({
-                        url: 'deduct_absence.php',
-                        type: 'POST',
-                        data: {
-                            user_id: userId,
-                            payment_for_month: paymentMonth,
-                            absent_days: absentDays,
-                            base_salary: baseSalary,
-                            currency: currency
-                        },
-                        success: function(response) {
-                            try {
-                                var res = JSON.parse(response);
-                                if (res.success) {
-                                    alert('Deduction created successfully for ' + res.deducted_amount + ' ' + currency);
-                                    // Refresh the breakdown
-                                    $('#user_id').trigger('change');
-                                } else {
-                                    alert(res.message || 'Failed to create deduction');
-                                    btn.prop('disabled', false).html('Deduct for Absence');
-                                }
-                            } catch(e) {
-                                alert('Error processing response');
-                                btn.prop('disabled', false).html('Deduct for Absence');
-                            }
-                        },
-                        error: function() {
-                            alert('Error creating deduction');
-                            btn.prop('disabled', false).html('Deduct for Absence');
-                        }
-                    });
+document.getElementById('saveEditBtn').addEventListener('click', function() {
+    const form    = document.getElementById('editPaymentForm');
+    if (!form.checkValidity()) { form.reportValidity(); return; }
+    const btn = this;
+    btn.disabled = true;
+    btn.innerHTML = '...Saving';
+    $.ajax({
+        url: 'update_salary_payment.php',
+        type: 'POST',
+        data: $(form).serialize(),
+        dataType: 'json',
+        success: function(res) {
+            if (res.success) {
+                showToast('Payment updated successfully.');
+                closeModal('editModalBackdrop');
+                setTimeout(() => location.reload(), 800);
+            } else {
+                showToast(res.message || 'Failed to update.', true);
+                btn.disabled = false;
+                btn.innerHTML = 'Save Changes';
+            }
+        },
+        error: function() {
+            showToast('Network error.', true);
+            btn.disabled = false;
+            btn.innerHTML = 'Save Changes';
+        }
+    });
+});
+
+// ── Delete modal ──────────────────────────────────
+let deleteData = null;
+document.querySelectorAll('.open-delete').forEach(btn => {
+    btn.addEventListener('click', function() {
+        deleteData = { id: this.dataset.id, amount: this.dataset.amount, accountId: this.dataset.accountId };
+        document.getElementById('deleteConfirmText').innerHTML =
+            `Delete payment for <strong>${this.dataset.name}</strong>? This will reverse the account deduction.`;
+        document.getElementById('deleteModalBackdrop').classList.add('open');
+    });
+});
+
+document.getElementById('confirmDeleteBtn').addEventListener('click', function() {
+    if (!deleteData) return;
+    const btn = this;
+    btn.disabled = true;
+    $.ajax({
+        url: 'delete_salary_payment.php',
+        type: 'POST',
+        data: { payment_id: deleteData.id, amount: deleteData.amount, main_account_id: deleteData.accountId },
+        success: function(res) {
+            try {
+                const r = JSON.parse(res);
+                if (r.success) {
+                    showToast('Payment deleted successfully.');
+                    closeModal('deleteModalBackdrop');
+                    setTimeout(() => location.reload(), 800);
+                } else {
+                    showToast(r.message || 'Failed to delete.', true);
+                    btn.disabled = false;
                 }
-            });
-
-            // Handle delete payment
-            $(document).on('click', '.delete-payment', function() {
-                var button = $(this);
-                var paymentId = button.data('payment-id');
-                var amount = button.data('amount');
-                var mainAccountId = button.data('main-account-id');
-                
-                if (confirm('<?= __('are_you_sure_you_want_to_delete_this_payment') ?>')) {
-                    $.ajax({
-                        url: 'delete_salary_payment.php',
-                        type: 'POST',
-                        data: {
-                            payment_id: paymentId,
-                            amount: amount,
-                            main_account_id: mainAccountId
-                        },
-                        success: function(response) {
-                            try {
-                                var data = JSON.parse(response);
-                                if (data.success) {
-                                    alert(data.message);
-                                    // Reload the page to refresh the table
-                                    location.reload();
-                                } else {
-                                    alert(data.message || '<?= __('failed_to_delete_payment') ?>');
-                                }
-                            } catch(e) {
-                                console.error('Error parsing response:', e);
-                                alert('<?= __('an_error_occurred_while_deleting_the_payment') ?>');
-                            }
-                        },
-                        error: function(xhr, status, error) {
-                            console.error('AJAX Error:', error);
-                            alert('<?= __('an_error_occurred_while_deleting_the_payment') ?>');
-                        }
-                    });
-                }
-            });
-        });
-    </script>
-
-    
-    <!-- Salary Payment Edit Script -->
-    <script>
-        $(document).ready(function() {
-            // Handle edit payment button click
-            $(document).on('click', '.edit-payment', function() {
-                // Get data from button attributes
-                var paymentId = $(this).data('payment-id');
-                var amount = $(this).data('amount');
-                var currency = $(this).data('currency');
-                var date = $(this).data('date');
-                var description = $(this).data('description');
-                var paymentType = $(this).data('payment-type');
-                var userId = $(this).data('user-id');
-                var mainAccountId = $(this).data('main-account-id');
-                
-                // Populate the form fields
-                $('#edit_payment_id').val(paymentId);
-                $('#edit_user_id').val(userId);
-                $('#edit_payment_amount').val(amount);
-                $('#edit_original_amount').val(amount);
-                $('#edit_currency').val(currency);
-                $('#edit_currency_display').text(currency);
-                $('#edit_payment_date').val(date);
-                $('#edit_payment_description').val(description);
-                $('#edit_payment_type').val(paymentType);
-                $('#edit_main_account_id').val(mainAccountId);
-                
-                // Show the modal
-                $('#editPaymentModal').modal('show');
-            });
-            
-            // Handle save changes button click
-            $('#savePaymentChanges').click(function() {
-                // Validate form
-                var form = $('#editPaymentForm');
-                
-                if (!form[0].checkValidity()) {
-                    form[0].reportValidity();
-                    return;
-                }
-                
-                // Get form data
-                var formData = form.serialize();
-                
-                // Show loading state
-                var saveBtn = $(this);
-                var originalText = saveBtn.html();
-                saveBtn.html('<i class="feather icon-loader mr-2 spinner"></i><?= __("saving") ?>...');
-                saveBtn.prop('disabled', true);
-                
-                // Send AJAX request
-                $.ajax({
-                    url: 'update_salary_payment.php',
-                    type: 'POST',
-                    data: formData,
-                    dataType: 'json',
-                    success: function(response) {
-                        if (response.success) {
-                            // Show success message
-                            alert('<?= __("payment_updated_successfully") ?>');
-                            
-                            // Close modal and reload page to refresh data
-                            $('#editPaymentModal').modal('hide');
-                            location.reload();
-                        } else {
-                            // Show error message
-                            alert(response.message || '<?= __("failed_to_update_payment") ?>');
-                            
-                            // Reset button state
-                            saveBtn.html(originalText);
-                            saveBtn.prop('disabled', false);
-                        }
-                    },
-                    error: function(xhr, status, error) {
-                        console.error('AJAX Error:', xhr.responseText);
-                        alert('<?= __("an_error_occurred_while_updating_the_payment") ?>');
-                        
-                        // Reset button state
-                        saveBtn.html(originalText);
-                        saveBtn.prop('disabled', false);
-                    }
-                });
-            });
-        });
-    </script>
+            } catch(e) { showToast('Error.', true); btn.disabled = false; }
+        },
+        error: function() { showToast('Network error.', true); btn.disabled = false; }
+    });
+});
+</script>
 </body>
-</html> 
+</html>

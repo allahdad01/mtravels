@@ -7,38 +7,109 @@ $tenant_id = $_SESSION['tenant_id'];
 $branch_id = $_SESSION['branch_id'];
 enforce_auth();
 
-// Validate POST data
-if (empty($_POST['selected_members'])) {
-    die('Invalid request: no members selected');
-}
+// Check if ticket_id is provided (GET parameter from database record)
+$ticketId = isset($_GET['ticket_id']) ? (int)$_GET['ticket_id'] : null;
 
-$selectedPilgrims = json_decode($_POST['selected_members'], true);
-if (!is_array($selectedPilgrims) || count($selectedPilgrims) === 0) {
-    die('Invalid request: invalid member data');
+if ($ticketId) {
+    // Fetch group ticket from database
+    $stmt = $pdo->prepare("
+        SELECT * FROM group_tickets 
+        WHERE ticket_id = ? AND tenant_id = ? AND branch_id = ?
+    ");
+    $stmt->execute([$ticketId, $tenant_id, $branch_id]);
+    $ticket = $stmt->fetch(PDO::FETCH_ASSOC);
+    
+    if (!$ticket) {
+        die('Invalid request: ticket not found');
+    }
+    
+    // Extract data from database record
+    $selectedPilgrims = json_decode($ticket['member_ids'], true) ?: [];
+    $airlineName = $ticket['airline_name'] ?? 'Unknown Airline';
+    $pnr = $ticket['pnr'] ?? 'N/A';
+    $remarks = $ticket['remarks'] ?? '';
+    $flightType = $ticket['flight_type'] ?? 'direct';
+    
+    // Fetch member details from umrah_bookings
+    if (!empty($selectedPilgrims)) {
+        $placeholders = implode(',', array_fill(0, count($selectedPilgrims), '?'));
+        $memberStmt = $pdo->prepare("
+            SELECT booking_id, name FROM umrah_bookings 
+            WHERE booking_id IN ($placeholders)
+        ");
+        $memberStmt->execute($selectedPilgrims);
+        $memberDetails = $memberStmt->fetchAll(PDO::FETCH_ASSOC);
+        
+        // Rebuild selectedPilgrims with name and id
+        $selectedPilgrims = [];
+        foreach ($memberDetails as $member) {
+            $selectedPilgrims[] = [
+                'id' => $member['booking_id'],
+                'name' => $member['name']
+            ];
+        }
+    }
+} else {
+    // Validate POST data (original format)
+    if (empty($_POST['selected_members'])) {
+        die('Invalid request: no members selected');
+    }
+    
+    $selectedPilgrims = json_decode($_POST['selected_members'], true);
+    if (!is_array($selectedPilgrims) || count($selectedPilgrims) === 0) {
+        die('Invalid request: invalid member data');
+    }
+    
+    // Basic ticket details
+    $airlineName = $_POST['airline_name'] ?? 'Unknown Airline';
+    $pnr = $_POST['pnr'] ?? 'N/A';
+    $remarks = $_POST['remarks'] ?? '';
+    $flightType = $_POST['flight_type'] ?? 'direct';
 }
-
-// Basic ticket details
-$airlineName = $_POST['airline_name'] ?? 'Unknown Airline';
-$pnr = $_POST['pnr'] ?? 'N/A';
-$remarks = $_POST['remarks'] ?? '';
-$flightType = $_POST['flight_type'] ?? 'direct';
 
 // Initialize flight data arrays
 $outboundFlights = [];
 $returnFlights = [];
 
-// Process flight data based on type
-if ($flightType === 'direct') {
-    // Direct flight processing
+// Determine flight data source (database or POST)
+if ($ticketId && isset($ticket)) {
+    // Use data from database record
+    if ($flightType === 'direct') {
+        $departureCity = $ticket['departure_city'] ?? 'Kabul';
+        $arrivalCity = $ticket['arrival_city'] ?? 'Jeddah';
+        $flightNumber1 = $ticket['flight_number_1'] ?? 'RQ993';
+        $flightNumber2 = $ticket['flight_number_2'] ?? 'RQ994';
+    } else {
+        // Indirect flights from database
+        $departureCity = null; // Not used for indirect
+        $arrivalCity = null;
+        $flightNumber1 = null;
+        $flightNumber2 = null;
+    }
+} else {
+    // Use data from POST request
     $departureCity = $_POST['departure_city'] ?? 'Kabul';
     $arrivalCity = $_POST['arrival_city'] ?? 'Jeddah';
     $flightNumber1 = $_POST['flight_number_1'] ?? 'RQ993';
     $flightNumber2 = $_POST['flight_number_2'] ?? 'RQ994';
-    
-    $departureDate = ($_POST['departure_date'] ?? '') . ' ' . ($_POST['departure_time'] ?? '');
-    $arrivalDate = ($_POST['arrival_date'] ?? '') . ' ' . ($_POST['arrival_time'] ?? '');
-    $returnDate = ($_POST['return_date'] ?? '') . ' ' . ($_POST['return_time'] ?? '');
-    $retArrivalDate = ($_POST['ret_arrival_date'] ?? '') . ' ' . ($_POST['return_arrival_time'] ?? '');
+}
+
+// Process flight data based on type
+if ($flightType === 'direct') {
+    // Direct flight processing
+    if ($ticketId && isset($ticket)) {
+        // Use dates and times from database
+        $departureDate = ($ticket['flight_date'] ?? '') . ' ' . ($ticket['departure_time'] ?? '');
+        $arrivalDate = ($ticket['flight_date'] ?? '') . ' ' . ($ticket['arrival_time'] ?? '');
+        $returnDate = ($ticket['return_date'] ?? '') . ' ' . ($ticket['return_time'] ?? '');
+        $retArrivalDate = ($ticket['return_date'] ?? '') . ' ' . ($ticket['return_arrival_time'] ?? '');
+    } else {
+        // Use dates and times from POST
+        $departureDate = ($_POST['departure_date'] ?? '') . ' ' . ($_POST['departure_time'] ?? '');
+        $arrivalDate = ($_POST['arrival_date'] ?? '') . ' ' . ($_POST['arrival_time'] ?? '');
+        $returnDate = ($_POST['return_date'] ?? '') . ' ' . ($_POST['return_time'] ?? '');
+        $retArrivalDate = ($_POST['ret_arrival_date'] ?? '') . ' ' . ($_POST['return_arrival_time'] ?? '');
+    }
     
     $outboundFlights[] = [
         'flight_number' => $flightNumber1,
@@ -58,50 +129,73 @@ if ($flightType === 'direct') {
 } else {
     // Indirect/Connecting flight processing
     
+    // Determine data source
+    $dataSource = ($ticketId && isset($ticket)) ? 'database' : 'post';
+    
     // Outbound Journey - First Leg
-    $leg1DepartureDate = ($_POST['leg1_departure_date'] ?? '') . ' ' . ($_POST['leg1_departure_time'] ?? '');
-    $leg1ArrivalDate = ($_POST['leg1_arrival_date'] ?? '') . ' ' . ($_POST['leg1_arrival_time'] ?? '');
+    if ($dataSource === 'database') {
+        $leg1DepartureDate = ($ticket['leg1_departure_date'] ?? '') . ' ' . ($ticket['leg1_departure_time'] ?? '');
+        $leg1ArrivalDate = ($ticket['leg1_arrival_date'] ?? '') . ' ' . ($ticket['leg1_arrival_time'] ?? '');
+    } else {
+        $leg1DepartureDate = ($_POST['leg1_departure_date'] ?? '') . ' ' . ($_POST['leg1_departure_time'] ?? '');
+        $leg1ArrivalDate = ($_POST['leg1_arrival_date'] ?? '') . ' ' . ($_POST['leg1_arrival_time'] ?? '');
+    }
     
     $outboundFlights[] = [
-        'flight_number' => $_POST['leg1_flight_number'] ?? 'FZ341',
-        'departure_city' => $_POST['leg1_departure_city'] ?? 'Kabul',
-        'arrival_city' => $_POST['leg1_arrival_city'] ?? 'Dubai',
+        'flight_number' => $dataSource === 'database' ? ($ticket['leg1_flight_number'] ?? 'FZ341') : ($_POST['leg1_flight_number'] ?? 'FZ341'),
+        'departure_city' => $dataSource === 'database' ? ($ticket['leg1_departure_city'] ?? 'Kabul') : ($_POST['leg1_departure_city'] ?? 'Kabul'),
+        'arrival_city' => $dataSource === 'database' ? ($ticket['leg1_arrival_city'] ?? 'Dubai') : ($_POST['leg1_arrival_city'] ?? 'Dubai'),
         'departure_datetime' => $leg1DepartureDate,
         'arrival_datetime' => $leg1ArrivalDate
     ];
     
     // Outbound Journey - Second Leg
-    $leg2DepartureDate = ($_POST['leg2_departure_date'] ?? '') . ' ' . ($_POST['leg2_departure_time'] ?? '');
-    $leg2ArrivalDate = ($_POST['leg2_arrival_date'] ?? '') . ' ' . ($_POST['leg2_arrival_time'] ?? '');
+    if ($dataSource === 'database') {
+        $leg2DepartureDate = ($ticket['leg2_departure_date'] ?? '') . ' ' . ($ticket['leg2_departure_time'] ?? '');
+        $leg2ArrivalDate = ($ticket['leg2_arrival_date'] ?? '') . ' ' . ($ticket['leg2_arrival_time'] ?? '');
+    } else {
+        $leg2DepartureDate = ($_POST['leg2_departure_date'] ?? '') . ' ' . ($_POST['leg2_departure_time'] ?? '');
+        $leg2ArrivalDate = ($_POST['leg2_arrival_date'] ?? '') . ' ' . ($_POST['leg2_arrival_time'] ?? '');
+    }
     
     $outboundFlights[] = [
-        'flight_number' => $_POST['leg2_flight_number'] ?? 'FZ415',
-        'departure_city' => $_POST['leg2_departure_city'] ?? 'Dubai',
-        'arrival_city' => $_POST['leg2_arrival_city'] ?? 'Jeddah',
+        'flight_number' => $dataSource === 'database' ? ($ticket['leg2_flight_number'] ?? 'FZ415') : ($_POST['leg2_flight_number'] ?? 'FZ415'),
+        'departure_city' => $dataSource === 'database' ? ($ticket['leg2_departure_city'] ?? 'Dubai') : ($_POST['leg2_departure_city'] ?? 'Dubai'),
+        'arrival_city' => $dataSource === 'database' ? ($ticket['leg2_arrival_city'] ?? 'Jeddah') : ($_POST['leg2_arrival_city'] ?? 'Jeddah'),
         'departure_datetime' => $leg2DepartureDate,
         'arrival_datetime' => $leg2ArrivalDate
     ];
     
     // Return Journey - First Leg
-    $returnLeg1DepartureDate = ($_POST['return_leg1_departure_date'] ?? '') . ' ' . ($_POST['return_leg1_departure_time'] ?? '');
-    $returnLeg1ArrivalDate = ($_POST['return_leg1_arrival_date'] ?? '') . ' ' . ($_POST['return_leg1_arrival_time'] ?? '');
+    if ($dataSource === 'database') {
+        $returnLeg1DepartureDate = ($ticket['return_leg1_departure_date'] ?? '') . ' ' . ($ticket['return_leg1_departure_time'] ?? '');
+        $returnLeg1ArrivalDate = ($ticket['return_leg1_arrival_date'] ?? '') . ' ' . ($ticket['return_leg1_arrival_time'] ?? '');
+    } else {
+        $returnLeg1DepartureDate = ($_POST['return_leg1_departure_date'] ?? '') . ' ' . ($_POST['return_leg1_departure_time'] ?? '');
+        $returnLeg1ArrivalDate = ($_POST['return_leg1_arrival_date'] ?? '') . ' ' . ($_POST['return_leg1_arrival_time'] ?? '');
+    }
     
     $returnFlights[] = [
-        'flight_number' => $_POST['return_leg1_flight_number'] ?? 'FZ416',
-        'departure_city' => $_POST['return_leg1_departure_city'] ?? 'Jeddah',
-        'arrival_city' => $_POST['return_leg1_arrival_city'] ?? 'Dubai',
+        'flight_number' => $dataSource === 'database' ? ($ticket['return_leg1_flight_number'] ?? 'FZ416') : ($_POST['return_leg1_flight_number'] ?? 'FZ416'),
+        'departure_city' => $dataSource === 'database' ? ($ticket['return_leg1_departure_city'] ?? 'Jeddah') : ($_POST['return_leg1_departure_city'] ?? 'Jeddah'),
+        'arrival_city' => $dataSource === 'database' ? ($ticket['return_leg1_arrival_city'] ?? 'Dubai') : ($_POST['return_leg1_arrival_city'] ?? 'Dubai'),
         'departure_datetime' => $returnLeg1DepartureDate,
         'arrival_datetime' => $returnLeg1ArrivalDate
     ];
     
     // Return Journey - Second Leg
-    $returnLeg2DepartureDate = ($_POST['return_leg2_departure_date'] ?? '') . ' ' . ($_POST['return_leg2_departure_time'] ?? '');
-    $returnLeg2ArrivalDate = ($_POST['return_leg2_arrival_date'] ?? '') . ' ' . ($_POST['return_leg2_arrival_time'] ?? '');
+    if ($dataSource === 'database') {
+        $returnLeg2DepartureDate = ($ticket['return_leg2_departure_date'] ?? '') . ' ' . ($ticket['return_leg2_departure_time'] ?? '');
+        $returnLeg2ArrivalDate = ($ticket['return_leg2_arrival_date'] ?? '') . ' ' . ($ticket['return_leg2_arrival_time'] ?? '');
+    } else {
+        $returnLeg2DepartureDate = ($_POST['return_leg2_departure_date'] ?? '') . ' ' . ($_POST['return_leg2_departure_time'] ?? '');
+        $returnLeg2ArrivalDate = ($_POST['return_leg2_arrival_date'] ?? '') . ' ' . ($_POST['return_leg2_arrival_time'] ?? '');
+    }
     
     $returnFlights[] = [
-        'flight_number' => $_POST['return_leg2_flight_number'] ?? 'FZ342',
-        'departure_city' => $_POST['return_leg2_departure_city'] ?? 'Dubai',
-        'arrival_city' => $_POST['return_leg2_arrival_city'] ?? 'Kabul',
+        'flight_number' => $dataSource === 'database' ? ($ticket['return_leg2_flight_number'] ?? 'FZ342') : ($_POST['return_leg2_flight_number'] ?? 'FZ342'),
+        'departure_city' => $dataSource === 'database' ? ($ticket['return_leg2_departure_city'] ?? 'Dubai') : ($_POST['return_leg2_departure_city'] ?? 'Dubai'),
+        'arrival_city' => $dataSource === 'database' ? ($ticket['return_leg2_arrival_city'] ?? 'Kabul') : ($_POST['return_leg2_arrival_city'] ?? 'Kabul'),
         'departure_datetime' => $returnLeg2DepartureDate,
         'arrival_datetime' => $returnLeg2ArrivalDate
     ];

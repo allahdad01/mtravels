@@ -3,16 +3,21 @@
 session_start();
 $tenant_id = $_SESSION['tenant_id'];
 $branch_id = $_SESSION['branch_id'];
+
+$allowed_roles = ['admin', 'finance'];
+if (!isset($_SESSION['user_id']) || !in_array($_SESSION['role'], $allowed_roles)) {
+    error_log("Unauthorized access attempt to dashboard: " . ($_SESSION['user_id'] ?? 'unknown') . " - Role: " . ($_SESSION['role'] ?? 'unknown') . " - IP: " . $_SERVER['REMOTE_ADDR']);
+    header('Location: ../login.php');
+    exit();
+}
+
 // Include config file
 require_once "../includes/db.php";
-// Check if the user is logged in, if not then redirect to login page
-if (!isset($_SESSION["loggedin"]) || $_SESSION["loggedin"] !== true || $_SESSION["role"] !== "admin") {
-    header("location: ../access_denied.php");
-    exit;
-}
+
 // Define variables and initialize with empty values
 $user_id = $amount = $description = $bonus_date = $type = "";
 $user_id_err = $amount_err = $description_err = $bonus_date_err = "";
+$success_message = $error_message = "";
 
 // Processing form data when form is submitted
 if ($_SERVER["REQUEST_METHOD"] == "POST") {
@@ -52,7 +57,7 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
     }
     
     // Set bonus type
-    $type = $_POST["type"];
+    $type = $_POST["type"] ?? "performance";
     
     // Check input errors before updating in database
     if (empty($user_id_err) && empty($amount_err) && empty($description_err) && empty($bonus_date_err)) {
@@ -78,10 +83,10 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
                 header("location: manage_bonuses.php?updated=1");
                 exit();
             } else {
-                echo "Oops! Something went wrong. Please try again later.";
+                $error_message = "Oops! Something went wrong. Please try again later.";
             }
         } catch (PDOException $e) {
-            echo "Oops! Something went wrong. Please try again later.";
+            $error_message = "Oops! Something went wrong. Please try again later.";
             error_log("Update bonus error: " . $e->getMessage());
         }
     }
@@ -107,8 +112,6 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
                 $result = $stmt->fetchAll();
 
                 if (count($result) == 1) {
-                    /* Fetch result row as an associative array. Since the result set
-                    contains only one row, we don't need to use while loop */
                     $row = $result[0];
 
                     // Retrieve individual field value
@@ -119,172 +122,405 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
                     $type = $row["type"];
                 } else {
                     // URL doesn't contain valid id. Redirect to error page
-                    header("location: error.php");
+                    header("location: manage_bonuses.php");
                     exit();
                 }
 
             } else {
-                echo "Oops! Something went wrong. Please try again later.";
+                $error_message = "Oops! Something went wrong. Please try again later.";
             }
         } catch (PDOException $e) {
-            echo "Oops! Something went wrong. Please try again later.";
+            $error_message = "Oops! Something went wrong. Please try again later.";
             error_log("Select bonus error: " . $e->getMessage());
         }
     } else {
         // URL doesn't contain id parameter. Redirect to error page
-        header("location: error.php");
+        header("location: manage_bonuses.php");
         exit();
     }
 }
 
+// Fetch users with salary records
+try {
+    $stmt = $pdo->prepare("SELECT u.id, u.name FROM users u JOIN salary_management sm ON u.id=sm.user_id WHERE sm.status='active' AND u.tenant_id=? AND u.branch_id=? ORDER BY u.name ASC");
+    $stmt->execute([$tenant_id, $branch_id]);
+    $users_with_salary = $stmt->fetchAll(PDO::FETCH_ASSOC);
+} catch (PDOException $e) {
+    $users_with_salary = [];
+}
 ?>
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Edit Bonus</title>
 
+<!-- Google Fonts -->
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@300;400;500;600&family=Syne:wght@600;700;800&display=swap" rel="stylesheet">
 
-    <!-- [ Header ] start -->
-    <?php include("../includes/header.php"); ?>
-    <!-- [ Header ] end -->
-    <style>
-/* Apply gradient background to card headers matching the sidebar */
-.card-header {
-    background: linear-gradient(135deg, #4099ff 0%, #2ed8b6 100%) !important;
-    color: #ffffff !important;
-    border-bottom: none !important;
+<!-- Bootstrap & Feather Icons -->
+<link rel="stylesheet" href="../assets/css/style.css">
+
+<style>
+:root {
+    --ink:       #0f1117;
+    --surface:   #ffffff;
+    --muted:     #f4f5f7;
+    --border:    #e8eaed;
+    --accent:    #3d6cff;
+    --accent2:   #00d9a6;
+    --warn:      #ff9f43;
+    --danger:    #ff4757;
+    --text-sub:  #6b7280;
+    --radius:    12px;
+    --shadow-sm: 0 1px 3px rgba(0,0,0,.06), 0 1px 2px rgba(0,0,0,.04);
+    --shadow-md: 0 4px 16px rgba(0,0,0,.08);
+    --shadow-lg: 0 12px 40px rgba(0,0,0,.12);
 }
 
-.card-header h5 {
-    color: #ffffff !important;
-    margin-bottom: 0 !important;
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+body {
+    font-family: 'DM Sans', sans-serif;
+    background: #f0f2f5;
+    color: var(--ink);
 }
 
-.card-header .card-header-right {
-    color: #ffffff !important;
+/* ── Page wrapper ───────────────────────────────── */
+.sm-page {
+    padding: 28px 32px;
+    max-width: 1400px;
 }
 
-.card-header .card-header-right .btn {
-    color: #ffffff !important;
-    border-color: rgba(255, 255, 255, 0.3) !important;
+/* ── Page header ────────────────────────────────── */
+.page-hero {
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-end;
+    margin-bottom: 28px;
+    flex-wrap: wrap;
+    gap: 16px;
 }
 
-.card-header .card-header-right .btn:hover {
-    background: rgba(255, 255, 255, 0.1) !important;
-    border-color: rgba(255, 255, 255, 0.5) !important;
+.page-hero-title {
+    font-family: 'Syne', sans-serif;
+    font-size: 26px;
+    font-weight: 800;
+    color: var(--ink);
+    letter-spacing: -.5px;
+    line-height: 1.1;
+}
+
+.page-hero-subtitle {
+    font-size: 13px;
+    color: var(--text-sub);
+    margin-top: 4px;
+    font-weight: 400;
+}
+
+.hero-actions {
+    display: flex;
+    gap: 10px;
+    flex-wrap: wrap;
+}
+
+/* ── Form Card ────────────────────────────────── */
+.form-card {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    overflow: hidden;
+    box-shadow: var(--shadow-sm);
+}
+
+.form-card-header {
+    padding: 20px;
+    border-bottom: 1px solid var(--border);
+    background: linear-gradient(90deg, var(--muted) 0%, var(--muted) 100%);
+}
+
+.form-card-header h3 {
+    margin: 0;
+    font-size: 16px;
+    font-weight: 600;
+    color: var(--ink);
+}
+
+.form-card-body {
+    padding: 28px;
+}
+
+/* ── Form elements ───────────────────────────────── */
+.field-group {
+    margin-bottom: 20px;
+}
+
+.field-label {
+    display: block;
+    font-size: 13px;
+    font-weight: 600;
+    color: var(--ink);
+    margin-bottom: 8px;
+}
+
+.field-control, .field-textarea {
+    display: block;
+    width: 100%;
+    padding: 11px 14px;
+    border: 1px solid var(--border);
+    border-radius: 6px;
+    font-family: inherit;
+    font-size: 13px;
+    color: var(--ink);
+    background: var(--surface);
+    transition: border-color .2s, box-shadow .2s;
+}
+
+.field-control:focus, .field-textarea:focus {
+    outline: none;
+    border-color: var(--accent);
+    box-shadow: 0 0 0 3px rgba(61, 108, 255, .1);
+}
+
+.field-control.is-invalid {
+    border-color: var(--danger);
+    background: rgba(255, 71, 87, .05);
+}
+
+.field-error {
+    font-size: 12px;
+    color: var(--danger);
+    margin-top: 6px;
+    display: block;
+}
+
+/* ── Buttons ─────────────────────────────────────── */
+.btn-primary, .btn-secondary {
+    border: none;
+    border-radius: 6px;
+    padding: 11px 20px;
+    font-size: 13px;
+    font-weight: 600;
+    cursor: pointer;
+    transition: all .2s;
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    text-decoration: none;
+}
+
+.btn-primary {
+    background: var(--accent);
+    color: white;
+}
+
+.btn-primary:hover {
+    background: #2654e3;
+    box-shadow: 0 4px 14px rgba(61, 108, 255, .3);
+}
+
+.btn-secondary {
+    background: var(--muted);
+    color: var(--ink);
+    border: 1px solid var(--border);
+}
+
+.btn-secondary:hover {
+    background: #e8eaed;
+}
+
+/* ── Alert ───────────────────────────────────────– */
+.alert {
+    padding: 14px 16px;
+    border-radius: 6px;
+    border-left: 4px solid;
+    margin-bottom: 20px;
+    font-size: 13px;
+}
+
+.alert-success {
+    background: rgba(0, 217, 166, .1);
+    border-left-color: var(--accent2);
+    color: #118b67;
+}
+
+.alert-danger {
+    background: rgba(255, 71, 87, .1);
+    border-left-color: var(--danger);
+    color: #c41e3a;
+}
+
+/* ── Toast ────────────────────────────────────────– */
+#toastWrap {
+    display: none;
+    position: fixed;
+    bottom: 20px;
+    right: 20px;
+    z-index: 1001;
+}
+
+.toast-msg {
+    background: var(--accent2);
+    color: white;
+    padding: 14px 18px;
+    border-radius: 6px;
+    box-shadow: var(--shadow-lg);
+    font-size: 13px;
+    font-weight: 500;
+}
+
+.toast-msg.error {
+    background: var(--danger);
+}
+
+/* ── Responsive ───────────────────────────────────– */
+@media (max-width: 768px) {
+    .sm-page {
+        padding: 16px 16px;
+    }
+
+    .page-hero {
+        flex-direction: column;
+        align-items: flex-start;
+    }
+
+    .hero-actions {
+        width: 100%;
+    }
+
+    .form-card-body {
+        padding: 20px;
+    }
 }
 </style>
-    <!-- [ Main Content ] start -->
-    <div class="pcoded-main-container">
-        <div class="pcoded-content">
-            <!-- [ breadcrumb ] start -->
-            <div class="page-header">
-                <div class="page-block">
-                    <div class="row align-items-center">
-                        <div class="col-md-12">
-                            <div class="page-header-title">
-                                <h5 class="m-b-10"><?= __('edit_bonus') ?></h5>
+</head>
+<body>
+
+<!-- [ Header ] start -->
+<?php include("../includes/header.php"); ?>
+<!-- [ Header ] end -->
+
+<!-- Main Content -->
+<div class="pcoded-main-container">
+    <div class="pcoded-content">
+        <div class="sm-page">
+
+            <!-- Page header -->
+            <div class="page-hero">
+                <div>
+                    <div class="page-hero-title"><?= __('edit_bonus') ?></div>
+                    <div class="page-hero-subtitle">Update bonus record details</div>
+                </div>
+                <div class="hero-actions">
+                    <a href="manage_bonuses.php" class="btn-secondary">
+                        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M19 12H5M12 19l-7-7 7-7"/></svg>
+                        <?= __('back') ?>
+                    </a>
+                </div>
+            </div>
+
+            <!-- Form Card -->
+            <div class="form-card">
+                <div class="form-card-header">
+                    <h3><?= __('edit_bonus_details') ?></h3>
+                </div>
+                <div class="form-card-body">
+                    <?php if (!empty($error_message)): ?>
+                    <div class="alert alert-danger">
+                        <strong><?= __('error') ?></strong> <?= $error_message ?>
+                    </div>
+                    <?php endif; ?>
+
+                    <form action="<?php echo htmlspecialchars($_SERVER["PHP_SELF"]); ?>" method="post">
+                        <div style="display:grid; grid-template-columns:1fr 1fr; gap:20px; margin-bottom:20px">
+                            <div class="field-group">
+                                <label class="field-label"><?= __('employee') ?></label>
+                                <select class="field-control <?php echo (!empty($user_id_err)) ? 'is-invalid' : ''; ?>" name="user_id">
+                                    <option value=""><?= __('select_employee') ?></option>
+                                    <?php foreach ($users_with_salary as $emp): ?>
+                                    <option value="<?= $emp['id'] ?>" <?php echo ($user_id == $emp['id']) ? 'selected' : ''; ?>><?= $emp['name'] ?></option>
+                                    <?php endforeach; ?>
+                                </select>
+                                <?php if (!empty($user_id_err)): ?>
+                                <span class="field-error"><?= $user_id_err ?></span>
+                                <?php endif; ?>
                             </div>
-                            <ul class="breadcrumb">
-                                <li class="breadcrumb-item"><a href="../index.php"><i class="feather icon-home"></i></a></li>
-                                <li class="breadcrumb-item"><a href="salary_management.php"><?= __('salary_management') ?></a></li>
-                                <li class="breadcrumb-item"><a href="manage_bonuses.php"><?= __('manage_bonuses') ?></a></li>
-                                <li class="breadcrumb-item"><a href="#!"><?= __('edit_bonus') ?></a></li>
-                            </ul>
+                            <div class="field-group">
+                                <label class="field-label"><?= __('bonus_amount') ?></label>
+                                <input type="number" class="field-control <?php echo (!empty($amount_err)) ? 'is-invalid' : ''; ?>" name="amount" step="0.01" min="0" value="<?php echo $amount; ?>">
+                                <?php if (!empty($amount_err)): ?>
+                                <span class="field-error"><?= $amount_err ?></span>
+                                <?php endif; ?>
+                            </div>
+                            <div class="field-group">
+                                <label class="field-label"><?= __('bonus_type') ?></label>
+                                <select class="field-control" name="type">
+                                    <option value="performance" <?php echo ($type == 'performance') ? 'selected' : ''; ?>><?= __('performance_bonus') ?></option>
+                                    <option value="holiday" <?php echo ($type == 'holiday') ? 'selected' : ''; ?>><?= __('holiday_bonus') ?></option>
+                                    <option value="other" <?php echo ($type == 'other') ? 'selected' : ''; ?>><?= __('other') ?></option>
+                                </select>
+                            </div>
+                            <div class="field-group">
+                                <label class="field-label"><?= __('bonus_date') ?></label>
+                                <input type="date" class="field-control <?php echo (!empty($bonus_date_err)) ? 'is-invalid' : ''; ?>" name="bonus_date" value="<?php echo $bonus_date; ?>">
+                                <?php if (!empty($bonus_date_err)): ?>
+                                <span class="field-error"><?= $bonus_date_err ?></span>
+                                <?php endif; ?>
+                            </div>
                         </div>
-                    </div>
+                        <div class="field-group">
+                            <label class="field-label"><?= __('description') ?></label>
+                            <textarea class="field-textarea <?php echo (!empty($description_err)) ? 'is-invalid' : ''; ?>" name="description" rows="4"><?php echo $description; ?></textarea>
+                            <?php if (!empty($description_err)): ?>
+                            <span class="field-error"><?= $description_err ?></span>
+                            <?php endif; ?>
+                        </div>
+                        <div style="display:flex; gap:10px; margin-top:28px">
+                            <input type="hidden" name="id" value="<?php echo $id; ?>"/>
+                            <button type="submit" class="btn-primary">
+                                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z"/><polyline points="17 21 17 13 7 13 7 21"/></svg>
+                                <?= __('update_bonus') ?>
+                            </button>
+                            <a href="manage_bonuses.php" class="btn-secondary"><?= __('cancel') ?></a>
+                        </div>
+                    </form>
                 </div>
             </div>
-            <!-- [ breadcrumb ] end -->
-            <!-- [ Main Content ] start -->
-            <div class="row">
-                <!-- [ form-element ] start -->
-                <div class="col-sm-12">
-                    <div class="card">
-                        <div class="card-header">
-                            <h5><?= __('edit_bonus_details') ?></h5>
-                        </div>
-                        <div class="card-body">
-                            <form action="<?php echo htmlspecialchars($_SERVER["PHP_SELF"]); ?>" method="post">
-                                <div class="row">
-                                    <div class="col-md-6">
-                                        <div class="form-group">
-                                            <label for="user_id"><?= __('employee') ?></label>
-                                            <select class="form-control <?php echo (!empty($user_id_err)) ? 'is-invalid' : ''; ?>" id="user_id" name="user_id">
-                                                <?php
-                                                // Get all active users with salary records
-                                                $sql = "SELECT u.id, u.name
-                                                        FROM users u
-                                                        JOIN salary_management sm ON u.id = sm.user_id
-                                                        WHERE sm.status = 'active' AND u.tenant_id = ? AND branch_id = ?
-                                                        ORDER BY u.name ASC";
-                                                try {
-                                                    $stmt = $pdo->prepare($sql);
-                                                    $stmt->bindParam(1, $tenant_id, PDO::PARAM_INT);
-                                                    $stmt->bindParam(2, $branch_id, PDO::PARAM_INT);
-                                                    $stmt->execute();
-                                                    $result = $stmt->fetchAll();
-                                                    foreach ($result as $row) {
-                                                        $selected = ($row['id'] == $user_id) ? 'selected' : '';
-                                                        echo "<option value='" . $row['id'] . "' " . $selected . ">" . $row['name'] . "</option>";
-                                                    }
-                                                } catch (PDOException $e) {
-                                                    error_log("Select users error: " . $e->getMessage());
-                                                }
-                                                ?>
-                                            </select>
-                                            <div class="invalid-feedback"><?php echo $user_id_err; ?></div>
-                                        </div>
-                                    </div>
-                                    <div class="col-md-6">
-                                        <div class="form-group">
-                                            <label for="amount"><?= __('bonus_amount') ?></label>
-                                            <input type="number" class="form-control <?php echo (!empty($amount_err)) ? 'is-invalid' : ''; ?>" id="amount" name="amount" step="0.01" min="0" value="<?php echo $amount; ?>">
-                                            <div class="invalid-feedback"><?php echo $amount_err; ?></div>
-                                        </div>
-                                    </div>
-                                    <div class="col-md-6">
-                                        <div class="form-group">
-                                            <label for="type"><?= __('bonus_type') ?></label>
-                                            <select class="form-control" id="type" name="type">
-                                                <option value="performance" <?php echo ($type == 'performance') ? 'selected' : ''; ?>><?= __('performance_bonus') ?></option>
-                                                <option value="holiday" <?php echo ($type == 'holiday') ? 'selected' : ''; ?>><?= __('holiday_bonus') ?></option>
-                                                <option value="other" <?php echo ($type == 'other') ? 'selected' : ''; ?>><?= __('other') ?></option>
-                                            </select>
-                                        </div>
-                                    </div>
-                                    <div class="col-md-6">
-                                        <div class="form-group">
-                                            <label for="bonus_date"><?= __('bonus_date') ?></label>
-                                            <input type="date" class="form-control <?php echo (!empty($bonus_date_err)) ? 'is-invalid' : ''; ?>" id="bonus_date" name="bonus_date" value="<?php echo $bonus_date; ?>">
-                                            <div class="invalid-feedback"><?php echo $bonus_date_err; ?></div>
-                                        </div>
-                                    </div>
-                                    <div class="col-md-12">
-                                        <div class="form-group">
-                                            <label for="description"><?= __('description') ?></label>
-                                            <textarea class="form-control <?php echo (!empty($description_err)) ? 'is-invalid' : ''; ?>" id="description" name="description" rows="3"><?php echo $description; ?></textarea>
-                                            <div class="invalid-feedback"><?php echo $description_err; ?></div>
-                                        </div>
-                                    </div>
-                                    <div class="col-md-12">
-                                        <input type="hidden" name="id" value="<?php echo $id; ?>"/>
-                                        <button type="submit" class="btn btn-primary"><?= __('update_bonus') ?></button>
-                                        <a href="manage_bonuses.php" class="btn btn-secondary"><?= __('cancel') ?></a>
-                                    </div>
-                                </div>
-                            </form>
-                        </div>
-                    </div>
-                </div>
-                <!-- [ form-element ] end -->
-            </div>
-            <!-- [ Main Content ] end -->
+
         </div>
     </div>
-    <!-- [ Main Content ] end -->
+</div>
 
-    <!-- Required Js -->
-    
-    <script src="../assets/js/vendor-all.min.js"></script>
-    <script src="../assets/plugins/bootstrap/js/bootstrap.min.js"></script>
-    <script src="../assets/js/ripple.js"></script>
-    <script src="../assets/js/pcoded.min.js"></script>
+<!-- Toast wrapper -->
+<div id="toastWrap">
+    <div class="toast-msg" id="toastMsg">
+        <span id="toastText"></span>
+    </div>
+</div>
+
+<?php include '../includes/admin_footer.php'; ?>
+
+<script src="../assets/js/vendor-all.min.js"></script>
+<script src="../assets/plugins/bootstrap/js/bootstrap.min.js"></script>
+<script src="../assets/js/pcoded.min.js"></script>
+
+<script>
+// ── Toast ─────────────────────────────────────────
+function showToast(msg, isError = false) {
+    const wrap = document.getElementById('toastWrap');
+    const toastMsg = document.getElementById('toastMsg');
+    const text = document.getElementById('toastText');
+    text.textContent = msg;
+    toastMsg.className = 'toast-msg' + (isError ? ' error' : '');
+    wrap.style.display = 'block';
+    setTimeout(() => { wrap.style.display = 'none'; }, 3500);
+}
+
+<?php if (!empty($error_message)): ?>
+document.addEventListener('DOMContentLoaded', () => showToast('<?= addslashes($error_message) ?>', true));
+<?php endif; ?>
+</script>
 </body>
-</html> 
+</html>

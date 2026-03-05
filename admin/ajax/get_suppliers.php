@@ -9,34 +9,17 @@ $tenant_id = $_SESSION['tenant_id'];
 $branch_id = $_SESSION['branch_id'];
 
 // Connect to database
-require_once '../../includes/conn.php';
-
-// Check connection
-if ($conn->connect_error) {
-    echo json_encode(['success' => false, 'error' => 'Database connection failed']);
-    exit;
-}
+require_once '../../includes/db.php';
 
 // Get suppliers using prepared statement to prevent SQL injection
-$stmt = $conn->prepare("SELECT id, name, currency FROM suppliers WHERE tenant_id = ? AND branch_id = ?");
+$stmt = $pdo->prepare("SELECT id, name, currency FROM suppliers WHERE tenant_id = ? AND branch_id = ?");
 
-if (!$stmt) {
-    echo json_encode(['success' => false, 'error' => 'Database error: ' . $conn->error]);
-    exit;
-}
-
-$stmt->bind_param("ii", $tenant_id, $branch_id);
-$stmt->execute();
-$result = $stmt->get_result();
+$stmt->execute([$tenant_id, $branch_id]);
 
 $suppliers = [];
-while ($row = $result->fetch_assoc()) {
+while ($row = $stmt->fetch(PDO::FETCH_ASSOC)) {
     $suppliers[] = $row;
 }
 
-$stmt->close();
-
 echo json_encode(['success' => true, 'suppliers' => $suppliers]);
-
-$conn->close();
 ?>

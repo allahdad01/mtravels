@@ -4,8 +4,11 @@ if (session_status() === PHP_SESSION_NONE) {
     session_start();
 }
 
-// Check if user is logged in
-if (!isset($_SESSION['user_id'])  || $_SESSION['role'] !== 'admin') {
+// Check if user is logged in with proper role
+$allowed_roles = ['admin', 'finance', 'sales', 'umrah'];
+if (!isset($_SESSION['user_id']) || !in_array($_SESSION['role'], $allowed_roles)) {
+    // Log unauthorized access attempt
+    error_log("Unauthorized access attempt to dashboard: " . ($_SESSION['user_id'] ?? 'unknown') . " - Role: " . ($_SESSION['role'] ?? 'unknown') . " - IP: " . $_SERVER['REMOTE_ADDR']);
     header('Location: ../login.php');
     exit();
 }
@@ -119,12 +122,14 @@ if ($tenant_id) {
                                                                         <?= __('report_type') ?>
                                                                     </label>
                                                                     <select id="reportType" class="form-select form-select-lg" onchange="loadOptions()">
-                                                                        <option value=""><?= __('select_report_type') ?></option>
-                                                                        <option value="general">📊 <?= __('general') ?> (<?= __('all_types') ?>)</option>
-                                                                        <option value="supplier">🏢 <?= __('supplier') ?></option>
-                                                                        <option value="main_account">💰 <?= __('main_account') ?></option>
-                                                                        <option value="client">👥 <?= __('client') ?></option>
-                                                                    </select>
+                                                                         <option value=""><?= __('select_report_type') ?></option>
+                                                                         <option value="general">📊 <?= __('general') ?> (<?= __('all_types') ?>)</option>
+                                                                         <?php if (in_array($_SESSION['role'], ['admin', 'finance'])): ?>
+                                                                             <option value="supplier">🏢 <?= __('supplier') ?></option>
+                                                                             <option value="main_account">💰 <?= __('main_account') ?></option>
+                                                                             <option value="client">👥 <?= __('client') ?></option>
+                                                                         <?php endif; ?>
+                                                                     </select>
                                                                 </div>
                                                             </div>
 
@@ -187,19 +192,27 @@ if ($tenant_id) {
                                                                         <?= __('report_category') ?>
                                                                     </label>
                                                                     <select id="reportCategory" class="form-select form-select-lg">
-                                                                        <option value="ticket">🎫 <?= __('ticket') ?></option>
-                                                                        <option value="ticket_reservation">🎫 <?= __('ticket_reservation') ?></option>
-                                                                        <option value="refund_ticket">↩️ <?= __('refund_ticket') ?></option>
-                                                                        <option value="date_change_ticket">📅 <?= __('date_change_ticket') ?></option>
-                                                                        <option value="visa">🛂 <?= __('visa') ?></option>
-                                                                        <option value="umrah">🕌 <?= __('umrah') ?></option>
-                                                                        <option value="hotel">🏨 <?= __('hotel') ?></option>
-                                                                        <option value="expense">💸 <?= __('expense') ?></option>
-                                                                        <option value="creditor">💼 <?= __('creditor') ?></option>
-                                                                        <option value="debtor">📝 <?= __('debtor') ?></option>
-                                                                        <option value="additional_payment">💵 <?= __('additional_payment') ?></option>
-                                                                        <option value="statement">📊 <?= __('statement') ?></option>
-                                                                    </select>
+                                                                         <?php if ($_SESSION['role'] === 'umrah'): ?>
+                                                                             <option value="umrah">🕌 <?= __('umrah') ?></option>
+                                                                             <option value="umrah_refund">↩️ <?= __('umrah_refund') ?></option>
+                                                                         <?php else: ?>
+                                                                             <option value="ticket">🎫 <?= __('ticket') ?></option>
+                                                                             <option value="ticket_reservation">🎫 <?= __('ticket_reservation') ?></option>
+                                                                             <option value="refund_ticket">↩️ <?= __('refund_ticket') ?></option>
+                                                                             <option value="date_change_ticket">📅 <?= __('date_change_ticket') ?></option>
+                                                                             <option value="visa">🛂 <?= __('visa') ?></option>
+                                                                             <option value="umrah">🕌 <?= __('umrah') ?></option>
+                                                                             <option value="hotel">🏨 <?= __('hotel') ?></option>
+                                                                             <?php if (in_array($_SESSION['role'], ['admin', 'finance'])): ?>
+                                                                                 <option value="expense">💸 <?= __('expense') ?></option>
+                                                                                 <option value="creditor">💼 <?= __('creditor') ?></option>
+                                                                                 <option value="debtor">📝 <?= __('debtor') ?></option>
+                                                                                 <option value="additional_payment">💵 <?= __('additional_payment') ?></option>
+                                                                                 <option value="statement">📊 <?= __('statement') ?></option>
+                                                                                 <?php endif; ?>
+                                                                             
+                                                                         <?php endif; ?>
+                                                                     </select>
                                                                 </div>
                                                             </div>
 
@@ -325,7 +338,8 @@ if ($tenant_id) {
                                         </div>
                                 
 
-
+                                <!-- Admin and Finance Section -->
+                                <?php if (in_array($_SESSION['role'], ['admin', 'finance'])): ?>
                                 <div class="row mb-4">
                                     <div class="col-md-12">
                                         <div class="card">
@@ -521,6 +535,7 @@ if ($tenant_id) {
                                 </div>
                                 </div>
                                 </div>
+                                <?php endif; ?>
 
 
 </div>
@@ -1468,6 +1483,7 @@ if ($tenant_id) {
     <!-- Add meta tags for JavaScript variables -->
     <meta name="tenant-id" content="<?= $tenant_id ?>">
     <meta name="branch-id" content="<?= $branch_id ?>">
+    <meta name="user-role" content="<?= $_SESSION['role'] ?>">
     <meta name="allowed-features" content='<?= json_encode($allowed_features) ?>'>
 
     <!-- Report JavaScript -->

@@ -1,5 +1,4 @@
 <?php
-require_once '../../includes/conn.php';
 require_once '../../includes/db.php';
 
 // Start session if not already started
@@ -24,7 +23,7 @@ if (!isset($_POST['phone']) || empty(trim($_POST['phone']))) {
 }
 
 try {
-    $conn->begin_transaction();
+    $pdo->beginTransaction();
     
     // Prepare customer data
     $name = $_POST['name'];
@@ -33,10 +32,9 @@ try {
     $address = $_POST['address'] ?? null;
     
     // Insert customer data
-    $stmt = $conn->prepare("INSERT INTO customers (name, email, phone, address, tenant_id, branch_id) VALUES (?, ?, ?, ?, ?, ?)");
-    $stmt->bind_param("ssssii", $name, $email, $phone, $address, $tenant_id, $branch_id);
-    $stmt->execute();
-    $customer_id = $conn->insert_id;
+    $stmt = $pdo->prepare("INSERT INTO customers (name, email, phone, address, tenant_id, branch_id) VALUES (?, ?, ?, ?, ?, ?)");
+    $stmt->execute([$name, $email, $phone, $address, $tenant_id, $branch_id]);
+    $customer_id = $pdo->lastInsertId();
     
     // Handle initial balance if provided
     if (isset($_POST['initial_balance']) && is_numeric($_POST['initial_balance']) && $_POST['initial_balance'] > 0) {
@@ -44,26 +42,23 @@ try {
         $currency = $_POST['initial_currency'];
         
         // Create wallet with initial balance
-        $stmt = $conn->prepare("INSERT INTO customer_wallets (customer_id, currency, balance, tenant_id, branch_id) VALUES (?, ?, ?, ?, ?)");
-        $stmt->bind_param("isdii", $customer_id, $currency, $initial_balance, $tenant_id, $branch_id);
-        $stmt->execute();
+        $stmt = $pdo->prepare("INSERT INTO customer_wallets (customer_id, currency, balance, tenant_id, branch_id) VALUES (?, ?, ?, ?, ?)");
+        $stmt->execute([$customer_id, $currency, $initial_balance, $tenant_id, $branch_id]);
         
         // Record initial balance transaction
-        $stmt = $conn->prepare("INSERT INTO sarafi_transactions (customer_id, amount, currency, type, notes, tenant_id, branch_id) VALUES (?, ?, ?, 'deposit', 'Initial balance', ?, ?)");
-        $stmt->bind_param("idsiii", $customer_id, $initial_balance, $currency, $tenant_id, $branch_id);
-        $stmt->execute();
-        $transaction_id = $conn->insert_id;
+        $stmt = $pdo->prepare("INSERT INTO sarafi_transactions (customer_id, amount, currency, type, notes, tenant_id, branch_id) VALUES (?, ?, ?, 'deposit', 'Initial balance', ?, ?)");
+        $stmt->execute([$customer_id, $initial_balance, $currency, $tenant_id, $branch_id]);
+        $transaction_id = $pdo->lastInsertId();
         
         // Record in general ledger
-        $stmt = $conn->prepare("INSERT INTO general_ledger (transaction_id, account_type, entry_type, amount, currency, balance, tenant_id, branch_id) VALUES (?, 'asset', 'credit', ?, ?, ?, ?, ?)");
-        $stmt->bind_param("idsdiii", $transaction_id, $initial_balance, $currency, $initial_balance, $tenant_id, $branch_id);
-        $stmt->execute();
+        $stmt = $pdo->prepare("INSERT INTO general_ledger (transaction_id, account_type, entry_type, amount, currency, balance, tenant_id, branch_id) VALUES (?, 'asset', 'credit', ?, ?, ?, ?, ?)");
+        $stmt->execute([$transaction_id, $initial_balance, $currency, $initial_balance, $tenant_id, $branch_id]);
     }
     
-    $conn->commit();
+    $pdo->commit();
     $_SESSION['success_message'] = 'Customer created successfully!';
 } catch (Exception $e) {
-    $conn->rollback();
+    $pdo->rollBack();
     $_SESSION['error_message'] = 'Error creating customer: ' . $e->getMessage();
 }
 

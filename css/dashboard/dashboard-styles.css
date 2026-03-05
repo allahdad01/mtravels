@@ -191,13 +191,182 @@ h1, h2, h3, h4, h5, h6 {
     font-size: 20px;
 }
 
-/* Financial Wealth Card */
-.wealth-distribution-summary {
-    background: #f8f9fa;
-    border-radius: 10px;
+/* Financial Wealth Distribution Card - Enhanced */
+.financial-wealth-card {
+    border: none;
+    border-radius: 16px;
+    box-shadow: 0 8px 32px rgba(64, 153, 255, 0.08);
+    overflow: hidden;
+    background: #ffffff;
+    transition: all 0.3s ease;
 }
 
-/* Notification Cards */
+.financial-wealth-card:hover {
+    box-shadow: 0 12px 48px rgba(64, 153, 255, 0.12);
+    transform: translateY(-2px);
+}
+
+.financial-wealth-header {
+    background: linear-gradient(135deg, #4099ff 0%, #2ed8b6 100%);
+    padding: 24px !important;
+    border: none !important;
+}
+
+.financial-wealth-title {
+    color: #ffffff !important;
+    font-weight: 700;
+    font-size: 18px;
+    margin-bottom: 0 !important;
+    display: flex;
+    align-items: center;
+}
+
+.financial-wealth-title i {
+    color: #a8d8ff !important;
+}
+
+.financial-wealth-body {
+    padding: 32px !important;
+    background: #fafbfc;
+}
+
+.financial-chart-container {
+    height: 450px;
+    position: relative;
+    background: #ffffff;
+    border-radius: 12px;
+    padding: 16px;
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.05);
+}
+
+.wealth-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 24px;
+    padding-bottom: 16px;
+    border-bottom: 2px solid #e8ecf1;
+}
+
+.wealth-distribution-title {
+    font-weight: 700;
+    color: #374151;
+    font-size: 14px;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+    margin-bottom: 0;
+}
+
+.wealth-date-badge {
+    background: linear-gradient(135deg, #4099ff 0%, #2ed8b6 100%) !important;
+    color: white !important;
+    font-size: 11px;
+    font-weight: 600;
+    padding: 6px 12px !important;
+    box-shadow: 0 4px 12px rgba(64, 153, 255, 0.3);
+}
+
+.wealth-distribution-summary {
+    background: linear-gradient(135deg, #f5f7fa 0%, #ffffff 100%);
+    border-left: 4px solid #4099ff;
+    border-radius: 12px;
+    padding: 24px !important;
+    box-shadow: 0 4px 16px rgba(64, 153, 255, 0.1);
+}
+
+.wealth-distribution-summary .d-flex {
+    padding: 12px 0;
+}
+
+.wealth-distribution-summary .d-flex span:first-child {
+    color: #6c757d;
+    font-weight: 500;
+    font-size: 0.95rem;
+}
+
+.wealth-distribution-summary .d-flex span:last-child {
+    color: #2c3e50;
+    font-weight: 700;
+    font-size: 1.1rem;
+}
+
+.wealth-distribution-summary hr {
+    border-color: #e8ecf1;
+    margin: 16px 0;
+}
+
+#totalNetWorth {
+    color: #4099ff !important;
+    font-size: 1.3rem;
+}
+
+/* Financial Chart Tooltip */
+.financial-chart-tooltip {
+    background: linear-gradient(135deg, #4099ff 0%, #2ed8b6 100%);
+    padding: 6px 8px;
+    border-radius: 6px;
+    box-shadow: 0 4px 16px rgba(64, 153, 255, 0.3);
+    min-width: 120px;
+}
+
+.tooltip-date {
+    color: #ffffff;
+    font-weight: 700;
+    font-size: 9px;
+    margin-bottom: 3px;
+    display: block;
+}
+
+.tooltip-item {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 2px;
+    padding-bottom: 2px;
+    border-bottom: 1px solid rgba(255, 255, 255, 0.15);
+    gap: 4px;
+}
+
+.tooltip-item:last-child {
+    margin-bottom: 0;
+    padding-bottom: 0;
+    border-bottom: none;
+}
+
+.tooltip-item.income .tooltip-value {
+    color: #ffffff;
+    font-weight: 700;
+}
+
+.tooltip-item.expense .tooltip-value {
+    color: #ffffff;
+    font-weight: 700;
+}
+
+.tooltip-item.net {
+    border-top: 1px solid rgba(255, 255, 255, 0.3);
+    padding-top: 2px;
+    margin-top: 2px;
+}
+
+.tooltip-item.net .tooltip-value {
+    color: #ffffff;
+    font-weight: 700;
+}
+
+.tooltip-label {
+    color: #ffffff;
+    font-size: 8px;
+    font-weight: 500;
+}
+
+.tooltip-value {
+    color: #ffffff;
+    font-weight: 600;
+    font-size: 9px;
+}
+
+ /* Notification Cards */
 .notification-card {
     transition: all 0.3s;
     border-radius: 10px;
@@ -421,4 +590,53 @@ h1, h2, h3, h4, h5, h6 {
 .btn-sm {
     padding: 6px 10px;
     font-size: 0.85rem;
+}
+
+/* Badge Styles - Consistent & Professional */
+.badge {
+    font-size: 0.85em;
+    padding: 0.5em 0.75em;
+    border-radius: 20px;
+    font-weight: 500;
+    display: inline-block;
+}
+
+.badge-pill {
+    border-radius: 10px;
+}
+
+.badge-success {
+    background-color: #28a745;
+    color: #ffffff;
+}
+
+.badge-warning {
+    background-color: #ffc107;
+    color: #212529;
+}
+
+.badge-danger {
+    background-color: #dc3545;
+    color: #ffffff;
+}
+
+.badge-info {
+    background-color: #17a2b8;
+    color: #ffffff;
+}
+
+.badge-secondary {
+    background-color: #6c757d;
+    color: #ffffff;
+}
+
+/* Badge with padding utilities */
+.badge.px-3 {
+    padding-left: 0.75rem;
+    padding-right: 0.75rem;
+}
+
+.badge.py-1 {
+    padding-top: 0.25rem;
+    padding-bottom: 0.25rem;
 }

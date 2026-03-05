@@ -5,699 +5,886 @@ $branch_id = $_SESSION['branch_id'];
 require_once 'security.php';
 require_once '../includes/db.php';
 
-// Enforce authentication
-if (!isset($_SESSION['user_id']) || $_SESSION['role'] !== 'admin' || !isset($_SESSION['tenant_id'])) {
-    header('Location: ../access_denied.php');
+$allowed_roles = ['admin', 'finance'];
+if (!isset($_SESSION['user_id']) || !in_array($_SESSION['role'], $allowed_roles)) {
+    error_log("Unauthorized access attempt: " . ($_SESSION['user_id'] ?? 'unknown') . " IP:" . $_SERVER['REMOTE_ADDR']);
+    header('Location: ../login.php');
     exit();
 }
 
 include '../includes/header.php';
 ?>
-    <div class="pcoded-main-container">
-        <div class="pcoded-wrapper">
-            <div class="pcoded-content">
-                <div class="pcoded-inner-content">
-                    <div class="main-body">
-                        <div class="page-wrapper">
-                            <div class="main-content">
-                                <!-- Modern Page Header -->
-                                <div class="page-header-modern">
-                                    <div class="header-content">
-                                        <div class="header-left">
-                                            <div class="icon-wrapper">
-                                                <i class="feather icon-users"></i>
-                                            </div>
-                                            <div>
-                                                <h1><?php echo __('client_management'); ?></h1>
-                                                <p><?php echo __('manage_clients_here'); ?></p>
-                                            </div>
-                                        </div>
-                                        <div class="header-right">
-                                            <button class="btn-modern btn-primary" data-toggle="modal" data-target="#addClientModal">
-                                                <i class="fas fa-plus"></i>
-                                                <span><?php echo __('add_new_client'); ?></span>
-                                            </button>
-                                        </div>
-                                    </div>
-                                </div>
+<!-- Fonts & icons (remove if already in header.php) -->
+<link href="https://fonts.googleapis.com/css2?family=Sora:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+<style>
+:root {
+  --ink: #0D0F12;
+  --ink-2: #3A3F4A;
+  --ink-3: #6C737F;
+  --ink-4: #9CA3AF;
+  --line: #E8EAED;
+  --line-2: #F1F3F5;
+  --surface: #FFFFFF;
+  --surface-2: #F8F9FA;
+  --surface-3: #F1F3F5;
+  --blue: #2563EB;
+  --blue-soft: #EFF4FF;
+  --green: #059669;
+  --green-soft: #ECFDF5;
+  --amber: #D97706;
+  --amber-soft: #FFFBEB;
+  --rose: #E11D48;
+  --rose-soft: #FFF1F3;
+  --violet: #7C3AED;
+  --violet-soft: #F5F3FF;
+  --radius: 10px;
+  --radius-lg: 16px;
+  --shadow-xs: 0 1px 2px rgba(0,0,0,0.04);
+  --shadow-sm: 0 1px 4px rgba(0,0,0,0.06), 0 4px 12px rgba(0,0,0,0.04);
+  --shadow-md: 0 2px 8px rgba(0,0,0,0.06), 0 8px 24px rgba(0,0,0,0.06);
+  --t: all 0.18s ease;
+}
 
-                                <!-- Statistics Grid -->
-                                <div class="stats-grid">
-                                    <div class="stat-card-modern">
-                                        <div class="stat-header">
-                                            <div class="stat-icon-modern blue">
-                                                <i class="fas fa-users"></i>
-                                            </div>
-                                            <span class="stat-label"><?= __('total_clients') ?></span>
-                                        </div>
-                                        <div class="stat-value" id="totalClients">0</div>
-                                        <div class="stat-trend positive">
-                                        </div>
-                                    </div>
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
 
-                                    <div class="stat-card-modern">
-                                        <div class="stat-header">
-                                            <div class="stat-icon-modern green">
-                                                <i class="fas fa-building"></i>
-                                            </div>
-                                            <span class="stat-label"><?= __('agencies') ?></span>
-                                        </div>
-                                        <div class="stat-value" id="totalAgencies">0</div>
-                                        <div class="stat-trend positive">
-                                        </div>
-                                    </div>
+body {
+  background: var(--surface-2);
+  font-family: 'Sora', sans-serif;
+  color: var(--ink);
+  min-height: 100vh;
+  -webkit-font-smoothing: antialiased;
+}
 
-                                    <div class="stat-card-modern">
-                                        <div class="stat-header">
-                                            <div class="stat-icon-modern purple">
-                                                <i class="fas fa-dollar-sign"></i>
-                                            </div>
-                                            <span class="stat-label"><?= __('total_usd_balance') ?></span>
-                                        </div>
-                                        <div class="stat-value" id="totalBalance">$0</div>
-                                        <div class="stat-trend positive">
-                                        </div>
-                                    </div>
+/* ─── Layout ─── */
+.shell {
+  max-width: 1280px;
+  margin: 0 auto;
+  padding: 32px 24px;
+}
 
-                                    <div class="stat-card-modern">
-                                        <div class="stat-header">
-                                            <div class="stat-icon-modern orange">
-                                                <i class="fas fa-coins"></i>
-                                            </div>
-                                            <span class="stat-label"><?= __('total_afs_balance') ?></span>
-                                        </div>
-                                        <div class="stat-value" id="totalAfs">0 AFN</div>
-                                        <div class="stat-trend positive">
-                                        </div>
-                                    </div>
-                                </div>
+/* ─── Page Header ─── */
+.page-head {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  margin-bottom: 32px;
+  gap: 16px;
+}
 
-                                <!-- Client Management Card -->
-                                <div class="card-modern">
-                                    <div class="card-modern-header">
-                                        <h2><?php echo __('client_management'); ?></h2>
-                                    </div>
-                                    <div class="card-modern-body">
-                                        <!-- Search and Filter -->
-                                        <div class="controls-row">
-                                            <div class="search-wrapper">
-                                                <i class="fas fa-search"></i>
-                                                <input type="text" class="input-modern" id="searchClient" 
-                                                   placeholder="<?= __('search_clients') ?>">
-                                            </div>
-                                            <div class="filter-wrapper">
-                                                <select class="select-modern" id="filterType">
-                                                    <option value=""><?= __('all_types') ?></option>
-                                                    <option value="regular"><?= __('regular') ?></option>
-                                                    <option value="agency"><?= __('agency') ?></option>
-                                                </select>
-                                            </div>
-                                        </div>
+.page-head-left { display: flex; flex-direction: column; gap: 4px; }
 
-                                        <!-- Clients Tabs -->
-                                        <div class="tabs-modern">
-                                            <button class="tab-modern active" data-tab="activeClients">
-                                                <?= __('active_clients') ?>
-                                            </button>
-                                            <button class="tab-modern" data-tab="inactiveClients">
-                                                <?= __('inactive_clients') ?>
-                                            </button>
-                                        </div>
+.breadcrumb {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 12px;
+  color: var(--ink-4);
+  font-weight: 500;
+  letter-spacing: 0.02em;
+  margin-bottom: 6px;
+}
 
-                                        <!-- Active Clients Table -->
-                                        <div class="tab-content-modern active" id="activeClients">
-                                            <div class="table-wrapper">
-                                                <table class="table-modern">
-                                                    <thead>
-                                                        <tr>
-                                                            <th><?= __('client') ?></th>
-                                                            <th><?= __('type') ?></th>
-                                                            <th><?= __('email') ?></th>
-                                                            <th><?= __('phone') ?></th>
-                                                            <th class="text-right"><?= __('usd_balance') ?></th>
-                                                            <th class="text-right"><?= __('afs_balance') ?></th>
-                                                            <th><?= __('status') ?></th>
-                                                            <th class="text-right"><?= __('actions') ?></th>
-                                                        </tr>
-                                                    </thead>
-                                                    <tbody id="activeClientsTableBody">
-                                                        <!-- Rows will be dynamically added -->
-                                                    </tbody>
-                                                </table>
-                                            </div>
-                                        </div>
+.breadcrumb span { cursor: pointer; transition: var(--t); }
+.breadcrumb span:hover { color: var(--blue); }
+.breadcrumb i { font-size: 10px; }
 
-                                        <!-- Inactive Clients Table -->
-                                        <div class="tab-content-modern" id="inactiveClients">
-                                            <div class="table-wrapper">
-                                                <table class="table-modern">
-                                                    <thead>
-                                                        <tr>
-                                                            <th><?= __('client') ?></th>
-                                                            <th><?= __('type') ?></th>
-                                                            <th><?= __('email') ?></th>
-                                                            <th><?= __('phone') ?></th>
-                                                            <th class="text-right"><?= __('usd_balance') ?></th>
-                                                            <th class="text-right"><?= __('afs_balance') ?></th>
-                                                            <th><?= __('status') ?></th>
-                                                            <th class="text-right"><?= __('actions') ?></th>
-                                                        </tr>
-                                                    </thead>
-                                                    <tbody id="inactiveClientsTableBody">
-                                                        <!-- Rows will be dynamically added -->
-                                                    </tbody>
-                                                </table>
-                                            </div>
-                                        </div>
-                                    </div>
-                                </div>
-                            </div>
-                        </div>
-                    </div>
-                </div>
-            </div>
-        </div>
+.page-head h1 {
+  font-size: 26px;
+  font-weight: 700;
+  color: var(--ink);
+  letter-spacing: -0.02em;
+  line-height: 1.1;
+}
+
+.page-head-sub {
+  font-size: 13.5px;
+  color: var(--ink-3);
+  font-weight: 400;
+  margin-top: 4px;
+}
+
+.live-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  background: var(--green-soft);
+  color: var(--green);
+  font-size: 11px;
+  font-weight: 600;
+  padding: 3px 10px;
+  border-radius: 99px;
+  letter-spacing: 0.04em;
+  margin-left: 10px;
+  vertical-align: middle;
+}
+
+.live-badge::before {
+  content: '';
+  width: 6px;
+  height: 6px;
+  background: var(--green);
+  border-radius: 50%;
+  animation: pulse 2s infinite;
+}
+
+@keyframes pulse {
+  0%, 100% { opacity: 1; transform: scale(1); }
+  50% { opacity: 0.5; transform: scale(0.8); }
+}
+
+/* ─── Add Client Button ─── */
+.btn-add {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  padding: 11px 20px;
+  background: var(--ink);
+  color: white;
+  border: none;
+  border-radius: var(--radius);
+  font-family: 'Sora', sans-serif;
+  font-size: 13.5px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: var(--t);
+  white-space: nowrap;
+  letter-spacing: -0.01em;
+}
+
+.btn-add:hover {
+  background: var(--blue);
+  transform: translateY(-1px);
+  box-shadow: 0 4px 12px rgba(37,99,235,0.3);
+}
+
+.btn-add i { font-size: 12px; }
+
+/* ─── Stats Grid ─── */
+.stats-grid {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 16px;
+  margin-bottom: 28px;
+}
+
+.stat-card {
+  background: var(--surface);
+  border-radius: var(--radius-lg);
+  padding: 22px 24px;
+  border: 1px solid var(--line);
+  box-shadow: var(--shadow-xs);
+  position: relative;
+  overflow: hidden;
+  transition: var(--t);
+  cursor: default;
+}
+
+.stat-card::after {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  height: 2px;
+  opacity: 0;
+  transition: var(--t);
+}
+
+.stat-card.blue::after  { background: var(--blue); }
+.stat-card.green::after { background: var(--green); }
+.stat-card.violet::after{ background: var(--violet); }
+.stat-card.amber::after { background: var(--amber); }
+
+.stat-card:hover { box-shadow: var(--shadow-sm); transform: translateY(-2px); }
+.stat-card:hover::after { opacity: 1; }
+
+.stat-top {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 16px;
+}
+
+.stat-icon {
+  width: 36px;
+  height: 36px;
+  border-radius: 9px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 15px;
+  flex-shrink: 0;
+}
+
+.stat-icon.blue   { background: var(--blue-soft);   color: var(--blue); }
+.stat-icon.green  { background: var(--green-soft);  color: var(--green); }
+.stat-icon.violet { background: var(--violet-soft); color: var(--violet); }
+.stat-icon.amber  { background: var(--amber-soft);  color: var(--amber); }
+
+.stat-change {
+  font-size: 11.5px;
+  font-weight: 600;
+  padding: 3px 8px;
+  border-radius: 99px;
+}
+
+.stat-change.up   { background: var(--green-soft); color: var(--green); }
+.stat-change.down { background: var(--rose-soft);  color: var(--rose); }
+
+.stat-val {
+  font-size: 30px;
+  font-weight: 700;
+  color: var(--ink);
+  letter-spacing: -0.03em;
+  line-height: 1;
+  margin-bottom: 5px;
+  font-family: 'JetBrains Mono', monospace;
+}
+
+.stat-lbl {
+  font-size: 12px;
+  color: var(--ink-3);
+  font-weight: 500;
+  letter-spacing: 0.02em;
+  text-transform: uppercase;
+}
+
+/* Sparkline placeholder */
+.sparkline {
+  margin-top: 14px;
+  height: 32px;
+  display: flex;
+  align-items: flex-end;
+  gap: 3px;
+}
+
+.spark-bar {
+  flex: 1;
+  border-radius: 3px 3px 0 0;
+  opacity: 0.3;
+  transition: var(--t);
+}
+
+.stat-card:hover .spark-bar { opacity: 0.6; }
+.stat-card.blue  .spark-bar { background: var(--blue); }
+.stat-card.green .spark-bar { background: var(--green); }
+.stat-card.violet .spark-bar { background: var(--violet); }
+.stat-card.amber  .spark-bar { background: var(--amber); }
+
+/* ─── Main Card ─── */
+.main-card {
+  background: var(--surface);
+  border-radius: var(--radius-lg);
+  border: 1px solid var(--line);
+  box-shadow: var(--shadow-xs);
+  overflow: hidden;
+}
+
+/* ─── Toolbar ─── */
+.toolbar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 18px 24px;
+  border-bottom: 1px solid var(--line);
+  gap: 12px;
+  flex-wrap: wrap;
+}
+
+.toolbar-left  { display: flex; align-items: center; gap: 10px; flex: 1; min-width: 0; }
+.toolbar-right { display: flex; align-items: center; gap: 8px; flex-shrink: 0; }
+
+/* Search */
+.search-box {
+  position: relative;
+  flex: 1;
+  max-width: 340px;
+}
+
+.search-box i {
+  position: absolute;
+  left: 13px;
+  top: 50%;
+  transform: translateY(-50%);
+  color: var(--ink-4);
+  font-size: 13px;
+  pointer-events: none;
+}
+
+.search-box input {
+  width: 100%;
+  padding: 9px 14px 9px 38px;
+  border: 1px solid var(--line);
+  border-radius: var(--radius);
+  font-family: 'Sora', sans-serif;
+  font-size: 13.5px;
+  color: var(--ink);
+  background: var(--surface-2);
+  transition: var(--t);
+  outline: none;
+}
+
+.search-box input::placeholder { color: var(--ink-4); }
+.search-box input:focus {
+  border-color: var(--blue);
+  background: var(--surface);
+  box-shadow: 0 0 0 3px rgba(37,99,235,0.08);
+}
+
+/* Type filter pills */
+.filter-pills { display: flex; gap: 4px; }
+
+.filter-pill {
+  padding: 7px 14px;
+  border-radius: 99px;
+  font-size: 12.5px;
+  font-weight: 600;
+  cursor: pointer;
+  border: 1px solid var(--line);
+  background: var(--surface);
+  color: var(--ink-3);
+  transition: var(--t);
+  letter-spacing: 0.01em;
+}
+
+.filter-pill:hover { border-color: var(--ink-3); color: var(--ink); }
+.filter-pill.active { background: var(--ink); color: white; border-color: var(--ink); }
+
+/* ─── Toggle Tabs (pill style) ─── */
+.tab-toggle {
+  display: inline-flex;
+  background: var(--surface-2);
+  border: 1px solid var(--line);
+  border-radius: 99px;
+  padding: 3px;
+}
+
+.tab-btn {
+  padding: 6px 16px;
+  border: none;
+  border-radius: 99px;
+  font-family: 'Sora', sans-serif;
+  font-size: 12.5px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: var(--t);
+  background: transparent;
+  color: var(--ink-3);
+  white-space: nowrap;
+}
+
+.tab-btn.active {
+  background: var(--surface);
+  color: var(--ink);
+  box-shadow: var(--shadow-xs);
+}
+
+/* ─── Table ─── */
+.table-wrap { overflow-x: auto; }
+
+table {
+  width: 100%;
+  border-collapse: collapse;
+}
+
+thead tr { border-bottom: 1px solid var(--line); }
+
+thead th {
+  padding: 12px 20px;
+  text-align: left;
+  font-size: 11px;
+  font-weight: 700;
+  color: var(--ink-4);
+  text-transform: uppercase;
+  letter-spacing: 0.07em;
+  white-space: nowrap;
+  background: var(--surface-2);
+}
+
+thead th.num { text-align: right; }
+
+tbody tr {
+  border-bottom: 1px solid var(--line-2);
+  transition: var(--t);
+}
+
+tbody tr:last-child { border-bottom: none; }
+
+tbody tr:hover { background: var(--surface-2); }
+
+/* Inline edit on hover */
+tbody tr:hover .inline-edit { opacity: 1; }
+
+td {
+  padding: 15px 20px;
+  font-size: 13.5px;
+  color: var(--ink);
+  vertical-align: middle;
+}
+
+td.num {
+  text-align: right;
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 13px;
+  letter-spacing: -0.01em;
+}
+
+/* Client cell */
+.client-cell { display: flex; align-items: center; gap: 12px; }
+
+.avatar {
+  width: 36px;
+  height: 36px;
+  border-radius: 9px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 13px;
+  font-weight: 700;
+  letter-spacing: -0.01em;
+  flex-shrink: 0;
+  color: white;
+}
+
+.avatar.c1 { background: linear-gradient(135deg, #3B82F6, #2563EB); }
+.avatar.c2 { background: linear-gradient(135deg, #8B5CF6, #7C3AED); }
+.avatar.c3 { background: linear-gradient(135deg, #10B981, #059669); }
+.avatar.c4 { background: linear-gradient(135deg, #F59E0B, #D97706); }
+.avatar.c5 { background: linear-gradient(135deg, #EF4444, #DC2626); }
+.avatar.c6 { background: linear-gradient(135deg, #EC4899, #DB2777); }
+
+.client-info { min-width: 0; }
+.client-name {
+  font-weight: 600;
+  font-size: 13.5px;
+  color: var(--ink);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.client-id {
+  font-size: 11px;
+  color: var(--ink-4);
+  font-family: 'JetBrains Mono', monospace;
+  margin-top: 1px;
+}
+
+/* Badges - Client Type & Status */
+.badge, .regular, .agency, .activ, .inactive {
+  display: inline-flex;
+  align-items: center;
+  padding: 3px 10px;
+  border-radius: 99px;
+  font-size: 11.5px;
+  font-weight: 600;
+  letter-spacing: 0.02em;
+}
+
+/* Client Type Badges */
+.regular  { background: var(--blue-soft);   color: var(--blue); }
+.agency   { background: var(--violet-soft);  color: var(--violet); }
+
+/* Status Badges */
+.activ   { background: var(--green-soft);   color: var(--green); }
+.inactive { background: var(--surface-3);    color: var(--ink-4); }
+
+/* Legacy badge classes */
+.badge-regular  { background: var(--blue-soft);   color: var(--blue); }
+.badge-agency   { background: var(--violet-soft);  color: var(--violet); }
+.badge-active   { background: var(--green-soft);   color: var(--green); }
+.badge-inactive { background: var(--surface-3);    color: var(--ink-4); }
+
+/* Balance cell */
+.balance-cell { display: flex; flex-direction: column; align-items: flex-end; gap: 2px; }
+.bal-primary { font-weight: 600; font-size: 13.5px; }
+.bal-secondary { font-size: 11.5px; color: var(--ink-4); font-family: 'JetBrains Mono', monospace; }
+
+.bal-positive { color: var(--green); }
+.bal-negative { color: var(--rose); }
+.bal-zero     { color: var(--ink-3); }
+
+/* Contact cell */
+.contact-cell { display: flex; flex-direction: column; gap: 2px; }
+.contact-email { font-size: 13px; color: var(--ink-2); }
+.contact-phone { font-size: 11.5px; color: var(--ink-4); font-family: 'JetBrains Mono', monospace; }
+
+/* ─── Action Menu ─── */
+.actions-cell { text-align: right; }
+
+.action-row {
+  display: inline-flex;
+  gap: 4px;
+  align-items: center;
+  opacity: 0;
+  transition: var(--t);
+}
+
+tbody tr:hover .action-row { opacity: 1; }
+
+.act-btn {
+  width: 30px;
+  height: 30px;
+  border: none;
+  border-radius: 8px;
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 13px;
+  transition: var(--t);
+  background: transparent;
+  color: var(--ink-4);
+}
+
+.act-btn:hover { background: var(--surface-3); color: var(--ink); }
+.act-btn.danger:hover { background: var(--rose-soft); color: var(--rose); }
+.act-btn.primary:hover { background: var(--blue-soft); color: var(--blue); }
+
+/* Inline edit field */
+.editable {
+  position: relative;
+  cursor: pointer;
+  padding: 4px 6px;
+  border-radius: 6px;
+  margin: -4px -6px;
+  transition: var(--t);
+}
+
+.editable:hover { background: var(--blue-soft); }
+
+.editable input {
+  display: none;
+  width: 100%;
+  border: 1px solid var(--blue);
+  border-radius: 6px;
+  padding: 4px 8px;
+  font-family: 'Sora', sans-serif;
+  font-size: 13px;
+  outline: none;
+  background: white;
+  box-shadow: 0 0 0 3px rgba(37,99,235,0.1);
+}
+
+.editable.editing span  { display: none; }
+.editable.editing input { display: block; }
+
+.edit-hint {
+  position: absolute;
+  right: 4px;
+  top: 50%;
+  transform: translateY(-50%);
+  font-size: 9px;
+  color: var(--blue);
+  opacity: 0;
+  pointer-events: none;
+  font-weight: 700;
+  letter-spacing: 0.03em;
+}
+
+.editable:hover .edit-hint { opacity: 1; }
+
+/* ─── Empty State ─── */
+.empty-state {
+  padding: 64px 24px;
+  text-align: center;
+  display: none;
+}
+
+.empty-icon {
+  width: 56px;
+  height: 56px;
+  background: var(--surface-3);
+  border-radius: 14px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 22px;
+  color: var(--ink-4);
+  margin: 0 auto 16px;
+}
+
+.empty-state h3 {
+  font-size: 15px;
+  font-weight: 600;
+  color: var(--ink-2);
+  margin-bottom: 6px;
+}
+
+.empty-state p { font-size: 13.5px; color: var(--ink-4); }
+
+/* ─── Table Footer ─── */
+.table-foot {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 14px 24px;
+  border-top: 1px solid var(--line);
+  background: var(--surface-2);
+  gap: 12px;
+  flex-wrap: wrap;
+}
+
+.foot-count {
+  font-size: 12.5px;
+  color: var(--ink-4);
+  font-weight: 500;
+}
+
+.foot-count strong { color: var(--ink); font-weight: 600; }
+
+/* Pagination */
+.pagination { display: flex; align-items: center; gap: 4px; }
+
+.page-btn {
+  min-width: 30px;
+  height: 30px;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  background: var(--surface);
+  font-family: 'Sora', sans-serif;
+  font-size: 12.5px;
+  font-weight: 500;
+  color: var(--ink-3);
+  cursor: pointer;
+  transition: var(--t);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0 10px;
+}
+
+.page-btn:hover { border-color: var(--ink-3); color: var(--ink); }
+.page-btn.active { background: var(--ink); color: white; border-color: var(--ink); }
+.page-btn:disabled { opacity: 0.4; cursor: not-allowed; }
+
+/* ─── Notification Toast ─── */
+.toast {
+  position: fixed;
+  bottom: 24px;
+  right: 24px;
+  background: var(--ink);
+  color: white;
+  padding: 12px 18px;
+  border-radius: var(--radius);
+  font-size: 13.5px;
+  font-weight: 500;
+  box-shadow: var(--shadow-md);
+  transform: translateY(80px);
+  opacity: 0;
+  transition: all 0.3s cubic-bezier(0.34, 1.56, 0.64, 1);
+  z-index: 1000;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  pointer-events: none;
+}
+
+.toast.show { transform: translateY(0); opacity: 1; }
+.toast i { font-size: 14px; color: #4ADE80; }
+
+/* ─── Responsive ─── */
+@media (max-width: 1024px) {
+  .stats-grid { grid-template-columns: repeat(2, 1fr); }
+}
+
+@media (max-width: 768px) {
+  .shell { padding: 20px 16px; }
+  .stats-grid { grid-template-columns: repeat(2, 1fr); gap: 12px; }
+  .page-head { flex-direction: column; }
+  .btn-add { width: 100%; justify-content: center; }
+  .toolbar { padding: 14px 16px; }
+  .toolbar-left { flex-direction: column; align-items: stretch; }
+  .search-box { max-width: none; }
+  .tab-toggle { width: 100%; }
+  .tab-btn { flex: 1; text-align: center; }
+  td, th { padding: 12px 14px; }
+
+  /* Hide less critical columns on mobile */
+  .col-email, .col-phone { display: none; }
+}
+
+@media (max-width: 500px) {
+  .stats-grid { grid-template-columns: 1fr; }
+  .stat-val { font-size: 26px; }
+}
+
+/* ─── Fade-in animations ─── */
+@keyframes fadeUp {
+  from { opacity: 0; transform: translateY(12px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+
+.stat-card:nth-child(1) { animation: fadeUp 0.4s ease 0.05s both; }
+.stat-card:nth-child(2) { animation: fadeUp 0.4s ease 0.10s both; }
+.stat-card:nth-child(3) { animation: fadeUp 0.4s ease 0.15s both; }
+.stat-card:nth-child(4) { animation: fadeUp 0.4s ease 0.20s both; }
+
+.main-card { animation: fadeUp 0.4s ease 0.25s both; }
+
+</style>
+</head>
+<body>
+
+<div class="pcoded-main-container">
+  <div class="pcoded-wrapper">
+    <div class="pcoded-content">
+      <div class="pcoded-inner-content">
+        <div class="main-body">
+          <div class="page-wrapper">
+            <div class="main-content">
+
+<div class="shell">
+
+  <!-- ─── Page Header ─── -->
+  <div class="page-head">
+    <div class="page-head-left">
+      <div class="breadcrumb">
+        <span>Finance</span>
+        <i class="fas fa-chevron-right"></i>
+        <span style="color: var(--ink-2)">Clients</span>
+      </div>
+      <h1>Client Management <span class="live-badge">Live</span></h1>
+      <p class="page-head-sub">Manage accounts, balances and relationships</p>
+    </div>
+    <button class="btn-add" id="addClientBtn">
+      <i class="fas fa-plus"></i>
+      Add Client
+    </button>
+  </div>
+
+  <!-- ─── Stats Grid ─── -->
+  <div class="stats-grid">
+
+    <div class="stat-card blue">
+      <div class="stat-top">
+        <div class="stat-icon blue"><i class="fas fa-users"></i></div>
+        <span class="stat-change up">↑ 8%</span>
+      </div>
+      <div class="stat-val" id="statTotal">247</div>
+      <div class="stat-lbl">Total Clients</div>
+      <div class="sparkline" id="sparkTotal"></div>
     </div>
 
-    <?php include '../modals/client/add_client.php'; ?>
-    <?php include '../modals/client/edit_client.php'; ?>
-
-<style>
-    /* Modern Design System */
-    :root {
-        --primary: #3B82F6;
-        --primary-hover: #2563EB;
-        --success: #10B981;
-        --warning: #F59E0B;
-        --danger: #EF4444;
-        --gray-50: #F9FAFB;
-        --gray-100: #F3F4F6;
-        --gray-200: #E5E7EB;
-        --gray-300: #D1D5DB;
-        --gray-400: #9CA3AF;
-        --gray-500: #6B7280;
-        --gray-600: #4B5563;
-        --gray-700: #374151;
-        --gray-800: #1F2937;
-        --gray-900: #111827;
-        --border-radius: 12px;
-        --border-radius-sm: 8px;
-        --shadow-sm: 0 1px 2px 0 rgba(0, 0, 0, 0.05);
-        --shadow: 0 1px 3px 0 rgba(0, 0, 0, 0.1), 0 1px 2px -1px rgba(0, 0, 0, 0.1);
-        --shadow-md: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -2px rgba(0, 0, 0, 0.1);
-        --shadow-lg: 0 10px 15px -3px rgba(0, 0, 0, 0.1), 0 4px 6px -4px rgba(0, 0, 0, 0.1);
-        --transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
-    }
-
-    * {
-        box-sizing: border-box;
-    }
-
-    body {
-        background-color: var(--gray-50);
-        font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
-        color: var(--gray-900);
-        line-height: 1.6;
-    }
-
-    /* Page Header */
-    .page-header-modern {
-        background: white;
-        border-radius: var(--border-radius);
-        padding: 24px;
-        margin-bottom: 24px;
-        box-shadow: var(--shadow);
-    }
-
-    .header-content {
-        display: flex;
-        justify-content: space-between;
-        align-items: center;
-        gap: 20px;
-    }
-
-    .header-left {
-        display: flex;
-        align-items: center;
-        gap: 16px;
-    }
-
-    .icon-wrapper {
-        width: 48px;
-        height: 48px;
-        background: linear-gradient(135deg, var(--primary) 0%, #8B5CF6 100%);
-        border-radius: var(--border-radius-sm);
-        display: flex;
-        align-items: center;
-        justify-content: center;
-        color: white;
-        font-size: 20px;
-    }
-
-    .header-left h1 {
-        font-size: 24px;
-        font-weight: 600;
-        color: var(--gray-900);
-        margin: 0;
-        line-height: 1.2;
-    }
-
-    .header-left p {
-        font-size: 14px;
-        color: var(--gray-600);
-        margin: 4px 0 0 0;
-    }
-
-    /* Modern Button */
-    .btn-modern {
-        display: inline-flex;
-        align-items: center;
-        gap: 8px;
-        padding: 10px 20px;
-        border: none;
-        border-radius: var(--border-radius-sm);
-        font-size: 14px;
-        font-weight: 500;
-        cursor: pointer;
-        transition: var(--transition);
-        white-space: nowrap;
-    }
-
-    .btn-primary {
-        background: var(--primary);
-        color: white;
-    }
-
-    .btn-primary:hover {
-        background: var(--primary-hover);
-        transform: translateY(-1px);
-        box-shadow: var(--shadow-md);
-    }
-
-    /* Statistics Grid */
-    .stats-grid {
-        display: grid;
-        grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
-        gap: 20px;
-        margin-bottom: 24px;
-    }
-
-    .stat-card-modern {
-        background: white;
-        border-radius: var(--border-radius);
-        padding: 20px;
-        box-shadow: var(--shadow);
-        transition: var(--transition);
-    }
-
-    .stat-card-modern:hover {
-        transform: translateY(-2px);
-        box-shadow: var(--shadow-lg);
-    }
-
-    .stat-header {
-        display: flex;
-        align-items: center;
-        gap: 12px;
-        margin-bottom: 16px;
-    }
-
-    .stat-icon-modern {
-        width: 40px;
-        height: 40px;
-        border-radius: var(--border-radius-sm);
-        display: flex;
-        align-items: center;
-        justify-content: center;
-        font-size: 18px;
-    }
-
-    .stat-icon-modern.blue {
-        background: #EFF6FF;
-        color: var(--primary);
-    }
-
-    .stat-icon-modern.green {
-        background: #F0FDF4;
-        color: var(--success);
-    }
-
-    .stat-icon-modern.purple {
-        background: #FAF5FF;
-        color: #8B5CF6;
-    }
-
-    .stat-icon-modern.orange {
-        background: #FFF7ED;
-        color: var(--warning);
-    }
-
-    .stat-label {
-        font-size: 13px;
-        font-weight: 500;
-        color: var(--gray-600);
-        text-transform: uppercase;
-        letter-spacing: 0.05em;
-    }
-
-    .stat-value {
-        font-size: 32px;
-        font-weight: 700;
-        color: var(--gray-900);
-        margin-bottom: 8px;
-        line-height: 1;
-    }
-
-    .stat-trend {
-        display: flex;
-        align-items: center;
-        gap: 6px;
-        font-size: 13px;
-        font-weight: 500;
-    }
-
-    .stat-trend.positive {
-        color: var(--success);
-    }
-
-    .stat-trend i {
-        font-size: 12px;
-    }
-
-    /* Modern Card */
-    .card-modern {
-        background: white;
-        border-radius: var(--border-radius);
-        box-shadow: var(--shadow);
-        overflow: hidden;
-    }
-
-    .card-modern-header {
-        padding: 20px 24px;
-        border-bottom: 1px solid var(--gray-200);
-    }
-
-    .card-modern-header h2 {
-        font-size: 18px;
-        font-weight: 600;
-        color: var(--gray-900);
-        margin: 0;
-    }
-
-    .card-modern-body {
-        padding: 24px;
-    }
-
-    /* Controls Row */
-    .controls-row {
-        display: flex;
-        gap: 12px;
-        margin-bottom: 24px;
-    }
-
-    .search-wrapper {
-        flex: 1;
-        position: relative;
-    }
-
-    .search-wrapper i {
-        position: absolute;
-        left: 14px;
-        top: 50%;
-        transform: translateY(-50%);
-        color: var(--gray-400);
-        font-size: 14px;
-    }
-
-    .input-modern {
-        width: 100%;
-        padding: 10px 14px 10px 40px;
-        border: 1px solid var(--gray-300);
-        border-radius: var(--border-radius-sm);
-        font-size: 14px;
-        transition: var(--transition);
-        background: white;
-    }
-
-    .input-modern:focus {
-        outline: none;
-        border-color: var(--primary);
-        box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.1);
-    }
-
-    .filter-wrapper {
-        min-width: 200px;
-    }
-
-    .select-modern {
-        width: 100%;
-        padding: 10px 14px;
-        border: 1px solid var(--gray-300);
-        border-radius: var(--border-radius-sm);
-        font-size: 14px;
-        background: white;
-        cursor: pointer;
-        transition: var(--transition);
-    }
-
-    .select-modern:focus {
-        outline: none;
-        border-color: var(--primary);
-        box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.1);
-    }
-
-    /* Tabs */
-    .tabs-modern {
-        display: flex;
-        gap: 8px;
-        margin-bottom: 20px;
-        border-bottom: 1px solid var(--gray-200);
-    }
-
-    .tab-modern {
-        padding: 12px 20px;
-        background: none;
-        border: none;
-        border-bottom: 2px solid transparent;
-        color: var(--gray-600);
-        font-size: 14px;
-        font-weight: 500;
-        cursor: pointer;
-        transition: var(--transition);
-    }
-
-    .tab-modern:hover {
-        color: var(--gray-900);
-    }
-
-    .tab-modern.active {
-        color: var(--primary);
-        border-bottom-color: var(--primary);
-    }
-
-    .tab-content-modern {
-        display: none;
-    }
-
-    .tab-content-modern.active {
-        display: block;
-    }
-
-    /* Modern Table */
-    .table-wrapper {
-        overflow-x: auto;
-        border-radius: var(--border-radius-sm);
-        border: 1px solid var(--gray-200);
-    }
-
-    .table-modern {
-        width: 100%;
-        border-collapse: collapse;
-    }
-
-    .table-modern thead {
-        background: var(--gray-50);
-    }
-
-    .table-modern th {
-        padding: 12px 16px;
-        text-align: left;
-        font-size: 12px;
-        font-weight: 600;
-        color: var(--gray-700);
-        text-transform: uppercase;
-        letter-spacing: 0.05em;
-        border-bottom: 1px solid var(--gray-200);
-    }
-
-    .table-modern td {
-        padding: 16px;
-        font-size: 14px;
-        color: var(--gray-900);
-        border-bottom: 1px solid var(--gray-200);
-    }
-
-    .table-modern tbody tr {
-        transition: var(--transition);
-    }
-
-    .table-modern tbody tr:hover {
-        background: var(--gray-50);
-    }
-
-    .table-modern tbody tr:last-child td {
-        border-bottom: none;
-    }
-
-    .text-right {
-        text-align: right;
-    }
-
-    /* Badges */
-    .badge-modern {
-        display: inline-flex;
-        align-items: center;
-        padding: 4px 12px;
-        border-radius: 9999px;
-        font-size: 12px;
-        font-weight: 500;
-    }
-
-    .badge-regular {
-        background: #EFF6FF;
-        color: var(--primary);
-    }
-
-    .badge-agency {
-        background: #FDF2F8;
-        color: #DB2777;
-    }
-
-    .badge-active {
-        background: #F0FDF4;
-        color: var(--success);
-    }
-
-    .badge-inactive {
-        background: var(--gray-100);
-        color: var(--gray-600);
-    }
-
-    /* Action Buttons */
-    .btn-action {
-        width: 32px;
-        height: 32px;
-        padding: 0;
-        border: none;
-        border-radius: var(--border-radius-sm);
-        display: inline-flex;
-        align-items: center;
-        justify-content: center;
-        cursor: pointer;
-        transition: var(--transition);
-        margin: 0 2px;
-    }
-
-    .btn-action.btn-view {
-        background: #EFF6FF;
-        color: var(--primary);
-    }
-
-    .btn-action.btn-view:hover {
-        background: var(--primary);
-        color: white;
-    }
-
-    .btn-action.btn-edit {
-        background: #FFF7ED;
-        color: var(--warning);
-    }
-
-    .btn-action.btn-edit:hover {
-        background: var(--warning);
-        color: white;
-    }
-
-    .btn-action.btn-delete {
-        background: #FEF2F2;
-        color: var(--danger);
-    }
-
-    .btn-action.btn-delete:hover {
-        background: var(--danger);
-        color: white;
-    }
-
-    /* Responsive */
-    @media (max-width: 768px) {
-        .header-content {
-            flex-direction: column;
-            align-items: flex-start;
-        }
-
-        .header-right {
-            width: 100%;
-        }
-
-        .btn-modern {
-            width: 100%;
-            justify-content: center;
-        }
-
-        .stats-grid {
-            grid-template-columns: 1fr;
-        }
-
-        .controls-row {
-            flex-direction: column;
-        }
-
-        .filter-wrapper {
-            min-width: auto;
-        }
-
-        .stat-value {
-            font-size: 28px;
-        }
-    }
-
-    /* Utilities */
-    .mb-0 { margin-bottom: 0; }
-    .mt-1 { margin-top: 0.25rem; }
-    .mr-2 { margin-right: 0.5rem; }
-</style>
-
-<!-- Required Scripts -->
-
-    <script src="../assets/js/vendor-all.min.js"></script>
+    <div class="stat-card green">
+      <div class="stat-top">
+        <div class="stat-icon green"><i class="fas fa-building"></i></div>
+        <span class="stat-change up">↑ 3%</span>
+      </div>
+      <div class="stat-val" id="statAgencies">34</div>
+      <div class="stat-lbl">Internal</div>
+      <div class="sparkline" id="sparkAgencies"></div>
+    </div>
+
+    <div class="stat-card violet">
+      <div class="stat-top">
+        <div class="stat-icon violet"><i class="fas fa-dollar-sign"></i></div>
+        <span class="stat-change up">↑ 12%</span>
+      </div>
+      <div class="stat-val" id="statUSD">$84.2k</div>
+      <div class="stat-lbl">Total USD Balance</div>
+      <div class="sparkline" id="sparkUSD"></div>
+    </div>
+
+    <div class="stat-card amber">
+      <div class="stat-top">
+        <div class="stat-icon amber"><i class="fas fa-coins"></i></div>
+        <span class="stat-change down">↓ 2%</span>
+      </div>
+      <div class="stat-val" id="statAFS">1.2M</div>
+      <div class="stat-lbl">Total AFS Balance</div>
+      <div class="sparkline" id="sparkAFS"></div>
+    </div>
+
+  </div>
+
+  <!-- ─── Main Table Card ─── -->
+  <div class="main-card">
+
+    <!-- Toolbar -->
+    <div class="toolbar">
+      <div class="toolbar-left">
+        <div class="search-box">
+          <i class="fas fa-search"></i>
+          <input type="text" id="searchInput" placeholder="Search clients, email or phone…">
+        </div>
+        <div class="filter-pills">
+          <button class="filter-pill active" data-type="">All</button>
+          <button class="filter-pill" data-type="regular">External</button>
+          <button class="filter-pill" data-type="agency">Internal</button>
+        </div>
+      </div>
+      <div class="toolbar-right">
+        <div class="tab-toggle">
+          <button class="tab-btn active" data-tab="active">Active <span id="activeCount" style="font-weight:400;opacity:0.6"></span></button>
+          <button class="tab-btn" data-tab="inactive">Inactive <span id="inactiveCount" style="font-weight:400;opacity:0.6"></span></button>
+        </div>
+      </div>
+    </div>
+
+    <!-- Table -->
+    <div class="table-wrap">
+      <table>
+        <thead>
+          <tr>
+            <th>Client</th>
+            <th>Type</th>
+            <th class="col-email">Contact</th>
+            <th class="num">USD Balance</th>
+            <th class="num">AFS Balance</th>
+            <th>Status</th>
+            <th class="num">Actions</th>
+          </tr>
+        </thead>
+        <tbody id="tableBody"></tbody>
+      </table>
+      <div class="empty-state" id="emptyState">
+        <div class="empty-icon"><i class="fas fa-user-slash"></i></div>
+        <h3>No clients found</h3>
+        <p>Try adjusting your search or filters</p>
+      </div>
+    </div>
+
+    <!-- Footer -->
+    <div class="table-foot">
+      <div class="foot-count" id="footCount">Showing <strong>0</strong> of <strong>0</strong> clients</div>
+      <div class="pagination" id="pagination"></div>
+    </div>
+
+  </div>
+</div>
+
+            </div><!-- /main-content -->
+          </div><!-- /page-wrapper -->
+        </div><!-- /main-body -->
+      </div><!-- /pcoded-inner-content -->
+    </div><!-- /pcoded-content -->
+  </div><!-- /pcoded-wrapper -->
+</div><!-- /pcoded-main-container -->
+
+<?php include '../modals/client/add_client.php'; ?>
+<?php include '../modals/client/edit_client.php'; ?>
+
+<!-- Toast -->
+<div class="toast" id="toast"><i class="fas fa-check-circle"></i><span id="toastMsg"></span></div>
+
+
+<script>
+// PHP → JS translations for client types
+const clientTypeTranslations = {
+    'regular': '<?= __("regular") ?>',
+    'agency':  '<?= __("agency") ?>'
+};
+</script>
+
+<!-- Vendor scripts (keep order matching original) -->
+<script src="../assets/js/vendor-all.min.js"></script>
 <script src="../assets/plugins/bootstrap/js/bootstrap.min.js"></script>
 <script src="../assets/js/pcoded.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
+
+<!-- Client management logic -->
 <script src="../js/client/client_management.js"></script>
-
-<script>
-// Client type translations
-const clientTypeTranslations = {
-    'regular': '<?= __("regular") ?>',
-    'agency': '<?= __("agency") ?>'
-};
-
-// Modern tab switching
-document.querySelectorAll('.tab-modern').forEach(tab => {
-    tab.addEventListener('click', function() {
-        const targetId = this.dataset.tab;
-
-        // Update tabs
-        document.querySelectorAll('.tab-modern').forEach(t => t.classList.remove('active'));
-        this.classList.add('active');
-
-        // Update content
-        document.querySelectorAll('.tab-content-modern').forEach(content => {
-            content.classList.remove('active');
-        });
-        document.getElementById(targetId).classList.add('active');
-    });
-});
-</script>
 
 <?php include '../includes/admin_footer.php'; ?>

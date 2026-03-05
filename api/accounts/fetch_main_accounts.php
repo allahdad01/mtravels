@@ -15,7 +15,7 @@ try {
         SELECT id, name, afs_balance, usd_balance
         FROM main_account
         WHERE status = 'active' AND tenant_id = ? AND branch_id = ?
-        ORDER BY name
+        ORDER BY id
     ");
     $stmt->execute([$tenant_id, $branch_id]);
     $accounts = $stmt->fetchAll(PDO::FETCH_ASSOC);

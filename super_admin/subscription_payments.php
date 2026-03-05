@@ -4,15 +4,16 @@ if (session_status() === PHP_SESSION_NONE) {
     session_start();
 }
 
-// Check if user is logged in with proper role (super admin)
-if (!isset($_SESSION['user_id']) || $_SESSION['role'] !== 'super_admin') {
-    header('Location: ../login.php');
-    exit();
-}
-
 // Database connection
 require_once '../config.php';
 require_once '../includes/db.php';
+
+// Include security module
+require_once 'security.php';
+
+// Check if user is a super admin (system administrator, not tenant-based)
+enforce_super_admin();
+
 require_once '../includes/BranchAddonManager.php';
 require_once '../includes/UserAddonManager.php';
 
@@ -281,30 +282,440 @@ $pay_total_pages = $payment_total_pages;
 ?>
 
 <style>
-/* Apply gradient background to card headers matching the sidebar */
-.card-header {
-    background: linear-gradient(135deg, #4099ff 0%, #2ed8b6 100%) !important;
-    color: #ffffff !important;
-    border-bottom: none !important;
+/* ─── ROOT VARIABLES ──────────────────────────────────────────── */
+:root {
+    --muted: #999;
+    --surface: #ffffff;
+    --surface2: #f5f5f5;
+    --border: #e0e0e0;
+    --text: #333333;
+    --green: #28a745;
+    --red: #dc3545;
 }
 
-.card-header h5 {
-    color: #ffffff !important;
-    margin-bottom: 0 !important;
+/* ─── SUBSCRIPTION CARD STYLES ───────────────────────────── */
+.sa-subscription-list, .sa-payment-list {
+    display: flex;
+    flex-direction: column;
+    gap: 16px;
 }
 
-.card-header .card-header-right {
-    color: #ffffff !important;
+.sa-subscription-card, .sa-payment-card {
+    background: white;
+    border: 1px solid #e0e0e0;
+    border-radius: 10px;
+    padding: 20px;
+    transition: all 0.2s ease;
 }
 
-.card-header .card-header-right .btn {
-    color: #ffffff !important;
-    border-color: rgba(255, 255, 255, 0.3) !important;
+.sa-subscription-card:hover, .sa-payment-card:hover {
+    border-color: rgba(64, 153, 255, 0.3);
+    box-shadow: 0 4px 16px rgba(64, 153, 255, 0.15);
 }
 
-.card-header .card-header-right .btn:hover {
-    background: rgba(255, 255, 255, 0.1) !important;
-    border-color: rgba(255, 255, 255, 0.5) !important;
+.ssc-header, .spc-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-start;
+    margin-bottom: 16px;
+    padding-bottom: 16px;
+    border-bottom: 1px solid #e0e0e0;
+}
+
+.ssc-info h4, .spc-info h4 {
+    font-size: 1.1rem;
+    font-weight: 600;
+    margin: 0 0 6px 0;
+    color: #333;
+}
+
+.ssc-identifier, .spc-identifier {
+    font-size: 0.85rem;
+    color: #999;
+    margin: 0;
+}
+
+.ssc-plan, .spc-date {
+    font-size: 0.85rem;
+    color: #4099ff;
+    margin: 8px 0 0 0;
+    display: flex;
+    align-items: center;
+    gap: 6px;
+}
+
+.ssc-plan i, .spc-date i {
+    font-size: 0.9rem;
+}
+
+.ssc-status, .spc-amount {
+    text-align: right;
+}
+
+.amount-value {
+    font-size: 1.4rem;
+    font-weight: 700;
+    color: #2ed8b6;
+}
+
+.amount-currency {
+    font-size: 0.85rem;
+    color: #888;
+    margin-left: 4px;
+}
+
+.ssc-details, .spc-details {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(130px, 1fr));
+    gap: 16px;
+    margin-bottom: 16px;
+}
+
+.ssc-detail-item, .spc-detail-item {
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+}
+
+.ssc-detail-label, .spc-detail-label {
+    font-size: 0.75rem;
+    color: #999;
+    font-weight: 600;
+    text-transform: uppercase;
+}
+
+.ssc-detail-value, .spc-detail-value {
+    font-size: 0.9rem;
+    font-weight: 500;
+    color: #444;
+}
+
+.ssc-addons {
+    font-size: 0.8rem;
+    color: #4099ff;
+}
+
+.ssc-total {
+    font-weight: 700;
+    color: #2ed8b6;
+}
+
+.ssc-actions, .spc-actions {
+    display: flex;
+    gap: 8px;
+    justify-content: flex-end;
+}
+
+/* ─── PAGE HEADER ─────────────────────────────────────────── */
+.page-header.card {
+    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    color: white;
+    border-radius: 10px;
+    padding: 2rem 2.5rem;
+    border: none;
+    margin-bottom: 2rem;
+    box-shadow: 0 8px 24px rgba(102, 126, 234, 0.25);
+    position: relative;
+    overflow: hidden;
+}
+
+.page-header.card::before {
+    content: '';
+    position: absolute;
+    top: -50%;
+    right: -10%;
+    width: 400px;
+    height: 400px;
+    background: rgba(255,255,255,0.05);
+    border-radius: 50%;
+    pointer-events: none;
+}
+
+.page-header.card::after {
+    content: '';
+    position: absolute;
+    bottom: -30%;
+    left: -5%;
+    width: 300px;
+    height: 300px;
+    background: rgba(255,255,255,0.03);
+    border-radius: 50%;
+    pointer-events: none;
+}
+
+.page-header.card .row {
+    position: relative;
+    z-index: 1;
+}
+
+.page-header-content {
+    padding: 0.5rem 0;
+}
+
+.page-title {
+    font-size: 1.75rem;
+    font-weight: 700;
+    letter-spacing: -0.5px;
+    display: flex;
+    align-items: center;
+    line-height: 1.2;
+}
+
+.page-title i {
+    font-size: 2rem;
+    margin-right: 0.75rem;
+    opacity: 0.95;
+}
+
+.page-subtitle {
+    font-size: 0.95rem;
+    opacity: 0.85;
+    font-weight: 400;
+    letter-spacing: 0.3px;
+}
+
+.page-header-actions {
+    display: flex;
+    gap: 10px;
+    align-items: center;
+    justify-content: flex-end;
+    width: 100%;
+}
+
+.page-header.card .btn {
+    background: rgba(255,255,255,0.10) !important;
+    color: #ffffff;
+    border: 1px solid rgba(255,255,255,0.30) !important;
+    border-radius: 25px;
+    transition: all 0.3s ease;
+    position: relative;
+    z-index: 1;
+}
+
+.page-header.card .btn:hover {
+    background: rgba(255,255,255,0.22) !important;
+    border-color: rgba(255,255,255,0.50) !important;
+    transform: translateY(-1px);
+}
+
+/* ─── CARDS ───────────────────────────────────────────────── */
+.sa-card {
+    background: white;
+    border-radius: 10px;
+    box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+    transition: transform 0.2s ease-in-out, box-shadow 0.2s ease-in-out;
+    border: none;
+}
+
+.sa-card:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 4px 16px rgba(0,0,0,0.15);
+}
+
+.sa-card-body {
+    padding: 1.5rem;
+}
+
+/* ─── BUTTONS ─────────────────────────────────────────────── */
+.sa-btn {
+    padding: 0.75rem 1.5rem;
+    border-radius: 8px;
+    border: none;
+    font-weight: 500;
+    cursor: pointer;
+    transition: all 0.3s ease;
+    text-decoration: none;
+    display: inline-block;
+    font-size: 0.9rem;
+}
+
+.sa-btn-primary {
+    background: linear-gradient(135deg, #4099ff 0%, #2ed8b6 100%);
+    color: white;
+}
+
+.sa-btn-primary:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 4px 12px rgba(64, 153, 255, 0.3);
+}
+
+.sa-btn-small {
+    padding: 6px 12px;
+    font-size: 0.75rem;
+}
+
+.sa-btn-ghost {
+    background: #f0f0f0;
+    color: #333;
+    border: 1px solid #e0e0e0;
+}
+
+.sa-btn-ghost:hover {
+    background: #e8e8e8;
+    border-color: #d0d0d0;
+}
+
+.sa-btn-info {
+    background: linear-gradient(135deg, #11cdef 0%, #2dd4bf 100%);
+    color: white;
+}
+
+.sa-btn-info:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 4px 12px rgba(17, 207, 239, 0.3);
+}
+
+/* ─── SEARCH & FILTER ─────────────────────────────────────── */
+.sa-search-filter {
+    display: flex;
+    gap: 1rem;
+    align-items: center;
+    flex-wrap: wrap;
+}
+
+.sa-search-group {
+    display: flex;
+    gap: 1rem;
+    align-items: center;
+    flex: 1;
+    min-width: 300px;
+}
+
+.sa-search-input {
+    flex: 1;
+    min-width: 150px;
+    padding: 0.75rem;
+    border: 1px solid #ced4da;
+    border-radius: 8px;
+    font-size: 0.9rem;
+    transition: border-color 0.15s ease-in-out, box-shadow 0.15s ease-in-out;
+}
+
+.sa-search-input:focus {
+    outline: none;
+    border-color: #4099ff;
+    box-shadow: 0 0 0 0.2rem rgba(64, 153, 255, 0.25);
+}
+
+/* ─── SECTION HEADER ──────────────────────────────────────── */
+.sa-shdr {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 1.5rem;
+}
+
+.sa-shdr h2 {
+    font-size: 1.5rem;
+    font-weight: 600;
+    margin: 0;
+    color: #333;
+}
+
+.sa-shdr p {
+    margin: 4px 0 0 0;
+    font-size: 0.75rem;
+    color: var(--muted);
+}
+
+/* ─── PILLS ───────────────────────────────────────────────── */
+.pill {
+    font-size: 0.62rem;
+    font-weight: 700;
+    padding: 3px 8px;
+    border-radius: 20px;
+    text-transform: uppercase;
+    letter-spacing: 0.04em;
+    white-space: nowrap;
+}
+
+.pill-green {
+    background: rgba(16,185,129,0.12);
+    color: #10b981;
+}
+
+.pill-amber {
+    background: rgba(245,158,11,0.12);
+    color: #f59e0b;
+}
+
+/* ─── PAGINATION ──────────────────────────────────────────── */
+.sa-pagination {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 6px;
+    margin-top: 20px;
+    padding: 14px;
+    background: white;
+    border: 1px solid #e0e0e0;
+    border-radius: 10px;
+    flex-wrap: wrap;
+}
+
+.sa-pagination-item {
+    min-width: 36px;
+    height: 36px;
+    padding: 0 10px;
+    border-radius: 8px;
+    border: 1px solid #e0e0e0;
+    background: #f5f5f5;
+    color: #333;
+    text-decoration: none;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 0.8rem;
+    font-weight: 500;
+    transition: all 0.2s;
+    cursor: pointer;
+}
+
+.sa-pagination-item:hover:not(.active) {
+    background: rgba(64, 153, 255, 0.1);
+    border-color: #4099ff;
+    color: #4099ff;
+}
+
+.sa-pagination-item.active {
+    background: linear-gradient(135deg, #4099ff 0%, #2ed8b6 100%);
+    border-color: #4099ff;
+    color: white;
+}
+
+.sa-pagination-ellipsis {
+    color: #999;
+    font-size: 0.8rem;
+}
+
+.sa-pagination-info {
+    font-size: 0.8rem;
+    color: #999;
+    margin-left: auto;
+}
+
+/* ─── RESPONSIVE ──────────────────────────────────────────── */
+@media (max-width: 768px) {
+    .ssc-header, .spc-header {
+        flex-direction: column;
+    }
+    
+    .ssc-status, .spc-amount {
+        text-align: left;
+        margin-top: 12px;
+    }
+    
+    .ssc-details, .spc-details {
+        grid-template-columns: 1fr;
+    }
+    
+    .ssc-actions, .spc-actions {
+        width: 100%;
+    }
+    
+    .page-header.card {
+        padding: 1.5rem;
+    }
 }
 </style>
 
@@ -314,17 +725,23 @@ $pay_total_pages = $payment_total_pages;
         <div class="pcoded-content">
             <div class="pcoded-inner-content">
                 <!-- [ breadcrumb ] start -->
-                <div class="page-header">
-                    <div class="page-block">
-                        <div class="row align-items-center">
-                            <div class="col-md-12">
-                                <div class="page-header-title">
-                                    <h5 class="m-b-10">Subscription Payments Management</h5>
-                                </div>
-                                <ul class="breadcrumb">
-                                    <li class="breadcrumb-item"><a href="dashboard.php"><i class="feather icon-home"></i></a></li>
-                                    <li class="breadcrumb-item">Subscription Payments</li>
-                                </ul>
+                <div class="page-header card">
+                    <div class="row align-items-center">
+                        <div class="col-md-6">
+                            <div class="page-header-content">
+                                <h5 class="page-title mb-0">
+                                    <i class="feather icon-credit-card mr-2"></i>Subscription Payments
+                                </h5>
+                                <p class="page-subtitle mb-0 mt-2">
+                                    Manage subscription payments and billing
+                                </p>
+                            </div>
+                        </div>
+                        <div class="col-md-6 text-end">
+                            <div class="page-header-actions">
+                                <button type="button" class="btn" data-toggle="modal" data-target="#recordPaymentModal">
+                                    <i class="feather icon-plus mr-1"></i>Record Payment
+                                </button>
                             </div>
                         </div>
                     </div>
@@ -356,321 +773,265 @@ $pay_total_pages = $payment_total_pages;
                         </div>
                         <?php endif; ?>
 
-                        <!-- Record Payment Button -->
-                        <div class="row mb-4">
-                            <div class="col-md-12">
-                                <button type="button" class="btn btn-primary" data-toggle="modal" data-target="#recordPaymentModal">
-                                    <i class="feather icon-plus-circle mr-2"></i>Record New Payment
-                                </button>
+
+                        <!-- Subscriptions Header -->
+                        <div class="sa-shdr" style="margin-bottom: 16px;">
+                            <div>
+                                <h2>All Subscriptions</h2>
+                                <p style="margin: 4px 0 0 0; font-size: 0.75rem; color: var(--text-muted);">Total: <?= $sub_total_items ?> subscriptions</p>
                             </div>
                         </div>
 
-                        <!-- Subscriptions Overview -->
-                         <div class="row mb-4">
-                             <div class="col-md-12">
-                                 <div class="card shadow-lg border-0">
-                                     <div class="card-header">
-                                         <div class="row align-items-center">
-                                             <div class="col-md-6">
-                                                 <h4 class="mb-0"><i class="feather icon-credit-card mr-2"></i>All Subscriptions <span class="badge badge-pill badge-info"><?= $sub_total_items ?> total</span></h4>
-                                             </div>
-                                             <div class="col-md-6">
-                                                 <form method="GET" class="form-inline float-right">
-                                                     <input type="text" name="sub_search" class="form-control form-control-sm mr-2" 
-                                                            placeholder="Search subscriptions..." value="<?= htmlspecialchars($sub_search_query) ?>" style="width: 250px;">
-                                                     <button type="submit" class="btn btn-sm btn-primary">
-                                                         <i class="feather icon-search"></i>
-                                                     </button>
-                                                     <?php if (!empty($sub_search_query)): ?>
-                                                     <a href="subscription_payments.php" class="btn btn-sm btn-secondary ml-2">
-                                                         <i class="feather icon-x"></i> Clear
-                                                     </a>
-                                                     <?php endif; ?>
-                                                 </form>
-                                             </div>
-                                         </div>
-                                     </div>
-                                    <div class="card-body p-0">
-                                        <div class="table-responsive">
-                                            <table class="table table-hover table-striped mb-0">
-                                                <thead class="bg-light">
-                                                    <tr>
-                                                        <th>Tenant</th>
-                                                        <th>Plan</th>
-                                                        <th>Status</th>
-                                                        <th>Billing Cycle</th>
-                                                        <th>Amount</th>
-                                                        <th>Last Payment</th>
-                                                        <th>Next Billing</th>
-                                                        <th>Payments</th>
-                                                        <th>Total Paid</th>
-                                                        <th>Actions</th>
-                                                    </tr>
-                                                </thead>
-                                                <tbody>
-                                                    <?php if (empty($subscriptions)): ?>
-                                                    <tr>
-                                                        <td colspan="10" class="text-center py-4">
-                                                            <i class="feather icon-inbox text-muted mb-2" style="font-size: 2rem;"></i>
-                                                            <p class="text-muted">
-                                                                <?php if (!empty($sub_search_query)): ?>
-                                                                No subscriptions found for "<strong><?= htmlspecialchars($sub_search_query) ?></strong>"
-                                                                <?php else: ?>
-                                                                No subscriptions found
-                                                                <?php endif; ?>
-                                                            </p>
-                                                        </td>
-                                                    </tr>
-                                                    <?php else: ?>
-                                                    <?php foreach ($subscriptions as $sub): ?>
-                                                    <?php 
-                                                    $symbol = getCurrencySymbol($sub['currency'] ?? 'USD');
-                                                    $totalWithAddons = floatval($sub['amount']) + floatval($sub['total_addon_cost']);
-                                                    ?>
-                                                    <tr>
-                                                         <td>
-                                                             <div class="d-flex align-items-center">
-                                                                 <div class="flex-grow-1">
-                                                                     <h6 class="mb-1"><?= htmlspecialchars($sub['tenant_name']) ?></h6>
-                                                                     <small class="text-muted"><?= htmlspecialchars($sub['tenant_identifier']) ?></small>
-                                                                 </div>
-                                                             </div>
-                                                         </td>
-                                                         <td>
-                                                             <span class="badge badge-primary"><?= htmlspecialchars($sub['plan_name'] ?? 'N/A') ?></span>
-                                                         </td>
-                                                         <td>
-                                                             <span class="badge badge-<?= $sub['status'] === 'active' ? 'success' : ($sub['status'] === 'pending' ? 'warning' : 'danger') ?>">
-                                                                 <?= ucfirst(htmlspecialchars($sub['status'])) ?>
-                                                             </span>
-                                                         </td>
-                                                         <td><?= ucfirst(htmlspecialchars($sub['billing_cycle'])) ?></td>
-                                                         <td>
-                                                             <div><?= $symbol . number_format($sub['amount'], 2) ?></div>
-                                                             <?php if ($sub['branch_addon_cost'] > 0 || $sub['user_addon_cost'] > 0): ?>
-                                                             <small class="text-info">
-                                                                 <?php if ($sub['branch_addon_cost'] > 0): ?>
-                                                                 +<?= $symbol . number_format($sub['branch_addon_cost'], 2) ?> branch
-                                                                 <?php endif; ?>
-                                                                 <?php if ($sub['user_addon_cost'] > 0): ?>
-                                                                 +<?= $symbol . number_format($sub['user_addon_cost'], 2) ?> users
-                                                                 <?php endif; ?>
-                                                             </small>
-                                                             <?php endif; ?>
-                                                         </td>
-                                                         <td>
-                                                             <?php if ($sub['last_payment_date']): ?>
-                                                             <?= date('M d, Y', strtotime($sub['last_payment_date'])) ?>
-                                                             <?php else: ?>
-                                                             <span class="text-muted">Never</span>
-                                                             <?php endif; ?>
-                                                         </td>
-                                                         <td>
-                                                             <?php if ($sub['next_billing_date']): ?>
-                                                             <?= date('M d, Y', strtotime($sub['next_billing_date'])) ?>
-                                                             <?php else: ?>
-                                                             <span class="text-muted">N/A</span>
-                                                             <?php endif; ?>
-                                                         </td>
-                                                         <td>
-                                                             <span class="badge badge-info"><?= $sub['payment_count'] ?> payments</span>
-                                                         </td>
-                                                         <td><?= $symbol . number_format($sub['total_paid'] ?? 0, 2) ?></td>
-                                                        <td>
-                                                            <button class="btn btn-sm btn-outline-primary" onclick="viewSubscriptionPayments(<?= $sub['id'] ?>)">
-                                                                <i class="feather icon-eye"></i> View
-                                                            </button>
-                                                        </td>
-                                                    </tr>
-                                                    <?php endforeach; ?>
-                                                    <?php endif; ?>
-                                                    </tbody>
-                                                    </table>
-                                                    </div>
-                                                    
-                                                    <!-- Pagination for Subscriptions -->
-                                                    <?php if ($sub_total_pages > 1): ?>
-                                                    <nav aria-label="Subscriptions pagination" class="mt-3 mb-0">
-                                                    <ul class="pagination justify-content-center mb-0">
-                                                    <li class="page-item <?= $sub_current_page === 1 ? 'disabled' : '' ?>">
-                                                    <a class="page-link" href="subscription_payments.php?sub_page=<?= $sub_current_page - 1 ?><?= !empty($sub_search_query) ? '&sub_search=' . urlencode($sub_search_query) : '' ?>">
-                                                        <i class="feather icon-chevron-left"></i> Previous
-                                                    </a>
-                                                    </li>
-                                                    <?php 
-                                                    $sub_start_page = max(1, $sub_current_page - 2);
-                                                    $sub_end_page = min($sub_total_pages, $sub_current_page + 2);
-                                                    if ($sub_start_page > 1): ?>
-                                                    <li class="page-item">
-                                                    <a class="page-link" href="subscription_payments.php?sub_page=1<?= !empty($sub_search_query) ? '&sub_search=' . urlencode($sub_search_query) : '' ?>">1</a>
-                                                    </li>
-                                                    <?php if ($sub_start_page > 2): ?>
-                                                    <li class="page-item disabled"><span class="page-link">...</span></li>
-                                                    <?php endif; ?>
-                                                    <?php endif; ?>
-                                                    <?php for ($i = $sub_start_page; $i <= $sub_end_page; $i++): ?>
-                                                    <li class="page-item <?= $i === $sub_current_page ? 'active' : '' ?>">
-                                                    <a class="page-link" href="subscription_payments.php?sub_page=<?= $i ?><?= !empty($sub_search_query) ? '&sub_search=' . urlencode($sub_search_query) : '' ?>"><?= $i ?></a>
-                                                    </li>
-                                                    <?php endfor; ?>
-                                                    <?php if ($sub_end_page < $sub_total_pages): ?>
-                                                    <?php if ($sub_end_page < $sub_total_pages - 1): ?>
-                                                    <li class="page-item disabled"><span class="page-link">...</span></li>
-                                                    <?php endif; ?>
-                                                    <li class="page-item">
-                                                    <a class="page-link" href="subscription_payments.php?sub_page=<?= $sub_total_pages ?><?= !empty($sub_search_query) ? '&sub_search=' . urlencode($sub_search_query) : '' ?>"><?= $sub_total_pages ?></a>
-                                                    </li>
-                                                    <?php endif; ?>
-                                                    <li class="page-item <?= $sub_current_page === $sub_total_pages ? 'disabled' : '' ?>">
-                                                    <a class="page-link" href="subscription_payments.php?sub_page=<?= $sub_current_page + 1 ?><?= !empty($sub_search_query) ? '&sub_search=' . urlencode($sub_search_query) : '' ?>">
-                                                        Next <i class="feather icon-chevron-right"></i>
-                                                    </a>
-                                                    </li>
-                                                    </ul>
-                                                    </nav>
-                                                    <div class="text-center mt-2 text-muted small">
-                                                    Page <?= $sub_current_page ?> of <?= $sub_total_pages ?> | Showing <?= count($subscriptions) ?> of <?= $sub_total_items ?> subscriptions
-                                                    </div>
-                                                    <?php endif; ?>
-                                                    </div>
-                                                    </div>
-                                                    </div>
-                                                    </div>
+                        <!-- Filter Bar -->
+                        <div class="sa-card" style="margin-bottom: 20px;">
+                            <div class="sa-card-body">
+                                <form method="GET" action="subscription_payments.php" class="sa-search-filter">
+                                    <div class="sa-search-group">
+                                        <input type="text" class="sa-search-input" name="sub_search" placeholder="Search subscriptions..." value="<?= htmlspecialchars($sub_search_query) ?>">
+                                        <button type="submit" class="sa-btn sa-btn-primary">Search</button>
+                                        <?php if (!empty($sub_search_query)): ?>
+                                        <a href="subscription_payments.php" class="sa-btn sa-btn-ghost">Clear</a>
+                                        <?php endif; ?>
+                                    </div>
+                                </form>
+                            </div>
+                        </div>
 
-                                                    <!-- Recent Payments -->
-                                                    <div class="row">
-                                                        <div class="col-md-12">
-                                                            <div class="card shadow-lg border-0">
-                                                                <div class="card-header">
-                                                                    <div class="row align-items-center">
-                                                                        <div class="col-md-6">
-                                                                            <h4 class="mb-0"><i class="feather icon-clock mr-2"></i>Recent Payments <span class="badge badge-pill badge-success"><?= $pay_total_items ?> total</span></h4>
-                                                                        </div>
-                                                                        <div class="col-md-6">
-                                                                            <form method="GET" class="form-inline float-right">
-                                                                                <input type="text" name="pay_search" class="form-control form-control-sm mr-2" 
-                                                                                       placeholder="Search payments..." value="<?= htmlspecialchars($pay_search_query) ?>" style="width: 250px;">
-                                                                                <button type="submit" class="btn btn-sm btn-primary">
-                                                                                    <i class="feather icon-search"></i>
-                                                                                </button>
-                                                                                <?php if (!empty($pay_search_query)): ?>
-                                                                                <a href="subscription_payments.php" class="btn btn-sm btn-secondary ml-2">
-                                                                                    <i class="feather icon-x"></i> Clear
-                                                                                </a>
-                                                                                <?php endif; ?>
-                                                                            </form>
-                                                                        </div>
-                                                                    </div>
-                                                                </div>
-                                                            <div class="card-body p-0">
-                                                                <div class="table-responsive">
-                                                                    <table class="table table-hover table-striped mb-0">
-                                                                        <thead class="bg-light">
-                                                                            <tr>
-                                                                                <th>Date</th>
-                                                                                <th>Tenant</th>
-                                                                                <th>Plan</th>
-                                                                                <th>Amount</th>
-                                                                                <th>Method</th>
-                                                                                <th>Receipt</th>
-                                                                                <th>Processed By</th>
-                                                                                <th style="width: 100px; text-align: center;">Actions</th>
-                                                                            </tr>
-                                                                        </thead>
-                                                                        <tbody>
-                                                                            <?php if (empty($recent_payments)): ?>
-                                                                            <tr>
-                                                                                <td colspan="8" class="text-center py-4">
-                                                                                    <i class="feather icon-inbox text-muted mb-2" style="font-size: 2rem;"></i>
-                                                                                    <p class="text-muted">
-                                                                                        <?php if (!empty($pay_search_query)): ?>
-                                                                                        No payments found for "<strong><?= htmlspecialchars($pay_search_query) ?></strong>"
-                                                                                        <?php else: ?>
-                                                                                        No payments recorded yet
-                                                                                        <?php endif; ?>
-                                                                                    </p>
-                                                                                </td>
-                                                                            </tr>
-                                                                            <?php else: ?>
-                                                                            <?php foreach ($recent_payments as $payment): ?>
-                                                                            <?php $paymentSymbol = getCurrencySymbol($payment['currency'] ?? 'USD'); ?>
-                                                                            <tr>
-                                                                                 <td><?= date('M d, Y', strtotime($payment['payment_date'])) ?></td>
-                                                                                 <td>
-                                                                                     <div class="d-flex align-items-center">
-                                                                                         <div class="flex-grow-1">
-                                                                                             <h6 class="mb-1"><?= htmlspecialchars($payment['tenant_name']) ?></h6>
-                                                                                             <small class="text-muted"><?= htmlspecialchars($payment['tenant_identifier']) ?></small>
-                                                                                         </div>
-                                                                                     </div>
-                                                                                 </td>
-                                                                                 <td>
-                                                                                     <span class="badge badge-primary"><?= htmlspecialchars($payment['plan_id']) ?></span>
-                                                                                 </td>
-                                                                                 <td><?= $paymentSymbol . number_format($payment['amount'], 2) ?> <?= htmlspecialchars($payment['currency'] ?? 'USD') ?></td>
-                                                                                <td><?= htmlspecialchars($payment['payment_method'] ?: 'N/A') ?></td>
-                                                                                <td><?= htmlspecialchars($payment['receipt_number'] ?: 'N/A') ?></td>
-                                                                                <td><?= htmlspecialchars($payment['processed_by_name'] ?: 'System') ?></td>
-                                                                                <td style="text-align: center;">
-                                                                                    <button class="btn btn-sm btn-info" onclick="downloadInvoice(<?= $payment['id'] ?>)" title="Download Invoice PDF">
-                                                                                        <i class="feather icon-download"></i>
-                                                                                    </button>
-                                                                                </td>
-                                                                                </tr>
-                                                                            <?php endforeach; ?>
-                                                                            <?php endif; ?>
-                                                                        </tbody>
-                                                                        </table>
-                                                                        </div>
-                                                                        
-                                                                        <!-- Pagination for Payments -->
-                                                                        <?php if ($pay_total_pages > 1): ?>
-                                                                        <nav aria-label="Payments pagination" class="mt-3 mb-0">
-                                                                        <ul class="pagination justify-content-center mb-0">
-                                                                        <li class="page-item <?= $pay_current_page === 1 ? 'disabled' : '' ?>">
-                                                                        <a class="page-link" href="subscription_payments.php?pay_page=<?= $pay_current_page - 1 ?><?= !empty($pay_search_query) ? '&pay_search=' . urlencode($pay_search_query) : '' ?>">
-                                                                            <i class="feather icon-chevron-left"></i> Previous
-                                                                        </a>
-                                                                        </li>
-                                                                        <?php 
-                                                                        $pay_start_page = max(1, $pay_current_page - 2);
-                                                                        $pay_end_page = min($pay_total_pages, $pay_current_page + 2);
-                                                                        if ($pay_start_page > 1): ?>
-                                                                        <li class="page-item">
-                                                                        <a class="page-link" href="subscription_payments.php?pay_page=1<?= !empty($pay_search_query) ? '&pay_search=' . urlencode($pay_search_query) : '' ?>">1</a>
-                                                                        </li>
-                                                                        <?php if ($pay_start_page > 2): ?>
-                                                                        <li class="page-item disabled"><span class="page-link">...</span></li>
-                                                                        <?php endif; ?>
-                                                                        <?php endif; ?>
-                                                                        <?php for ($i = $pay_start_page; $i <= $pay_end_page; $i++): ?>
-                                                                        <li class="page-item <?= $i === $pay_current_page ? 'active' : '' ?>">
-                                                                        <a class="page-link" href="subscription_payments.php?pay_page=<?= $i ?><?= !empty($pay_search_query) ? '&pay_search=' . urlencode($pay_search_query) : '' ?>"><?= $i ?></a>
-                                                                        </li>
-                                                                        <?php endfor; ?>
-                                                                        <?php if ($pay_end_page < $pay_total_pages): ?>
-                                                                        <?php if ($pay_end_page < $pay_total_pages - 1): ?>
-                                                                        <li class="page-item disabled"><span class="page-link">...</span></li>
-                                                                        <?php endif; ?>
-                                                                        <li class="page-item">
-                                                                        <a class="page-link" href="subscription_payments.php?pay_page=<?= $pay_total_pages ?><?= !empty($pay_search_query) ? '&pay_search=' . urlencode($pay_search_query) : '' ?>"><?= $pay_total_pages ?></a>
-                                                                        </li>
-                                                                        <?php endif; ?>
-                                                                        <li class="page-item <?= $pay_current_page === $pay_total_pages ? 'disabled' : '' ?>">
-                                                                        <a class="page-link" href="subscription_payments.php?pay_page=<?= $pay_current_page + 1 ?><?= !empty($pay_search_query) ? '&pay_search=' . urlencode($pay_search_query) : '' ?>">
-                                                                            Next <i class="feather icon-chevron-right"></i>
-                                                                        </a>
-                                                                        </li>
-                                                                        </ul>
-                                                                        </nav>
-                                                                        <div class="text-center mt-2 text-muted small">
-                                                                        Page <?= $pay_current_page ?> of <?= $pay_total_pages ?> | Showing <?= count($recent_payments) ?> of <?= $pay_total_items ?> payments
-                                                                        </div>
-                                                                        <?php endif; ?>
-                                                                        </div>
-                                                                        </div>
-                                                                        </div>
-                                                                        </div>
+                        <!-- Subscriptions Cards -->
+                        <?php if (empty($subscriptions)): ?>
+                        <div class="sa-card">
+                            <div class="sa-card-body" style="text-align: center; padding: 40px 20px; color: var(--text-muted);">
+                                <div style="font-size: 2rem; margin-bottom: 12px;">📋</div>
+                                <div style="font-weight: 600; margin-bottom: 4px;">No Subscriptions Found</div>
+                                <div style="font-size: 0.8rem;"><?= !empty($sub_search_query) ? 'Try adjusting your search.' : 'No subscriptions available.' ?></div>
+                            </div>
+                        </div>
+                        <?php else: ?>
+                        <div class="sa-subscription-list">
+                            <?php foreach ($subscriptions as $sub): ?>
+                            <?php 
+                            $symbol = getCurrencySymbol($sub['currency'] ?? 'USD');
+                            $totalWithAddons = floatval($sub['amount']) + floatval($sub['total_addon_cost']);
+                            ?>
+                            <div class="sa-subscription-card">
+                                <div class="ssc-header">
+                                    <div class="ssc-info">
+                                        <h4><?= htmlspecialchars($sub['tenant_name']) ?></h4>
+                                        <p class="ssc-identifier"><?= htmlspecialchars($sub['tenant_identifier']) ?></p>
+                                        <p class="ssc-plan">
+                                            <i class="feather icon-credit-card"></i>
+                                            <?= htmlspecialchars($sub['plan_name'] ?? 'N/A') ?>
+                                        </p>
+                                    </div>
+                                    <div class="ssc-status">
+                                        <span class="pill <?= $sub['status'] === 'active' ? 'pill-green' : ($sub['status'] === 'pending' ? 'pill-amber' : 'pill-red') ?>">
+                                            <?= htmlspecialchars(ucfirst($sub['status'])) ?>
+                                        </span>
+                                    </div>
+                                </div>
+                                
+                                <div class="ssc-details">
+                                    <div class="ssc-detail-item">
+                                        <span class="ssc-detail-label">Billing Cycle</span>
+                                        <span class="ssc-detail-value"><?= htmlspecialchars(ucfirst($sub['billing_cycle'])) ?></span>
+                                    </div>
+                                    <div class="ssc-detail-item">
+                                        <span class="ssc-detail-label">Amount</span>
+                                        <span class="ssc-detail-value"><?= $symbol . number_format($sub['amount'], 2) ?></span>
+                                    </div>
+                                    <div class="ssc-detail-item">
+                                        <span class="ssc-detail-label">Add-ons</span>
+                                        <span class="ssc-detail-value ssc-addons">
+                                            <?php if ($sub['branch_addon_cost'] > 0 || $sub['user_addon_cost'] > 0): ?>
+                                                <?php if ($sub['branch_addon_cost'] > 0): ?>
+                                                +<?= $symbol . number_format($sub['branch_addon_cost'], 2) ?> branch
+                                                <?php endif; ?>
+                                                <?php if ($sub['user_addon_cost'] > 0): ?>
+                                                +<?= $symbol . number_format($sub['user_addon_cost'], 2) ?> users
+                                                <?php endif; ?>
+                                            <?php else: ?>
+                                            -
+                                            <?php endif; ?>
+                                        </span>
+                                    </div>
+                                    <div class="ssc-detail-item">
+                                        <span class="ssc-detail-label">Last Payment</span>
+                                        <span class="ssc-detail-value"><?= $sub['last_payment_date'] ? date('M d, Y', strtotime($sub['last_payment_date'])) : 'Never' ?></span>
+                                    </div>
+                                    <div class="ssc-detail-item">
+                                        <span class="ssc-detail-label">Next Billing</span>
+                                        <span class="ssc-detail-value"><?= $sub['next_billing_date'] ? date('M d, Y', strtotime($sub['next_billing_date'])) : 'N/A' ?></span>
+                                    </div>
+                                    <div class="ssc-detail-item">
+                                        <span class="ssc-detail-label">Total Paid</span>
+                                        <span class="ssc-detail-value ssc-total"><?= $symbol . number_format($sub['total_paid'] ?? 0, 2) ?></span>
+                                    </div>
+                                </div>
+                                
+                                <div class="ssc-actions">
+                                    <button class="sa-btn sa-btn-small sa-btn-primary" onclick="viewSubscriptionPayments(<?= $sub['id'] ?>)">
+                                        <i class="feather icon-eye"></i> View Payments
+                                    </button>
+                                </div>
+                            </div>
+                            <?php endforeach; ?>
+                        </div>
+                        <?php endif; ?>
+
+                        <!-- Pagination for Subscriptions -->
+                        <?php if ($sub_total_pages > 1): ?>
+                        <div class="sa-pagination">
+                            <?php 
+                            $query_string = !empty($sub_search_query) ? '&sub_search=' . urlencode($sub_search_query) : '';
+                            $start_page = max(1, $sub_current_page - 2);
+                            $end_page = min($sub_total_pages, $sub_current_page + 2);
+                            ?>
+                            
+                            <?php if ($sub_current_page > 1): ?>
+                            <a href="?sub_page=1<?= $query_string ?>" class="sa-pagination-item">First</a>
+                            <a href="?sub_page=<?= $sub_current_page - 1 ?><?= $query_string ?>" class="sa-pagination-item">← Prev</a>
+                            <?php endif; ?>
+                            
+                            <?php if ($start_page > 1): ?>
+                            <span class="sa-pagination-ellipsis">...</span>
+                            <?php endif; ?>
+                            
+                            <?php for ($i = $start_page; $i <= $end_page; $i++): ?>
+                            <a href="?sub_page=<?= $i ?><?= $query_string ?>" class="sa-pagination-item <?= $i === $sub_current_page ? 'active' : '' ?>">
+                                <?= $i ?>
+                            </a>
+                            <?php endfor; ?>
+                            
+                            <?php if ($end_page < $sub_total_pages): ?>
+                            <span class="sa-pagination-ellipsis">...</span>
+                            <?php endif; ?>
+                            
+                            <?php if ($sub_current_page < $sub_total_pages): ?>
+                            <a href="?sub_page=<?= $sub_current_page + 1 ?><?= $query_string ?>" class="sa-pagination-item">Next →</a>
+                            <a href="?sub_page=<?= $sub_total_pages ?><?= $query_string ?>" class="sa-pagination-item">Last</a>
+                            <?php endif; ?>
+                            
+                            <span class="sa-pagination-info">Page <?= $sub_current_page ?> of <?= $sub_total_pages ?></span>
+                        </div>
+                        <?php endif; ?>
+
+                        <!-- Recent Payments Header -->
+                        <div class="sa-shdr" style="margin-top: 30px; margin-bottom: 16px;">
+                            <div>
+                                <h2>Recent Payments</h2>
+                                <p style="margin: 4px 0 0 0; font-size: 0.75rem; color: var(--text-muted);">Total: <?= $pay_total_items ?> payments</p>
+                            </div>
+                        </div>
+
+                        <!-- Payments Filter Bar -->
+                        <div class="sa-card" style="margin-bottom: 20px;">
+                            <div class="sa-card-body">
+                                <form method="GET" action="subscription_payments.php" class="sa-search-filter">
+                                    <div class="sa-search-group">
+                                        <input type="text" class="sa-search-input" name="pay_search" placeholder="Search payments..." value="<?= htmlspecialchars($pay_search_query) ?>">
+                                        <button type="submit" class="sa-btn sa-btn-primary">Search</button>
+                                        <?php if (!empty($pay_search_query)): ?>
+                                        <a href="subscription_payments.php" class="sa-btn sa-btn-ghost">Clear</a>
+                                        <?php endif; ?>
+                                    </div>
+                                </form>
+                            </div>
+                        </div>
+
+                        <!-- Recent Payments Cards -->
+                        <?php if (empty($recent_payments)): ?>
+                        <div class="sa-card">
+                            <div class="sa-card-body" style="text-align: center; padding: 40px 20px; color: var(--text-muted);">
+                                <div style="font-size: 2rem; margin-bottom: 12px;">💳</div>
+                                <div style="font-weight: 600; margin-bottom: 4px;">No Payments Found</div>
+                                <div style="font-size: 0.8rem;"><?= !empty($pay_search_query) ? 'Try adjusting your search.' : 'No payments recorded yet.' ?></div>
+                            </div>
+                        </div>
+                        <?php else: ?>
+                        <div class="sa-payment-list">
+                            <?php foreach ($recent_payments as $payment): ?>
+                            <?php $paymentSymbol = getCurrencySymbol($payment['currency'] ?? 'USD'); ?>
+                            <div class="sa-payment-card">
+                                <div class="spc-header">
+                                    <div class="spc-info">
+                                        <h4><?= htmlspecialchars($payment['tenant_name']) ?></h4>
+                                        <p class="spc-identifier"><?= htmlspecialchars($payment['tenant_identifier']) ?></p>
+                                        <p class="spc-date">
+                                            <i class="feather icon-calendar"></i>
+                                            <?= date('M d, Y', strtotime($payment['payment_date'])) ?>
+                                        </p>
+                                    </div>
+                                    <div class="spc-amount">
+                                        <span class="amount-value"><?= $paymentSymbol . number_format($payment['amount'], 2) ?></span>
+                                        <span class="amount-currency"><?= htmlspecialchars($payment['currency'] ?? 'USD') ?></span>
+                                    </div>
+                                </div>
+                                
+                                <div class="spc-details">
+                                    <div class="spc-detail-item">
+                                        <span class="spc-detail-label">Plan</span>
+                                        <span class="spc-detail-value"><?= htmlspecialchars($payment['plan_id']) ?></span>
+                                    </div>
+                                    <div class="spc-detail-item">
+                                        <span class="spc-detail-label">Method</span>
+                                        <span class="spc-detail-value"><?= htmlspecialchars($payment['payment_method'] ?: 'N/A') ?></span>
+                                    </div>
+                                    <div class="spc-detail-item">
+                                        <span class="spc-detail-label">Receipt</span>
+                                        <span class="spc-detail-value"><?= htmlspecialchars($payment['receipt_number'] ?: 'N/A') ?></span>
+                                    </div>
+                                    <div class="spc-detail-item">
+                                        <span class="spc-detail-label">Processed By</span>
+                                        <span class="spc-detail-value"><?= htmlspecialchars($payment['processed_by_name'] ?: 'System') ?></span>
+                                    </div>
+                                </div>
+                                
+                                <div class="spc-actions">
+                                    <button class="sa-btn sa-btn-small sa-btn-info" onclick="downloadInvoice(<?= $payment['id'] ?>)">
+                                        <i class="feather icon-download"></i> Download Invoice
+                                    </button>
+                                </div>
+                            </div>
+                            <?php endforeach; ?>
+                        </div>
+                        <?php endif; ?>
+
+                        <!-- Pagination for Payments -->
+                        <?php if ($pay_total_pages > 1): ?>
+                        <div class="sa-pagination">
+                            <?php 
+                            $query_string = !empty($pay_search_query) ? '&pay_search=' . urlencode($pay_search_query) : '';
+                            $start_page = max(1, $pay_current_page - 2);
+                            $end_page = min($pay_total_pages, $pay_current_page + 2);
+                            ?>
+                            
+                            <?php if ($pay_current_page > 1): ?>
+                            <a href="?pay_page=1<?= $query_string ?>" class="sa-pagination-item">First</a>
+                            <a href="?pay_page=<?= $pay_current_page - 1 ?><?= $query_string ?>" class="sa-pagination-item">← Prev</a>
+                            <?php endif; ?>
+                            
+                            <?php if ($start_page > 1): ?>
+                            <span class="sa-pagination-ellipsis">...</span>
+                            <?php endif; ?>
+                            
+                            <?php for ($i = $start_page; $i <= $end_page; $i++): ?>
+                            <a href="?pay_page=<?= $i ?><?= $query_string ?>" class="sa-pagination-item <?= $i === $pay_current_page ? 'active' : '' ?>">
+                                <?= $i ?>
+                            </a>
+                            <?php endfor; ?>
+                            
+                            <?php if ($end_page < $pay_total_pages): ?>
+                            <span class="sa-pagination-ellipsis">...</span>
+                            <?php endif; ?>
+                            
+                            <?php if ($pay_current_page < $pay_total_pages): ?>
+                            <a href="?pay_page=<?= $pay_current_page + 1 ?><?= $query_string ?>" class="sa-pagination-item">Next →</a>
+                            <a href="?pay_page=<?= $pay_total_pages ?><?= $query_string ?>" class="sa-pagination-item">Last</a>
+                            <?php endif; ?>
+                            
+                            <span class="sa-pagination-info">Page <?= $pay_current_page ?> of <?= $pay_total_pages ?></span>
+                        </div>
+                        <?php endif; ?>
 
                         <!-- [ Main Content ] end -->
                     </div>

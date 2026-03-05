@@ -24,10 +24,58 @@ if (!isset($_GET['supplier_id']) || !is_numeric($_GET['supplier_id'])) {
 
 $supplierId = intval($_GET['supplier_id']);
 
+// Get pagination parameters
+$page = isset($_GET['page']) ? max(1, intval($_GET['page'])) : 1;
+$perPage = 50;
+$offset = ($page - 1) * $perPage;
+
 // Database connection
 require_once('../../includes/db.php');
 
-// Prepare and execute query with left joins to fetch reference information
+// Get filter parameters
+$receipt = isset($_GET['receipt']) ? trim($_GET['receipt']) : null;
+$startDate = isset($_GET['startDate']) ? $_GET['startDate'] : null;
+$endDate = isset($_GET['endDate']) ? $_GET['endDate'] : null;
+
+// Build WHERE clause with filters
+$whereConditions = ["st.supplier_id = ? AND st.tenant_id = ? AND st.branch_id = ?"];
+$params = [$supplierId, $tenant_id, $branch_id];
+
+if ($receipt) {
+    $whereConditions[] = "st.receipt LIKE ?";
+    $params[] = '%' . $receipt . '%';
+}
+
+if ($startDate && $endDate) {
+    $whereConditions[] = "DATE(st.transaction_date) BETWEEN ? AND ?";
+    $params[] = $startDate;
+    $params[] = $endDate;
+}
+
+$whereClause = implode(' AND ', $whereConditions);
+
+// Count total transactions with filters
+try {
+    $countQuery = "SELECT COUNT(*) as total FROM supplier_transactions st
+                  WHERE " . $whereClause;
+    $countStmt = $pdo->prepare($countQuery);
+    if (!$countStmt) {
+        throw new Exception("Failed to prepare count statement: " . implode(", ", $pdo->errorInfo()));
+    }
+    if (!$countStmt->execute($params)) {
+        throw new Exception("Failed to execute count statement: " . implode(", ", $countStmt->errorInfo()));
+    }
+    $countResult = $countStmt->fetch(PDO::FETCH_ASSOC);
+    $totalTransactions = $countResult ? $countResult['total'] : 0;
+    $totalPages = ceil($totalTransactions / $perPage);
+} catch (Exception $e) {
+    header('Content-Type: application/json');
+    http_response_code(500);
+    echo json_encode(['error' => 'Count query failed: ' . $e->getMessage()]);
+    exit();
+}
+
+// Prepare and execute query with left joins to fetch reference information and filters
 $query = "SELECT st.*,
             CASE
                             WHEN st.transaction_of = 'ticket_sale' THEN CONCAT(tb.passenger_name)
@@ -68,18 +116,40 @@ $query = "SELECT st.*,
           LEFT JOIN users usr ON usr.id = st.reference_id AND st.transaction_of = 'fund'
           LEFT JOIN jv_payments jv ON jv.id = st.reference_id AND st.transaction_of = 'jv_payment'
           LEFT JOIN additional_payments ap ON ap.id = st.reference_id AND st.transaction_of = 'additional_payment'
-          WHERE st.supplier_id = ? AND st.tenant_id = ? AND st.branch_id = ?
-          ORDER BY st.id DESC";
+          WHERE " . $whereClause . "
+          ORDER BY st.id DESC
+          LIMIT ? OFFSET ?";
 
-$stmt = $pdo->prepare($query);
-$stmt->bindParam(1, $supplierId, PDO::PARAM_INT);
-$stmt->bindParam(2, $tenant_id, PDO::PARAM_INT);
-$stmt->bindParam(3, $branch_id, PDO::PARAM_INT);
-$stmt->execute();
+try {
+    $stmt = $pdo->prepare($query);
+    if (!$stmt) {
+        throw new Exception("Failed to prepare statement: " . implode(", ", $pdo->errorInfo()));
+    }
+    // Add LIMIT and OFFSET parameters
+    $allParams = array_merge($params, [$perPage, $offset]);
+    
+    if (!$stmt->execute($allParams)) {
+        throw new Exception("Failed to execute statement: " . implode(", ", $stmt->errorInfo()));
+    }
+} catch (Exception $e) {
+    header('Content-Type: application/json');
+    http_response_code(500);
+    echo json_encode(['error' => $e->getMessage()]);
+    exit();
+}
 
-// Fetch all transactions
+// Fetch transactions for current page
 $transactions = $stmt->fetchAll(PDO::FETCH_ASSOC);
 
-// Return transactions as JSON
+// Return transactions as JSON with pagination metadata
 header('Content-Type: application/json');
-echo json_encode($transactions);
+echo json_encode([
+    'data' => $transactions,
+    'pagination' => [
+        'current_page' => $page,
+        'per_page' => $perPage,
+        'total' => $totalTransactions,
+        'total_pages' => $totalPages,
+        'offset' => $offset
+    ]
+]);

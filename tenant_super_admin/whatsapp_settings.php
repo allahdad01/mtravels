@@ -7,6 +7,7 @@
 // Check authentication and permissions
 session_start();
 require_once '../includes/db.php';
+require_once '../includes/CsrfProtection.php';
 
 
 // Verify user authentication
@@ -19,8 +20,17 @@ $tenant_id = $_SESSION['tenant_id'] ?? null;
 $user_id = $_SESSION['user_id'];
 
 // Handle AJAX requests
-if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action'])) {
-    handleAjaxRequest();
+if ($_SERVER['REQUEST_METHOD'] === 'POST') {
+    // Validate CSRF token for all POST requests
+    if (!CsrfProtection::validateToken($_POST['csrf_token'] ?? null)) {
+        header('Content-Type: application/json');
+        echo json_encode(['success' => false, 'error' => 'Security token validation failed']);
+        exit;
+    }
+    
+    if (isset($_POST['action'])) {
+        handleAjaxRequest();
+    }
     exit;
 }
 

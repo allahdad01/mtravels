@@ -9,7 +9,11 @@ $message = '';
 $messageType = '';
 
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
-    if (isset($_POST['action'])) {
+    // Validate CSRF token for all POST requests
+    if (!CsrfProtection::validateToken($_POST['csrf_token'] ?? null)) {
+        $message = 'Security token validation failed. Please try again.';
+        $messageType = 'danger';
+    } elseif (isset($_POST['action'])) {
         switch ($_POST['action']) {
             case 'update_profile':
                 // Update profile
@@ -62,13 +66,21 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 if (empty($current_password) || empty($new_password)) {
                     $message = 'Current password and new password are required.';
                     $messageType = 'danger';
-                } elseif (strlen($new_password) < 6) {
-                    $message = 'New password must be at least 6 characters long.';
+                } elseif (strlen($new_password) < 12) {
+                    $message = 'New password must be at least 12 characters long.';
                     $messageType = 'danger';
                 } elseif ($new_password !== $confirm_password) {
                     $message = 'New password and confirmation do not match.';
                     $messageType = 'danger';
                 } else {
+                    // Validate password strength
+                    require_once '../includes/PasswordValidator.php';
+                    $validation = PasswordValidator::validate($new_password);
+                    
+                    if (!$validation['valid']) {
+                        $message = 'Password does not meet requirements: ' . implode(', ', $validation['errors']);
+                        $messageType = 'danger';
+                    } else {
                     try {
                         // Verify current password
                         $stmt = $pdo->prepare("SELECT password FROM users WHERE id = ? AND tenant_id = ?");
@@ -90,6 +102,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                     } catch (PDOException $e) {
                         $message = 'Error changing password: ' . $e->getMessage();
                         $messageType = 'danger';
+                    }
                     }
                 }
                 break;
@@ -149,6 +162,7 @@ try {
                     <div class="card-body">
                         <form method="POST">
                             <input type="hidden" name="action" value="update_profile">
+                            <input type="hidden" name="csrf_token" value="<?= htmlspecialchars($csrf_token, ENT_QUOTES, 'UTF-8') ?>">
                             <div class="row">
                                 <div class="col-md-6">
                                     <div class="form-group">
@@ -211,18 +225,19 @@ try {
                     <div class="card-body">
                         <form method="POST">
                             <input type="hidden" name="action" value="change_password">
+                            <input type="hidden" name="csrf_token" value="<?= htmlspecialchars($csrf_token, ENT_QUOTES, 'UTF-8') ?>">
                             <div class="form-group">
                                 <label for="current_password">Current Password</label>
                                 <input type="password" class="form-control" id="current_password" name="current_password" required>
                             </div>
                             <div class="form-group">
                                 <label for="new_password">New Password</label>
-                                <input type="password" class="form-control" id="new_password" name="new_password" required minlength="6">
-                                <small class="form-text text-muted">Minimum 6 characters</small>
+                                <input type="password" class="form-control" id="new_password" name="new_password" required minlength="12">
+                                <small class="form-text text-muted">Minimum 12 characters with uppercase, lowercase, numbers, and special characters (!@#$%^&*...)</small>
                             </div>
                             <div class="form-group">
                                 <label for="confirm_password">Confirm New Password</label>
-                                <input type="password" class="form-control" id="confirm_password" name="confirm_password" required minlength="6">
+                                <input type="password" class="form-control" id="confirm_password" name="confirm_password" required minlength="12">
                             </div>
                             <button type="submit" class="btn btn-warning btn-block">
                                 <i class="feather icon-lock"></i> Change Password

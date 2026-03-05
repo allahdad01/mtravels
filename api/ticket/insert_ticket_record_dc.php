@@ -23,6 +23,12 @@ $description = isset($_POST['description']) ? DbSecurity::validateInput($_POST['
 // Validate departureDate
 $departureDate = isset($_POST['departureDate']) ? DbSecurity::validateInput($_POST['departureDate'], 'date') : null;
 
+// Validate returnDate
+$returnDate = isset($_POST['returnDate']) ? DbSecurity::validateInput($_POST['returnDate'], 'date') : null;
+
+// Validate dateType (which date is being changed: departure, return, or both)
+$dateType = isset($_POST['dateType']) ? DbSecurity::validateInput($_POST['dateType'], 'string', ['maxlength' => 50]) : 'departure';
+
 // Validate service_penalty
 $service_penalty = isset($_POST['service_penalty']) ? DbSecurity::validateInput($_POST['service_penalty'], 'float', ['min' => 0]) : null;
 
@@ -110,10 +116,10 @@ if (
 
             // 3. Insert date change record into date_change_tickets table
             $insertDateChangeStmt = $pdo->prepare("INSERT INTO date_change_tickets
-                (tenant_id, supplier, sold_to, paid_to, ticket_id, title, passenger_name, pnr, origin, destination, phone, airline, gender,
-                issue_date, departure_date, currency, base, sold, supplier_penalty, service_penalty,
+                (tenant_id, supplier, sold_to, paid_to, ticket_id, title, passenger_name, pnr, origin, destination, return_origin, return_destination, phone, airline, gender,
+                issue_date, departure_date, return_date, date_type, currency, base, sold, supplier_penalty, service_penalty,
                 status, remarks, created_at, updated_at, created_by, branch_id)
-                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, NOW(), NOW(), ?, ?)");
+                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, NOW(), NOW(), ?, ?)");
 
             $insertDateChangeStmt->bindParam(1, $tenant_id, PDO::PARAM_INT);
             $insertDateChangeStmt->bindParam(2, $supplierId, PDO::PARAM_INT);
@@ -125,23 +131,32 @@ if (
             $insertDateChangeStmt->bindParam(8, $ticketData['pnr'], PDO::PARAM_STR);
             $insertDateChangeStmt->bindParam(9, $ticketData['origin'], PDO::PARAM_STR);
             $insertDateChangeStmt->bindParam(10, $ticketData['destination'], PDO::PARAM_STR);
-            $insertDateChangeStmt->bindParam(11, $ticketData['phone'], PDO::PARAM_STR);
-            $insertDateChangeStmt->bindParam(12, $ticketData['airline'], PDO::PARAM_STR);
-            $insertDateChangeStmt->bindParam(13, $ticketData['gender'], PDO::PARAM_STR);
-            $insertDateChangeStmt->bindParam(14, $ticketData['issue_date'], PDO::PARAM_STR);
-            $insertDateChangeStmt->bindParam(15, $newDepartureDate, PDO::PARAM_STR);
-            $insertDateChangeStmt->bindParam(16, $currency, PDO::PARAM_STR);
-            $insertDateChangeStmt->bindParam(17, $base, PDO::PARAM_STR);
-            $insertDateChangeStmt->bindParam(18, $sold, PDO::PARAM_STR);
-            $insertDateChangeStmt->bindParam(19, $supplierPenalty, PDO::PARAM_STR);
-            $insertDateChangeStmt->bindParam(20, $servicePenalty, PDO::PARAM_STR);
+            
+            // Bind return route (for round-trip tickets)
+            $returnOrigin = $ticketData['return_origin'] ?? null;
+            $returnDestination = $ticketData['return_destination'] ?? null;
+            $insertDateChangeStmt->bindParam(11, $returnOrigin, $returnOrigin === null ? PDO::PARAM_NULL : PDO::PARAM_STR);
+            $insertDateChangeStmt->bindParam(12, $returnDestination, $returnDestination === null ? PDO::PARAM_NULL : PDO::PARAM_STR);
+            
+            $insertDateChangeStmt->bindParam(13, $ticketData['phone'], PDO::PARAM_STR);
+            $insertDateChangeStmt->bindParam(14, $ticketData['airline'], PDO::PARAM_STR);
+            $insertDateChangeStmt->bindParam(15, $ticketData['gender'], PDO::PARAM_STR);
+            $insertDateChangeStmt->bindParam(16, $ticketData['issue_date'], PDO::PARAM_STR);
+            $insertDateChangeStmt->bindParam(17, $newDepartureDate, PDO::PARAM_STR);
+            $insertDateChangeStmt->bindParam(18, $returnDate, $returnDate === null ? PDO::PARAM_NULL : PDO::PARAM_STR);
+            $insertDateChangeStmt->bindParam(19, $dateType, PDO::PARAM_STR);
+            $insertDateChangeStmt->bindParam(20, $currency, PDO::PARAM_STR);
+            $insertDateChangeStmt->bindParam(21, $base, PDO::PARAM_STR);
+            $insertDateChangeStmt->bindParam(22, $sold, PDO::PARAM_STR);
+            $insertDateChangeStmt->bindParam(23, $supplierPenalty, PDO::PARAM_STR);
+            $insertDateChangeStmt->bindParam(24, $servicePenalty, PDO::PARAM_STR);
             // Validate status is one of the allowed enum values
             $allowedStatuses = ['Date Changed', 'Refunded', 'Booked'];
             $validStatus = (in_array($status, $allowedStatuses)) ? $status : 'Date Changed';
-            $insertDateChangeStmt->bindParam(21, $validStatus, PDO::PARAM_STR);
-            $insertDateChangeStmt->bindParam(22, $description, PDO::PARAM_STR);
-            $insertDateChangeStmt->bindParam(23, $user_id, PDO::PARAM_INT);
-            $insertDateChangeStmt->bindParam(24, $branch_id, PDO::PARAM_INT);
+            $insertDateChangeStmt->bindParam(25, $validStatus, PDO::PARAM_STR);
+            $insertDateChangeStmt->bindParam(26, $description, PDO::PARAM_STR);
+            $insertDateChangeStmt->bindParam(27, $user_id, PDO::PARAM_INT);
+            $insertDateChangeStmt->bindParam(28, $branch_id, PDO::PARAM_INT);
 
             if (!$insertDateChangeStmt->execute()) {
                 throw new Exception("Failed to insert date change record.");

@@ -40,15 +40,42 @@
                             </div>
 
 
-                            <div class="form-group">
-                                <label for="dateChangeDepartureDate"><?= __('new_departure_date') ?></label>
-                                <input type="date" class="form-control" id="dateChangeDepartureDate" name="departureDate" required>
-                            </div>
-                            
-                            <div class="form-group">
-                                <label for="dateChangeDescription"><?= __('description') ?></label>
-                                <textarea class="form-control" id="dateChangeDescription" name="description" rows="3" required></textarea>
-                            </div>
+                            <div class="form-group" id="dateTypeSelectionGroup" style="display: none;">
+                                 <label><?= __('select_date_to_change') ?></label>
+                                 <div class="custom-control custom-radio">
+                                     <input type="radio" class="custom-control-input" id="changeDepartureOnly" name="dateType" value="departure" checked>
+                                     <label class="custom-control-label" for="changeDepartureOnly">
+                                         <?= __('departure_date_only') ?>
+                                     </label>
+                                 </div>
+                                 <div class="custom-control custom-radio">
+                                     <input type="radio" class="custom-control-input" id="changeReturnOnly" name="dateType" value="return">
+                                     <label class="custom-control-label" for="changeReturnOnly">
+                                         <?= __('return_date_only') ?>
+                                     </label>
+                                 </div>
+                                 <div class="custom-control custom-radio">
+                                     <input type="radio" class="custom-control-input" id="changeBothDates" name="dateType" value="both">
+                                     <label class="custom-control-label" for="changeBothDates">
+                                         <?= __('both_dates') ?>
+                                     </label>
+                                 </div>
+                             </div>
+
+                            <div class="form-group" id="departureGroup">
+                                 <label for="dateChangeDepartureDate"><?= __('new_departure_date') ?></label>
+                                 <input type="date" class="form-control" id="dateChangeDepartureDate" name="departureDate">
+                             </div>
+
+                             <div class="form-group" id="returnDateGroup" style="display: none;">
+                                 <label for="dateChangeReturnDate"><?= __('new_return_date') ?></label>
+                                 <input type="date" class="form-control" id="dateChangeReturnDate" name="returnDate">
+                             </div>
+                             
+                             <div class="form-group">
+                                 <label for="dateChangeDescription"><?= __('description') ?></label>
+                                 <textarea class="form-control" id="dateChangeDescription" name="description" rows="3" required></textarea>
+                             </div>
                         </div>
                         <div class="modal-footer">
                             <button type="button" class="btn btn-secondary" data-dismiss="modal"><?= __('close') ?></button>

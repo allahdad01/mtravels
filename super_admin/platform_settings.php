@@ -44,168 +44,149 @@ $settings_map = array_column($settings, 'value', 'key');
 
 <?php include '../includes/header_super_admin.php'; ?>
 
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Sora:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
 <style>
+/* ─── TOKENS ─────────────────────────────────────────────── */
 :root {
-    --primary-color: #6366f1;
-    --primary-dark: #4f46e5;
-    --secondary-color: #10b981;
-    --accent-color: #f59e0b;
-    --danger-color: #ef4444;
-    --success-color: #22c55e;
-    --warning-color: #f59e0b;
-    --info-color: #06b6d4;
-    --light-bg: #f8fafc;
-    --dark-bg: #1f2937;
-    --text-primary: #111827;
-    --text-secondary: #6b7280;
-    --border-color: #e5e7eb;
-    --shadow-sm: 0 1px 2px 0 rgba(0, 0, 0, 0.05);
-    --shadow-md: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06);
-    --shadow-lg: 0 10px 15px -3px rgba(0, 0, 0, 0.1), 0 4px 6px -2px rgba(0, 0, 0, 0.05);
-    --shadow-xl: 0 20px 25px -5px rgba(0, 0, 0, 0.1), 0 10px 10px -5px rgba(0, 0, 0, 0.04);
-    --border-radius-sm: 0.375rem;
-    --border-radius-md: 0.5rem;
-    --border-radius-lg: 0.75rem;
-    --border-radius-xl: 1rem;
-    --transition-fast: 0.15s ease-in-out;
-    --transition-normal: 0.3s ease-in-out;
+  --bg:       #f8fafc;
+  --surface:  #ffffff;
+  --surface2: #f1f5f9;
+  --border:   #e5e7eb;
+  --text:     #1f2937;
+  --muted:    #6b7280;
+  --accent:   #4099ff;
+  --accent2:  #2ed8b6;
+  --green:    #10b981;
+  --amber:    #f59e0b;
+  --red:      #ef4444;
+  --blue:     #3b82f6;
+  --purple:   #8b5cf6;
+  --radius:   14px;
 }
 
-* {
-    box-sizing: border-box;
-}
-
+/* ─── RESET / BASE ───────────────────────────────────────── */
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+html { font-size: 14px; }
 body {
-    font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
-    background-color: var(--light-bg);
-    color: var(--text-primary);
-    line-height: 1.6;
+  font-family: 'Sora', sans-serif;
+  background: var(--bg);
+  color: var(--text);
+  min-height: 100vh;
 }
 
-.settings-container {
-    max-width: 1200px;
-    margin: 0 auto;
-    padding: 2rem;
+/* ─── MAIN WRAPPER ───────────────────────────────────────── */
+.sa-wrap { display: flex; flex-direction: column; min-height: 100vh; }
+
+/* ─── TOP BAR ────────────────────────────────────────────── */
+.sa-topbar {
+  padding: 16px 28px;
+  background: var(--surface);
+  border-bottom: 1px solid var(--border);
+  display: flex; align-items: center; justify-content: space-between;
+  position: sticky; top: 0; z-index: 50;
+}
+.sa-topbar-left h1 { font-size: 1.05rem; font-weight: 600; letter-spacing: -.02em; }
+.sa-topbar-left p  { font-size: .75rem; color: var(--muted); margin-top: 2px; }
+.sa-topbar-right   { display: flex; align-items: center; gap: 10px; }
+.sa-avatar {
+  width: 34px; height: 34px; border-radius: 50%; overflow: hidden;
+  border: 2px solid var(--accent); cursor: pointer; flex-shrink: 0;
+}
+.sa-avatar img { width: 100%; height: 100%; object-fit: cover; }
+.sa-btn {
+  font-size: .75rem; font-weight: 600; font-family: 'Sora', sans-serif;
+  padding: 6px 14px; border-radius: 20px; cursor: pointer; border: none;
+  display: inline-flex; align-items: center; gap: 5px; text-decoration: none;
+  transition: all .15s;
+}
+.sa-btn-ghost {
+  background: var(--surface2); color: var(--muted); border: 1px solid var(--border);
+}
+.sa-btn-ghost:hover { color: var(--text); border-color: rgba(255,255,255,.15); }
+.sa-btn-primary {
+  background: linear-gradient(135deg, var(--accent), var(--accent2)); color: #fff;
+}
+.sa-btn-primary:hover { opacity: .85; transform: translateY(-1px); }
+.sa-btn-danger { background: var(--red); color: #fff; }
+.sa-btn-danger:hover { opacity: .85; transform: translateY(-1px); }
+
+/* ─── CONTENT ────────────────────────────────────────────── */
+.sa-content { 
+    padding: 24px 28px; 
+    display: flex; 
+    flex-direction: column; 
+    gap: 24px; 
 }
 
-.settings-card {
-    background: white;
-    border-radius: var(--border-radius-xl);
-    box-shadow: var(--shadow-lg);
-    overflow: hidden;
-    transition: var(--transition-normal);
-    border: 1px solid var(--border-color);
+/* ─── SECTION HEADER ─────────────────────────────────────── */
+.sa-shdr {
+  display: flex; align-items: center; justify-content: space-between;
+  margin-bottom: 14px;
+}
+.sa-shdr h2 {
+  font-size: .72rem; text-transform: uppercase; letter-spacing: .1em;
+  color: var(--muted); font-weight: 700;
 }
 
-.settings-card:hover {
-    box-shadow: var(--shadow-xl);
+/* ─── CARD ───────────────────────────────────────────────── */
+.sa-card {
+  background: var(--surface); 
+  border: 1px solid var(--border);
+  border-left: 4px solid var(--accent);
+  border-radius: var(--radius); 
+  overflow: hidden;
+  transition: all .2s;
+  box-shadow: 0 1px 3px rgba(0,0,0,0.04);
+  margin-bottom: 24px;
+}
+.sa-card:last-child { margin-bottom: 0; }
+.sa-card:hover { 
+    border-left-color: var(--accent2);
     transform: translateY(-2px);
+    box-shadow: 0 4px 12px rgba(0,0,0,0.08);
 }
-
-.settings-header {
-    background: linear-gradient(135deg, var(--primary-color) 0%, var(--primary-dark) 100%);
-    color: white;
-    padding: 3rem 2rem;
-    position: relative;
-    overflow: hidden;
+.sa-card-hdr {
+  padding: 16px 24px; 
+  border-bottom: 1px solid var(--border);
+  display: flex; 
+  align-items: center; 
+  justify-content: space-between;
+  background: linear-gradient(135deg, rgba(108,99,255,0.04), rgba(46,216,182,0.02));
 }
-
-.settings-header::before {
-    content: '';
-    position: absolute;
-    top: 0;
-    left: 0;
-    right: 0;
-    bottom: 0;
-    background: radial-gradient(circle at 20% 80%, rgba(255,255,255,0.1) 0%, transparent 50%),
-                radial-gradient(circle at 80% 20%, rgba(255,255,255,0.1) 0%, transparent 50%);
-}
-
-.settings-header-content {
-    position: relative;
-    z-index: 1;
+.sa-card-hdr h3 { 
+    font-size: .95rem; 
+    font-weight: 600; 
+    color: var(--text);
     display: flex;
     align-items: center;
-    gap: 1rem;
+    letter-spacing: -0.01em;
+}
+.sa-card-body { 
+    padding: 24px; 
 }
 
-.settings-header-icon {
-    font-size: 2.5rem;
-    opacity: 0.9;
-}
+/* Card color variants for identification */
+.sa-card:nth-child(1) { border-left-color: #6366f1; }
+.sa-card:nth-child(2) { border-left-color: #ec4899; }
+.sa-card:nth-child(3) { border-left-color: #f59e0b; }
+.sa-card:nth-child(4) { border-left-color: #10b981; }
+.sa-card:nth-child(5) { border-left-color: #8b5cf6; }
+.sa-card:nth-child(6) { border-left-color: #3b82f6; }
 
-.settings-header h1 {
-    margin: 0;
-    font-size: 2.25rem;
-    font-weight: 700;
-    letter-spacing: -0.025em;
-}
+/* Hover states for card colors */
+.sa-card:nth-child(1):hover { border-left-color: #818cf8; }
+.sa-card:nth-child(2):hover { border-left-color: #f472b6; }
+.sa-card:nth-child(3):hover { border-left-color: #fbbf24; }
+.sa-card:nth-child(4):hover { border-left-color: #34d399; }
+.sa-card:nth-child(5):hover { border-left-color: #a78bfa; }
+.sa-card:nth-child(6):hover { border-left-color: #60a5fa; }
 
-.settings-header p {
-    margin: 0.5rem 0 0 0;
-    opacity: 0.9;
-    font-size: 1.125rem;
-}
-
-.settings-content {
-    padding: 2rem;
-}
-
-.settings-section {
-    background: white;
-    border-radius: var(--border-radius-lg);
-    padding: 2rem;
-    margin-bottom: 2rem;
-    border: 1px solid var(--border-color);
-    transition: var(--transition-normal);
-    position: relative;
-}
-
-.settings-section:hover {
-    border-color: var(--primary-color);
-    box-shadow: 0 0 0 3px rgba(99, 102, 241, 0.1);
-}
-
-.section-header {
-    display: flex;
-    align-items: center;
-    gap: 1rem;
-    margin-bottom: 1.5rem;
-    padding-bottom: 1rem;
-    border-bottom: 2px solid var(--primary-color);
-}
-
-.section-icon {
-    width: 40px;
-    height: 40px;
-    background: linear-gradient(135deg, var(--primary-color), var(--primary-dark));
-    border-radius: var(--border-radius-md);
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    color: white;
-    font-size: 1.25rem;
-    flex-shrink: 0;
-}
-
-.section-title {
-    margin: 0;
-    font-size: 1.5rem;
-    font-weight: 600;
-    color: var(--text-primary);
-}
-
-.section-description {
-    margin: 0;
-    font-size: 0.875rem;
-    color: var(--text-secondary);
-    margin-top: 0.25rem;
-}
-
+/* ─── FORM STYLES ────────────────────────────────────────── */
 .form-grid {
     display: grid;
-    grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
-    gap: 1.5rem;
+    grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+    gap: 16px;
 }
 
 .form-group {
@@ -215,226 +196,126 @@ body {
 .form-label {
     display: block;
     font-weight: 600;
-    color: var(--text-primary);
-    margin-bottom: 0.5rem;
-    font-size: 0.875rem;
+    color: var(--text);
+    margin-bottom: 6px;
+    font-size: 0.8rem;
 }
 
 .form-control {
     width: 100%;
-    padding: 0.75rem 1rem;
-    border: 2px solid var(--border-color);
-    border-radius: var(--border-radius-md);
-    font-size: 0.875rem;
-    transition: var(--transition-fast);
-    background: white;
-    color: var(--text-primary);
+    padding: 10px 14px;
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    font-size: 0.85rem;
+    transition: all .15s ease;
+    background: var(--surface2);
+    color: var(--text);
+    font-family: 'Sora', sans-serif;
 }
 
 .form-control:focus {
     outline: none;
-    border-color: var(--primary-color);
-    box-shadow: 0 0 0 3px rgba(99, 102, 241, 0.1);
+    border-color: var(--accent);
+    box-shadow: 0 0 0 3px rgba(108,99,255,.15);
+    background: var(--surface);
 }
 
 .form-control.is-invalid {
-    border-color: var(--danger-color);
+    border-color: var(--red);
     background-color: #fef2f2;
 }
 
 .form-control.is-valid {
-    border-color: var(--success-color);
+    border-color: var(--green);
     background-color: #f0fdf4;
 }
 
 .invalid-feedback {
-    color: var(--danger-color);
-    font-size: 0.75rem;
-    margin-top: 0.25rem;
+    color: var(--red);
+    font-size: 0.7rem;
+    margin-top: 4px;
     display: block;
 }
 
 .valid-feedback {
-    color: var(--success-color);
-    font-size: 0.75rem;
-    margin-top: 0.25rem;
+    color: var(--green);
+    font-size: 0.7rem;
+    margin-top: 4px;
     display: block;
 }
 
+/* ─── IMAGE UPLOAD ──────────────────────────────────────── */
 .image-upload-area {
-    border: 2px dashed var(--border-color);
-    border-radius: var(--border-radius-lg);
-    padding: 2rem;
+    border: 2px dashed var(--border);
+    border-radius: var(--radius);
+    padding: 24px;
     text-align: center;
-    background: var(--light-bg);
-    transition: var(--transition-normal);
+    background: var(--surface2);
+    transition: all .2s;
     cursor: pointer;
-    position: relative;
-    overflow: hidden;
 }
 
 .image-upload-area:hover {
-    border-color: var(--primary-color);
-    background: rgba(99, 102, 241, 0.05);
+    border-color: var(--accent);
+    background: rgba(108,99,255,.05);
 }
 
 .image-upload-area.dragover {
-    border-color: var(--primary-color);
-    background: rgba(99, 102, 241, 0.1);
-    transform: scale(1.02);
+    border-color: var(--accent);
+    background: rgba(108,99,255,.1);
+    transform: scale(1.01);
 }
 
 .upload-icon {
-    font-size: 3rem;
-    color: var(--text-secondary);
-    margin-bottom: 1rem;
-    display: block;
+    font-size: 2.5rem;
+    color: var(--muted);
+    margin-bottom: 8px;
 }
 
 .upload-text h5 {
-    margin: 0 0 0.5rem 0;
-    color: var(--text-primary);
+    margin: 0 0 4px 0;
+    color: var(--text);
     font-weight: 600;
+    font-size: 0.9rem;
 }
 
 .upload-text p {
     margin: 0;
-    color: var(--text-secondary);
-    font-size: 0.875rem;
+    color: var(--muted);
+    font-size: 0.75rem;
 }
 
 .preview-container {
     display: flex;
-    gap: 1rem;
-    margin-top: 1rem;
+    gap: 12px;
+    margin-top: 12px;
     flex-wrap: wrap;
 }
 
 .preview-item {
-    background: white;
-    padding: 1rem;
-    border-radius: var(--border-radius-md);
-    border: 1px solid var(--border-color);
+    background: var(--surface);
+    padding: 12px;
+    border-radius: 8px;
+    border: 1px solid var(--border);
     text-align: center;
-    min-width: 150px;
-    box-shadow: var(--shadow-sm);
+    min-width: 140px;
 }
 
 .current-image {
-    border-radius: var(--border-radius-md);
-    border: 2px solid var(--border-color);
-    transition: var(--transition-normal);
-    max-width: 200px;
-    max-height: 120px;
-    object-fit: cover;
+    border-radius: 6px;
+    border: 2px solid var(--border);
+    max-width: 180px;
+    max-height: 100px;
+    object-fit: contain;
 }
 
-.current-image:hover {
-    border-color: var(--primary-color);
-    box-shadow: 0 0 0 3px rgba(99, 102, 241, 0.1);
-}
-
-.btn {
-    display: inline-flex;
-    align-items: center;
-    gap: 0.5rem;
-    padding: 0.75rem 1.5rem;
-    border: none;
-    border-radius: var(--border-radius-md);
-    font-weight: 600;
-    font-size: 0.875rem;
-    text-decoration: none;
-    cursor: pointer;
-    transition: var(--transition-fast);
-    text-transform: uppercase;
-    letter-spacing: 0.025em;
-}
-
-.btn-primary {
-    background: linear-gradient(135deg, var(--primary-color), var(--primary-dark));
-    color: white;
-}
-
-.btn-primary:hover {
-    transform: translateY(-1px);
-    box-shadow: var(--shadow-lg);
-}
-
-.btn-secondary {
-    background: #6b7280;
-    color: white;
-}
-
-.btn-secondary:hover {
-    background: #4b5563;
-    transform: translateY(-1px);
-    box-shadow: var(--shadow-md);
-}
-
-.btn-success {
-    background: var(--success-color);
-    color: white;
-}
-
-.btn-success:hover {
-    background: #16a34a;
-    transform: translateY(-1px);
-}
-
-.btn-danger {
-    background: var(--danger-color);
-    color: white;
-}
-
-.btn-danger:hover {
-    background: #dc2626;
-    transform: translateY(-1px);
-}
-
-.btn-info {
-    background: var(--info-color);
-    color: white;
-}
-
-.btn-info:hover {
-    background: #0891b2;
-    transform: translateY(-1px);
-}
-
-.alert {
-    padding: 1rem 1.25rem;
-    border-radius: var(--border-radius-lg);
-    margin-bottom: 1.5rem;
-    border: 1px solid transparent;
-    position: relative;
-    display: flex;
-    align-items: flex-start;
-    gap: 0.75rem;
-}
-
-.alert-success {
-    background: rgba(34, 197, 94, 0.1);
-    border-color: rgba(34, 197, 94, 0.2);
-    color: #166534;
-}
-
-.alert-danger {
-    background: rgba(239, 68, 68, 0.1);
-    border-color: rgba(239, 68, 68, 0.2);
-    color: #991b1b;
-}
-
-.alert-icon {
-    flex-shrink: 0;
-    font-size: 1.25rem;
-}
-
+/* ─── TOGGLE SWITCH ──────────────────────────────────────── */
 .toggle-switch {
     position: relative;
     display: inline-block;
-    width: 3rem;
-    height: 1.5rem;
-    margin-left: 1rem;
+    width: 44px;
+    height: 24px;
+    margin-left: 10px;
 }
 
 .toggle-switch input {
@@ -451,46 +332,77 @@ body {
     right: 0;
     bottom: 0;
     background-color: #cbd5e1;
-    transition: var(--transition-normal);
-    border-radius: 1.5rem;
+    transition: .3s;
+    border-radius: 24px;
 }
 
 .slider:before {
     position: absolute;
     content: "";
-    height: 1rem;
-    width: 1rem;
-    left: 0.25rem;
-    bottom: 0.25rem;
+    height: 18px;
+    width: 18px;
+    left: 3px;
+    bottom: 3px;
     background-color: white;
-    transition: var(--transition-normal);
+    transition: .3s;
     border-radius: 50%;
-    box-shadow: var(--shadow-sm);
+    box-shadow: 0 2px 4px rgba(0,0,0,.15);
 }
 
 input:checked + .slider {
-    background: linear-gradient(135deg, var(--primary-color), var(--primary-dark));
+    background: linear-gradient(135deg, var(--accent), var(--accent2));
 }
 
 input:checked + .slider:before {
-    transform: translateX(1.5rem);
+    transform: translateX(20px);
 }
 
+/* ─── ALERTS ─────────────────────────────────────────────── */
+.alert {
+    padding: 14px 18px;
+    border-radius: 10px;
+    margin-bottom: 16px;
+    border: 1px solid transparent;
+    display: flex;
+    align-items: flex-start;
+    gap: 10px;
+    font-size: 0.85rem;
+}
+
+.alert-success {
+    background: rgba(34,197,94,.1);
+    border-color: rgba(34,197,94,.2);
+    color: #166534;
+}
+
+.alert-danger {
+    background: rgba(239,68,68,.1);
+    border-color: rgba(239,68,68,.2);
+    color: #991b1b;
+}
+
+.alert-icon {
+    flex-shrink: 0;
+    font-size: 1.1rem;
+}
+
+/* ─── ACTION BUTTONS ────────────────────────────────────── */
 .action-buttons {
     display: flex;
-    gap: 1rem;
+    gap: 12px;
     justify-content: center;
-    margin-top: 2rem;
+    margin-top: 24px;
     flex-wrap: wrap;
 }
 
+/* ─── LOADING OVERLAY ───────────────────────────────────── */
 .loading-overlay {
     position: fixed;
     top: 0;
     left: 0;
     width: 100%;
     height: 100%;
-    background: rgba(0, 0, 0, 0.6);
+    background: rgba(0,0,0,.6);
     display: none;
     justify-content: center;
     align-items: center;
@@ -501,7 +413,7 @@ input:checked + .slider:before {
 .loading-spinner {
     width: 3rem;
     height: 3rem;
-    border: 4px solid rgba(255, 255, 255, 0.3);
+    border: 4px solid rgba(255,255,255,.3);
     border-top: 4px solid white;
     border-radius: 50%;
     animation: spin 1s linear infinite;
@@ -512,48 +424,25 @@ input:checked + .slider:before {
     100% { transform: rotate(360deg); }
 }
 
+/* ─── SCROLLBAR ──────────────────────────────────────────── */
+::-webkit-scrollbar { width: 5px; height: 5px; }
+::-webkit-scrollbar-track { background: transparent; }
+::-webkit-scrollbar-thumb { background: var(--surface2); border-radius: 10px; }
+
+/* ─── PCODED LAYOUT INTEGRATION ──────────────────────────── */
+body { background: var(--bg) !important; }
+.pcoded-main-container, .pcoded-wrapper, .pcoded-content, .pcoded-inner-content { background: var(--bg) !important; }
+.page-header { background: transparent !important; border: none !important; box-shadow: none !important; }
+.page-header h5 { color: var(--text) !important; }
+.breadcrumb { background: transparent !important; }
+.breadcrumb-item a, .breadcrumb-item.active { color: var(--muted) !important; }
+
+/* ─── RESPONSIVE ─────────────────────────────────────────── */
 @media (max-width: 768px) {
-    .settings-container {
-        padding: 1rem;
-    }
-
-    .settings-header {
-        padding: 2rem 1rem;
-    }
-
-    .settings-header h1 {
-        font-size: 1.875rem;
-    }
-
-    .settings-content {
-        padding: 1rem;
-    }
-
-    .settings-section {
-        padding: 1.5rem;
-    }
-
-    .form-grid {
-        grid-template-columns: 1fr;
-        gap: 1rem;
-    }
-
-    .action-buttons {
-        flex-direction: column;
-        align-items: stretch;
-    }
-
-    .btn {
-        justify-content: center;
-    }
-}
-
-@media (prefers-reduced-motion: reduce) {
-    * {
-        animation-duration: 0.01ms !important;
-        animation-iteration-count: 1 !important;
-        transition-duration: 0.01ms !important;
-    }
+    .sa-content { padding: 16px; }
+    .form-grid { grid-template-columns: 1fr; }
+    .action-buttons { flex-direction: column; }
+    .sa-btn { justify-content: center; }
 }
 </style>
 
@@ -580,379 +469,302 @@ input:checked + .slider:before {
                 </div>
                 <!-- [ breadcrumb ] end -->
 
-                <div class="main-body">
-                    <div class="page-wrapper">
-                        <!-- [ Main Content ] start -->
-                        <div class="row">
-                            <div class="col-xl-12">
-                                <div class="settings-container">
-                                    <div class="settings-card">
-                                        <div class="settings-header">
-                                            <div class="settings-header-content">
-                                                <div class="settings-header-icon">
-                                                    <i class="feather icon-settings"></i>
-                                                </div>
-                                                <div>
-                                                    <h1>Platform Configuration</h1>
-                                                    <p>Manage your platform's core settings, branding, and functionality</p>
+                <div class="sa-wrap">
+                    <div class="sa-content">
+
+                        <!-- Alerts -->
+                        <?php if (isset($_GET['error'])): ?>
+                            <div class="alert alert-danger" role="alert">
+                                <div class="alert-icon"><i class="feather icon-alert-circle"></i></div>
+                                <div><strong>Error:</strong> <?= htmlspecialchars(urldecode($_GET['error'])) ?></div>
+                            </div>
+                        <?php endif; ?>
+
+                        <?php if (isset($_GET['success'])): ?>
+                            <div class="alert alert-success" role="alert">
+                                <div class="alert-icon"><i class="feather icon-check-circle"></i></div>
+                                <div><strong>Success:</strong> <?= htmlspecialchars(urldecode($_GET['success'])) ?></div>
+                            </div>
+                        <?php endif; ?>
+
+                        <form id="settingsForm" enctype="multipart/form-data" method="POST" action="update_settings.php">
+                            <input type="hidden" name="csrf_token" value="<?= htmlspecialchars($_SESSION['csrf_token']) ?>">
+
+                            <!-- Platform Identity Card -->
+                            <div class="sa-card">
+                                <div class="sa-card-hdr">
+                                    <h3><i class="feather icon-building" style="margin-right:8px"></i>Platform Identity</h3>
+                                </div>
+                                <div class="sa-card-body">
+                                    <div class="form-grid">
+                                        <div class="form-group">
+                                            <label class="form-label" for="platform_name">Platform Name</label>
+                                            <input type="text" class="form-control" id="platform_name" name="platform_name"
+                                                   value="<?= htmlspecialchars($settings_map['platform_name'] ?? '') ?>"
+                                                   placeholder="Enter your platform name" required>
+                                        </div>
+                                        <div class="form-group">
+                                            <label class="form-label" for="support_email">Support Email</label>
+                                            <input type="email" class="form-control" id="support_email" name="support_email"
+                                                   value="<?= htmlspecialchars($settings_map['support_email'] ?? '') ?>"
+                                                   placeholder="support@yourplatform.com" required>
+                                        </div>
+                                        <div class="form-group">
+                                            <label class="form-label" for="contact_email">Contact Email</label>
+                                            <input type="email" class="form-control" id="contact_email" name="contact_email"
+                                                   value="<?= htmlspecialchars($settings_map['contact_email'] ?? '') ?>"
+                                                   placeholder="contact@yourplatform.com">
+                                        </div>
+                                        <div class="form-group">
+                                            <label class="form-label" for="website_url">Website URL</label>
+                                            <input type="url" class="form-control" id="website_url" name="website_url"
+                                                   value="<?= htmlspecialchars($settings_map['website_url'] ?? '') ?>"
+                                                   placeholder="https://yourplatform.com">
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <!-- Visual Branding Card -->
+                            <div class="sa-card">
+                                <div class="sa-card-hdr">
+                                    <h3><i class="feather icon-image" style="margin-right:8px"></i>Visual Branding</h3>
+                                </div>
+                                <div class="sa-card-body">
+                                    <div class="form-grid">
+                                        <div class="form-group">
+                                            <label class="form-label" for="platform_logo">Platform Logo</label>
+                                            <div class="image-upload-area" onclick="document.getElementById('platform_logo').click()" role="button" tabindex="0" aria-label="Upload platform logo">
+                                                <input type="file" class="d-none" id="platform_logo" name="platform_logo" accept="image/*" aria-describedby="logo-help">
+                                                <div class="upload-icon"><i class="feather icon-camera"></i></div>
+                                                <div class="upload-text">
+                                                    <h5>Click to upload logo</h5>
+                                                    <p id="logo-help">PNG, JPG, GIF up to 2MB</p>
                                                 </div>
                                             </div>
+                                            <?php if (!empty($settings_map['platform_logo']) && $settings_map['platform_logo'] !== 'None'): ?>
+                                                <div class="preview-container">
+                                                    <div class="preview-item">
+                                                        <small class="text-muted d-block mb-2">Current Logo</small>
+                                                        <img src="../uploads/logo/<?= htmlspecialchars($settings_map['platform_logo']) ?>"
+                                                             alt="Current Platform Logo" class="current-image">
+                                                        <br><small class="text-muted"><?= htmlspecialchars($settings_map['platform_logo']) ?></small>
+                                                    </div>
+                                                </div>
+                                            <?php endif; ?>
                                         </div>
-                                        <div class="settings-content">
 
-                                            <?php if (isset($_GET['error'])): ?>
-                                                <div class="alert alert-danger" role="alert">
-                                                    <div class="alert-icon">
-                                                        <i class="feather icon-alert-circle"></i>
+                                        <div class="form-group">
+                                            <label class="form-label" for="platform_favicon">Platform Favicon</label>
+                                            <div class="image-upload-area" onclick="document.getElementById('platform_favicon').click()" role="button" tabindex="0" aria-label="Upload platform favicon">
+                                                <input type="file" class="d-none" id="platform_favicon" name="platform_favicon" accept=".ico,.png" aria-describedby="favicon-help">
+                                                <div class="upload-icon"><i class="feather icon-link"></i></div>
+                                                <div class="upload-text">
+                                                    <h5>Click to upload favicon</h5>
+                                                    <p id="favicon-help">ICO or PNG 16x16, 32x32</p>
+                                                </div>
+                                            </div>
+                                            <?php if (!empty($settings_map['platform_favicon']) && $settings_map['platform_favicon'] !== 'None'): ?>
+                                                <div class="preview-container">
+                                                    <div class="preview-item">
+                                                        <small class="text-muted d-block mb-2">Current Favicon</small>
+                                                        <img src="../uploads/logo/<?= htmlspecialchars($settings_map['platform_favicon']) ?>"
+                                                             alt="Current Platform Favicon" style="width: 32px; height: 32px;">
+                                                        <br><small class="text-muted"><?= htmlspecialchars($settings_map['platform_favicon']) ?></small>
                                                     </div>
-                                                    <div>
-                                                        <strong>Error:</strong> <?= htmlspecialchars(urldecode($_GET['error'])) ?>
-                                                    </div>
-                                                    <button type="button" class="btn btn-sm btn-danger ms-auto" onclick="this.parentElement.remove()" aria-label="Close">
-                                                        <i class="feather icon-x"></i>
-                                                    </button>
                                                 </div>
                                             <?php endif; ?>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
 
-                                            <?php if (isset($_GET['success'])): ?>
-                                                <div class="alert alert-success" role="alert">
-                                                    <div class="alert-icon">
-                                                        <i class="feather icon-check-circle"></i>
-                                                    </div>
-                                                    <div>
-                                                        <strong>Success:</strong> <?= htmlspecialchars(urldecode($_GET['success'])) ?>
-                                                    </div>
-                                                    <button type="button" class="btn btn-sm btn-success ms-auto" onclick="this.parentElement.remove()" aria-label="Close">
-                                                        <i class="feather icon-x"></i>
-                                                    </button>
-                                                </div>
-                                            <?php endif; ?>
+                            <!-- Contact Information Card -->
+                            <div class="sa-card">
+                                <div class="sa-card-hdr">
+                                    <h3><i class="feather icon-phone" style="margin-right:8px"></i>Contact Information</h3>
+                                </div>
+                                <div class="sa-card-body">
+                                    <div class="form-grid">
+                                        <div class="form-group">
+                                            <label class="form-label" for="contact_phone">Contact Phone</label>
+                                            <input type="tel" class="form-control" id="contact_phone" name="contact_phone"
+                                                   value="<?= htmlspecialchars($settings_map['contact_phone'] ?? '') ?>"
+                                                   placeholder="+1234567890">
+                                        </div>
+                                        <div class="form-group">
+                                            <label class="form-label" for="support_phone">Support Phone</label>
+                                            <input type="tel" class="form-control" id="support_phone" name="support_phone"
+                                                   value="<?= htmlspecialchars($settings_map['support_phone'] ?? '') ?>"
+                                                   placeholder="+1234567890">
+                                        </div>
+                                    </div>
+                                    <div class="form-group" style="margin-top:16px">
+                                        <label class="form-label" for="contact_address">Contact Address</label>
+                                        <textarea class="form-control" id="contact_address" name="contact_address" rows="3"
+                                                  placeholder="Enter your business address"><?= htmlspecialchars($settings_map['contact_address'] ?? '') ?></textarea>
+                                    </div>
+                                </div>
+                            </div>
 
-                                        <form id="settingsForm" enctype="multipart/form-data" method="POST" action="update_settings.php">
-                                            <input type="hidden" name="csrf_token" value="<?= htmlspecialchars($_SESSION['csrf_token']) ?>">
-                                            
-                                           <!-- Platform Identity Section -->
-                                           <div class="settings-section">
-                                               <div class="section-header">
-                                                   <div class="section-icon">
-                                                       <i class="feather icon-building"></i>
-                                                   </div>
-                                                   <div>
-                                                       <h2 class="section-title">Platform Identity</h2>
-                                                       <p class="section-description">Configure your platform's basic information and contact details</p>
-                                                   </div>
-                                               </div>
+                            <!-- Social Media Card -->
+                            <div class="sa-card">
+                                <div class="sa-card-hdr">
+                                    <h3><i class="feather icon-globe" style="margin-right:8px"></i>Social Media Links</h3>
+                                </div>
+                                <div class="sa-card-body">
+                                    <div class="form-grid">
+                                        <div class="form-group">
+                                            <label class="form-label" for="contact_facebook">Facebook URL</label>
+                                            <input type="url" class="form-control" id="contact_facebook" name="contact_facebook"
+                                                   value="<?= htmlspecialchars($settings_map['contact_facebook'] ?? '') ?>"
+                                                   placeholder="https://facebook.com/yourpage">
+                                        </div>
+                                        <div class="form-group">
+                                            <label class="form-label" for="contact_twitter">Twitter URL</label>
+                                            <input type="url" class="form-control" id="contact_twitter" name="contact_twitter"
+                                                   value="<?= htmlspecialchars($settings_map['contact_twitter'] ?? '') ?>"
+                                                   placeholder="https://twitter.com/yourhandle">
+                                        </div>
+                                        <div class="form-group">
+                                            <label class="form-label" for="contact_linkedin">LinkedIn URL</label>
+                                            <input type="url" class="form-control" id="contact_linkedin" name="contact_linkedin"
+                                                   value="<?= htmlspecialchars($settings_map['contact_linkedin'] ?? '') ?>"
+                                                   placeholder="https://linkedin.com/company/yourcompany">
+                                        </div>
+                                        <div class="form-group">
+                                            <label class="form-label" for="contact_instagram">Instagram URL</label>
+                                            <input type="url" class="form-control" id="contact_instagram" name="contact_instagram"
+                                                   value="<?= htmlspecialchars($settings_map['contact_instagram'] ?? '') ?>"
+                                                   placeholder="https://instagram.com/yourhandle">
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
 
-                                               <div class="form-grid">
-                                                   <div class="form-group">
-                                                       <label class="form-label" for="platform_name">Platform Name</label>
-                                                       <input type="text" class="form-control" id="platform_name" name="platform_name"
-                                                              value="<?= htmlspecialchars($settings_map['platform_name'] ?? '') ?>"
-                                                              placeholder="Enter your platform name" required>
-                                                   </div>
-                                                   <div class="form-group">
-                                                       <label class="form-label" for="support_email">Support Email</label>
-                                                       <input type="email" class="form-control" id="support_email" name="support_email"
-                                                              value="<?= htmlspecialchars($settings_map['support_email'] ?? '') ?>"
-                                                              placeholder="support@yourplatform.com" required>
-                                                   </div>
-                                                   <div class="form-group">
-                                                       <label class="form-label" for="contact_email">Contact Email</label>
-                                                       <input type="email" class="form-control" id="contact_email" name="contact_email"
-                                                              value="<?= htmlspecialchars($settings_map['contact_email'] ?? '') ?>"
-                                                              placeholder="contact@yourplatform.com">
-                                                   </div>
-                                                   <div class="form-group">
-                                                       <label class="form-label" for="website_url">Website URL</label>
-                                                       <input type="url" class="form-control" id="website_url" name="website_url"
-                                                              value="<?= htmlspecialchars($settings_map['website_url'] ?? '') ?>"
-                                                              placeholder="https://yourplatform.com">
-                                                   </div>
-                                               </div>
-                                           </div>
+                            <!-- SMTP Configuration Card -->
+                            <div class="sa-card">
+                                <div class="sa-card-hdr">
+                                    <h3><i class="feather icon-mail" style="margin-right:8px"></i>SMTP Configuration</h3>
+                                </div>
+                                <div class="sa-card-body">
+                                    <div class="form-grid">
+                                        <div class="form-group">
+                                            <label class="form-label" for="smtp_host">SMTP Host</label>
+                                            <input type="text" class="form-control" id="smtp_host" name="smtp_host"
+                                                   value="<?= htmlspecialchars($settings_map['smtp_host'] ?? '') ?>"
+                                                   placeholder="smtp.gmail.com">
+                                        </div>
+                                        <div class="form-group">
+                                            <label class="form-label" for="smtp_port">SMTP Port</label>
+                                            <input type="number" class="form-control" id="smtp_port" name="smtp_port"
+                                                   value="<?= htmlspecialchars($settings_map['smtp_port'] ?? '') ?>"
+                                                   placeholder="587" min="1" max="65535">
+                                        </div>
+                                        <div class="form-group">
+                                            <label class="form-label" for="smtp_encryption">Encryption</label>
+                                            <select class="form-control" id="smtp_encryption" name="smtp_encryption">
+                                                <option value="">None</option>
+                                                <option value="tls" <?= ($settings_map['smtp_encryption'] ?? '') === 'tls' ? 'selected' : '' ?>>TLS</option>
+                                                <option value="ssl" <?= ($settings_map['smtp_encryption'] ?? '') === 'ssl' ? 'selected' : '' ?>>SSL</option>
+                                            </select>
+                                        </div>
+                                        <div class="form-group">
+                                            <label class="form-label" for="smtp_username">SMTP Username</label>
+                                            <input type="text" class="form-control" id="smtp_username" name="smtp_username"
+                                                   value="<?= htmlspecialchars($settings_map['smtp_username'] ?? '') ?>"
+                                                   placeholder="your-email@gmail.com">
+                                        </div>
+                                        <div class="form-group">
+                                            <label class="form-label" for="smtp_password">SMTP Password</label>
+                                            <input type="password" class="form-control" id="smtp_password" name="smtp_password"
+                                                   value="<?= htmlspecialchars($settings_map['smtp_password'] ?? '') ?>"
+                                                   placeholder="Your SMTP password">
+                                        </div>
+                                        <div class="form-group">
+                                            <label class="form-label" for="smtp_from_email">From Email</label>
+                                            <input type="email" class="form-control" id="smtp_from_email" name="smtp_from_email"
+                                                   value="<?= htmlspecialchars($settings_map['smtp_from_email'] ?? '') ?>"
+                                                   placeholder="noreply@yourdomain.com">
+                                        </div>
+                                        <div class="form-group">
+                                            <label class="form-label" for="smtp_from_name">From Name</label>
+                                            <input type="text" class="form-control" id="smtp_from_name" name="smtp_from_name"
+                                                   value="<?= htmlspecialchars($settings_map['smtp_from_name'] ?? '') ?>"
+                                                   placeholder="Your Platform Name">
+                                        </div>
+                                    </div>
+                                    <!-- Test Email Section -->
+                                    <div class="form-grid" style="margin-top:16px">
+                                        <div class="form-group">
+                                            <label class="form-label" for="test_email">Test Email Address</label>
+                                            <input type="email" class="form-control" id="test_email" name="test_email"
+                                                   placeholder="test@example.com">
+                                        </div>
+                                        <div class="form-group">
+                                            <label class="form-label">&nbsp;</label>
+                                            <button type="button" class="sa-btn sa-btn-primary" id="testEmailBtn" style="width:100%;justify-content:center">
+                                                <i class="feather icon-send"></i> Send Test Email
+                                            </button>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
 
-                                           <!-- Visual Branding Section -->
-                                           <div class="settings-section">
-                                               <div class="section-header">
-                                                   <div class="section-icon">
-                                                       <i class="feather icon-image"></i>
-                                                   </div>
-                                                   <div>
-                                                       <h2 class="section-title">Visual Branding</h2>
-                                                       <p class="section-description">Upload and manage your platform's visual assets</p>
-                                                   </div>
-                                               </div>
+                            <!-- Platform Configuration Card -->
+                            <div class="sa-card">
+                                <div class="sa-card-hdr">
+                                    <h3><i class="feather icon-settings" style="margin-right:8px"></i>Platform Configuration</h3>
+                                </div>
+                                <div class="sa-card-body">
+                                    <div class="form-grid">
+                                        <div class="form-group">
+                                            <label class="form-label" for="default_currency">Default Currency</label>
+                                            <input type="text" class="form-control" id="default_currency" name="default_currency"
+                                                   value="<?= htmlspecialchars($settings_map['default_currency'] ?? '') ?>"
+                                                   placeholder="USD" maxlength="3" required>
+                                        </div>
+                                        <div class="form-group">
+                                            <label class="form-label" for="max_users_per_tenant">Max Users Per Tenant</label>
+                                            <input type="number" class="form-control" id="max_users_per_tenant" name="max_users_per_tenant"
+                                                   value="<?= htmlspecialchars($settings_map['max_users_per_tenant'] ?? '') ?>"
+                                                   placeholder="100" min="1" required>
+                                        </div>
+                                        <div class="form-group">
+                                            <label class="form-label" for="api_enabled">API Status</label>
+                                            <div style="display:flex;align-items:center;gap:10px;margin-top:8px">
+                                                <span style="font-size:0.85rem;color:var(--muted)">Disabled</span>
+                                                <label class="toggle-switch">
+                                                    <input type="hidden" name="api_enabled" value="false">
+                                                    <input type="checkbox" id="api_enabled" name="api_enabled" value="true"
+                                                           <?= ($settings_map['api_enabled'] ?? '') === 'true' ? 'checked' : '' ?>>
+                                                    <span class="slider"></span>
+                                                </label>
+                                                <span style="font-size:0.85rem;color:var(--muted)">Enabled</span>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
 
-                                               <div class="form-grid">
-                                                   <div class="form-group">
-                                                       <label class="form-label" for="platform_logo">Platform Logo</label>
-                                                       <div class="image-upload-area" onclick="document.getElementById('platform_logo').click()" role="button" tabindex="0" aria-label="Upload platform logo">
-                                                           <input type="file" class="d-none" id="platform_logo" name="platform_logo" accept="image/*" aria-describedby="logo-help">
-                                                           <div class="upload-icon" aria-hidden="true">
-                                                               <i class="feather icon-camera"></i>
-                                                           </div>
-                                                           <div class="upload-text">
-                                                               <h5>Click to upload logo</h5>
-                                                               <p id="logo-help">PNG, JPG, GIF up to 2MB</p>
-                                                           </div>
-                                                       </div>
+                            <!-- Action Buttons -->
+                            <div class="action-buttons">
+                                <button type="button" class="sa-btn sa-btn-ghost" onclick="resetForm()">
+                                    <i class="feather icon-refresh-cw"></i> Reset Changes
+                                </button>
+                                <button type="submit" class="sa-btn sa-btn-primary">
+                                    <i class="feather icon-save"></i> Save All Settings
+                                </button>
+                            </div>
+                        </form>
 
-                                                       <?php if (!empty($settings_map['platform_logo']) && $settings_map['platform_logo'] !== 'None'): ?>
-                                                           <div class="preview-container">
-                                                               <div class="preview-item">
-                                                                   <small class="text-muted d-block mb-2">Current Logo</small>
-                                                                   <img src="../uploads/logo/<?= htmlspecialchars($settings_map['platform_logo']) ?>"
-                                                                        alt="Current Platform Logo"
-                                                                        class="current-image">
-                                                                   <br>
-                                                                   <small class="text-muted"><?= htmlspecialchars($settings_map['platform_logo']) ?></small>
-                                                               </div>
-                                                           </div>
-                                                       <?php endif; ?>
-                                                   </div>
+                    </div><!-- /sa-content -->
+                </div><!-- /sa-wrap -->
+            </div><!-- /.pcoded-inner-content -->
+        </div><!-- /.pcoded-content -->
+    </div><!-- /.pcoded-wrapper -->
+</div><!-- /.pcoded-main-container -->
 
-                                                   <div class="form-group">
-                                                       <label class="form-label" for="platform_favicon">Platform Favicon</label>
-                                                       <div class="image-upload-area" onclick="document.getElementById('platform_favicon').click()" role="button" tabindex="0" aria-label="Upload platform favicon">
-                                                           <input type="file" class="d-none" id="platform_favicon" name="platform_favicon" accept=".ico,.png" aria-describedby="favicon-help">
-                                                           <div class="upload-icon" aria-hidden="true">
-                                                               <i class="feather icon-link"></i>
-                                                           </div>
-                                                           <div class="upload-text">
-                                                               <h5>Click to upload favicon</h5>
-                                                               <p id="favicon-help">ICO or PNG 16x16, 32x32</p>
-                                                           </div>
-                                                       </div>
-
-                                                       <?php if (!empty($settings_map['platform_favicon']) && $settings_map['platform_favicon'] !== 'None'): ?>
-                                                           <div class="preview-container">
-                                                               <div class="preview-item">
-                                                                   <small class="text-muted d-block mb-2">Current Favicon</small>
-                                                                   <img src="../uploads/logo/<?= htmlspecialchars($settings_map['platform_favicon']) ?>"
-                                                                        alt="Current Platform Favicon"
-                                                                        style="width: 32px; height: 32px;">
-                                                                   <br>
-                                                                   <small class="text-muted"><?= htmlspecialchars($settings_map['platform_favicon']) ?></small>
-                                                               </div>
-                                                           </div>
-                                                       <?php endif; ?>
-                                                   </div>
-                                               </div>
-                                           </div>
-
-                                           <!-- Contact Information Section -->
-                                           <div class="settings-section">
-                                               <div class="section-header">
-                                                   <div class="section-icon">
-                                                       <i class="feather icon-phone"></i>
-                                                   </div>
-                                                   <div>
-                                                       <h2 class="section-title">Contact Information</h2>
-                                                       <p class="section-description">Set up contact details for your platform</p>
-                                                   </div>
-                                               </div>
-
-                                               <div class="form-grid">
-                                                   <div class="form-group">
-                                                       <label class="form-label" for="contact_phone">Contact Phone</label>
-                                                       <input type="tel" class="form-control" id="contact_phone" name="contact_phone"
-                                                              value="<?= htmlspecialchars($settings_map['contact_phone'] ?? '') ?>"
-                                                              placeholder="+1234567890">
-                                                   </div>
-                                                   <div class="form-group">
-                                                       <label class="form-label" for="support_phone">Support Phone</label>
-                                                       <input type="tel" class="form-control" id="support_phone" name="support_phone"
-                                                              value="<?= htmlspecialchars($settings_map['support_phone'] ?? '') ?>"
-                                                              placeholder="+1234567890">
-                                                   </div>
-                                               </div>
-
-                                               <div class="form-group">
-                                                   <label class="form-label" for="contact_address">Contact Address</label>
-                                                   <textarea class="form-control" id="contact_address" name="contact_address" rows="3"
-                                                             placeholder="Enter your business address"><?= htmlspecialchars($settings_map['contact_address'] ?? '') ?></textarea>
-                                               </div>
-                                           </div>
-
-                                           <!-- Social Media Section -->
-                                           <div class="settings-section">
-                                               <div class="section-header">
-                                                   <div class="section-icon">
-                                                       <i class="feather icon-globe"></i>
-                                                   </div>
-                                                   <div>
-                                                       <h2 class="section-title">Social Media Links</h2>
-                                                       <p class="section-description">Connect your social media profiles</p>
-                                                   </div>
-                                               </div>
-
-                                               <div class="form-grid">
-                                                   <div class="form-group">
-                                                       <label class="form-label" for="contact_facebook">Facebook URL</label>
-                                                       <input type="url" class="form-control" id="contact_facebook" name="contact_facebook"
-                                                              value="<?= htmlspecialchars($settings_map['contact_facebook'] ?? '') ?>"
-                                                              placeholder="https://facebook.com/yourpage">
-                                                   </div>
-                                                   <div class="form-group">
-                                                       <label class="form-label" for="contact_twitter">Twitter URL</label>
-                                                       <input type="url" class="form-control" id="contact_twitter" name="contact_twitter"
-                                                              value="<?= htmlspecialchars($settings_map['contact_twitter'] ?? '') ?>"
-                                                              placeholder="https://twitter.com/yourhandle">
-                                                   </div>
-                                                   <div class="form-group">
-                                                       <label class="form-label" for="contact_linkedin">LinkedIn URL</label>
-                                                       <input type="url" class="form-control" id="contact_linkedin" name="contact_linkedin"
-                                                              value="<?= htmlspecialchars($settings_map['contact_linkedin'] ?? '') ?>"
-                                                              placeholder="https://linkedin.com/company/yourcompany">
-                                                   </div>
-                                                   <div class="form-group">
-                                                       <label class="form-label" for="contact_instagram">Instagram URL</label>
-                                                       <input type="url" class="form-control" id="contact_instagram" name="contact_instagram"
-                                                              value="<?= htmlspecialchars($settings_map['contact_instagram'] ?? '') ?>"
-                                                              placeholder="https://instagram.com/yourhandle">
-                                                   </div>
-                                               </div>
-                                           </div>
-
-                                           <!-- SMTP Configuration Section -->
-                                           <div class="settings-section">
-                                               <div class="section-header">
-                                                   <div class="section-icon">
-                                                       <i class="feather icon-mail"></i>
-                                                   </div>
-                                                   <div>
-                                                       <h2 class="section-title">SMTP Configuration</h2>
-                                                       <p class="section-description">Configure email settings for your platform</p>
-                                                   </div>
-                                               </div>
-
-                                               <div class="form-grid">
-                                                   <div class="form-group">
-                                                       <label class="form-label" for="smtp_host">SMTP Host</label>
-                                                       <input type="text" class="form-control" id="smtp_host" name="smtp_host"
-                                                              value="<?= htmlspecialchars($settings_map['smtp_host'] ?? '') ?>"
-                                                              placeholder="smtp.gmail.com">
-                                                   </div>
-                                                   <div class="form-group">
-                                                       <label class="form-label" for="smtp_port">SMTP Port</label>
-                                                       <input type="number" class="form-control" id="smtp_port" name="smtp_port"
-                                                              value="<?= htmlspecialchars($settings_map['smtp_port'] ?? '') ?>"
-                                                              placeholder="587" min="1" max="65535">
-                                                   </div>
-                                                   <div class="form-group">
-                                                       <label class="form-label" for="smtp_encryption">Encryption</label>
-                                                       <select class="form-control" id="smtp_encryption" name="smtp_encryption">
-                                                           <option value="">None</option>
-                                                           <option value="tls" <?= ($settings_map['smtp_encryption'] ?? '') === 'tls' ? 'selected' : '' ?>>TLS</option>
-                                                           <option value="ssl" <?= ($settings_map['smtp_encryption'] ?? '') === 'ssl' ? 'selected' : '' ?>>SSL</option>
-                                                       </select>
-                                                   </div>
-                                                   <div></div> <!-- Empty grid item for alignment -->
-                                                   <div class="form-group">
-                                                       <label class="form-label" for="smtp_username">SMTP Username</label>
-                                                       <input type="text" class="form-control" id="smtp_username" name="smtp_username"
-                                                              value="<?= htmlspecialchars($settings_map['smtp_username'] ?? '') ?>"
-                                                              placeholder="your-email@gmail.com">
-                                                   </div>
-                                                   <div class="form-group">
-                                                       <label class="form-label" for="smtp_password">SMTP Password</label>
-                                                       <input type="password" class="form-control" id="smtp_password" name="smtp_password"
-                                                              value="<?= htmlspecialchars($settings_map['smtp_password'] ?? '') ?>"
-                                                              placeholder="Your SMTP password">
-                                                   </div>
-                                                   <div class="form-group">
-                                                       <label class="form-label" for="smtp_from_email">From Email</label>
-                                                       <input type="email" class="form-control" id="smtp_from_email" name="smtp_from_email"
-                                                              value="<?= htmlspecialchars($settings_map['smtp_from_email'] ?? '') ?>"
-                                                              placeholder="noreply@yourdomain.com">
-                                                   </div>
-                                                   <div class="form-group">
-                                                       <label class="form-label" for="smtp_from_name">From Name</label>
-                                                       <input type="text" class="form-control" id="smtp_from_name" name="smtp_from_name"
-                                                              value="<?= htmlspecialchars($settings_map['smtp_from_name'] ?? '') ?>"
-                                                              placeholder="Your Platform Name">
-                                                   </div>
-                                               </div>
-
-                                               <!-- Test Email Section -->
-                                               <div class="form-grid">
-                                                   <div class="form-group">
-                                                       <label class="form-label" for="test_email">Test Email Address</label>
-                                                       <input type="email" class="form-control" id="test_email" name="test_email"
-                                                              placeholder="test@example.com">
-                                                   </div>
-                                                   <div class="form-group">
-                                                       <button type="button" class="btn btn-info" id="testEmailBtn">
-                                                           <i class="feather icon-send"></i>
-                                                           Send Test Email
-                                                       </button>
-                                                   </div>
-                                               </div>
-                                           </div>
-
-                                           <!-- Platform Configuration Section -->
-                                           <div class="settings-section">
-                                               <div class="section-header">
-                                                   <div class="section-icon">
-                                                       <i class="feather icon-settings"></i>
-                                                   </div>
-                                                   <div>
-                                                       <h2 class="section-title">Platform Configuration</h2>
-                                                       <p class="section-description">Configure core platform settings and limits</p>
-                                                   </div>
-                                               </div>
-
-                                               <div class="form-grid">
-                                                   <div class="form-group">
-                                                       <label class="form-label" for="default_currency">Default Currency</label>
-                                                       <input type="text" class="form-control" id="default_currency" name="default_currency"
-                                                              value="<?= htmlspecialchars($settings_map['default_currency'] ?? '') ?>"
-                                                              placeholder="USD" maxlength="3" required>
-                                                   </div>
-                                                   <div class="form-group">
-                                                       <label class="form-label" for="max_users_per_tenant">Max Users Per Tenant</label>
-                                                       <input type="number" class="form-control" id="max_users_per_tenant" name="max_users_per_tenant"
-                                                              value="<?= htmlspecialchars($settings_map['max_users_per_tenant'] ?? '') ?>"
-                                                              placeholder="100" min="1" required>
-                                                   </div>
-                                                   <div class="form-group">
-                                                       <label class="form-label" for="api_enabled">API Status</label>
-                                                       <div class="d-flex align-items-center">
-                                                           <span>Disabled</span>
-                                                           <label class="toggle-switch">
-                                                               <input type="hidden" name="api_enabled" value="false">
-                                                               <input type="checkbox" id="api_enabled" name="api_enabled" value="true"
-                                                                      <?= ($settings_map['api_enabled'] ?? '') === 'true' ? 'checked' : '' ?>>
-                                                               <span class="slider"></span>
-                                                           </label>
-                                                           <span>Enabled</span>
-                                                       </div>
-                                                   </div>
-                                               </div>
-                                           </div>
-
-                                           <div class="action-buttons">
-                                               <button type="button" class="btn btn-secondary" onclick="resetForm()">
-                                                   <i class="feather icon-refresh-cw"></i>
-                                                   Reset Changes
-                                               </button>
-                                               <button type="submit" class="btn btn-primary">
-                                                   <i class="feather icon-save"></i>
-                                                   Save All Settings
-                                               </button>
-                                           </div>
-                                       </form>
-                                   </div>
-                               </div>
-                           </div>
-                       </div>
-                       <!-- [ Main Content ] end -->
-                   </div>
-               </div>
-           </div>
-       </div>
-   </div>
-</div>
 
 <!-- Loading Overlay -->
 <div class="loading-overlay" id="loadingOverlay">

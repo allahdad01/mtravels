@@ -283,32 +283,36 @@ $(document).ready(function() {
     });
     
     // Save transaction
-    $('#AddTransaction').click(function() {
-        var selectedCurrency = $('#transaction_currency').val();
-        var originalCurrency = $('#original_payment_currency').val();
-        var description = $('#payment_description').val();
-        var exchangeRate = $('#exchange_rate').val();
-        
-        // Exchange rate is stored in separate field, no need to modify description
-        if (selectedCurrency !== originalCurrency) {
-            if (!exchangeRate) {
-                alert("Please enter an exchange rate.");
-                return;
-            }
-        }
-        
-        var formData = {
-            payment_id: $('#transaction_payment_id').val(),
-            payment_type: $('#transaction_payment_type').val(),
-            currency: selectedCurrency,
-            original_currency: originalCurrency,
-            exchange_rate: exchangeRate,
-            main_account_id: $('#transaction_main_account_id').val(),
-            payment_amount: $('#payment_amount').val(),
-            payment_date: $('#payment_date').val(),
-            payment_time: $('#payment_time').val(),
-            payment_description: $('#payment_description').val(),
-        };
+     $('#AddTransaction').click(function() {
+         var selectedCurrency = $('#transaction_currency').val();
+         var originalCurrency = $('#original_payment_currency').val();
+         var description = $('#payment_description').val();
+         var exchangeRate = $('#exchange_rate').val();
+         
+         // Exchange rate is stored in separate field, no need to modify description
+         if (selectedCurrency !== originalCurrency) {
+             if (!exchangeRate) {
+                 alert("Please enter an exchange rate.");
+                 return;
+             }
+         }
+         
+         // Get CSRF token
+         var csrfToken = $('input[name="csrf_token"]').val();
+         
+         var formData = {
+             payment_id: $('#transaction_payment_id').val(),
+             payment_type: $('#transaction_payment_type').val(),
+             currency: selectedCurrency,
+             original_currency: originalCurrency,
+             exchange_rate: exchangeRate,
+             main_account_id: $('#transaction_main_account_id').val(),
+             payment_amount: $('#payment_amount').val(),
+             payment_date: $('#payment_date').val(),
+             payment_time: $('#payment_time').val(),
+             payment_description: $('#payment_description').val(),
+             csrf_token: csrfToken
+         };
 
         var url = '../api/additional_payment/add_additional_payment_transaction.php';
         var transactionId = $('#transaction_id').val();
@@ -460,25 +464,28 @@ $(document).ready(function() {
     });
 
     // Update transaction
-    $('#updateTransaction').click(function() {
-        var selectedCurrency = $('#edit_transaction_currency').val();
-        var originalCurrency = $('#edit_original_payment_currency').val();
-        var description = $('#edit_payment_description').val();
-        var exchangeRate = $('#edit_exchange_rate').val();
-        
-        
-        var formData = {
-            transaction_id: $('#edit_transaction_id').val(),
-            payment_id: $('#edit_transaction_payment_id').val(),
-            payment_amount: $('#edit_payment_amount').val(),
-            currency: selectedCurrency,
-            original_currency: originalCurrency,
-            exchange_rate: exchangeRate,
-            payment_date: $('#edit_payment_date').val(),
-            payment_time: $('#edit_payment_time').val(),
-            payment_description: $('#edit_payment_description').val(),
-            receipt: $('#edit_receipt').val()
-        };
+     $('#updateTransaction').click(function() {
+         var selectedCurrency = $('#edit_transaction_currency').val();
+         var originalCurrency = $('#edit_original_payment_currency').val();
+         var description = $('#edit_payment_description').val();
+         var exchangeRate = $('#edit_exchange_rate').val();
+         
+         // Get CSRF token
+         var csrfToken = $('input[name="csrf_token"]').val();
+         
+         var formData = {
+             transaction_id: $('#edit_transaction_id').val(),
+             payment_id: $('#edit_transaction_payment_id').val(),
+             payment_amount: $('#edit_payment_amount').val(),
+             currency: selectedCurrency,
+             original_currency: originalCurrency,
+             exchange_rate: exchangeRate,
+             payment_date: $('#edit_payment_date').val(),
+             payment_time: $('#edit_payment_time').val(),
+             payment_description: $('#edit_payment_description').val(),
+             receipt: $('#edit_receipt').val(),
+             csrf_token: csrfToken
+         };
 
         $.ajax({
             url: '../api/additional_payment/update_additional_payment_transaction.php',

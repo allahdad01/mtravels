@@ -106,6 +106,7 @@ try {
             }
             body {
                 font-size: 12px;
+                margin: 0 !important;
             }
             .receipt-container {
                 max-width: 100% !important;
@@ -124,8 +125,8 @@ try {
 
         .receipt-header {
             border-bottom: 2px solid #4099ff;
-            padding-bottom: 20px;
-            margin-bottom: 10px;
+            padding-bottom: 10px;
+            margin-bottom: 5px;
         }
 
         .header-row {
@@ -326,11 +327,6 @@ try {
                 <div class="detail-row">
                     <span class="detail-label"><?php echo __('date'); ?>:</span>
                     <span class="detail-value"><?php echo date('M d, Y', strtotime($transaction['payment_date'])); ?></span>
-                </div>
-
-                <div class="detail-row">
-                    <span class="detail-label"><?php echo __('payment_type'); ?>:</span>
-                    <span class="detail-value"><?php echo $transaction['transaction_type'] === 'Credit' ? __('received') : __('paid'); ?></span>
                 </div>
 
                 <div class="detail-row">

@@ -26,23 +26,45 @@
         }
 
         // AJAX Form Submission (Create Family)
-        window.submitCreateFamilyForm = function() {
-            var formData = new FormData(document.getElementById("createFamilyForm"));
-            
-            fetch('../api/umrah/create_family.php', {
-                method: 'POST',
-                body: formData
-            }).then(response => response.json())
-              .then(data => {
-                  if(data.success) {
-                      alert("Family created successfully");
-                      location.reload();
-                  } else {
-                      alert("Error creating family");
-                  }
-              });
-            return false;
-        };
+         window.submitCreateFamilyForm = function() {
+             var formData = new FormData(document.getElementById("createFamilyForm"));
+             const submitBtn = document.querySelector("#createFamilyForm button[type='submit']");
+             
+             // Disable button
+             if (submitBtn) {
+                 submitBtn.disabled = true;
+                 submitBtn.innerHTML = '<i class="fas fa-spinner fa-spin mr-2"></i>Processing...';
+             }
+             
+             fetch('../api/umrah/create_family.php', {
+                 method: 'POST',
+                 body: formData
+             }).then(response => response.json())
+               .then(data => {
+                   if(data.success) {
+                       showToast('success', 'Family created successfully');
+                       document.getElementById("createFamilyForm").reset();
+                       document.getElementById("createFamilyModal").style.display = "none";
+                       setTimeout(() => {
+                           refreshFamiliesTable();
+                       }, 1000);
+                   } else {
+                       showToast('error', data.message || 'Error creating family');
+                       if (submitBtn) {
+                           submitBtn.disabled = false;
+                           submitBtn.innerHTML = 'Create';
+                       }
+                   }
+               })
+               .catch(error => {
+                   showToast('error', 'An error occurred');
+                   if (submitBtn) {
+                       submitBtn.disabled = false;
+                       submitBtn.innerHTML = 'Create';
+                   }
+               });
+             return false;
+         };
 
         // Search functionality
         window.searchFamily = function() {

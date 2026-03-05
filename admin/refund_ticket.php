@@ -16,12 +16,18 @@ enforce_auth();
 
 
 
-// Check if user is logged in
-if (!isset($_SESSION['user_id'])  || $_SESSION['role'] !== 'admin') {
+// Check if user is logged in with proper role
+$allowed_roles = ['admin', 'finance', 'sales'];
+if (!isset($_SESSION['user_id']) || !in_array($_SESSION['role'], $allowed_roles)) {
+    // Log unauthorized access attempt
+    error_log("Unauthorized access attempt to dashboard: " . ($_SESSION['user_id'] ?? 'unknown') . " - Role: " . ($_SESSION['role'] ?? 'unknown') . " - IP: " . $_SERVER['REMOTE_ADDR']);
     header('Location: ../login.php');
     exit();
 }
 include '../api/ticket_refund/refund_ticket_handler.php';
+
+// Check if user is admin or finance
+$canEdit = in_array($_SESSION['role'], ['admin', 'finance']);
 
 // Generate cache-busting version
 $version = '?v=' . time();
@@ -59,6 +65,190 @@ $version = '?v=' . time();
 .card-header .card-header-right .btn:hover {
     background: rgba(255, 255, 255, 0.1) !important;
     border-color: rgba(255, 255, 255, 0.5) !important;
+}
+
+/* Refund Ticket Card Styles */
+.refund-card-container {
+    display: flex;
+    flex-direction: column;
+    gap: 16px;
+}
+
+.refund-card {
+    display: grid;
+    grid-template-columns: 1fr 140px;
+    border-radius: 10px;
+    overflow: hidden;
+    background: #e8edf2;
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+    transition: all 0.3s ease;
+}
+
+.refund-card:hover {
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+}
+
+.refund-card-main {
+    display: grid;
+    grid-template-columns: 1fr auto;
+    align-items: center;
+    padding: 18px 22px;
+    position: relative;
+}
+
+.refund-card-main::after {
+    content: '';
+    position: absolute;
+    right: 0;
+    top: 10%;
+    height: 80%;
+    border-right: 2px dashed rgba(255,255,255,0.5);
+}
+
+.refund-card-main.status-paid {
+    background: #8db87a;
+}
+
+.refund-card-main.status-partial {
+    background: #d4a574;
+}
+
+.refund-card-main.status-unpaid {
+    background: #e07a7a;
+}
+
+.refund-card-main.status-neutral {
+    background: #6b8fb3;
+}
+
+.refund-card-left {
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+}
+
+.refund-card-title {
+    font-size: 18px;
+    font-weight: 700;
+    color: #fff;
+    letter-spacing: 0.5px;
+    line-height: 1;
+}
+
+.refund-card-id {
+    font-size: 11px;
+    color: rgba(255,255,255,0.85);
+    font-weight: 500;
+}
+
+.refund-card-details {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 12px 16px;
+    color: rgba(255,255,255,0.9);
+    font-size: 12px;
+    margin-top: 8px;
+}
+
+.refund-card-detail-item {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+}
+
+.refund-card-detail-label {
+    font-weight: 600;
+    font-size: 10px;
+    text-transform: uppercase;
+    opacity: 0.8;
+    min-width: fit-content;
+}
+
+.refund-card-right {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+}
+
+.refund-card-price-box {
+    background: #fff;
+    border-radius: 8px;
+    padding: 10px 14px;
+    font-size: 28px;
+    font-weight: 700;
+    color: #2d3f52;
+    letter-spacing: -0.5px;
+    text-align: center;
+}
+
+.refund-card-price-meta {
+    display: flex;
+    gap: 4px;
+    align-items: center;
+    font-size: 9px;
+    color: rgba(255,255,255,0.75);
+}
+
+.refund-card-meta-dot {
+    width: 5px;
+    height: 5px;
+    border-radius: 50%;
+    background: rgba(255,255,255,0.7);
+}
+
+.refund-card-stub {
+    background: #e2e8ed;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    padding: 12px 8px;
+    gap: 6px;
+}
+
+.refund-card-actions {
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+    width: 100%;
+}
+
+.refund-card-action-btn {
+    background: #4099ff;
+    border: none;
+    color: #fff;
+    padding: 8px 12px;
+    border-radius: 4px;
+    font-size: 12px;
+    cursor: pointer;
+    transition: all 0.2s;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 100%;
+}
+
+.refund-card-action-btn:hover {
+    background: #2e7dd9;
+    transform: scale(1.05);
+}
+
+@media (max-width: 768px) {
+    .refund-card {
+        grid-template-columns: 1fr;
+    }
+    
+    .refund-card-main {
+        grid-template-columns: 1fr;
+    }
+    
+    .refund-card-main::after {
+        display: none;
+    }
+    
+    .refund-card-stub {
+        padding: 8px 12px;
+    }
 }
 </style>
 <!-- [ Main Content ] start -->
@@ -127,22 +317,7 @@ $version = '?v=' . time();
                                                 </small>
                                             </div>
                                         </div>
-                                         <div class="table-responsive">
-                                             <table id="refundTicketTable" class="table table-hover">
-                                                <thead>
-                                                    <tr>
-                                                        <th class="text-center">#</th>
-                                                        
-                                                        <th class="text-center"><?= __('actions') ?></th>
-                                                        <th><?= __('passenger_details') ?></th>
-                                                        <th><?= __('flight_info') ?></th>
-                                                        <th><?= __('financial_details') ?></th>
-                                                        <th><?= __('payment') ?></th>
-                                                        <th><?= __('penalties') ?></th>
-                                                        <th><?= __('refund_amount') ?></th>
-                                                    </tr>
-                                                </thead>
-                                                <tbody id="ticketTable">
+                                         <div class="refund-card-container" id="ticketTable">
                                                     <?php foreach ($tickets as $index => $ticket): ?>
                                                         <?php
                                                         $soldTo = $ticket['sold_to_name'];
@@ -158,173 +333,128 @@ $version = '?v=' . time();
                                                             $isAgencyClient = ($clientResult[0]['client_type'] === 'agency');
                                                         }
                                                         ?>
-                                                    <tr>
-                                                        <td class="text-center"><?= $index + 1 ?></td>
-                                                        <td class="text-center">
-                                                            <div class="d-flex justify-content-center">
-                                                                <div class="dropdown">
-                                                                    <button class="btn btn-icon btn-outline-primary dropdown-toggle" type="button" data-toggle="dropdown">
-                                                                        <i class="feather icon-more-horizontal"></i>
-                                                                    </button>
-                                                                <div class="dropdown-menu dropdown-menu-right">
-                                                                    <?php if ($isAgencyClient): ?>
-                                                                    <a class="dropdown-item" href="javascript:void(0)" onclick="manageTransactions(<?= $ticket['id'] ?>)">
-                                                                        <i class="fas fa-dollar-sign mr-2"></i><?= __('manage_payments') ?>
-                                                                    </a>
-                                                                    <?php endif; ?>
-                                                                    <a class="dropdown-item" href="javascript:void(0)" onclick="printRefundAgreement(<?= $ticket['id'] ?>)">
-                                                                        <i class="feather icon-file mr-2"></i><?= __('print_refund_agreement') ?>
-                                                                    </a>
-                                                                    <div class="dropdown-divider"></div>
-                                                                    <a class="dropdown-item text-danger" href="javascript:void(0)" onclick="deleteTicket(<?= $ticket['id'] ?>)">
-                                                                        <i class="feather icon-trash-2 mr-2"></i><?= __('delete') ?>
-                                                                    </a>
-                                                                </div>
-                                                            </div>
-                                                        </td>
-                                                        <td>
-                                                            <div class="passenger-info">
-                                                                
-                                                                <div class="passenger-info__details">
-                                                                    <div class="passenger-info__name">
-                                                                        <?= htmlspecialchars($ticket['title']) ?> <?= htmlspecialchars($ticket['passenger_name']) ?>
-                                                                    </div>
-                                                                    <div class="passenger-info__pnr">
-                                                                        PNR: <?= htmlspecialchars($ticket['pnr']) ?>
-                                                                        <br>
-                                                                        <?= __('phone') ?>: <?= htmlspecialchars($ticket['phone']) ?>
-                                                                        <br>
-                                                                        <?= __('created_by') ?>: <?= htmlspecialchars($ticket['created_by']) ?>
-                                                                    </div>
-                                                                </div>
-                                                                
-                                                            </div>
-                                                        </td>
-                                                        <td>
-                                                            <div class="flight-info">
-                                                                <div class="flight-info__segment">
-                                                                    <div class="flight-info__city">
-                                                                        <?= htmlspecialchars($ticket['origin']) ?> - <?= htmlspecialchars($ticket['destination']) ?>
-                                                                    </div>
-                                                                    <div class="flight-info__airline">
-                                                                        <?= htmlspecialchars($ticket['airline']) ?>
-                                                                    </div>
-                                                                </div>
-                                                            </div>
-                                                        </td>
-                                                        <td>
-                                                            <div class="financial-info">
-                                                                <div class="financial-info__amount">
-                                                                    <?= __('base') ?>: <?= htmlspecialchars($ticket['currency']) ?> <?= number_format($ticket['base'], 2) ?>
-                                                                </div>
-                                                                <div class="financial-info__penalties">
-                                                                    <?= __('sold') ?>: <?= htmlspecialchars($ticket['currency']) ?> <?= number_format($ticket['sold'], 2) ?>
-                                                                </div>
-                                                                
-                                                            </div>
-                                                        </td>
-                                                        <td>
-                                                        <?php
-                                                        $soldTo = $ticket['sold_to_name'];
-                                                        $isAgencyClient = false;
-
-                                                        $clientStmt = $pdo->prepare("SELECT client_type FROM clients WHERE name = ? AND tenant_id = ? AND branch_id = ?");
-                                                        $clientStmt->bindParam(1, $soldTo, PDO::PARAM_STR);
-                                                        $clientStmt->bindParam(2, $tenant_id, PDO::PARAM_INT);
-                                                        $clientStmt->bindParam(3, $branch_id, PDO::PARAM_INT);
-                                                        $clientStmt->execute();
-                                                        $clientResult = $clientStmt->fetchAll();
-                                                        if (count($clientResult) > 0) {
-                                                            $isAgencyClient = ($clientResult[0]['client_type'] === 'agency');
-                                                        }
-
-                                                        if ($isAgencyClient) {
-                                                            // Calculate payment status using transaction-specific exchange rates
-                                                            $baseCurrency = $ticket['currency'];
-                                                            $soldAmount = floatval($ticket['refund_to_passenger']);
-                                                            $totalPaidInBase = 0.0;
-
-                                                            $ticketId = $ticket['id'];
-
-                                                            // Query transactions from main_account_transactions table
-                                                            $transactionStmt = $pdo->prepare("SELECT * FROM main_account_transactions WHERE
-                                                                transaction_of = 'ticket_refund'
-                                                                AND reference_id = ? AND tenant_id = ? AND branch_id = ?");
-                                                            $transactionStmt->bindParam(1, $ticketId, PDO::PARAM_INT);
-                                                            $transactionStmt->bindParam(2, $tenant_id, PDO::PARAM_INT);
-                                                            $transactionStmt->bindParam(3, $branch_id, PDO::PARAM_INT);
-                                                            $transactionStmt->execute();
-                                                            $transactions = $transactionStmt->fetchAll();
-
-                                                            if (count($transactions) > 0) {
-                                                                foreach ($transactions as $transaction) {
-                                                                    $amount = floatval($transaction['amount']);
-                                                                    $transCurrency = $transaction['currency'];
-                                                                    $transExchangeRate = isset($transaction['exchange_rate']) && $transaction['exchange_rate'] > 0
-                                                                        ? floatval($transaction['exchange_rate']) : 1.0;
-
-                                                                    $convertedAmount = 0.0;
-
-                                                                    // Conversion logic
-                                                                    if ($transCurrency === $baseCurrency) {
-                                                                        $convertedAmount = $amount;
-                                                                    } else {
-                                                                        if ($baseCurrency === 'AFS') {
-                                                                            $convertedAmount = $amount * $transExchangeRate;
-                                                                        } else {
-                                                                            $convertedAmount = $amount / $transExchangeRate;
-                                                                        }
-                                                                    }
-
-                                                                    $totalPaidInBase += $convertedAmount;
-                                                                } // End of foreach loop
-                                                            }
-
-                                                            // Status icon based on payment status
-                                                            if ($totalPaidInBase <= 0) {
-                                                                echo '<i class="fas fa-circle text-danger" title="No payment received"></i>';
-                                                            } elseif ($totalPaidInBase < $soldAmount) {
-                                                                $percentage = round(($totalPaidInBase / $soldAmount) * 100);
-                                                                echo '<i class="fas fa-circle text-warning" style="color: #ffc107 !important;"
-                                                                    title="Partial payment: ' . $baseCurrency . ' ' . number_format($totalPaidInBase, 2) . ' / ' . $baseCurrency . ' ' .
-                                                                    number_format($soldAmount, 2) . ' (' . $percentage . '%)"></i>';
-                                                            } elseif (abs($totalPaidInBase - $soldAmount) < 0.01) {
-                                                                echo '<i class="fas fa-circle text-success" title="Fully paid"></i>';
-                                                            } else {
-                                                                echo '<i class="fas fa-circle text-success"
-                                                                    title="Fully paid (overpaid by ' . $baseCurrency . ' ' .
-                                                                    number_format($totalPaidInBase - $soldAmount, 2) . ')"></i>';
-                                                            }
-
-                                                        } else {
-                                                            // Not an agency client - show neutral icon
-                                                            echo '<i class="fas fa-minus text-muted" title="Not an agency client"></i>';
-                                                        }
-                                                        ?>
-                                                        </td>
-
-                                                        <td>
-                                                            <div class="financial-info">
-                                                                <div class="financial-info__penalties">
-                                                                   <?= __('supplier_penalty') ?>: <?= htmlspecialchars($ticket['currency']) ?> <?= number_format($ticket['supplier_penalty'], 2) ?>
-                                                                </div>
-                                                                <div class="financial-info__penalties">
-                                                                    <?= __('service_penalty') ?>: <?= htmlspecialchars($ticket['currency']) ?> <?= number_format($ticket['service_penalty'], 2) ?>
-                                                                </div>
-                                                        </td>
-                                                        <td>
-                                                            <div class="financial-info">
-                                                                <div class="financial-info__amount">
-                                                                    <?= htmlspecialchars($ticket['currency']) ?> <?= number_format($ticket['refund_to_passenger'], 2) ?>
-                                                                </div>
-                                                            </div>
-                                                        </td>
+                                                    <?php
+                                                    // Determine payment status
+                                                    $paymentStatus = 'neutral';
+                                                    $totalPaidInBase = 0;
+                                                    $baseCurrency = $ticket['currency'];
+                                                    $soldAmount = floatval($ticket['refund_to_passenger']);
+                                                    $ticketId = $ticket['id'];
+                                                    
+                                                    if ($isAgencyClient) {
+                                                        // Query transactions from database
+                                                        $transactionStmt = $pdo->prepare("SELECT * FROM main_account_transactions WHERE
+                                                            transaction_of = 'ticket_refund'
+                                                            AND reference_id = ? AND tenant_id = ? AND branch_id = ?");
+                                                        $transactionStmt->bindParam(1, $ticketId, PDO::PARAM_INT);
+                                                        $transactionStmt->bindParam(2, $tenant_id, PDO::PARAM_INT);
+                                                        $transactionStmt->bindParam(3, $branch_id, PDO::PARAM_INT);
+                                                        $transactionStmt->execute();
+                                                        $transactions = $transactionStmt->fetchAll();
                                                         
-                                                    </tr>
+                                                        if ($transactions && count($transactions) > 0) {
+                                                            foreach ($transactions as $transaction) {
+                                                                $amount = floatval($transaction['amount']);
+                                                                $transCurrency = $transaction['currency'];
+                                                                $transExchangeRate = isset($transaction['exchange_rate']) && $transaction['exchange_rate'] > 0 ? floatval($transaction['exchange_rate']) : 1.0;
+                                                                
+                                                                $convertedAmount = 0.0;
+                                                                
+                                                                if ($transCurrency === $baseCurrency) {
+                                                                    $convertedAmount = $amount;
+                                                                } else {
+                                                                    if ($baseCurrency === 'AFS') {
+                                                                        $convertedAmount = $amount * $transExchangeRate;
+                                                                    } else {
+                                                                        $convertedAmount = $amount / $transExchangeRate;
+                                                                    }
+                                                                }
+                                                                
+                                                                $totalPaidInBase += $convertedAmount;
+                                                            }
+                                                        }
+                                                        
+                                                        if ($totalPaidInBase <= 0) {
+                                                            $paymentStatus = 'unpaid';
+                                                        } elseif ($totalPaidInBase < $soldAmount) {
+                                                            $paymentStatus = 'partial';
+                                                        } else {
+                                                            $paymentStatus = 'paid';
+                                                        }
+                                                    }
+                                                    ?>
+                                                    <div class="refund-card">
+                                                    <div class="refund-card-main status-<?= $paymentStatus ?>">
+                                                        <div class="refund-card-left">
+                                                            <div>
+                                                                <div class="refund-card-title">REFUND</div>
+                                                                <div class="refund-card-id"><?= htmlspecialchars($ticket['pnr']) ?></div>
+                                                            </div>
+                                                            <div class="refund-card-details">
+                                                                <div class="refund-card-detail-item">
+                                                                    <span class="refund-card-detail-label">Passenger:</span>
+                                                                    <span><?= htmlspecialchars($ticket['title']) ?> <?= htmlspecialchars($ticket['passenger_name']) ?></span>
+                                                                </div>
+                                                                <div class="refund-card-detail-item">
+                                                                    <span class="refund-card-detail-label">Sold To:</span>
+                                                                    <span><?= htmlspecialchars($ticket['sold_to_name']) ?></span>
+                                                                </div>
+                                                                <div class="refund-card-detail-item">
+                                                                    <span class="refund-card-detail-label">Route:</span>
+                                                                    <span><?= htmlspecialchars($ticket['origin']) ?> → <?= htmlspecialchars($ticket['destination']) ?></span>
+                                                                </div>
+                                                                <div class="refund-card-detail-item">
+                                                                    <span class="refund-card-detail-label">Airline:</span>
+                                                                    <span><?= htmlspecialchars($ticket['airline']) ?></span>
+                                                                </div>
+                                                                <div class="refund-card-detail-item">
+                                                                    <span class="refund-card-detail-label">Base:</span>
+                                                                    <span><?= htmlspecialchars($ticket['currency']) ?> <?= number_format($ticket['base'], 2) ?></span>
+                                                                </div>
+                                                                <div class="refund-card-detail-item">
+                                                                    <span class="refund-card-detail-label">Sold:</span>
+                                                                    <span><?= htmlspecialchars($ticket['currency']) ?> <?= number_format($ticket['sold'], 2) ?></span>
+                                                                </div>
+                                                                <div class="refund-card-detail-item">
+                                                                    <span class="refund-card-detail-label">Supplier Penalty:</span>
+                                                                    <span><?= htmlspecialchars($ticket['currency']) ?> <?= number_format($ticket['supplier_penalty'], 2) ?></span>
+                                                                </div>
+                                                                <div class="refund-card-detail-item">
+                                                                    <span class="refund-card-detail-label">Service Penalty:</span>
+                                                                    <span><?= htmlspecialchars($ticket['currency']) ?> <?= number_format($ticket['service_penalty'], 2) ?></span>
+                                                                </div>
+                                                            </div>
+                                                        </div>
+                                                        <div class="refund-card-right">
+                                                            <div class="refund-card-price-box"><?= number_format($ticket['refund_to_passenger'], 2) ?></div>
+                                                            <div class="refund-card-price-meta">
+                                                                <div class="refund-card-meta-dot"></div>
+                                                                <div class="refund-card-meta-dot"></div>
+                                                                <div class="refund-card-meta-dot"></div>
+                                                                <span><?= htmlspecialchars($baseCurrency) ?></span>
+                                                            </div>
+                                                        </div>
+                                                    </div>
+                                                    <div class="refund-card-stub">
+                                                        <div class="refund-card-actions" style="display: flex; flex-direction: column; gap: 6px;">
+                                                            <?php if ($isAgencyClient && $canEdit): ?>
+                                                            <button class="refund-card-action-btn" onclick="manageTransactions(<?= $ticket['id'] ?>)" title="<?= __('manage_payments') ?>" style="width: 100%;">
+                                                                <i class="fas fa-dollar-sign"></i>
+                                                            </button>
+                                                            <?php endif; ?>
+                                                            <button class="refund-card-action-btn" onclick="printRefundAgreement(<?= $ticket['id'] ?>)" title="<?= __('print_refund_agreement') ?>" style="width: 100%;">
+                                                                <i class="feather icon-file"></i>
+                                                            </button>
+                                                            <?php if ($canEdit): ?>
+                                                            <button class="refund-card-action-btn" onclick="deleteTicket(<?= $ticket['id'] ?>)" title="<?= __('delete') ?>" style="width: 100%;">
+                                                                <i class="feather icon-trash-2"></i>
+                                                            </button>
+                                                            <?php endif; ?>
+                                                        </div>
+                                                    </div>
+                                                    </div>
                                                     <?php endforeach; ?>
-                                                </tbody>
-                                            </table>
-                                        </div>
+                                                    </div>
                                         <!-- Pagination Controls -->
                                         <div class="row mt-4">
                                             <div class="col-md-12">

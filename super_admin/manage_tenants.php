@@ -137,8 +137,19 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action']) && $_POST['
 // Pagination and search
 $items_per_page = 10;
 $current_page = intval($_GET['page'] ?? 1);
-$search_query = $_GET['search'] ?? '';
-$status_filter = $_GET['status'] ?? '';
+
+// Validate and sanitize search input to prevent DoS and injection attempts
+$raw_search = $_GET['search'] ?? '';
+$search_query = !empty($raw_search) ? sanitize_search_input($raw_search, 100) : '';
+if ($search_query === null) {
+    $search_query = ''; // Reject suspicious input
+}
+
+$raw_status = $_GET['status'] ?? '';
+$status_filter = !empty($raw_status) ? sanitize_search_input($raw_status, 50) : '';
+if ($status_filter === null) {
+    $status_filter = ''; // Reject suspicious input
+}
 
 // Count total items
 $count_query = "SELECT COUNT(*) as total FROM tenants WHERE status != 'deleted'";
@@ -217,158 +228,183 @@ $plans = $stmt->fetchAll();
                             <div class="row">
                                 <div class="col-xl-12">
                                 <?php if (isset($_GET['success'])): ?>
-                                <div class="alert alert-success alert-dismissible fade show" role="alert">
-                                    <?php 
-                                    $success_message = '';
-                                    switch ($_GET['success']) {
-                                        case 'tenant_created':
-                                            $success_message = __('tenant_created_successfully');
-                                            break;
-                                        case 'tenant_updated':
-                                            $success_message = __('tenant_updated_successfully');
-                                            break;
-                                        case 'tenant_deleted':
-                                            $success_message = __('tenant_deleted_successfully');
-                                            break;
-                                        default:
-                                            $success_message = __('operation_completed_successfully');
-                                    }
-                                    echo $success_message;
-                                    ?>
-                                    <button type="button" class="close" data-dismiss="alert" aria-label="Close">
-                                        <span aria-hidden="true">&times;</span>
-                                    </button>
+                                <div class="sa-alert sa-alert-success">
+                                    <div class="sa-alert-icon">✓</div>
+                                    <div class="sa-alert-content">
+                                        <?php 
+                                        $success_message = '';
+                                        switch ($_GET['success']) {
+                                            case 'tenant_created':
+                                                $success_message = __('tenant_created_successfully');
+                                                break;
+                                            case 'tenant_updated':
+                                                $success_message = __('tenant_updated_successfully');
+                                                break;
+                                            case 'tenant_deleted':
+                                                $success_message = __('tenant_deleted_successfully');
+                                                break;
+                                            default:
+                                                $success_message = __('operation_completed_successfully');
+                                        }
+                                        echo $success_message;
+                                        ?>
+                                    </div>
+                                    <button type="button" class="sa-alert-close" onclick="this.parentElement.style.display='none';">×</button>
                                 </div>
                                 <?php endif; ?>
                                 
                                 <?php if (isset($_GET['error'])): ?>
-                                <div class="alert alert-danger alert-dismissible fade show" role="alert">
-                                    <?= htmlspecialchars($_GET['error']) ?>
-                                    <button type="button" class="close" data-dismiss="alert" aria-label="Close">
-                                        <span aria-hidden="true">&times;</span>
-                                    </button>
+                                <div class="sa-alert sa-alert-danger">
+                                    <div class="sa-alert-icon">⚠</div>
+                                    <div class="sa-alert-content">
+                                        <?= htmlspecialchars($_GET['error']) ?>
+                                    </div>
+                                    <button type="button" class="sa-alert-close" onclick="this.parentElement.style.display='none';">×</button>
                                 </div>
                                 <?php endif; ?>
                                 
-                                <div class="card">
-                                    <div class="card-header d-flex justify-content-between align-items-center">
-                                        <h5><i class="feather icon-list mr-2"></i><?= __('tenants_list') ?></h5>
-                                        <button class="btn btn-primary" data-toggle="modal" data-target="#createTenantModal">
-                                            <i class="feather icon-plus mr-1"></i><?= __('create_tenant') ?>
-                                        </button>
-                                    </div>
-                                    <div class="card-body table-border-style">
-                                         <div class="mb-3">
-                                             <form method="GET" action="manage_tenants.php" class="form-inline">
-                                                 <input type="text" class="form-control mr-2" name="search" placeholder="Search tenants..." value="<?= htmlspecialchars($search_query) ?>" style="width: 200px;">
-                                                 <select class="form-control mr-2" name="status" style="width: 120px;">
-                                                     <option value="">All Status</option>
-                                                     <option value="active" <?= $status_filter === 'active' ? 'selected' : '' ?>>Active</option>
-                                                     <option value="inactive" <?= $status_filter === 'inactive' ? 'selected' : '' ?>>Inactive</option>
-                                                     <option value="suspended" <?= $status_filter === 'suspended' ? 'selected' : '' ?>>Suspended</option>
-                                                 </select>
-                                                 <button type="submit" class="btn btn-primary mr-2">Search</button>
-                                                 <?php if (!empty($search_query) || !empty($status_filter)): ?>
-                                                 <a href="manage_tenants.php" class="btn btn-secondary">Clear</a>
-                                                 <?php endif; ?>
-                                             </form>
-                                         </div>
-                                         <div class="table-responsive">
-                                             <table class="table table-hover">
-                                                <thead>
-                                                    <tr>
-                                                        <th><?= __('name') ?></th>
-                                                        <th><?= __('subdomain') ?></th>
-                                                        <th><?= __('identifier') ?></th>
-                                                        <th><?= __('plan') ?></th>
-                                                        <th><?= __('status') ?></th>
-                                                        <th><?= __('billing_email') ?></th>
-                                                        <th><?= __('created_at') ?></th>
-                                                        <th><?= __('actions') ?></th>
-                                                    </tr>
-                                                </thead>
-                                                <tbody>
-                                                    <?php foreach ($tenants as $tenant): ?>
-                                                    <tr>
-                                                        <td><?= htmlspecialchars($tenant['name']) ?></td>
-                                                        <td><?= htmlspecialchars($tenant['subdomain']) ?></td>
-                                                        <td><?= htmlspecialchars($tenant['identifier']) ?></td>
-                                                        <td><?= htmlspecialchars($tenant['plan']) ?></td>
-                                                        <td>
-                                                            <span class="badge badge-<?= $tenant['status'] === 'active' ? 'success' : ($tenant['status'] === 'suspended' ? 'danger' : 'warning') ?>">
-                                                                <?= htmlspecialchars($tenant['status']) ?>
-                                                            </span>
-                                                        </td>
-                                                        <td><?= htmlspecialchars($tenant['billing_email']) ?></td>
-                                                        <td><?= date('M d, Y', strtotime($tenant['created_at'])) ?></td>
-                                                        <td>
-                                                            <button type="button" class="btn btn-sm btn-primary edit-tenant-btn"
-                                                                    data-tenant-id="<?= $tenant['id'] ?>"
-                                                                    data-toggle="modal"
-                                                                    data-target="#editTenantModal">
-                                                                <i class="feather icon-edit"></i>
-                                                            </button>
-                                                            <a href="generate_agreement.php?id=<?= $tenant['id'] ?>" class="btn btn-sm btn-info" target="_blank">
-                                                                <i class="feather icon-file-text"></i> Agreement
-                                                            </a>
-                                                            <button class="btn btn-sm btn-danger delete-tenant" data-id="<?= $tenant['id'] ?>">
-                                                                <i class="feather icon-trash-2"></i>
-                                                            </button>
-                                                        </td>
-                                                    </tr>
-                                                    <?php endforeach; ?>
-                                                    <?php if (empty($tenants)): ?>
-                                                    <tr><td colspan="8" class="text-center"><?= __('no_tenants_found') ?></td></tr>
-                                                    <?php endif; ?>
-                                                </tbody>
-                                                </table>
-                                                </div>
-                                                
-                                                <!-- Pagination -->
-                                                <?php if ($total_pages > 1): ?>
-                                                <nav aria-label="Page navigation" class="mt-3">
-                                                <ul class="pagination justify-content-center">
-                                                <li class="page-item <?= $current_page === 1 ? 'disabled' : '' ?>">
-                                                <a class="page-link" href="?page=<?= $current_page - 1 ?><?= !empty($search_query) ? '&search=' . urlencode($search_query) : '' ?><?= !empty($status_filter) ? '&status=' . urlencode($status_filter) : '' ?>">Previous</a>
-                                                </li>
-                                                <?php 
-                                                $start_page = max(1, $current_page - 2);
-                                                $end_page = min($total_pages, $current_page + 2);
-                                                if ($start_page > 1): ?>
-                                                <li class="page-item">
-                                                <a class="page-link" href="?page=1<?= !empty($search_query) ? '&search=' . urlencode($search_query) : '' ?><?= !empty($status_filter) ? '&status=' . urlencode($status_filter) : '' ?>">1</a>
-                                                </li>
-                                                <?php if ($start_page > 2): ?>
-                                                <li class="page-item disabled"><span class="page-link">...</span></li>
+                                <!-- Search and Filter Bar -->
+                                <div class="sa-card" style="margin-bottom: 20px;">
+                                    <div class="sa-card-body">
+                                        <form method="GET" action="manage_tenants.php" class="sa-search-filter">
+                                            <div class="sa-search-group">
+                                                <input type="text" class="sa-search-input" name="search" placeholder="Search tenants by name, subdomain, or email..." value="<?= htmlspecialchars($search_query) ?>">
+                                                <select class="sa-filter-select" name="status">
+                                                    <option value="">All Status</option>
+                                                    <option value="active" <?= $status_filter === 'active' ? 'selected' : '' ?>>Active</option>
+                                                    <option value="inactive" <?= $status_filter === 'inactive' ? 'selected' : '' ?>>Inactive</option>
+                                                    <option value="suspended" <?= $status_filter === 'suspended' ? 'selected' : '' ?>>Suspended</option>
+                                                </select>
+                                                <button type="submit" class="sa-btn sa-btn-primary">Search</button>
+                                                <?php if (!empty($search_query) || !empty($status_filter)): ?>
+                                                <a href="manage_tenants.php" class="sa-btn sa-btn-ghost">Clear</a>
                                                 <?php endif; ?>
-                                                <?php endif; ?>
-                                                <?php for ($i = $start_page; $i <= $end_page; $i++): ?>
-                                                <li class="page-item <?= $i === $current_page ? 'active' : '' ?>">
-                                                <a class="page-link" href="?page=<?= $i ?><?= !empty($search_query) ? '&search=' . urlencode($search_query) : '' ?><?= !empty($status_filter) ? '&status=' . urlencode($status_filter) : '' ?>"><?= $i ?></a>
-                                                </li>
-                                                <?php endfor; ?>
-                                                <?php if ($end_page < $total_pages): ?>
-                                                <?php if ($end_page < $total_pages - 1): ?>
-                                                <li class="page-item disabled"><span class="page-link">...</span></li>
-                                                <?php endif; ?>
-                                                <li class="page-item">
-                                                <a class="page-link" href="?page=<?= $total_pages ?><?= !empty($search_query) ? '&search=' . urlencode($search_query) : '' ?><?= !empty($status_filter) ? '&status=' . urlencode($status_filter) : '' ?>"><?= $total_pages ?></a>
-                                                </li>
-                                                <?php endif; ?>
-                                                <li class="page-item <?= $current_page === $total_pages ? 'disabled' : '' ?>">
-                                                <a class="page-link" href="?page=<?= $current_page + 1 ?><?= !empty($search_query) ? '&search=' . urlencode($search_query) : '' ?><?= !empty($status_filter) ? '&status=' . urlencode($status_filter) : '' ?>">Next</a>
-                                                </li>
-                                                </ul>
-                                                </nav>
-                                                <div class="text-center text-muted small mt-2">
-                                                Page <?= $current_page ?> of <?= $total_pages ?> | Showing <?= count($tenants) ?> of <?= $total_items ?> tenants
-                                                </div>
-                                                <?php endif; ?>
-                                                </div>
-                                                </div>
-                                                </div>
-                                                </div>
                                             </div>
+                                        </form>
+                                    </div>
+                                </div>
+
+                                <!-- Tenants Header -->
+                                <div class="sa-shdr" style="margin-bottom: 16px;">
+                                    <div>
+                                        <h2><?= __('tenants_list') ?></h2>
+                                        <p style="margin: 4px 0 0 0; font-size: 0.75rem; color: var(--muted);">Total: <?= $total_items ?> tenants</p>
+                                    </div>
+                                    <button class="sa-btn sa-btn-primary" data-toggle="modal" data-target="#createTenantModal">
+                                        <span style="margin-right: 6px;">+</span><?= __('create_tenant') ?>
+                                    </button>
+                                </div>
+
+                                <!-- Tenants Grid -->
+                                <?php if (!empty($tenants)): ?>
+                                <div class="sa-3col">
+                                    <?php foreach ($tenants as $tenant):
+                                        $status_pill = match($tenant['status']) {
+                                            'active' => 'pill-green',
+                                            'suspended' => 'pill-red',
+                                            default => 'pill-amber'
+                                        };
+                                        $status_icon = match($tenant['status']) {
+                                            'active' => '●',
+                                            'suspended' => '⊘',
+                                            default => '○'
+                                        };
+                                    ?>
+                                    <div class="tenant-card">
+                                        <div class="tc-header">
+                                            <div class="tc-title">
+                                                <h3><?= htmlspecialchars($tenant['name']) ?></h3>
+                                                <div class="tc-subdomain"><?= htmlspecialchars($tenant['subdomain']) ?>.mtravels</div>
+                                            </div>
+                                            <span class="pill <?= $status_pill ?>"><?= htmlspecialchars($tenant['status']) ?></span>
+                                        </div>
+                                        
+                                        <div class="tc-body">
+                                            <div class="tc-info-row">
+                                                <span class="tc-label">Plan</span>
+                                                <span class="tc-value"><?= htmlspecialchars($tenant['plan']) ?></span>
+                                            </div>
+                                            <div class="tc-info-row">
+                                                <span class="tc-label">ID</span>
+                                                <span class="tc-value" style="font-family: 'Courier New', monospace; font-size: 0.75rem;"><?= htmlspecialchars($tenant['identifier']) ?></span>
+                                            </div>
+                                            <div class="tc-info-row">
+                                                <span class="tc-label">Email</span>
+                                                <span class="tc-value" style="font-size: 0.8rem; overflow: hidden; text-overflow: ellipsis;"><?= htmlspecialchars($tenant['billing_email']) ?></span>
+                                            </div>
+                                            <div class="tc-info-row">
+                                                <span class="tc-label">Created</span>
+                                                <span class="tc-value" style="font-size: 0.8rem;"><?= date('M d, Y', strtotime($tenant['created_at'])) ?></span>
+                                            </div>
+                                        </div>
+
+                                        <div class="tc-actions">
+                                            <button type="button" class="sa-btn sa-btn-small sa-btn-primary edit-tenant-btn"
+                                                    data-tenant-id="<?= $tenant['id'] ?>"
+                                                    data-toggle="modal"
+                                                    data-target="#editTenantModal"
+                                                    title="Edit">
+                                                Edit
+                                            </button>
+                                            <a href="generate_agreement.php?id=<?= $tenant['id'] ?>" class="sa-btn sa-btn-small sa-btn-ghost" target="_blank" title="Agreement">
+                                                Agreement
+                                            </a>
+                                            <button class="sa-btn sa-btn-small sa-btn-danger delete-tenant" data-id="<?= $tenant['id'] ?>" title="Delete">
+                                                Delete
+                                            </button>
+                                        </div>
+                                    </div>
+                                    <?php endforeach; ?>
+                                </div>
+                                <?php else: ?>
+                                <div class="sa-card">
+                                    <div class="sa-card-body" style="text-align: center; padding: 40px 20px; color: var(--muted);">
+                                        <div style="font-size: 2rem; margin-bottom: 12px;">○</div>
+                                        <div style="font-weight: 600; margin-bottom: 4px;">No Tenants Found</div>
+                                        <div style="font-size: 0.8rem;"><?= !empty($search_query) ? 'Try adjusting your search filters.' : 'Get started by creating a new tenant.' ?></div>
+                                    </div>
+                                </div>
+                                <?php endif; ?>
+
+                                <!-- Pagination -->
+                                <?php if ($total_pages > 1): ?>
+                                <div class="sa-pagination">
+                                    <?php 
+                                    $query_string = '';
+                                    if (!empty($search_query)) $query_string .= '&search=' . urlencode($search_query);
+                                    if (!empty($status_filter)) $query_string .= '&status=' . urlencode($status_filter);
+                                    
+                                    $start_page = max(1, $current_page - 2);
+                                    $end_page = min($total_pages, $current_page + 2);
+                                    ?>
+                                    
+                                    <?php if ($current_page > 1): ?>
+                                    <a href="?page=1<?= $query_string ?>" class="sa-pagination-item">First</a>
+                                    <a href="?page=<?= $current_page - 1 ?><?= $query_string ?>" class="sa-pagination-item">← Prev</a>
+                                    <?php endif; ?>
+                                    
+                                    <?php if ($start_page > 1): ?>
+                                    <span class="sa-pagination-ellipsis">...</span>
+                                    <?php endif; ?>
+                                    
+                                    <?php for ($i = $start_page; $i <= $end_page; $i++): ?>
+                                    <a href="?page=<?= $i ?><?= $query_string ?>" class="sa-pagination-item <?= $i === $current_page ? 'active' : '' ?>">
+                                        <?= $i ?>
+                                    </a>
+                                    <?php endfor; ?>
+                                    
+                                    <?php if ($end_page < $total_pages): ?>
+                                    <span class="sa-pagination-ellipsis">...</span>
+                                    <?php endif; ?>
+                                    
+                                    <?php if ($current_page < $total_pages): ?>
+                                    <a href="?page=<?= $current_page + 1 ?><?= $query_string ?>" class="sa-pagination-item">Next →</a>
+                                    <a href="?page=<?= $total_pages ?><?= $query_string ?>" class="sa-pagination-item">Last</a>
+                                    <?php endif; ?>
+                                    
+                                    <span class="sa-pagination-info">Page <?= $current_page ?> of <?= $total_pages ?></span>
+                                </div>
+                                <?php endif; ?>
 
                                             <!-- Create Tenant Modal -->
                         <div class="modal fade" id="createTenantModal" tabindex="-1" role="dialog" aria-labelledby="createTenantModalLabel" aria-hidden="true">
@@ -517,181 +553,480 @@ $plans = $stmt->fetchAll();
     </div>
 
     <style>
-    /* Enhanced custom styles for better layout and design */
+    /* ─── CSS VARIABLES (Matching header-styles.css) ─────────────── */
+    :root {
+        --grad-start: #4099ff;
+        --grad-end: #2ed8b6;
+        --grad: linear-gradient(135deg, var(--grad-start) 0%, var(--grad-end) 100%);
+        
+        --bg: #f8fafc;
+        --surface: #ffffff;
+        --surface2: #f3f4f6;
+        --text: #1f2937;
+        --muted: #6b7280;
+        --border: #e5e7eb;
+        --radius: 10px;
+        
+        --green: #10b981;
+        --red: #ef4444;
+        --amber: #f59e0b;
+        --blue: #3b82f6;
+    }
+
+    /* ─── PAGE HEADER ─────────────────────────────────────────── */
     .page-header.card {
-        background: linear-gradient(135deg, #4099ff 0%, #2ed8b6 100%);
+        background: var(--grad) !important;
         color: #ffffff;
-        border: none;
+        border: none !important;
         margin-bottom: 20px;
         padding: 20px !important;
-        box-shadow: 0 4px 12px rgba(0,0,0,0.15);
-        border-radius: 10px;
+        box-shadow: 0 4px 12px rgba(64,153,255,0.18), 0 2px 6px rgba(0,0,0,0.08);
+        border-radius: var(--radius);
+        position: relative;
+        overflow: hidden;
+    }
+
+    .page-header.card::after {
+        content: '';
+        position: absolute;
+        inset: 0;
+        background: linear-gradient(105deg, transparent 40%, rgba(255,255,255,0.06) 50%, transparent 60%);
+        pointer-events: none;
+    }
+
+    .page-header.card h5 {
+        color: #ffffff !important;
+        margin: 0;
+        font-weight: 600;
+        position: relative;
+        z-index: 1;
+    }
+
+    .page-header.card .btn {
+        background: rgba(255,255,255,0.10) !important;
+        color: #ffffff;
+        border: 1px solid rgba(255,255,255,0.30) !important;
+        border-radius: 25px;
+        transition: all 0.3s ease;
+        position: relative;
+        z-index: 1;
+    }
+
+    .page-header.card .btn:hover {
+        background: rgba(255,255,255,0.22) !important;
+        border-color: rgba(255,255,255,0.50) !important;
+        transform: translateY(-1px);
     }
 
     .page-header.card .row {
         display: flex;
-        justify-content: space-between;
         align-items: center;
+        justify-content: space-between;
+        width: 100%;
+        position: relative;
+        z-index: 2;
     }
 
-    .page-header.card h5 {
-        color: #ffffff;
-        margin: 0;
-        font-weight: 600;
-    }
-
-    .page-header.card .text-end {
+    .page-header.card .col-md-6:last-child {
         text-align: right;
+        margin-left: auto;
     }
 
-    .page-header.card .btn {
-        background: rgba(255,255,255,0.2);
-        color: #ffffff;
-        border: 1px solid rgba(255,255,255,0.3);
-        border-radius: 25px;
-        transition: all 0.3s ease;
+    /* ─── ALERTS ──────────────────────────────────────────────── */
+    .sa-alert {
+        display: flex;
+        align-items: flex-start;
+        gap: 12px;
+        padding: 14px 16px;
+        border-radius: var(--radius);
+        border: 1px solid var(--border);
+        margin-bottom: 16px;
+        animation: slideIn 0.3s ease-out;
     }
 
-    .page-header.card .btn:hover {
-        background: rgba(255,255,255,0.3);
-        border-color: rgba(255,255,255,0.5);
+    @keyframes slideIn {
+        from { opacity: 0; transform: translateY(-10px); }
+        to { opacity: 1; transform: translateY(0); }
+    }
+
+    .sa-alert-icon {
+        font-size: 1.1rem;
+        font-weight: 700;
+        flex-shrink: 0;
+        width: 24px;
+        text-align: center;
+    }
+
+    .sa-alert-content {
+        flex: 1;
+        font-size: 0.85rem;
+    }
+
+    .sa-alert-close {
+        background: none;
+        border: none;
+        font-size: 1.3rem;
+        cursor: pointer;
+        color: var(--muted);
+        padding: 0;
+        transition: color 0.2s;
+        flex-shrink: 0;
+    }
+
+    .sa-alert-close:hover {
+        color: var(--text);
+    }
+
+    .sa-alert-success {
+        background: #d1fae5;
+        border-color: var(--green);
+        color: #065f46;
+    }
+
+    .sa-alert-danger {
+        background: #fee2e2;
+        border-color: var(--red);
+        color: #7f1d1d;
+    }
+
+    /* ─── CARDS ───────────────────────────────────────────────── */
+    .sa-card {
+        background: var(--surface);
+        border: 1px solid var(--border);
+        border-radius: var(--radius);
+        overflow: hidden;
+        transition: border-color 0.2s, transform 0.2s, box-shadow 0.2s;
+        box-shadow: 0 1px 3px rgba(0,0,0,0.08);
+    }
+
+    .sa-card:hover {
+        border-color: rgba(64,153,255,0.25);
         transform: translateY(-1px);
+        box-shadow: 0 4px 12px rgba(64,153,255,0.18);
     }
 
-    .card {
-        border-radius: 10px;
-        box-shadow: 0 2px 8px rgba(0,0,0,0.1);
-        transition: transform 0.2s ease-in-out, box-shadow 0.2s ease-in-out;
-        border: none;
-    }
-
-    .card:hover {
-        transform: translateY(-2px);
-        box-shadow: 0 4px 16px rgba(0,0,0,0.15);
-    }
-
-    .card-header {
-        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-        color: white;
-        border-radius: 10px 10px 0 0;
-        padding: 1rem 1.5rem;
-        border: none;
-    }
-
-    .card-header h5 {
-        margin: 0;
-        font-weight: 600;
+    .sa-card-hdr {
+        padding: 14px 20px;
+        border-bottom: 1px solid var(--border);
         display: flex;
         align-items: center;
+        justify-content: space-between;
     }
 
-    .progress {
-        border-radius: 15px;
-        overflow: hidden;
-        box-shadow: inset 0 1px 2px rgba(0,0,0,0.1);
+    .sa-card-hdr h3 {
+        font-size: 0.85rem;
+        font-weight: 600;
+        margin: 0;
     }
 
-    .progress-bar {
-        transition: width 0.6s ease;
+    .sa-card-body {
+        padding: 18px 20px;
     }
 
-    .badge {
-        font-size: 0.85em;
-        padding: 0.5em 0.75em;
+    /* ─── BUTTONS ─────────────────────────────────────────────── */
+    .sa-btn {
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        gap: 6px;
+        padding: 8px 16px;
         border-radius: 20px;
-        font-weight: 500;
-    }
-
-    .badge-success {
-        background-color: #28a745;
-    }
-
-    .badge-warning {
-        background-color: #ffc107;
-        color: #212529;
-    }
-
-    .badge-info {
-        background-color: #17a2b8;
-    }
-
-    .table-responsive {
-        border-radius: 10px;
-    }
-
-    .table {
-        margin-bottom: 0;
-    }
-
-    .table thead th {
-        background-color: #f8f9fa;
-        border-bottom: 2px solid #dee2e6;
-        font-weight: 600;
-        color: #495057;
-        padding: 1rem;
-    }
-
-    .table tbody tr:hover {
-        background-color: #f1f3f4;
-    }
-
-    .table tbody td {
-        padding: 1rem;
-        vertical-align: middle;
-    }
-
-    .form-control {
-        border-radius: 8px;
-        border: 1px solid #ced4da;
-        transition: border-color 0.15s ease-in-out, box-shadow 0.15s ease-in-out;
-        padding: 0.75rem;
-    }
-
-    .form-control:focus {
-        border-color: #4099ff;
-        box-shadow: 0 0 0 0.2rem rgba(64, 153, 255, 0.25);
-    }
-
-    .btn-primary {
-        background: linear-gradient(135deg, #4099ff 0%, #2ed8b6 100%);
         border: none;
-        border-radius: 25px;
-        padding: 0.75rem 2rem;
+        cursor: pointer;
+        font-size: 0.8rem;
         font-weight: 600;
-        transition: all 0.3s ease;
+        transition: all 0.2s;
+        text-decoration: none;
+        white-space: nowrap;
     }
 
-    .btn-primary:hover {
+    .sa-btn-primary {
+        background: var(--grad);
+        color: white;
+    }
+
+    .sa-btn-primary:hover {
         transform: translateY(-1px);
-        box-shadow: 0 4px 12px rgba(64, 153, 255, 0.3);
+        box-shadow: 0 4px 12px rgba(64,153,255,0.3);
     }
 
-    .btn-secondary {
-        border-radius: 25px;
-        padding: 0.75rem 2rem;
+    .sa-btn-ghost {
+        background: var(--surface2);
+        color: var(--muted);
+        border: 1px solid var(--border);
+    }
+
+    .sa-btn-ghost:hover {
+        background: rgba(64,153,255,0.1);
+        border-color: var(--grad-start);
+        color: var(--grad-start);
+    }
+
+    .sa-btn-danger {
+        background: #fee2e2;
+        color: var(--red);
+        border: 1px solid #fecaca;
+    }
+
+    .sa-btn-danger:hover {
+        background: #fecaca;
+        border-color: var(--red);
+    }
+
+    .sa-btn-small {
+        padding: 6px 12px;
+        font-size: 0.75rem;
+    }
+
+    /* ─── SEARCH & FILTER ─────────────────────────────────────── */
+    .sa-search-filter {
+        display: flex;
+        gap: 10px;
+        align-items: flex-end;
+    }
+
+    .sa-search-group {
+        display: flex;
+        gap: 10px;
+        flex: 1;
+        flex-wrap: wrap;
+    }
+
+    .sa-search-input {
+        flex: 1;
+        min-width: 200px;
+        padding: 9px 12px;
+        background: var(--surface2);
+        border: 1px solid var(--border);
+        border-radius: 8px;
+        color: var(--text);
+        font-size: 0.8rem;
+    }
+
+    .sa-search-input:focus {
+        outline: none;
+        border-color: var(--accent);
+        box-shadow: 0 0 0 2px rgba(108,99,255,0.2);
+    }
+
+    .sa-filter-select {
+        padding: 9px 12px;
+        background: var(--surface2);
+        border: 1px solid var(--border);
+        border-radius: 8px;
+        color: var(--text);
+        font-size: 0.8rem;
+    }
+
+    .sa-filter-select:focus {
+        outline: none;
+        border-color: var(--accent);
+    }
+
+    /* ─── SECTION HEADER ──────────────────────────────────────── */
+    .sa-shdr {
+        display: flex;
+        align-items: flex-end;
+        justify-content: space-between;
+        margin-bottom: 14px;
+    }
+
+    .sa-shdr h2 {
+        font-size: 0.72rem;
+        text-transform: uppercase;
+        letter-spacing: 0.1em;
+        color: var(--muted);
+        font-weight: 700;
+        margin: 0;
+    }
+
+    /* ─── GRID LAYOUTS ────────────────────────────────────────── */
+    .sa-3col {
+        display: grid;
+        grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
+        gap: 14px;
+    }
+
+    @media (max-width: 1200px) {
+        .sa-3col {
+            grid-template-columns: repeat(2, 1fr);
+        }
+    }
+
+    @media (max-width: 768px) {
+        .sa-3col {
+            grid-template-columns: 1fr;
+        }
+    }
+
+    /* ─── TENANT CARD ─────────────────────────────────────────── */
+    .tenant-card {
+        background: var(--surface);
+        border: 1px solid var(--border);
+        border-radius: var(--radius);
+        padding: 16px 18px;
+        display: flex;
+        flex-direction: column;
+        gap: 12px;
+        transition: all 0.2s;
+    }
+
+    .tenant-card:hover {
+        border-color: rgba(64,153,255,0.3);
+        transform: translateY(-2px);
+        box-shadow: 0 8px 24px rgba(64,153,255,0.15);
+    }
+
+    .tc-header {
+        display: flex;
+        align-items: flex-start;
+        justify-content: space-between;
+        gap: 10px;
+    }
+
+    .tc-title h3 {
+        font-size: 0.9rem;
         font-weight: 600;
-        transition: all 0.3s ease;
+        margin: 0 0 4px 0;
+        color: var(--text);
+        word-break: break-word;
     }
 
-    .alert {
-        border-radius: 10px;
-        border: none;
-        padding: 1rem 1.5rem;
+    .tc-subdomain {
+        font-size: 0.72rem;
+        color: var(--muted);
+        font-family: 'Courier New', monospace;
     }
 
-    .alert-info {
-        background: linear-gradient(135deg, #d1ecf1 0%, #bee5eb 100%);
-        color: #0c5460;
+    .tc-body {
+        display: flex;
+        flex-direction: column;
+        gap: 8px;
+        padding: 10px 0;
+        border-top: 1px solid var(--border);
+        border-bottom: 1px solid var(--border);
     }
 
-    .alert-success {
-        background: linear-gradient(135deg, #d4edda 0%, #c3e6cb 100%);
-        color: #155724;
+    .tc-info-row {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        font-size: 0.8rem;
     }
 
-    .alert-danger {
-        background: linear-gradient(135deg, #f8d7da 0%, #f5c6cb 100%);
-        color: #721c24;
+    .tc-label {
+        color: var(--muted);
+        font-weight: 500;
+        flex-shrink: 0;
+    }
+
+    .tc-value {
+        color: var(--text);
+        font-weight: 500;
+        text-align: right;
+        flex: 1;
+        margin-left: 10px;
+    }
+
+    .tc-actions {
+        display: flex;
+        gap: 6px;
+    }
+
+    .tc-actions .sa-btn {
+        flex: 1;
+        justify-content: center;
+    }
+
+    /* ─── PILLS ───────────────────────────────────────────────── */
+    .pill {
+        font-size: 0.62rem;
+        font-weight: 700;
+        padding: 3px 8px;
+        border-radius: 20px;
+        text-transform: uppercase;
+        letter-spacing: 0.04em;
+        white-space: nowrap;
+    }
+
+    .pill-green {
+        background: rgba(34,211,160,0.12);
+        color: var(--green);
+    }
+
+    .pill-red {
+        background: rgba(244,63,94,0.12);
+        color: var(--red);
+    }
+
+    .pill-amber {
+        background: rgba(245,158,11,0.12);
+        color: var(--amber);
+    }
+
+    .pill-blue {
+        background: rgba(56,189,248,0.12);
+        color: var(--blue);
+    }
+
+    .pill-muted {
+        background: var(--surface2);
+        color: var(--muted);
+    }
+
+    /* ─── PAGINATION ──────────────────────────────────────────── */
+    .sa-pagination {
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        gap: 6px;
+        margin-top: 20px;
+        padding: 14px;
+        background: var(--surface);
+        border: 1px solid var(--border);
+        border-radius: var(--radius);
+        flex-wrap: wrap;
+    }
+
+    .sa-pagination-item {
+        min-width: 36px;
+        height: 36px;
+        padding: 0 10px;
+        border-radius: 8px;
+        border: 1px solid var(--border);
+        background: var(--surface2);
+        color: var(--text);
+        text-decoration: none;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-size: 0.8rem;
+        font-weight: 500;
+        transition: all 0.2s;
+        cursor: pointer;
+    }
+
+    .sa-pagination-item:hover:not(.active) {
+        background: rgba(108,99,255,0.1);
+        border-color: var(--accent);
+        color: var(--accent);
+    }
+
+    .sa-pagination-item.active {
+        background: linear-gradient(135deg, var(--accent), var(--accent2));
+        border-color: var(--accent);
+        color: white;
+    }
+
+    .sa-pagination-ellipsis {
+        color: var(--muted);
+        font-size: 0.8rem;
+    }
+
+    .sa-pagination-info {
+        font-size: 0.75rem;
+        color: var(--muted);
+        margin-left: 10px;
     }
 
     #estimated_cost {

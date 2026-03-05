@@ -25,6 +25,48 @@ function viewMemberDetails(bookingId) {
                 document.getElementById('memberDuration').textContent = member.duration ? member.duration + ' days' : '-';
                 document.getElementById('memberRoomType').textContent = member.room_type || '-';
 
+                // Member Photo
+                 const photoDisplay = document.getElementById('memberPhotoDisplay');
+                 if (member.photo_path) {
+                     // Construct full image path
+                     let photoSrc = member.photo_path;
+                     // If path doesn't start with http, prepend base path
+                     if (!photoSrc.startsWith('http')) {
+                         // Remove leading slash and prepend correct base path
+                         photoSrc = photoSrc.startsWith('/') ? photoSrc : '/' + photoSrc;
+                         photoSrc = '/almoqadas/mtravels' + photoSrc;
+                     }
+                     
+                     photoDisplay.innerHTML = `
+                         <img id="memberPhotoImg"
+                              src="${photoSrc}" 
+                              alt="Member Photo" 
+                              style="max-width: 150px; max-height: 200px; border-radius: 0.5rem; box-shadow: 0 2px 8px rgba(0,0,0,0.1);" 
+                              loading="lazy">
+                         <p style="color: #6b7280; font-size: 0.875rem; margin-top: 0.5rem;">Photo extracted from passport</p>
+                     `;
+                     
+                     // Add error handler after image is created
+                     const photoImg = document.getElementById('memberPhotoImg');
+                     if (photoImg) {
+                         photoImg.onerror = function() {
+                             photoDisplay.innerHTML = `
+                                 <div style="width: 150px; height: 200px; background: #f3f4f6; border: 2px dashed #d1d5db; border-radius: 0.5rem; display: flex; align-items: center; justify-content: center; margin: 0 auto; color: #9ca3af;">
+                                     <i class="fas fa-image" style="font-size: 2rem;"></i>
+                                 </div>
+                                 <p style="color: #9ca3af; font-size: 0.875rem; margin-top: 0.5rem;">Photo not found</p>
+                             `;
+                         };
+                     }
+                 } else {
+                     photoDisplay.innerHTML = `
+                         <div style="width: 150px; height: 200px; background: #f3f4f6; border: 2px dashed #d1d5db; border-radius: 0.5rem; display: flex; align-items: center; justify-content: center; margin: 0 auto; color: #9ca3af;">
+                             <i class="fas fa-image" style="font-size: 2rem;"></i>
+                         </div>
+                         <p style="color: #9ca3af; font-size: 0.875rem; margin-top: 0.5rem;">No photo available</p>
+                     `;
+                 }
+
                 // Account Information
                 document.getElementById('memberSoldTo').textContent = member.client_name || '-';
                 document.getElementById('memberPaidTo').textContent = member.main_account_name || '-';

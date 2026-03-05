@@ -12,6 +12,14 @@ header("Content-Security-Policy: default-src 'self'; script-src 'self' 'unsafe-i
 
 require_once '../config.php';
 require_once '../includes/db.php';
+require_once '../includes/CsrfProtection.php';
+
+// Validate CSRF token for all POST requests
+if ($_SERVER['REQUEST_METHOD'] === 'POST') {
+    if (!CsrfProtection::validateToken($_POST['csrf_token'] ?? null)) {
+        die("Security token validation failed. Please try again.");
+    }
+}
 
 // Check DB connection
 if (!isset($pdo) || !$pdo) {

@@ -10,7 +10,6 @@
 
 // Include database connection
 require_once '../config.php';
-require_once '../includes/conn.php';
 require_once '../includes/db.php';
 
 if (!isset($pdo) || !$pdo) {

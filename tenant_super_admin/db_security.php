@@ -125,10 +125,20 @@ class DbSecurity {
     /**
      * Execute a secure UPDATE query
      * 
+     * SECURITY NOTE: Always include 'AND tenant_id = ?' in your WHERE clause
+     * to prevent cross-tenant data modification.
+     * 
+     * Example:
+     *   DbSecurity::update($pdo, 'users', 
+     *       ['name' => 'John'],
+     *       'id = ? AND tenant_id = ?',
+     *       [123, $tenant_id]
+     *   );
+     * 
      * @param PDO $pdo PDO connection
      * @param string $table Table name
      * @param array $data Data to update (column => value)
-     * @param string $whereClause WHERE clause with placeholders
+     * @param string $whereClause WHERE clause with placeholders (MUST include tenant_id)
      * @param array $whereParams Parameters for WHERE clause
      * @return int Number of affected rows
      */
@@ -164,9 +174,20 @@ class DbSecurity {
     /**
      * Execute a secure DELETE query
      * 
+     * SECURITY CRITICAL: Always include 'AND tenant_id = ?' in your WHERE clause
+     * to prevent cross-tenant data deletion.
+     * 
+     * Example:
+     *   DbSecurity::delete($pdo, 'users', 
+     *       'id = ? AND tenant_id = ?',
+     *       [123, $tenant_id]
+     *   );
+     * 
+     * DANGEROUS: Do NOT use without tenant_id check!
+     * 
      * @param PDO $pdo PDO connection
      * @param string $table Table name
-     * @param string $whereClause WHERE clause with placeholders
+     * @param string $whereClause WHERE clause with placeholders (MUST include tenant_id)
      * @param array $whereParams Parameters for WHERE clause
      * @return int Number of affected rows
      */
@@ -187,10 +208,20 @@ class DbSecurity {
     /**
      * Execute a secure SELECT query
      * 
+     * SECURITY NOTE: For tenant-isolated data, include 'AND tenant_id = ?' in WHERE clause.
+     * This prevents unauthorized access to other tenant's data.
+     * 
+     * Example:
+     *   DbSecurity::select($pdo, 'users',
+     *       ['id', 'name', 'email'],
+     *       'status = ? AND tenant_id = ?',
+     *       ['active', $tenant_id]
+     *   );
+     * 
      * @param PDO $pdo PDO connection
      * @param string $table Table name
      * @param array $columns Columns to select
-     * @param string $whereClause WHERE clause with placeholders
+     * @param string $whereClause WHERE clause with placeholders (include tenant_id when needed)
      * @param array $whereParams Parameters for WHERE clause
      * @param string $orderBy ORDER BY clause
      * @param int $limit LIMIT value

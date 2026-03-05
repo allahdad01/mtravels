@@ -65,82 +65,74 @@ require_once('../includes/db.php');
                                 <div class="col-md-12">
                                     <?php if ($settings): ?>
                                     <div class="card">
-                                        <div class="card-header">
-                                            <h5><i class="feather icon-home mr-2"></i><?php echo __('agency_information'); ?></h5>
-                                        </div>
-                                        <div class="card-body">
-                                            <form action="updateSettings.php" method="POST" enctype="multipart/form-data" class="settings-form">
-                                                
-                                                <input type="hidden" name="id" value="<?= htmlspecialchars($settings['id']); ?>">
-                                                
-                                                <div class="row">
-                                                    <div class="col-md-6">
-                                                        <div class="form-group">
-                                                            <label for="agency_name"><i class="feather icon-hash mr-2"></i><?php echo __('agency_name') ?></label>
-                                                            <input type="text" class="form-control" id="agency_name" name="agency_name" 
-                                                                   value="<?= htmlspecialchars($settings['agency_name']); ?>" required>
-                                                        </div>
+                                         <div class="card-header">
+                                             <h5><i class="feather icon-settings mr-2"></i><?php echo __('agency_information_and_configuration'); ?></h5>
+                                         </div>
+                                         <div class="card-body">
+                                             <form action="updateSettings.php" method="POST" enctype="multipart/form-data" class="settings-form" id="mainSettingsForm">
+                                                 <input type="hidden" name="csrf_token" value="<?= htmlspecialchars($csrf_token, ENT_QUOTES, 'UTF-8') ?>">
+                                                 <input type="hidden" name="id" value="<?= htmlspecialchars($settings['id']); ?>">
+                                                 <input type="hidden" name="existing_logo" value="<?= htmlspecialchars($settings['logo']); ?>">
+                                                 
+                                                 <!-- Agency Information Section -->
+                                                 <h6 class="mb-3"><i class="feather icon-home mr-2"></i><?php echo __('agency_information'); ?></h6>
+                                                 <div class="row">
+                                                     <div class="col-md-6">
+                                                         <div class="form-group">
+                                                             <label for="agency_name"><i class="feather icon-hash mr-2"></i><?php echo __('agency_name') ?></label>
+                                                             <input type="text" class="form-control" id="agency_name" name="agency_name" 
+                                                                    value="<?= htmlspecialchars($settings['agency_name']); ?>" required>
+                                                         </div>
 
-                                                        <div class="form-group">
-                                                            <label for="title"><i class="feather icon-edit-2 mr-2"></i><?php echo __('agency_title') ?></label>
-                                                            <input type="text" class="form-control" id="title" name="title" 
-                                                                   value="<?= htmlspecialchars($settings['title']); ?>" required>
-                                                        </div>
+                                                         <div class="form-group">
+                                                             <label for="title"><i class="feather icon-edit-2 mr-2"></i><?php echo __('agency_title') ?></label>
+                                                             <input type="text" class="form-control" id="title" name="title" 
+                                                                    value="<?= htmlspecialchars($settings['title']); ?>" required>
+                                                         </div>
 
-                                                        <div class="form-group">
-                                                            <label for="phone"><i class="feather icon-phone mr-2"></i><?php echo __('phone') ?></label>
-                                                            <input type="text" class="form-control" id="phone" name="phone" 
-                                                                   value="<?= htmlspecialchars($settings['phone']); ?>" required>
-                                                        </div>
-                                                    </div>
+                                                         <div class="form-group">
+                                                             <label for="phone"><i class="feather icon-phone mr-2"></i><?php echo __('phone') ?></label>
+                                                             <input type="text" class="form-control" id="phone" name="phone" 
+                                                                    value="<?= htmlspecialchars($settings['phone']); ?>" required>
+                                                         </div>
+                                                     </div>
 
-                                                    <div class="col-md-6">
-                                                        <div class="form-group">
-                                                            <label for="email"><i class="feather icon-mail mr-2"></i><?php echo __('email') ?></label>
-                                                            <input type="email" class="form-control" id="email" name="email" 
-                                                                   value="<?= htmlspecialchars($settings['email']); ?>" required>
-                                                        </div>
+                                                     <div class="col-md-6">
+                                                         <div class="form-group">
+                                                             <label for="email"><i class="feather icon-mail mr-2"></i><?php echo __('email') ?></label>
+                                                             <input type="email" class="form-control" id="email" name="email" 
+                                                                    value="<?= htmlspecialchars($settings['email']); ?>" required>
+                                                         </div>
 
-                                                        <div class="form-group">
-                                                            <label for="address"><i class="feather icon-map-pin mr-2"></i><?php echo __('address') ?></label>
-                                                            <textarea class="form-control" id="address" name="address" 
-                                                                      rows="3" required><?= htmlspecialchars($settings['address']); ?></textarea>
-                                                        </div>
+                                                         <div class="form-group">
+                                                             <label for="address"><i class="feather icon-map-pin mr-2"></i><?php echo __('address') ?></label>
+                                                             <textarea class="form-control" id="address" name="address" 
+                                                                       rows="3" required><?= htmlspecialchars($settings['address']); ?></textarea>
+                                                         </div>
 
-                                                        <div class="form-group">
-                                                            <label for="logo"><i class="feather icon-image mr-2"></i><?php echo __('logo') ?></label>
-                                                            <div class="custom-file">
-                                                                <input type="file" class="custom-file-input" id="logo" name="logo"
-                                                                       accept="image/*" onchange="previewImage(this);">
-                                                                <label class="custom-file-label" for="logo"><?php echo __('choose_file') ?></label>
-                                                            </div>
-                                                            <div class="logo-preview mt-3">
-                                                                <?php if ($settings['logo']): ?>
-                                                                    <img src="../uploads/logo/<?= htmlspecialchars($settings['logo']); ?>"
-                                                                         alt="Logo" id="logoPreview" class="img-thumbnail">
-                                                                <?php else: ?>
-                                                                    <img src="../assets/images/default-logo.png"
-                                                                         alt="Default Logo" id="logoPreview" class="img-thumbnail">
-                                                                <?php endif; ?>
-                                                            </div>
-                                                            <input type="hidden" name="existing_logo"
-                                                                   value="<?= htmlspecialchars($settings['logo']); ?>">
-                                                        </div>
-                                                    </div>
-                                                </div>
-                                            </form>
-                                        </div>
-                                    </div>
+                                                         <div class="form-group">
+                                                             <label for="logo"><i class="feather icon-image mr-2"></i><?php echo __('logo') ?></label>
+                                                             <div class="custom-file">
+                                                                 <input type="file" class="custom-file-input" id="logo" name="logo"
+                                                                        accept="image/*" onchange="previewImage(this);">
+                                                                 <label class="custom-file-label" for="logo"><?php echo __('choose_file') ?></label>
+                                                             </div>
+                                                             <div class="logo-preview mt-3">
+                                                                 <?php if ($settings['logo']): ?>
+                                                                     <img src="../uploads/logo/<?= htmlspecialchars($settings['logo']); ?>"
+                                                                          alt="Logo" id="logoPreview" class="img-thumbnail">
+                                                                 <?php else: ?>
+                                                                     <img src="../assets/images/default-logo.png"
+                                                                          alt="Default Logo" id="logoPreview" class="img-thumbnail">
+                                                                 <?php endif; ?>
+                                                             </div>
+                                                         </div>
+                                                     </div>
+                                                 </div>
 
-                                    <!-- SMTP Configuration Section -->
-                                    <div class="card mt-3">
-                                        <div class="card-header">
-                                            <h5><i class="feather icon-mail mr-2"></i><?php echo __('smtp_configuration'); ?></h5>
-                                        </div>
-                                        <div class="card-body">
-                                            <form action="updateSettings.php" method="POST" enctype="multipart/form-data" class="settings-form">
-                                                <input type="hidden" name="id" value="<?= htmlspecialchars($settings['id']); ?>">
-                                                <input type="hidden" name="existing_logo" value="<?= htmlspecialchars($settings['logo']); ?>">
+                                                 <!-- SMTP Configuration Section -->
+                                                 <hr class="my-4">
+                                                 <h6 class="mb-3"><i class="feather icon-mail mr-2"></i><?php echo __('smtp_configuration'); ?></h6>
                                                 
                                                 <div class="row">
                                                     <div class="col-md-6">

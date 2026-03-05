@@ -5,16 +5,20 @@ if (session_status() === PHP_SESSION_NONE) {
     session_start();
 }
 
-// Check if user is logged in with proper role (super admin)
-if (!isset($_SESSION['user_id']) || $_SESSION['role'] !== 'super_admin') {
+// Database connection
+require_once '../config.php';
+require_once '../includes/db.php';
+
+// Include security module
+require_once 'security.php';
+
+// Check if user is a super admin (system administrator, not tenant-based)
+if (!check_super_admin()) {
     http_response_code(403);
     echo json_encode(['error' => 'Unauthorized']);
     exit();
 }
 
-// Database connection
-require_once '../config.php';
-require_once '../includes/db.php';
 require_once '../includes/BranchAddonManager.php';
 
 // Check if $pdo is available

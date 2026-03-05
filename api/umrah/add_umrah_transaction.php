@@ -347,6 +347,27 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             throw new PDOException('Failed to update due amount in umrah_bookings: ' . $stmt_update_due->error);
         }
 
+        // Update family totals if booking is active
+        $stmt_check_booking = $pdo->prepare("SELECT family_id, status FROM umrah_bookings WHERE booking_id = ? AND tenant_id = ? AND branch_id = ?");
+        $stmt_check_booking->bindParam(1, $umrah_id, PDO::PARAM_INT);
+        $stmt_check_booking->bindParam(2, $tenant_id, PDO::PARAM_INT);
+        $stmt_check_booking->bindParam(3, $branch_id, PDO::PARAM_INT);
+        $stmt_check_booking->execute();
+        $booking_check = $stmt_check_booking->fetch(PDO::FETCH_ASSOC);
+        
+        if ($booking_check && $booking_check['status'] === 'active') {
+            $family_id = $booking_check['family_id'];
+            $stmt_update_family = $pdo->prepare("
+                UPDATE families f
+                SET
+                    f.total_paid = (SELECT SUM(COALESCE(paid, 0)) FROM umrah_bookings WHERE family_id = f.family_id AND tenant_id = ? AND branch_id = ?),
+                    f.total_paid_to_bank = (SELECT SUM(COALESCE(received_bank_payment, 0)) FROM umrah_bookings WHERE family_id = f.family_id AND tenant_id = ? AND branch_id = ?),
+                    f.total_due = (SELECT SUM(COALESCE(due, 0)) FROM umrah_bookings WHERE family_id = f.family_id AND tenant_id = ? AND branch_id = ?)
+                WHERE f.family_id = ? AND f.tenant_id = ? AND f.branch_id = ?
+            ");
+            $stmt_update_family->execute([$tenant_id, $branch_id, $tenant_id, $branch_id, $tenant_id, $branch_id, $family_id, $tenant_id, $branch_id]);
+        }
+
         // Step 4: Get the supplier's name, applicant name, and base amount from umrah_bookings and suppliers
         $supplierStmt = $pdo->prepare("
             SELECT

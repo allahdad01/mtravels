@@ -54,7 +54,7 @@ function loadMainAccounts() {
             data.forEach(account => {
                 const option = document.createElement('option');
                 option.value = account.id;
-                option.textContent = `${account.name} - (USD: ${account.usd_balance}, AFS: ${account.afs_balance})`;
+                option.textContent = `${account.name}`;
                 mainAccountSelect.appendChild(option);
             });
         })

@@ -1,5 +1,4 @@
 <?php
-require_once '../../includes/conn.php';
 require_once '../../includes/db.php';
 require_once '../includes/hawala_handler.php';
 
@@ -23,7 +22,7 @@ if (!isset($data['hawala_id']) || !is_numeric($data['hawala_id'])) {
 $hawala_id = intval($data['hawala_id']);
 
 try {
-    $result = cancelHawalaTransfer($conn, $hawala_id, $tenant_id, $branch_id);
+    $result = cancelHawalaTransfer($pdo, $hawala_id, $tenant_id, $branch_id);
     echo json_encode($result);
 } catch (Exception $e) {
     http_response_code(500);

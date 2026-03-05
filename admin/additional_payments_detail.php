@@ -1,25 +1,40 @@
 <?php
+// Include database security module for input validation
+require_once 'includes/db_security.php';
+
+// Include security module
+require_once 'security.php';
+
+// Include language helper
+require_once '../includes/language_helpers.php';
+
+// Enforce authentication
+enforce_auth();
+
 // Start session if not already started
 if (session_status() === PHP_SESSION_NONE) {
     session_start();
 }
 $tenant_id = $_SESSION['tenant_id'];
 $branch_id = $_SESSION['branch_id'];
-// Include security module
-require_once 'security.php';
+// Generate CSRF token if not already set
+if (!isset($_SESSION['csrf_token'])) {
+    $_SESSION['csrf_token'] = bin2hex(random_bytes(32));
+}
 
-// Enforce authentication
-enforce_auth();
-
-
-// Check if user is logged in
-if (!isset($_SESSION['user_id'])  || $_SESSION['role'] !== 'admin') {
+// Check if user is logged in with proper role
+$allowed_roles = ['admin', 'finance'];
+if (!isset($_SESSION['user_id']) || !in_array($_SESSION['role'], $allowed_roles)) {
+    error_log("Unauthorized access attempt to dashboard: " . ($_SESSION['user_id'] ?? 'unknown') . " - Role: " . ($_SESSION['role'] ?? 'unknown') . " - IP: " . $_SERVER['REMOTE_ADDR']);
     header('Location: ../login.php');
     exit();
 }
 
-// Include database connection
-include '../includes/db.php';
+// Database connection
+require_once('../includes/db.php');
+
+// Load input validation helper
+require_once '../includes/InputValidator.php';
 
 // Initialize variables
 $paymentId = isset($_GET['id']) ? intval($_GET['id']) : 0;
@@ -471,15 +486,42 @@ include '../includes/header.php';
 </div>
 
 <style>
-/* Enhanced custom styles for better layout and design */
+/* ── Design tokens (inherited from additional_payments.php) ── */
+:root {
+    --ap-bg:           #f4f6f9;
+    --ap-surface:      #ffffff;
+    --ap-border:       #e8eaed;
+    --ap-border-soft:  #f0f2f5;
+    --ap-text:         #111827;
+    --ap-text-2:       #6b7280;
+    --ap-text-muted:   #9ca3af;
+    --ap-accent:       #2563eb;
+    --ap-accent-soft:  #eff6ff;
+    --ap-accent-mid:   #bfdbfe;
+    --ap-green:        #059669;
+    --ap-green-soft:   #ecfdf5;
+    --ap-amber:        #d97706;
+    --ap-amber-soft:   #fffbeb;
+    --ap-red:          #dc2626;
+    --ap-red-soft:     #fef2f2;
+    --ap-sky:          #0284c7;
+    --ap-sky-soft:     #f0f9ff;
+    --ap-radius:       12px;
+    --ap-radius-sm:    8px;
+    --ap-shadow:       0 1px 3px rgba(0,0,0,0.06), 0 1px 2px rgba(0,0,0,0.04);
+    --ap-shadow-hover: 0 4px 16px rgba(0,0,0,0.08), 0 2px 6px rgba(0,0,0,0.05);
+    --ap-mono:         'Courier New', monospace;
+}
+
+/* ── Page header ── */
 .page-header.card {
-    background: linear-gradient(135deg, #4099ff 0%, #2ed8b6 100%);
+    background: var(--ap-accent);
     color: #ffffff;
     border: none;
     margin-bottom: 20px;
     padding: 20px !important;
-    box-shadow: 0 4px 12px rgba(0,0,0,0.15);
-    border-radius: 10px;
+    box-shadow: var(--ap-shadow-hover);
+    border-radius: var(--ap-radius);
 }
 
 .page-header.card .row {
@@ -512,22 +554,25 @@ include '../includes/header.php';
     transform: translateY(-1px);
 }
 
+/* ── Cards ── */
 .card {
-    border-radius: 10px;
-    box-shadow: 0 2px 8px rgba(0,0,0,0.1);
-    transition: transform 0.2s ease-in-out, box-shadow 0.2s ease-in-out;
-    border: none;
+    background: var(--ap-surface);
+    border: 1px solid var(--ap-border);
+    border-radius: var(--ap-radius);
+    box-shadow: var(--ap-shadow);
+    transition: box-shadow 0.2s ease, border-color 0.2s ease, transform 0.2s ease;
 }
 
 .card:hover {
-    transform: translateY(-2px);
-    box-shadow: 0 4px 16px rgba(0,0,0,0.15);
+    box-shadow: var(--ap-shadow-hover);
+    border-color: var(--ap-accent-mid);
+    transform: translateY(-1px);
 }
 
 .card-header {
-    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    background: var(--ap-accent);
     color: white;
-    border-radius: 10px 10px 0 0;
+    border-radius: var(--ap-radius) var(--ap-radius) 0 0;
     padding: 1rem 1.5rem;
     border: none;
 }
@@ -537,18 +582,46 @@ include '../includes/header.php';
     font-weight: 600;
     display: flex;
     align-items: center;
+    color: white;
 }
 
-.progress {
-    border-radius: 15px;
-    overflow: hidden;
-    box-shadow: inset 0 1px 2px rgba(0,0,0,0.1);
+/* ── Tables ── */
+.table-responsive {
+    border-radius: var(--ap-radius-sm);
 }
 
-.progress-bar {
-    transition: width 0.6s ease;
+.table {
+    margin-bottom: 0;
+    color: var(--ap-text);
 }
 
+.table thead th {
+    background-color: var(--ap-accent-soft);
+    border-bottom: 2px solid var(--ap-accent-mid);
+    font-weight: 600;
+    color: var(--ap-accent);
+    padding: 1rem;
+}
+
+.table tbody tr:hover {
+    background-color: var(--ap-border-soft);
+}
+
+.table tbody td {
+    padding: 1rem;
+    vertical-align: middle;
+    border-color: var(--ap-border);
+}
+
+.table-bordered {
+    border-color: var(--ap-border);
+}
+
+.table-bordered th, .table-bordered td {
+    border-color: var(--ap-border);
+}
+
+/* ── Status badges ── */
 .t {
     font-size: 0.85em;
     padding: 0.5em 0.75em;
@@ -557,69 +630,54 @@ include '../includes/header.php';
 }
 
 .badge-primary {
-    background-color: #007bff;
+    background-color: var(--ap-accent);
+    color: white;
 }
 
 .badge-success {
-    background-color: #28a745;
+    background-color: var(--ap-green);
+    color: white;
 }
 
 .badge-danger {
-    background-color: #dc3545;
+    background-color: var(--ap-red);
+    color: white;
 }
 
 .badge-warning {
-    background-color: #ffc107;
+    background-color: var(--ap-amber);
     color: #212529;
 }
 
 .badge-info {
-    background-color: #17a2b8;
+    background-color: var(--ap-sky);
+    color: white;
 }
 
 .badge-secondary {
-    background-color: #6c757d;
+    background-color: var(--ap-text-muted);
+    color: white;
 }
 
-.table-responsive {
-    border-radius: 10px;
-}
-
-.table {
-    margin-bottom: 0;
-}
-
-.table thead th {
-    background-color: #f8f9fa;
-    border-bottom: 2px solid #dee2e6;
-    font-weight: 600;
-    color: #495057;
-    padding: 1rem;
-}
-
-.table tbody tr:hover {
-    background-color: #f1f3f4;
-}
-
-.table tbody td {
-    padding: 1rem;
-    vertical-align: middle;
-}
-
+/* ── Forms ── */
 .form-control {
-    border-radius: 8px;
-    border: 1px solid #ced4da;
+    border-radius: var(--ap-radius-sm);
+    border: 1px solid var(--ap-border);
+    color: var(--ap-text);
+    background: var(--ap-surface);
     transition: border-color 0.15s ease-in-out, box-shadow 0.15s ease-in-out;
     padding: 0.75rem;
 }
 
 .form-control:focus {
-    border-color: #4099ff;
-    box-shadow: 0 0 0 0.2rem rgba(64, 153, 255, 0.25);
+    border-color: var(--ap-accent);
+    box-shadow: 0 0 0 0.2rem var(--ap-accent-soft);
+    color: var(--ap-text);
 }
 
+/* ── Buttons ── */
 .btn-primary {
-    background: linear-gradient(135deg, #4099ff 0%, #2ed8b6 100%);
+    background: var(--ap-accent);
     border: none;
     border-radius: 25px;
     padding: 0.75rem 2rem;
@@ -628,43 +686,98 @@ include '../includes/header.php';
 }
 
 .btn-primary:hover {
+    background: var(--ap-accent);
     transform: translateY(-1px);
-    box-shadow: 0 4px 12px rgba(64, 153, 255, 0.3);
+    box-shadow: 0 4px 12px rgba(37, 99, 235, 0.3);
 }
 
 .btn-secondary {
+    background: var(--ap-text-muted);
+    border: none;
     border-radius: 25px;
     padding: 0.75rem 2rem;
     font-weight: 600;
     transition: all 0.3s ease;
+    color: white;
 }
 
+.btn-secondary:hover {
+    background: var(--ap-text-2);
+    transform: translateY(-1px);
+}
+
+.btn-outline-secondary {
+    border: 1px solid var(--ap-border);
+    color: var(--ap-text);
+    background: var(--ap-surface);
+}
+
+.btn-outline-secondary:hover {
+    background: var(--ap-border-soft);
+    border-color: var(--ap-accent);
+    color: var(--ap-accent);
+}
+
+/* ── Alerts ── */
 .alert {
-    border-radius: 10px;
+    border-radius: var(--ap-radius-sm);
     border: none;
     padding: 1rem 1.5rem;
 }
 
 .alert-info {
-    background: linear-gradient(135deg, #d1ecf1 0%, #bee5eb 100%);
-    color: #0c5460;
+    background: var(--ap-sky-soft);
+    color: var(--ap-sky);
 }
 
 .alert-success {
-    background: linear-gradient(135deg, #d4edda 0%, #c3e6cb 100%);
-    color: #155724;
+    background: var(--ap-green-soft);
+    color: var(--ap-green);
 }
 
 .alert-danger {
-    background: linear-gradient(135deg, #f8d7da 0%, #f5c6cb 100%);
-    color: #721c24;
+    background: var(--ap-red-soft);
+    color: var(--ap-red);
 }
 
-#estimated_cost {
-    color: #28a745;
-    font-weight: bold;
+.alert-warning {
+    background: var(--ap-amber-soft);
+    color: var(--ap-amber);
 }
 
+/* ── Field labels & values ── */
+.ap-field-label {
+    font-size: 0.68rem;
+    font-weight: 700;
+    color: var(--ap-text-muted);
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+}
+
+.ap-field-value {
+    font-size: 0.875rem;
+    color: var(--ap-text);
+    line-height: 1.5;
+}
+
+/* ── Text utilities ── */
+.text-muted {
+    color: var(--ap-text-muted) !important;
+}
+
+.text-success {
+    color: var(--ap-green) !important;
+}
+
+.text-danger {
+    color: var(--ap-red) !important;
+}
+
+.text-end {
+    text-align: right;
+}
+
+/* ── Sizing ── */
 .h2 {
     font-size: 2.5rem;
 }

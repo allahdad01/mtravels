@@ -25,6 +25,30 @@ enforce_auth();
 // Get tenant ID from session
 $tenant_id = $_SESSION['tenant_id'];
 
+// Fetch allowed features for this tenant
+$allowed_features = [];
+if ($tenant_id) {
+    $query = "
+        SELECT p.features
+        FROM tenant_subscriptions ts
+        JOIN plans p ON ts.plan_id = p.id
+        WHERE ts.tenant_id = ? AND ts.status = 'active'
+        ORDER BY ts.start_date DESC
+        LIMIT 1
+    ";
+    $stmt = $pdo->prepare($query);
+    $stmt->execute([$tenant_id]);
+    $row = $stmt->fetch(PDO::FETCH_ASSOC);
+    if ($row) {
+        $allowed_features = json_decode($row['features'], true) ?? [];
+    }
+}
+
+// Helper function to check if a feature is allowed
+function hasFeature($feature, $allowed_features) {
+    return in_array($feature, $allowed_features);
+}
+
 // Include PhpSpreadsheet
 require_once '../vendor/autoload.php';
 
@@ -132,166 +156,205 @@ try {
     $instructionsSheet->getColumnDimension('A')->setWidth(80);
     $instructionsSheet->getStyle('A3:A' . ($row-1))->getAlignment()->setWrapText(true);
 
-    // Create Ticket Bookings sheet
-    $ticketBookingsSheet = new \PhpOffice\PhpSpreadsheet\Worksheet\Worksheet($spreadsheet, 'Ticket Bookings');
-    $spreadsheet->addSheet($ticketBookingsSheet);
-
-    $headers = [
-        'PNR*', 'Title', 'Passenger Name*', 'Phone', 'Gender', 'Origin*', 'Destination*',
-        'Trip Type', 'Airline*', 'Issue Date*', 'Departure Date*', 'Currency', 'Price',
-        'Sold Amount*', 'Profit', 'Supplier Name*', 'Sold To Name*', 'Paid To Name*',
-        'Status', 'Description'
-    ];
-
-    $ticketBookingsSheet->fromArray([$headers], NULL, 'A1');
-    $ticketBookingsSheet->getStyle('A1:T1')->applyFromArray($headerStyle);
-
-    // Add sample data and notes
-    $sampleData = [
-        ['ABC123', 'Mr', 'John Doe', '+1234567890', 'Male', 'New York', 'London', 'one_way', 'British Airways', '2024-01-15', '2024-01-20', 'USD', 500.00, 550.00, 50.00, 'ABC Travel', 'Client A', 'Main Account', 'Booked', 'Sample booking'],
-        ['', '', '', '', '', '', '', '', '', '', '', '', '', '', '', '', '', '', '', ''],
-        ['NOTES:', '', '', '', '', '', '', '', '', '', '', '', '', '', '', '', '', '', '', ''],
-        ['- PNR: Passenger Name Record number', '', '', '', '', '', '', '', '', '', '', '', '', '', '', '', '', '', '', ''],
-        ['- Trip Type: one_way or round_trip', '', '', '', '', '', '', '', '', '', '', '', '', '', '', '', '', '', '', ''],
-        ['- Status options: Booked, Paid, Date Changed, Refunded', '', '', '', '', '', '', '', '', '', '', '', '', '', '', '', '', '', '', '']
-    ];
-
-    $ticketBookingsSheet->fromArray($sampleData, NULL, 'A2');
-    $ticketBookingsSheet->getStyle('A4:T7')->applyFromArray($noteStyle);
-
-    // Set column widths
-    $colWidths = [15, 10, 20, 15, 10, 15, 15, 12, 20, 12, 12, 8, 12, 12, 12, 20, 20, 20, 15, 30];
-    foreach (range('A', 'T') as $index => $col) {
-        $ticketBookingsSheet->getColumnDimension($col)->setWidth($colWidths[$index]);
+    // Create Ticket Bookings sheet (only if feature enabled)
+    if (hasFeature('ticket_bookings', $allowed_features)) {
+        $ticketBookingsSheet = new \PhpOffice\PhpSpreadsheet\Worksheet\Worksheet($spreadsheet, 'Ticket Bookings');
+        $spreadsheet->addSheet($ticketBookingsSheet);
+    } else {
+        $ticketBookingsSheet = null;
     }
 
-    // Create Ticket Refunds sheet
-    $ticketRefundsSheet = new \PhpOffice\PhpSpreadsheet\Worksheet\Worksheet($spreadsheet, 'Ticket Refunds');
-    $spreadsheet->addSheet($ticketRefundsSheet);
+    if ($ticketBookingsSheet !== null) {
+        $headers = [
+            'PNR*', 'Title', 'Passenger Name*', 'Phone', 'Gender', 'Origin*', 'Destination*',
+            'Trip Type', 'Airline*', 'Issue Date*', 'Departure Date*', 'Currency', 'Price',
+            'Sold Amount*', 'Profit', 'Supplier Name*', 'Sold To Name*', 'Paid To Name*',
+            'Status', 'Description'
+        ];
 
-    $refundHeaders = [
-        'PNR*', 'Title', 'Passenger Name*', 'Phone', 'Gender', 'Origin*', 'Destination*',
-        'Airline*', 'Issue Date*', 'Departure Date*', 'Currency', 'Sold Amount*',
-        'Base Amount', 'Supplier Penalty', 'Service Penalty', 'Refund to Passenger*',
-        'Supplier Name*', 'Sold To Name*', 'Paid To Name*', 'Status', 'Remarks'
-    ];
+        $ticketBookingsSheet->fromArray([$headers], NULL, 'A1');
+        $ticketBookingsSheet->getStyle('A1:T1')->applyFromArray($headerStyle);
 
-    $ticketRefundsSheet->fromArray([$refundHeaders], NULL, 'A1');
-    $ticketRefundsSheet->getStyle('A1:U1')->applyFromArray($headerStyle);
+        // Add sample data and notes
+        $sampleData = [
+            ['ABC123', 'Mr', 'John Doe', '+1234567890', 'Male', 'New York', 'London', 'one_way', 'British Airways', '2024-01-15', '2024-01-20', 'USD', 500.00, 550.00, 50.00, 'ABC Travel', 'Client A', 'Main Account', 'Booked', 'Sample booking'],
+            ['', '', '', '', '', '', '', '', '', '', '', '', '', '', '', '', '', '', '', ''],
+            ['NOTES:', '', '', '', '', '', '', '', '', '', '', '', '', '', '', '', '', '', '', ''],
+            ['- PNR: Passenger Name Record number', '', '', '', '', '', '', '', '', '', '', '', '', '', '', '', '', '', '', ''],
+            ['- Trip Type: one_way or round_trip', '', '', '', '', '', '', '', '', '', '', '', '', '', '', '', '', '', '', ''],
+            ['- Status options: Booked, Paid, Date Changed, Refunded', '', '', '', '', '', '', '', '', '', '', '', '', '', '', '', '', '', '', '']
+        ];
 
-    $refundSample = [
-        ['ABC123', 'Mr', 'John Doe', '+1234567890', 'Male', 'New York', 'London', 'British Airways', '2024-01-15', '2024-01-20', 'USD', 550.00, 500.00, 50.00, 25.00, 475.00, 'ABC Travel', 'Client A', 'Main Account', 'Refunded', 'Customer requested refund'],
-        ['', '', '', '', '', '', '', '', '', '', '', '', '', '', '', '', '', '', '', '', ''],
-        ['NOTES:', '', '', '', '', '', '', '', '', '', '', '', '', '', '', '', '', '', '', '', ''],
-        ['- Refund to Passenger = Sold Amount - (Supplier Penalty + Service Penalty)', '', '', '', '', '', '', '', '', '', '', '', '', '', '', '', '', '', '', '', '']
-    ];
+        $ticketBookingsSheet->fromArray($sampleData, NULL, 'A2');
+        $ticketBookingsSheet->getStyle('A4:T7')->applyFromArray($noteStyle);
 
-    $ticketRefundsSheet->fromArray($refundSample, NULL, 'A2');
-    $ticketRefundsSheet->getStyle('A4:U5')->applyFromArray($noteStyle);
-
-    $refundWidths = [15, 10, 20, 15, 10, 15, 15, 20, 12, 12, 8, 12, 12, 15, 15, 18, 20, 20, 20, 15, 30];
-    foreach (range('A', 'U') as $index => $col) {
-        $ticketRefundsSheet->getColumnDimension($col)->setWidth($refundWidths[$index]);
+        // Set column widths
+        $colWidths = [15, 10, 20, 15, 10, 15, 15, 12, 20, 12, 12, 8, 12, 12, 12, 20, 20, 20, 15, 30];
+        foreach (range('A', 'T') as $index => $col) {
+            $ticketBookingsSheet->getColumnDimension($col)->setWidth($colWidths[$index]);
+        }
     }
 
-    // Create Ticket Date Changes sheet
-    $dateChangesSheet = new \PhpOffice\PhpSpreadsheet\Worksheet\Worksheet($spreadsheet, 'Ticket Date Changes');
-    $spreadsheet->addSheet($dateChangesSheet);
+    // Create Ticket Refunds sheet (only if feature enabled)
+    if (hasFeature('refunded_tickets', $allowed_features)) {
+        $ticketRefundsSheet = new \PhpOffice\PhpSpreadsheet\Worksheet\Worksheet($spreadsheet, 'Ticket Refunds');
+        $spreadsheet->addSheet($ticketRefundsSheet);
 
-    $dateChangeHeaders = [
-        'PNR*', 'Title', 'Passenger Name*', 'Phone', 'Gender', 'Origin*', 'Destination*',
-        'Airline*', 'Issue Date*', 'Departure Date*', 'Currency', 'Sold Amount*',
-        'Base Amount', 'Supplier Penalty', 'Service Penalty', 'Supplier Name*',
-        'Sold To Name*', 'Paid To Name*', 'Status', 'Remarks'
-    ];
+        $refundHeaders = [
+            'PNR*', 'Title', 'Passenger Name*', 'Phone', 'Gender', 'Origin*', 'Destination*',
+            'Airline*', 'Issue Date*', 'Departure Date*', 'Currency', 'Sold Amount*',
+            'Base Amount', 'Supplier Penalty', 'Service Penalty', 'Refund to Passenger*',
+            'Supplier Name*', 'Sold To Name*', 'Paid To Name*', 'Status', 'Remarks'
+        ];
 
-    $dateChangesSheet->fromArray([$dateChangeHeaders], NULL, 'A1');
-    $dateChangesSheet->getStyle('A1:T1')->applyFromArray($headerStyle);
+        $ticketRefundsSheet->fromArray([$refundHeaders], NULL, 'A1');
+        $ticketRefundsSheet->getStyle('A1:U1')->applyFromArray($headerStyle);
 
-    // Create Ticket Weights sheet
-    $weightsSheet = new \PhpOffice\PhpSpreadsheet\Worksheet\Worksheet($spreadsheet, 'Ticket Weights');
-    $spreadsheet->addSheet($weightsSheet);
+        $refundSample = [
+            ['ABC123', 'Mr', 'John Doe', '+1234567890', 'Male', 'New York', 'London', 'British Airways', '2024-01-15', '2024-01-20', 'USD', 550.00, 500.00, 50.00, 25.00, 475.00, 'ABC Travel', 'Client A', 'Main Account', 'Refunded', 'Customer requested refund'],
+            ['', '', '', '', '', '', '', '', '', '', '', '', '', '', '', '', '', '', '', '', ''],
+            ['NOTES:', '', '', '', '', '', '', '', '', '', '', '', '', '', '', '', '', '', '', '', ''],
+            ['- Refund to Passenger = Sold Amount - (Supplier Penalty + Service Penalty)', '', '', '', '', '', '', '', '', '', '', '', '', '', '', '', '', '', '', '', '']
+        ];
 
-    $weightHeaders = [
-        'PNR*', 'Passenger Name*', 'Weight (kg)*', 'Base Price', 'Sold Price*', 'Profit',
-        'Currency', 'Date*', 'Remarks', 'Supplier Name*', 'Client Name*', 'Account Name*'
-    ];
+        $ticketRefundsSheet->fromArray($refundSample, NULL, 'A2');
+        $ticketRefundsSheet->getStyle('A4:U5')->applyFromArray($noteStyle);
 
-    $weightsSheet->fromArray([$weightHeaders], NULL, 'A1');
-    $weightsSheet->getStyle('A1:L1')->applyFromArray($headerStyle);
+        $refundWidths = [15, 10, 20, 15, 10, 15, 15, 20, 12, 12, 8, 12, 12, 15, 15, 18, 20, 20, 20, 15, 30];
+        foreach (range('A', 'U') as $index => $col) {
+            $ticketRefundsSheet->getColumnDimension($col)->setWidth($refundWidths[$index]);
+        }
+    } else {
+        $ticketRefundsSheet = null;
+    }
 
-    // Create Ticket Reservations sheet
-    $reservationsSheet = new \PhpOffice\PhpSpreadsheet\Worksheet\Worksheet($spreadsheet, 'Ticket Reservations');
-    $spreadsheet->addSheet($reservationsSheet);
+    // Create Ticket Date Changes sheet (only if feature enabled)
+    if (hasFeature('date_change_tickets', $allowed_features)) {
+        $dateChangesSheet = new \PhpOffice\PhpSpreadsheet\Worksheet\Worksheet($spreadsheet, 'Ticket Date Changes');
+        $spreadsheet->addSheet($dateChangesSheet);
 
-    $reservationHeaders = [
-        'PNR*', 'Title', 'Passenger Name*', 'Phone', 'Gender', 'Origin*', 'Destination*',
-        'Trip Type', 'Airline*', 'Issue Date*', 'Departure Date*', 'Currency', 'Price',
-        'Sold Amount*', 'Profit', 'Supplier Name*', 'Sold To Name*', 'Paid To Name*',
-        'Status', 'Description'
-    ];
+        $dateChangeHeaders = [
+            'PNR*', 'Title', 'Passenger Name*', 'Phone', 'Gender', 'Origin*', 'Destination*',
+            'Airline*', 'Issue Date*', 'Departure Date*', 'Currency', 'Sold Amount*',
+            'Base Amount', 'Supplier Penalty', 'Service Penalty', 'Supplier Name*',
+            'Sold To Name*', 'Paid To Name*', 'Status', 'Remarks'
+        ];
 
-    $reservationsSheet->fromArray([$reservationHeaders], NULL, 'A1');
-    $reservationsSheet->getStyle('A1:T1')->applyFromArray($headerStyle);
+        $dateChangesSheet->fromArray([$dateChangeHeaders], NULL, 'A1');
+        $dateChangesSheet->getStyle('A1:T1')->applyFromArray($headerStyle);
+    } else {
+        $dateChangesSheet = null;
+    }
 
-    // Create Visa Applications sheet
-    $visaSheet = new \PhpOffice\PhpSpreadsheet\Worksheet\Worksheet($spreadsheet, 'Visa Applications');
-    $spreadsheet->addSheet($visaSheet);
+    // Create Ticket Weights sheet (only if feature enabled)
+    if (hasFeature('ticket_weights', $allowed_features)) {
+        $weightsSheet = new \PhpOffice\PhpSpreadsheet\Worksheet\Worksheet($spreadsheet, 'Ticket Weights');
+        $spreadsheet->addSheet($weightsSheet);
 
-    $visaHeaders = [
-        'Passport Number*', 'Title', 'Applicant Name*', 'Gender', 'Country*', 'Visa Type*',
-        'Receive Date*', 'Applied Date', 'Issued Date', 'Base Amount', 'Sold Amount*',
-        'Profit', 'Currency', 'Status', 'Supplier Name*', 'Client Name*', 'Account Name*', 'Remarks'
-    ];
+        $weightHeaders = [
+            'PNR*', 'Passenger Name*', 'Weight (kg)*', 'Base Price', 'Sold Price*', 'Profit',
+            'Currency', 'Date*', 'Remarks', 'Supplier Name*', 'Client Name*', 'Account Name*'
+        ];
 
-    $visaSheet->fromArray([$visaHeaders], NULL, 'A1');
-    $visaSheet->getStyle('A1:R1')->applyFromArray($headerStyle);
+        $weightsSheet->fromArray([$weightHeaders], NULL, 'A1');
+        $weightsSheet->getStyle('A1:L1')->applyFromArray($headerStyle);
+    } else {
+        $weightsSheet = null;
+    }
 
-    // Create Hotel Bookings sheet
-    $hotelSheet = new \PhpOffice\PhpSpreadsheet\Worksheet\Worksheet($spreadsheet, 'Hotel Bookings');
-    $spreadsheet->addSheet($hotelSheet);
+    // Create Ticket Reservations sheet (only if feature enabled)
+    if (hasFeature('ticket_reservations', $allowed_features)) {
+        $reservationsSheet = new \PhpOffice\PhpSpreadsheet\Worksheet\Worksheet($spreadsheet, 'Ticket Reservations');
+        $spreadsheet->addSheet($reservationsSheet);
 
-    $hotelHeaders = [
-        'Order ID*', 'Title', 'First Name*', 'Last Name*', 'Gender', 'Contact No',
-        'Issue Date*', 'Check-in Date*', 'Check-out Date*', 'Accommodation Details',
-        'Currency', 'Base Amount', 'Sold Amount*', 'Profit', 'Supplier Name*',
-        'Client Name*', 'Account Name*', 'Remarks'
-    ];
+        $reservationHeaders = [
+            'PNR*', 'Title', 'Passenger Name*', 'Phone', 'Gender', 'Origin*', 'Destination*',
+            'Trip Type', 'Airline*', 'Issue Date*', 'Departure Date*', 'Currency', 'Price',
+            'Sold Amount*', 'Profit', 'Supplier Name*', 'Sold To Name*', 'Paid To Name*',
+            'Status', 'Description'
+        ];
 
-    $hotelSheet->fromArray([$hotelHeaders], NULL, 'A1');
-    $hotelSheet->getStyle('A1:R1')->applyFromArray($headerStyle);
+        $reservationsSheet->fromArray([$reservationHeaders], NULL, 'A1');
+        $reservationsSheet->getStyle('A1:T1')->applyFromArray($headerStyle);
+    } else {
+        $reservationsSheet = null;
+    }
 
-    // Create Families sheet
-    $familiesSheet = new \PhpOffice\PhpSpreadsheet\Worksheet\Worksheet($spreadsheet, 'Families');
-    $spreadsheet->addSheet($familiesSheet);
+    // Create Visa Applications sheet (only if feature enabled)
+    if (hasFeature('visa_applications', $allowed_features)) {
+        $visaSheet = new \PhpOffice\PhpSpreadsheet\Worksheet\Worksheet($spreadsheet, 'Visa Applications');
+        $spreadsheet->addSheet($visaSheet);
 
-    $familyHeaders = [
-        'Head of Family*', 'Contact', 'Address', 'Province', 'District',
-        'Total Members', 'Package Type', 'Location', 'Tazmin', 'Visa Status',
-        'Total Price', 'Total Paid', 'Total Paid to Bank', 'Total Due'
-    ];
+        $visaHeaders = [
+            'Passport Number*', 'Title', 'Applicant Name*', 'Gender', 'Country*', 'Visa Type*',
+            'Receive Date*', 'Applied Date', 'Issued Date', 'Base Amount', 'Sold Amount*',
+            'Profit', 'Currency', 'Status', 'Supplier Name*', 'Client Name*', 'Account Name*', 'Remarks'
+        ];
 
-    $familiesSheet->fromArray([$familyHeaders], NULL, 'A1');
-    $familiesSheet->getStyle('A1:N1')->applyFromArray($headerStyle);
+        $visaSheet->fromArray([$visaHeaders], NULL, 'A1');
+        $visaSheet->getStyle('A1:R1')->applyFromArray($headerStyle);
+    } else {
+        $visaSheet = null;
+    }
 
-    // Create Umrah Bookings sheet
-    $umrahSheet = new \PhpOffice\PhpSpreadsheet\Worksheet\Worksheet($spreadsheet, 'Umrah Bookings');
-    $spreadsheet->addSheet($umrahSheet);
+    // Create Hotel Bookings sheet (only if feature enabled)
+    if (hasFeature('hotel_bookings', $allowed_features)) {
+        $hotelSheet = new \PhpOffice\PhpSpreadsheet\Worksheet\Worksheet($spreadsheet, 'Hotel Bookings');
+        $spreadsheet->addSheet($hotelSheet);
 
-    $umrahHeaders = [
-        'Name*', 'Passport Number*', 'Date of Birth', 'Entry Date*',
-        'Flight Date', 'Return Date', 'Duration', 'Room Type', 'Price',
-        'Sold Price*', 'Profit', 'Received Bank Payment', 'Bank Receipt Number',
-        'Paid', 'Due', 'Currency', 'Head of Family*', 'Remarks',
-        'Supplier Name*', 'Client Name*', 'Account Name*', 'Service Type'
-    ];
+        $hotelHeaders = [
+            'Order ID*', 'Title', 'First Name*', 'Last Name*', 'Gender', 'Contact No',
+            'Issue Date*', 'Check-in Date*', 'Check-out Date*', 'Accommodation Details',
+            'Currency', 'Base Amount', 'Sold Amount*', 'Profit', 'Supplier Name*',
+            'Client Name*', 'Account Name*', 'Remarks'
+        ];
 
-    $umrahSheet->fromArray([$umrahHeaders], NULL, 'A1');
-    $umrahSheet->getStyle('A1:X1')->applyFromArray($headerStyle);
+        $hotelSheet->fromArray([$hotelHeaders], NULL, 'A1');
+        $hotelSheet->getStyle('A1:R1')->applyFromArray($headerStyle);
+    } else {
+        $hotelSheet = null;
+    }
 
-    // Set column widths for all sheets
-    $sheets = [$ticketBookingsSheet, $ticketRefundsSheet, $dateChangesSheet, $weightsSheet,
-               $reservationsSheet, $visaSheet, $hotelSheet, $familiesSheet, $umrahSheet];
+    // Create Families sheet (only if feature enabled)
+    if (hasFeature('umrah_bookings', $allowed_features)) {
+        $familiesSheet = new \PhpOffice\PhpSpreadsheet\Worksheet\Worksheet($spreadsheet, 'Families');
+        $spreadsheet->addSheet($familiesSheet);
+
+        $familyHeaders = [
+            'Head of Family*', 'Contact', 'Address', 'Province', 'District',
+            'Total Members', 'Package Type', 'Location', 'Tazmin', 'Visa Status',
+            'Total Price', 'Total Paid', 'Total Paid to Bank', 'Total Due'
+        ];
+
+        $familiesSheet->fromArray([$familyHeaders], NULL, 'A1');
+        $familiesSheet->getStyle('A1:N1')->applyFromArray($headerStyle);
+    } else {
+        $familiesSheet = null;
+    }
+
+    // Create Umrah Bookings sheet (only if feature enabled)
+    if (hasFeature('umrah_bookings', $allowed_features)) {
+        $umrahSheet = new \PhpOffice\PhpSpreadsheet\Worksheet\Worksheet($spreadsheet, 'Umrah Bookings');
+        $spreadsheet->addSheet($umrahSheet);
+
+        $umrahHeaders = [
+            'Name*', 'Passport Number*', 'Date of Birth', 'Entry Date*',
+            'Flight Date', 'Return Date', 'Duration', 'Room Type', 'Price',
+            'Sold Price*', 'Profit', 'Received Bank Payment', 'Bank Receipt Number',
+            'Paid', 'Due', 'Currency', 'Head of Family*', 'Remarks',
+            'Supplier Name*', 'Client Name*', 'Account Name*', 'Service Type'
+        ];
+
+        $umrahSheet->fromArray([$umrahHeaders], NULL, 'A1');
+        $umrahSheet->getStyle('A1:X1')->applyFromArray($headerStyle);
+    } else {
+        $umrahSheet = null;
+    }
+
+    // Set column widths for all sheets (filter out null sheets)
+    $sheets = array_filter([$ticketBookingsSheet, $ticketRefundsSheet, $dateChangesSheet, $weightsSheet,
+               $reservationsSheet, $visaSheet, $hotelSheet, $familiesSheet, $umrahSheet], 
+               function($sheet) { return $sheet !== null; });
 
     foreach ($sheets as $sheet) {
         foreach (range('A', 'Z') as $col) {

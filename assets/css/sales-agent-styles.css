@@ -1,0 +1,322 @@
+/**
+ * sales-agent-styles.css
+ * Sales Agent specific styling enhancements
+ * Overrides and customizations for the sales agent portal
+ */
+
+/* Sales Agent Navbar Customization */
+.pcoded-navbar.sales-agent-navbar {
+    background: linear-gradient(135deg, #4099ff 0%, #2ed8b6 100%);
+}
+
+.sales-agent-navbar .navbar-brand {
+    background: rgba(0, 0, 0, 0.1);
+}
+
+.sales-agent-navbar .nav-link {
+    position: relative;
+    transition: all 0.3s ease;
+}
+
+.sales-agent-navbar .nav-link:hover {
+    background: rgba(255, 255, 255, 0.1);
+    transform: translateX(5px);
+}
+
+.sales-agent-navbar .nav-link.active {
+    background: rgba(255, 255, 255, 0.2);
+    border-left: 4px solid #fff;
+    font-weight: 600;
+}
+
+.sales-agent-navbar .nav-link.active::before {
+    content: '';
+    position: absolute;
+    left: 0;
+    top: 0;
+    bottom: 0;
+    width: 4px;
+    background: #fff;
+}
+
+/* Content area adjustments for sales agents */
+.pcoded-main-container.has-sales-navbar {
+    padding-top: 0;
+}
+
+/* Card enhancements */
+.card {
+    transition: all 0.3s ease;
+}
+
+.card:hover {
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+    transform: translateY(-2px);
+}
+
+/* Badge customization */
+.badge {
+    font-weight: 600;
+    letter-spacing: 0.5px;
+}
+
+/* Table enhancements for sales data */
+.table tbody tr {
+    transition: background-color 0.2s ease;
+}
+
+.table tbody tr:hover {
+    background-color: rgba(64, 153, 255, 0.05);
+}
+
+/* Commission & Payment styling */
+.commission-badge {
+    background: linear-gradient(135deg, #28a745 0%, #20c997 100%);
+    color: white;
+    padding: 6px 12px;
+    border-radius: 20px;
+    font-size: 12px;
+    font-weight: 600;
+}
+
+.payment-badge {
+    background: linear-gradient(135deg, #007bff 0%, #0056b3 100%);
+    color: white;
+    padding: 6px 12px;
+    border-radius: 20px;
+    font-size: 12px;
+    font-weight: 600;
+}
+
+.pending-badge {
+    background: linear-gradient(135deg, #ffc107 0%, #ff9800 100%);
+    color: #333;
+    padding: 6px 12px;
+    border-radius: 20px;
+    font-size: 12px;
+    font-weight: 600;
+}
+
+/* Dashboard stat cards */
+.stat-card {
+    background: white;
+    border-radius: 8px;
+    padding: 20px;
+    margin-bottom: 20px;
+    border-left: 4px solid #4099ff;
+    transition: all 0.3s ease;
+}
+
+.stat-card:hover {
+    box-shadow: 0 4px 16px rgba(0, 0, 0, 0.1);
+}
+
+.stat-card.success {
+    border-left-color: #28a745;
+}
+
+.stat-card.warning {
+    border-left-color: #ffc107;
+}
+
+.stat-card.danger {
+    border-left-color: #dc3545;
+}
+
+.stat-card.info {
+    border-left-color: #17a2b8;
+}
+
+.stat-card-title {
+    font-size: 12px;
+    font-weight: 600;
+    color: #666;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+    margin-bottom: 8px;
+}
+
+.stat-card-value {
+    font-size: 28px;
+    font-weight: 700;
+    color: #333;
+    margin-bottom: 4px;
+}
+
+.stat-card-change {
+    font-size: 12px;
+    font-weight: 600;
+}
+
+.stat-card-change.positive {
+    color: #28a745;
+}
+
+.stat-card-change.negative {
+    color: #dc3545;
+}
+
+/* Chart container styling */
+.chart-container {
+    position: relative;
+    height: 300px;
+    margin-bottom: 20px;
+}
+
+/* Form styling for sales agents */
+.sales-agent-form {
+    background: white;
+    padding: 20px;
+    border-radius: 8px;
+    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.05);
+}
+
+.sales-agent-form .form-group label {
+    font-weight: 600;
+    color: #333;
+    margin-bottom: 8px;
+}
+
+.sales-agent-form .form-control {
+    border-radius: 4px;
+    border: 1px solid #ddd;
+    transition: border-color 0.3s ease;
+}
+
+.sales-agent-form .form-control:focus {
+    border-color: #4099ff;
+    box-shadow: 0 0 0 0.2rem rgba(64, 153, 255, 0.25);
+}
+
+/* Modal enhancements */
+.modal-header {
+    background: linear-gradient(135deg, #4099ff 0%, #2ed8b6 100%);
+    color: white;
+    border-bottom: none;
+}
+
+.modal-header .close {
+    color: white;
+    opacity: 0.8;
+}
+
+.modal-header .close:hover {
+    opacity: 1;
+}
+
+/* Button customizations */
+.btn-primary {
+    background: linear-gradient(135deg, #4099ff 0%, #2ed8b6 100%);
+    border: none;
+    transition: all 0.3s ease;
+}
+
+.btn-primary:hover {
+    background: linear-gradient(135deg, #2ed8b6 0%, #4099ff 100%);
+    box-shadow: 0 4px 12px rgba(64, 153, 255, 0.4);
+}
+
+.btn-primary:active,
+.btn-primary:focus {
+    background: linear-gradient(135deg, #2aa75e 0%, #1e96d2 100%);
+    box-shadow: 0 2px 8px rgba(64, 153, 255, 0.3);
+}
+
+/* Alert styling */
+.alert {
+    border-radius: 6px;
+    border: none;
+}
+
+.alert-success {
+    background-color: #d4edda;
+    color: #155724;
+}
+
+.alert-warning {
+    background-color: #fff3cd;
+    color: #856404;
+}
+
+.alert-danger {
+    background-color: #f8d7da;
+    color: #721c24;
+}
+
+.alert-info {
+    background-color: #d1ecf1;
+    color: #0c5460;
+}
+
+/* Page header styling */
+.page-header {
+    padding: 20px 0;
+    margin-bottom: 20px;
+    border-bottom: 2px solid #f0f0f0;
+}
+
+.page-title {
+    font-size: 28px;
+    font-weight: 700;
+    color: #333;
+    margin: 0;
+}
+
+.page-subtitle {
+    font-size: 14px;
+    color: #999;
+    margin-top: 4px;
+}
+
+/* Loading spinner */
+.spinner {
+    display: inline-block;
+    width: 20px;
+    height: 20px;
+    border: 3px solid rgba(64, 153, 255, 0.3);
+    border-radius: 50%;
+    border-top-color: #4099ff;
+    animation: spin 0.8s linear infinite;
+}
+
+@keyframes spin {
+    to { transform: rotate(360deg); }
+}
+
+/* Responsive adjustments */
+@media (max-width: 768px) {
+    .stat-card {
+        margin-bottom: 15px;
+    }
+
+    .stat-card-value {
+        font-size: 22px;
+    }
+
+    .page-title {
+        font-size: 22px;
+    }
+
+    .chart-container {
+        height: 250px;
+    }
+}
+
+@media (max-width: 576px) {
+    .stat-card {
+        padding: 15px;
+        margin-bottom: 10px;
+    }
+
+    .stat-card-value {
+        font-size: 18px;
+    }
+
+    .page-title {
+        font-size: 18px;
+    }
+
+    .table-responsive {
+        font-size: 12px;
+    }
+}

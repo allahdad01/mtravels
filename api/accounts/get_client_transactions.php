@@ -25,8 +25,62 @@ if (!isset($_GET['client_id']) || !is_numeric($_GET['client_id'])) {
 
 $clientId = intval($_GET['client_id']);
 
+// Get pagination parameters
+$page = isset($_GET['page']) ? max(1, intval($_GET['page'])) : 1;
+$perPage = 50;
+$offset = ($page - 1) * $perPage;
+
 // Database connection
 require_once('../../includes/db.php');
+
+// Get filter parameters
+$currency = isset($_GET['currency']) && $_GET['currency'] !== 'all' ? $_GET['currency'] : null;
+$receipt = isset($_GET['receipt']) ? trim($_GET['receipt']) : null;
+$startDate = isset($_GET['startDate']) ? $_GET['startDate'] : null;
+$endDate = isset($_GET['endDate']) ? $_GET['endDate'] : null;
+
+// Build WHERE clause with filters
+$whereConditions = ["ct.client_id = ? AND ct.tenant_id = ? AND ct.branch_id = ?"];
+$params = [$clientId, $tenant_id, $branch_id];
+
+if ($currency) {
+    $whereConditions[] = "ct.currency = ?";
+    $params[] = $currency;
+}
+
+if ($receipt) {
+    $whereConditions[] = "ct.receipt LIKE ?";
+    $params[] = '%' . $receipt . '%';
+}
+
+if ($startDate && $endDate) {
+    $whereConditions[] = "DATE(ct.created_at) BETWEEN ? AND ?";
+    $params[] = $startDate;
+    $params[] = $endDate;
+}
+
+$whereClause = implode(' AND ', $whereConditions);
+
+// Count total transactions with filters
+try {
+    $countQuery = "SELECT COUNT(*) as total FROM client_transactions ct
+                  WHERE " . $whereClause;
+    $countStmt = $pdo->prepare($countQuery);
+    if (!$countStmt) {
+        throw new Exception("Failed to prepare count statement: " . implode(", ", $pdo->errorInfo()));
+    }
+    if (!$countStmt->execute($params)) {
+        throw new Exception("Failed to execute count statement: " . implode(", ", $countStmt->errorInfo()));
+    }
+    $countResult = $countStmt->fetch(PDO::FETCH_ASSOC);
+    $totalTransactions = $countResult ? $countResult['total'] : 0;
+    $totalPages = ceil($totalTransactions / $perPage);
+} catch (Exception $e) {
+    header('Content-Type: application/json');
+    http_response_code(500);
+    echo json_encode(['error' => 'Count query failed: ' . $e->getMessage()]);
+    exit();
+}
 
 // Prepare and execute query with left joins to fetch reference information
 $query = "SELECT ct.*, 
@@ -57,42 +111,48 @@ $query = "SELECT ct.*,
           LEFT JOIN users usr ON usr.id = ct.reference_id AND ct.transaction_of = 'fund' AND usr.tenant_id = ? AND usr.branch_id = ?
           LEFT JOIN jv_payments jv ON jv.id = ct.reference_id AND ct.transaction_of = 'jv_payment' AND jv.tenant_id = ? AND jv.branch_id = ?
           LEFT JOIN additional_payments ap ON ap.id = ct.reference_id AND ct.transaction_of = 'additional_payment' AND ap.tenant_id = ? AND ap.branch_id = ?
-          WHERE ct.client_id = ? AND ct.tenant_id = ? AND ct.branch_id = ?
-          ORDER BY ct.id DESC";
+          WHERE " . $whereClause . "
+          ORDER BY ct.id DESC
+          LIMIT ? OFFSET ?";
 
-$stmt = $pdo->prepare($query);
-$stmt->bindParam(1, $tenant_id, PDO::PARAM_INT);
-$stmt->bindParam(2, $branch_id, PDO::PARAM_INT);
-$stmt->bindParam(3, $tenant_id, PDO::PARAM_INT);
-$stmt->bindParam(4, $branch_id, PDO::PARAM_INT);
-$stmt->bindParam(5, $tenant_id, PDO::PARAM_INT);
-$stmt->bindParam(6, $branch_id, PDO::PARAM_INT);
-$stmt->bindParam(7, $tenant_id, PDO::PARAM_INT);
-$stmt->bindParam(8, $branch_id, PDO::PARAM_INT);
-$stmt->bindParam(9, $tenant_id, PDO::PARAM_INT);
-$stmt->bindParam(10, $branch_id, PDO::PARAM_INT);
-$stmt->bindParam(11, $tenant_id, PDO::PARAM_INT);
-$stmt->bindParam(12, $branch_id, PDO::PARAM_INT);
-$stmt->bindParam(13, $tenant_id, PDO::PARAM_INT);
-$stmt->bindParam(14, $branch_id, PDO::PARAM_INT);
-$stmt->bindParam(15, $tenant_id, PDO::PARAM_INT);
-$stmt->bindParam(16, $branch_id, PDO::PARAM_INT);
-$stmt->bindParam(17, $tenant_id, PDO::PARAM_INT);
-$stmt->bindParam(18, $branch_id, PDO::PARAM_INT);
-$stmt->bindParam(19, $tenant_id, PDO::PARAM_INT);
-$stmt->bindParam(20, $branch_id, PDO::PARAM_INT);
-$stmt->bindParam(21, $tenant_id, PDO::PARAM_INT);
-$stmt->bindParam(22, $branch_id, PDO::PARAM_INT);
-$stmt->bindParam(23, $tenant_id, PDO::PARAM_INT);
-$stmt->bindParam(24, $branch_id, PDO::PARAM_INT);
-$stmt->bindParam(25, $clientId, PDO::PARAM_INT);
-$stmt->bindParam(26, $tenant_id, PDO::PARAM_INT);
-$stmt->bindParam(27, $branch_id, PDO::PARAM_INT);
-$stmt->execute();
+try {
+    $stmt = $pdo->prepare($query);
+    if (!$stmt) {
+        throw new Exception("Failed to prepare statement: " . implode(", ", $pdo->errorInfo()));
+    }
 
-// Fetch all transactions
+    // Prepare parameters array with tenant/branch from joins
+    $joinParams = [];
+    for ($i = 0; $i < 12; $i++) {
+        $joinParams[] = $tenant_id;
+        $joinParams[] = $branch_id;
+    }
+
+    // Merge join params with filter params and LIMIT/OFFSET
+    $allParams = array_merge($joinParams, $params, [$perPage, $offset]);
+    
+    if (!$stmt->execute($allParams)) {
+        throw new Exception("Failed to execute statement: " . implode(", ", $stmt->errorInfo()));
+    }
+} catch (Exception $e) {
+    header('Content-Type: application/json');
+    http_response_code(500);
+    echo json_encode(['error' => $e->getMessage()]);
+    exit();
+}
+
+// Fetch transactions for current page
 $transactions = $stmt->fetchAll(PDO::FETCH_ASSOC);
 
-// Return transactions as JSON
+// Return transactions as JSON with pagination metadata
 header('Content-Type: application/json');
-echo json_encode($transactions);
+echo json_encode([
+    'data' => $transactions,
+    'pagination' => [
+        'current_page' => $page,
+        'per_page' => $perPage,
+        'total' => $totalTransactions,
+        'total_pages' => $totalPages,
+        'offset' => $offset
+    ]
+]);

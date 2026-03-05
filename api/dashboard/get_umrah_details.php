@@ -66,6 +66,7 @@ try {
         ub.booking_id as id,
         ub.name,
         ub.passport_number,
+        ub.status,
         f.package_type,
         ub.created_at,
         ub.profit,

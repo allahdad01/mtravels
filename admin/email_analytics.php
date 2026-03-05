@@ -1,24 +1,28 @@
 <?php
-// Include database security module for input validation
-require_once 'includes/db_security.php';
+// ─── SESSION & SECURITY ───────────────────────────────────────────────────────
+if (session_status() === PHP_SESSION_NONE) { session_start(); }
 
-// Include security module
-require_once 'security.php';
+header("X-XSS-Protection: 1; mode=block");
+header("X-Content-Type-Options: nosniff");
+header("X-Frame-Options: DENY");
+header("Content-Security-Policy: default-src 'self'; script-src 'self' 'unsafe-inline' https://cdn.jsdelivr.net; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com https://cdn.jsdelivr.net https://cdn.datatables.net; font-src 'self' https://fonts.gstatic.com; img-src 'self' data:;");
+header("Referrer-Policy: strict-origin-when-cross-origin");
 
-// Include language helper
-require_once '../includes/language_helpers.php';
-
-// Enforce authentication
-enforce_auth();
-
-$tenant_id = $_SESSION['tenant_id'];
-$branch_id = $_SESSION['branch_id'];
-// Check if user is logged in
-if (!isset($_SESSION['user_id']) || $_SESSION['role'] !== 'admin') {
-    header('Location: ../login.php');
-    exit();
+$sessionTimeout = 30 * 60;
+if (isset($_SESSION['last_activity']) && (time() - $_SESSION['last_activity'] > $sessionTimeout)) {
+    session_unset(); session_destroy();
+    header('Location: ../login.php?timeout=1'); exit();
 }
+$_SESSION['last_activity'] = time();
 
+$allowed_roles = ['admin', 'finance', 'sales', 'umrah', 'staff'];
+if (!isset($_SESSION['user_id']) || !in_array($_SESSION['role'], $allowed_roles)) {
+    error_log("Unauthorized access attempt to email_analytics: " . ($_SESSION['user_id'] ?? 'unknown') . " - Role: " . ($_SESSION['role'] ?? 'unknown') . " - IP: " . $_SERVER['REMOTE_ADDR']);
+    header('Location: ../login.php'); exit();
+}
+if (!isset($_SESSION['csrf_token'])) { $_SESSION['csrf_token'] = bin2hex(random_bytes(32)); }
+
+require_once '../includes/InputValidator.php';
 require_once '../includes/db.php';
 
 // Get date range from URL parameters or set defaults
@@ -82,171 +86,85 @@ function getEmailAnalytics($pdo, $tenant_id, $branch_id, $startDate, $endDate, $
 
 $analytics = getEmailAnalytics($pdo, $tenant_id, $branch_id, $startDate, $endDate, $emailType);
 
-include '../includes/header.php';
+require_once '../api/dashboard/dashboard_handler.php';
 ?>
+<?php include '../includes/header.php'; ?>
 
+<link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;600&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="../css/general/modal-styles.css">
 <style>
-/* Enhanced custom styles for better layout and design */
-.page-header.card {
-    background: linear-gradient(135deg, #4099ff 0%, #2ed8b6 100%);
-    color: #ffffff;
-    border: none;
-    margin-bottom: 20px;
-    padding: 20px !important;
-    box-shadow: 0 4px 12px rgba(0,0,0,0.15);
-    border-radius: 10px;
+:root {
+  --primary:#4099ff;--primary-dark:#2563eb;--primary-light:#60a5fa;
+  --accent:#2ed8b6;--accent-dark:#14b8a6;--accent-light:#5eead4;
+  --violet:#7c3aed;--violet-light:#a78bfa;--indigo:#4f46e5;
+  --sky:#0ea5e9;--emerald:#10b981;--amber:#f59e0b;
+  --rose:#f43f5e;--orange:#f97316;--pink:#ec4899;--teal:#14b8a6;
+  --bg:#f8fafc;--surface:#ffffff;--surface2:#f1f5f9;--surface3:#e2e8f0;
+  --border:rgba(0,0,0,0.08);
+  --text:#1e293b;--text-muted:#64748b;
+  --grad-start:#4099ff;--grad-end:#2ed8b6;--grad:linear-gradient(135deg,var(--grad-start) 0%,var(--grad-end) 100%);
 }
+.pcoded-main-container{background:var(--bg)!important;}
+.pcoded-content,.pcoded-inner-content{background:transparent!important;}
+.dash-wrap{font-family:'Plus Jakarta Sans',sans-serif;color:var(--text);padding:28px 20px;position:relative;}
+.dash-wrap::before{content:'';position:fixed;inset:0;pointer-events:none;z-index:0;background:radial-gradient(ellipse 80% 60% at 10% 0%,rgba(124,58,237,.15) 0%,transparent 60%),radial-gradient(ellipse 60% 50% at 90% 10%,rgba(14,165,233,.12) 0%,transparent 55%),radial-gradient(ellipse 50% 40% at 50% 100%,rgba(16,185,129,.08) 0%,transparent 50%);}
+.dash-inner{position:relative;z-index:1;}
+.sec-label{font-size:11px;font-weight:700;letter-spacing:1.5px;text-transform:uppercase;color:var(--text-muted);margin-bottom:14px;display:flex;align-items:center;gap:8px;}
+.sec-label::after{content:'';flex:1;height:1px;background:var(--border);}
+.d-card{background:var(--surface);border:1px solid var(--border);border-radius:20px;padding:24px;margin-bottom:22px;}
+.d-card-header{display:flex;justify-content:space-between;align-items:center;margin-bottom:18px;flex-wrap:wrap;gap:12px;}
+.d-card-title{font-size:15px;font-weight:800;display:flex;align-items:center;gap:10px;color:var(--text);}
+.ci{width:32px;height:32px;border-radius:9px;display:flex;align-items:center;justify-content:center;font-size:13px;}
+.ci-violet{background:rgba(124,58,237,.2);color:var(--violet-light);}
+.ci-sky{background:rgba(14,165,233,.2);color:var(--sky);}
+.ci-emerald{background:rgba(16,185,129,.2);color:var(--emerald);}
+.ci-amber{background:rgba(245,158,11,.2);color:var(--amber);}
+.ci-rose{background:rgba(244,63,94,.2);color:var(--rose);}
 
-.page-header.card .row {
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-}
+/* Header */
+.dash-header{display:flex;justify-content:space-between;align-items:center;margin-bottom:26px;flex-wrap:wrap;gap:16px;}
+.dash-header h1{font-size:24px;font-weight:800;letter-spacing:-.5px;background:var(--grad);-webkit-background-clip:text;-webkit-text-fill-color:transparent;}
+.dash-header p{color:var(--text-muted);font-size:14px;margin-top:3px;}
+.header-actions{display:flex;gap:10px;flex-wrap:wrap;}
+.dbtn{display:inline-flex;align-items:center;gap:7px;padding:9px 16px;border-radius:10px;font-size:13px;font-weight:600;font-family:inherit;cursor:pointer;border:none;transition:all .2s;text-decoration:none;}
+.dbtn-ghost{background:var(--surface2);color:var(--text);border:1px solid var(--border);}
+.dbtn-ghost:hover{background:var(--surface3);transform:translateY(-1px);color:var(--text);}
+.dbtn-primary{background:var(--grad);color:#fff;box-shadow:0 4px 20px rgba(64,153,255,.35);}
+.dbtn-primary:hover{transform:translateY(-2px);color:#fff;}
+.dbtn-info{background:var(--grad);color:#fff;box-shadow:0 4px 16px rgba(46,216,182,.3);}
+.dbtn-info:hover{transform:translateY(-2px);color:#fff;}
 
-.page-header.card h5 {
-    color: #ffffff;
-    margin: 0;
-    font-weight: 600;
-}
+/* Metrics Grid */
+.metrics-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:16px;margin-bottom:22px;}
+.metric-card{background:var(--surface);border:1px solid var(--border);border-radius:20px;padding:24px;text-align:center;}
+.metric-value{font-size:28px;font-weight:800;font-family:'JetBrains Mono',monospace;letter-spacing:-1px;margin-bottom:8px;background:var(--grad);-webkit-background-clip:text;-webkit-text-fill-color:transparent;}
+.metric-label{font-size:13px;font-weight:600;color:var(--text-muted);}
 
-.page-header.card .text-end {
-    text-align: right;
-}
+/* Filter Section */
+.filter-card{background:var(--surface);border:1px solid var(--border);border-radius:20px;padding:24px;margin-bottom:22px;}
+.filter-row{display:flex;gap:16px;flex-wrap:wrap;align-items:flex-end;}
+.filter-group{flex:1;min-width:200px;}
+.filter-group label{display:block;font-size:12px;font-weight:700;color:var(--text-muted);text-transform:uppercase;letter-spacing:.5px;margin-bottom:8px;}
+.fin-select{background:var(--surface2);border:1px solid var(--border);color:var(--text);border-radius:9px;padding:10px 14px;font-size:13px;font-weight:600;font-family:inherit;cursor:pointer;outline:none;transition:border-color .2s;width:100%;}
+.fin-select:focus{border-color:rgba(124,58,237,.5);}
 
-.page-header.card .btn {
-    background: rgba(255,255,255,0.2);
-    color: #ffffff;
-    border: 1px solid rgba(255,255,255,0.3);
-    border-radius: 25px;
-    transition: all 0.3s ease;
-}
+/* Table Styles */
+.table-responsive{overflow-x:auto;}
+.d-card .table-responsive{border-radius:0;box-shadow:none;margin:0 -24px -24px -24px;}
+.d-table{margin-bottom:0;width:100%;border-collapse:collapse;}
+.d-table thead{background:var(--surface2);}
+.d-table thead th{border-bottom:1px solid var(--border);font-weight:700;font-size:12px;text-transform:uppercase;letter-spacing:.5px;color:var(--text-muted);padding:14px 20px;text-align:left;}
+.d-table tbody tr{border-bottom:1px solid var(--border);transition:background-color .2s;}
+.d-table tbody tr:last-child{border-bottom:none;}
+.d-table tbody tr:hover{background-color:var(--surface2);}
+.d-table tbody td{padding:14px 20px;font-size:13px;color:var(--text);white-space:nowrap;}
 
-.page-header.card .btn:hover {
-    background: rgba(255,255,255,0.3);
-    border-color: rgba(255,255,255,0.5);
-    transform: translateY(-1px);
-}
+/* Badge Styles */
+.badge{font-size:11px;padding:4px 12px;border-radius:20px;font-weight:600;display:inline-block;}
+.badge-success{background:rgba(16,185,129,.15);color:var(--emerald);}
+.badge-secondary{background:rgba(100,116,139,.15);color:var(--text-muted);}
 
-.card {
-    border-radius: 10px;
-    box-shadow: 0 2px 8px rgba(0,0,0,0.1);
-    transition: transform 0.2s ease-in-out, box-shadow 0.2s ease-in-out;
-    border: none;
-}
 
-.card:hover {
-    transform: translateY(-2px);
-    box-shadow: 0 4px 16px rgba(0,0,0,0.15);
-}
-
-.card-header {
-    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-    color: white;
-    border-radius: 10px 10px 0 0;
-    padding: 1rem 1.5rem;
-    border: none;
-}
-
-.card-header h5 {
-    margin: 0;
-    font-weight: 600;
-    display: flex;
-    align-items: center;
-}
-
-.progress {
-    border-radius: 15px;
-    overflow: hidden;
-    box-shadow: inset 0 1px 2px rgba(0,0,0,0.1);
-}
-
-.progress-bar {
-    transition: width 0.6s ease;
-}
-
-.badge {
-    font-size: 0.85em;
-    padding: 0.5em 0.75em;
-    border-radius: 20px;
-    font-weight: 500;
-}
-
-.badge-success {
-    background-color: #28a745;
-}
-
-.badge-warning {
-    background-color: #ffc107;
-    color: #212529;
-}
-
-.badge-info {
-    background-color: #17a2b8;
-}
-
-.badge-primary {
-    background-color: #007bff;
-}
-
-.badge-secondary {
-    background-color: #6c757d;
-}
-
-.badge-danger {
-    background-color: #dc3545;
-}
-
-.table-responsive {
-    border-radius: 10px;
-
-}
-
-.table {
-    margin-bottom: 0;
-}
-
-.table thead th {
-    background-color: #f8f9fa;
-    border-bottom: 2px solid #dee2e6;
-    font-weight: 600;
-    color: #495057;
-    padding: 1rem;
-}
-
-.table tbody tr:hover {
-    background-color: #f1f3f4;
-}
-
-.table tbody td {
-    padding: 1rem;
-    vertical-align: middle;
-}
-
-.form-control {
-    border-radius: 8px;
-    border: 1px solid #ced4da;
-    transition: border-color 0.15s ease-in-out, box-shadow 0.15s ease-in-out;
-    padding: 0.75rem;
-}
-
-.form-control:focus {
-    border-color: #4099ff;
-    box-shadow: 0 0 0 0.2rem rgba(64, 153, 255, 0.25);
-}
-
-.btn-primary {
-    background: linear-gradient(135deg, #4099ff 0%, #2ed8b6 100%);
-    border: none;
-    border-radius: 25px;
-    padding: 0.75rem 2rem;
-    font-weight: 600;
-    transition: all 0.3s ease;
-}
-
-.btn-primary:hover {
-    transform: translateY(-1px);
-    box-shadow: 0 4px 12px rgba(64, 153, 255, 0.3);
-}
 
 .btn-secondary {
     border-radius: 25px;
@@ -376,161 +294,124 @@ include '../includes/header.php';
     <div class="pcoded-main-container">
         <div class="pcoded-content">
             <div class="pcoded-inner-content">
-                <div class="main-body">
-                    <div class="page-wrapper">
-                        <!-- [ Main Content ] start -->
-                        <div class="main-content">
-            <!-- [ breadcrumb ] start -->
-            <div class="container-fluid">
-                <div class="row">
-                    <div class="col-12">
-                        <div class="page-header card">
-                            <div class="row align-items-center">
-                                <div class="col-md-6">
-                                    <h5 class="mb-0"><i class="feather icon-mail mr-2"></i>Email Analytics</h5>
-                                </div>
+                <div class="dash-wrap">
+                    <div class="dash-inner">
+                        
+                        <!-- Header -->
+                        <div class="dash-header">
+                            <div>
+                                <h1><i class="fas fa-envelope-open-text"></i> Email Analytics</h1>
+                                <p>Track and analyze email performance metrics</p>
                             </div>
                         </div>
 
-                        <!-- Filter Section -->
-                        <div class="filter-section">
-                            <form method="GET" class="row g-3">
-                                <div class="col-md-3">
-                                    <label for="start_date" class="form-label">Start Date</label>
-                                    <input type="date" class="form-control" id="start_date" name="start_date" value="<?php echo htmlspecialchars($startDate); ?>">
-                                </div>
-                                <div class="col-md-3">
-                                    <label for="end_date" class="form-label">End Date</label>
-                                    <input type="date" class="form-control" id="end_date" name="end_date" value="<?php echo htmlspecialchars($endDate); ?>">
-                                </div>
-                                <div class="col-md-3">
-                                    <label for="email_type" class="form-label">Email Type</label>
-                                    <select class="form-control" id="email_type" name="email_type">
-                                        <option value="all" <?php echo $emailType === 'all' ? 'selected' : ''; ?>>All Types</option>
-                                        <option value="ticket_notification" <?php echo $emailType === 'ticket_notification' ? 'selected' : ''; ?>>Ticket Notifications</option>
-                                        <option value="account_notification" <?php echo $emailType === 'account_notification' ? 'selected' : ''; ?>>Account Notifications</option>
-                                    </select>
-                                </div>
-                                <div class="col-md-3 d-flex align-items-end">
-                                    <button type="submit" class="btn btn-primary mr-2">
-                                        <i class="feather icon-filter mr-1"></i>Apply Filters
-                                    </button>
-                                    <a href="email_analytics.php" class="btn btn-secondary">
-                                        <i class="feather icon-refresh-cw mr-1"></i>Reset
-                                    </a>
+                        <!-- Filter Card -->
+                        <div class="filter-card">
+                            <form method="GET">
+                                <div class="filter-row">
+                                    <div class="filter-group">
+                                        <label for="start_date">Start Date</label>
+                                        <input type="date" class="fin-select" id="start_date" name="start_date" value="<?php echo htmlspecialchars($startDate); ?>">
+                                    </div>
+                                    <div class="filter-group">
+                                        <label for="end_date">End Date</label>
+                                        <input type="date" class="fin-select" id="end_date" name="end_date" value="<?php echo htmlspecialchars($endDate); ?>">
+                                    </div>
+                                    <div class="filter-group">
+                                        <label for="email_type">Email Type</label>
+                                        <select class="fin-select" id="email_type" name="email_type">
+                                            <option value="all" <?php echo $emailType === 'all' ? 'selected' : ''; ?>>All Types</option>
+                                            <option value="ticket_notification" <?php echo $emailType === 'ticket_notification' ? 'selected' : ''; ?>>Ticket Notifications</option>
+                                            <option value="account_notification" <?php echo $emailType === 'account_notification' ? 'selected' : ''; ?>>Account Notifications</option>
+                                        </select>
+                                    </div>
+                                    <div class="filter-group" style="min-width:auto;">
+                                        <button type="submit" class="dbtn dbtn-primary"><i class="fas fa-filter"></i> Apply</button>
+                                        <a href="email_analytics.php" class="dbtn dbtn-ghost"><i class="fas fa-redo"></i> Reset</a>
+                                    </div>
                                 </div>
                             </form>
                         </div>
 
-                        <!-- Metrics Cards -->
-                        <div class="row mb-4">
-                            <div class="col-md-4">
-                                <div class="card">
-                                    <div class="card-body text-center">
-                                        <div class="metric-value"><?php echo number_format($analytics['total_sent']); ?></div>
-                                        <div class="metric-label">Total Emails Sent</div>
-                                    </div>
-                                </div>
+                        <!-- Metrics Grid -->
+                        <div class="metrics-grid">
+                            <div class="metric-card">
+                                <div class="metric-value"><?php echo number_format($analytics['total_sent']); ?></div>
+                                <div class="metric-label"><i class="fas fa-envelope"></i> Total Sent</div>
                             </div>
-                            <div class="col-md-4">
-                                <div class="card">
-                                                                     <div class="card-body text-center">
-                                                                         <div class="metric-value"><?php echo number_format($analytics['total_opened']); ?></div>
-                                                                         <div class="metric-label">Total Emails Opened</div>
-                                                                     </div>
-                                                                 </div>
+                            <div class="metric-card">
+                                <div class="metric-value"><?php echo number_format($analytics['total_opened']); ?></div>
+                                <div class="metric-label"><i class="fas fa-envelope-open"></i> Total Opened</div>
                             </div>
-                            <div class="col-md-4">
-                                <div class="card">
-                                                                     <div class="card-body text-center">
-                                                                         <div class="metric-value"><?php echo $analytics['open_rate']; ?>%</div>
-                                                                         <div class="metric-label">Open Rate</div>
-                                                                     </div>
-                                                                 </div>
+                            <div class="metric-card">
+                                <div class="metric-value"><?php echo $analytics['open_rate']; ?>%</div>
+                                <div class="metric-label"><i class="fas fa-chart-pie"></i> Open Rate</div>
                             </div>
                         </div>
 
                         <!-- Charts Row -->
-                        <div class="row mb-4">
-                            <div class="col-md-6">
-                                <div class="card">
-                                    <div class="card-header">
-                                        <h5 class="mb-0">Emails by Type</h5>
-                                    </div>
-                                    <div class="card-body">
-                                        <div class="chart-container">
-                                            <canvas id="typeChart"></canvas>
-                                        </div>
-                                    </div>
+                        <div style="display:grid;grid-template-columns:1fr 1fr;gap:22px;margin-bottom:22px;">
+                            <div class="d-card" style="margin-bottom:0;">
+                                <div class="d-card-header">
+                                    <div class="d-card-title"><div class="ci ci-violet"><i class="fas fa-pie-chart"></i></div>Emails by Type</div>
+                                </div>
+                                <div style="position:relative;height:300px;">
+                                    <canvas id="typeChart"></canvas>
                                 </div>
                             </div>
-                            <div class="col-md-6">
-                                <div class="card">
-                                    <div class="card-header">
-                                        <h5 class="mb-0">Daily Email Activity</h5>
-                                    </div>
-                                    <div class="card-body">
-                                        <div class="chart-container">
-                                            <canvas id="dailyChart"></canvas>
-                                        </div>
-                                    </div>
+                            <div class="d-card" style="margin-bottom:0;">
+                                <div class="d-card-header">
+                                    <div class="d-card-title"><div class="ci ci-sky"><i class="fas fa-chart-line"></i></div>Daily Activity</div>
+                                </div>
+                                <div style="position:relative;height:300px;">
+                                    <canvas id="dailyChart"></canvas>
                                 </div>
                             </div>
                         </div>
 
                         <!-- Recent Emails Table -->
-                        <div class="card">
-                            <div class="card-header">
-                                <h5 class="mb-0">Recent Email Activity</h5>
+                        <div class="d-card">
+                            <div class="d-card-header">
+                                <div class="d-card-title"><div class="ci ci-emerald"><i class="fas fa-history"></i></div>Recent Activity</div>
                             </div>
-                            <div class="card-body">
-                                <div class="table-responsive">
-                                    <table class="table table-hover" id="emailsTable">
-                                        <thead>
-                                            <tr>
-                                                <th>Date</th>
-                                                <th>Recipient</th>
-                                                <th>Type</th>
-                                                <th>Status</th>
-                                                <th>Opened At</th>
-                                            </tr>
-                                        </thead>
-                                        <tbody>
-                                            <?php foreach ($analytics['recent_emails'] as $email): ?>
-                                            <tr>
-                                                <td><?php echo date('M d, Y H:i', strtotime($email['sent_at'])); ?></td>
-                                                <td><?php echo htmlspecialchars($email['recipient_email']); ?></td>
-                                                <td><?php echo htmlspecialchars($email['email_type']); ?></td>
-                                                <td>
-                                                    <span class="badge <?php echo $email['opened'] ? 'badge-success' : 'badge-secondary'; ?>">
-                                                                                                             <?php echo $email['opened'] ? 'Opened' : 'Sent'; ?>
-                                                                                                         </span>
-                                                </td>
-                                                <td><?php echo $email['opened_at'] ? date('M d, Y H:i', strtotime($email['opened_at'])) : '-'; ?></td>
-                                            </tr>
-                                            <?php endforeach; ?>
-                                        </tbody>
-                                    </table>
-                                </div>
+                            <div class="table-responsive">
+                                <table class="d-table">
+                                    <thead>
+                                        <tr>
+                                            <th>Date</th>
+                                            <th>Recipient</th>
+                                            <th>Type</th>
+                                            <th>Status</th>
+                                            <th>Opened At</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody>
+                                        <?php foreach ($analytics['recent_emails'] as $email): ?>
+                                        <tr>
+                                            <td><?php echo date('M d, Y H:i', strtotime($email['sent_at'])); ?></td>
+                                            <td><?php echo htmlspecialchars($email['recipient_email']); ?></td>
+                                            <td><?php echo htmlspecialchars($email['email_type']); ?></td>
+                                            <td><span class="badge <?php echo $email['opened'] ? 'badge-success' : 'badge-secondary'; ?>"><?php echo $email['opened'] ? 'Opened' : 'Sent'; ?></span></td>
+                                            <td><?php echo $email['opened_at'] ? date('M d, Y H:i', strtotime($email['opened_at'])) : '-'; ?></td>
+                                        </tr>
+                                        <?php endforeach; ?>
+                                    </tbody>
+                                </table>
                             </div>
                         </div>
-                    </div>
-                </div>
-            </div>
-                        </div> <!-- main-content -->
-                    </div> <!-- page-wrapper -->
-                </div> <!-- main-body -->
+
+                    </div> <!-- dash-inner -->
+                </div> <!-- dash-wrap -->
             </div> <!-- pcoded-inner-content -->
         </div> <!-- pcoded-content -->
     </div> <!-- pcoded-main-container -->
 
 <!-- Chart.js -->
-<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
-                            <!-- Required Js -->
-                            
-    <script src="../assets/js/vendor-all.min.js"></script>
-    <script src="../assets/plugins/bootstrap/js/bootstrap.min.js"></script>
-    <script src="../assets/js/pcoded.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/chart.js@3.9.1/dist/chart.min.js"></script>
+<!-- Required Js -->
+<script src="../assets/js/vendor-all.min.js"></script>
+<script src="../assets/plugins/bootstrap/js/bootstrap.min.js"></script>
+<script src="../assets/js/pcoded.min.js"></script>
 
 <script>
 // Emails by Type Chart

@@ -16,7 +16,11 @@ $generated_report = null;
 require_once dirname(__FILE__) . "/../cron/MonthlyReportGenerator.php";
 
 // Handle manual report generation
-if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['generate_report'])) {
+if ($_SERVER['REQUEST_METHOD'] === 'POST') {
+    // Validate CSRF token for all POST requests
+    if (!CsrfProtection::validateToken($_POST['csrf_token'] ?? null)) {
+        $error_message = 'Security token validation failed. Please try again.';
+    } elseif (isset($_POST['generate_report'])) {
     try {
         // Get form data
         $month = $_POST['month'] ?? date('Y-m');
@@ -65,6 +69,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['generate_report'])) {
     } catch (Exception $e) {
         error_log("Report generation error: " . $e->getMessage());
         $error_message = "Error: " . $e->getMessage();
+    }
     }
 }
 
@@ -118,6 +123,7 @@ $tenant = $stmt->fetch(PDO::FETCH_ASSOC);
                     </div>
                     <div class="card-body">
                         <form method="POST" action="">
+                            <input type="hidden" name="csrf_token" value="<?= htmlspecialchars($csrf_token, ENT_QUOTES, 'UTF-8') ?>">
                             <div class="form-group">
                                 <label for="month">Select Month:</label>
                                 <input type="month" class="form-control" id="month" name="month"

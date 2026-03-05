@@ -49,6 +49,8 @@ $relation = isset($_POST['relation']) ? DbSecurity::validateInput($_POST['relati
 $g_name = isset($_POST['g_name']) ? DbSecurity::validateInput($_POST['g_name'], 'string') : null;
 $father_name = isset($_POST['father_name']) ? DbSecurity::validateInput($_POST['father_name'], 'string') : null;
 $discount = isset($_POST['discount']) ? DbSecurity::validateInput($_POST['discount'], 'float') : 0;
+$photo_path = isset($_POST['photo_path']) ? DbSecurity::validateInput($_POST['photo_path'], 'string') : null;
+$passport_path = isset($_POST['passport_path']) ? DbSecurity::validateInput($_POST['passport_path'], 'string') : null;
 
 // Process services
 $services = $_POST['services'] ?? [];
@@ -109,20 +111,20 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 
     try {
         // Insert into umrah_bookings
-        $stmt = $pdo->prepare("
-            INSERT INTO umrah_bookings (
-                family_id, sold_to, paid_to, entry_date, name,
-                dob, gender, passport_number, passport_expiry,
-                id_type, flight_date, return_date, duration, room_type,
-                price, sold_price, profit, received_bank_payment,
-                bank_receipt_number, paid, due,
-                created_by, remarks, relation, gfname, fname, discount,
-                tenant_id, branch_id
-            ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?,
-                      ?, ?, ?, ?, ?, ?, ?, ?, ?,
-                      ?, ?, ?, ?, ?, ?, ?, ?, ?,
-                      ?, ?)
-        ");
+         $stmt = $pdo->prepare("
+             INSERT INTO umrah_bookings (
+                 family_id, sold_to, paid_to, entry_date, name,
+                 dob, gender, passport_number, passport_expiry,
+                 id_type, flight_date, return_date, duration, room_type,
+                 price, sold_price, profit, received_bank_payment,
+                 bank_receipt_number, paid, due,
+                 created_by, remarks, relation, gfname, fname, discount,
+                 photo_path, passport_path, tenant_id, branch_id
+             ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?,
+                       ?, ?, ?, ?, ?, ?, ?, ?, ?,
+                       ?, ?, ?, ?, ?, ?, ?, ?, ?,
+                       ?, ?, ?, ?)
+         ");
 
         $stmt->bindParam(1, $family_id, PDO::PARAM_INT);
         $stmt->bindParam(2, $soldTo, PDO::PARAM_INT);
@@ -151,8 +153,10 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         $stmt->bindParam(25, $g_name, PDO::PARAM_STR);
         $stmt->bindParam(26, $father_name, PDO::PARAM_STR);
         $stmt->bindParam(27, $discount, PDO::PARAM_STR);
-        $stmt->bindParam(28, $tenant_id, PDO::PARAM_INT);
-        $stmt->bindParam(29, $branch_id, PDO::PARAM_INT);
+        $stmt->bindParam(28, $photo_path, PDO::PARAM_STR);
+        $stmt->bindParam(29, $passport_path, PDO::PARAM_STR);
+        $stmt->bindParam(30, $tenant_id, PDO::PARAM_INT);
+        $stmt->bindParam(31, $branch_id, PDO::PARAM_INT);
 
         if (!$stmt->execute()) {
             throw new PDOException("Failed to insert umrah booking");

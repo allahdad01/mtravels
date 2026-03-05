@@ -107,7 +107,7 @@ $(document).ready(function() {
                          showToast('success', result.message || 'Refund processed successfully');
                          setTimeout(() => {
                              $('#refundModal').modal('hide');
-                             location.reload();
+                             refreshFamiliesTable();
                          }, 1500);
                      } else {
                          showToast('error', result.message || 'Failed to process refund');

@@ -50,6 +50,19 @@
                         </div>
                     </div>
 
+                    <!-- Member Photo -->
+                    <div style="background: white; border-radius: 0.75rem; padding: 1.5rem; box-shadow: 0 1px 3px rgba(0,0,0,0.1); border-left: 4px solid #ec4899; display: flex; flex-direction: column; align-items: center; justify-content: center;">
+                        <h6 style="font-size: 1rem; font-weight: 700; color: #1f2937; margin-bottom: 1rem; display: flex; align-items: center; gap: 0.5rem; width: 100%;">
+                            <i class="fas fa-camera" style="color: #ec4899;"></i>Member Photo
+                        </h6>
+                        <div id="memberPhotoDisplay" style="width: 100%; text-align: center;">
+                            <div style="width: 150px; height: 200px; background: #f3f4f6; border: 2px dashed #d1d5db; border-radius: 0.5rem; display: flex; align-items: center; justify-content: center; margin: 0 auto; color: #9ca3af;">
+                                <i class="fas fa-image" style="font-size: 2rem;"></i>
+                            </div>
+                            <p style="color: #9ca3af; font-size: 0.875rem; margin-top: 0.5rem;">No photo available</p>
+                        </div>
+                    </div>
+
                     <!-- Travel Information -->
                     <div style="background: white; border-radius: 0.75rem; padding: 1.5rem; box-shadow: 0 1px 3px rgba(0,0,0,0.1); border-left: 4px solid #3b82f6;">
                         <h6 style="font-size: 1rem; font-weight: 700; color: #1f2937; margin-bottom: 1rem; display: flex; align-items: center; gap: 0.5rem;">

@@ -517,47 +517,13 @@ function filterMainAccountTransactions() {
     // Log filter values for debugging
     logFilterValues('main account', currency, receipt, dateRange);
     
-    let startDate = null;
-    let endDate = null;
+    // Reload transactions with filters - get account ID and name from the modal
+    const accountId = document.getElementById('mainAccountTransactionId')?.value;
+    const accountName = document.getElementById('accountNameDisplay')?.textContent;
     
-    if (dateRange) {
-        const dates = dateRange.split(' - ');
-        startDate = moment(dates[0], 'YYYY-MM-DD');
-        endDate = moment(dates[1], 'YYYY-MM-DD').endOf('day');
-    }
-    
-    let hasVisibleRows = false;
-    let totalRows = 0;
-    let matchedRows = 0;
-    
-    $('#transactionsTableBody tr').each(function() {
-        totalRows++;
-        const row = $(this);
-        // Main account currency is in the 8th column (index 7)
-        const rowCurrency = row.find('td:nth-child(8)').text().trim();
-        const rowReceipt = row.find('td:nth-child(4)').text().toLowerCase().trim();
-        const rowDate = moment(row.find('td:nth-child(2)').text().trim(), 'YYYY-MM-DD HH:mm:ss');
-        
-        const matchesCurrency = currency === 'all' || rowCurrency === currency;
-        const matchesReceipt = !receipt || rowReceipt.includes(receipt);
-        const matchesDate = !dateRange || (rowDate.isValid() && rowDate.isBetween(startDate, endDate, null, '[]'));
-        
-        if (matchesCurrency && matchesReceipt && matchesDate) {
-            row.show();
-            hasVisibleRows = true;
-            matchedRows++;
-        } else {
-            row.hide();
-        }
-    });
-    
-
-    
-    // Show or hide the "no transactions" message
-    if (hasVisibleRows) {
-        $('#noTransactionsMessage').addClass('d-none');
-    } else {
-        $('#noTransactionsMessage').removeClass('d-none');
+    if (accountId && accountName) {
+        // Reload transactions with new filters
+        loadTransactions('main', accountId, accountName);
     }
 }
 
@@ -569,47 +535,13 @@ function filterClientTransactions() {
     // Log filter values for debugging
     logFilterValues('client', currency, receipt, dateRange);
     
-    let startDate = null;
-    let endDate = null;
+    // Reload transactions with filters - get client ID and name from the modal
+    const clientId = document.getElementById('clientTransactionId')?.value;
+    const clientName = document.getElementById('clientNameDisplay')?.textContent;
     
-    if (dateRange) {
-        const dates = dateRange.split(' - ');
-        startDate = moment(dates[0], 'YYYY-MM-DD');
-        endDate = moment(dates[1], 'YYYY-MM-DD').endOf('day');
-    }
-    
-    let hasVisibleRows = false;
-    let totalRows = 0;
-    let matchedRows = 0;
-    
-    $('#clientTransactionsTableBody tr').each(function() {
-        totalRows++;
-        const row = $(this);
-        // Client currency is in the 10th column (index 9)
-        const rowCurrency = row.find('td:nth-child(10)').text().trim();
-        const rowReceipt = row.find('td:nth-child(4)').text().toLowerCase().trim();
-        const rowDate = moment(row.find('td:nth-child(2)').text().trim(), 'YYYY-MM-DD HH:mm:ss');
-        
-        const matchesCurrency = currency === 'all' || rowCurrency === currency;
-        const matchesReceipt = !receipt || rowReceipt.includes(receipt);
-        const matchesDate = !dateRange || (rowDate.isValid() && rowDate.isBetween(startDate, endDate, null, '[]'));
-        
-        if (matchesCurrency && matchesReceipt && matchesDate) {
-            row.show();
-            hasVisibleRows = true;
-            matchedRows++;
-        } else {
-            row.hide();
-        }
-    });
-    
-
-    
-    // Show or hide the "no transactions" message
-    if (hasVisibleRows) {
-        $('#noClientTransactionsMessage').addClass('d-none');
-    } else {
-        $('#noClientTransactionsMessage').removeClass('d-none');
+    if (clientId && clientName) {
+        // Reload transactions with new filters
+        loadTransactions('client', clientId, clientName);
     }
 }
 
@@ -620,44 +552,13 @@ function filterSupplierTransactions() {
     // Log filter values for debugging
     logFilterValues('supplier', 'N/A', receipt, dateRange);
     
-    let startDate = null;
-    let endDate = null;
+    // Reload transactions with filters - get supplier ID and name from the modal
+    const supplierId = document.getElementById('supplierTransactionId')?.value;
+    const supplierName = document.getElementById('supplierNameDisplay')?.textContent;
     
-    if (dateRange) {
-        const dates = dateRange.split(' - ');
-        startDate = moment(dates[0], 'YYYY-MM-DD');
-        endDate = moment(dates[1], 'YYYY-MM-DD').endOf('day');
-    }
-    
-    let hasVisibleRows = false;
-    let totalRows = 0;
-    let matchedRows = 0;
-    
-    $('#supplierTransactionsTableBody tr').each(function() {
-        totalRows++;
-        const row = $(this);
-        const rowReceipt = row.find('td:nth-child(4)').text().toLowerCase().trim();
-        const rowDate = moment(row.find('td:nth-child(2)').text().trim(), 'YYYY-MM-DD HH:mm:ss');
-        
-        const matchesReceipt = !receipt || rowReceipt.includes(receipt);
-        const matchesDate = !dateRange || (rowDate.isValid() && rowDate.isBetween(startDate, endDate, null, '[]'));
-        
-        if (matchesReceipt && matchesDate) {
-            row.show();
-            hasVisibleRows = true;
-            matchedRows++;
-        } else {
-            row.hide();
-        }
-    });
-    
-
-    
-    // Show or hide the "no transactions" message
-    if (hasVisibleRows) {
-        $('#noSupplierTransactionsMessage').addClass('d-none');
-    } else {
-        $('#noSupplierTransactionsMessage').removeClass('d-none');
+    if (supplierId && supplierName) {
+        // Reload transactions with new filters
+        loadTransactions('supplier', supplierId, supplierName);
     }
 }
 

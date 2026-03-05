@@ -20,7 +20,7 @@ if (isset($_GET['lang'])) {
 }
 
 // Database connection
-require_once('../includes/db.php');
+require_once('db.php');
 $tenant_id = $_SESSION['tenant_id'];
 
 // Fetch user data with proper error handling
@@ -39,55 +39,45 @@ try {
 } catch (PDOException $e) {
     error_log("Database Error: " . $e->getMessage());
 }
+ // Define h() function if not already defined
+ if (!function_exists('h')) {
+    function h($string) {
+         return htmlspecialchars($string, ENT_QUOTES, 'UTF-8');
+     }
+ }
+
+ // Helper function to check if staff should see a menu item
+ function staffCanSeeMenu($userRole) {
+    // Staff can only see My Attendance and My Payments
+    // Return true for everything for non-staff roles
+    if ($userRole !== 'staff') {
+        return true;
+    }
+    // Staff cannot access any restricted menus
+    return false;
+ }
 
 $allowed_features = [];
 
 if ($tenant_id) {
     $query = "
-        SELECT p.features
-        FROM tenant_subscriptions ts
-        JOIN plans p ON ts.plan_id = p.id
-        WHERE ts.tenant_id = ? AND ts.status = 'active'
-        ORDER BY ts.start_date DESC
-        LIMIT 1
-    ";
+            SELECT p.features
+            FROM tenant_subscriptions ts
+            JOIN plans p ON ts.plan_id = p.id
+            WHERE ts.tenant_id = ? AND ts.status = 'active'
+            ORDER BY ts.start_date DESC
+            LIMIT 1
+        ";
     $stmt = $pdo->prepare($query);
-    $stmt->bindParam(1, $tenant_id, PDO::PARAM_INT);
-    $stmt->execute();
-    if ($row = $stmt->fetch(PDO::FETCH_ASSOC)) {
+    $stmt->execute([$tenant_id]);
+    $row = $stmt->fetch(PDO::FETCH_ASSOC);
+    if ($row) {
         $allowed_features = json_decode($row['features'], true) ?? [];
-
-        // Debug: Log the features for troubleshooting
-        error_log("Tenant ID: " . $tenant_id);
-        error_log("Features JSON: " . $row['features']);
-        error_log("Parsed Features: " . print_r($allowed_features, true));
-    } else {
-        // Debug: Log if no subscription found
-        error_log("No active subscription found for tenant: " . $tenant_id);
-
-        // Check if tenant exists in tenant_subscriptions
-        $debug_query = "SELECT * FROM tenant_subscriptions WHERE tenant_id = ?";
-        $debug_stmt = $pdo->prepare($debug_query);
-        $debug_stmt->bindParam(1, $tenant_id, PDO::PARAM_INT);
-        $debug_stmt->execute();
-        $debug_rows = $debug_stmt->fetchAll(PDO::FETCH_ASSOC);
-
-        if (count($debug_rows) === 0) {
-            error_log("No subscriptions found for tenant: " . $tenant_id);
-        } else {
-            error_log("Found subscriptions but none active for tenant: " . $tenant_id);
-            foreach ($debug_rows as $debug_row) {
-                error_log("Subscription: " . print_r($debug_row, true));
-            }
-        }
     }
-} else {
-    error_log("Tenant ID is empty or null");
 }
 
 // Temporary fix: If no features found, assign default features for testing
 if (empty($allowed_features)) {
-    error_log("No features found, using default feature set");
     $allowed_features = [
         "ticket_bookings",
         "ticket_reservations", 
@@ -118,8 +108,6 @@ if (empty($allowed_features)) {
 // Helper function to check if a feature is allowed
 function hasFeature($feature, $allowed_features) {
     $hasIt = in_array($feature, $allowed_features);
-    // Debug: Log feature checks
-    error_log("Checking feature '$feature': " . ($hasIt ? 'ALLOWED' : 'DENIED'));
     return $hasIt;
 }
 
@@ -136,16 +124,15 @@ try {
 $user_id = $_SESSION["user_id"];
 
 $profilePic = !empty($user['profile_pic']) ? htmlspecialchars($user['profile_pic']) : 'default-avatar.jpg';
-$imagePath = "../assets/images/user/" . $profilePic;
+$imagePath = "../assets/images/user/" . basename($profilePic);
 
-// Debug output for development (remove in production)
-if (isset($_GET['debug'])) {
-    echo "<pre>";
-    echo "Tenant ID: " . $tenant_id . "\n";
-    echo "Allowed Features: " . print_r($allowed_features, true) . "\n";
-    echo "</pre>";
-    exit();
-}
+// Calculate remaining session time (30 minutes = 1800 seconds)
+$session_timeout = 1800; // 30 minutes in seconds
+$last_activity = $_SESSION['last_activity'] ?? time();
+$remaining_time = $session_timeout - (time() - $last_activity);
+$remaining_time = max(0, $remaining_time); // Ensure non-negative
+
+
 ?>
 
 
@@ -198,7 +185,7 @@ if (isset($_GET['debug'])) {
     <link rel="stylesheet" href="../assets/plugins/animation/css/animate.min.css">
     <!-- vendor css -->
     <link rel="stylesheet" href="../assets/css/style.css">
-
+    
 
 <style>
     /* Enhanced Sidebar Styles */
@@ -1495,7 +1482,7 @@ MOBILE SIDEBAR - CLEAN LAYOUT FIX
                 <li class="nav-item pcoded-menu-caption">
                     <label><?= __('pages') ?></label>
                 </li>
-                <?php if (hasFeature('inter_tenant_chat', $allowed_features)): ?>
+                <?php if (hasFeature('inter_tenant_chat', $allowed_features) && staffCanSeeMenu($user['role'])): ?>
                 <li data-username="chat" class="nav-item pcoded-hasmenu <?php echo (basename($_SERVER['PHP_SELF']) == 'chat.php' || basename($_SERVER['PHP_SELF']) == 'send_messages.php' || basename($_SERVER['PHP_SELF']) == 'chat_settings.php' || basename($_SERVER['PHP_SELF']) == 'tenant_peering.php') ? 'active pcoded-trigger' : ''; ?>">
                     <a href="javascript:" class="nav-link">
                         <span class="pcoded-micon"><i class="feather icon-message-circle"></i></span>
@@ -1512,22 +1499,34 @@ MOBILE SIDEBAR - CLEAN LAYOUT FIX
                                 <i class="feather icon-message-circle"></i> <?= __('send_messages') ?>
                             </a>
                         </li>
+                        <li class="<?php echo basename($_SERVER['PHP_SELF']) == 'chat_settings.php' ? 'active' : ''; ?>">
+                            <a href="chat_settings.php">
+                                <i class="feather icon-settings"></i> Chat Settings
+                            </a>
+                        </li>
+                        <li class="<?php echo basename($_SERVER['PHP_SELF']) == 'tenant_peering.php' ? 'active' : ''; ?>">
+                            <a href="tenant_peering.php">
+                                <i class="feather icon-users"></i> Tenant Peering
+                            </a>
+                        </li>
+                        <li class="<?php echo basename($_SERVER['PHP_SELF']) == 'branch_peering.php' ? 'active' : ''; ?>">
+                            <a href="branch_peering.php">
+                                <i class="feather icon-users"></i> Branch Peering
+                            </a>
+                        </li>
                     </ul>
                 </li>
-                <?php endif; ?> 
+                <?php endif; ?>
+                <?php if (staffCanSeeMenu($user['role'])): ?>
                 <li data-username="accounts" class="nav-item <?php echo basename($_SERVER['PHP_SELF']) == 'accounts.php' ? 'active' : ''; ?>">
                     <a href="accounts.php" class="nav-link">
                         <span class="pcoded-micon"><i class="feather icon-briefcase"></i></span>
                         <span class="pcoded-mtext"><?= __('accounts') ?></span>
                     </a>
                 </li>
-                <li data-username="subscription_payments" class="nav-item <?php echo basename($_SERVER['PHP_SELF']) == 'subscription_payments.php' ? 'active' : ''; ?>">
-                    <a href="subscription_payments.php" class="nav-link">
-                        <span class="pcoded-micon"><i class="feather icon-credit-card"></i></span>
-                        <span class="pcoded-mtext"><?= __('subscription_payments') ?></span>
-                    </a>
-                </li>
-                <?php if (hasFeature('debtors', $allowed_features)): ?>
+                <?php endif; ?>
+
+                <?php if (hasFeature('debtors', $allowed_features) && staffCanSeeMenu($user['role'])): ?>
                 <li data-username="debtors" class="nav-item <?php echo basename($_SERVER['PHP_SELF']) == 'debtors.php' ? 'active' : ''; ?>">
                     <a href="debtors.php" class="nav-link">
                         <span class="pcoded-micon"><i class="feather icon-users"></i></span>
@@ -1535,7 +1534,7 @@ MOBILE SIDEBAR - CLEAN LAYOUT FIX
                     </a>
                 </li>
                 <?php endif; ?>
-                <?php if (hasFeature('creditors', $allowed_features)): ?>
+                <?php if (hasFeature('creditors', $allowed_features) && staffCanSeeMenu($user['role'])): ?>
                 <li data-username="creditors" class="nav-item <?php echo basename($_SERVER['PHP_SELF']) == 'creditors.php' ? 'active' : ''; ?>">
                     <a href="creditors.php" class="nav-link">
                         <span class="pcoded-micon"><i class="feather icon-users"></i></span>
@@ -1543,7 +1542,7 @@ MOBILE SIDEBAR - CLEAN LAYOUT FIX
                     </a>
                 </li>
                 <?php endif; ?>
-                <?php if (hasFeature('sarafi', $allowed_features)): ?>
+                <?php if (hasFeature('sarafi', $allowed_features) && staffCanSeeMenu($user['role'])): ?>
                 <li data-username="sarafi" class="nav-item <?php echo basename($_SERVER['PHP_SELF']) == 'sarafi.php' ? 'active' : ''; ?>">
                     <a href="sarafi.php" class="nav-link">
                         <span class="pcoded-micon"><i class="feather icon-credit-card"></i></span>
@@ -1551,7 +1550,7 @@ MOBILE SIDEBAR - CLEAN LAYOUT FIX
                     </a>
                 </li>
                 <?php endif; ?>
-                <?php if (hasFeature('salary', $allowed_features)): ?>
+                <?php if (hasFeature('salary', $allowed_features) && staffCanSeeMenu($user['role'])): ?>
                 <li data-username="salary" class="nav-item pcoded-hasmenu <?php echo (strpos(basename($_SERVER['PHP_SELF']), 'salary') !== false) ? 'active pcoded-trigger' : ''; ?>">
                     <a href="javascript:" class="nav-link">
                         <span class="pcoded-micon"><i class="fas fa-dollar-sign"></i></span>
@@ -1562,9 +1561,61 @@ MOBILE SIDEBAR - CLEAN LAYOUT FIX
                             <a href="salary_management.php"><?= __('employee_salaries') ?></a>
                         </li>
                         <li class="<?php echo basename($_SERVER['PHP_SELF']) == 'salary_payment.php' ? 'active' : ''; ?>">
-                            <a href="salary_payment.php"><?= __('salary_payment') ?></a>
+                            <a href="salary_payment.php"><?= __('process_payment') ?></a>
+                        </li>
+                        <li class="<?php echo basename($_SERVER['PHP_SELF']) == 'salary_payments.php' ? 'active' : ''; ?>">
+                            <a href="salary_payments.php"><i class="feather icon-user mr-2"></i><?= __('my_payments') ?></a>
                         </li>
                     </ul>
+                </li>
+                <?php elseif (hasFeature('salary', $allowed_features) && $user['role'] == 'staff'): ?>
+                <!-- Staff: Show only My Payments -->
+                <li data-username="salary" class="nav-item <?php echo basename($_SERVER['PHP_SELF']) == 'salary_payments.php' ? 'active' : ''; ?>">
+                    <a href="salary_payments.php" class="nav-link">
+                        <span class="pcoded-micon"><i class="fas fa-dollar-sign"></i></span>
+                        <span class="pcoded-mtext"><?= __('my_payments') ?></span>
+                    </a>
+                </li>
+                <?php endif; ?>
+                <?php if (hasFeature('salary', $allowed_features) && staffCanSeeMenu($user['role'])): ?>
+                <li data-username="hr" class="nav-item pcoded-hasmenu <?php echo (strpos(basename($_SERVER['PHP_SELF']), 'hr') !== false || strpos(basename($_SERVER['PHP_SELF']), 'employee') !== false || strpos(basename($_SERVER['PHP_SELF']), 'attendance') !== false || basename($_SERVER['PHP_SELF']) == 'hr_reports.php' || basename($_SERVER['PHP_SELF']) == 'add_employee.php' || basename($_SERVER['PHP_SELF']) == 'edit_employee.php' || basename($_SERVER['PHP_SELF']) == 'employee_details.php') ? 'active pcoded-trigger' : ''; ?>">
+                    <a href="javascript:" class="nav-link">
+                        <span class="pcoded-micon"><i class="feather icon-users"></i></span>
+                        <span class="pcoded-mtext"><?= __('hr_management') ?></span>
+                    </a>
+                    <ul class="pcoded-submenu">
+                        <li class="<?php echo basename($_SERVER['PHP_SELF']) == 'hr.php' ? 'active' : ''; ?>">
+                            <a href="hr.php"><?= __('hr_dashboard') ?></a>
+                        </li>
+                        <li class="<?php echo basename($_SERVER['PHP_SELF']) == 'employee_management.php' ? 'active' : ''; ?>">
+                            <a href="employee_management.php"><?= __('employee_management') ?></a>
+                        </li>
+                        <li class="<?php echo basename($_SERVER['PHP_SELF']) == 'employee_performance.php' ? 'active' : ''; ?>">
+                            <a href="employee_performance.php"><?= __('performance_reviews') ?></a>
+                        </li>
+                        <?php if (hasFeature('attendance', $allowed_features)): ?>
+                        <li class="<?php echo basename($_SERVER['PHP_SELF']) == 'attendance.php' ? 'active' : ''; ?>">
+                            <a href="attendance.php"><i class="feather icon-clock mr-2"></i><?= __('my_attendance') ?></a>
+                        </li>
+                        <li class="<?php echo basename($_SERVER['PHP_SELF']) == 'manage_attendance.php' ? 'active' : ''; ?>">
+                            <a href="manage_attendance.php"><i class="feather icon-calendar mr-2"></i><?= __('manage_attendance') ?></a>
+                        </li>
+                        <li class="<?php echo basename($_SERVER['PHP_SELF']) == 'attendance_settings.php' ? 'active' : ''; ?>">
+                            <a href="attendance_settings.php"><i class="feather icon-settings mr-2"></i><?= __('attendance_settings') ?></a>
+                        </li>
+                        <?php endif; ?>
+                        <li class="<?php echo basename($_SERVER['PHP_SELF']) == 'hr_reports.php' ? 'active' : ''; ?>">
+                            <a href="hr_reports.php"><?= __('hr_reports') ?></a>
+                        </li>
+                    </ul>
+                </li>
+                <?php elseif (hasFeature('salary', $allowed_features) && $user['role'] == 'staff'): ?>
+                <!-- Staff: Show only My Attendance -->
+                <li data-username="hr" class="nav-item <?php echo basename($_SERVER['PHP_SELF']) == 'attendance.php' ? 'active' : ''; ?>">
+                    <a href="attendance.php" class="nav-link">
+                        <span class="pcoded-micon"><i class="feather icon-clock"></i></span>
+                        <span class="pcoded-mtext"><?= __('my_attendance') ?></span>
+                    </a>
                 </li>
                 <?php endif; ?>
                
@@ -1577,11 +1628,11 @@ MOBILE SIDEBAR - CLEAN LAYOUT FIX
                               hasFeature('date_change_tickets', $allowed_features) ||
                               hasFeature('ticket_weights', $allowed_features);
                 ?>
-                <?php if ($showTickets): ?>
+                <?php if ($showTickets && staffCanSeeMenu($user['role'])): ?>
                 <li data-username="ticket_management" class="nav-item pcoded-hasmenu <?php echo $isTicketActive ? 'active pcoded-trigger' : ''; ?>">
                     <a href="javascript:" class="nav-link">
                         <span class="pcoded-micon"><i class="feather icon-calendar"></i></span>
-                        <span class="pcoded-mtext">Ticket Management</span>
+                        <span class="pcoded-mtext"><?= __('ticket_management') ?></span>
                     </a>
                     <ul class="pcoded-submenu">
                         <?php if (hasFeature('ticket_bookings', $allowed_features)): ?>
@@ -1617,27 +1668,27 @@ MOBILE SIDEBAR - CLEAN LAYOUT FIX
                 $isHotelActive = in_array(basename($_SERVER['PHP_SELF']), $hotelPages);
                 $showHotel = hasFeature('hotel_bookings', $allowed_features) || hasFeature('hotel_refunds', $allowed_features);
                 ?>
-                <?php if ($showHotel): ?>
+                <?php if ($showHotel && staffCanSeeMenu($user['role'])): ?>
                 <li data-username="hotel_management" class="nav-item pcoded-hasmenu <?php echo $isHotelActive ? 'active pcoded-trigger' : ''; ?>">
                     <a href="javascript:" class="nav-link">
                         <span class="pcoded-micon"><i class="feather icon-home"></i></span>
-                        <span class="pcoded-mtext">Hotel Management</span>
+                        <span class="pcoded-mtext"><?= __('hotel_management') ?></span>
                     </a>
                     <ul class="pcoded-submenu">
                         <?php if (hasFeature('hotel_bookings', $allowed_features)): ?>
                         <li class="<?php echo basename($_SERVER['PHP_SELF']) == 'hotel.php' ? 'active' : ''; ?>">
-                            <a href="hotel.php">Hotel Bookings</a>
+                            <a href="hotel.php"><?= __('hotel_bookings') ?></a>
                         </li>
                         <?php endif; ?>
                         <?php if (hasFeature('hotel_refunds', $allowed_features)): ?>
                         <li class="<?php echo basename($_SERVER['PHP_SELF']) == 'hotel_refund.php' ? 'active' : ''; ?>">
-                            <a href="hotel_refunds.php">Hotel Refund</a>
+                            <a href="hotel_refunds.php"><?= __('hotel_refund') ?></a>
                         </li>
                         <?php endif; ?>
                     </ul>
                 </li>
                 <?php endif; ?>
-                <?php if (hasFeature('umrah_bookings', $allowed_features)): ?>
+                <?php if (hasFeature('umrah_bookings', $allowed_features) && staffCanSeeMenu($user['role'])): ?>
                 <li data-username="umrah" class="nav-item pcoded-hasmenu <?php echo in_array(basename($_SERVER['PHP_SELF']), ['umrah.php', 'umrah_services.php', 'umrah_refunds.php', 'umrah_date_changes.php']) ? 'active pcoded-trigger' : ''; ?>">
                     <a href="javascript:" class="nav-link">
                         <span class="pcoded-micon"><i class="feather icon-map"></i></span>
@@ -1666,27 +1717,27 @@ MOBILE SIDEBAR - CLEAN LAYOUT FIX
                 $isVisaActive = in_array(basename($_SERVER['PHP_SELF']), $visaPages);
                 $showVisa = hasFeature('visa_applications', $allowed_features) || hasFeature('visa_refunds', $allowed_features);
                 ?>
-                <?php if ($showVisa): ?>
+                <?php if ($showVisa && staffCanSeeMenu($user['role'])): ?>
                 <li data-username="visa_management" class="nav-item pcoded-hasmenu <?php echo $isVisaActive ? 'active pcoded-trigger' : ''; ?>">
                     <a href="javascript:" class="nav-link">
                         <span class="pcoded-micon"><i class="feather icon-globe"></i></span>
-                        <span class="pcoded-mtext">Visa Management</span>
+                        <span class="pcoded-mtext"><?= __('visa_management') ?></span>
                     </a>
                     <ul class="pcoded-submenu">
                         <?php if (hasFeature('visa_applications', $allowed_features)): ?>
                         <li class="<?php echo basename($_SERVER['PHP_SELF']) == 'visa.php' ? 'active' : ''; ?>">
-                            <a href="visa.php">Visa Bookings</a>
+                            <a href="visa.php"><?= __('visa_bookings') ?></a>
                         </li>
                         <?php endif; ?>
                         <?php if (hasFeature('visa_refunds', $allowed_features)): ?>
                         <li class="<?php echo basename($_SERVER['PHP_SELF']) == 'visa_refunds.php' ? 'active' : ''; ?>">
-                            <a href="visa_refunds.php">Visa Refund</a>
+                            <a href="visa_refunds.php"><?= __('visa_refund') ?></a>
                         </li>
                         <?php endif; ?>
                     </ul>
                 </li>
                 <?php endif; ?>
-                <?php if (hasFeature('additional_payments', $allowed_features)): ?>
+                <?php if (hasFeature('additional_payments', $allowed_features) && staffCanSeeMenu($user['role'])): ?>
                 <li data-username="additional_payments" class="nav-item <?php echo basename($_SERVER['PHP_SELF']) == 'additional_payments.php' ? 'active' : ''; ?>">
                     <a href="additional_payments.php" class="nav-link">
                         <span class="pcoded-micon"><i class="feather icon-users"></i></span>
@@ -1694,7 +1745,7 @@ MOBILE SIDEBAR - CLEAN LAYOUT FIX
                     </a>
                 </li>
                 <?php endif; ?>
-                <?php if (hasFeature('jv_payments', $allowed_features)): ?>
+                <?php if (hasFeature('jv_payments', $allowed_features) && staffCanSeeMenu($user['role'])): ?>
                 <li data-username="jv_payments" class="nav-item <?php echo basename($_SERVER['PHP_SELF']) == 'jv_payments.php' ? 'active' : ''; ?>">
                     <a href="jv_payments.php" class="nav-link">
                         <span class="pcoded-micon"><i class="feather icon-users"></i></span>
@@ -1702,7 +1753,7 @@ MOBILE SIDEBAR - CLEAN LAYOUT FIX
                     </a>
                 </li>
                 <?php endif; ?>
-                <?php if (hasFeature('manage_maktobs', $allowed_features)): ?>
+                <?php if (hasFeature('manage_maktobs', $allowed_features) && staffCanSeeMenu($user['role'])): ?>
                 <li data-username="manage_maktobs" class="nav-item <?php echo basename($_SERVER['PHP_SELF']) == 'manage_maktobs.php' ? 'active' : ''; ?>">
                     <a href="manage_maktobs.php" class="nav-link">
                         <span class="pcoded-micon"><i class="fas fa-file-alt"></i></span>
@@ -1710,7 +1761,7 @@ MOBILE SIDEBAR - CLEAN LAYOUT FIX
                     </a>
                 </li>
                 <?php endif; ?>
-                <?php if (hasFeature('assets', $allowed_features)): ?>
+                <?php if (hasFeature('assets', $allowed_features) && staffCanSeeMenu($user['role'])): ?>
                 <li data-username="assets" class="nav-item <?php echo basename($_SERVER['PHP_SELF']) == 'assets.php' ? 'active' : ''; ?>">
                     <a href="assets.php" class="nav-link">
                         <span class="pcoded-micon"><i class="feather icon-users"></i></span>
@@ -1718,6 +1769,7 @@ MOBILE SIDEBAR - CLEAN LAYOUT FIX
                     </a>
                 </li>
                 <?php endif; ?>
+                <?php if (staffCanSeeMenu($user['role'])): ?>
                 <li data-username="supplier" class="nav-item <?php echo basename($_SERVER['PHP_SELF']) == 'supplier.php' ? 'active' : ''; ?>">
                     <a href="supplier.php" class="nav-link">
                         <span class="pcoded-micon"><i class="feather icon-users"></i></span>
@@ -1730,39 +1782,85 @@ MOBILE SIDEBAR - CLEAN LAYOUT FIX
                         <span class="pcoded-mtext"><?= __('client') ?></span>
                     </a>
                 </li>
-               
+                <?php endif; ?>
+                
+                <?php if (staffCanSeeMenu($user['role'])): ?>
                 <li data-username="expense" class="nav-item <?php echo basename($_SERVER['PHP_SELF']) == 'expense_management.php' ? 'active' : ''; ?>">
                     <a href="expense_management.php" class="nav-link">
                         <span class="pcoded-micon"><i class="fas fa-dollar-sign"></i></span>
                         <span class="pcoded-mtext"><?= __('expense_management') ?></span>
                     </a>
                 </li>
+                <?php endif; ?>
+                <?php if (staffCanSeeMenu($user['role'])): ?>
                 <li data-username="report" class="nav-item <?php echo basename($_SERVER['PHP_SELF']) == 'report.php' ? 'active' : ''; ?>">
                     <a href="report.php" class="nav-link">
                         <span class="pcoded-micon"><i class="feather icon-file"></i></span>
                         <span class="pcoded-mtext"><?= __('reports') ?></span>
                     </a>
                 </li>
+                <?php endif; ?>
 
+                <?php if (staffCanSeeMenu($user['role'])): ?>
+                <li data-username="excel_import" class="nav-item <?php echo basename($_SERVER['PHP_SELF']) == 'excel_import.php' ? 'active' : ''; ?>">
+                    <a href="excel_import.php" class="nav-link">
+                        <span class="pcoded-micon"><i class="fas fa-file-excel"></i></span>
+                        <span class="pcoded-mtext"><?= __('excel_import') ?></span>
+                    </a>
+                </li>
+                <?php endif; ?>
                 <li data-username="2fa" class="nav-item <?php echo basename($_SERVER['PHP_SELF']) == 'totp.php' ? 'active' : ''; ?>">
                     <a href="../totp_setup.php" class="nav-link">
                         <span class="pcoded-micon"><i class="feather icon-shield"></i></span>
                         <span class="pcoded-mtext"><?= __('2fa') ?></span>
                     </a>
                 </li>
+                <?php if (staffCanSeeMenu($user['role'])): ?>
                 <li data-username="search" class="nav-item <?php echo basename($_SERVER['PHP_SELF']) == 'search.php' ? 'active' : ''; ?>">
                     <a href="search.php" class="nav-link">
                         <span class="pcoded-micon"><i class="feather icon-search"></i></span>
                         <span class="pcoded-mtext"><?= __('search') ?></span>
                     </a>
                 </li>
-                <li data-username="tutorials" class="nav-item <?php echo basename($_SERVER['PHP_SELF']) == 'tutorials.php' ? 'active' : ''; ?>">
-                    <a href="tutorials.php" class="nav-link">
-                        <span class="pcoded-micon"><i class="fas fa-graduation-cap"></i></span>
+                <?php endif; ?>
+
+
+                <?php if (staffCanSeeMenu($user['role'])): ?>
+                <li data-username="activity_log" class="nav-item <?php echo basename($_SERVER['PHP_SELF']) == 'activity_log.php' ? 'active' : ''; ?>">
+                    <a href="activity_log.php" class="nav-link">
+                        <span class="pcoded-micon"><i class="feather icon-activity"></i></span>
+                        <span class="pcoded-mtext"><?= __('activity_log') ?></span>
+                    </a>
+                </li>
+                <li data-username="email_analytics" class="nav-item <?php echo basename($_SERVER['PHP_SELF']) == 'email_analytics.php' ? 'active' : ''; ?>">
+                    <a href="email_analytics.php" class="nav-link">
+                        <span class="pcoded-micon"><i class="feather icon-mail"></i></span>
+                        <span class="pcoded-mtext"><?= __('email_analytics') ?></span>
+                    </a>
+                </li>
+                <?php endif; ?>
+                <?php if (staffCanSeeMenu($user['role'])): ?>
+                <li data-username="support_tickets" class="nav-item pcoded-hasmenu <?php echo basename($_SERVER['PHP_SELF']) == 'support_ticket_create.php' || basename($_SERVER['PHP_SELF']) == 'support_tickets.php' || basename($_SERVER['PHP_SELF']) == 'support_ticket_detail.php' ? 'active pcoded-trigger' : ''; ?>">
+                    <a href="javascript:" class="nav-link">
+                        <span class="pcoded-micon"><i class="feather icon-help-circle"></i></span>
+                        <span class="pcoded-mtext"><?= __('support_tickets') ?></span>
+                    </a>
+                    <ul class="pcoded-submenu">
+                        <li class="<?php echo basename($_SERVER['PHP_SELF']) == 'support_tickets.php' || basename($_SERVER['PHP_SELF']) == 'support_ticket_detail.php' ? 'active' : ''; ?>">
+                            <a href="support_tickets.php"><?= __('my_tickets') ?></a>
+                        </li>
+                        <li class="<?php echo basename($_SERVER['PHP_SELF']) == 'support_ticket_create.php' ? 'active' : ''; ?>">
+                            <a href="support_ticket_create.php"><?= __('submit_new_ticket') ?></a>
+                        </li>
+                    </ul>
+                </li>
+                <li data-username="tutorial" class="nav-item <?php echo basename($_SERVER['PHP_SELF']) == 'tutorial.php' ? 'active' : ''; ?>">
+                    <a href="tutorial.php" class="nav-link">
+                        <span class="pcoded-micon"><i class="feather icon-book"></i></span>
                         <span class="pcoded-mtext"><?= __('tutorials') ?></span>
                     </a>
                 </li>
-
+                <?php endif; ?>
             </ul>
         </div>
         <div class="navbar-brand user-profile-section" style="position: absolute; bottom: 0; width: 100%; border-top: 1px solid rgba(255,255,255,0.1); background: #4099ff; z-index: 10;">
@@ -1927,6 +2025,91 @@ document.addEventListener('DOMContentLoaded', function() {
             }
         });
     }
+
+    // Session timeout functionality
+    let remainingTime = <?php echo $remaining_time; ?>; // Get remaining time from PHP
+    let lastActivityTime = Date.now();
+    const SESSION_TIMEOUT = <?php echo $session_timeout; ?>; // 30 minutes in seconds
+    let warningShown5Min = false;
+    let warningShown1Min = false;
+    
+    // Function to check session status with server
+    function checkServerSession() {
+        fetch('../api/session_check.php', {
+            method: 'GET',
+            credentials: 'same-origin',
+            headers: { 'X-Requested-With': 'XMLHttpRequest' }
+        })
+        .then(response => {
+            if (response.status === 401 || response.status === 403) {
+                // Session expired on server - redirect immediately
+                window.location.href = '../login.php?timeout=1';
+                return null;
+            }
+            return response.json();
+        })
+        .then(data => {
+            if (data && !data.authenticated) {
+                // Session expired - redirect immediately
+                window.location.href = '../login.php?timeout=1';
+            }
+        })
+        .catch(error => {
+            console.error('Session check error:', error);
+        });
+    }
+    
+    // Check session immediately when tab becomes visible
+    document.addEventListener('visibilitychange', function() {
+        if (document.visibilityState === 'visible') {
+            // Tab is now visible - check if session is still valid
+            const timeSinceLastActivity = (Date.now() - lastActivityTime) / 1000;
+            
+            // If more than 30 seconds have passed while tab was hidden, verify with server
+            if (timeSinceLastActivity > 30) {
+                checkServerSession();
+            }
+            
+            // Update last activity time
+            lastActivityTime = Date.now();
+        }
+    });
+
+    function updateSessionTimer() {
+        if (remainingTime <= 0) {
+            // Auto logout when time expires
+            window.location.href = '../logout.php';
+            return;
+        }
+
+        // Show warning 5 minutes before timeout
+        if (remainingTime <= 300 && remainingTime > 299 && !warningShown5Min) {
+            alert('Your session will expire in 5 minutes. Please save your work.');
+            warningShown5Min = true;
+        }
+
+        // Show warning 1 minute before timeout
+        if (remainingTime <= 60 && remainingTime > 59 && !warningShown1Min) {
+            alert('Your session will expire in 1 minute. Please save your work.');
+            warningShown1Min = true;
+        }
+
+        remainingTime--;
+    }
+
+    // Update timer every second
+    setInterval(updateSessionTimer, 1000);
+
+    // Reset timer on user activity
+    let activityEvents = ['mousedown', 'mousemove', 'keypress', 'scroll', 'touchstart', 'click'];
+    activityEvents.forEach(function(event) {
+        document.addEventListener(event, function() {
+            lastActivityTime = Date.now();
+            // Reset warning flags
+            warningShown5Min = false;
+            warningShown1Min = false;
+        }, true);
+    });
 });
 </script>
 <script>
@@ -2006,4 +2189,7 @@ document.addEventListener('DOMContentLoaded', function() {
 })();
 </script>
 <?php endif; ?>
+
+<!-- Include Floating Tasks Widget -->
+<?php include_once 'floating_tasks.php'; ?>
 

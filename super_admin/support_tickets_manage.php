@@ -223,6 +223,258 @@ require_once '../includes/header_super_admin.php';
 .text-muted {
     font-size: 0.9rem;
 }
+
+/* ─── TICKET CARD STYLES ─────────────────────────────── */
+.sa-ticket-list {
+    display: flex;
+    flex-direction: column;
+    gap: 16px;
+}
+
+.sa-ticket-card {
+    background: white;
+    border: 1px solid #e0e0e0;
+    border-radius: 10px;
+    padding: 20px;
+    transition: all 0.2s ease;
+}
+
+.sa-ticket-card:hover {
+    border-color: rgba(64, 153, 255, 0.3);
+    box-shadow: 0 4px 16px rgba(64, 153, 255, 0.15);
+}
+
+.stc-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-start;
+    margin-bottom: 16px;
+    padding-bottom: 16px;
+    border-bottom: 1px solid #e0e0e0;
+}
+
+.stc-info h4 {
+    font-size: 1.1rem;
+    font-weight: 600;
+    margin: 0 0 6px 0;
+    color: #333;
+}
+
+.stc-info .ticket-number {
+    color: #4099ff;
+    margin-right: 8px;
+}
+
+.stc-tenant {
+    font-size: 0.85rem;
+    color: #999;
+    margin: 0;
+    display: flex;
+    align-items: center;
+    gap: 6px;
+}
+
+.stc-badges {
+    display: flex;
+    gap: 8px;
+}
+
+.stc-details {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(120px, 1fr));
+    gap: 16px;
+    margin-bottom: 16px;
+}
+
+.stc-detail-item {
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+}
+
+.stc-detail-label {
+    font-size: 0.75rem;
+    color: #999;
+    font-weight: 600;
+    text-transform: uppercase;
+}
+
+.stc-detail-value {
+    font-size: 0.9rem;
+    font-weight: 500;
+    color: #444;
+}
+
+.stc-actions {
+    display: flex;
+    gap: 8px;
+    justify-content: flex-end;
+}
+
+/* ─── PILLS ────────────────────────────────────────────── */
+.pill {
+    font-size: 0.62rem;
+    font-weight: 700;
+    padding: 3px 8px;
+    border-radius: 20px;
+    text-transform: uppercase;
+    letter-spacing: 0.04em;
+    white-space: nowrap;
+}
+
+.pill-green {
+    background: rgba(16,185,129,0.12);
+    color: #10b981;
+}
+
+.pill-amber {
+    background: rgba(245,158,11,0.12);
+    color: #f59e0b;
+}
+
+.pill-red {
+    background: rgba(239,68,68,0.12);
+    color: #ef4444;
+}
+
+.pill-blue {
+    background: rgba(59,130,246,0.12);
+    color: #3b82f6;
+}
+
+.pill-gray {
+    background: rgba(107,114,128,0.12);
+    color: #6b7280;
+}
+
+/* ─── SECTION HEADER ───────────────────────────────────── */
+.sa-shdr {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 1.5rem;
+}
+
+.sa-shdr h2 {
+    font-size: 1.5rem;
+    font-weight: 600;
+    margin: 0;
+    color: #333;
+}
+
+.sa-shdr p {
+    margin: 4px 0 0 0;
+    font-size: 0.75rem;
+    color: #999;
+}
+
+/* ─── CARDS ───────────────────────────────────────────── */
+.sa-card {
+    background: white;
+    border-radius: 10px;
+    box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+    transition: transform 0.2s ease-in-out, box-shadow 0.2s ease-in-out;
+    border: none;
+}
+
+.sa-card:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 4px 16px rgba(0,0,0,0.15);
+}
+
+.sa-card-body {
+    padding: 1.5rem;
+}
+
+/* ─── BUTTONS ───────────────────────────────────────── */
+.sa-btn {
+    padding: 0.75rem 1.5rem;
+    border-radius: 8px;
+    border: none;
+    font-weight: 500;
+    cursor: pointer;
+    transition: all 0.3s ease;
+    text-decoration: none;
+    display: inline-block;
+    font-size: 0.9rem;
+}
+
+.sa-btn-primary {
+    background: linear-gradient(135deg, #4099ff 0%, #2ed8b6 100%);
+    color: white;
+}
+
+.sa-btn-primary:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 4px 12px rgba(64, 153, 255, 0.3);
+}
+
+.sa-btn-small {
+    padding: 6px 12px;
+    font-size: 0.75rem;
+}
+
+.sa-btn-ghost {
+    background: #f0f0f0;
+    color: #333;
+    border: 1px solid #e0e0e0;
+}
+
+.sa-btn-ghost:hover {
+    background: #e8e8e8;
+    border-color: #d0d0d0;
+}
+
+/* ─── SEARCH & FILTER ───────────────────────────────── */
+.sa-search-filter {
+    display: flex;
+    gap: 1rem;
+    align-items: center;
+    flex-wrap: wrap;
+}
+
+.sa-search-group {
+    display: flex;
+    gap: 1rem;
+    align-items: center;
+    flex: 1;
+    flex-wrap: wrap;
+}
+
+.sa-search-input {
+    flex: 1;
+    min-width: 120px;
+    padding: 0.75rem;
+    border: 1px solid #ced4da;
+    border-radius: 8px;
+    font-size: 0.9rem;
+    transition: border-color 0.15s ease-in-out, box-shadow 0.15s ease-in-out;
+}
+
+.sa-search-input:focus {
+    outline: none;
+    border-color: #4099ff;
+    box-shadow: 0 0 0 0.2rem rgba(64, 153, 255, 0.25);
+}
+
+/* ─── RESPONSIVE ──────────────────────────────────────── */
+@media (max-width: 768px) {
+    .stc-header {
+        flex-direction: column;
+    }
+    
+    .stc-badges {
+        margin-top: 12px;
+    }
+    
+    .stc-details {
+        grid-template-columns: 1fr;
+    }
+    
+    .stc-actions {
+        width: 100%;
+    }
+}
 </style>
 
 <div class="pcoded-main-container">
@@ -294,40 +546,31 @@ require_once '../includes/header_super_admin.php';
             </div>
 
             <!-- Filters -->
-            <div class="card mb-3">
-                <div class="card-header">
-                    <h5><i class="feather icon-filter mr-2"></i>Filter Tickets</h5>
-                </div>
-                <div class="card-body">
-                    <form method="GET" class="row g-3">
-                        <div class="col-md-2">
-                            <select name="status" class="form-control" onchange="this.form.submit()">
+            <div class="sa-card" style="margin-bottom: 20px;">
+                <div class="sa-card-body">
+                    <form method="GET" class="sa-search-filter">
+                        <div class="sa-search-group">
+                            <select name="status" class="sa-search-input" onchange="this.form.submit()">
                                 <option value="">All Status</option>
                                 <option value="open" <?php echo $status_filter === 'open' ? 'selected' : ''; ?>>Open</option>
                                 <option value="in_progress" <?php echo $status_filter === 'in_progress' ? 'selected' : ''; ?>>In Progress</option>
                                 <option value="resolved" <?php echo $status_filter === 'resolved' ? 'selected' : ''; ?>>Resolved</option>
                                 <option value="closed" <?php echo $status_filter === 'closed' ? 'selected' : ''; ?>>Closed</option>
                             </select>
-                        </div>
-                        <div class="col-md-2">
-                            <select name="sla_status" class="form-control" onchange="this.form.submit()">
+                            <select name="sla_status" class="sa-search-input" onchange="this.form.submit()">
                                 <option value="">All SLA</option>
                                 <option value="on_track" <?php echo $sla_status_filter === 'on_track' ? 'selected' : ''; ?>>On Track</option>
                                 <option value="at_risk" <?php echo $sla_status_filter === 'at_risk' ? 'selected' : ''; ?>>At Risk</option>
                                 <option value="breached" <?php echo $sla_status_filter === 'breached' ? 'selected' : ''; ?>>Breached</option>
                             </select>
-                        </div>
-                        <div class="col-md-2">
-                            <select name="priority" class="form-control" onchange="this.form.submit()">
+                            <select name="priority" class="sa-search-input" onchange="this.form.submit()">
                                 <option value="">All Priorities</option>
                                 <option value="critical" <?php echo $priority_filter === 'critical' ? 'selected' : ''; ?>>Critical</option>
                                 <option value="high" <?php echo $priority_filter === 'high' ? 'selected' : ''; ?>>High</option>
                                 <option value="medium" <?php echo $priority_filter === 'medium' ? 'selected' : ''; ?>>Medium</option>
                                 <option value="low" <?php echo $priority_filter === 'low' ? 'selected' : ''; ?>>Low</option>
                             </select>
-                        </div>
-                        <div class="col-md-3">
-                            <select name="tenant" class="form-control" onchange="this.form.submit()">
+                            <select name="tenant" class="sa-search-input" onchange="this.form.submit()">
                                 <option value="">All Tenants</option>
                                 <?php foreach ($tenants as $tenant): ?>
                                     <option value="<?php echo $tenant['id']; ?>" <?php echo $tenant_filter == $tenant['id'] ? 'selected' : ''; ?>>
@@ -335,90 +578,88 @@ require_once '../includes/header_super_admin.php';
                                     </option>
                                 <?php endforeach; ?>
                             </select>
-                        </div>
-                        <div class="col-md-3">
-                            <a href="support_tickets_manage.php" class="btn btn-secondary btn-block btn-sm"><i class="feather icon-refresh-cw mr-1"></i>Reset Filters</a>
+                            <a href="support_tickets_manage.php" class="sa-btn sa-btn-ghost"><i class="feather icon-refresh-cw mr-1"></i>Reset</a>
                         </div>
                     </form>
                 </div>
             </div>
 
-            <!-- Tickets Table -->
-            <div class="card">
-                <div class="card-header">
-                    <h5><i class="feather icon-ticket mr-2"></i>Support Tickets</h5>
-                </div>
-                <div class="table-responsive">
-                    <table class="table table-hover mb-0">
-                        <thead>
-                            <tr>
-                                <th><i class="feather icon-hash mr-1"></i>Ticket #</th>
-                                <th><i class="feather icon-file-text mr-1"></i>Title</th>
-                                <th><i class="feather icon-home mr-1"></i>Tenant</th>
-                                <th><i class="feather icon-alert-octagon mr-1"></i>Priority</th>
-                                <th><i class="feather icon-info mr-1"></i>Status</th>
-                                <th><i class="feather icon-clock mr-1"></i>SLA Status</th>
-                                <th><i class="feather icon-calendar mr-1"></i>Created</th>
-                                <th><i class="feather icon-hourglass mr-1"></i>Time Left</th>
-                                <th><i class="feather icon Settings mr-1"></i>Action</th>
-                            </tr>
-                        </thead>
-                        <tbody>
-                            <?php if (empty($tickets)): ?>
-                                <tr>
-                                    <td colspan="9" class="text-center text-muted py-4">
-                                        No tickets found
-                                    </td>
-                                </tr>
-                            <?php else: ?>
-                                <?php foreach ($tickets as $ticket): ?>
-                                    <tr>
-                                        <td>
-                                            <strong><?php echo htmlspecialchars($ticket['ticket_number']); ?></strong>
-                                        </td>
-                                        <td>
-                                            <?php echo htmlspecialchars(substr($ticket['title'], 0, 35)); ?>
-                                        </td>
-                                        <td>
-                                            <small><?php echo htmlspecialchars(substr($ticket['tenant_name'], 0, 20)); ?></small>
-                                        </td>
-                                        <td>
-                                            <span class="badge bg-<?php echo $ticket['priority'] === 'critical' ? 'danger' : ($ticket['priority'] === 'high' ? 'warning' : 'info'); ?>">
-                                                <?php echo ucfirst($ticket['priority']); ?>
-                                            </span>
-                                        </td>
-                                        <td>
-                                            <span class="badge bg-<?php 
-                                                echo $ticket['status'] === 'open' ? 'primary' : 
-                                                    ($ticket['status'] === 'in_progress' ? 'warning' : 
-                                                    ($ticket['status'] === 'resolved' ? 'success' : 'secondary'));
-                                            ?>">
-                                                <?php echo ucwords(str_replace('_', ' ', $ticket['status'])); ?>
-                                            </span>
-                                        </td>
-                                        <td>
-                                            <span class="badge bg-<?php echo $ticket['sla_display']['color']; ?>">
-                                                <?php echo $ticket['sla_display']['status']; ?>
-                                            </span>
-                                        </td>
-                                        <td class="text-muted small">
-                                            <?php echo date('M d', strtotime($ticket['created_at'])); ?>
-                                        </td>
-                                        <td class="small">
-                                            <?php echo $ticket['sla_display']['hours_remaining']; ?>h
-                                        </td>
-                                        <td>
-                                            <a href="support_ticket_manage.php?id=<?php echo $ticket['id']; ?>" class="btn btn-sm btn-outline-primary">
-                                                Manage
-                                            </a>
-                                        </td>
-                                    </tr>
-                                <?php endforeach; ?>
-                            <?php endif; ?>
-                        </tbody>
-                    </table>
+            <!-- Tickets Header -->
+            <div class="sa-shdr" style="margin-bottom: 16px;">
+                <div>
+                    <h2>Support Tickets</h2>
+                    <p style="margin: 4px 0 0 0; font-size: 0.75rem; color: var(--muted);">Manage and view all support tickets</p>
                 </div>
             </div>
+
+            <!-- Tickets Cards -->
+            <?php if (empty($tickets)): ?>
+            <div class="sa-card">
+                <div class="sa-card-body" style="text-align: center; padding: 40px 20px; color: var(--muted);">
+                    <div style="font-size: 2rem; margin-bottom: 12px;">🎫</div>
+                    <div style="font-weight: 600; margin-bottom: 4px;">No Tickets Found</div>
+                    <div style="font-size: 0.8rem;">No support tickets match your filters.</div>
+                </div>
+            </div>
+            <?php else: ?>
+            <div class="sa-ticket-list">
+                <?php foreach ($tickets as $ticket): ?>
+                <div class="sa-ticket-card">
+                    <div class="stc-header">
+                        <div class="stc-info">
+                            <h4>
+                                <span class="ticket-number">#<?php echo htmlspecialchars($ticket['ticket_number']); ?></span>
+                                <?php echo htmlspecialchars($ticket['title']); ?>
+                            </h4>
+                            <p class="stc-tenant">
+                                <i class="feather icon-home"></i>
+                                <?php echo htmlspecialchars($ticket['tenant_name']); ?>
+                            </p>
+                        </div>
+                        <div class="stc-badges">
+                            <span class="pill <?php 
+                                echo $ticket['priority'] === 'critical' ? 'pill-red' : 
+                                    ($ticket['priority'] === 'high' ? 'pill-amber' : 
+                                    ($ticket['priority'] === 'medium' ? 'pill-blue' : 'pill-gray')); 
+                            ?>">
+                                <?php echo ucfirst($ticket['priority']); ?>
+                            </span>
+                            <span class="pill <?php 
+                                echo $ticket['status'] === 'open' ? 'pill-blue' : 
+                                    ($ticket['status'] === 'in_progress' ? 'pill-amber' : 
+                                    ($ticket['status'] === 'resolved' ? 'pill-green' : 'pill-gray')); 
+                            ?>">
+                                <?php echo ucwords(str_replace('_', ' ', $ticket['status'])); ?>
+                            </span>
+                        </div>
+                    </div>
+                    
+                    <div class="stc-details">
+                        <div class="stc-detail-item">
+                            <span class="stc-detail-label">SLA Status</span>
+                            <span class="pill <?php echo 'pill-' . $ticket['sla_display']['color']; ?>">
+                                <?php echo $ticket['sla_display']['status']; ?>
+                            </span>
+                        </div>
+                        <div class="stc-detail-item">
+                            <span class="stc-detail-label">Created</span>
+                            <span class="stc-detail-value"><?php echo date('M d, Y', strtotime($ticket['created_at'])); ?></span>
+                        </div>
+                        <div class="stc-detail-item">
+                            <span class="stc-detail-label">Time Left</span>
+                            <span class="stc-detail-value"><?php echo $ticket['sla_display']['hours_remaining']; ?>h</span>
+                        </div>
+                    </div>
+                    
+                    <div class="stc-actions">
+                        <a href="support_ticket_manage.php?id=<?php echo $ticket['id']; ?>" class="sa-btn sa-btn-small sa-btn-primary">
+                            <i class="feather icon-settings"></i> Manage
+                        </a>
+                    </div>
+                </div>
+                <?php endforeach; ?>
+            </div>
+            <?php endif; ?>
         </div>
     </div>
 </div>

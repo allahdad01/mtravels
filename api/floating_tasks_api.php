@@ -15,6 +15,7 @@ if (!isset($_SESSION['user_id'])) {
 }
 
 require_once '../includes/db.php';
+require_once '../admin/security.php';
 
 // CSRF Protection for POST requests
 if (($_SERVER['REQUEST_METHOD'] === 'POST' || isset($_POST['action'])) && !verify_csrf_token()) {
@@ -25,8 +26,16 @@ if (($_SERVER['REQUEST_METHOD'] === 'POST' || isset($_POST['action'])) && !verif
 }
 
 $user_id = $_SESSION['user_id'];
-$tenant_id = $_SESSION['tenant_id'] ?? 1;
-$branch_id = $_SESSION['branch_id'] ?? 1;
+$tenant_id = $_SESSION['tenant_id'] ?? null;
+$branch_id = $_SESSION['branch_id'] ?? null;
+
+// Sales agents may not have tenant_id (they work across tenants)
+// Allow null values for sales agents
+if (is_null($tenant_id) || is_null($branch_id)) {
+    // For sales agents, use a special marker or allow NULL in database
+    if (is_null($tenant_id)) $tenant_id = 0;  // 0 = sales agent (global)
+    if (is_null($branch_id)) $branch_id = 0;   // 0 = all branches
+}
 
 // Get action from GET, POST form, or JSON body
 $action = $_GET['action'] ?? $_POST['action'] ?? null;

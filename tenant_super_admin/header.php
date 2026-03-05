@@ -11,6 +11,10 @@ if (!isset($_SESSION['user_id'])) {
 }
 
 require_once('../includes/session_check.php');
+// Include CSRF protection
+require_once('../includes/CsrfProtection.php');
+// Generate or get CSRF token for this session
+$csrf_token = CsrfProtection::getToken();
 // Include language system
 require_once('../includes/language_helpers.php');
 $lang = init_language();
@@ -1708,6 +1712,14 @@ MOBILE SIDEBAR - CLEAN LAYOUT FIX
                     <a href="tenant_settings.php" class="nav-link">
                         <span class="pcoded-micon"><i class="feather icon-settings"></i></span>
                         <span class="pcoded-mtext">Agency Settings</span>
+                    </a>
+                </li>
+
+                <!-- ── 2FA ────────────────────────────────────────────────────────────── -->
+                <li class="nav-item <?php echo basename($_SERVER['PHP_SELF']) == 'totp_setup.php' ? 'active' : ''; ?>">
+                    <a href="../totp_setup.php" class="nav-link">
+                        <span class="pcoded-micon"><i class="feather icon-shield"></i></span>
+                        <span class="pcoded-mtext"><?= __('2fa') ?></span>
                     </a>
                 </li>
 

@@ -89,6 +89,13 @@
                                         </tbody>
                                     </table>
                                 </div>
+                                <div id="clientTransactionsPagination" class="d-flex justify-content-center align-items-center mt-3 d-none">
+                                    <nav aria-label="Client transaction pagination">
+                                        <ul class="pagination mb-0" id="clientTransactionsPaginationList">
+                                            <!-- Pagination buttons will be inserted here -->
+                                        </ul>
+                                    </nav>
+                                </div>
                                 <div id="noClientTransactionsMessage" class="text-center py-5 d-none">
                                     <div class="empty-state">
                                         <i class="feather icon-inbox text-muted mb-3" style="font-size: 3rem;"></i>

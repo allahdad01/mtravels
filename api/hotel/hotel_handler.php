@@ -4,7 +4,7 @@ if (!defined('HOTEL_HANDLER_LOADED')) {
     define('HOTEL_HANDLER_LOADED', true);
 }
 
-require_once('../includes/db.php');
+require_once(__DIR__ . '/../../includes/db.php');
 
 $tenant_id   = $_SESSION['tenant_id'];
 $branch_id   = $_SESSION['branch_id'];

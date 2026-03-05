@@ -10,14 +10,19 @@ enforce_auth();
 $tenant_id = $_SESSION['tenant_id'];
 $branch_id = $_SESSION['branch_id'];
 
-// Check if user is logged in
-if (!isset($_SESSION['user_id'])  || $_SESSION['role'] !== 'admin') {
+// Check if user is logged in with proper role
+$allowed_roles = ['admin', 'finance', 'sales', 'umrah'];
+if (!isset($_SESSION['user_id']) || !in_array($_SESSION['role'], $allowed_roles)) {
+    // Log unauthorized access attempt
+    error_log("Unauthorized access attempt to dashboard: " . ($_SESSION['user_id'] ?? 'unknown') . " - Role: " . ($_SESSION['role'] ?? 'unknown') . " - IP: " . $_SERVER['REMOTE_ADDR']);
     header('Location: ../login.php');
     exit();
 }
-
 // Database connection
 require_once('../includes/db.php');
+
+// Check if user is admin or finance
+$canEdit = in_array($_SESSION['role'], ['admin', 'finance']);
 ?>
 
 <?php include '../includes/header.php'; ?>
@@ -25,1091 +30,11 @@ require_once('../includes/db.php');
 <link rel="stylesheet" href="../css/general/modal-styles.css">
 <link rel="stylesheet" href="../css/umrah/umrah-enhanced.css">
 <link rel="stylesheet" href="../css/document-upload.css">
+<link rel="stylesheet" href="../css/passport-photo-extractor.css">
 <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/sweetalert2@11.7.32/dist/sweetalert2.min.css">
 <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
 <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
-<style>
-    /* ============================================
-   Umrah Management Enhanced Styles
-   Modern, Clean, Professional Design
-   ============================================ */
 
-:root {
-    /* Color Palette */
-    --primary-color:rgb(37, 199, 235);
-    --primary-dark:rgb(30, 151, 175);
-    --primary-light: #60a5fa;
-    --secondary-color: #10b981;
-    --accent-color: #f59e0b;
-    --danger-color: #ef4444;
-    --warning-color: #f59e0b;
-    --success-color: #10b981;
-    --info-color: #3b82f6;
-    
-    /* Neutral Colors */
-    --gray-50: #f9fafb;
-    --gray-100: #f3f4f6;
-    --gray-200: #e5e7eb;
-    --gray-300: #d1d5db;
-    --gray-400: #9ca3af;
-    --gray-500: #6b7280;
-    --gray-600: #4b5563;
-    --gray-700: #374151;
-    --gray-800: #1f2937;
-    --gray-900: #111827;
-    
-    /* Shadows */
-    --shadow-sm: 0 1px 2px 0 rgba(0, 0, 0, 0.05);
-    --shadow: 0 1px 3px 0 rgba(0, 0, 0, 0.1), 0 1px 2px 0 rgba(0, 0, 0, 0.06);
-    --shadow-md: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06);
-    --shadow-lg: 0 10px 15px -3px rgba(0, 0, 0, 0.1), 0 4px 6px -2px rgba(0, 0, 0, 0.05);
-    --shadow-xl: 0 20px 25px -5px rgba(0, 0, 0, 0.1), 0 10px 10px -5px rgba(0, 0, 0, 0.04);
-    
-    /* Spacing */
-    --spacing-xs: 0.25rem;
-    --spacing-sm: 0.5rem;
-    --spacing-md: 1rem;
-    --spacing-lg: 1.5rem;
-    --spacing-xl: 2rem;
-    --spacing-2xl: 3rem;
-    
-    /* Border Radius */
-    --radius-sm: 0.375rem;
-    --radius-md: 0.5rem;
-    --radius-lg: 0.75rem;
-    --radius-xl: 1rem;
-    --radius-full: 9999px;
-    
-    /* Transitions */
-    --transition-fast: 150ms cubic-bezier(0.4, 0, 0.2, 1);
-    --transition-base: 200ms cubic-bezier(0.4, 0, 0.2, 1);
-    --transition-slow: 300ms cubic-bezier(0.4, 0, 0.2, 1);
-}
-
-/* ============================================
-   Global Resets & Base Styles
-   ============================================ */
-
-* {
-    margin: 0;
-    padding: 0;
-    box-sizing: border-box;
-}
-
-body {
-    font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
-    background: var(--gray-50);
-    color: var(--gray-900);
-    line-height: 1.6;
-}
-
-/* ============================================
-   Enhanced Page Header
-   ============================================ */
-
-.enhanced-page-header {
-    background: linear-gradient(135deg, var(--primary-color) 0%, var(--primary-dark) 100%);
-    padding: var(--spacing-xl) 0;
-    margin-bottom: var(--spacing-xl);
-    box-shadow: var(--shadow-lg);
-    border-bottom: 4px solid var(--primary-dark);
-}
-
-.page-title-wrapper {
-    display: flex;
-    align-items: center;
-    gap: var(--spacing-md);
-}
-
-.page-icon {
-    font-size: 2.5rem;
-    color: white;
-    background: rgba(255, 255, 255, 0.2);
-    width: 70px;
-    height: 70px;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    border-radius: var(--radius-lg);
-    backdrop-filter: blur(10px);
-}
-
-.page-title {
-    font-size: 2rem;
-    font-weight: 700;
-    color: white;
-    margin: 0;
-    letter-spacing: -0.025em;
-}
-
-.page-subtitle {
-    font-size: 1rem;
-    color: rgba(255, 255, 255, 0.9);
-    margin: 0;
-    font-weight: 400;
-}
-
-/* ============================================
-   Financial Dashboard
-   ============================================ */
-
-.financial-dashboard {
-    display: grid;
-    grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
-    gap: var(--spacing-lg);
-    margin-bottom: var(--spacing-xl);
-}
-
-.dashboard-card {
-    background: white;
-    border-radius: var(--radius-lg);
-    padding: var(--spacing-lg);
-    display: flex;
-    align-items: center;
-    gap: var(--spacing-md);
-    box-shadow: var(--shadow-md);
-    transition: all var(--transition-base);
-    border: 1px solid var(--gray-200);
-    position: relative;
-    overflow: hidden;
-}
-
-.dashboard-card::before {
-    content: '';
-    position: absolute;
-    top: 0;
-    left: 0;
-    right: 0;
-    height: 4px;
-    background: linear-gradient(90deg, var(--primary-color), var(--primary-light));
-    transform: scaleX(0);
-    transform-origin: left;
-    transition: transform var(--transition-base);
-}
-
-.dashboard-card:hover {
-    transform: translateY(-4px);
-    box-shadow: var(--shadow-xl);
-}
-
-.dashboard-card:hover::before {
-    transform: scaleX(1);
-}
-
-.card-icon {
-    width: 60px;
-    height: 60px;
-    border-radius: var(--radius-lg);
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    font-size: 1.5rem;
-    color: white;
-    flex-shrink: 0;
-}
-
-.card-icon.revenue {
-    background: linear-gradient(135deg, #3b82f6, #2563eb);
-}
-
-.card-icon.collected {
-    background: linear-gradient(135deg, #10b981, #059669);
-}
-
-.card-icon.outstanding {
-    background: linear-gradient(135deg, #f59e0b, #d97706);
-}
-
-.card-icon.families {
-    background: linear-gradient(135deg, #8b5cf6, #7c3aed);
-}
-
-.card-content h3 {
-    font-size: 1.75rem;
-    font-weight: 700;
-    color: var(--gray-900);
-    margin: 0;
-    line-height: 1;
-}
-
-.card-content p {
-    font-size: 0.875rem;
-    color: var(--gray-600);
-    margin: var(--spacing-xs) 0 0;
-    font-weight: 500;
-}
-
-/* ============================================
-   Filters Wrapper
-   ============================================ */
-
-.filters-wrapper {
-    background: white;
-    border-radius: var(--radius-lg);
-    padding: var(--spacing-lg);
-    box-shadow: var(--shadow-md);
-    border: 1px solid var(--gray-200);
-    margin-bottom: var(--spacing-xl);
-}
-
-/* Filter Pills */
-.filter-pills {
-    display: flex;
-    flex-wrap: wrap;
-    gap: var(--spacing-sm);
-    margin-bottom: var(--spacing-lg);
-    padding-bottom: var(--spacing-lg);
-    border-bottom: 1px solid var(--gray-200);
-}
-
-.filter-pill {
-    display: inline-flex;
-    align-items: center;
-    gap: var(--spacing-sm);
-    padding: var(--spacing-sm) var(--spacing-md);
-    background: var(--gray-100);
-    color: var(--gray-700);
-    border-radius: var(--radius-full);
-    font-size: 0.875rem;
-    font-weight: 500;
-    text-decoration: none;
-    transition: all var(--transition-fast);
-    border: 2px solid transparent;
-}
-
-.filter-pill i {
-    font-size: 1rem;
-}
-
-.filter-pill:hover {
-    background: var(--gray-200);
-    transform: translateY(-1px);
-    text-decoration: none;
-    color: var(--gray-900);
-}
-
-.filter-pill.active {
-    background: var(--primary-color);
-    color: white;
-    border-color: var(--primary-dark);
-    box-shadow: var(--shadow-md);
-}
-
-.pill-badge {
-    background: rgba(255, 255, 255, 0.3);
-    padding: 0.125rem 0.5rem;
-    border-radius: var(--radius-full);
-    font-size: 0.75rem;
-    font-weight: 600;
-    min-width: 24px;
-    text-align: center;
-}
-
-.filter-pill.active .pill-badge {
-    background: rgba(255, 255, 255, 0.25);
-}
-
-/* Search Wrapper */
-.search-wrapper {
-    position: relative;
-}
-
-.search-form {
-    width: 100%;
-}
-
-.search-input-group {
-    position: relative;
-    display: flex;
-    align-items: center;
-    background: var(--gray-50);
-    border: 2px solid var(--gray-300);
-    border-radius: var(--radius-lg);
-    padding: 0.25rem;
-    transition: all var(--transition-fast);
-}
-
-.search-input-group:focus-within {
-    border-color: var(--primary-color);
-    box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.1);
-}
-
-.search-icon {
-    position: absolute;
-    left: 1rem;
-    color: var(--gray-400);
-    font-size: 1.125rem;
-    pointer-events: none;
-}
-
-.search-input {
-    flex: 1;
-    border: none;
-    background: transparent;
-    padding: 0.75rem 1rem 0.75rem 3rem;
-    font-size: 1rem;
-    color: var(--gray-900);
-    outline: none;
-}
-
-.search-input::placeholder {
-    color: var(--gray-400);
-}
-
-.clear-search {
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    width: 32px;
-    height: 32px;
-    color: var(--gray-400);
-    transition: all var(--transition-fast);
-    border-radius: var(--radius-md);
-}
-
-.clear-search:hover {
-    color: var(--gray-600);
-    background: var(--gray-200);
-    text-decoration: none;
-}
-
-.search-button {
-    background: var(--primary-color);
-    color: white;
-    border: none;
-    padding: 0.75rem 1.5rem;
-    border-radius: var(--radius-md);
-    font-weight: 600;
-    font-size: 0.875rem;
-    cursor: pointer;
-    transition: all var(--transition-fast);
-    white-space: nowrap;
-}
-
-.search-button:hover {
-    background: var(--primary-dark);
-    transform: translateY(-1px);
-    box-shadow: var(--shadow-md);
-}
-
-/* ============================================
-   Family Cards Grid
-   ============================================ */
-
-.family-cards-grid {
-    display: grid;
-    grid-template-columns: repeat(auto-fill, minmax(380px, 1fr));
-    gap: var(--spacing-lg);
-    margin-bottom: var(--spacing-xl);
-    grid-auto-flow: dense;
-}
-
-.family-card.members-visible {
-    grid-column: 1 / -1;
-}
-
-.family-card {
-    background: white;
-    border-radius: var(--radius-xl);
-    overflow: visible;
-    box-shadow: var(--shadow);
-    border: 1px solid var(--gray-200);
-    transition: all var(--transition-base);
-    position: relative;
-    display: grid;
-    grid-template-columns: 1fr;
-    grid-template-rows: auto auto auto;
-}
-
-.family-card.members-visible {
-    grid-template-columns: 1fr 1fr;
-    grid-template-rows: auto auto;
-}
-
-.family-card::before {
-    content: '';
-    position: absolute;
-    top: 0;
-    left: 0;
-    right: 0;
-    height: 4px;
-    background: linear-gradient(90deg, var(--primary-color), var(--secondary-color));
-}
-
-.family-card:hover {
-    transform: translateY(-4px);
-    box-shadow: var(--shadow-xl);
-}
-
-.family-card.refunded-family {
-    opacity: 0.8;
-    border-color: var(--danger-color);
-}
-
-.family-card.refunded-family::before {
-    background: var(--danger-color);
-}
-
-/* Card Header Section */
-.card-header-section {
-    padding: var(--spacing-lg);
-    background: linear-gradient(135deg, var(--gray-50) 0%, white 100%);
-    border-bottom: 1px solid var(--gray-200);
-    display: flex;
-    align-items: flex-start;
-    gap: var(--spacing-md);
-}
-
-.family-avatar {
-    width: 60px;
-    height: 60px;
-    border-radius: var(--radius-lg);
-    background: linear-gradient(135deg, var(--primary-color), var(--primary-light));
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    color: white;
-    font-size: 1.75rem;
-    flex-shrink: 0;
-    box-shadow: var(--shadow-md);
-}
-
-.family-main-info {
-    flex: 1;
-    min-width: 0;
-}
-
-.family-name {
-    font-size: 1.25rem;
-    font-weight: 700;
-    color: var(--gray-900);
-    margin: 0 0 var(--spacing-xs);
-    line-height: 1.3;
-}
-
-.family-meta {
-    display: flex;
-    flex-wrap: wrap;
-    gap: var(--spacing-md);
-}
-
-.meta-item {
-    display: inline-flex;
-    align-items: center;
-    gap: var(--spacing-xs);
-    font-size: 0.813rem;
-    color: var(--gray-600);
-}
-
-.meta-item i {
-    color: var(--primary-color);
-}
-
-.card-actions {
-    display: flex;
-    gap: var(--spacing-xs);
-    flex-shrink: 0;
-}
-
-.btn-icon {
-    width: 36px;
-    height: 36px;
-    border-radius: var(--radius-md);
-    border: 1px solid var(--gray-300);
-    background: white;
-    color: var(--gray-600);
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    cursor: pointer;
-    transition: all var(--transition-fast);
-}
-
-.btn-icon:hover {
-    background: var(--gray-100);
-    color: var(--gray-900);
-    border-color: var(--gray-400);
-}
-
-/* Card Body Section */
-.card-body-section {
-    padding: var(--spacing-lg);
-}
-
-.info-row {
-    display: flex;
-    align-items: center;
-    gap: var(--spacing-md);
-    padding: var(--spacing-sm) 0;
-    font-size: 0.875rem;
-    color: var(--gray-700);
-}
-
-.info-row i {
-    color: var(--primary-color);
-    width: 20px;
-    flex-shrink: 0;
-}
-
-.package-info {
-    display: flex;
-    gap: var(--spacing-sm);
-    margin: var(--spacing-md) 0;
-    flex-wrap: wrap;
-}
-
-.package-badge,
-.visa-badge {
-    display: inline-flex;
-    align-items: center;
-    gap: var(--spacing-xs);
-    padding: var(--spacing-xs) var(--spacing-md);
-    border-radius: var(--radius-md);
-    font-size: 0.813rem;
-    font-weight: 600;
-}
-
-.package-badge {
-    background: var(--gray-100);
-    color: var(--gray-700);
-    border: 1px solid var(--gray-300);
-}
-
-.visa-badge {
-    border: 1px solid currentColor;
-}
-
-.visa-default {
-    background: var(--gray-100);
-    color: var(--gray-700);
-}
-
-.visa-warning {
-    background: #fef3c7;
-    color: #92400e;
-}
-
-.visa-info {
-    background: #dbeafe;
-    color: #1e40af;
-}
-
-.visa-success {
-    background: #d1fae5;
-    color: #065f46;
-}
-
-/* Financial Summary */
-.financial-summary {
-    background: var(--gray-50);
-    border-radius: var(--radius-lg);
-    padding: var(--spacing-md);
-    margin-top: var(--spacing-md);
-    border: 1px solid var(--gray-200);
-}
-
-.financial-header {
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-    margin-bottom: var(--spacing-sm);
-    font-size: 0.875rem;
-    font-weight: 600;
-    color: var(--gray-700);
-}
-
-.percentage {
-    color: var(--primary-color);
-    font-size: 1rem;
-}
-
-.progress-bar-container {
-    height: 8px;
-    background: var(--gray-200);
-    border-radius: var(--radius-full);
-    overflow: hidden;
-    margin-bottom: var(--spacing-md);
-}
-
-.progress-bar-fill {
-    height: 100%;
-    background: linear-gradient(90deg, var(--primary-color), var(--secondary-color));
-    border-radius: var(--radius-full);
-    transition: width var(--transition-slow);
-}
-
-.financial-details {
-    display: grid;
-    grid-template-columns: repeat(2, 1fr);
-    gap: var(--spacing-sm);
-}
-
-.financial-item {
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-    padding: var(--spacing-sm);
-    background: white;
-    border-radius: var(--radius-md);
-    border: 1px solid var(--gray-200);
-}
-
-.financial-item .label {
-    font-size: 0.75rem;
-    color: var(--gray-600);
-    font-weight: 500;
-}
-
-.financial-item .value {
-    font-size: 0.875rem;
-    font-weight: 700;
-    color: var(--gray-900);
-}
-
-.financial-item.success .value {
-    color: var(--success-color);
-}
-
-.financial-item.warning .value {
-    color: var(--warning-color);
-}
-
-.financial-item.danger .value {
-    color: var(--danger-color);
-}
-
-/* ============================================
-   Members Section
-   ============================================ */
-
-.card-header-section {
-    grid-column: 1;
-    grid-row: 1;
-}
-
-.card-body-section {
-    grid-column: 1;
-    grid-row: 2;
-}
-
-.members-section {
-    grid-column: 1;
-    grid-row: 3;
-    border-top: 1px solid var(--gray-200);
-    background: var(--gray-50);
-    padding: var(--spacing-lg);
-    border-radius: 0 0 var(--radius-xl) var(--radius-xl);
-}
-
-.family-card.members-visible .card-header-section {
-    grid-column: 1;
-    grid-row: 1;
-}
-
-.family-card.members-visible .card-body-section {
-    grid-column: 1;
-    grid-row: 2;
-}
-
-.family-card.members-visible .members-section {
-    grid-column: 2;
-    grid-row: 1 / 3;
-    border-top: none;
-    border-left: 1px solid var(--gray-200);
-    border-radius: 0 var(--radius-xl) var(--radius-xl) 0;
-    background: var(--gray-50);
-    padding: var(--spacing-lg);
-    margin: 0;
-}
-
-.members-header {
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-    margin-bottom: var(--spacing-md);
-}
-
-.members-header h4 {
-    font-size: 1.125rem;
-    font-weight: 600;
-    color: var(--gray-900);
-    margin: 0;
-}
-
-.members-grid {
-    display: grid;
-    gap: var(--spacing-md);
-    max-height: 600px;
-    overflow-y: auto;
-    padding-right: 0.5rem;
-}
-
-.members-grid::-webkit-scrollbar {
-    width: 6px;
-}
-
-.members-grid::-webkit-scrollbar-track {
-    background: #f3f4f6;
-    border-radius: 0.375rem;
-}
-
-.members-grid::-webkit-scrollbar-thumb {
-    background: #d1d5db;
-    border-radius: 0.375rem;
-}
-
-.members-grid::-webkit-scrollbar-thumb:hover {
-    background: #9ca3af;
-}
-
-.loading-spinner {
-    text-align: center;
-    padding: var(--spacing-xl);
-    color: var(--gray-500);
-}
-
-.loading-spinner i {
-    font-size: 2rem;
-    margin-bottom: var(--spacing-sm);
-}
-
-/* ============================================
-   Pagination
-   ============================================ */
-
-.pagination-wrapper {
-    background: white;
-    border-radius: var(--radius-lg);
-    padding: var(--spacing-lg);
-    box-shadow: var(--shadow-md);
-    border: 1px solid var(--gray-200);
-    margin-top: var(--spacing-xl);
-}
-
-.pagination-list {
-    display: flex;
-    justify-content: center;
-    gap: var(--spacing-xs);
-    list-style: none;
-    margin: 0 0 var(--spacing-md);
-    padding: 0;
-}
-
-.pagination-link {
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    width: 40px;
-    height: 40px;
-    border-radius: var(--radius-md);
-    border: 1px solid var(--gray-300);
-    background: white;
-    color: var(--gray-700);
-    font-weight: 500;
-    text-decoration: none;
-    transition: all var(--transition-fast);
-}
-
-.pagination-link:hover {
-    background: var(--gray-100);
-    border-color: var(--gray-400);
-    text-decoration: none;
-}
-
-.pagination-link.active {
-    background: var(--primary-color);
-    color: white;
-    border-color: var(--primary-color);
-}
-
-.pagination-info {
-    text-align: center;
-    font-size: 0.875rem;
-    color: var(--gray-600);
-}
-
-/* ============================================
-   Empty State
-   ============================================ */
-
-.empty-state {
-    text-align: center;
-    padding: var(--spacing-2xl) var(--spacing-xl);
-    background: white;
-    border-radius: var(--radius-xl);
-    box-shadow: var(--shadow-md);
-    border: 1px solid var(--gray-200);
-}
-
-.empty-state-icon {
-    width: 120px;
-    height: 120px;
-    margin: 0 auto var(--spacing-lg);
-    background: var(--gray-100);
-    border-radius: var(--radius-full);
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    color: var(--gray-400);
-    font-size: 3rem;
-}
-
-.empty-state h3 {
-    font-size: 1.5rem;
-    font-weight: 600;
-    color: var(--gray-900);
-    margin-bottom: var(--spacing-md);
-}
-
-.empty-state p {
-    color: var(--gray-600);
-    margin-bottom: var(--spacing-lg);
-}
-
-/* ============================================
-   Buttons
-   ============================================ */
-
-.btn {
-    display: inline-flex;
-    align-items: center;
-    justify-content: center;
-    gap: var(--spacing-sm);
-    padding: var(--spacing-sm) var(--spacing-lg);
-    border-radius: var(--radius-md);
-    font-weight: 600;
-    font-size: 0.875rem;
-    border: none;
-    cursor: pointer;
-    transition: all var(--transition-fast);
-    text-decoration: none;
-}
-
-.btn-primary {
-    background: var(--primary-color);
-    color: white;
-}
-
-.btn-primary:hover {
-    background: var(--primary-dark);
-    transform: translateY(-1px);
-    box-shadow: var(--shadow-md);
-}
-
-.btn-gradient-primary {
-    background: linear-gradient(135deg, var(--primary-color), var(--primary-light));
-    color: white;
-    box-shadow: var(--shadow-md);
-}
-
-.btn-gradient-primary:hover {
-    transform: translateY(-2px);
-    box-shadow: var(--shadow-lg);
-}
-
-.btn-sm {
-    padding: var(--spacing-xs) var(--spacing-md);
-    font-size: 0.813rem;
-}
-
-/* ============================================
-   Floating Action Buttons
-   ============================================ */
-
-.floating-action-btn {
-    position: fixed;
-    right: 30px;
-    z-index: 1050;
-}
-
-.fab-button {
-    width: 56px;
-    height: 56px;
-    border-radius: var(--radius-full);
-    background: var(--primary-color);
-    color: white;
-    border: none;
-    box-shadow: var(--shadow-xl);
-    cursor: pointer;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    font-size: 1.5rem;
-    transition: all var(--transition-base);
-    position: relative;
-}
-
-.fab-button:hover {
-    transform: scale(1.1);
-    box-shadow: 0 20px 30px -10px rgba(0, 0, 0, 0.3);
-}
-
-.fab-dark {
-    background: var(--gray-800);
-}
-
-.fab-badge {
-    position: absolute;
-    top: -4px;
-    right: -4px;
-    background: var(--danger-color);
-    color: white;
-    width: 24px;
-    height: 24px;
-    border-radius: var(--radius-full);
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    font-size: 0.75rem;
-    font-weight: 700;
-    border: 2px solid white;
-}
-
-/* ============================================
-   Dropdown Menus
-   ============================================ */
-
-.dropdown-menu {
-    border-radius: var(--radius-lg);
-    box-shadow: var(--shadow-xl);
-    border: 1px solid var(--gray-200);
-    padding: var(--spacing-sm);
-    min-width: 200px;
-}
-
-.dropdown-item {
-    display: flex;
-    align-items: center;
-    gap: var(--spacing-md);
-    padding: var(--spacing-sm) var(--spacing-md);
-    border-radius: var(--radius-md);
-    color: var(--gray-700);
-    font-size: 0.875rem;
-    transition: all var(--transition-fast);
-}
-
-.dropdown-item:hover {
-    background: var(--gray-100);
-    color: var(--gray-900);
-}
-
-.dropdown-item i {
-    width: 20px;
-    flex-shrink: 0;
-}
-
-.dropdown-divider {
-    margin: var(--spacing-sm) 0;
-    border-top-color: var(--gray-200);
-}
-
-/* ============================================
-   Responsive Design
-   ============================================ */
-
-@media (max-width: 768px) {
-    .enhanced-page-header {
-        padding: var(--spacing-lg) 0;
-    }
-    
-    .page-title {
-        font-size: 1.5rem;
-    }
-    
-    .page-icon {
-        width: 50px;
-        height: 50px;
-        font-size: 1.75rem;
-    }
-    
-    .financial-dashboard {
-        grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
-        gap: var(--spacing-md);
-    }
-    
-    .family-cards-grid {
-        grid-template-columns: 1fr;
-        gap: var(--spacing-md);
-    }
-    
-    .filter-pills {
-        overflow-x: auto;
-        flex-wrap: nowrap;
-        scrollbar-width: thin;
-        padding-bottom: var(--spacing-md);
-    }
-    
-    .search-input-group {
-        flex-direction: column;
-        align-items: stretch;
-    }
-    
-    .search-button {
-        width: 100%;
-        margin-top: var(--spacing-sm);
-    }
-}
-
-@media (max-width: 480px) {
-    .financial-dashboard {
-        grid-template-columns: 1fr;
-    }
-    
-    .card-header-section {
-        flex-direction: column;
-        align-items: flex-start;
-    }
-    
-    .card-actions {
-        width: 100%;
-        justify-content: flex-end;
-    }
-    
-    .financial-details {
-        grid-template-columns: 1fr;
-    }
-}
-
-/* ============================================
-   Animation Keyframes
-   ============================================ */
-
-@keyframes fadeIn {
-    from {
-        opacity: 0;
-        transform: translateY(10px);
-    }
-    to {
-        opacity: 1;
-        transform: translateY(0);
-    }
-}
-
-.family-card {
-    animation: fadeIn var(--transition-base) ease-out;
-}
-
-/* ============================================
-   Print Styles
-   ============================================ */
-
-@media print {
-    .enhanced-page-header,
-    .filters-wrapper,
-    .pagination-wrapper,
-    .floating-action-btn,
-    .card-actions,
-    .btn {
-        display: none !important;
-    }
-    
-    .family-card {
-        break-inside: avoid;
-        box-shadow: none !important;
-        border: 1px solid var(--gray-300);
-    }
-}
-    </style>
 
 <!-- [ Main Content ] start -->
 <div class="pcoded-main-container">
@@ -1130,6 +55,7 @@ body {
                                 </div>
                             </div>
                             <div class="col-md-6 text-right">
+
                                 <button class="btn btn-gradient-primary" data-toggle="modal" data-target="#createFamilyModal">
                                     <i class="fas fa-plus-circle mr-2"></i><?= __('add_family') ?>
                                 </button>
@@ -1177,7 +103,7 @@ body {
                         }
 
                         $countSql .= " GROUP BY f.family_id
-                                    HAVING COUNT(ub.booking_id) > 0 AND COUNT(ub.booking_id) = SUM(CASE WHEN ub.status = '$statusFilter' THEN 1 ELSE 0 END)";
+                                    HAVING SUM(CASE WHEN ub.status = '$statusFilter' THEN 1 ELSE 0 END) > 0";
                     } else {
                         $countSql = "SELECT COUNT(DISTINCT f.family_id) as total
                                     FROM families f
@@ -1222,7 +148,9 @@ body {
                                         f.*,
                                         u.name as created_by,
                                         COUNT(ub.booking_id) AS total_members,
-                                        SUM(CASE WHEN ub.status = 'refunded' THEN 1 ELSE 0 END) AS refunded_members
+                                        SUM(CASE WHEN ub.status = 'refunded' THEN 1 ELSE 0 END) AS refunded_members,
+                                        SUM(CASE WHEN ub.status = 'cancelled' THEN 1 ELSE 0 END) AS cancelled_members,
+                                        (SELECT COUNT(*) FROM group_tickets gt WHERE gt.tenant_id = f.tenant_id AND gt.branch_id = f.branch_id AND JSON_CONTAINS(gt.member_ids, JSON_ARRAY((SELECT booking_id FROM umrah_bookings ub2 WHERE ub2.family_id = f.family_id LIMIT 1))) AND gt.status = 'active') AS has_group_tickets
                                     FROM families f
                                     LEFT JOIN users u ON f.created_by = u.id
                                     LEFT JOIN umrah_bookings ub ON f.family_id = ub.family_id
@@ -1258,7 +186,7 @@ body {
                     $sqlFamilies .= " GROUP BY f.family_id";
                     if ($filter === 'refunded' || $filter === 'cancelled') {
                         $statusFilter = $filter === 'refunded' ? 'refunded' : 'cancelled';
-                        $sqlFamilies .= " HAVING COUNT(ub.booking_id) > 0 AND COUNT(ub.booking_id) = SUM(CASE WHEN ub.status = '$statusFilter' THEN 1 ELSE 0 END)";
+                        $sqlFamilies .= " HAVING SUM(CASE WHEN ub.status = '$statusFilter' THEN 1 ELSE 0 END) > 0";
                     }
                     $sqlFamilies .= " ORDER BY f.created_at DESC LIMIT ? OFFSET ?";
                     $familiesParams[] = $resultsPerPage;
@@ -1374,15 +302,27 @@ body {
                                         <div class="family-main-info">
                                             <h3 class="family-name"><?= htmlspecialchars($row['head_of_family']) ?></h3>
                                             <div class="family-meta">
-                                                <span class="meta-item">
-                                                    <i class="fas fa-map-marker-alt"></i>
-                                                    <?= htmlspecialchars($row['location']) ?>
-                                                </span>
-                                                <span class="meta-item">
-                                                    <i class="fas fa-users"></i>
-                                                    <?= $row['total_members'] ?> <?= __('members') ?>
-                                                </span>
-                                            </div>
+                                                    <span class="meta-item">
+                                                        <i class="fas fa-map-marker-alt"></i>
+                                                        <?= htmlspecialchars($row['location']) ?>
+                                                    </span>
+                                                    <span class="meta-item">
+                                                        <i class="fas fa-users"></i>
+                                                        <?= $row['total_members'] ?> <?= __('members') ?>
+                                                    </span>
+                                                    <?php if ($row['refunded_members'] > 0): ?>
+                                                    <span class="meta-item text-warning" title="<?= __('refunded_members') ?>">
+                                                        <i class="fas fa-undo"></i>
+                                                        <?= $row['refunded_members'] ?> <?= __('refunded') ?>
+                                                    </span>
+                                                    <?php endif; ?>
+                                                    <?php if ($row['cancelled_members'] > 0): ?>
+                                                    <span class="meta-item text-danger" title="<?= __('cancelled_members') ?>">
+                                                        <i class="fas fa-ban"></i>
+                                                        <?= $row['cancelled_members'] ?> <?= __('cancelled') ?>
+                                                    </span>
+                                                    <?php endif; ?>
+                                                </div>
                                         </div>
                                         <div class="card-actions">
                                              <button class="btn-icon view-members-btn" data-family-id="<?= $familyId ?>" type="button" title="<?= __('view_members') ?>">
@@ -1393,19 +333,21 @@ body {
                                                     <i class="fas fa-ellipsis-v"></i>
                                                 </button>
                                                 <div class="dropdown-menu dropdown-menu-right">
-                                                    <a class="dropdown-item" href="javascript:void(0)" onclick="openBookingModal(<?= $familyId ?>, '<?= addslashes($row['package_type']) ?>')">
-                                                        <i class="fas fa-user-plus"></i><?= __('add_member') ?>
-                                                    </a>
-                                                    <a class="dropdown-item" href="javascript:void(0)" onclick="openEditFamilyModal(<?= $familyId ?>, '<?= htmlspecialchars($row['head_of_family']) ?>',
-                                                    '<?= htmlspecialchars($row['contact']) ?>', '<?= htmlspecialchars($row['address']) ?>',
-                                                    '<?= htmlspecialchars($row['package_type']) ?>', '<?= htmlspecialchars($row['location']) ?>',
-                                                    '<?= htmlspecialchars($row['tazmin']) ?>', '<?= htmlspecialchars($row['visa_status']) ?>',
-                                                    '<?= htmlspecialchars($row['province']) ?>', '<?= htmlspecialchars($row['district']) ?>')">
-                                                        <i class="fas fa-edit"></i><?= __('edit') ?>
-                                                    </a>
-                                                    <a class="dropdown-item" href="javascript:void(0)" onclick="openFamilyTransactionModal(<?= $familyId ?>, '<?= htmlspecialchars($row['head_of_family']) ?>', '<?= htmlspecialchars($row['package_type']) ?>', <?= $row['total_members'] ?>)">
-                                                        <i class="fas fa-credit-card"></i><?= __('family_transaction') ?>
-                                                    </a>
+                                                     <a class="dropdown-item" href="javascript:void(0)" onclick="openBookingModal(<?= $familyId ?>, '<?= addslashes($row['package_type']) ?>')">
+                                                         <i class="fas fa-user-plus"></i><?= __('add_member') ?>
+                                                     </a>
+                                                     <a class="dropdown-item" href="javascript:void(0)" onclick="openEditFamilyModal(<?= $familyId ?>, '<?= htmlspecialchars($row['head_of_family']) ?>',
+                                                     '<?= htmlspecialchars($row['contact']) ?>', '<?= htmlspecialchars($row['address']) ?>',
+                                                     '<?= htmlspecialchars($row['package_type']) ?>', '<?= htmlspecialchars($row['location']) ?>',
+                                                     '<?= htmlspecialchars($row['tazmin']) ?>', '<?= htmlspecialchars($row['visa_status']) ?>',
+                                                     '<?= htmlspecialchars($row['province']) ?>', '<?= htmlspecialchars($row['district']) ?>')">
+                                                         <i class="fas fa-edit"></i><?= __('edit') ?>
+                                                     </a>
+                                                     <?php if ($canEdit): ?>
+                                                     <a class="dropdown-item" href="javascript:void(0)" onclick="openFamilyTransactionModal(<?= $familyId ?>, '<?= htmlspecialchars($row['head_of_family']) ?>', '<?= htmlspecialchars($row['package_type']) ?>', <?= $row['total_members'] ?>)">
+                                                         <i class="fas fa-credit-card"></i><?= __('family_transaction') ?>
+                                                     </a>
+                                                     <?php endif; ?>
                                                     <div class="dropdown-divider"></div>
                                                     <a class="dropdown-item" href="javascript:void(0)" onclick="generateFamilyTazmin(<?= $familyId ?>)">
                                                         <i class="fas fa-shield-alt"></i><?= __('generate_family_tazmin') ?>
@@ -1425,10 +367,12 @@ body {
                                                     <a class="dropdown-item" href="#" onclick="showUmrahPresidencyModal(<?= $familyId ?>)">
                                                         <i class="fas fa-landmark"></i><?= __("umrah_presidency") ?>
                                                     </a>
+                                                    <?php if ($canEdit): ?>
                                                     <div class="dropdown-divider"></div>
                                                     <a class="dropdown-item text-danger" href="javascript:void(0)" onclick="deleteFamily(<?= $familyId ?>)">
                                                         <i class="fas fa-trash"></i><?= __('delete') ?>
                                                     </a>
+                                                    <?php endif; ?>
                                                 </div>
                                             </div>
                                         </div>
@@ -1451,16 +395,32 @@ body {
                                         </div>
 
                                         <!-- Package Info -->
-                                        <div class="package-info">
-                                            <div class="package-badge">
-                                                <i class="fas fa-box"></i>
-                                                <?= htmlspecialchars($row['package_type']) ?>
-                                            </div>
-                                            <div class="visa-badge visa-<?= $visaStatusClass ?>">
-                                                <i class="fas fa-passport"></i>
-                                                <?= htmlspecialchars($row['visa_status']) ?>
-                                            </div>
-                                        </div>
+                                         <div class="package-info">
+                                             <div class="package-badge">
+                                                 <i class="fas fa-box"></i>
+                                                 <?= htmlspecialchars($row['package_type']) ?>
+                                             </div>
+                                             <div class="visa-badge visa-<?= $visaStatusClass ?>">
+                                                 <i class="fas fa-passport"></i>
+                                                 <?= htmlspecialchars($row['visa_status']) ?>
+                                             </div>
+                                         </div>
+
+                                         <!-- Flight Status Badge -->
+                                         <div class="flight-badge" id="flight-status-<?= $familyId ?>">
+                                             <i class="fas fa-plane"></i>
+                                             <span id="flight-status-text-<?= $familyId ?>">Loading...</span>
+                                         </div>
+
+                                         <!-- Flight Details Button (if group ticket exists) -->
+                                         <?php if ($row['has_group_tickets'] > 0): ?>
+                                         <button class="btn btn-sm btn-info" 
+                                                 onclick="viewFamilyFlightDetails(<?= $familyId ?>, '<?= htmlspecialchars($row['head_of_family']) ?>')"
+                                                 title="<?= __('view_flight_details') ?>"
+                                                 style="margin-top: 8px;">
+                                             <i class="fas fa-ticket-alt"></i> <?= __('flight_details') ?>
+                                         </button>
+                                         <?php endif; ?>
 
                                         <!-- Financial Summary -->
                                         <div class="financial-summary">
@@ -1610,6 +570,7 @@ body {
 <?php include '../modals/umrah/group_ticket_modal.php'; ?>
 <?php include '../modals/umrah/id_card_modal.php'; ?>
 <?php include '../modals/umrah/family_transaction_modal.php'; ?>
+<?php include '../modals/umrah/flight_details_modal.php'; ?>
 
 <!-- Floating action buttons -->
 <div id="groupTicketFloatingButton" class="floating-action-btn" style="display: none; bottom: 220px; right: 23px;">
@@ -1635,11 +596,9 @@ body {
 
 <!-- Document Upload Script -->
 <script src="../js/member-document-upload.js"></script>
-
-
+<script src="../js/umrah/refresh-families.js"></script>
 
 <script src="../js/umrah/transaction_manager.js"></script>
-<script src="../js/umrah/bookings.js"></script>
 <script src="../js/umrah/approve_booking.js"></script>
 <script src="../js/umrah/refund.js?v=1"></script>
 <script src="../js/umrah/cancellation_reapply.js"></script>
@@ -1654,17 +613,26 @@ body {
 <script src="../js/umrah/generate_bankandumrah.js"></script>
 <script src="../js/umrah/date_change_request.js"></script>
 <script src="../js/umrah/multi_ticket.js"></script>
-<script src="../js/umrah/add_member.js"></script>
 <script src="../js/umrah/edit_member.js"></script>
 <script src="../js/umrah/family_cancellation.js"></script>
 <script src="../js/umrah/view_member_details.js"></script>
 <script src="../js/umrah/family_transaction_manager.js"></script>
 <script src="../js/umrah/umrah-forms.js"></script>
+<script src="../js/umrah/flight_details.js"></script>
+<script src="../js/umrah/bookings.js"></script>
 
-<!-- Tesseract.js -->
+<!-- Tesseract.js for OCR -->
 <script src="https://cdn.jsdelivr.net/npm/tesseract.js@5.1.0/dist/tesseract.min.js"></script>
-<script src="../js/umrah/document-upload-handler.js"></script>
+
+<!-- Multi-Member Umrah Modal (NEW - replaces single-member) -->
+<script src="../js/umrah/add_member_multi_refactored.js?v=<?php echo time(); ?>"></script>
+<!-- Multi-Member Form Submission (NEW) -->
+<script src="../js/umrah/bookings_multi.js"></script>
+
+<!-- Single-Member Document Handler (fallback if needed) -->
 <script src="../js/umrah/open_documents_modal.js"></script>
+<script src="../js/umrah/passport-photo-extractor.js"></script>
+<script src="../js/umrah/auto-passport-extractor.js"></script>
 <!-- Custom Scripts -->
 <script>
     // Set CSRF token
@@ -1741,7 +709,13 @@ body {
         
         grid.innerHTML = '<div style="padding: 20px; text-align: center;"><i class="fas fa-spinner fa-spin"></i> Loading members...</div>';
         
-        const url = '../api/umrah/load_family_members.php?family_id=' + familyId;
+        // Get filter parameter from current URL
+        const urlParams = new URLSearchParams(window.location.search);
+        const filter = urlParams.get('filter') || '';
+        let url = '../api/umrah/load_family_members.php?family_id=' + familyId;
+        if (filter) {
+            url += '&filter=' + encodeURIComponent(filter);
+        }
         console.log('LOAD: Fetching from ' + url);
         
         fetch(url)
@@ -1801,6 +775,59 @@ body {
         document.addEventListener('DOMContentLoaded', attachMembersButtonListeners);
     } else {
         attachMembersButtonListeners();
+    }
+
+    // Load flight status for each family card
+    function loadFlightStatusForFamilies() {
+        const familyCards = document.querySelectorAll('[data-family-id]');
+        familyCards.forEach(card => {
+            const familyId = card.getAttribute('data-family-id');
+            loadFlightStatus(familyId);
+        });
+    }
+
+    function loadFlightStatus(familyId) {
+        const statusBadge = document.getElementById('flight-status-' + familyId);
+        const statusText = document.getElementById('flight-status-text-' + familyId);
+        if (!statusBadge || !statusText) return;
+
+        fetch(`../api/umrah/get_group_ticket_info.php?family_id=${familyId}`)
+            .then(response => response.json())
+            .then(data => {
+                if (data.success) {
+                    const totalMembers = data.members_total;
+                    const flightDone = data.members_with_flight;
+                    
+                    // Reset classes
+                    statusBadge.classList.remove('flight-complete', 'flight-partial', 'flight-pending');
+                    
+                    if (flightDone === totalMembers && totalMembers > 0) {
+                        statusBadge.classList.add('flight-complete');
+                        statusText.textContent = `✓ Flight Done (${flightDone}/${totalMembers})`;
+                    } else if (flightDone > 0) {
+                        statusBadge.classList.add('flight-partial');
+                        statusText.textContent = `⚠ Flight Done (${flightDone}/${totalMembers})`;
+                    } else {
+                        statusBadge.classList.add('flight-pending');
+                        statusText.textContent = `Flight Pending (0/${totalMembers})`;
+                    }
+                } else {
+                    statusBadge.classList.add('flight-pending');
+                    statusText.textContent = '-';
+                }
+            })
+            .catch(error => {
+                console.error('Error loading flight status:', error);
+                statusBadge.classList.add('flight-pending');
+                statusText.textContent = '-';
+            });
+    }
+
+    // Load flight status after page loads
+    if (document.readyState === 'loading') {
+        document.addEventListener('DOMContentLoaded', loadFlightStatusForFamilies);
+    } else {
+        loadFlightStatusForFamilies();
     }
 </script>
 <?php include '../includes/admin_footer.php'; ?>

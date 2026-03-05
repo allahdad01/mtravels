@@ -14,8 +14,11 @@ require_once '../includes/language_helpers.php';
 // Enforce authentication
 enforce_auth();
 
-// Check if user is logged in
-if (!isset($_SESSION['user_id'])  || $_SESSION['role'] !== 'admin') {
+// Check if user is logged in with proper role
+$allowed_roles = ['admin', 'finance'];
+if (!isset($_SESSION['user_id']) || !in_array($_SESSION['role'], $allowed_roles)) {
+    // Log unauthorized access attempt
+    error_log("Unauthorized access attempt to dashboard: " . ($_SESSION['user_id'] ?? 'unknown') . " - Role: " . ($_SESSION['role'] ?? 'unknown') . " - IP: " . $_SERVER['REMOTE_ADDR']);
     header('Location: ../login.php');
     exit();
 }
@@ -29,6 +32,9 @@ $tenant_id = $_SESSION['tenant_id'];
 $branch_id = $_SESSION['branch_id'];
 require_once '../includes/db.php';
 include '../api/creditor/creditor_handler.php';
+
+// Check if user is admin
+$isAdmin = $_SESSION['role'] === 'admin';
 ?>
  
 <?php
@@ -90,147 +96,213 @@ try {
 <link rel="stylesheet" href="../css/general/modal-styles.css">
 <link rel="stylesheet" href="../css/creditors/styles.css">
 
+<link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;600&display=swap" rel="stylesheet">
+
 <style>
-/* Enhanced custom styles for better layout and design */
-.page-header.card {
-    background: linear-gradient(135deg, #4099ff 0%, #2ed8b6 100%);
-    color: #ffffff;
-    border: none;
+:root {
+  --primary:#4099ff;--primary-dark:#2563eb;--primary-light:#60a5fa;
+  --accent:#2ed8b6;--accent-dark:#14b8a6;--accent-light:#5eead4;
+  --violet:#7c3aed;--violet-light:#a78bfa;--indigo:#4f46e5;
+  --sky:#0ea5e9;--emerald:#10b981;--amber:#f59e0b;
+  --rose:#f43f5e;--orange:#f97316;--pink:#ec4899;--teal:#14b8a6;
+  --bg:#f8fafc;--surface:#ffffff;--surface2:#f1f5f9;--surface3:#e2e8f0;
+  --border:rgba(0,0,0,0.08);
+  --text:#1e293b;--text-muted:#64748b;
+  --grad-start:#4099ff;--grad-end:#2ed8b6;--grad:linear-gradient(135deg,var(--grad-start) 0%,var(--grad-end) 100%);
+}
+.pcoded-main-container{background:var(--bg)!important;display:flex;flex-direction:column;min-height:100vh;}
+.pcoded-wrapper{display:flex;flex-direction:column;flex:1;}
+.pcoded-content,.pcoded-inner-content{background:transparent!important;flex:1;display:flex;flex-direction:column;}
+.main-body{flex:1;display:flex;flex-direction:column;}
+.page-wrapper{flex:1;display:flex;flex-direction:column;}
+.container{padding-left:20px;padding-right:20px;}
+.dash-wrap{font-family:'Plus Jakarta Sans',sans-serif;color:var(--text);padding:28px 20px;position:relative;}
+
+@media (max-width: 768px) {
+  .container {
+    padding-left: 16px;
+    padding-right: 16px;
+  }
+  .dash-wrap {
+    padding: 20px 16px;
+  }
+}
+
+@media (max-width: 480px) {
+  .container {
+    padding-left: 12px;
+    padding-right: 12px;
+  }
+  .dash-wrap {
+    padding: 16px 12px;
+  }
+}
+.dash-wrap::before{content:'';position:fixed;inset:0;pointer-events:none;z-index:0;background:radial-gradient(ellipse 80% 60% at 10% 0%,rgba(124,58,237,.15) 0%,transparent 60%),radial-gradient(ellipse 60% 50% at 90% 10%,rgba(14,165,233,.12) 0%,transparent 55%),radial-gradient(ellipse 50% 40% at 50% 100%,rgba(16,185,129,.08) 0%,transparent 50%);}
+.dash-inner{position:relative;z-index:1;}
+.sec-label{font-size:11px;font-weight:700;letter-spacing:1.5px;text-transform:uppercase;color:var(--text-muted);margin-bottom:14px;display:flex;align-items:center;gap:8px;}
+.sec-label::after{content:'';flex:1;height:1px;background:var(--border);}
+.d-card{background:var(--surface);border:1px solid var(--border);border-radius:20px;padding:24px;margin-bottom:22px;}
+.d-card-header{display:flex;justify-content:space-between;align-items:center;margin-bottom:18px;flex-wrap:wrap;gap:12px;}
+.d-card-title{font-size:15px;font-weight:800;display:flex;align-items:center;gap:10px;color:var(--text);}
+.ci{width:32px;height:32px;border-radius:9px;display:flex;align-items:center;justify-content:center;font-size:13px;}
+.ci-violet{background:rgba(124,58,237,.2);color:var(--violet-light);}
+.ci-sky{background:rgba(14,165,233,.2);color:var(--sky);}
+.ci-emerald{background:rgba(16,185,129,.2);color:var(--emerald);}
+.ci-amber{background:rgba(245,158,11,.2);color:var(--amber);}
+.ci-rose{background:rgba(244,63,94,.2);color:var(--rose);}
+.dbtn{display:inline-flex;align-items:center;gap:7px;padding:9px 16px;border-radius:10px;font-size:13px;font-weight:600;font-family:inherit;cursor:pointer;border:none;transition:all .2s;text-decoration:none;}
+.dbtn-ghost{background:var(--surface2);color:var(--text);border:1px solid var(--border);}
+.dbtn-ghost:hover{background:var(--surface3);transform:translateY(-1px);color:var(--text);}
+.dbtn-primary{background:var(--grad);color:#fff;box-shadow:0 4px 20px rgba(64,153,255,.35);}
+.dbtn-primary:hover{transform:translateY(-2px);color:#fff;}
+.d-alert{border-radius:14px;padding:16px 20px;margin-bottom:12px;display:flex;align-items:flex-start;gap:14px;border:1px solid;animation:slideIn .4s ease;}
+@keyframes slideIn{from{opacity:0;transform:translateY(-8px)}to{opacity:1;transform:translateY(0)}}
+.d-alert-warning{background:rgba(245,158,11,.1);border-color:rgba(245,158,11,.3);}
+.d-alert-danger{background:rgba(244,63,94,.1);border-color:rgba(244,63,94,.3);}
+
+/* Creditor cards grid */
+.creditor-grid{display:flex;flex-direction:column;gap:12px;margin-bottom:22px;}
+.creditor-card{background:var(--surface);border:1px solid var(--border);border-radius:16px;padding:16px;position:relative;overflow:hidden;transition:transform .2s,border-color .2s,box-shadow .2s;cursor:pointer;display:grid;grid-template-columns:auto 1fr auto auto auto 1fr auto;align-items:center;gap:16px;}
+.creditor-card:hover{transform:translateY(-2px);border-color:rgba(64,153,255,.4);box-shadow:0 8px 30px rgba(64,153,255,.12);}
+.creditor-card::before{content:'';position:absolute;top:0;left:0;right:0;height:3px;background:var(--grad);}
+
+/* Mobile Responsive */
+@media (max-width: 768px) {
+  .creditor-card{
+    grid-template-columns: auto 1fr;
+    gap: 12px;
+    padding: 14px;
+  }
+  .creditor-card > div:nth-child(2),
+  .creditor-card > div:nth-child(3),
+  .creditor-card > div:nth-child(4),
+  .creditor-card > div:nth-child(5),
+  .creditor-card > div:nth-child(6) {
+    grid-column: 1 / -1;
+  }
+  .cc-actions {
+    grid-column: 1 / -1;
+    margin-top: 8px;
+    justify-content: flex-start;
+  }
+  .cc-stats {
+    grid-column: 1 / -1;
+    flex-wrap: wrap;
+    gap: 12px;
+  }
+}
+
+@media (max-width: 480px) {
+  .creditor-card{
+    grid-template-columns: 1fr;
+    gap: 10px;
+    padding: 12px;
+  }
+  .creditor-card > div {
+    grid-column: 1 / -1;
+  }
+  .cc-icon {
+    width: 32px;
+    height: 32px;
+    font-size: 14px;
+  }
+  .cc-label {
+    font-size: 9px;
+  }
+  .cc-name {
+    font-size: 13px;
+  }
+  .cc-balance {
+    font-size: 14px;
+  }
+  .cc-btn {
+    padding: 6px 10px;
+    font-size: 11px;
+  }
+  .cc-btn span {
+    display: none;
+  }
+  .cc-btn i {
+    margin-right: 0;
+  }
+}
+.cc-icon{width:36px;height:36px;border-radius:10px;display:flex;align-items:center;justify-content:center;font-size:16px;background:rgba(64,153,255,.15);color:var(--sky);flex-shrink:0;}
+.cc-label{font-size:10px;font-weight:700;letter-spacing:1px;text-transform:uppercase;color:var(--text-muted);margin-bottom:4px;}
+.cc-name{font-size:14px;font-weight:700;color:var(--text);word-break:break-word;}
+.cc-balance{font-size:16px;font-weight:800;font-family:'JetBrains Mono',monospace;letter-spacing:-.5px;white-space:nowrap;}
+.cc-currency{font-size:12px;color:var(--text-muted);font-weight:600;white-space:nowrap;}
+.cc-status{display:inline-flex;align-items:center;gap:5px;font-size:11px;font-weight:700;padding:4px 12px;border-radius:20px;white-space:nowrap;}
+.cc-status.active{background:rgba(16,185,129,.15);color:var(--emerald);}
+.cc-status.inactive{background:rgba(244,63,94,.15);color:var(--rose);}
+.cc-actions{display:flex;gap:6px;flex-wrap:wrap;flex-shrink:0;align-items:center;}
+.cc-btn{display:inline-flex;align-items:center;justify-content:center;gap:6px;padding:7px 12px;border-radius:8px;font-size:12px;font-weight:600;border:none;cursor:pointer;transition:all .2s;font-family:inherit;flex-shrink:0;white-space:nowrap;}
+.cc-btn span{display:inline-block;}
+.cc-btn-primary{background:var(--grad);color:#fff;}
+.cc-btn-primary:hover{transform:translateY(-1px);box-shadow:0 4px 12px rgba(64,153,255,.3);}
+.cc-btn-info{background:rgba(14,165,233,.15);color:var(--sky);border:1px solid rgba(14,165,233,.3);}
+.cc-btn-info:hover{background:rgba(14,165,233,.25);border-color:rgba(14,165,233,.5);}
+.cc-btn-warning{background:rgba(245,158,11,.15);color:var(--amber);border:1px solid rgba(245,158,11,.3);}
+.cc-btn-warning:hover{background:rgba(245,158,11,.25);border-color:rgba(245,158,11,.5);}
+.cc-btn-danger{background:rgba(244,63,94,.15);color:var(--rose);border:1px solid rgba(244,63,94,.3);}
+.cc-btn-danger:hover{background:rgba(244,63,94,.25);border-color:rgba(244,63,94,.5);}
+
+.cc-stats{display:flex;gap:16px;font-size:12px;}
+.cc-stat{white-space:nowrap;}
+.cc-stat-label{color:var(--text-muted);font-size:11px;margin-bottom:2px;display:flex;align-items:center;gap:5px;}
+.cc-stat-value{font-weight:600;color:var(--text);font-size:12px;overflow:hidden;text-overflow:ellipsis;max-width:150px;}
+
+.status-tabs{display:flex;gap:8px;margin-bottom:20px;flex-wrap:wrap;}
+.status-tab{padding:8px 16px;border-radius:10px;font-size:13px;font-weight:600;cursor:pointer;border:1px solid var(--border);background:var(--surface2);color:var(--text-muted);transition:all .2s;flex:1;min-width:150px;text-align:center;}
+.status-tab.active{background:var(--grad);color:#fff;border-color:transparent;}
+
+@media (max-width: 480px) {
+  .status-tabs {
+    gap: 6px;
+    margin-bottom: 16px;
+  }
+  .status-tab {
+    padding: 6px 12px;
+    font-size: 12px;
+    min-width: auto;
+    flex: 1;
+  }
+}
+
+.dash-header{display:flex;justify-content:space-between;align-items:center;margin-bottom:26px;flex-wrap:wrap;gap:16px;}
+.dash-header h1{font-size:24px;font-weight:800;letter-spacing:-.5px;background:var(--grad);-webkit-background-clip:text;-webkit-text-fill-color:transparent;}
+.dash-header p{color:var(--text-muted);font-size:14px;margin-top:3px;}
+.header-actions{display:flex;gap:10px;flex-wrap:wrap;}
+
+@media (max-width: 768px) {
+  .dash-header {
+    flex-direction: column;
+    align-items: flex-start;
     margin-bottom: 20px;
-    padding: 20px !important;
-    box-shadow: 0 4px 12px rgba(0,0,0,0.15);
-    border-radius: 10px;
+    gap: 12px;
+  }
+  .dash-header h1 {
+    font-size: 20px;
+  }
+  .dash-header p {
+    font-size: 13px;
+  }
+  .header-actions {
+    width: 100%;
+  }
+  .dbtn {
+    font-size: 12px;
+    padding: 8px 14px;
+  }
 }
 
-.page-header.card .row {
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-}
-
-.page-header.card h5 {
-    color: #ffffff;
-    margin: 0;
-    font-weight: 600;
-}
-
-.page-header.card .text-end {
-    text-align: right;
-}
-
-.page-header.card .btn {
-    background: rgba(255,255,255,0.2);
-    color: #ffffff;
-    border: 1px solid rgba(255,255,255,0.3);
-    border-radius: 25px;
-    transition: all 0.3s ease;
-}
-
-.page-header.card .btn:hover {
-    background: rgba(255,255,255,0.3);
-    border-color: rgba(255,255,255,0.5);
-    transform: translateY(-1px);
-}
-
-.card {
-    border-radius: 10px;
-    box-shadow: 0 2px 8px rgba(0,0,0,0.1);
-    transition: transform 0.2s ease-in-out, box-shadow 0.2s ease-in-out;
-    border: none;
-}
-
-.card:hover {
-    transform: translateY(-2px);
-    box-shadow: 0 4px 16px rgba(0,0,0,0.15);
-}
-
-.card-header {
-    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-    color: white;
-    border-radius: 10px 10px 0 0;
-    padding: 1rem 1.5rem;
-    border: none;
-}
-
-.card-header h5 {
-    margin: 0;
-    font-weight: 600;
-    display: flex;
-    align-items: center;
-}
-
-.progress {
-    border-radius: 15px;
-    overflow: hidden;
-    box-shadow: inset 0 1px 2px rgba(0,0,0,0.1);
-}
-
-.progress-bar {
-    transition: width 0.6s ease;
-}
-
-.badge {
-    font-size: 0.85em;
-    padding: 0.5em 0.75em;
-    border-radius: 20px;
-    font-weight: 500;
-}
-
-.badge-success {
-    background-color: #28a745;
-}
-
-.badge-warning {
-    background-color: #ffc107;
-    color: #212529;
-}
-
-.badge-info {
-    background-color: #17a2b8;
-}
-
-.table-responsive {
-    border-radius: 10px;
-    overflow-x: auto;
-    -webkit-overflow-scrolling: touch;
-}
-
-.table-responsive table {
-    min-width: 100%;
-    table-layout: auto;
-}
-
-.table {
-    margin-bottom: 0;
-}
-
-.table thead th {
-    background-color: #f8f9fa;
-    border-bottom: 2px solid #dee2e6;
-    font-weight: 600;
-    color: #495057;
-    padding: 1rem;
-}
-
-.table tbody tr:hover {
-    background-color: #f1f3f4;
-}
-
-.table tbody td {
-    padding: 1rem;
-    vertical-align: middle;
-}
-
-.form-control {
-    border-radius: 8px;
-    border: 1px solid #ced4da;
-    transition: border-color 0.15s ease-in-out, box-shadow 0.15s ease-in-out;
-    padding: 0.75rem;
-}
-
-.form-control:focus {
-    border-color: #4099ff;
-    box-shadow: 0 0 0 0.2rem rgba(64, 153, 255, 0.25);
+@media (max-width: 480px) {
+  .dash-header h1 {
+    font-size: 18px;
+  }
+  .dash-header {
+    gap: 10px;
+    margin-bottom: 16px;
+  }
 }
 
 .btn-primary {
@@ -353,278 +425,129 @@ try {
                         <div class="page-wrapper">
                             <div class="container mt-4">
                                 <!-- Page Header -->
-                                <div class="page-header card">
-                                    <div class="row align-items-center">
-                                        <div class="col-md-6">
-                                            <h5 class="mb-0"><i class="feather icon-users mr-2"></i><?= __('creditors_management') ?></h5>
-                                            <p class="mb-0 mt-1" style="font-size: 14px; opacity: 0.9;">Manage your creditors and track payments</p>
-                                        </div>
-                                        <div class="col-md-6 text-end">
-                                            <button type="button" class="btn btn-success" data-toggle="modal" data-target="#addCreditorModal">
-                                                <i class="feather icon-plus mr-1"></i><?= __('add_new_creditor') ?>
-                                            </button>
-                                        </div>
+                                <div class="dash-header">
+                                    <div>
+                                        <h1><i class="fas fa-handshake mr-2"></i><?= __('creditors_management') ?></h1>
+                                        <p><?= __('manage_your_creditors_and_track_payments') ?></p>
+                                    </div>
+                                    <div class="header-actions">
+                                        <button type="button" class="dbtn dbtn-primary" data-toggle="modal" data-target="#addCreditorModal">
+                                            <i class="fas fa-plus"></i><?= __('add_new_creditor') ?>
+                                        </button>
                                     </div>
                                 </div>
                                 
                                 <?php if (isset($success_message)): ?>
-                                    <div class="alert alert-success"><?php echo h($success_message); ?></div>
-                                <?php endif; ?>
-                                
-                                <?php if (isset($error_message)): ?>
-                                    <div class="alert alert-danger"><?php echo h($error_message); ?></div>
-                                <?php endif; ?>
-                                
-                                <!-- Creditors Summary Section -->
-                                <?php if (!empty($currency_totals)): ?>
-                                <div class="row mb-4">
-                                    <div class="col-md-4">
-                                        <div class="card">
-                                            <div class="card-header">
-                                                <h5><i class="feather icon-bar-chart-2 mr-2"></i><?= __('creditors_summary') ?></h5>
-                                            </div>
-                                            <div class="card-body">
-                                                <div class="text-center mb-4">
-                                                    <div class="h2 font-weight-bold text-primary">
-                                                        <i class="feather icon-users mr-2"></i><?php echo $active_count; ?>
-                                                        <span class="text-muted h4">/ <?php echo $active_count + $inactive_count; ?></span>
-                                                    </div>
-                                                    <p class="text-muted mb-0"><?= __('creditors_count') ?></p>
-                                                </div>
-
-                                                <div class="progress mb-4" style="height: 30px; border-radius: 15px;">
-                                                    <div class="progress-bar <?php echo $active_count >= ($active_count + $inactive_count) * 0.9 ? 'bg-danger' : ($active_count >= ($active_count + $inactive_count) * 0.75 ? 'bg-warning' : 'bg-success'); ?>"
-                                                         role="progressbar"
-                                                         style="width: <?php echo ($active_count + $inactive_count) > 0 ? min(100, ($active_count / ($active_count + $inactive_count)) * 100) : 0; ?>%; border-radius: 15px;">
-                                                        <span class="font-weight-bold"><?php echo ($active_count + $inactive_count) > 0 ? round(($active_count / ($active_count + $inactive_count)) * 100) : 0; ?>%</span>
-                                                    </div>
-                                                </div>
-
-                                                <hr class="my-4">
-
-                                                <div class="row text-center">
-                                                    <div class="col-6">
-                                                        <div class="h4 mb-1 font-weight-bold text-info"><?php echo $active_count; ?></div>
-                                                        <small class="text-muted"><i class="feather icon-user-check mr-1"></i><?= __('active_creditors') ?></small>
-                                                    </div>
-                                                    <div class="col-6">
-                                                        <div class="h4 mb-1 font-weight-bold text-success"><?php echo $inactive_count; ?></div>
-                                                        <small class="text-muted"><i class="feather icon-user-minus mr-1"></i><?= __('inactive_creditors') ?></small>
-                                                    </div>
-                                                </div>
-
-                                                <hr class="my-4">
-
-                                                <div class="text-center">
-                                                    <span class="badge badge-info badge-pill px-3 py-2 h6">
-                                                        <i class="feather icon-package mr-1"></i><?= __('status') ?>: <?= ucfirst($status_filter) ?>
-                                                    </span>
-                                                </div>
-                                            </div>
+                                     <div class="d-alert d-alert-warning" style="background:rgba(16,185,129,.1);border-color:rgba(16,185,129,.3);">
+                                        <div class="d-alert-icon" style="background:rgba(16,185,129,.2);color:var(--emerald);"><i class="fas fa-check-circle"></i></div>
+                                        <div>
+                                            <div class="d-alert-title" style="color:var(--emerald);"><?= __('success') ?></div>
+                                            <div style="font-size:13px;color:var(--text);"><?php echo h($success_message); ?></div>
                                         </div>
-                                    </div>
-
-                                    <div class="col-md-8">
-                                        <div class="card">
-                                            <div class="card-header">
-                                                <h5><i class="feather icon-dollar-sign mr-2"></i><?= __('total_credits_by_currency') ?></h5>
-                                            </div>
-                                            <div class="card-body">
-                                                <table class="table table-borderless">
-                                                    <tbody>
-                                                        <?php foreach ($currency_totals as $currency => $total): ?>
-                                                        <tr>
-                                                            <td class="py-3"><i class="feather icon-credit-card mr-2 text-primary"></i><?php echo htmlspecialchars($currency); ?></td>
-                                                            <td class="text-right py-3 font-weight-bold text-success h5"><?php echo number_format($total, 2); ?> <?php echo htmlspecialchars($currency); ?></td>
-                                                        </tr>
-                                                        <?php endforeach; ?>
-                                                    </tbody>
-                                                </table>
-                                                <div class="alert alert-light border mt-3">
-                                                    <p class="text-muted mb-0 text-center">
-                                                        <i class="feather icon-info mr-2"></i><?= __('total_credits_across_all_creditors') ?>
-                                                    </p>
-                                                </div>
-                                            </div>
+                                     </div>
+                                 <?php endif; ?>
+                                 
+                                 <?php if (isset($error_message)): ?>
+                                     <div class="d-alert d-alert-danger">
+                                        <div class="d-alert-icon"><i class="fas fa-exclamation-circle"></i></div>
+                                        <div>
+                                            <div class="d-alert-title"><?= __('error') ?></div>
+                                            <div style="font-size:13px;color:var(--text);"><?php echo h($error_message); ?></div>
                                         </div>
-                                    </div>
-                                </div>
-                                <?php endif; ?>
+                                     </div>
+                                 <?php endif; ?>
+                                
+
                                 
                                 <!-- Status Toggle Tabs -->
-                                <div class="row mb-4">
-                                    <div class="col-12">
-                                        <div class="card">
-                                            <div class="card-header">
-                                                <h5><i class="feather icon-filter mr-2"></i><?= __('status_filter') ?></h5>
-                                            </div>
-                                            <div class="card-body">
-                                                <ul class="nav nav-pills card-header-pills flex-column flex-sm-row" id="creditorTabs" role="tablist">
-                                                    <li class="nav-item flex-fill text-center">
-                                                        <a class="nav-link <?php echo h($status_filter) === 'active' ? 'active' : ''; ?> rounded-pill" href="creditors.php">
-                                                            <i class="feather icon-user-check mr-2"></i>
-                                                            <span><?= __('active_creditors') ?></span>
-                                                            <span class="badge badge-light ml-2"><?php echo $active_count; ?></span>
-                                                        </a>
-                                                    </li>
-                                                    <li class="nav-item flex-fill text-center">
-                                                        <a class="nav-link <?php echo h($status_filter) === 'inactive' ? 'active' : ''; ?> rounded-pill" href="creditors.php?status=inactive">
-                                                            <i class="feather icon-user-minus mr-2"></i>
-                                                            <span><?= __('inactive_creditors') ?></span>
-                                                            <span class="badge badge-light ml-2"><?php echo $inactive_count; ?></span>
-                                                        </a>
-                                                    </li>
-                                                </ul>
-                                            </div>
-                                        </div>
-                                    </div>
-                                </div>
+                                <div class="dash-wrap" style="padding:0;">
+                                <div class="dash-inner">
+                                       <div class="status-tabs">
+                                           <a href="creditors.php" class="status-tab <?php echo h($status_filter) === 'active' ? 'active' : ''; ?>">
+                                               <i class="fas fa-user-check mr-2"></i><?= __('active_creditors') ?> <span style="margin-left:6px;font-weight:700;"><?php echo $active_count; ?></span>
+                                           </a>
+                                           <a href="creditors.php?status=inactive" class="status-tab <?php echo h($status_filter) === 'inactive' ? 'active' : ''; ?>">
+                                               <i class="fas fa-user-minus mr-2"></i><?= __('inactive_creditors') ?> <span style="margin-left:6px;font-weight:700;"><?php echo $inactive_count; ?></span>
+                                           </a>
+                                       </div>
                                 
-                                <!-- Creditors Table -->
-                                <div class="card">
-                                    <div class="card-header d-flex justify-content-between align-items-center">
-                                        <h5 class="mb-0">
-                                            <i class="feather icon-users mr-2"></i><?= __($status_filter . '_creditors') ?>
-                                        </h5>
-                                        <button type="button" class="btn btn-success d-flex align-items-center" data-toggle="modal" data-target="#addCreditorModal">
-                                            <i class="feather icon-plus-circle mr-2"></i> <?= __("add_new_creditor") ?>
-                                        </button>
-                                    </div>
-                                    <div class="card-body">
-                                        <div class="table-responsive">
-                                            <table class="table table-hover">
-                                                <thead>
-                                                    <tr>
-                                                        <th><?= __("name") ?></th>
-                                                        <th><?= __("email") ?></th>
-                                                        <th><?= __("phone") ?></th>
-                                                        <th><?= __("address") ?></th>
-                                                        <th><?= __("balance") ?></th>
-                                                        <th><?= __("currency") ?></th>
-                                                        <th class="text-center"><?= __("actions") ?></th>
-                                                    </tr>
-                                                </thead>
-                                                <tbody>
-                                                    <?php if (count($creditors) > 0): ?>
-                                                        <?php foreach ($creditors as $creditor): ?>
-                                                            <tr>
-                                                                <td>
-                                                                    <div class="d-flex align-items-center">
-
-                                                                        <div class="ml-3">
-                                                                            <h6 class="mb-0"><?php echo htmlspecialchars($creditor['name']); ?></h6>
-                                                                            <small class="text-muted">ID: <?php echo h($creditor['id']); ?></small>
-                                                                        </div>
-                                                                    </div>
-                                                                </td>
-                                                                <td>
-                                                                    <?php if (!empty($creditor['email'])): ?>
-                                                                        <div class="d-flex align-items-center">
-                                                                            <i class="feather icon-mail text-muted mr-2"></i>
-                                                                            <?php echo htmlspecialchars($creditor['email']); ?>
-                                                                        </div>
-                                                                    <?php else: ?>
-                                                                        <span class="text-muted">-</span>
-                                                                    <?php endif; ?>
-                                                                </td>
-                                                                <td>
-                                                                    <?php if (!empty($creditor['phone'])): ?>
-                                                                        <div class="d-flex align-items-center">
-                                                                            <i class="feather icon-phone text-muted mr-2"></i>
-                                                                            <?php echo htmlspecialchars($creditor['phone']); ?>
-                                                                        </div>
-                                                                    <?php else: ?>
-                                                                        <span class="text-muted">-</span>
-                                                                    <?php endif; ?>
-                                                                </td>
-                                                                <td>
-                                                                    <?php if (!empty($creditor['address'])): ?>
-                                                                        <div class="d-flex align-items-center">
-                                                                            <i class="feather icon-map-pin text-muted mr-2"></i>
-                                                                            <?php echo htmlspecialchars($creditor['address']); ?>
-                                                                        </div>
-                                                                    <?php else: ?>
-                                                                        <span class="text-muted">-</span>
-                                                                    <?php endif; ?>
-                                                                </td>
-                                                                <td>
-                                                                    <div class="d-flex align-items-center">
-                                                                        <span class="font-weight-medium <?php echo $creditor['balance'] > 0 ? 'text-success' : 'text-danger'; ?>">
-                                                                            <?php echo number_format($creditor['balance'], 2); ?>
-                                                                        </span>
-                                                                    </div>
-                                                                </td>
-                                                                <td>
-                                                                    <span class="">
-                                                                        <?php echo htmlspecialchars($creditor['currency']); ?>
-                                                                    </span>
-                                                                </td>
-                                                                <td>
-                                                                    <div class="d-flex justify-content-center">
-                                                                        <div class="dropdown">
-                                                                            <button class="btn btn-icon btn-primary dropdown-toggle" 
-                                                                                    type="button" 
-                                                                                    id="dropdownMenu_<?php echo h($creditor['id']); ?>" 
-                                                                                    data-toggle="dropdown" 
-                                                                                    aria-haspopup="true" 
-                                                                                    aria-expanded="false"
-                                                                                    title="<?= __("actions") ?>">
-                                                                                <i class="feather icon-more-vertical"></i>
-                                                                            </button>
-                                                                            <div class="dropdown-menu dropdown-menu-right" 
-                                                                                 aria-labelledby="dropdownMenu_<?php echo h($creditor['id']); ?>">
-                                                                                <button type="button" class="dropdown-item" 
-                                                                                        data-toggle="modal" 
-                                                                                        data-target="#paymentModal_<?php echo h($creditor['id']); ?>">
-                                                                                    <i class="feather icon-credit-card"></i> <?= __("process_payment") ?>
-                                                                                </button>
-                                                                                <button type="button" class="dropdown-item" 
-                                                                                        data-toggle="modal" 
-                                                                                        data-target="#transactionsModal_<?php echo h($creditor['id']); ?>">
-                                                                                    <i class="feather icon-list"></i> <?= __("view_transactions") ?>
-                                                                                </button>
-                                                                                <a href="../api/creditor/print_creditor_statement.php?id=<?php echo h($creditor['id']); ?>" 
-                                                                                   class="dropdown-item"
-                                                                                   target="_blank">
-                                                                                    <i class="feather icon-printer"></i> <?= __("print_statement") ?>
-                                                                                </a>
-                                                                                <div class="dropdown-divider"></div>
-                                                                                <button type="button" class="dropdown-item" 
-                                                                                        data-toggle="modal" 
-                                                                                        data-target="#editCreditorModal_<?php echo h($creditor['id']); ?>">
-                                                                                    <i class="feather icon-edit-2"></i> <?= __("edit_creditor") ?>
-                                                                                </button>
-                                                                                <button type="button" class="dropdown-item text-danger" 
-                                                                                        data-toggle="modal" 
-                                                                                        data-target="#deleteCreditorModal_<?php echo h($creditor['id']); ?>">
-                                                                                    <i class="feather icon-trash-2"></i> <?= __("delete_creditor") ?>
-                                                                                </button>
-                                                                            </div>
-                                                                        </div>
-                                                                    </div>
-                                                                </td>
-                                                            </tr>
-                                                        <?php endforeach; ?>
-                                                    <?php else: ?>
-                                                        <tr>
-                                                            <td colspan="7">
-                                                                <div class="empty-state">
-                                                                    <i class="feather icon-users"></i>
-                                                                    <h5 class="mt-3"><?= __("no_creditors_found") ?></h5>
-                                                                    <p class="text-muted">
-                                                                        <?php if ($status_filter === 'active'): ?>
-                                                                            <?= __("add_new_creditors_to_start_tracking_your_credits") ?>
-                                                                        <?php else: ?>
-                                                                            <?= __("deactivated_creditors_will_appear_here") ?>
-                                                                        <?php endif; ?>
-                                                                    </p>
-                                                                </div>
-                                                            </td>
-                                                        </tr>
-                                                    <?php endif; ?>
-                                                </tbody>
-                                            </table>
-                                        </div>
+                                <!-- Creditors Cards Grid -->
+                                <div class="sec-label"><i class="fas fa-building"></i> <?= __($status_filter . '_creditors') ?></div>
+                                
+                                <div class="creditor-grid">
+                                           <?php if (count($creditors) > 0): ?>
+                                               <?php foreach ($creditors as $creditor): ?>
+                                               <div class="creditor-card">
+                                                   <div class="cc-icon"><i class="fas fa-handshake"></i></div>
+                                                   <div style="min-width:150px;">
+                                                       <div class="cc-label"><?= __('name') ?></div>
+                                                       <div class="cc-name"><?php echo htmlspecialchars($creditor['name']); ?></div>
+                                                   </div>
+                                                   <div style="min-width:120px;">
+                                                       <div class="cc-label"><?= __('balance') ?></div>
+                                                       <div class="cc-balance"><?php echo number_format($creditor['balance'], 2); ?></div>
+                                                       <div class="cc-currency"><?php echo htmlspecialchars($creditor['currency']); ?></div>
+                                                   </div>
+                                                   <div style="min-width:110px;">
+                                                       <div class="cc-label"><?= __('status') ?></div>
+                                                       <div class="cc-status <?php echo h($creditor['status']); ?>">
+                                                           <i class="fas <?php echo h($creditor['status']) === 'active' ? 'fa-check-circle' : 'fa-times-circle'; ?>"></i>
+                                                           <?= ucfirst(__($creditor['status'])) ?>
+                                                       </div>
+                                                   </div>
+                                                   <div class="cc-stats">
+                                                       <?php if (!empty($creditor['email'])): ?>
+                                                       <div class="cc-stat">
+                                                           <div class="cc-stat-label"><i class="fas fa-envelope"></i> <?= __('email') ?></div>
+                                                           <div class="cc-stat-value"><?php echo htmlspecialchars($creditor['email']); ?></div>
+                                                       </div>
+                                                       <?php endif; ?>
+                                                       <?php if (!empty($creditor['phone'])): ?>
+                                                       <div class="cc-stat">
+                                                           <div class="cc-stat-label"><i class="fas fa-phone"></i> <?= __('phone') ?></div>
+                                                           <div class="cc-stat-value"><?php echo htmlspecialchars($creditor['phone']); ?></div>
+                                                       </div>
+                                                       <?php endif; ?>
+                                                   </div>
+                                                   <div class="cc-actions">
+                                                       <button class="cc-btn cc-btn-primary" data-toggle="modal" data-target="#paymentModal_<?php echo h($creditor['id']); ?>" title="<?= __('process_payment') ?>" data-bs-toggle="tooltip" data-placement="top">
+                                                           <i class="fas fa-credit-card"></i>
+                                                           <span><?= __('pay') ?></span>
+                                                       </button>
+                                                       <button class="cc-btn cc-btn-info" data-toggle="modal" data-target="#transactionsModal_<?php echo h($creditor['id']); ?>" title="<?= __('view_transactions') ?>" data-bs-toggle="tooltip" data-placement="top">
+                                                           <i class="fas fa-list"></i>
+                                                           <span><?= __('transactions') ?></span>
+                                                       </button>
+                                                       <a href="../api/creditor/print_creditor_statement.php?id=<?php echo h($creditor['id']); ?>" class="cc-btn cc-btn-warning" target="_blank" title="<?= __('print_statement') ?>" data-bs-toggle="tooltip" data-placement="top">
+                                                           <i class="fas fa-print"></i>
+                                                           <span><?= __('print') ?></span>
+                                                       </a>
+                                                       <button class="cc-btn cc-btn-info" data-toggle="modal" data-target="#editCreditorModal_<?php echo h($creditor['id']); ?>" title="<?= __('edit_creditor') ?>" data-bs-toggle="tooltip" data-placement="top">
+                                                           <i class="fas fa-edit"></i>
+                                                           <span><?= __('edit') ?></span>
+                                                       </button>
+                                                       <?php if ($isAdmin): ?>
+                                                       <button class="cc-btn cc-btn-danger" data-toggle="modal" data-target="#deleteCreditorModal_<?php echo h($creditor['id']); ?>" title="<?= __('delete_creditor') ?>" data-bs-toggle="tooltip" data-placement="top">
+                                                           <i class="fas fa-trash"></i>
+                                                           <span><?= __('delete') ?></span>
+                                                       </button>
+                                                       <?php endif; ?>
+                                                   </div>
+                                               </div>
+                                               <?php endforeach; ?>
+                                           <?php else: ?>
+                                               <div style="grid-column:1/-1;text-align:center;padding:40px 20px;">
+                                                   <i class="fas fa-inbox" style="font-size:48px;color:var(--text-muted);margin-bottom:16px;display:block;"></i>
+                                                   <p style="color:var(--text-muted);font-size:14px;">
+                                                       <?php if ($status_filter === 'active'): ?>
+                                                           <?= __("add_new_creditors_to_start_tracking_your_credits") ?>
+                                                       <?php else: ?>
+                                                           <?= __("deactivated_creditors_will_appear_here") ?>
+                                                       <?php endif; ?>
+                                                   </p>
+                                               </div>
+                                           <?php endif; ?>
+                                       </div>
                                         
                                         <!-- Pagination -->
                                         <div class="mt-3 mt-md-4">
@@ -699,19 +622,18 @@ try {
                                                     <?= __('showing') ?> <?= count($creditors) ?> <?= __('of') ?> <?= $total_count ?> <?= __('creditors') ?> |
                                                     <?= __('page') ?> <?= $current_page ?> <?= __('of') ?> <?= $total_pages ?>
                                                 </small>
-                                            </div>
-                                        </div>
-                                    </div>
-                                </div>
-                            </div>
-                        </div>
-                    </div>
-                </div>
-            
-        </div>
-    </div>
-    
-    <!-- Add Creditor Modal -->
+                                                </div>
+                                                </div>
+                                                </div>
+                                                </div>
+                                                </div>
+                                                </div>
+                                                </div>
+                                                
+                                                </div>
+                                                </div>
+                                            
+                                            <!-- Add Creditor Modal -->
     <div class="modal fade" id="addCreditorModal" tabindex="-1" role="dialog" aria-hidden="true">
         <div class="modal-dialog modal-dialog-centered" role="document">
             <div class="modal-content">
@@ -892,14 +814,17 @@ try {
                                         echo '<button class="btn btn-info btn-sm mr-1" title="Print Receipt" onclick="printReceipt(\'' . $transaction['id'] . '\')"><i class="feather icon-printer"></i></button>';
                                         // Add edit button
                                         echo '<button type="button" class="btn btn-primary btn-sm mr-1" data-toggle="modal" data-target="#editTransactionModal_' . $transaction['id'] . '"><i class="feather icon-edit"></i> ' . __("edit") . '</button>';
-                                        echo '<form method="POST" onsubmit="return confirm(\'' . __("are_you_sure_you_want_to_delete_this_transaction_this_will_reverse_the_payment") . '\');">';
-                                        echo '<input type="hidden" name="csrf_token" value="' . h($_SESSION['csrf_token']) . '">';
-                                        echo '<input type="hidden" name="transaction_id" value="' . $transaction['id'] . '">';
-                                        echo '<input type="hidden" name="creditor_id" value="' . $creditor['id'] . '">';
-                                        echo '<input type="hidden" name="amount" value="' . $transaction['amount'] . '">';
-                                        echo '<input type="hidden" name="currency" value="' . $transaction['currency'] . '">';
-                                        echo '<button type="submit" name="delete_transaction" class="btn btn-danger btn-sm"><i class="feather icon-trash"></i> ' . __("delete") . '</button>';
-                                        echo '</form>';
+                                        // Delete button (admin only)
+                                        if ($isAdmin) {
+                                            echo '<form method="POST" onsubmit="return confirm(\'' . __("are_you_sure_you_want_to_delete_this_transaction_this_will_reverse_the_payment") . '\');">';
+                                            echo '<input type="hidden" name="csrf_token" value="' . h($_SESSION['csrf_token']) . '">';
+                                            echo '<input type="hidden" name="transaction_id" value="' . $transaction['id'] . '">';
+                                            echo '<input type="hidden" name="creditor_id" value="' . $creditor['id'] . '">';
+                                            echo '<input type="hidden" name="amount" value="' . $transaction['amount'] . '">';
+                                            echo '<input type="hidden" name="currency" value="' . $transaction['currency'] . '">';
+                                            echo '<button type="submit" name="delete_transaction" class="btn btn-danger btn-sm"><i class="feather icon-trash"></i> ' . __("delete") . '</button>';
+                                            echo '</form>';
+                                        }
                                         echo '</td>';
                                         echo '</tr>';
                                     }

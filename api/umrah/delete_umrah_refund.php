@@ -308,6 +308,31 @@ if ($_SERVER["REQUEST_METHOD"] == "POST" && isset($data['id'])) {
         $stmt->bindParam(3, $branch_id, PDO::PARAM_INT);
         $stmt->execute();
 
+        // Step 7: Update family totals after deleting refund (restoring booking)
+        $bookingQuery = "SELECT family_id, status FROM umrah_bookings WHERE booking_id = ? AND tenant_id = ? AND branch_id = ?";
+        $stmt = $pdo->prepare($bookingQuery);
+        $stmt->bindParam(1, $umrahId, PDO::PARAM_INT);
+        $stmt->bindParam(2, $tenant_id, PDO::PARAM_INT);
+        $stmt->bindParam(3, $branch_id, PDO::PARAM_INT);
+        $stmt->execute();
+        $bookingResult = $stmt->fetch(PDO::FETCH_ASSOC);
+        
+        if ($bookingResult && $bookingResult['status'] === 'confirmed') {
+            // If booking is now confirmed/active, update family totals
+            $familyId = $bookingResult['family_id'];
+            $updateFamilyStmt = $pdo->prepare("
+                UPDATE families f
+                SET
+                    f.total_members = (SELECT COUNT(*) FROM umrah_bookings WHERE family_id = f.family_id AND tenant_id = ? AND branch_id = ?),
+                    f.total_price = (SELECT SUM(COALESCE(sold_price, 0)) FROM umrah_bookings WHERE family_id = f.family_id AND tenant_id = ? AND branch_id = ?),
+                    f.total_paid = (SELECT SUM(COALESCE(paid, 0)) FROM umrah_bookings WHERE family_id = f.family_id AND tenant_id = ? AND branch_id = ?),
+                    f.total_paid_to_bank = (SELECT SUM(COALESCE(received_bank_payment, 0)) FROM umrah_bookings WHERE family_id = f.family_id AND tenant_id = ? AND branch_id = ?),
+                    f.total_due = (SELECT SUM(COALESCE(due, 0)) FROM umrah_bookings WHERE family_id = f.family_id AND tenant_id = ? AND branch_id = ?)
+                WHERE f.family_id = ? AND f.tenant_id = ? AND f.branch_id = ?
+            ");
+            $updateFamilyStmt->execute([$tenant_id, $branch_id, $tenant_id, $branch_id, $tenant_id, $branch_id, $tenant_id, $branch_id, $tenant_id, $branch_id, $familyId, $tenant_id, $branch_id]);
+        }
+
         // Commit transaction
         $pdo->commit();
         echo json_encode(['success' => true, 'message' => 'Refund deleted successfully']);

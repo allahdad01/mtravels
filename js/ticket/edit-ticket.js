@@ -529,13 +529,14 @@ document.addEventListener('DOMContentLoaded', function() {
             if (data.success) {
                 showToast('Ticket updated successfully', 'success');
                 $('#editTicketModal').modal('hide');
-                location.reload(); // Refresh to see updated balances
+                setTimeout(() => {
+                    refreshTicketTable();
+                }, 1000);
             } else {
                 showToast('Error updating ticket: ' + data.message, 'error');
             }
         })
         .catch(error => {
-
             document.getElementById('editLoader').style.display = 'none';
             showToast('An error occurred while updating the ticket', 'error');
         });

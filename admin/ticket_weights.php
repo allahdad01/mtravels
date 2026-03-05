@@ -12,8 +12,11 @@ require_once '../includes/language_helpers.php';
 // Enforce authentication
 enforce_auth();
 
-// Check if user is logged in
-if (!isset($_SESSION['user_id']) || $_SESSION['role'] !== 'admin') {
+// Check if user is logged in with proper role
+$allowed_roles = ['admin', 'finance', 'sales'];
+if (!isset($_SESSION['user_id']) || !in_array($_SESSION['role'], $allowed_roles)) {
+    // Log unauthorized access attempt
+    error_log("Unauthorized access attempt to dashboard: " . ($_SESSION['user_id'] ?? 'unknown') . " - Role: " . ($_SESSION['role'] ?? 'unknown') . " - IP: " . $_SERVER['REMOTE_ADDR']);
     header('Location: ../login.php');
     exit();
 }
@@ -25,6 +28,9 @@ require_once('../includes/db.php');
 $user_id = $_SESSION["user_id"];
 $tenant_id = $_SESSION['tenant_id'];
 $branch_id = $_SESSION['branch_id'];
+
+// Check if user is admin or finance
+$canEdit = in_array($_SESSION['role'], ['admin', 'finance']);
 
 // Pagination settings
 $items_per_page = 10;
@@ -122,6 +128,192 @@ if ($weightsResult && count($weightsResult) > 0) {
     <link rel="stylesheet" href="../css/ticket/ticket-form.css">
     <link rel="stylesheet" href="../css/ticket/ticket_weight.css">
 
+    <style>
+    /* Weight Card Styles */
+    .weight-card-container {
+        display: flex;
+        flex-direction: column;
+        gap: 16px;
+    }
+
+    .weight-card {
+        display: grid;
+        grid-template-columns: 1fr 140px;
+        border-radius: 10px;
+        overflow: hidden;
+        background: #e8edf2;
+        box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+        transition: all 0.3s ease;
+    }
+
+    .weight-card:hover {
+        box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+    }
+
+    .weight-card-main {
+        display: grid;
+        grid-template-columns: 1fr auto;
+        align-items: center;
+        padding: 18px 22px;
+        position: relative;
+    }
+
+    .weight-card-main::after {
+        content: '';
+        position: absolute;
+        right: 0;
+        top: 10%;
+        height: 80%;
+        border-right: 2px dashed rgba(255,255,255,0.5);
+    }
+
+    .weight-card-main.status-paid {
+        background: #8db87a;
+    }
+
+    .weight-card-main.status-partial {
+        background: #d4a574;
+    }
+
+    .weight-card-main.status-unpaid {
+        background: #e07a7a;
+    }
+
+    .weight-card-main.status-neutral {
+        background: #6b8fb3;
+    }
+
+    .weight-card-left {
+        display: flex;
+        flex-direction: column;
+        gap: 12px;
+    }
+
+    .weight-card-title {
+        font-size: 18px;
+        font-weight: 700;
+        color: #fff;
+        letter-spacing: 0.5px;
+        line-height: 1;
+    }
+
+    .weight-card-id {
+        font-size: 11px;
+        color: rgba(255,255,255,0.85);
+        font-weight: 500;
+    }
+
+    .weight-card-details {
+        display: grid;
+        grid-template-columns: 1fr 1fr;
+        gap: 12px 16px;
+        color: rgba(255,255,255,0.9);
+        font-size: 12px;
+        margin-top: 8px;
+    }
+
+    .weight-card-detail-item {
+        display: flex;
+        align-items: center;
+        gap: 6px;
+    }
+
+    .weight-card-detail-label {
+        font-weight: 600;
+        font-size: 10px;
+        text-transform: uppercase;
+        opacity: 0.8;
+        min-width: fit-content;
+    }
+
+    .weight-card-right {
+        display: flex;
+        flex-direction: column;
+        gap: 8px;
+    }
+
+    .weight-card-price-box {
+        background: #fff;
+        border-radius: 8px;
+        padding: 10px 14px;
+        font-size: 28px;
+        font-weight: 700;
+        color: #2d3f52;
+        letter-spacing: -0.5px;
+        text-align: center;
+    }
+
+    .weight-card-price-meta {
+        display: flex;
+        gap: 4px;
+        align-items: center;
+        font-size: 9px;
+        color: rgba(255,255,255,0.75);
+    }
+
+    .weight-card-meta-dot {
+        width: 5px;
+        height: 5px;
+        border-radius: 50%;
+        background: rgba(255,255,255,0.7);
+    }
+
+    .weight-card-stub {
+        background: #e2e8ed;
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        justify-content: center;
+        padding: 12px 8px;
+        gap: 6px;
+    }
+
+    .weight-card-actions {
+        display: flex;
+        flex-direction: column;
+        gap: 6px;
+        width: 100%;
+    }
+
+    .weight-card-action-btn {
+        background: #4099ff;
+        border: none;
+        color: #fff;
+        padding: 8px 12px;
+        border-radius: 4px;
+        font-size: 12px;
+        cursor: pointer;
+        transition: all 0.2s;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        width: 100%;
+    }
+
+    .weight-card-action-btn:hover {
+        background: #2e7dd9;
+        transform: scale(1.05);
+    }
+
+    @media (max-width: 768px) {
+        .weight-card {
+            grid-template-columns: 1fr;
+        }
+        
+        .weight-card-main {
+            grid-template-columns: 1fr;
+        }
+        
+        .weight-card-main::after {
+            display: none;
+        }
+        
+        .weight-card-stub {
+            padding: 8px 12px;
+        }
+    }
+    </style>
+
     <!-- [ Main Content ] start -->
     <div class="pcoded-main-container">
         <div class="pcoded-wrapper">
@@ -173,208 +365,158 @@ if ($weightsResult && count($weightsResult) > 0) {
                                              </form>
                                          </div>
 
-                                         <div class="card-body p-0">
-                                             <!-- Pagination Info -->
-                                             <div class="row mb-3 p-3">
-                                                 <div class="col-md-6">
-                                                     <small class="text-muted">
-                                                         Showing <?= $offset + 1 ?> to <?= min($offset + $items_per_page, $total_records) ?> of <?= $total_records ?> entries
-                                                     </small>
-                                                 </div>
-                                             </div>
-                                             <div class="table-responsive">
-                                                <table class="table table-hover mb-0" id="weightsTable">
-                                                    <thead>
-                                                        <tr>
-                                                            <th class="text-center">
-                                                                <input type="checkbox" id="selectAllWeights">
-                                                            </th>
-                                                            <th><?= __('passenger') ?></th>
-                                                            <th><?= __('flight_details') ?></th>
-                                                            <th><?= __('weight_details') ?></th>
-                                                            <th><?= __('financial_details') ?></th>
-                                                            <th><?= __('date_added') ?></th>
-                                                            <th><?= __('payment_status') ?></th>
-                                                            <th class="text-right no-sort"><?= __('actions') ?></th>
-                                                        </tr>
-                                                    </thead>
-                                                    <tbody id="ticketTable">
+                                         <div class="card-body">
+                                              <!-- Pagination Info -->
+                                              <div class="row mb-3">
+                                                  <div class="col-md-6">
+                                                      <small class="text-muted">
+                                                          Showing <?= $offset + 1 ?> to <?= min($offset + $items_per_page, $total_records) ?> of <?= $total_records ?> entries
+                                                      </small>
+                                                  </div>
+                                              </div>
+                                              <div class="weight-card-container" id="ticketTable">
                                                         <?php foreach ($weights as $weight): ?>
-                                                        <tr>
-                                                            <td class="text-center">
-                                                                <input type="checkbox" class="weight-checkbox" value="<?= $weight['id'] ?>">
-                                                            </td>
-                                                            <td>
-                                                                <div class="passenger-info">
-                                                                    
-                                                                    <div class="passenger-info__details">
-                                                                        <div class="passenger-info__name">
-                                                                         <?= htmlspecialchars($weight['passenger_name']) ?>
-                                                                        </div>
-                                                                        <div class="passenger-info__pnr">
-                                                                            PNR: <?= htmlspecialchars($weight['pnr']) ?>
-                                                                            <br>
-                                                                            <?= __('phone') ?>: <?= htmlspecialchars($weight['phone']) ?>
-                                                                            <br>
-                                                                            <?= __('created_by') ?>: <?= htmlspecialchars($weight['created_by']) ?>
-                                                                        </div>
-                                                                    </div>
-                                                                </div>
-                                                            </td>
-                                                            <td>
-                                                                <div class="flight-info">
-                                                                    <div class="flight-info__segment">
-                                                                        <div class="flight-info__city">
-                                                                            <?= htmlspecialchars($weight['origin']) ?> - <?= htmlspecialchars($weight['destination']) ?>
-                                                                        </div>
-                                                                    </div>
-                                                                </div>
-                                                            </td>
-                                                            <td>
-                                                                <div class="weight-info">
-                                                                    <div class="weight-info__weight">
-                                                                        <?= number_format($weight['weight'], 2) ?> kg
-                                                                    </div>
-                                                                    <?php if (!empty($weight['remarks'])): ?>
-                                                                    <div class="weight-info__remarks">
-                                                                        <?= htmlspecialchars($weight['remarks']) ?>
-                                                                    </div>
-                                                                    <?php endif; ?>
-                                                                    <?php if (!empty($weight['exchange_rate']) || !empty($weight['market_exchange_rate'])): ?>
-                                                                    <div class="weight-info__exchange-rate">
-                                                                        <?= __('rate') ?>: <?= number_format($weight['exchange_rate'], 2) ?>
-                                                                    </div>
-                                                                    <?php if (!empty($weight['market_exchange_rate'])): ?>
-                                                                    <div class="weight-info__market-exchange-rate">
-                                                                        <?= __('market') ?>: <?= number_format($weight['market_exchange_rate'], 2) ?>
-                                                                    </div>
-                                                                    <?php endif; ?>
-                                                                    <?php endif; ?>
-                                                                </div>
-                                                            </td>
-                                                            <td>
-                                                                <div class="financial-info">
-                                                                    <div class="financial-info__amount">
-                                                                        <?= htmlspecialchars($weight['currency']) ?> <?= number_format($weight['sold_price'], 2) ?>
-                                                                    </div>
-                                                                    <div class="financial-info__base-price">
-                                                                        <?= __('base') ?>: <?= htmlspecialchars($weight['currency']) ?> <?= number_format($weight['base_price'], 2) ?>
-                                                                    </div>
-                                                                    <div class="financial-info__profit">
-                                                                        <?= __('profit') ?>: <?= htmlspecialchars($weight['currency']) ?> <?= number_format($weight['profit'], 2) ?>
-                                                                    </div>
-                                                                    
-                                                                </div>
-                                                            </td>
-                                                            <td>
-                                                                <?= date('d M Y H:i', strtotime($weight['created_at'])) ?>
-                                                                <br>
-                                                                <?= __('created_by') ?>: <?= htmlspecialchars($weight['created_by']) ?>
-                                                            </td>
-                                                            <td>
-                                                                <?php
-                                                                // Get client type from clients table
-                                                                $soldTo = $weight['sold_to_name'];
-                                                                $isAgencyClient = false;
+                                                        <?php
+                                                        // Determine payment status
+                                                        $paymentStatus = 'neutral';
+                                                        $totalPaidInBase = 0;
+                                                        $baseCurrency = $weight['currency'];
+                                                        $soldAmount = floatval($weight['sold_price']);
+                                                        $weightId = $weight['id'];
+                                                        
+                                                        // Get client type from clients table
+                                                        $soldTo = $weight['sold_to_name'];
+                                                        $isAgencyClient = false;
 
-                                                                // Check client type
-                                                                $clientStmt = $pdo->prepare("SELECT client_type FROM clients WHERE tenant_id = ? AND branch_id = ? AND name = ?");
-                                                                $clientStmt->bindParam(1, $tenant_id, PDO::PARAM_INT);
-                                                                $clientStmt->bindParam(2, $branch_id, PDO::PARAM_INT);
-                                                                $clientStmt->bindParam(3, $soldTo, PDO::PARAM_STR);
-                                                                $clientStmt->execute();
-                                                                $clientRow = $clientStmt->fetch(PDO::FETCH_ASSOC);
-                                                                if ($clientRow) {
-                                                                    $isAgencyClient = ($clientRow['client_type'] === 'agency');
-                                                                }
+                                                        // Check client type
+                                                        $clientStmt = $pdo->prepare("SELECT client_type FROM clients WHERE tenant_id = ? AND branch_id = ? AND name = ?");
+                                                        $clientStmt->bindParam(1, $tenant_id, PDO::PARAM_INT);
+                                                        $clientStmt->bindParam(2, $branch_id, PDO::PARAM_INT);
+                                                        $clientStmt->bindParam(3, $soldTo, PDO::PARAM_STR);
+                                                        $clientStmt->execute();
+                                                        $clientRow = $clientStmt->fetch(PDO::FETCH_ASSOC);
+                                                        if ($clientRow) {
+                                                            $isAgencyClient = ($clientRow['client_type'] === 'agency');
+                                                        }
 
-                                                                if ($isAgencyClient) {
-                                                                    $baseCurrency = $weight['currency']; // Base currency of the weight
-                                                                    $soldAmount = floatval($weight['sold_price']);
-                                                                    $totalPaidInBase = 0.0;
+                                                        if ($isAgencyClient) {
+                                                            // Fetch transactions
+                                                            $transactionStmt = $pdo->prepare("SELECT * FROM main_account_transactions
+                                                                WHERE transaction_of = 'weight'
+                                                                AND reference_id = ?
+                                                                AND tenant_id = ? AND branch_id = ?");
+                                                            $transactionStmt->bindParam(1, $weightId, PDO::PARAM_INT);
+                                                            $transactionStmt->bindParam(2, $tenant_id, PDO::PARAM_INT);
+                                                            $transactionStmt->bindParam(3, $branch_id, PDO::PARAM_INT);
+                                                            $transactionStmt->execute();
+                                                            $transactions = $transactionStmt->fetchAll(PDO::FETCH_ASSOC);
 
-                                                                    $weightId = $weight['id'];
+                                                            if ($transactions && count($transactions) > 0) {
+                                                                foreach ($transactions as $transaction) {
+                                                                    $amount = floatval($transaction['amount']);
+                                                                    $transCurrency = $transaction['currency'];
+                                                                    $transExchangeRate = isset($transaction['exchange_rate']) && $transaction['exchange_rate'] > 0 
+                                                                                        ? floatval($transaction['exchange_rate']) 
+                                                                                        : 1.0;
 
-                                                                    // Fetch transactions
-                                                                    $transactionStmt = $pdo->prepare("SELECT * FROM main_account_transactions
-                                                                        WHERE transaction_of = 'weight'
-                                                                        AND reference_id = ?
-                                                                        AND tenant_id = ? AND branch_id = ?");
-                                                                    $transactionStmt->bindParam(1, $weightId, PDO::PARAM_INT);
-                                                                    $transactionStmt->bindParam(2, $tenant_id, PDO::PARAM_INT);
-                                                                    $transactionStmt->bindParam(3, $branch_id, PDO::PARAM_INT);
-                                                                    $transactionStmt->execute();
-                                                                    $transactions = $transactionStmt->fetchAll(PDO::FETCH_ASSOC);
-
-                                                                    if ($transactions && count($transactions) > 0) {
-                                                                        foreach ($transactions as $transaction) {
-                                                                            $amount = floatval($transaction['amount']);
-                                                                            $transCurrency = $transaction['currency'];
-                                                                            $transExchangeRate = isset($transaction['exchange_rate']) && $transaction['exchange_rate'] > 0 
-                                                                                                ? floatval($transaction['exchange_rate']) 
-                                                                                                : 1.0;
-
-                                                                            // Conversion logic
-                                                                            if ($transCurrency === $baseCurrency) {
-                                                                                $convertedAmount = $amount;
-                                                                            } else {
-                                                                                if ($baseCurrency === 'AFS') {
-                                                                                    $convertedAmount = $amount * $transExchangeRate;
-                                                                                } else {
-                                                                                    $convertedAmount = $amount / $transExchangeRate;
-                                                                                }
-                                                                            }
-
-                                                                            $totalPaidInBase += $convertedAmount;
+                                                                    // Conversion logic
+                                                                    if ($transCurrency === $baseCurrency) {
+                                                                        $convertedAmount = $amount;
+                                                                    } else {
+                                                                        if ($baseCurrency === 'AFS') {
+                                                                            $convertedAmount = $amount * $transExchangeRate;
+                                                                        } else {
+                                                                            $convertedAmount = $amount / $transExchangeRate;
                                                                         }
                                                                     }
 
-                                                                    // Payment status icon
-                                                                    if ($totalPaidInBase <= 0) {
-                                                                        echo '<i class="fas fa-circle text-danger" title="No payment received"></i>';
-                                                                    } elseif ($totalPaidInBase < $soldAmount) {
-                                                                        $percentage = round(($totalPaidInBase / $soldAmount) * 100);
-                                                                        echo '<i class="fas fa-circle text-warning" style="color: #ffc107 !important;"
-                                                                            title="Partial payment: ' . $baseCurrency . ' ' . number_format($totalPaidInBase, 2) . ' / ' . 
-                                                                            $baseCurrency . ' ' . number_format($soldAmount, 2) . ' (' . $percentage . '%)"></i>';
-                                                                    } elseif (abs($totalPaidInBase - $soldAmount) < 0.01) {
-                                                                        echo '<i class="fas fa-circle text-success" title="Fully paid"></i>';
-                                                                    } else {
-                                                                        echo '<i class="fas fa-circle text-success"
-                                                                            title="Fully paid (overpaid by ' . $baseCurrency . ' ' . number_format($totalPaidInBase - $soldAmount, 2) . ')"></i>';
-                                                                    }
-                                                                } else {
-                                                                    echo '<i class="fas fa-minus text-muted" title="Not an agency client"></i>';
+                                                                    $totalPaidInBase += $convertedAmount;
                                                                 }
-                                                                ?>
-                                                            </td>
+                                                            }
 
-                                                            <td class="text-right">
-                                                                 <div class="dropdown">
-                                                                     <button class="btn btn-icon btn-outline-primary dropdown-toggle" type="button" data-toggle="dropdown">
-                                                                         <i class="feather icon-more-horizontal"></i>
-                                                                     </button>
-                                                                     <div class="dropdown-menu dropdown-menu-right">
-                                                                         <?php if ($isAgencyClient): ?>
-                                                                         <a class="dropdown-item" href="javascript:void(0)" onclick="manageTransactions(<?= $weight['id'] ?>)">
-                                                                             <i class="fa fa-credit-card mr-2"></i><?= __('manage_transactions') ?>
-                                                                         </a>
-                                                                         <?php endif; ?>
-                                                                         <a class="dropdown-item" href="javascript:void(0)" onclick="editWeight(<?= $weight['id'] ?>)">
-                                                                             <i class="feather icon-edit mr-2"></i><?= __('edit_weight') ?>
-                                                                         </a>
-                                                                         <div class="dropdown-divider"></div>
-                                                                         <a class="dropdown-item text-danger" href="javascript:void(0)" onclick="deleteWeight(<?= $weight['id'] ?>)">
-                                                                             <i class="feather icon-trash-2 mr-2"></i><?= __('delete_weight') ?>
-                                                                         </a>
-                                                                     </div>
-                                                                 </div>
-                                                             </td>
-                                                        </tr>
+                                                            if ($totalPaidInBase <= 0) {
+                                                                $paymentStatus = 'unpaid';
+                                                            } elseif ($totalPaidInBase < $soldAmount) {
+                                                                $paymentStatus = 'partial';
+                                                            } else {
+                                                                $paymentStatus = 'paid';
+                                                            }
+                                                        }
+                                                        ?>
+                                                        <div class="weight-card">
+                                                            <div class="weight-card-main status-<?= $paymentStatus ?>">
+                                                                <div class="weight-card-left">
+                                                                    <div>
+                                                                        <div class="weight-card-title">WEIGHT</div>
+                                                                        <div class="weight-card-id"><?= htmlspecialchars($weight['pnr']) ?></div>
+                                                                    </div>
+                                                                    <div class="weight-card-details">
+                                                                        <div class="weight-card-detail-item">
+                                                                            <span class="weight-card-detail-label">Passenger:</span>
+                                                                            <span><?= htmlspecialchars($weight['passenger_name']) ?></span>
+                                                                        </div>
+                                                                        <div class="weight-card-detail-item">
+                                                                            <span class="weight-card-detail-label">Sold To:</span>
+                                                                            <span><?= htmlspecialchars($weight['sold_to_name']) ?></span>
+                                                                        </div>
+                                                                        <div class="weight-card-detail-item">
+                                                                            <span class="weight-card-detail-label">Route:</span>
+                                                                            <span><?= htmlspecialchars($weight['origin']) ?> → <?= htmlspecialchars($weight['destination']) ?></span>
+                                                                        </div>
+                                                                        <div class="weight-card-detail-item">
+                                                                            <span class="weight-card-detail-label">Weight:</span>
+                                                                            <span><?= number_format($weight['weight'], 2) ?> kg</span>
+                                                                        </div>
+                                                                        <div class="weight-card-detail-item">
+                                                                            <span class="weight-card-detail-label">Base Price:</span>
+                                                                            <span><?= htmlspecialchars($weight['currency']) ?> <?= number_format($weight['base_price'], 2) ?></span>
+                                                                        </div>
+                                                                        <div class="weight-card-detail-item">
+                                                                            <span class="weight-card-detail-label">Profit:</span>
+                                                                            <span><?= htmlspecialchars($weight['currency']) ?> <?= number_format($weight['profit'], 2) ?></span>
+                                                                        </div>
+                                                                        <?php if (!empty($weight['remarks'])): ?>
+                                                                        <div class="weight-card-detail-item">
+                                                                            <span class="weight-card-detail-label">Remarks:</span>
+                                                                            <span><?= htmlspecialchars($weight['remarks']) ?></span>
+                                                                        </div>
+                                                                        <?php endif; ?>
+                                                                        <div class="weight-card-detail-item">
+                                                                            <span class="weight-card-detail-label">Created:</span>
+                                                                            <span><?= date('d M Y H:i', strtotime($weight['created_at'])) ?></span>
+                                                                        </div>
+                                                                    </div>
+                                                                </div>
+                                                                <div class="weight-card-right">
+                                                                    <div class="weight-card-price-box"><?= number_format($weight['sold_price'], 2) ?></div>
+                                                                    <div class="weight-card-price-meta">
+                                                                        <div class="weight-card-meta-dot"></div>
+                                                                        <div class="weight-card-meta-dot"></div>
+                                                                        <div class="weight-card-meta-dot"></div>
+                                                                        <span><?= htmlspecialchars($baseCurrency) ?></span>
+                                                                    </div>
+                                                                </div>
+                                                            </div>
+                                                            <div class="weight-card-stub">
+                                                                <div class="weight-card-actions" style="display: flex; flex-direction: column; gap: 6px;">
+                                                                    <?php if ($isAgencyClient && $canEdit): ?>
+                                                                    <button class="weight-card-action-btn" onclick="manageTransactions(<?= $weight['id'] ?>)" title="<?= __('manage_transactions') ?>" style="width: 100%;">
+                                                                        <i class="fa fa-credit-card"></i>
+                                                                    </button>
+                                                                    <?php endif; ?>
+                                                                    <?php if ($canEdit): ?>
+                                                                    <button class="weight-card-action-btn" onclick="editWeight(<?= $weight['id'] ?>)" title="<?= __('edit_weight') ?>" style="width: 100%;">
+                                                                        <i class="feather icon-edit"></i>
+                                                                    </button>
+                                                                    <button class="weight-card-action-btn" onclick="deleteWeight(<?= $weight['id'] ?>)" title="<?= __('delete_weight') ?>" style="width: 100%;">
+                                                                        <i class="feather icon-trash-2"></i>
+                                                                    </button>
+                                                                    <?php endif; ?>
+                                                                </div>
+                                                            </div>
+                                                        </div>
                                                         <?php endforeach; ?>
-                                                    </tbody>
-                                                </table>
-                                                </div>
+                                                        </div>
                                                 <!-- Pagination Controls -->
                                                 <div class="row mt-4 p-3">
                                                  <div class="col-md-12">

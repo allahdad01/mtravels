@@ -1,5 +1,4 @@
 <?php
-require_once '../../includes/conn.php';
 require_once '../../includes/db.php';
 
 // Start session if not already started
@@ -7,10 +6,12 @@ if (session_status() === PHP_SESSION_NONE) {
     session_start();
 }
 
-// Check if user is logged in
-if (!isset($_SESSION['user_id']) || $_SESSION['role'] !== 'admin') {
-    http_response_code(403);
-    echo json_encode(['error' => 'Unauthorized']);
+// Check if user is logged in with proper role
+$allowed_roles = ['admin', 'finance'];
+if (!isset($_SESSION['user_id']) || !in_array($_SESSION['role'], $allowed_roles)) {
+    // Log unauthorized access attempt
+    error_log("Unauthorized access attempt to dashboard: " . ($_SESSION['user_id'] ?? 'unknown') . " - Role: " . ($_SESSION['role'] ?? 'unknown') . " - IP: " . $_SERVER['REMOTE_ADDR']);
+    header('Location: ../login.php');
     exit();
 }
 
@@ -27,13 +28,12 @@ $branch_id = $_SESSION['branch_id'];
 
 try {
     // Get customer balances for all currencies
-    $stmt = $conn->prepare("SELECT currency, balance FROM customer_wallets WHERE customer_id = ? AND tenant_id = ? AND branch_id = ?");
-    $stmt->bind_param("iii", $customer_id, $tenant_id, $branch_id);
-    $stmt->execute();
-    $result = $stmt->get_result();
+    $stmt = $pdo->prepare("SELECT currency, balance FROM customer_wallets WHERE customer_id = ? AND tenant_id = ? AND branch_id = ?");
+    $stmt->execute([$customer_id, $tenant_id, $branch_id]);
+    $result = $stmt;
     
     $balances = [];
-    while ($row = $result->fetch_assoc()) {
+    while ($row = $result->fetch()) {
         $balances[$row['currency']] = $row['balance'];
     }
     

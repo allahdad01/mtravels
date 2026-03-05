@@ -74,43 +74,414 @@ $page_title = __('employee_details');
 include '../includes/header.php';
 ?>
 <style>
-    .page-header.card {
-        background: linear-gradient(135deg, #4099ff 0%, #2ed8b6 100%);
-        color: #ffffff;
-        border: none;
-        margin-bottom: 20px;
-        padding: 20px !important;
-    }
+@import url('https://fonts.googleapis.com/css2?family=Sora:wght@400;500;600;700;800&display=swap');
 
-    .page-header.card .row {
-        display: flex;
-        justify-content: space-between;
-        align-items: center;
-    }
+/* ─── tokens ─────────────────────────────────────────────────── */
+:root {
+  --bg:       #f1f5fb;
+  --surface:  #ffffff;
+  --border:   #e3e9f4;
+  --text:     #0d1321;
+  --muted:    #5a6482;
+  --faint:    #9aa3be;
+  --blue:     #4099ff;
+  --indigo:   #2ed8b6;
+  --cyan:     #00b4d8;
+  --green:    #00c896;
+  --amber:    #f9a825;
+  --rose:     #ff4d6d;
+  --violet:   #7c3aed;
+  --font:     'Sora', sans-serif;
+  --r:        18px;
+}
 
-    .page-header.card h5 {
-        color: #ffffff;
-        margin: 0;
-    }
+* { font-family: var(--font); box-sizing: border-box; }
 
-    .page-header.card .text-end {
-        text-align: right;
-    }
+/* override pcoded bg */
+.pcoded-content,
+.pcoded-inner-content { background: var(--bg) !important; }
 
-    .page-header.card .btn {
-        background: rgba(255,255,255,0.2);
-        color: #ffffff;
-        border: 1px solid rgba(255,255,255,0.3);
-    }
+/* ─── page layout ─────────────────────────────────────────────── */
+.ed-page { padding: 24px 28px 40px; }
 
-    .page-header.card .btn:hover {
-        background: rgba(255,255,255,0.3);
-        border-color: rgba(255,255,255,0.5);
-    }
+/* ─── TOP BANNER ─────────────────────────────────────────────── */
+.ed-banner {
+  position: relative;
+  border-radius: 22px;
+  margin-bottom: 22px;
+  background: linear-gradient(135deg, #4099ff 0%, #2ed8b6 100%);
+  padding: 30px 36px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 24px;
+  flex-wrap: wrap;
+  min-height: 120px;
+}
+
+/* decorative circles */
+.ed-banner::before,
+.ed-banner::after {
+  content: '';
+  position: absolute;
+  border-radius: 50%;
+  pointer-events: none;
+}
+.ed-banner::before {
+  width: 340px; height: 340px;
+  background: radial-gradient(circle, rgba(108,92,231,.25) 0%, transparent 70%);
+  top: -100px; right: 80px;
+}
+.ed-banner::after {
+  width: 180px; height: 180px;
+  background: radial-gradient(circle, rgba(79,110,247,.3) 0%, transparent 70%);
+  bottom: -60px; right: 30%;
+}
+
+.ed-banner-dot-grid {
+  position: absolute;
+  inset: 0;
+  background-image: radial-gradient(rgba(255,255,255,.06) 1px, transparent 1px);
+  background-size: 22px 22px;
+  pointer-events: none;
+}
+
+.ed-banner-left { position: relative; z-index: 1; }
+.ed-banner-tag {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  background: rgba(255,255,255,.1);
+  border: 1px solid rgba(255,255,255,.18);
+  color: rgba(255,255,255,.75);
+  font-size: .65rem;
+  font-weight: 700;
+  letter-spacing: .12em;
+  text-transform: uppercase;
+  padding: 4px 11px;
+  border-radius: 20px;
+  margin-bottom: 12px;
+}
+.ed-banner-tag i { font-size: .7rem; }
+
+.ed-banner-h1 {
+  font-size: 1.7rem;
+  font-weight: 800;
+  color: #fff;
+  margin: 0 0 4px;
+  letter-spacing: -.03em;
+  line-height: 1.15;
+}
+.ed-banner-sub {
+  font-size: .78rem;
+  color: rgba(255,255,255,.5);
+  margin: 0;
+  font-weight: 500;
+}
+
+/* action buttons */
+.ed-banner-right {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  position: relative;
+  z-index: 1;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+}
+
+.ed-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  padding: 10px 18px;
+  background: rgba(255,255,255,.1);
+  color: #fff;
+  border: 1px solid rgba(255,255,255,.15);
+  border-radius: 10px;
+  font-size: .83rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all .2s;
+  text-decoration: none;
+  font-family: var(--font);
+}
+
+.ed-btn:hover {
+  background: rgba(255,255,255,.17);
+  border-color: rgba(255,255,255,.25);
+  color: #fff;
+}
+
+.ed-btn i { font-size: .8rem; }
+
+/* ─── CARD STYLING ─────────────────────────────────────────────── */
+.ed-card {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 16px;
+  overflow: hidden;
+  box-shadow: 0 4px 24px rgba(13,19,33,.07);
+  margin-bottom: 20px;
+}
+
+.ed-card-header {
+  padding: 20px 24px;
+  border-bottom: 1px solid var(--border);
+  background: linear-gradient(180deg, rgba(64,153,255,.04) 0%, transparent 100%);
+}
+
+.ed-card-header h5 {
+  margin: 0;
+  font-size: 1.05rem;
+  font-weight: 700;
+  color: var(--text);
+  font-family: var(--font);
+}
+
+.ed-card-body {
+  padding: 24px;
+}
+
+/* ─── PROFILE SECTION ─────────────────────────────────────────── */
+.ed-profile-avatar {
+  display: flex;
+  justify-content: center;
+  margin-bottom: 20px;
+}
+
+.ed-profile-avatar img {
+  width: 140px;
+  height: 140px;
+  border-radius: 18px;
+  object-fit: cover;
+  border: 3px solid var(--blue);
+  box-shadow: 0 8px 32px rgba(64,153,255,.25);
+}
+
+.ed-profile-name {
+  font-size: 1.35rem;
+  font-weight: 800;
+  color: var(--text);
+  text-align: center;
+  margin: 0;
+  font-family: var(--font);
+}
+
+.ed-profile-email {
+  font-size: .85rem;
+  color: var(--muted);
+  text-align: center;
+  margin: 4px 0 16px;
+}
+
+.ed-profile-badges {
+  display: flex;
+  justify-content: center;
+  gap: 8px;
+  flex-wrap: wrap;
+  margin-bottom: 20px;
+}
+
+.ed-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  padding: 6px 14px;
+  border-radius: 20px;
+  font-size: .75rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: .05em;
+}
+
+.ed-badge-active {
+  background: rgba(0,200,150,.15);
+  color: var(--green);
+  border: 1px solid rgba(0,200,150,.3);
+}
+
+.ed-badge-terminated {
+  background: rgba(255,77,109,.15);
+  color: var(--rose);
+  border: 1px solid rgba(255,77,109,.3);
+}
+
+.ed-badge-role {
+  background: rgba(64,153,255,.15);
+  color: var(--blue);
+  border: 1px solid rgba(64,153,255,.3);
+}
+
+/* ─── INFO LAYOUT ─────────────────────────────────────────────– */
+.ed-info-row {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+  gap: 20px;
+  margin-bottom: 20px;
+}
+
+.ed-info-group {
+  display: flex;
+  flex-direction: column;
+}
+
+.ed-info-label {
+  font-size: .75rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: .1em;
+  color: var(--faint);
+  margin-bottom: 6px;
+}
+
+.ed-info-value {
+  font-size: .95rem;
+  font-weight: 600;
+  color: var(--text);
+  font-family: var(--font);
+}
+
+.ed-info-value.muted {
+  color: var(--muted);
+}
+
+/* ─── ACTION BUTTONS ───────────────────────────────────────────– */
+.ed-actions {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));
+  gap: 10px;
+}
+
+.ed-action-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  padding: 11px 16px;
+  border: 1.5px solid var(--border);
+  border-radius: 10px;
+  background: var(--surface);
+  color: var(--text);
+  cursor: pointer;
+  transition: all .15s;
+  font-size: .82rem;
+  font-weight: 600;
+  text-decoration: none;
+  font-family: var(--font);
+}
+
+.ed-action-btn i { font-size: .8rem; }
+
+.ed-action-btn-primary {
+  border-color: var(--blue);
+  color: var(--blue);
+  background: rgba(64,153,255,.08);
+}
+
+.ed-action-btn-primary:hover {
+  background: var(--blue);
+  color: #fff;
+}
+
+.ed-action-btn-danger {
+  border-color: var(--rose);
+  color: var(--rose);
+  background: rgba(255,77,109,.08);
+}
+
+.ed-action-btn-danger:hover {
+  background: var(--rose);
+  color: #fff;
+}
+
+.ed-action-btn-success {
+  border-color: var(--green);
+  color: var(--green);
+  background: rgba(0,200,150,.08);
+}
+
+.ed-action-btn-success:hover {
+  background: var(--green);
+  color: #fff;
+}
+
+/* ─── TIMELINE ─────────────────────────────────────────────────– */
+.ed-timeline {
+  position: relative;
+  padding-left: 30px;
+}
+
+.ed-timeline-item {
+  position: relative;
+  margin-bottom: 20px;
+  padding-bottom: 20px;
+}
+
+.ed-timeline-item:last-child {
+  margin-bottom: 0;
+  padding-bottom: 0;
+}
+
+.ed-timeline-item:not(:last-child)::after {
+  content: '';
+  position: absolute;
+  left: -20px;
+  top: 20px;
+  bottom: -20px;
+  width: 2px;
+  background: var(--border);
+}
+
+.ed-timeline-marker {
+  position: absolute;
+  left: -26px;
+  top: 4px;
+  width: 12px;
+  height: 12px;
+  border-radius: 50%;
+  background: var(--blue);
+  border: 2px solid var(--surface);
+  box-shadow: 0 0 0 2px var(--blue);
+}
+
+.ed-timeline-content {
+  background: var(--bg);
+  padding: 14px 16px;
+  border-radius: 10px;
+  border-left: 3px solid var(--blue);
+}
+
+.ed-timeline-title {
+  font-size: .9rem;
+  font-weight: 700;
+  color: var(--text);
+  margin: 0 0 4px;
+  text-transform: capitalize;
+}
+
+.ed-timeline-by {
+  font-size: .8rem;
+  color: var(--muted);
+  margin: 0 0 4px;
+}
+
+.ed-timeline-time {
+  font-size: .75rem;
+  color: var(--faint);
+  margin: 0;
+}
+
+@media (max-width: 768px) {
+  .ed-page { padding: 16px; }
+  .ed-banner { padding: 20px 24px; min-height: auto; }
+  .ed-card-body { padding: 16px; }
+  .ed-info-row { grid-template-columns: 1fr; }
+}
 </style>
    
-    <!-- [ Main Content ] start -->
-    <div class="pcoded-main-container">
+<!-- [ Main Content ] start -->
+   <div class="pcoded-main-container">
         <div class="pcoded-wrapper">
             <div class="pcoded-content">
                 <div class="pcoded-inner-content">
@@ -118,227 +489,216 @@ include '../includes/header.php';
                         <div class="page-wrapper">
                             <!-- [ Main Content ] start -->
                             <div class="main-content">
-                                <div class="page-header card">
-                                    <div class="row align-items-center">
-                                        <div class="col-md-6">
-                                            <h5 class="mb-0"><i class="feather icon-user mr-2"></i><?php echo __('employee_details'); ?></h5>
-                                            <p class="mb-0 mt-1" style="font-size: 14px; opacity: 0.9;"><?php echo __('view_complete_employee_profile_and_information'); ?></p>
-                                        </div>
-                                        <div class="col-md-6 text-end">
-                                            <a href="edit_employee.php?id=<?php echo $employee['id']; ?>" class="btn btn-primary btn-sm">
-                                                <i class="feather icon-edit mr-1"></i><?php echo __('edit_employee'); ?>
-                                            </a>
-                                            <a href="employee_management.php" class="btn btn-outline-secondary btn-sm">
-                                                <i class="feather icon-arrow-left mr-1"></i><?php echo __('back_to_employee_management'); ?>
-                                            </a>
-                                        </div>
-                                    </div>
-                                </div>
-
-                                <div class="row">
-                                    <!-- Employee Profile Card -->
-                                    <div class="col-md-4">
-                                        <div class="card">
-                                            <div class="card-body text-center">
-                                                <img src="<?php echo htmlspecialchars($employee['profile_pic'] ?: '../assets/images/user/avatar-1.jpg'); ?>"
-                                                    class="rounded-circle mb-3" style="width: 120px; height: 120px; object-fit: cover;">
-                                                <h4><?php echo htmlspecialchars($employee['name']); ?></h4>
-                                                <p class="text-muted"><?php echo htmlspecialchars($employee['email']); ?></p>
-                                                <div class="mb-3">
-                                                    <?php if ($employee['fired']): ?>
-                                                        <span class="badge-danger badge-lg"><?php echo __('terminated'); ?></span>
-                                                    <?php else: ?>
-                                                        <span class="badge-success badge-lg"><?php echo __('active'); ?></span>
-                                                    <?php endif; ?>
+                                <div class="ed-page">
+                                    <!-- Banner -->
+                                    <div class="ed-banner">
+                                        <div class="ed-banner-dot-grid"></div>
+                                            <div class="ed-banner-left">
+                                                <div class="ed-banner-tag">
+                                                    <i class="feather icon-user"></i>
+                                                    <?php echo __('employee_details'); ?>
                                                 </div>
-                                                <div class="mb-2">
-                                                    <span class="badge-primary"><?php echo htmlspecialchars(ucfirst($employee['role'])); ?></span>
-                                                </div>
+                                                <h1 class="ed-banner-h1"><?php echo htmlspecialchars($employee['name']); ?></h1>
+                                                <p class="ed-banner-sub"><?php echo __('view_complete_employee_profile_and_information'); ?></p>
+                                            </div>
+                                            <div class="ed-banner-right">
+                                                <a href="edit_employee.php?id=<?php echo $employee['id']; ?>" class="ed-btn">
+                                                    <i class="feather icon-edit"></i>
+                                                    <?php echo __('edit_employee'); ?>
+                                                </a>
+                                                <a href="employee_management.php" class="ed-btn">
+                                                    <i class="feather icon-arrow-left"></i>
+                                                    <?php echo __('back'); ?>
+                                                </a>
                                             </div>
                                         </div>
 
-                                        <!-- Quick Actions -->
-                                        <div class="card">
-                                            <div class="card-header">
-                                                <h5><?php echo __('quick_actions'); ?></h5>
-                                            </div>
-                                            <div class="card-body">
-                                                <div class="d-grid gap-2">
-                                                    <a href="edit_employee.php?id=<?php echo $employee['id']; ?>" class="btn btn-outline-primary">
-                                                        <i class="feather icon-edit mr-1"></i><?php echo __('edit_information'); ?>
-                                                    </a>
-                                                    <?php if (!$employee['fired']): ?>
-                                                        <button type="button" class="btn btn-outline-danger"
-                                                                onclick="terminateEmployee(<?php echo $employee['id']; ?>, '<?php echo htmlspecialchars($employee['name']); ?>')">
-                                                            <i class="feather icon-user-x mr-1"></i><?php echo __('terminate_employee'); ?>
-                                                        </button>
-                                                    <?php else: ?>
-                                                        <button type="button" class="btn btn-outline-success"
-                                                                onclick="reinstateEmployee(<?php echo $employee['id']; ?>, '<?php echo htmlspecialchars($employee['name']); ?>')">
-                                                            <i class="feather icon-user-check mr-1"></i><?php echo __('reinstate_employee'); ?>
-                                                        </button>
-                                                    <?php endif; ?>
-                                                </div>
-                                            </div>
-                                        </div>
-                                    </div>
-
-                                    <!-- Employee Information -->
-                                    <div class="col-md-8">
-                                        <!-- Basic Information -->
-                                        <div class="card mb-4">
-                                            <div class="card-header">
-                                                <h5><?php echo __('basic_information'); ?></h5>
-                                            </div>
-                                            <div class="card-body">
-                                                <div class="row">
-                                                    <div class="col-md-6">
-                                                        <div class="form-group">
-                                                            <label><?php echo __('full_name'); ?></label>
-                                                            <p class="form-control-plaintext"><?php echo htmlspecialchars($employee['name']); ?></p>
+                                        <div class="row">
+                                            <!-- Employee Profile Card -->
+                                            <div class="col-lg-4">
+                                                <div class="ed-card">
+                                                    <div class="ed-card-body">
+                                                        <div class="ed-profile-avatar">
+                                                            <img src="<?php echo htmlspecialchars($employee['profile_pic'] ?: '../assets/images/user/avatar-1.jpg'); ?>" alt="">
                                                         </div>
-                                                    </div>
-                                                    <div class="col-md-6">
-                                                        <div class="form-group">
-                                                            <label><?php echo __('email'); ?></label>
-                                                            <p class="form-control-plaintext"><?php echo htmlspecialchars($employee['email']); ?></p>
-                                                        </div>
-                                                    </div>
-                                                    <div class="col-md-6">
-                                                        <div class="form-group">
-                                                            <label><?php echo __('phone'); ?></label>
-                                                            <p class="form-control-plaintext"><?php echo htmlspecialchars($employee['phone'] ?: '-'); ?></p>
-                                                        </div>
-                                                    </div>
-                                                    <div class="col-md-6">
-                                                        <div class="form-group">
-                                                            <label><?php echo __('role'); ?></label>
-                                                            <p class="form-control-plaintext"><?php echo htmlspecialchars(ucfirst($employee['role'])); ?></p>
-                                                        </div>
-                                                    </div>
-                                                    <div class="col-md-6">
-                                                        <div class="form-group">
-                                                            <label><?php echo __('hire_date'); ?></label>
-                                                            <p class="form-control-plaintext">
-                                                                <?php echo $employee['hire_date'] ? date('F d, Y', strtotime($employee['hire_date'])) : '-'; ?>
-                                                            </p>
-                                                        </div>
-                                                    </div>
-                                                    <div class="col-md-6">
-                                                        <div class="form-group">
-                                                            <label><?php echo __('account_created'); ?></label>
-                                                            <p class="form-control-plaintext"><?php echo date('F d, Y', strtotime($employee['created_at'])); ?></p>
+                                                        <h3 class="ed-profile-name"><?php echo htmlspecialchars($employee['name']); ?></h3>
+                                                        <p class="ed-profile-email"><?php echo htmlspecialchars($employee['email']); ?></p>
+                                                        <div class="ed-profile-badges">
+                                                            <?php if ($employee['fired']): ?>
+                                                                <span class="ed-badge ed-badge-terminated"><i class="feather icon-user-x"></i><?php echo __('terminated'); ?></span>
+                                                            <?php else: ?>
+                                                                <span class="ed-badge ed-badge-active"><i class="feather icon-user-check"></i><?php echo __('active'); ?></span>
+                                                            <?php endif; ?>
+                                                            <span class="ed-badge ed-badge-role"><i class="feather icon-briefcase"></i><?php echo htmlspecialchars(ucfirst($employee['role'])); ?></span>
                                                         </div>
                                                     </div>
                                                 </div>
 
-                                                <div class="form-group">
-                                                    <label><?php echo __('address'); ?></label>
-                                                    <p class="form-control-plaintext"><?php echo htmlspecialchars($employee['address'] ?: '-'); ?></p>
+                                                <!-- Quick Actions -->
+                                                <div class="ed-card">
+                                                    <div class="ed-card-header">
+                                                        <h5><?php echo __('quick_actions'); ?></h5>
+                                                    </div>
+                                                    <div class="ed-card-body">
+                                                        <div class="ed-actions">
+                                                            <a href="edit_employee.php?id=<?php echo $employee['id']; ?>" class="ed-action-btn ed-action-btn-primary">
+                                                                <i class="feather icon-edit"></i><?php echo __('edit'); ?>
+                                                            </a>
+                                                            <?php if (!$employee['fired']): ?>
+                                                                <button type="button" class="ed-action-btn ed-action-btn-danger"
+                                                                        onclick="terminateEmployee(<?php echo $employee['id']; ?>, '<?php echo htmlspecialchars($employee['name']); ?>')">
+                                                                    <i class="feather icon-user-x"></i><?php echo __('terminate'); ?>
+                                                                </button>
+                                                            <?php else: ?>
+                                                                <button type="button" class="ed-action-btn ed-action-btn-success"
+                                                                        onclick="reinstateEmployee(<?php echo $employee['id']; ?>, '<?php echo htmlspecialchars($employee['name']); ?>')">
+                                                                    <i class="feather icon-user-check"></i><?php echo __('reinstate'); ?>
+                                                                </button>
+                                                            <?php endif; ?>
+                                                        </div>
+                                                    </div>
                                                 </div>
                                             </div>
-                                        </div>
 
-                                        <!-- Salary Information -->
-                                        <div class="card mb-4">
-                                            <div class="card-header">
-                                                <h5><?php echo __('salary_information'); ?></h5>
-                                            </div>
-                                            <div class="card-body">
-                                                <?php if ($employee['base_salary']): ?>
-                                                    <div class="row">
-                                                        <div class="col-md-6">
-                                                            <div class="form-group">
-                                                                <label><?php echo __('base_salary'); ?></label>
-                                                                <p class="form-control-plaintext">
-                                                                    <strong><?php echo number_format($employee['base_salary'], 2); ?> <?php echo htmlspecialchars($employee['salary_currency']); ?></strong>
-                                                                </p>
+                                            <!-- Employee Information -->
+                                            <div class="col-lg-8">
+                                                <!-- Basic Information -->
+                                                <div class="ed-card">
+                                                    <div class="ed-card-header">
+                                                        <h5><?php echo __('basic_information'); ?></h5>
+                                                    </div>
+                                                    <div class="ed-card-body">
+                                                        <div class="ed-info-row">
+                                                            <div class="ed-info-group">
+                                                                <span class="ed-info-label"><?php echo __('full_name'); ?></span>
+                                                                <span class="ed-info-value"><?php echo htmlspecialchars($employee['name']); ?></span>
+                                                            </div>
+                                                            <div class="ed-info-group">
+                                                                <span class="ed-info-label"><?php echo __('email'); ?></span>
+                                                                <span class="ed-info-value"><?php echo htmlspecialchars($employee['email']); ?></span>
+                                                            </div>
+                                                            <div class="ed-info-group">
+                                                                <span class="ed-info-label"><?php echo __('phone'); ?></span>
+                                                                <span class="ed-info-value muted"><?php echo htmlspecialchars($employee['phone'] ?: __('not_provided')); ?></span>
+                                                            </div>
+                                                            <div class="ed-info-group">
+                                                                <span class="ed-info-label"><?php echo __('role'); ?></span>
+                                                                <span class="ed-info-value"><?php echo htmlspecialchars(ucfirst($employee['role'])); ?></span>
+                                                            </div>
+                                                            <div class="ed-info-group">
+                                                                <span class="ed-info-label"><?php echo __('hire_date'); ?></span>
+                                                                <span class="ed-info-value"><?php echo $employee['hire_date'] ? date('M d, Y', strtotime($employee['hire_date'])) : __('not_provided'); ?></span>
+                                                            </div>
+                                                            <div class="ed-info-group">
+                                                                <span class="ed-info-label"><?php echo __('account_created'); ?></span>
+                                                                <span class="ed-info-value"><?php echo date('M d, Y', strtotime($employee['created_at'])); ?></span>
                                                             </div>
                                                         </div>
-                                                        <div class="col-md-6">
-                                                            <div class="form-group">
-                                                                <label><?php echo __('salary_status'); ?></label>
-                                                                <p class="form-control-plaintext">
-                                                                    <span class="badge-<?php echo $employee['salary_status'] === 'active' ? 'success' : 'warning'; ?>">
-                                                                        <?php echo ucfirst($employee['salary_status']); ?>
+                                                        <div style="margin-top: 20px; padding-top: 20px; border-top: 1px solid var(--border);">
+                                                            <div class="ed-info-group">
+                                                                <span class="ed-info-label"><?php echo __('address'); ?></span>
+                                                                <span class="ed-info-value muted"><?php echo htmlspecialchars($employee['address'] ?: __('not_provided')); ?></span>
+                                                            </div>
+                                                        </div>
+                                                    </div>
+                                                </div>
+
+                                                <!-- Salary Information -->
+                                                <div class="ed-card">
+                                                    <div class="ed-card-header">
+                                                        <h5><?php echo __('salary_information'); ?></h5>
+                                                    </div>
+                                                    <div class="ed-card-body">
+                                                        <?php if ($employee['base_salary']): ?>
+                                                            <div class="ed-info-row">
+                                                                <div class="ed-info-group">
+                                                                    <span class="ed-info-label"><?php echo __('base_salary'); ?></span>
+                                                                    <span class="ed-info-value">
+                                                                        <strong><?php echo number_format($employee['base_salary'], 2); ?> <?php echo htmlspecialchars($employee['salary_currency']); ?></strong>
                                                                     </span>
-                                                                </p>
-                                                            </div>
-                                                        </div>
-                                                    </div>
-                                                <?php else: ?>
-                                                    <div class="alert alert-info">
-                                                        <i class="feather icon-info mr-2"></i><?php echo __('no_salary_information_available'); ?>
-                                                    </div>
-                                                <?php endif; ?>
-                                            </div>
-                                        </div>
-
-                                        <!-- Employment Status -->
-                                        <?php if ($employee['fired']): ?>
-                                        <div class="card mb-4">
-                                            <div class="card-header">
-                                                <h5><?php echo __('termination_information'); ?></h5>
-                                            </div>
-                                            <div class="card-body">
-                                                <div class="row">
-                                                    <div class="col-md-6">
-                                                        <div class="form-group">
-                                                            <label><?php echo __('termination_date'); ?></label>
-                                                            <p class="form-control-plaintext">
-                                                                <?php echo $employee['fired_at'] ? date('F d, Y', strtotime($employee['fired_at'])) : '-'; ?>
-                                                            </p>
-                                                        </div>
-                                                    </div>
-                                                    <?php if ($termination_history): ?>
-                                                    <div class="col-md-6">
-                                                        <div class="form-group">
-                                                            <label><?php echo __('terminated_by'); ?></label>
-                                                            <p class="form-control-plaintext">
-                                                                <?php
-                                                                // Get terminator name
-                                                                $terminator_stmt = $pdo->prepare("SELECT name FROM users WHERE id = ?");
-                                                                $terminator_stmt->execute([$termination_history['terminated_by']]);
-                                                                $terminator = $terminator_stmt->fetch(PDO::FETCH_ASSOC);
-                                                                echo htmlspecialchars($terminator['name'] ?? 'Unknown');
-                                                                ?>
-                                                            </p>
-                                                        </div>
-                                                    </div>
-                                                    <div class="col-md-12">
-                                                        <div class="form-group">
-                                                            <label><?php echo __('termination_reason'); ?></label>
-                                                            <p class="form-control-plaintext"><?php echo htmlspecialchars($termination_history['termination_reason']); ?></p>
-                                                        </div>
-                                                    </div>
-                                                    <?php endif; ?>
-                                                </div>
-                                            </div>
-                                        </div>
-                                        <?php endif; ?>
-
-                                        <!-- Activity Log -->
-                                        <div class="card">
-                                            <div class="card-header">
-                                                <h5><?php echo __('recent_activity'); ?></h5>
-                                            </div>
-                                            <div class="card-body">
-                                                <?php if (empty($activities)): ?>
-                                                    <p class="text-muted"><?php echo __('no_recent_activity'); ?></p>
-                                                <?php else: ?>
-                                                    <div class="timeline">
-                                                        <?php foreach ($activities as $activity): ?>
-                                                            <div class="timeline-item">
-                                                                <div class="timeline-marker bg-primary"></div>
-                                                                <div class="timeline-content">
-                                                                    <h6><?php echo htmlspecialchars($activity['action']); ?></h6>
-                                                                    <p><?php echo htmlspecialchars($activity['performed_by_name'] ?? 'System'); ?></p>
-                                                                    <small class="text-muted"><?php echo date('M d, Y H:i', strtotime($activity['created_at'])); ?></small>
+                                                                </div>
+                                                                <div class="ed-info-group">
+                                                                    <span class="ed-info-label"><?php echo __('salary_status'); ?></span>
+                                                                    <span class="ed-info-value">
+                                                                        <span class="ed-badge <?php echo $employee['salary_status'] === 'active' ? 'ed-badge-active' : 'ed-badge-role'; ?>">
+                                                                            <?php echo ucfirst($employee['salary_status']); ?>
+                                                                        </span>
+                                                                    </span>
                                                                 </div>
                                                             </div>
-                                                        <?php endforeach; ?>
+                                                        <?php else: ?>
+                                                            <div style="padding: 16px; background: rgba(0,180,216,.08); border: 1px solid rgba(0,180,216,.3); border-radius: 10px; color: var(--cyan);">
+                                                                <i class="feather icon-info" style="margin-right: 6px;"></i><?php echo __('no_salary_information_available'); ?>
+                                                            </div>
+                                                        <?php endif; ?>
                                                     </div>
+                                                </div>
+
+                                                <!-- Employment Status -->
+                                                <?php if ($employee['fired']): ?>
+                                                <div class="ed-card">
+                                                    <div class="ed-card-header">
+                                                        <h5><?php echo __('termination_information'); ?></h5>
+                                                    </div>
+                                                    <div class="ed-card-body">
+                                                        <div class="ed-info-row">
+                                                            <div class="ed-info-group">
+                                                                <span class="ed-info-label"><?php echo __('termination_date'); ?></span>
+                                                                <span class="ed-info-value">
+                                                                    <?php echo $employee['fired_at'] ? date('M d, Y', strtotime($employee['fired_at'])) : __('not_provided'); ?>
+                                                                </span>
+                                                            </div>
+                                                            <?php if ($termination_history): ?>
+                                                            <div class="ed-info-group">
+                                                                <span class="ed-info-label"><?php echo __('terminated_by'); ?></span>
+                                                                <span class="ed-info-value">
+                                                                    <?php
+                                                                    // Get terminator name
+                                                                    $terminator_stmt = $pdo->prepare("SELECT name FROM users WHERE id = ?");
+                                                                    $terminator_stmt->execute([$termination_history['terminated_by']]);
+                                                                    $terminator = $terminator_stmt->fetch(PDO::FETCH_ASSOC);
+                                                                    echo htmlspecialchars($terminator['name'] ?? 'Unknown');
+                                                                    ?>
+                                                                </span>
+                                                            </div>
+                                                            <?php endif; ?>
+                                                        </div>
+                                                        <?php if ($termination_history): ?>
+                                                        <div style="margin-top: 20px; padding-top: 20px; border-top: 1px solid var(--border);">
+                                                            <div class="ed-info-group">
+                                                                <span class="ed-info-label"><?php echo __('termination_reason'); ?></span>
+                                                                <span class="ed-info-value"><?php echo htmlspecialchars($termination_history['termination_reason']); ?></span>
+                                                            </div>
+                                                        </div>
+                                                        <?php endif; ?>
+                                                    </div>
+                                                </div>
                                                 <?php endif; ?>
+
+                                                <!-- Activity Log -->
+                                                <div class="ed-card">
+                                                    <div class="ed-card-header">
+                                                        <h5><?php echo __('recent_activity'); ?></h5>
+                                                    </div>
+                                                    <div class="ed-card-body">
+                                                        <?php if (empty($activities)): ?>
+                                                            <p class="ed-info-value muted" style="text-align: center;"><?php echo __('no_recent_activity'); ?></p>
+                                                        <?php else: ?>
+                                                            <div class="ed-timeline">
+                                                                <?php foreach ($activities as $activity): ?>
+                                                                    <div class="ed-timeline-item">
+                                                                        <div class="ed-timeline-marker"></div>
+                                                                        <div class="ed-timeline-content">
+                                                                            <h6 class="ed-timeline-title"><?php echo htmlspecialchars($activity['action']); ?></h6>
+                                                                            <p class="ed-timeline-by">By <?php echo htmlspecialchars($activity['performed_by_name'] ?? 'System'); ?></p>
+                                                                            <p class="ed-timeline-time"><?php echo date('M d, Y H:i', strtotime($activity['created_at'])); ?></p>
+                                                                        </div>
+                                                                    </div>
+                                                                <?php endforeach; ?>
+                                                            </div>
+                                                        <?php endif; ?>
+                                                    </div>
+                                                </div>
                                             </div>
                                         </div>
                                     </div>
@@ -348,28 +708,26 @@ include '../includes/header.php';
                             <!-- Termination Modal -->
                             <div class="modal fade" id="terminationModal" tabindex="-1">
                                 <div class="modal-dialog">
-                                    <div class="modal-content">
-                                        <div class="modal-header">
-                                            <h5 class="modal-title"><?php echo __('terminate_employee'); ?></h5>
-                                            <button type="button" class="close" data-dismiss="modal">
-                                                <span>&times;</span>
-                                            </button>
+                                    <div class="modal-content" style="border-radius: 16px; overflow: hidden; border: none; box-shadow: 0 32px 80px rgba(13,19,33,.22);">
+                                        <div class="modal-header" style="background: linear-gradient(135deg, #4099ff, #2ed8b6); border: none; padding: 22px 26px;">
+                                            <h5 class="modal-title" style="color: #fff; font-weight: 800; margin: 0; font-family: 'Sora', sans-serif; font-size: 1rem;"><?php echo __('terminate_employee'); ?></h5>
+                                            <button type="button" class="close" data-dismiss="modal" style="color: #fff; opacity: .8;"><span>&times;</span></button>
                                         </div>
                                         <form id="terminationForm">
-                                            <div class="modal-body">
+                                            <div class="modal-body" style="padding: 26px;">
                                                 <input type="hidden" id="terminateEmployeeId" name="employee_id">
                                                 <div class="form-group">
-                                                    <label><?php echo __('employee_name'); ?></label>
-                                                    <p id="terminateEmployeeName" class="font-weight-bold"></p>
+                                                    <label style="font-size: .65rem; font-weight: 800; text-transform: uppercase; letter-spacing: .12em; color: var(--faint);"><?php echo __('employee_name'); ?></label>
+                                                    <p id="terminateEmployeeName" style="font-weight: 700; font-size: .95rem; margin: 5px 0 0; color: var(--text); font-family: 'Sora', sans-serif;"></p>
                                                 </div>
-                                                <div class="form-group">
-                                                    <label for="termination_reason"><?php echo __('termination_reason'); ?></label>
-                                                    <textarea class="form-control" id="termination_reason" name="reason" rows="3" required></textarea>
+                                                <div class="form-group mb-0">
+                                                    <label for="termination_reason" style="font-size: .65rem; font-weight: 800; text-transform: uppercase; letter-spacing: .12em; color: var(--faint);"><?php echo __('termination_reason'); ?></label>
+                                                    <textarea class="form-control" id="termination_reason" name="reason" rows="3" required style="border-radius: 10px; border: 1.5px solid var(--border); margin-top: 6px; font-size: .84rem; resize: none; font-family: 'Sora', sans-serif;"></textarea>
                                                 </div>
                                             </div>
-                                            <div class="modal-footer">
-                                                <button type="button" class="btn btn-secondary" data-dismiss="modal"><?php echo __('cancel'); ?></button>
-                                                <button type="submit" class="btn btn-danger"><?php echo __('terminate_employee'); ?></button>
+                                            <div class="modal-footer" style="border-top: 1px solid var(--border); padding: 14px 26px; gap: 8px;">
+                                                <button type="button" class="btn btn-secondary" data-dismiss="modal" style="border-radius: 9px; font-size: .83rem; font-family: 'Sora', sans-serif;"><?php echo __('cancel'); ?></button>
+                                                <button type="submit" class="btn btn-danger" style="border-radius: 9px; background: #ff4d6d; border-color: #ff4d6d; font-weight: 700; font-size: .83rem; font-family: 'Sora', sans-serif;"><?php echo __('terminate_employee'); ?></button>
                                             </div>
                                         </form>
                                     </div>
@@ -436,48 +794,4 @@ $('#terminationForm').on('submit', function(e) {
     });
 });
 </script>
-
-<style>
-.timeline {
-    position: relative;
-    padding-left: 30px;
-}
-
-.timeline-item {
-    position: relative;
-    margin-bottom: 20px;
-}
-
-.timeline-marker {
-    position: absolute;
-    left: -35px;
-    top: 5px;
-    width: 12px;
-    height: 12px;
-    border-radius: 50%;
-}
-
-.timeline-content {
-    background: #f8f9fa;
-    padding: 15px;
-    border-radius: 8px;
-    border-left: 3px solid #007bff;
-}
-
-.timeline-content h6 {
-    margin-bottom: 5px;
-    color: #495057;
-}
-
-.timeline-content p {
-    margin-bottom: 5px;
-    color: #6c757d;
-}
-
-.badge-lg {
-    font-size: 0.875rem;
-    padding: 0.5rem 0.75rem;
-}
-</style>
-
 <?php include '../includes/admin_footer.php'; ?>

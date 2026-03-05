@@ -287,17 +287,41 @@
 
     /* Wealth distribution summary */
     .wealth-distribution-summary {
-        padding: 1rem 0.75rem;
+        padding: 1.5rem 1rem !important;
     }
 
     .wealth-distribution-summary .d-flex {
         flex-direction: column;
         align-items: flex-start;
-        gap: 0.25rem;
+        gap: 0.5rem;
     }
 
     .wealth-distribution-summary .d-flex span:first-child {
-        font-weight: bold;
+        font-weight: 500;
+        font-size: 0.85rem;
+    }
+
+    .wealth-distribution-summary .d-flex span:last-child {
+        font-weight: 600;
+        font-size: 1rem;
+    }
+
+    .financial-chart-container {
+        height: 350px !important;
+    }
+
+    .wealth-header {
+        flex-direction: column;
+        align-items: flex-start;
+        gap: 1rem;
+    }
+
+    .wealth-distribution-title {
+        font-size: 12px;
+    }
+
+    .wealth-date-badge {
+        align-self: flex-end;
     }
 
     /* Rank badges */

@@ -41,7 +41,7 @@ try {
      $requiredFields = [
          'supplier', 'soldto', 'paidto', 'phone', 'title', 'gender',
          'passengerName', 'passNum', 'country', 'visaType', 'receiveDate',
-         'appliedDate', 'issuedDate', 'base', 'sold', 'curr', 'description'
+         'appliedDate', 'base', 'sold', 'curr', 'description'
      ];
      
      // Validate all required fields
@@ -121,8 +121,8 @@ $supplier = DbSecurity::validateInput($_POST['supplier'], 'int', ['min' => 0]);
         ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, NOW(), NOW(), ?, ?, ?)
     ");
     $stmtVisa->bindParam(1, $supplier, PDO::PARAM_INT);
-    $stmtVisa->bindParam(2, $soldTo, PDO::PARAM_INT);
-    $stmtVisa->bindParam(3, $paidTo, PDO::PARAM_INT);
+    $stmtVisa->bindParam(2, $soldto, PDO::PARAM_INT);
+    $stmtVisa->bindParam(3, $paidto, PDO::PARAM_INT);
     $stmtVisa->bindParam(4, $phone, PDO::PARAM_STR);
     $stmtVisa->bindParam(5, $title, PDO::PARAM_STR);
     $stmtVisa->bindParam(6, $gender, PDO::PARAM_STR);
@@ -136,7 +136,7 @@ $supplier = DbSecurity::validateInput($_POST['supplier'], 'int', ['min' => 0]);
     $stmtVisa->bindParam(14, $base, PDO::PARAM_STR);
     $stmtVisa->bindParam(15, $sold, PDO::PARAM_STR);
     $stmtVisa->bindParam(16, $profit, PDO::PARAM_STR);
-    $stmtVisa->bindParam(17, $currency, PDO::PARAM_STR);
+    $stmtVisa->bindParam(17, $curr, PDO::PARAM_STR);
     $stmtVisa->bindParam(18, $description, PDO::PARAM_STR);
     $stmtVisa->bindParam(19, $user_id, PDO::PARAM_INT);
     $stmtVisa->bindParam(20, $tenant_id, PDO::PARAM_INT);
@@ -155,15 +155,15 @@ $supplier = DbSecurity::validateInput($_POST['supplier'], 'int', ['min' => 0]);
     $old_values = json_encode([]);
     $new_values = json_encode([
         'supplier' => $supplier,
-        'sold_to' => $soldTo,
-        'paid_to' => $paidTo,
+        'sold_to' => $soldto,
+        'paid_to' => $paidto,
         'applicant_name' => $applicantName,
         'passport_number' => $passportNumber,
         'visa_type' => $visaType,
         'base' => $base,
         'sold' => $sold,
         'profit' => $profit,
-        'currency' => $currency
+        'currency' => $curr
     ]);
 
     $user_id = $_SESSION['user_id'] ?? 0;

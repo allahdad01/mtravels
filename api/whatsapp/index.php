@@ -23,7 +23,6 @@ if (in_array($_SERVER['REQUEST_METHOD'], ['POST', 'PUT', 'DELETE']) && !verify_c
     echo json_encode(['error' => 'Security validation failed. Please try again.']);
     exit;
 }
-require_once '../../includes/conn.php';
 require_once 'WhatsAppManager.php';
 
 // Error handling

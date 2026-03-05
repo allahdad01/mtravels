@@ -88,7 +88,7 @@ function setupDocumentUploadZones() {
 
 /**
  * Process and extract document using Tesseract.js (like test file)
- * Skip file upload - go straight to browser OCR for all files
+ * Also saves the document file for later association with booking
  */
 async function processDocument(file, documentType) {
     // Validate file type
@@ -104,9 +104,110 @@ async function processDocument(file, documentType) {
         return;
     }
     
-    // Same as test file: Use Tesseract.js for all documents
-
+    // Save document file
+    await saveDocumentFile(file, documentType);
+    
+    // Extract text from document
     await performClientSideOCR(file, documentType);
+}
+
+/**
+ * Save document file to server and extract photo
+ */
+async function saveDocumentFile(file, documentType) {
+    try {
+        const familyId = document.getElementById('familyId')?.value || null;
+        const formData = new FormData();
+        formData.append('passport_file', file);
+        if (familyId) {
+            formData.append('family_id', familyId);
+        }
+        
+        const response = await fetch('/almoqadas/mtravels/api/umrah/save_passport_document.php', {
+            method: 'POST',
+            body: formData,
+            credentials: 'same-origin'
+        });
+        
+        const result = await response.json();
+        
+        if (result.success && result.document_path) {
+            // Store document path in hidden form field
+            const fieldId = documentType === 'passport' ? 'passportPath' : null;
+            if (fieldId) {
+                const field = document.getElementById(fieldId);
+                if (field) {
+                    field.value = result.document_path;
+                }
+            }
+            
+            // Auto-extract photo from passport document
+            if (documentType === 'passport') {
+                await extractPhotoFromPassport(file, familyId);
+            }
+        }
+    } catch (error) {
+        // Document save is not critical - log but continue with extraction
+        console.warn('Document save error:', error.message);
+    }
+}
+
+/**
+ * Extract passport photo from document
+ */
+async function extractPhotoFromPassport(file, familyId) {
+    try {
+        showDocumentStatus('passport', '⏳ Extracting photo from passport...', 'info');
+        
+        // Read file as base64
+        const reader = new FileReader();
+        reader.onload = async function(e) {
+            try {
+                const imageData = e.target.result;
+                
+                const response = await fetch('/almoqadas/mtravels/api/umrah/auto_extract_passport_photo.php', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify({
+                        image_data: imageData,
+                        family_id: familyId
+                    }),
+                    credentials: 'same-origin'
+                });
+                
+                const result = await response.json();
+                
+                if (result.success && result.photo_path) {
+                    // Store photo path in hidden form field
+                    const photoField = document.getElementById('photoPath');
+                    if (photoField) {
+                        photoField.value = result.photo_path;
+                    }
+                    
+                    showDocumentStatus('passport', 
+                        `✅ Photo extracted! (${result.width}x${result.height}px)`, 
+                        'success'
+                    );
+                } else {
+                    console.warn('Photo extraction failed:', result.message);
+                    showDocumentStatus('passport', 
+                        `⚠️ Photo extraction skipped (${result.message || 'unable to detect photo'})`, 
+                        'warning'
+                    );
+                }
+            } catch (error) {
+                console.warn('Photo extraction error:', error);
+                // Not critical - continue without photo
+            }
+        };
+        reader.readAsDataURL(file);
+        
+    } catch (error) {
+        console.warn('Photo extraction failed:', error.message);
+        // Not critical - photo extraction is optional
+    }
 }
 
 /**
@@ -191,7 +292,7 @@ async function performClientSideOCR(file, documentType) {
         // Send OCR text to server for MRZ parsing
         showDocumentStatus(documentType, `⏳ Extracting data with server-side MRZ parsing...`, 'info');
         
-        const response = await fetch('../api/umrah/extract_text.php', {
+        const response = await fetch('/almoqadas/mtravels/api/umrah/extract_text.php', {
             method: 'POST',
             headers: {
                 'Content-Type': 'application/json'
@@ -406,8 +507,8 @@ function fillUmrahForm(data, documentType) {
         } else if (fieldId === 'gender' && value) {
             // Handle select dropdown for gender
             const genderValue = value.toLowerCase() === 'm' || value.toLowerCase() === 'male' ? 'Male' : 
-                               value.toLowerCase() === 'f' || value.toLowerCase() === 'female' ? 'Female' : 
-                               value;
+                                value.toLowerCase() === 'f' || value.toLowerCase() === 'female' ? 'Female' : 
+                                value;
             field.value = genderValue;
         } else {
             field.value = value;
@@ -416,6 +517,73 @@ function fillUmrahForm(data, documentType) {
         triggerFieldChange(field);
 
     }
+    
+    // Auto-extract photo from passport after document processing
+    if (documentType === 'passport' && window.autoPassportExtractor) {
+        setTimeout(() => {
+            autoExtractPhotoFromPassport();
+        }, 500);
+    }
+}
+
+/**
+ * Auto-extract photo from uploaded passport
+ */
+function autoExtractPhotoFromPassport() {
+    const passportInput = document.getElementById('passportDocumentFile');
+    
+    if (!passportInput || !passportInput.files || passportInput.files.length === 0) {
+        return;
+    }
+    
+    const file = passportInput.files[0];
+    const bookingId = document.getElementById('bookingId')?.value || null;
+    const familyId = document.getElementById('familyId')?.value || null;
+    
+    // Show extraction progress
+    Swal.fire({
+        title: 'Extracting Photo',
+        html: 'Detecting and extracting photo from passport...',
+        allowOutsideClick: false,
+        allowEscapeKey: false,
+        didOpen: () => {
+            Swal.showLoading();
+        }
+    });
+    
+    // Extract photo with family_id
+    window.autoPassportExtractor.extract(file, bookingId, familyId)
+        .then(result => {
+            if (result.success) {
+                // Store photo_path in hidden form field for submission
+                const photoPathField = document.getElementById('photoPath');
+                if (photoPathField && result.photo_path) {
+                    photoPathField.value = result.photo_path;
+                }
+                
+                // Photo extracted successfully
+                Swal.fire({
+                    icon: 'success',
+                    title: 'Photo Extracted',
+                    html: `Photo successfully extracted!<br><small>Size: ${result.width}x${result.height}px</small>`,
+                    timer: 2000
+                });
+                
+                // Set photo as selected in UI (if there's a photo field display)
+                const photoDisplay = document.getElementById('memberPhotoDisplay');
+                if (photoDisplay && result.photo_path) {
+                    photoDisplay.innerHTML = `<img src="${result.photo_path}" style="max-width: 150px; border-radius: 4px;">`;
+                }
+                
+            } else {
+                // Extraction failed - not critical, just log it
+                console.warn('Photo extraction failed:', result.message);
+            }
+        })
+        .catch(error => {
+            // Extraction error - not critical, just log it
+            console.warn('Photo extraction error:', error.message);
+        });
 }
 
 /**

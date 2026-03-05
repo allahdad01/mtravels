@@ -19,7 +19,11 @@ $message = '';
 $messageType = '';
 
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
-    if (isset($_POST['action'])) {
+    // Validate CSRF token for all POST requests
+    if (!CsrfProtection::validateToken($_POST['csrf_token'] ?? null)) {
+        $message = 'Security token validation failed. Please try again.';
+        $messageType = 'danger';
+    } elseif (isset($_POST['action'])) {
         switch ($_POST['action']) {
             case 'create':
                 // Create new branch
@@ -607,6 +611,7 @@ function logActivity($pdo, $tenant_id, $user_id, $action, $table_name, $record_i
             </div>
             <form method="POST">
                 <input type="hidden" name="action" value="create">
+                <input type="hidden" name="csrf_token" value="<?= htmlspecialchars($csrf_token, ENT_QUOTES, 'UTF-8') ?>">
                 <div class="modal-body">
                     <div class="row">
                         <div class="col-md-6">
@@ -673,6 +678,7 @@ function logActivity($pdo, $tenant_id, $user_id, $action, $table_name, $record_i
             <form method="POST" id="editBranchForm">
                 <input type="hidden" name="action" value="update">
                 <input type="hidden" name="branch_id" id="editBranchId">
+                <input type="hidden" name="csrf_token" value="<?= htmlspecialchars($csrf_token, ENT_QUOTES, 'UTF-8') ?>">
                 <div class="modal-body">
                     <div class="row">
                         <div class="col-md-6">
@@ -746,6 +752,7 @@ function logActivity($pdo, $tenant_id, $user_id, $action, $table_name, $record_i
             <form method="POST" id="deleteBranchForm">
                 <input type="hidden" name="action" value="delete">
                 <input type="hidden" name="branch_id" id="deleteBranchId">
+                <input type="hidden" name="csrf_token" value="<?= htmlspecialchars($csrf_token, ENT_QUOTES, 'UTF-8') ?>">
                 <div class="modal-body">
                     <p>Are you sure you want to delete the branch "<strong id="deleteBranchName"></strong>"?</p>
                     <div class="alert alert-warning">

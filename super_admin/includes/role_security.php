@@ -122,10 +122,10 @@ function validateRoleChange($current_user_role, $target_user_role, $new_role) {
  * @return bool True on success
  */
 function logRoleChange($admin_user_id, $target_user_id, $old_role, $new_role, $pdo = null) {
-    global $pdo as $global_pdo;
+    global $pdo;
     
     // Use provided PDO or global
-    $db = $pdo ?? ($global_pdo ?? null);
+    $db = $pdo ?? ($GLOBALS['pdo'] ?? null);
     
     // Log to error log
     error_log("ROLE_CHANGE: Admin {$admin_user_id} changed user {$target_user_id}'s role from {$old_role} to {$new_role} - IP: {$_SERVER['REMOTE_ADDR']}");

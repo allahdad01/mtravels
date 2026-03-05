@@ -4,53 +4,59 @@ require_once 'security.php';
 
 // Include language helper
 require_once '../includes/language_helpers.php';
+
 // Enforce authentication
 enforce_auth();
 $tenant_id = $_SESSION['tenant_id'];
 $branch_id = $_SESSION['branch_id'];
 
-
-// Check if user is logged in
-if (!isset($_SESSION['user_id'])  || $_SESSION['role'] !== 'admin') {
+// Check if user is logged in with proper role
+$allowed_roles = ['admin', 'finance', 'sales', 'umrah'];
+if (!isset($_SESSION['user_id']) || !in_array($_SESSION['role'], $allowed_roles)) {
+    // Log unauthorized access attempt
+    error_log("Unauthorized access attempt to dashboard: " . ($_SESSION['user_id'] ?? 'unknown') . " - Role: " . ($_SESSION['role'] ?? 'unknown') . " - IP: " . $_SERVER['REMOTE_ADDR']);
     header('Location: ../login.php');
     exit();
 }
 
 // Database connection
 require_once('../includes/db.php');
-
 ?>
 
 <?php include '../includes/header.php'; ?>
+<script src="../assets/plugins/jquery/js/jquery.min.js"></script>
 <link rel="stylesheet" href="../css/general/modal-styles.css">
-<link rel="stylesheet" href="../css/ticket/ticket-form.css">
-<link rel="stylesheet" href="../css/umrah/umrah-management.css">
+<link rel="stylesheet" href="../css/umrah/umrah-enhanced.css">
 <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/sweetalert2@11.7.32/dist/sweetalert2.min.css">
-<script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
 
-    <!-- [ Main Content ] start -->
-    <div class="pcoded-main-container">
-        <div class="pcoded-wrapper">
-            <div class="pcoded-content">
-                <div class="pcoded-inner-content">
-                    <!-- [ breadcrumb ] start -->
-                    <div class="page-header">
-                        <div class="page-block">
-                            <div class="row align-items-center">
-                                <div class="col-md-12">
-                                    <div class="page-header-title">
-                                        <h5 class="m-b-10"><?= __('umrah_services') ?></h5>
+<!-- [ Main Content ] start -->
+<div class="pcoded-main-container">
+    <div class="pcoded-wrapper">
+        <div class="pcoded-content">
+            <div class="pcoded-inner-content">
+                <!-- Enhanced Page Header -->
+                <div class="enhanced-page-header">
+                    <div class="container-fluid">
+                        <div class="row align-items-center">
+                            <div class="col-md-6">
+                                <div class="page-title-wrapper">
+                                    <i class="fas fa-bell page-icon"></i>
+                                    <div>
+                                        <h2 class="page-title"><?= __('umrah_services') ?></h2>
+                                        <p class="page-subtitle"><?= __('manage_booked_services') ?></p>
                                     </div>
-                                    <ul class="breadcrumb">
-                                        <li class="breadcrumb-item"><a href="dashboard.php"><i class="feather icon-home"></i></a></li>
-                                        <li class="breadcrumb-item"><a href="javascript:"><?= __('umrah') ?></a></li>
-                                        <li class="breadcrumb-item"><a href="javascript:"><?= __('services') ?></a></li>
-                                    </ul>
                                 </div>
+                            </div>
+                            <div class="col-md-6 text-right">
+                                <button class="btn btn-gradient-primary" onclick="location.reload()">
+                                    <i class="fas fa-sync mr-2"></i><?= __('refresh') ?>
+                                </button>
                             </div>
                         </div>
                     </div>
-                    <!-- [ breadcrumb ] end -->
+                </div>
                     <div class="main-body">
                         <div class="page-wrapper">
                             <!-- [ Main Content ] start -->
@@ -142,90 +148,63 @@ require_once('../includes/db.php');
                                     $servicesStmt->execute($servicesParams);
                                     $resultServices = $servicesStmt->fetchAll(PDO::FETCH_ASSOC);
                                 ?>
-                                <!-- Display Services -->
-                                <div class="container-fluid px-4">
-                                    <div class="card umrah-card shadow-lg border-0 mb-4">
-                                        <div class="card-header bg-primary text-white py-3">
-                                            <div class="container-fluid px-0">
-                                                <div class="d-flex justify-content-between align-items-center">
-                                                    <h4 class="mb-0 font-weight-bold"><?= __('booked_services') ?></h4>
-                                                </div>
-                                            </div>
+                                <!-- Filters and Search -->
+                                <div class="container-fluid px-4 mb-4">
+                                    <div class="filters-wrapper">
+                                        <!-- Filter Pills -->
+                                        <div class="filter-pills">
+                                            <a href="?service_type=" class="filter-pill <?= empty($serviceType) ? 'active' : '' ?>">
+                                                <i class="fas fa-layer-group"></i>
+                                                <span><?= __('all') ?></span>
+                                            </a>
+                                            <a href="?service_type=ticket" class="filter-pill <?= $serviceType === 'ticket' ? 'active' : '' ?>">
+                                                <i class="fas fa-ticket-alt"></i>
+                                                <span><?= __('ticket') ?></span>
+                                            </a>
+                                            <a href="?service_type=visa" class="filter-pill <?= $serviceType === 'visa' ? 'active' : '' ?>">
+                                                <i class="fas fa-passport"></i>
+                                                <span><?= __('visa') ?></span>
+                                            </a>
+                                            <a href="?service_type=hotel" class="filter-pill <?= $serviceType === 'hotel' ? 'active' : '' ?>">
+                                                <i class="fas fa-hotel"></i>
+                                                <span><?= __('hotel') ?></span>
+                                            </a>
+                                            <a href="?service_type=transport" class="filter-pill <?= $serviceType === 'transport' ? 'active' : '' ?>">
+                                                <i class="fas fa-bus"></i>
+                                                <span><?= __('transport') ?></span>
+                                            </a>
                                         </div>
-                                        <div class="card-body p-0">
-                                            <!-- Filters and Search Section -->
-                                            <div class="p-3 border-bottom">
-                                                <div class="container-fluid px-0">
-                                                    <div class="row align-items-center">
-                                                        <!-- Filter Tabs -->
-                                                        <div class="col-md-6 mb-3 mb-md-0">
-                                                            <div class="bg-light rounded-pill p-1">
-                                                                <ul class="nav nav-pills nav-fill">
-                                                                    <li class="nav-item">
-                                                                        <a class="nav-link py-1 px-3<?= empty($serviceType) ? ' active' : '' ?>"
-                                                                           href="?service_type="
-                                                                           style="border-radius: 50px;">
-                                                                            <?= __('all') ?>
-                                                                        </a>
-                                                                    </li>
-                                                                    <li class="nav-item">
-                                                                        <a class="nav-link py-1 px-3<?= $serviceType === 'ticket' ? ' active' : '' ?>"
-                                                                           href="?service_type=ticket"
-                                                                           style="border-radius: 50px;">
-                                                                            <?= __('ticket') ?>
-                                                                        </a>
-                                                                    </li>
-                                                                    <li class="nav-item">
-                                                                        <a class="nav-link py-1 px-3<?= $serviceType === 'visa' ? ' active' : '' ?>"
-                                                                           href="?service_type=visa"
-                                                                           style="border-radius: 50px;">
-                                                                            <?= __('visa') ?>
-                                                                        </a>
-                                                                    </li>
-                                                                    <li class="nav-item">
-                                                                        <a class="nav-link py-1 px-3<?= $serviceType === 'hotel' ? ' active' : '' ?>"
-                                                                           href="?service_type=hotel"
-                                                                           style="border-radius: 50px;">
-                                                                            <?= __('hotel') ?>
-                                                                        </a>
-                                                                    </li>
-                                                                    <li class="nav-item">
-                                                                        <a class="nav-link py-1 px-3<?= $serviceType === 'transport' ? ' active' : '' ?>"
-                                                                           href="?service_type=transport"
-                                                                           style="border-radius: 50px;">
-                                                                            <?= __('transport') ?>
-                                                                        </a>
-                                                                    </li>
-                                                                </ul>
-                                                            </div>
-                                                        </div>
 
-                                                        <!-- Search -->
-                                                        <div class="col-md-6">
-                                                            <div class="d-flex align-items-center justify-content-end">
-                                                                <form id="serviceSearchForm" method="GET" class="d-flex">
-                                                                    <div class="input-group input-group-sm">
-                                                                        <input type="search"
-                                                                               class="form-control form-control-sm"
-                                                                               placeholder="<?= __('search_services') ?>"
-                                                                               name="search"
-                                                                               value="<?= htmlspecialchars($search) ?>"
-                                                                               aria-label="Search services">
-                                                                        <div class="input-group-append">
-                                                                            <button class="btn btn-outline-secondary" type="submit">
-                                                                                <i class="feather icon-search"></i>
-                                                                            </button>
-                                                                        </div>
-                                                                    </div>
-                                                                </form>
-                                                            </div>
-                                                        </div>
-                                                    </div>
+                                        <!-- Enhanced Search -->
+                                        <div class="search-wrapper">
+                                            <form id="serviceSearchForm" method="GET" class="search-form">
+                                                <div class="search-input-group">
+                                                    <i class="fas fa-search search-icon"></i>
+                                                    <input type="search"
+                                                           placeholder="<?= __('search_services') ?>"
+                                                           name="search"
+                                                           value="<?= htmlspecialchars($search) ?>"
+                                                           class="search-input"
+                                                           aria-label="Search services">
+                                                    <?php if (!empty($search)): ?>
+                                                        <a href="?" class="clear-search">
+                                                            <i class="fas fa-times"></i>
+                                                        </a>
+                                                    <?php endif; ?>
+                                                    <button type="submit" class="search-button">
+                                                        <?= __('search') ?>
+                                                    </button>
                                                 </div>
-                                            </div>
-                                            <div class="table-responsive">
-                                                <table class="table table-striped table-hover umrah-table mb-0" id="serviceTable">
-                                                    <thead class="thead-light">
+                                            </form>
+                                        </div>
+                                    </div>
+                                </div>
+
+                                <!-- Services Table -->
+                                <div class="container-fluid px-4">
+                                    <div class="table-responsive card">
+                                        <table class="table table-striped table-hover mb-0" id="serviceTable">
+                                            <thead class="thead-light">
                                                         <tr>
                                                             <th class="text-left pl-4">
                                                                 <?= __('service_details') ?>
@@ -301,28 +280,30 @@ require_once('../includes/db.php');
                                                         } else { ?>
                                                             <tr>
                                                                 <td colspan="4" class="text-center py-5">
-                                                                    <div class="d-flex flex-column align-items-center">
-                                                                        <i class="feather icon-search text-muted" style="font-size: 4rem;"></i>
-                                                                        <h5 class="text-muted mt-3">
+                                                                    <div class="empty-state">
+                                                                        <div class="empty-state-icon">
+                                                                            <i class="fas fa-search"></i>
+                                                                        </div>
+                                                                        <h3 class="text-muted mt-3">
                                                                             <?= !empty($search)
                                                                                 ? sprintf(__('no_services_found_for_search'), htmlspecialchars($search))
                                                                                 : __('no_services_available')
                                                                             ?>
-                                                                        </h5>
+                                                                        </h3>
                                                                         <?php if (!empty($search)): ?>
                                                                             <a href="umrah_services.php" class="btn btn-primary mt-3">
-                                                                                <i class="feather icon-x-circle mr-2"></i><?= __('clear_search') ?>
+                                                                                <i class="fas fa-times mr-2"></i><?= __('clear_search') ?>
                                                                             </a>
                                                                         <?php endif; ?>
                                                                     </div>
                                                                 </td>
                                                             </tr>
                                                         <?php } ?>
-                                                    </tbody>
-                                                </table>
-                                            </div>
+                                            </tbody>
+                                        </table>
+                                    </div>
 
-                                            <!-- Pagination -->
+                                    <!-- Pagination -->
                                             <nav aria-label="Services pagination" class="p-3">
                                                 <ul class="pagination justify-content-center mb-0">
                                                     <?php
@@ -375,35 +356,34 @@ require_once('../includes/db.php');
         </div>
     </div>
 
-    <!-- Required Js -->
-    <script src="../assets/plugins/jquery/js/jquery.min.js"></script>
-    <script src="../assets/js/vendor-all.min.js"></script>
-    <script src="../assets/plugins/bootstrap/js/bootstrap.min.js"></script>
-    <script src="../assets/js/pcoded.min.js"></script>
-    <script src="https://cdn.jsdelivr.net/npm/select2@4.1.0-rc.0/dist/js/select2.min.js"></script>
-    <!-- SweetAlert2 -->
-    <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11.7.32/dist/sweetalert2.all.min.js"></script>
+<!-- Required Scripts -->
+<script src="../assets/js/vendor-all.min.js"></script>
+<script src="../assets/plugins/bootstrap/js/bootstrap.min.js"></script>
+<script src="../assets/js/pcoded.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/select2@4.1.0-rc.0/dist/js/select2.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/sweetalert2@11.7.32/dist/sweetalert2.all.min.js"></script>
 
-    <!-- Custom Scripts -->
-    <script>
-        // Toast notification function
-        function showToast(type, message) {
-            const Toast = Swal.mixin({
-                toast: true,
-                position: 'top-end',
-                showConfirmButton: false,
-                timer: 3000,
-                timerProgressBar: true
-            });
+<!-- Custom Scripts -->
+<script>
+    // Set CSRF token
+    window.csrfToken = '<?php echo $_SESSION['csrf_token']; ?>';
 
-            Toast.fire({
-                icon: type,
-                title: message
-            });
-        }
-    </script>
+    // Toast notification function
+    function showToast(type, message) {
+        const Toast = Swal.mixin({
+            toast: true,
+            position: 'top-end',
+            showConfirmButton: false,
+            timer: 3000,
+            timerProgressBar: true
+        });
 
-<!-- Include Admin Footer -->
+        Toast.fire({
+            icon: type,
+            title: message
+        });
+    }
+</script>
 <?php include '../includes/admin_footer.php'; ?>
 
 </body>

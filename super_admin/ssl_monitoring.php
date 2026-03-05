@@ -57,15 +57,15 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             $error = 'Domain is required';
         } else {
             $result = $sslMonitor->addDomain($domain, $port, $description);
-            if ($result['success']) {
+            if ($result['success'] ?? false) {
                 $message = "Domain '{$domain}' added to monitoring successfully!";
             } else {
-                $error = $result['error'];
+                $error = $result['error'] ?? 'Failed to add domain';
             }
         }
     } elseif (isset($_POST['remove_domain'])) {
         // Remove domain
-        $domainId = (int)$_POST['domain_id'];
+        $domainId = (int)($_POST['domain_id'] ?? 0);
         if ($sslMonitor->removeDomain($domainId)) {
             $message = 'Domain removed from monitoring successfully!';
         } else {
@@ -74,142 +74,374 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     } elseif (isset($_POST['check_certificates'])) {
         // Manual certificate check
         $results = $sslMonitor->checkAllCertificates();
-        $checkedCount = count($results);
+        $checkedCount = is_array($results) ? count($results) : 0;
         $message = "Checked {$checkedCount} SSL certificate(s) successfully!";
     } elseif (isset($_POST['send_alerts'])) {
         // Send expiry alerts
-        $alertsSent = $sslMonitor->sendExpiryAlerts();
+        $alertsSent = $sslMonitor->sendExpiryAlerts() ?? 0;
         $message = "Sent {$alertsSent} SSL expiry alert(s)!";
     }
 }
 
 // Get current SSL certificate data
-$certificates = $sslMonitor->getMonitoredDomains();
-$attentionNeeded = $sslMonitor->getCertificatesNeedingAttention();
-$alertThresholds = $sslMonitor->getAlertThresholds();
+$certificates = $sslMonitor->getMonitoredDomains() ?? [];
+$attentionNeeded = $sslMonitor->getCertificatesNeedingAttention() ?? [];
+$alertThresholds = $sslMonitor->getAlertThresholds() ?? ['critical' => 7, 'warning' => 30, 'info' => 60];
 
 include '../includes/header_super_admin.php';
 ?>
 
-<!-- [ Main Content ] start -->
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Sora:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+<style>
+/* ─── TOKENS ─────────────────────────────────────────────── */
+:root {
+  --bg:       #f8fafc;
+  --surface:  #ffffff;
+  --surface2: #f1f5f9;
+  --border:   #e5e7eb;
+  --text:     #1f2937;
+  --muted:    #6b7280;
+  --accent:   #4099ff;
+  --accent2:  #2ed8b6;
+  --green:    #10b981;
+  --amber:    #f59e0b;
+  --red:      #ef4444;
+  --blue:     #3b82f6;
+  --purple:   #8b5cf6;
+  --orange:   #f97316;
+  --radius:   14px;
+}
+
+/* ─── RESET / BASE ───────────────────────────────────────── */
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+html { font-size: 14px; }
+body {
+  font-family: 'Sora', sans-serif;
+  background: var(--bg);
+  color: var(--text);
+  min-height: 100vh;
+}
+
+/* ─── MAIN WRAPPER ───────────────────────────────────────── */
+.sa-wrap { display: flex; flex-direction: column; min-height: 100vh; }
+
+/* ─── CONTENT ────────────────────────────────────────────── */
+.sa-content { 
+    padding: 24px 28px; 
+    display: flex; 
+    flex-direction: column; 
+    gap: 24px; 
+}
+
+/* ─── CARD ───────────────────────────────────────────────── */
+.sa-card {
+  background: var(--surface); 
+  border: 1px solid var(--border);
+  border-left: 4px solid var(--accent);
+  border-radius: var(--radius); 
+  overflow: hidden;
+  transition: all .2s;
+  box-shadow: 0 1px 3px rgba(0,0,0,0.04);
+  margin-bottom: 24px;
+}
+.sa-card:last-child { margin-bottom: 0; }
+.sa-card:hover { 
+    border-left-color: var(--accent2);
+    transform: translateY(-2px);
+    box-shadow: 0 4px 12px rgba(0,0,0,0.08);
+}
+.sa-card-hdr {
+  padding: 16px 24px; 
+  border-bottom: 1px solid var(--border);
+  display: flex; 
+  align-items: center; 
+  justify-content: space-between;
+  background: linear-gradient(135deg, rgba(108,99,255,0.04), rgba(46,216,182,0.02));
+}
+.sa-card-hdr h3 { 
+    font-size: .95rem; 
+    font-weight: 600; 
+    color: var(--text);
+    display: flex;
+    align-items: center;
+    letter-spacing: -0.01em;
+}
+.sa-card-body { 
+    padding: 24px; 
+}
+
+/* Card colors */
+.sa-card.alert-card { border-left-color: var(--red); }
+.sa-card.success-card { border-left-color: var(--green); }
+.sa-card.warning-card { border-left-color: var(--amber); }
+.sa-card.info-card { border-left-color: var(--blue); }
+
+/* ─── BUTTON ─────────────────────────────────────────────── */
+.sa-btn {
+  font-size: .8rem; font-weight: 600; font-family: 'Sora', sans-serif;
+  padding: 8px 16px; border-radius: 20px; cursor: pointer; border: none;
+  display: inline-flex; align-items: center; gap: 6px; text-decoration: none;
+  transition: all .15s;
+}
+.sa-btn-primary {
+  background: linear-gradient(135deg, var(--accent), var(--accent2)); color: #fff;
+}
+.sa-btn-primary:hover { opacity: .85; transform: translateY(-1px); }
+.sa-btn-ghost {
+  background: var(--surface2); color: var(--muted); border: 1px solid var(--border);
+}
+.sa-btn-ghost:hover { color: var(--text); border-color: var(--accent); }
+.sa-btn-danger {
+  background: linear-gradient(135deg, var(--red), #dc2626); color: #fff;
+}
+.sa-btn-warning {
+  background: linear-gradient(135deg, var(--amber), #fbbf24); color: #fff;
+}
+
+/* ─── STATS GRID ─────────────────────────────────────────── */
+.threshold-grid {
+    display: grid;
+    grid-template-columns: repeat(4, 1fr);
+    gap: 16px;
+}
+.threshold-item {
+    text-align: center;
+    padding: 16px;
+    border-radius: 10px;
+    background: var(--surface2);
+}
+.threshold-item.critical { border-left: 3px solid var(--red); }
+.threshold-item.warning { border-left: 3px solid var(--amber); }
+.threshold-item.info { border-left: 3px solid var(--blue); }
+.threshold-item.ok { border-left: 3px solid var(--green); }
+.threshold-number {
+    font-size: 1.5rem;
+    font-weight: 700;
+    font-family: 'JetBrains Mono', monospace;
+}
+.threshold-label {
+    font-size: 0.75rem;
+    color: var(--muted);
+    text-transform: uppercase;
+    margin-top: 4px;
+}
+
+/* ─── TABLE STYLES ──────────────────────────────────────── */
+.table-wrapper {
+    overflow-x: auto;
+    border-radius: 10px;
+}
+.sa-table {
+    width: 100%;
+    border-collapse: collapse;
+}
+.sa-table th {
+    background: var(--surface2);
+    padding: 12px 16px;
+    text-align: left;
+    font-weight: 600;
+    color: var(--muted);
+    font-size: 0.75rem;
+    text-transform: uppercase;
+    border-bottom: 2px solid var(--border);
+}
+.sa-table td {
+    padding: 14px 16px;
+    border-bottom: 1px solid var(--border);
+    vertical-align: middle;
+}
+.sa-table tr:hover {
+    background: rgba(108,99,255,.02);
+}
+.sa-table tr:last-child td {
+    border-bottom: none;
+}
+
+/* ─── BADGES ─────────────────────────────────────────────── */
+.badge-custom {
+    font-size: 0.7rem;
+    font-weight: 600;
+    padding: 4px 10px;
+    border-radius: 20px;
+    text-transform: uppercase;
+    letter-spacing: 0.03em;
+}
+.badge-expired { background: rgba(239,68,68,.15); color: var(--red); }
+.badge-critical { background: rgba(239,68,68,.15); color: var(--red); }
+.badge-warning { background: rgba(245,158,11,.15); color: var(--amber); }
+.badge-info { background: rgba(59,130,246,.15); color: var(--blue); }
+.badge-ok { background: rgba(16,185,129,.15); color: var(--green); }
+.badge-unknown { background: rgba(107,114,128,.15); color: var(--muted); }
+.badge-valid { background: rgba(16,185,129,.15); color: var(--green); }
+.badge-invalid { background: rgba(239,68,68,.15); color: var(--red); }
+.badge-not-checked { background: rgba(107,114,128,.15); color: var(--muted); }
+
+/* ─── ALERT BOX ─────────────────────────────────────────── */
+.alert-box {
+    padding: 14px 18px;
+    border-radius: 10px;
+    margin-bottom: 20px;
+    font-size: 0.85rem;
+    display: flex;
+    align-items: center;
+    gap: 10px;
+}
+.alert-box.success {
+    background: rgba(16,185,129,.1);
+    border: 1px solid rgba(16,185,129,.3);
+    color: var(--green);
+}
+.alert-box.danger {
+    background: rgba(239,68,68,.1);
+    border: 1px solid rgba(239,68,68,.3);
+    color: var(--red);
+}
+
+/* ─── EMPTY STATE ───────────────────────────────────────── */
+.empty-state {
+    text-align: center;
+    padding: 48px 24px;
+    color: var(--muted);
+}
+.empty-state-icon {
+    font-size: 3rem;
+    margin-bottom: 12px;
+    opacity: 0.5;
+}
+
+/* ─── FORM STYLES ───────────────────────────────────────── */
+.form-group { margin-bottom: 16px; }
+
+.form-label {
+    display: block;
+    font-weight: 600;
+    color: var(--text);
+    margin-bottom: 6px;
+    font-size: 0.8rem;
+}
+
+.form-control {
+    width: 100%;
+    padding: 10px 14px;
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    font-size: 0.85rem;
+    transition: all .15s ease;
+    background: var(--surface2);
+    color: var(--text);
+    font-family: 'Sora', sans-serif;
+}
+
+.form-control:focus {
+    outline: none;
+    border-color: var(--accent);
+    box-shadow: 0 0 0 3px rgba(108,99,255,.15);
+    background: var(--surface);
+}
+
+/* ─── PCODED LAYOUT INTEGRATION ──────────────────────────── */
+body { background: var(--bg) !important; }
+.pcoded-main-container, .pcoded-wrapper, .pcoded-content, .pcoded-inner-content { background: var(--bg) !important; }
+.page-header { background: transparent !important; border: none !important; box-shadow: none !important; }
+.page-header h5 { color: var(--text) !important; }
+.breadcrumb { background: transparent !important; }
+.breadcrumb-item a, .breadcrumb-item.active { color: var(--muted) !important; }
+
+/* ─── RESPONSIVE ─────────────────────────────────────────── */
+@media (max-width: 768px) {
+    .sa-content { padding: 16px; }
+    .threshold-grid { grid-template-columns: repeat(2, 1fr); }
+    .table-wrapper { font-size: 0.85rem; }
+    .sa-table th, .sa-table td { padding: 10px 12px; }
+}
+</style>
+
 <div class="pcoded-main-container">
-    <div class="pcoded-wrapper">
-        <div class="pcoded-content">
-            <div class="pcoded-inner-content">
-                <!-- [ breadcrumb ] start -->
-                <div class="page-header">
-                    <div class="page-block">
-                        <div class="row align-items-center">
-                            <div class="col-md-12">
-                                <div class="page-header-title">
-                                    <h5 class="page-header-title-text">SSL Certificate Monitoring</h5>
-                                </div>
-                                <nav aria-label="breadcrumb">
-                                    <ol class="breadcrumb">
-                                        <li class="breadcrumb-item"><a href="dashboard.php"><i class="feather icon-home"></i></a></li>
-                                        <li class="breadcrumb-item active" aria-current="page">SSL Monitoring</li>
-                                    </ol>
-                                </nav>
-                            </div>
+    <div class="pcoded-content">
+        <div class="page-header">
+            <div class="page-block">
+                <div class="row align-items-center">
+                    <div class="col-md-12">
+                        <div class="page-header-title">
+                            <h5 class="m-b-10">SSL Certificate Monitoring</h5>
                         </div>
-                    </div>
-                </div>
-                <!-- [ breadcrumb ] end -->
-                <div class="main-body">
-                    <div class="page-wrapper">
-                        <!-- [ Main Content ] start -->
-                        <div class="main-content">
-                            <div class="page-header card">
-                                <div class="row align-items-center">
-                                    <div class="col-md-6">
-                                        <h5 class="mb-0"><i class="fas fa-shield-alt mr-2"></i>SSL Certificate Monitoring</h5>
-                                        <p class="mb-0 mt-1" style="font-size: 14px; opacity: 0.9;">Monitor SSL certificate expiry dates and receive alerts</p>
-                                    </div>
-                                    <div class="col-md-6 text-end">
-                                        <button type="button" class="btn btn-primary" data-toggle="modal" data-target="#addDomainModal">
-                                            <i class="fas fa-plus mr-1"></i>Add Domain
-                                        </button>
-                                    </div>
-                                </div>
-                            </div>
-
-        <!-- Alert Messages -->
-        <?php if ($message): ?>
-            <div class="alert alert-success alert-dismissible fade show" role="alert">
-                <i class="fas fa-check-circle mr-2"></i><?php echo htmlspecialchars($message); ?>
-                <button type="button" class="close" data-dismiss="alert">
-                    <span aria-hidden="true">&times;</span>
-                </button>
-            </div>
-        <?php endif; ?>
-
-        <?php if ($error): ?>
-            <div class="alert alert-danger alert-dismissible fade show" role="alert">
-                <i class="fas fa-exclamation-triangle mr-2"></i><?php echo htmlspecialchars($error); ?>
-                <button type="button" class="close" data-dismiss="alert">
-                    <span aria-hidden="true">&times;</span>
-                </button>
-            </div>
-        <?php endif; ?>
-
-        <!-- Alert Thresholds Info -->
-        <div class="row mb-4">
-            <div class="col-12">
-                <div class="card">
-                    <div class="card-header bg-light">
-                        <h5 class="mb-0"><i class="fas fa-info-circle mr-2"></i>Alert Thresholds</h5>
-                    </div>
-                    <div class="card-body">
-                        <div class="row">
-                            <div class="col-md-3">
-                                <div class="text-center">
-                                    <div class="badge badge-danger p-2 mb-2" style="font-size: 1.1em;">
-                                        <i class="fas fa-exclamation-triangle mr-1"></i>Critical
-                                    </div>
-                                    <div class="text-muted"><?php echo $alertThresholds['critical']; ?> days</div>
-                                </div>
-                            </div>
-                            <div class="col-md-3">
-                                <div class="text-center">
-                                    <div class="badge badge-warning p-2 mb-2" style="font-size: 1.1em;">
-                                        <i class="fas fa-exclamation-circle mr-1"></i>Warning
-                                    </div>
-                                    <div class="text-muted"><?php echo $alertThresholds['warning']; ?> days</div>
-                                </div>
-                            </div>
-                            <div class="col-md-3">
-                                <div class="text-center">
-                                    <div class="badge badge-info p-2 mb-2" style="font-size: 1.1em;">
-                                        <i class="fas fa-info-circle mr-1"></i>Info
-                                    </div>
-                                    <div class="text-muted"><?php echo $alertThresholds['info']; ?> days</div>
-                                </div>
-                            </div>
-                            <div class="col-md-3">
-                                <div class="text-center">
-                                    <div class="badge badge-success p-2 mb-2" style="font-size: 1.1em;">
-                                        <i class="fas fa-check-circle mr-1"></i>OK
-                                    </div>
-                                    <div class="text-muted">> <?php echo $alertThresholds['info']; ?> days</div>
-                                </div>
-                            </div>
-                        </div>
+                        <ul class="breadcrumb">
+                            <li class="breadcrumb-item"><a href="dashboard.php"><i class="feather icon-home"></i></a></li>
+                            <li class="breadcrumb-item active">SSL Monitoring</li>
+                        </ul>
                     </div>
                 </div>
             </div>
         </div>
 
-        <!-- Attention Needed Section -->
-        <?php if (!empty($attentionNeeded)): ?>
-        <div class="row mb-4">
-            <div class="col-12">
-                <div class="card border-danger">
-                    <div class="card-header bg-danger text-white">
-                        <h5 class="mb-0"><i class="fas fa-exclamation-triangle mr-2"></i>Attention Required (<?php echo count($attentionNeeded); ?>)</h5>
+        <div class="sa-wrap">
+            <div class="sa-content">
+
+                <!-- Alert Messages -->
+                <?php if (!empty($message)): ?>
+                    <div class="alert-box success">
+                        <i class="feather icon-check-circle"></i>
+                        <?= htmlspecialchars($message) ?>
                     </div>
-                    <div class="card-body">
-                        <div class="table-responsive">
-                            <table class="table table-striped">
+                <?php endif; ?>
+
+                <?php if (!empty($error)): ?>
+                    <div class="alert-box danger">
+                        <i class="feather icon-alert-circle"></i>
+                        <?= htmlspecialchars($error) ?>
+                    </div>
+                <?php endif; ?>
+
+                <!-- Header Card -->
+                <div class="sa-card" style="border-left-color: #6366f1;">
+                    <div class="sa-card-hdr">
+                        <h3><i class="feather icon-shield" style="margin-right:8px"></i>SSL Certificate Monitoring</h3>
+                        <button type="button" class="sa-btn sa-btn-primary" data-toggle="modal" data-target="#addDomainModal">
+                            <i class="feather icon-plus"></i>Add Domain
+                        </button>
+                    </div>
+                    <div class="sa-card-body">
+                        <p style="color: var(--muted); margin: 0;">Monitor SSL certificate expiry dates and receive alerts</p>
+                    </div>
+                </div>
+
+                <!-- Alert Thresholds Card -->
+                <div class="sa-card">
+                    <div class="sa-card-hdr">
+                        <h3><i class="feather icon-info" style="margin-right:8px"></i>Alert Thresholds</h3>
+                    </div>
+                    <div class="sa-card-body">
+                        <div class="threshold-grid">
+                            <div class="threshold-item critical">
+                                <div class="threshold-number" style="color: var(--red);"><?= $alertThresholds['critical'] ?? 7 ?></div>
+                                <div class="threshold-label">Critical Days</div>
+                            </div>
+                            <div class="threshold-item warning">
+                                <div class="threshold-number" style="color: var(--amber);"><?= $alertThresholds['warning'] ?? 30 ?></div>
+                                <div class="threshold-label">Warning Days</div>
+                            </div>
+                            <div class="threshold-item info">
+                                <div class="threshold-number" style="color: var(--blue);"><?= $alertThresholds['info'] ?? 60 ?></div>
+                                <div class="threshold-label">Info Days</div>
+                            </div>
+                            <div class="threshold-item ok">
+                                <div class="threshold-number" style="color: var(--green);">OK</div>
+                                <div class="threshold-label">Above Info</div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Attention Needed Section -->
+                <?php if (!empty($attentionNeeded)): ?>
+                <div class="sa-card alert-card">
+                    <div class="sa-card-hdr">
+                        <h3><i class="feather icon-alert-triangle" style="margin-right:8px"></i>Attention Required (<?= count($attentionNeeded) ?>)</h3>
+                    </div>
+                    <div class="sa-card-body" style="padding: 0;">
+                        <div class="table-wrapper">
+                            <table class="sa-table">
                                 <thead>
                                     <tr>
                                         <th>Domain</th>
@@ -224,60 +456,40 @@ include '../includes/header_super_admin.php';
                                     <?php foreach ($attentionNeeded as $cert): ?>
                                     <tr>
                                         <td>
-                                            <strong><?php echo htmlspecialchars($cert['domain']); ?></strong>
-                                            <?php if ($cert['port'] != 443): ?>
-                                                <small class="text-muted">(Port: <?php echo $cert['port']; ?>)</small>
+                                            <strong><?= htmlspecialchars($cert['domain'] ?? 'Unknown') ?></strong>
+                                            <?php if (($cert['port'] ?? 443) != 443): ?>
+                                                <small class="text-muted">(Port: <?= $cert['port'] ?>)</small>
                                             <?php endif; ?>
                                         </td>
                                         <td>
-                                            <?php
-                                            $badgeClass = 'secondary';
-                                            $icon = 'question-circle';
-                                            switch ($cert['alert_level']) {
-                                                case 'expired':
-                                                    $badgeClass = 'danger';
-                                                    $icon = 'times-circle';
-                                                    break;
-                                                case 'critical':
-                                                    $badgeClass = 'danger';
-                                                    $icon = 'exclamation-triangle';
-                                                    break;
-                                                case 'warning':
-                                                    $badgeClass = 'warning';
-                                                    $icon = 'exclamation-circle';
-                                                    break;
-                                                case 'info':
-                                                    $badgeClass = 'info';
-                                                    $icon = 'info-circle';
-                                                    break;
-                                            }
+                                            <?php 
+                                            $alertLevel = $cert['alert_level'] ?? 'unknown';
+                                            $badgeClass = match($alertLevel) {
+                                                'expired', 'critical' => 'badge-critical',
+                                                'warning' => 'badge-warning',
+                                                'info' => 'badge-info',
+                                                default => 'badge-unknown'
+                                            };
                                             ?>
-                                            <span class="badge badge-<?php echo $badgeClass; ?>">
-                                                <i class="fas fa-<?php echo $icon; ?> mr-1"></i>
-                                                <?php echo ucfirst($cert['alert_level']); ?>
-                                            </span>
+                                            <span class="badge-custom <?= $badgeClass ?>"><?= ucfirst($alertLevel) ?></span>
                                         </td>
                                         <td>
                                             <?php if ($cert['is_expired'] ?? false): ?>
-                                                <span class="text-danger font-weight-bold">EXPIRED</span>
-                                            <?php elseif ($cert['days_until_expiry'] !== null): ?>
-                                                <span class="font-weight-bold"><?php echo $cert['days_until_expiry']; ?> days</span>
+                                                <span style="color: var(--red); font-weight: 600;">EXPIRED</span>
+                                            <?php elseif (isset($cert['days_until_expiry'])): ?>
+                                                <span style="font-weight: 600;"><?= $cert['days_until_expiry'] ?> days</span>
                                             <?php else: ?>
-                                                <span class="text-muted">Unknown</span>
+                                                <span style="color: var(--muted);">Unknown</span>
                                             <?php endif; ?>
                                         </td>
-                                        <td>
-                                            <?php echo $cert['valid_to'] ? date('M d, Y', strtotime($cert['valid_to'])) : 'Unknown'; ?>
-                                        </td>
-                                        <td>
-                                            <?php echo $cert['last_checked'] ? date('M d, Y H:i', strtotime($cert['last_checked'])) : 'Never'; ?>
-                                        </td>
+                                        <td><?= $cert['valid_to'] ? date('M d, Y', strtotime($cert['valid_to'])) : 'Unknown' ?></td>
+                                        <td><?= $cert['last_checked'] ? date('M d, Y H:i', strtotime($cert['last_checked'])) : 'Never' ?></td>
                                         <td>
                                             <form method="post" style="display: inline;">
-                                                <input type="hidden" name="domain_id" value="<?php echo $cert['id']; ?>">
-                                                <button type="submit" name="remove_domain" class="btn btn-sm btn-outline-danger"
-                                                        onclick="return confirm('Remove <?php echo htmlspecialchars($cert['domain']); ?> from monitoring?')">
-                                                    <i class="fas fa-trash"></i>
+                                                <input type="hidden" name="domain_id" value="<?= $cert['id'] ?? 0 ?>">
+                                                <button type="submit" name="remove_domain" class="sa-btn sa-btn-danger" style="padding: 4px 10px;"
+                                                        onclick="return confirm('Remove <?= htmlspecialchars($cert['domain'] ?? '') ?>?')">
+                                                    <i class="feather icon-trash-2"></i>
                                                 </button>
                                             </form>
                                         </td>
@@ -288,42 +500,38 @@ include '../includes/header_super_admin.php';
                         </div>
                     </div>
                 </div>
-            </div>
-        </div>
-        <?php endif; ?>
+                <?php endif; ?>
 
-        <!-- All Certificates Section -->
-        <div class="row">
-            <div class="col-12">
-                <div class="card">
-                    <div class="card-header d-flex justify-content-between align-items-center">
-                        <h5 class="mb-0"><i class="fas fa-globe mr-2"></i>Monitored Domains (<?php echo count($certificates); ?>)</h5>
-                        <div>
-                            <form method="post" style="display: inline;">
-                                <button type="submit" name="check_certificates" class="btn btn-outline-primary btn-sm mr-2">
-                                    <i class="fas fa-sync-alt mr-1"></i>Check All
+                <!-- All Certificates Card -->
+                <div class="sa-card">
+                    <div class="sa-card-hdr">
+                        <h3><i class="feather icon-globe" style="margin-right:8px"></i>Monitored Domains (<?= count($certificates) ?>)</h3>
+                        <div style="display: flex; gap: 8px;">
+                            <form method="post">
+                                <button type="submit" name="check_certificates" class="sa-btn sa-btn-ghost">
+                                    <i class="feather icon-refresh-cw"></i>Check All
                                 </button>
                             </form>
-                            <form method="post" style="display: inline;">
-                                <button type="submit" name="send_alerts" class="btn btn-outline-warning btn-sm">
-                                    <i class="fas fa-bell mr-1"></i>Send Alerts
+                            <form method="post">
+                                <button type="submit" name="send_alerts" class="sa-btn sa-btn-warning">
+                                    <i class="feather icon-bell"></i>Send Alerts
                                 </button>
                             </form>
                         </div>
                     </div>
-                    <div class="card-body">
+                    <div class="sa-card-body" style="padding: <?= empty($certificates) ? '0' : '0 0 0 0' ?>;">
                         <?php if (empty($certificates)): ?>
-                            <div class="text-center py-5">
-                                <i class="fas fa-globe text-muted" style="font-size: 48px;"></i>
-                                <h5 class="mt-3">No domains configured</h5>
-                                <p class="text-muted">Add your first domain to start monitoring SSL certificates.</p>
-                                <button type="button" class="btn btn-primary" data-toggle="modal" data-target="#addDomainModal">
-                                    <i class="fas fa-plus mr-1"></i>Add Domain
+                            <div class="empty-state">
+                                <div class="empty-state-icon"><i class="feather icon-globe"></i></div>
+                                <div>No domains configured</div>
+                                <p style="margin-top: 8px; font-size: 0.85rem;">Add your first domain to start monitoring SSL certificates.</p>
+                                <button type="button" class="sa-btn sa-btn-primary" style="margin-top: 16px;" data-toggle="modal" data-target="#addDomainModal">
+                                    <i class="feather icon-plus"></i>Add Domain
                                 </button>
                             </div>
                         <?php else: ?>
-                            <div class="table-responsive">
-                                <table class="table table-striped">
+                            <div class="table-wrapper">
+                                <table class="sa-table">
                                     <thead>
                                         <tr>
                                             <th>Domain</th>
@@ -339,87 +547,64 @@ include '../includes/header_super_admin.php';
                                         <?php foreach ($certificates as $cert): ?>
                                         <tr>
                                             <td>
-                                                <strong><?php echo htmlspecialchars($cert['domain']); ?></strong>
-                                                <?php if ($cert['port'] != 443): ?>
-                                                    <small class="text-muted">(Port: <?php echo $cert['port']; ?>)</small>
+                                                <strong><?= htmlspecialchars($cert['domain'] ?? 'Unknown') ?></strong>
+                                                <?php if (($cert['port'] ?? 443) != 443): ?>
+                                                    <small class="text-muted">(Port: <?= $cert['port'] ?>)</small>
                                                 <?php endif; ?>
-                                                <?php if ($cert['description']): ?>
-                                                    <br><small class="text-muted"><?php echo htmlspecialchars($cert['description']); ?></small>
+                                                <?php if (!empty($cert['description'])): ?>
+                                                    <br><small class="text-muted"><?= htmlspecialchars($cert['description']) ?></small>
                                                 <?php endif; ?>
                                             </td>
                                             <td>
                                                 <?php if ($cert['last_checked'] === null): ?>
-                                                    <span class="badge badge-secondary">
-                                                        <i class="fas fa-question-circle mr-1"></i>Not Checked
-                                                    </span>
-                                                <?php elseif (!$cert['is_valid']): ?>
-                                                    <span class="badge badge-danger">
-                                                        <i class="fas fa-times-circle mr-1"></i>Invalid
-                                                    </span>
+                                                    <span class="badge-custom badge-not-checked">Not Checked</span>
+                                                <?php elseif (!($cert['is_valid'] ?? true)): ?>
+                                                    <span class="badge-custom badge-invalid">Invalid</span>
                                                 <?php else: ?>
-                                                    <?php
-                                                    $badgeClass = 'secondary';
-                                                    $icon = 'question-circle';
-                                                    switch ($cert['alert_level']) {
-                                                        case 'expired':
-                                                            $badgeClass = 'danger';
-                                                            $icon = 'times-circle';
-                                                            break;
-                                                        case 'critical':
-                                                            $badgeClass = 'danger';
-                                                            $icon = 'exclamation-triangle';
-                                                            break;
-                                                        case 'warning':
-                                                            $badgeClass = 'warning';
-                                                            $icon = 'exclamation-circle';
-                                                            break;
-                                                        case 'info':
-                                                            $badgeClass = 'info';
-                                                            $icon = 'info-circle';
-                                                            break;
-                                                        case 'ok':
-                                                            $badgeClass = 'success';
-                                                            $icon = 'check-circle';
-                                                            break;
-                                                    }
+                                                    <?php 
+                                                    $alertLevel = $cert['alert_level'] ?? 'unknown';
+                                                    $badgeClass = match($alertLevel) {
+                                                        'expired', 'critical' => 'badge-critical',
+                                                        'warning' => 'badge-warning',
+                                                        'info' => 'badge-info',
+                                                        'ok' => 'badge-ok',
+                                                        default => 'badge-unknown'
+                                                    };
                                                     ?>
-                                                    <span class="badge badge-<?php echo $badgeClass; ?>">
-                                                        <i class="fas fa-<?php echo $icon; ?> mr-1"></i>
-                                                        <?php echo ucfirst($cert['alert_level']); ?>
-                                                    </span>
+                                                    <span class="badge-custom <?= $badgeClass ?>"><?= ucfirst($alertLevel) ?></span>
                                                 <?php endif; ?>
                                             </td>
-                                            <td><?php echo htmlspecialchars($cert['issuer'] ?? 'Unknown'); ?></td>
+                                            <td><?= htmlspecialchars($cert['issuer'] ?? 'Unknown') ?></td>
                                             <td>
-                                                <?php if ($cert['valid_to']): ?>
-                                                    <?php echo date('M d, Y', strtotime($cert['valid_to'])); ?>
-                                                    <br><small class="text-muted"><?php echo date('H:i', strtotime($cert['valid_to'])); ?></small>
+                                                <?php if (!empty($cert['valid_to'])): ?>
+                                                    <?= date('M d, Y', strtotime($cert['valid_to'])) ?>
+                                                    <br><small class="text-muted"><?= date('H:i', strtotime($cert['valid_to'])) ?></small>
                                                 <?php else: ?>
-                                                    <span class="text-muted">Unknown</span>
+                                                    <span style="color: var(--muted);">Unknown</span>
                                                 <?php endif; ?>
                                             </td>
                                             <td>
                                                 <?php if ($cert['is_expired'] ?? false): ?>
-                                                    <span class="text-danger font-weight-bold">EXPIRED</span>
-                                                <?php elseif ($cert['days_until_expiry'] !== null): ?>
-                                                    <span class="font-weight-bold"><?php echo $cert['days_until_expiry']; ?> days</span>
+                                                    <span style="color: var(--red); font-weight: 600;">EXPIRED</span>
+                                                <?php elseif (isset($cert['days_until_expiry'])): ?>
+                                                    <span style="font-weight: 600;"><?= $cert['days_until_expiry'] ?> days</span>
                                                 <?php else: ?>
-                                                    <span class="text-muted">-</span>
+                                                    <span style="color: var(--muted);">-</span>
                                                 <?php endif; ?>
                                             </td>
                                             <td>
-                                                <?php if ($cert['last_checked']): ?>
-                                                    <?php echo date('M d, Y H:i', strtotime($cert['last_checked'])); ?>
+                                                <?php if (!empty($cert['last_checked'])): ?>
+                                                    <?= date('M d, Y H:i', strtotime($cert['last_checked'])) ?>
                                                 <?php else: ?>
-                                                    <span class="text-muted">Never</span>
+                                                    <span style="color: var(--muted);">Never</span>
                                                 <?php endif; ?>
                                             </td>
                                             <td>
                                                 <form method="post" style="display: inline;">
-                                                    <input type="hidden" name="domain_id" value="<?php echo $cert['id']; ?>">
-                                                    <button type="submit" name="remove_domain" class="btn btn-sm btn-outline-danger"
-                                                            onclick="return confirm('Remove <?php echo htmlspecialchars($cert['domain']); ?> from monitoring?')">
-                                                        <i class="fas fa-trash"></i>
+                                                    <input type="hidden" name="domain_id" value="<?= $cert['id'] ?? 0 ?>">
+                                                    <button type="submit" name="remove_domain" class="sa-btn sa-btn-danger" style="padding: 4px 10px;"
+                                                            onclick="return confirm('Remove <?= htmlspecialchars($cert['domain'] ?? '') ?>?')">
+                                                        <i class="feather icon-trash-2"></i>
                                                     </button>
                                                 </form>
                                             </td>
@@ -431,11 +616,7 @@ include '../includes/header_super_admin.php';
                         <?php endif; ?>
                     </div>
                 </div>
-            </div>
-        </div>
-                    </div>
-                    <!-- [ Main Content ] end -->
-                </div>
+
             </div>
         </div>
     </div>
@@ -444,255 +625,51 @@ include '../includes/header_super_admin.php';
 <!-- Add Domain Modal -->
 <div class="modal fade" id="addDomainModal" tabindex="-1" role="dialog" aria-labelledby="addDomainModalLabel" aria-hidden="true">
     <div class="modal-dialog" role="document">
-        <div class="modal-content">
+        <div class="modal-content" style="border-radius: 14px; overflow: hidden;">
             <form method="post">
-                <div class="modal-header">
-                    <h5 class="modal-title" id="addDomainModalLabel">
-                        <i class="fas fa-plus mr-2"></i>Add Domain to Monitor
+                <div class="modal-header" style="background: linear-gradient(135deg, #6366f1, #8b5cf6); color: white; border: none;">
+                    <h5 class="modal-title" id="addDomainModalLabel" style="display: flex; align-items: center; gap: 8px;">
+                        <i class="feather icon-plus-circle"></i>Add Domain to Monitor
                     </h5>
-                    <button type="button" class="close" data-dismiss="modal" aria-label="Close">
+                    <button type="button" class="close" data-dismiss="modal" aria-label="Close" style="color: white; opacity: 0.8;">
                         <span aria-hidden="true">&times;</span>
                     </button>
                 </div>
-                <div class="modal-body">
+                <div class="modal-body" style="padding: 24px;">
                     <div class="form-group">
-                        <label for="domain">Domain Name <span class="text-danger">*</span></label>
-                        <input type="text" class="form-control" id="domain" name="domain"
-                               placeholder="example.com" required>
-                        <small class="form-text text-muted">
+                        <label class="form-label" for="domain">Domain Name <span style="color: var(--red);">*</span></label>
+                        <input type="text" class="form-control" id="domain" name="domain" placeholder="example.com" required>
+                        <small style="color: var(--muted); font-size: 0.75rem; margin-top: 4px; display: block;">
                             Enter the domain name without https:// (e.g., almoqadas.com)
                         </small>
                     </div>
                     <div class="form-group">
-                        <label for="port">Port</label>
-                        <input type="number" class="form-control" id="port" name="port"
-                               value="443" min="1" max="65535">
-                        <small class="form-text text-muted">
+                        <label class="form-label" for="port">Port</label>
+                        <input type="number" class="form-control" id="port" name="port" value="443" min="1" max="65535">
+                        <small style="color: var(--muted); font-size: 0.75rem; margin-top: 4px; display: block;">
                             Default SSL port is 443. Change only if using a different port.
                         </small>
                     </div>
                     <div class="form-group">
-                        <label for="description">Description (Optional)</label>
-                        <input type="text" class="form-control" id="description" name="description"
-                               placeholder="Main website domain">
-                        <small class="form-text text-muted">
+                        <label class="form-label" for="description">Description (Optional)</label>
+                        <input type="text" class="form-control" id="description" name="description" placeholder="Main website domain">
+                        <small style="color: var(--muted); font-size: 0.75rem; margin-top: 4px; display: block;">
                             Add a description to help identify this domain.
                         </small>
                     </div>
                 </div>
-                <div class="modal-footer">
-                    <button type="button" class="btn btn-secondary" data-dismiss="modal">Cancel</button>
-                    <button type="submit" name="add_domain" class="btn btn-primary">
-                        <i class="fas fa-plus mr-1"></i>Add Domain
+                <div class="modal-footer" style="border-top: 1px solid var(--border); padding: 16px 24px;">
+                    <button type="button" class="sa-btn sa-btn-ghost" data-dismiss="modal">Cancel</button>
+                    <button type="submit" name="add_domain" class="sa-btn sa-btn-primary">
+                        <i class="feather icon-plus"></i>Add Domain
                     </button>
                 </div>
             </form>
         </div>
     </div>
 </div>
-
+    <!-- Required Js -->
+    <script src="../assets/js/vendor-all.min.js"></script>
+    <script src="../assets/plugins/bootstrap/js/bootstrap.min.js"></script>
+    <script src="../assets/js/pcoded.min.js"></script>
 <?php include '../includes/admin_footer.php'; ?>
-
-<style>
-/* Enhanced custom styles for better layout and design */
-.page-header.card {
-    background: linear-gradient(135deg, #4099ff 0%, #2ed8b6 100%);
-    color: #ffffff;
-    border: none;
-    margin-bottom: 20px;
-    padding: 20px !important;
-    box-shadow: 0 4px 12px rgba(0,0,0,0.15);
-    border-radius: 10px;
-}
-
-.page-header.card .row {
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-}
-
-.page-header.card h5 {
-    color: #ffffff;
-    margin: 0;
-    font-weight: 600;
-}
-
-.page-header.card .text-end {
-    text-align: right;
-}
-
-.page-header.card .btn {
-    background: rgba(255,255,255,0.2);
-    color: #ffffff;
-    border: 1px solid rgba(255,255,255,0.3);
-    border-radius: 25px;
-    transition: all 0.3s ease;
-}
-
-.page-header.card .btn:hover {
-    background: rgba(255,255,255,0.3);
-    border-color: rgba(255,255,255,0.5);
-    transform: translateY(-1px);
-}
-
-.card {
-    border-radius: 10px;
-    box-shadow: 0 2px 8px rgba(0,0,0,0.1);
-    transition: transform 0.2s ease-in-out, box-shadow 0.2s ease-in-out;
-    border: none;
-}
-
-.card:hover {
-    transform: translateY(-2px);
-    box-shadow: 0 4px 16px rgba(0,0,0,0.15);
-}
-
-.card-header {
-    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-    color: white;
-    border-radius: 10px 10px 0 0;
-    padding: 1rem 1.5rem;
-    border: none;
-}
-
-.card-header h5 {
-    margin: 0;
-    font-weight: 600;
-    display: flex;
-    align-items: center;
-}
-
-.progress {
-    border-radius: 15px;
-    overflow: hidden;
-    box-shadow: inset 0 1px 2px rgba(0,0,0,0.1);
-}
-
-.progress-bar {
-    transition: width 0.6s ease;
-}
-
-.badge {
-    font-size: 0.85em;
-    padding: 0.5em 0.75em;
-    border-radius: 20px;
-    font-weight: 500;
-}
-
-.badge-success {
-    background-color: #28a745;
-}
-
-.badge-warning {
-    background-color: #ffc107;
-    color: #212529;
-}
-
-.badge-info {
-    background-color: #17a2b8;
-}
-
-.table-responsive {
-    border-radius: 10px;
-    overflow: hidden;
-}
-
-.table {
-    margin-bottom: 0;
-}
-
-.table thead th {
-    background-color: #f8f9fa;
-    border-bottom: 2px solid #dee2e6;
-    font-weight: 600;
-    color: #495057;
-    padding: 1rem;
-}
-
-.table tbody tr:hover {
-    background-color: #f1f3f4;
-}
-
-.table tbody td {
-    padding: 1rem;
-    vertical-align: middle;
-}
-
-.form-control {
-    border-radius: 8px;
-    border: 1px solid #ced4da;
-    transition: border-color 0.15s ease-in-out, box-shadow 0.15s ease-in-out;
-    padding: 0.75rem;
-}
-
-.form-control:focus {
-    border-color: #4099ff;
-    box-shadow: 0 0 0 0.2rem rgba(64, 153, 255, 0.25);
-}
-
-.btn-primary {
-    background: linear-gradient(135deg, #4099ff 0%, #2ed8b6 100%);
-    border: none;
-    border-radius: 25px;
-    padding: 0.75rem 2rem;
-    font-weight: 600;
-    transition: all 0.3s ease;
-}
-
-.btn-primary:hover {
-    transform: translateY(-1px);
-    box-shadow: 0 4px 12px rgba(64, 153, 255, 0.3);
-}
-
-.btn-secondary {
-    border-radius: 25px;
-    padding: 0.75rem 2rem;
-    font-weight: 600;
-    transition: all 0.3s ease;
-}
-
-.alert {
-    border-radius: 10px;
-    border: none;
-    padding: 1rem 1.5rem;
-}
-
-.alert-info {
-    background: linear-gradient(135deg, #d1ecf1 0%, #bee5eb 100%);
-    color: #0c5460;
-}
-
-.alert-success {
-    background: linear-gradient(135deg, #d4edda 0%, #c3e6cb 100%);
-    color: #155724;
-}
-
-.alert-danger {
-    background: linear-gradient(135deg, #f8d7da 0%, #f5c6cb 100%);
-    color: #721c24;
-}
-
-.h2 {
-    font-size: 2.5rem;
-}
-
-.h4 {
-    font-size: 1.5rem;
-}
-
-.h5 {
-    font-size: 1.25rem;
-}
-
-.h6 {
-    font-size: 1rem;
-}
-</style>
-
-<!-- Required Js -->
-<script src="../assets/js/vendor-all.min.js"></script>
-<script src="../assets/plugins/bootstrap/js/bootstrap.min.js"></script>
-<script src="../assets/js/pcoded.min.js"></script>
-<script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
-</body>
-</html>

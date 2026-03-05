@@ -15,8 +15,11 @@ enforce_auth();
 
 
 
-// Check if user is logged in
-if (!isset($_SESSION['user_id'])  || $_SESSION['role'] !== 'admin') {
+// Check if user is logged in with proper role
+$allowed_roles = ['admin', 'finance', 'sales'];
+if (!isset($_SESSION['user_id']) || !in_array($_SESSION['role'], $allowed_roles)) {
+    // Log unauthorized access attempt
+    error_log("Unauthorized access attempt to dashboard: " . ($_SESSION['user_id'] ?? 'unknown') . " - Role: " . ($_SESSION['role'] ?? 'unknown') . " - IP: " . $_SERVER['REMOTE_ADDR']);
     header('Location: ../login.php');
     exit();
 }
@@ -24,6 +27,9 @@ $tenant_id = $_SESSION['tenant_id'];
 $branch_id = $_SESSION['branch_id'];
 require_once '../includes/db.php';
 include '../api/ticket_date_change/date_change_handler.php';
+
+// Check if user is admin or finance
+$canEdit = in_array($_SESSION['role'], ['admin', 'finance']);
 ?>
 <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/sweetalert/1.1.3/sweetalert.css">
 <link rel="stylesheet" href="../assets/plugins/sweetalert2/sweetalert2.min.css">
@@ -34,6 +40,191 @@ include '../api/ticket_date_change/date_change_handler.php';
 <link rel="stylesheet" href="../css/general/modal-styles.css">
 <link rel="stylesheet" href="../css/ticket/ticket-form.css">
 <link rel="stylesheet" href="../css/ticket/datechange-css.css">
+<style>
+/* Date Change Card Styles */
+.date-change-card-container {
+    display: flex;
+    flex-direction: column;
+    gap: 16px;
+}
+
+.date-change-card {
+    display: grid;
+    grid-template-columns: 1fr 140px;
+    border-radius: 10px;
+    overflow: hidden;
+    background: #e8edf2;
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+    transition: all 0.3s ease;
+}
+
+.date-change-card:hover {
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+}
+
+.date-change-card-main {
+    display: grid;
+    grid-template-columns: 1fr auto;
+    align-items: center;
+    padding: 18px 22px;
+    position: relative;
+}
+
+.date-change-card-main::after {
+    content: '';
+    position: absolute;
+    right: 0;
+    top: 10%;
+    height: 80%;
+    border-right: 2px dashed rgba(255,255,255,0.5);
+}
+
+.date-change-card-main.status-paid {
+    background: #8db87a;
+}
+
+.date-change-card-main.status-partial {
+    background: #d4a574;
+}
+
+.date-change-card-main.status-unpaid {
+    background: #e07a7a;
+}
+
+.date-change-card-main.status-neutral {
+    background: #6b8fb3;
+}
+
+.date-change-card-left {
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+}
+
+.date-change-card-title {
+    font-size: 18px;
+    font-weight: 700;
+    color: #fff;
+    letter-spacing: 0.5px;
+    line-height: 1;
+}
+
+.date-change-card-id {
+    font-size: 11px;
+    color: rgba(255,255,255,0.85);
+    font-weight: 500;
+}
+
+.date-change-card-details {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 12px 16px;
+    color: rgba(255,255,255,0.9);
+    font-size: 12px;
+    margin-top: 8px;
+}
+
+.date-change-card-detail-item {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+}
+
+.date-change-card-detail-label {
+    font-weight: 600;
+    font-size: 10px;
+    text-transform: uppercase;
+    opacity: 0.8;
+    min-width: fit-content;
+}
+
+.date-change-card-right {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+}
+
+.date-change-card-price-box {
+    background: #fff;
+    border-radius: 8px;
+    padding: 10px 14px;
+    font-size: 28px;
+    font-weight: 700;
+    color: #2d3f52;
+    letter-spacing: -0.5px;
+    text-align: center;
+}
+
+.date-change-card-price-meta {
+    display: flex;
+    gap: 4px;
+    align-items: center;
+    font-size: 9px;
+    color: rgba(255,255,255,0.75);
+}
+
+.date-change-card-meta-dot {
+    width: 5px;
+    height: 5px;
+    border-radius: 50%;
+    background: rgba(255,255,255,0.7);
+}
+
+.date-change-card-stub {
+    background: #e2e8ed;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    padding: 12px 8px;
+    gap: 6px;
+}
+
+.date-change-card-actions {
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+    width: 100%;
+}
+
+.date-change-card-action-btn {
+    background: #4099ff;
+    border: none;
+    color: #fff;
+    padding: 8px 12px;
+    border-radius: 4px;
+    font-size: 12px;
+    cursor: pointer;
+    transition: all 0.2s;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 100%;
+}
+
+.date-change-card-action-btn:hover {
+    background: #2e7dd9;
+    transform: scale(1.05);
+}
+
+@media (max-width: 768px) {
+    .date-change-card {
+        grid-template-columns: 1fr;
+    }
+    
+    .date-change-card-main {
+        grid-template-columns: 1fr;
+    }
+    
+    .date-change-card-main::after {
+        display: none;
+    }
+    
+    .date-change-card-stub {
+        padding: 8px 12px;
+    }
+}
+</style>
         <?php 
         include '../includes/header.php';
         // DataTables CSS removed
@@ -89,221 +280,158 @@ include '../api/ticket_date_change/date_change_handler.php';
                                                  </div>
                                              </div>
 
-                                    <!-- [ Table ] start -->
+                                    <!-- [ Cards ] start -->
                                     <div class="card">                              
-                                         <div class="card-body p-0">
+                                         <div class="card-body">
                                              <!-- Pagination Info -->
-                                             <div class="row mb-3 p-3">
+                                             <div class="row mb-3">
                                                  <div class="col-md-6">
                                                      <small class="text-muted">
                                                          Showing <?= $offset + 1 ?> to <?= min($offset + $items_per_page, $total_records) ?> of <?= $total_records ?> entries
                                                      </small>
                                                  </div>
                                              </div>
-                                             <div class="table-responsive">
-                                                 <table class="table table-hover" id="dateChangeTable">
-                                                     <thead>
-                                                        <tr>
-                                                            <th><?= __('passenger') ?></th>
-                                                            <th><?= __('flight_details') ?></th>
-                                                            <th><?= __('date_change') ?></th>
-                                                            <th><?= __('financial_details') ?></th>
-                                                            <th><?= __('payment') ?></th>
-                                                            <th><?= __('penalties') ?></th>
-                                                            <th class="text-right no-sort"><?= __('actions') ?></th>
-                                                        </tr>
-                                                    </thead>
-                                                    <tbody id="ticketTable">
-                                                        <?php foreach ($tickets as $ticket): ?>
-                                                        <tr>
-                                                            <td>
-                                                                <div class="passenger-info">
-                                                                    
-                                                                    <div class="passenger-info__details">
-                                                                        <div class="passenger-info__name">
-                                                                            <?= htmlspecialchars($ticket['title']) ?> <?= htmlspecialchars($ticket['passenger_name']) ?>
-                                                                        </div>
-                                                                        <div class="passenger-info__pnr">
-                                                                            PNR: <?= htmlspecialchars($ticket['pnr']) ?>
-                                                                            <br>
-                                                                            <?= __('phone') ?>: <?= htmlspecialchars($ticket['phone']) ?>
-                                                                            <br>
-                                                                            <?= __('created_by') ?>: <?= htmlspecialchars($ticket['created_by']) ?>
-                                                                        </div>
-                                                                    </div>
-                                                                </div>
-                                                            </td>
-                                                            <td>
-                                                                <div class="flight-info">
-                                                                    <div class="flight-info__segment">
-                                                                        <div class="flight-info__city">
-                                                                            <?= htmlspecialchars($ticket['origin']) ?> - <?= htmlspecialchars($ticket['destination']) ?>
-                                                                        </div>
-                                                                    </div>
-                                                                </div>
-                                                            </td>
-                                                            <td>
-                                                                <div class="date-change-info">
-                                                                    <div class="date-change-info__old">
-                                                                        <?= __('old_date') ?>: <?= htmlspecialchars($ticket['old_departure_date']) ?>
-                                                                    </div>
-                                                                    <div class="date-change-info__new">
-                                                                        <?= __('new_date') ?>: <?= htmlspecialchars($ticket['departure_date']) ?>
-                                                                    </div>
-                                                                </div>
-                                                            </td>
-                                                            <td>
-                                                                <div class="financial-info">
-                                                                    <div class="financial-info__amount">
-                                                                        <?= htmlspecialchars($ticket['currency']) ?> <?= number_format($ticket['sold'], 2) ?>
-                                                                    </div>
-                                                                    <div class="financial-info__penalties">
-                                                                        <?= __('base') ?>: <?= htmlspecialchars($ticket['currency']) ?> <?= number_format($ticket['base'], 2) ?>
-                                                                    </div>
-                                                                </div>
-                                                            </td>
-                                                            <td>
-                                                            <?php
-                                                                // Get client type from clients table
-                                                                $soldTo = $ticket['sold_to_name'];
-                                                                $isAgencyClient = false; // Default to not agency client
-
-                                                                // Fix: We need to query the clients table using the client name from sold_to
-                                                                $clientStmt = $pdo->prepare("SELECT client_type FROM clients WHERE tenant_id = ? AND branch_id = ? AND name = ?");
-                                                                $clientStmt->bindParam(1, $tenant_id, PDO::PARAM_INT);
-                                                                $clientStmt->bindParam(2, $branch_id, PDO::PARAM_INT);
-                                                                $clientStmt->bindParam(3, $soldTo, PDO::PARAM_STR);
-                                                                $clientStmt->execute();
-                                                                $clientResult = $clientStmt->fetchAll();
-                                                                if (count($clientResult) > 0) {
-                                                                    $clientRow = $clientResult[0];
-                                                                    // Only show payment status for agency clients
-                                                                    $isAgencyClient = ($clientRow['client_type'] === 'agency');
-                                                                }
-
-                                                                // Only show payment status for agency clients
-                                                                if ($isAgencyClient) {
-                                                                    // Calculate payment status using transaction-specific exchange rates
-                                                                    $baseCurrency = $ticket['currency'];
-                                                                    $soldAmount = floatval($ticket['supplier_penalty'] + $ticket['service_penalty']);
-                                                                    $totalPaidInBase = 0.0;
-
-                                                                    // Get ticket ID
-                                                                    $ticketId = $ticket['id'];
-
-                                                                    // Query transactions from main_account_transactions table
-                                                                    $transactionStmt = $pdo->prepare("SELECT * FROM main_account_transactions WHERE
-                                                                        transaction_of = 'date_change'
-                                                                        AND reference_id = ?
-                                                                        AND tenant_id = ?
-                                                                        AND branch_id = ?");
-                                                                    $transactionStmt->bindParam(1, $ticketId, PDO::PARAM_INT);
-                                                                    $transactionStmt->bindParam(2, $tenant_id, PDO::PARAM_INT);
-                                                                    $transactionStmt->bindParam(3, $branch_id, PDO::PARAM_INT);
-                                                                    $transactionStmt->execute();
-                                                                    $transactionResult = $transactionStmt->fetchAll();
-
-                                                                    // Define base exchange rates (can be fetched from DB if dynamic)
-                                                                    $exchangeRates = [
-                                                                        'USD' => 70,      // 1 USD = 70 AFS
-                                                                        'AFS' => 1,       // Base unit
-                                                                        'EUR' => 80,      // 1 EUR = 80 AFS
-                                                                        'DARHAM' => 18.49 // 1 DARHAM = 18.49 AFS
-                                                                    ];
-
-                                                                    $totalPaidInBase = 0.0;
-
-                                                                    if (count($transactionResult) > 0) {
-                                                                        foreach ($transactionResult as $transaction) {
-                                                                            $amount = floatval($transaction['amount']);
-                                                                            $transCurrency = $transaction['currency'];
-                                                                            
-                                                                            // Use transaction-specific exchange rate if available, otherwise fallback to default
-                                                                            $transExchangeRate = isset($transaction['exchange_rate']) && $transaction['exchange_rate'] > 0 
-                                                                                                ? floatval($transaction['exchange_rate']) 
-                                                                                                : (isset($exchangeRates[$transCurrency]) ? $exchangeRates[$transCurrency] : 1.0);
-
-                                                                        // Conversion logic
-                                                                        if ($transCurrency === $baseCurrency) {
-                                                                            $convertedAmount = $amount;
-                                                                        } else {
-                                                                            if ($baseCurrency === 'AFS') {
-                                                                                $convertedAmount = $amount * $transExchangeRate;
-                                                                            } else {
-                                                                                $convertedAmount = $amount / $transExchangeRate;
-                                                                            }
-                                                                        }
-
-                                                                            $totalPaidInBase += $convertedAmount;
-                                                                        }
-                                                                    }
-
-
-                                                                    // Status icon based on payment status
-                                                                    if ($totalPaidInBase <= 0) {
-                                                                        // No transactions
-                                                                        echo '<i class="fas fa-circle text-danger" title="No payment received"></i>';
-                                                                    } elseif ($totalPaidInBase < $soldAmount) {
-                                                                        // Partial payment
-                                                                        $percentage = round(($totalPaidInBase / $soldAmount) * 100);
-                                                                        echo '<i class="fas fa-circle text-warning" style="color: #ffc107 !important;"
-                                                                            title="Partial payment: ' . $baseCurrency . ' ' . number_format($totalPaidInBase, 2) . ' / ' . $baseCurrency . ' ' .
-                                                                            number_format($soldAmount, 2) . ' (' . $percentage . '%)"></i>';
-                                                                    } elseif (abs($totalPaidInBase - $soldAmount) < 0.01) {
-                                                                        // Fully paid (with a small tolerance for floating-point comparison)
-                                                                        echo '<i class="fas fa-circle text-success" title="Fully paid"></i>';
-                                                                    } else {
-                                                                        // Overpaid
-                                                                        echo '<i class="fas fa-circle text-success"
-                                                                            title="Fully paid (overpaid by ' . $baseCurrency . ' ' .
-                                                                            number_format($totalPaidInBase - $soldAmount, 2) . ')"></i>';
-                                                                    }
-                                                                } else {
-                                                                    // Not an agency client - show neutral icon
-                                                                    echo '<i class="fas fa-minus text-muted" title="Not an agency client"></i>';
-                                                                }
-                                                                ?>
-                                                                </td>
-                                                            <td>
-                                                                <div class="financial-info">
-                                                                    <div class="financial-info__amount">
-                                                                        <?= htmlspecialchars($ticket['currency']) ?> <?= number_format($ticket['supplier_penalty'] + $ticket['service_penalty'], 2) ?>
-                                                                    </div>
-                                                                    <div class="financial-info__penalties">
-                                                                        <?= __('supplier_penalty') ?>: <?= htmlspecialchars($ticket['currency']) ?> <?= number_format($ticket['supplier_penalty'], 2) ?>
-                                                                    </div>
-                                                                    <div class="financial-info__penalties">
-                                                                        <?= __('service_penalty') ?>: <?= htmlspecialchars($ticket['currency']) ?> <?= number_format($ticket['service_penalty'], 2) ?>
-                                                                    </div>
-                                                                </div>
-                                                            </td>
-                                                            
-                                                            <td class="text-center">
-                                                                 <div class="dropdown">
-                                                                     <button class="btn btn-icon btn-outline-primary dropdown-toggle" type="button" data-toggle="dropdown">
-                                                                         <i class="feather icon-more-horizontal"></i>
-                                                                     </button>
-                                                                     <div class="dropdown-menu dropdown-menu-right">
-                                                                         <?php if ($isAgencyClient): ?>
-                                                                         <a class="dropdown-item" href="javascript:void(0)" onclick="manageTransactions(<?= $ticket['id'] ?>)">
-                                                                             <i class="fa fa-credit-card mr-2"></i><?= __('manage_transactions') ?>
-                                                                         </a>
-                                                                         <?php endif; ?>
-                                                                         <a class="dropdown-item" href="javascript:void(0)" onclick="printAgreement(<?= $ticket['id'] ?>)">
-                                                                             <i class="feather icon-printer mr-2"></i><?= __('print_agreement') ?>
-                                                                         </a>
-                                                                         <div class="dropdown-divider"></div>
-                                                                         <a class="dropdown-item text-danger" href="javascript:void(0)" onclick="deleteTicket(<?= $ticket['id'] ?>)">
-                                                                             <i class="feather icon-trash-2 mr-2"></i><?= __('delete_ticket') ?>
-                                                                         </a>
-                                                                     </div>
+                                             <div class="date-change-card-container" id="ticketTable">
+                                                 <?php foreach ($tickets as $ticket): ?>
+                                                 <?php
+                                                     // Determine payment status
+                                                     $paymentStatus = 'neutral';
+                                                     $totalPaidInBase = 0;
+                                                     $baseCurrency = $ticket['currency'];
+                                                     $soldAmount = floatval($ticket['supplier_penalty'] + $ticket['service_penalty']);
+                                                     $ticketId = $ticket['id'];
+                                                     
+                                                     // Get client type from clients table
+                                                     $soldTo = $ticket['sold_to_name'];
+                                                     $isAgencyClient = false;
+                                                     
+                                                     $clientStmt = $pdo->prepare("SELECT client_type FROM clients WHERE tenant_id = ? AND branch_id = ? AND name = ?");
+                                                     $clientStmt->bindParam(1, $tenant_id, PDO::PARAM_INT);
+                                                     $clientStmt->bindParam(2, $branch_id, PDO::PARAM_INT);
+                                                     $clientStmt->bindParam(3, $soldTo, PDO::PARAM_STR);
+                                                     $clientStmt->execute();
+                                                     $clientResult = $clientStmt->fetchAll();
+                                                     if (count($clientResult) > 0) {
+                                                         $clientRow = $clientResult[0];
+                                                         $isAgencyClient = ($clientRow['client_type'] === 'agency');
+                                                     }
+                                                     
+                                                     if ($isAgencyClient) {
+                                                         // Query transactions from database
+                                                         $transactionStmt = $pdo->prepare("SELECT * FROM main_account_transactions WHERE
+                                                             transaction_of = 'date_change'
+                                                             AND reference_id = ? AND tenant_id = ? AND branch_id = ?");
+                                                         $transactionStmt->bindParam(1, $ticketId, PDO::PARAM_INT);
+                                                         $transactionStmt->bindParam(2, $tenant_id, PDO::PARAM_INT);
+                                                         $transactionStmt->bindParam(3, $branch_id, PDO::PARAM_INT);
+                                                         $transactionStmt->execute();
+                                                         $transactions = $transactionStmt->fetchAll();
+                                                         
+                                                         if ($transactions && count($transactions) > 0) {
+                                                             foreach ($transactions as $transaction) {
+                                                                 $amount = floatval($transaction['amount']);
+                                                                 $transCurrency = $transaction['currency'];
+                                                                 $transExchangeRate = isset($transaction['exchange_rate']) && $transaction['exchange_rate'] > 0 ? floatval($transaction['exchange_rate']) : 1.0;
+                                                                 
+                                                                 $convertedAmount = 0.0;
+                                                                 
+                                                                 if ($transCurrency === $baseCurrency) {
+                                                                     $convertedAmount = $amount;
+                                                                 } else {
+                                                                     if ($baseCurrency === 'AFS') {
+                                                                         $convertedAmount = $amount * $transExchangeRate;
+                                                                     } else {
+                                                                         $convertedAmount = $amount / $transExchangeRate;
+                                                                     }
+                                                                 }
+                                                                 
+                                                                 $totalPaidInBase += $convertedAmount;
+                                                             }
+                                                         }
+                                                         
+                                                         if ($totalPaidInBase <= 0) {
+                                                             $paymentStatus = 'unpaid';
+                                                         } elseif ($totalPaidInBase < $soldAmount) {
+                                                             $paymentStatus = 'partial';
+                                                         } else {
+                                                             $paymentStatus = 'paid';
+                                                         }
+                                                     }
+                                                 ?>
+                                                 <div class="date-change-card">
+                                                     <div class="date-change-card-main status-<?= $paymentStatus ?>">
+                                                         <div class="date-change-card-left">
+                                                             <div>
+                                                                 <div class="date-change-card-title">DATE CHANGE</div>
+                                                                 <div class="date-change-card-id"><?= htmlspecialchars($ticket['pnr']) ?></div>
+                                                             </div>
+                                                             <div class="date-change-card-details">
+                                                                 <div class="date-change-card-detail-item">
+                                                                     <span class="date-change-card-detail-label">Passenger:</span>
+                                                                     <span><?= htmlspecialchars($ticket['title']) ?> <?= htmlspecialchars($ticket['passenger_name']) ?></span>
                                                                  </div>
-                                                             </td>
-                                                        </tr>
-                                                        <?php endforeach; ?>
-                                                    </tbody>
-                                                </table>
-                                                </div>
+                                                                 <div class="date-change-card-detail-item">
+                                                                     <span class="date-change-card-detail-label">Sold To:</span>
+                                                                     <span><?= htmlspecialchars($ticket['sold_to_name']) ?></span>
+                                                                 </div>
+                                                                 <div class="date-change-card-detail-item">
+                                                                     <span class="date-change-card-detail-label">Route:</span>
+                                                                     <span><?= htmlspecialchars($ticket['origin']) ?> → <?= htmlspecialchars($ticket['destination']) ?></span>
+                                                                 </div>
+                                                                 <div class="date-change-card-detail-item">
+                                                                     <span class="date-change-card-detail-label">Phone:</span>
+                                                                     <span><?= htmlspecialchars($ticket['phone']) ?></span>
+                                                                 </div>
+                                                                 <div class="date-change-card-detail-item">
+                                                                     <span class="date-change-card-detail-label">Old Departure:</span>
+                                                                     <span><?= htmlspecialchars($ticket['old_departure_date']) ?></span>
+                                                                 </div>
+                                                                 <div class="date-change-card-detail-item">
+                                                                     <span class="date-change-card-detail-label">New Departure:</span>
+                                                                     <span><?= htmlspecialchars($ticket['departure_date']) ?></span>
+                                                                 </div>
+                                                                 <?php if (!empty($ticket['old_return_date'])): ?>
+                                                                 <div class="date-change-card-detail-item">
+                                                                     <span class="date-change-card-detail-label">Old Return:</span>
+                                                                     <span><?= htmlspecialchars($ticket['old_return_date']) ?></span>
+                                                                 </div>
+                                                                 <div class="date-change-card-detail-item">
+                                                                     <span class="date-change-card-detail-label">New Return:</span>
+                                                                     <span><?= htmlspecialchars($ticket['return_date'] ?? 'N/A') ?></span>
+                                                                 </div>
+                                                                 <?php endif; ?>
+                                                             </div>
+                                                         </div>
+                                                         <div class="date-change-card-right">
+                                                             <div class="date-change-card-price-box"><?= number_format($ticket['supplier_penalty'] + $ticket['service_penalty'], 2) ?></div>
+                                                             <div class="date-change-card-price-meta">
+                                                                 <div class="date-change-card-meta-dot"></div>
+                                                                 <div class="date-change-card-meta-dot"></div>
+                                                                 <div class="date-change-card-meta-dot"></div>
+                                                                 <span><?= htmlspecialchars($baseCurrency) ?></span>
+                                                             </div>
+                                                         </div>
+                                                     </div>
+                                                     <div class="date-change-card-stub">
+                                                         <div class="date-change-card-actions" style="display: flex; flex-direction: column; gap: 6px;">
+                                                             <?php if ($isAgencyClient && $canEdit): ?>
+                                                             <button class="date-change-card-action-btn" onclick="manageTransactions(<?= $ticket['id'] ?>)" title="<?= __('manage_transactions') ?>" style="width: 100%;">
+                                                                 <i class="fa fa-credit-card"></i>
+                                                             </button>
+                                                             <?php endif; ?>
+                                                             <button class="date-change-card-action-btn" onclick="printAgreement(<?= $ticket['id'] ?>)" title="<?= __('print_agreement') ?>" style="width: 100%;">
+                                                                 <i class="feather icon-printer"></i>
+                                                             </button>
+                                                             <?php if ($canEdit): ?>
+                                                             <button class="date-change-card-action-btn" onclick="deleteTicket(<?= $ticket['id'] ?>)" title="<?= __('delete_ticket') ?>" style="width: 100%;">
+                                                                 <i class="feather icon-trash-2"></i>
+                                                             </button>
+                                                             <?php endif; ?>
+                                                         </div>
+                                                     </div>
+                                                 </div>
+                                                 <?php endforeach; ?>
+                                             </div>
                                                 <!-- Pagination Controls -->
                                                 <div class="row mt-4 p-3">
                                                  <div class="col-md-12">

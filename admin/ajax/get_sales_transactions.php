@@ -8,7 +8,7 @@ require_once '../security.php';
 // Enforce authentication
 enforce_auth();
 
-require_once '../../includes/conn.php';
+require_once '../../includes/db.php';
 
 $tenant_id = $_SESSION['tenant_id'];
 $branch_id = $_SESSION['branch_id'];

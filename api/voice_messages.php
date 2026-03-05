@@ -64,15 +64,13 @@ if ($method === 'POST') {
         exit;
     }
 
-    // Use SecureFileUpload for audio validation
-    $uploader = new SecureFileUpload(10 * 1024 * 1024, __DIR__ . '/../uploads/');
-    
-    // Manually validate audio MIME types since SecureFileUpload might need adjustment
+    // Validate audio MIME types
     $finfo = finfo_open(FILEINFO_MIME_TYPE);
     $actualMime = finfo_file($finfo, $audioFile['tmp_name']);
     finfo_close($finfo);
     
-    $allowedMimes = ['audio/webm', 'audio/mp4', 'audio/mpeg', 'audio/ogg', 'audio/wav'];
+    // Allow both audio and video webm formats (webm containers are used for both)
+    $allowedMimes = ['audio/webm', 'video/webm', 'audio/mp4', 'audio/mpeg', 'audio/ogg', 'audio/wav'];
     if (!in_array($actualMime, $allowedMimes)) {
         http_response_code(400);
         echo json_encode(['error' => 'invalid_audio_format', 'detected' => $actualMime]);
@@ -138,16 +136,31 @@ if ($method === 'POST') {
         error_log('[VoiceAPI] Block check failed: ' . $e->getMessage());
     }
 
-    // Upload audio file using SecureFileUpload
+    // Upload audio file manually (bypass SecureFileUpload as it doesn't support audio formats)
     try {
-        $result = $uploader->upload('audio', "voices/{$tenantId}/{$currentUserId}", 1);
-        if (!$result['success']) {
-            http_response_code(400);
-            echo json_encode(['error' => 'file_upload_failed', 'details' => $result['error']]);
+        // Create upload directory
+        $uploadDir = __DIR__ . '/../uploads/voices/' . $tenantId . '/' . $currentUserId;
+        if (!is_dir($uploadDir)) {
+            if (!mkdir($uploadDir, 0755, true)) {
+                http_response_code(500);
+                echo json_encode(['error' => 'upload_error', 'details' => 'Failed to create upload directory']);
+                exit;
+            }
+        }
+        
+        // Generate safe filename
+        $filename = 'voice_' . time() . '_' . uniqid() . '.webm';
+        $filepath = $uploadDir . '/' . $filename;
+        
+        // Move uploaded file
+        if (!move_uploaded_file($audioFile['tmp_name'], $filepath)) {
+            http_response_code(500);
+            echo json_encode(['error' => 'upload_error', 'details' => 'Failed to move uploaded file']);
             exit;
         }
-        $uploadedFile = $result['data'];
-        $filename = $uploadedFile['filename'];
+        
+        // Set proper permissions
+        chmod($filepath, 0644);
     } catch (Exception $e) {
         http_response_code(500);
         echo json_encode(['error' => 'upload_error', 'details' => $e->getMessage()]);

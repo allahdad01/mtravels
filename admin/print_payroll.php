@@ -216,615 +216,988 @@ foreach ($employees as &$employee) {
     <meta charset="utf-8">
     <title><?php echo $title; ?> - <?php echo htmlspecialchars($settings['agency_name']); ?></title>
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
     <style>
-        @media print {
-            @page {
-                size: A4;
-                margin: 0.2cm;
-            }
-            body {
-                margin: 0;
-                padding: 0;
-                font-family: Arial, sans-serif;
-                font-size: 9pt;
-            }
-            .no-print {
-                display: none !important;
-            }
-            .page-break {
-                page-break-after: always;
-            }
-            .paid-stamp {
-                opacity: 0.5;
-            }
-        }
-        
-        .paid-stamp {
-            position: absolute;
-            top: 50%;
-            left: 50%;
-            transform: translate(-50%, -50%) rotate(-30deg);
-            font-size: 50px;
-            color: #28a745;
-            border: 5px solid #28a745;
-            padding: 5px 10px;
-            border-radius: 5px;
-            opacity: 0.3;
-            pointer-events: none;
-            z-index: 1000;
-        }
-        
-        .payment-info {
-            margin-top: 5px;
-            padding: 5px;
-            background-color: #f8f9fa;
-            border: 1px solid #ddd;
-            border-radius: 4px;
-        }
-        
-        .payment-status {
-            display: inline-block;
-            padding: 5px 10px;
-            border-radius: 4px;
-            font-weight: bold;
-        }
-        
-        .status-paid {
-            background-color: #d4edda;
-            color: #28a745;
-        }
-        
-        .status-pending {
-            background-color: #f8d7da;
-            color: #dc3545;
-        }
-        
-        .employee-section {
-            position: relative;
-        }
-        
-        body {
-            font-family: Arial, sans-serif;
-            line-height: 1.3;
-            color: #333;
-            margin: 0;
-            padding: 10px;
-            background-color: #f9f9f9;
-        }
 
-        .container {
-            max-width: 100%;
-            margin: 0 auto;
-            background: #fff;
-            padding: 10px;
-            box-shadow: 0 0 10px rgba(0, 0, 0, 0.1);
-        }
+/* ══════════════════════════════════════════════════════════
+   DESIGN TOKENS
+══════════════════════════════════════════════════════════ */
+:root {
+    --blue-50:    #e6f2ff;
+    --blue-100:   #cce5ff;
+    --blue-200:   #99cbff;
+    --blue-400:   #4099ff;
+    --blue-600:   #0066cc;
+    --blue-700:   #004d99;
+    --blue-900:   #001a4d;
+    
+    --teal-500:   #2ed8b6;
+    --teal-600:   #1fbf9e;
 
-        .header {
-            margin-bottom: 10px;
-            border-bottom: 1px solid #333;
-            padding-bottom: 5px;
-        }
+    --brand:        var(--blue-400);
+    --brand-light:  var(--blue-100);
+    --brand-mid:    var(--blue-200);
+    --brand-dark:   var(--blue-700);
+    --brand-accent: var(--teal-500);
 
-        .header-table {
-            width: 100%;
-            border-collapse: collapse;
-        }
+    --success:    #15803d;
+    --success-bg: #f0fdf4;
+    --success-bd: #bbf7d0;
+    --danger:     #b91c1c;
+    --danger-bg:  #fff1f2;
+    --danger-bd:  #fecdd3;
+    --warning:    #b45309;
 
-        .header-table td {
-            padding: 0;
-            vertical-align: top;
-        }
+    --text:       #0f172a;
+    --text-muted: #64748b;
+    --border:     #e2e8f0;
+    --border-dk:  #cbd5e1;
+    --surface:    #f8fafc;
+    --white:      #ffffff;
 
-        .header-left {
-            text-align: left;
-        }
+    --radius-sm: 4px;
+    --radius:    7px;
+    --radius-lg: 12px;
+}
 
-        .header-right {
-            text-align: right;
-        }
+/* ══════════════════════════════════════════════════════════
+   RESET & BASE
+══════════════════════════════════════════════════════════ */
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
 
-        .title {
-            font-size: 16px;
-            font-weight: bold;
-            margin: 2px 0;
-        }
+body {
+    font-family: 'Plus Jakarta Sans', sans-serif;
+    font-size: 10pt;
+    line-height: 1.55;
+    color: var(--text);
+    background: #e2e8f0;
+}
 
-        .subtitle {
-            font-size: 14px;
-            margin: 2px 0;
-        }
+/* ══════════════════════════════════════════════════════════
+   PAGE WRAPPER
+══════════════════════════════════════════════════════════ */
+.page-wrapper {
+    max-width: 860px;
+    margin: 0 auto;
+    padding: 28px 18px 40px;
+}
 
-        .company-name {
-            font-size: 14px;
-            font-weight: bold;
-            margin: 2px 0;
-        }
+/* ══════════════════════════════════════════════════════════
+   CONTROLS BAR
+══════════════════════════════════════════════════════════ */
+.controls {
+    background: var(--white);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    padding: 14px 20px;
+    margin-bottom: 22px;
+    display: flex;
+    align-items: center;
+    gap: 14px;
+    flex-wrap: wrap;
+    box-shadow: 0 1px 4px rgba(0,0,0,.07);
+}
 
-        .branch-name {
-            font-size: 12px;
-            font-weight: bold;
-            margin: 2px 0;
-        }
+.controls form {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    flex-wrap: wrap;
+    flex: 1;
+}
 
-        .company-address, .company-phone, .company-email {
-            font-size: 10px;
-            margin: 1px 0;
-        }
+.controls label {
+    font-size: 12.5px;
+    font-weight: 600;
+    color: var(--text-muted);
+}
 
-        .employee-info {
-            margin-bottom: 10px;
-            padding: 5px;
-            border: 1px solid #ddd;
-            background-color: #f5f5f5;
-        }
+.controls select {
+    font-family: inherit;
+    font-size: 13px;
+    padding: 6px 11px;
+    border: 1px solid var(--border-dk);
+    border-radius: var(--radius-sm);
+    background: var(--surface);
+    color: var(--text);
+    cursor: pointer;
+    outline: none;
+    transition: border-color .15s;
+}
+.controls select:focus { border-color: var(--brand); }
 
-        .payroll-table {
-            width: 100%;
-            border-collapse: collapse;
-            margin-bottom: 10px;
-        }
+.btn {
+    font-family: inherit;
+    font-size: 13px;
+    font-weight: 600;
+    padding: 7px 18px;
+    border: none;
+    border-radius: var(--radius-sm);
+    cursor: pointer;
+    white-space: nowrap;
+    transition: filter .15s, transform .1s;
+}
+.btn:hover  { filter: brightness(.91); }
+.btn:active { transform: scale(.97); }
 
-        .payroll-table th, .payroll-table td {
-            padding: 4px;
-            border: 1px solid #ddd;
-            text-align: left;
-            font-size: 8px;
-        }
-        
-        .payroll-table th {
-            background-color: #f0f0f0;
-            font-weight: bold;
-        }
-        
-        .payroll-table tr:nth-child(even) {
-            background-color: #f9f9f9;
-        }
+.btn-apply { background: var(--brand);      color: #fff; }
+.btn-print { background: var(--brand-dark); color: #fff; }
+.btn-back  { background: var(--surface); color: var(--text); border: 1px solid var(--border-dk); }
 
-        .employee-info table {
-            font-size: 8px;
-        }
+/* ══════════════════════════════════════════════════════════
+   PAYSLIP CARD
+══════════════════════════════════════════════════════════ */
+.payslip {
+    background: var(--white);
+    border-radius: var(--radius-lg);
+    overflow: hidden;
+    box-shadow: 0 2px 8px rgba(0,0,0,.07), 0 0 0 1px var(--border);
+    position: relative;
+    margin-bottom: 28px;
+}
 
-        .payment-info table {
-            font-size: 8px;
-        }
+/* ── Header ─────────────────────────────────────────── */
+.payslip-header {
+    background: linear-gradient(135deg, var(--brand) 0%, var(--brand-accent) 100%);
+    color: #fff;
+    padding: 24px 30px;
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-start;
+    gap: 20px;
+    border-bottom: 4px solid var(--brand-accent);
+}
 
-        .attendance-summary table {
-            font-size: 8px;
-        }
-        
-        .earnings, .deductions {
-            margin-bottom: 10px;
-        }
-        
-        .total-row {
-            font-weight: bold;
-            background-color: #eee !important;
-        }
-        
-        .signature-section {
-            margin-top: 15px;
-            display: flex;
-            justify-content: space-between;
-        }
-        
-        .signature-box {
-            border-top: 1px solid #333;
-            padding-top: 5px;
-            width: 200px;
-            text-align: center;
-        }
-        
-        .controls {
-            margin-bottom: 20px;
-            padding: 15px;
-            background-color: #eee;
-            border-radius: 5px;
-        }
-        
-        .btn {
-            padding: 8px 15px;
-            background-color: #4CAF50;
-            color: white;
-            border: none;
-            border-radius: 4px;
-            cursor: pointer;
-            margin-right: 5px;
-        }
-        
-        .btn-print {
-            background-color: #2196F3;
-        }
-        
-        .btn:hover {
-            opacity: 0.8;
-        }
-        
-        .form-group {
-            margin-bottom: 15px;
-        }
-        
-        label {
-            margin-right: 10px;
-        }
-        
-        select {
-            padding: 8px;
-            border: 1px solid #ddd;
-            border-radius: 4px;
-        }
-        
-        .payment-details {
-            margin-top: 20px;
-        }
-        
-        .text-success {
-            color: #28a745;
-        }
-        
-        .text-danger {
-            color: #dc3545;
-        }
-        
-        .bonus-row {
-            background-color: #d4edda !important;
-        }
-        
-        .deduction-row {
-            background-color: #f8d7da !important;
-        }
-        
-        .payment-details h4 {
-            margin-bottom: 10px;
-            color: #333;
-        }
-        
-        @media print {
-            .bonus-row {
-                background-color: #efffef !important;
-            }
-            
-            .deduction-row {
-                background-color: #fff5f5 !important;
-            }
-            
-            .text-success {
-                color: #28a745 !important;
-            }
-            
-            .text-danger {
-                color: #dc3545 !important;
-            }
-        }
+.company-name {
+    font-size: 18px;
+    font-weight: 800;
+    letter-spacing: -.4px;
+    margin-bottom: 5px;
+    line-height: 1.2;
+}
+
+.company-meta {
+    font-size: 9pt;
+    opacity: .68;
+    line-height: 1.7;
+}
+
+.title-block { text-align: right; flex-shrink: 0; }
+
+.doc-label {
+    font-size: 8.5pt;
+    font-weight: 600;
+    letter-spacing: 2px;
+    text-transform: uppercase;
+    opacity: .6;
+    margin-bottom: 3px;
+}
+
+.doc-title {
+    font-size: 22px;
+    font-weight: 800;
+    letter-spacing: -.5px;
+    line-height: 1.1;
+}
+
+.doc-period {
+    font-size: 11px;
+    opacity: .6;
+    margin-top: 4px;
+    font-weight: 500;
+}
+
+/* ── PAID watermark ──────────────────────────────────────── */
+.paid-stamp {
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%) rotate(-25deg);
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 58px;
+    font-weight: 500;
+    color: var(--success);
+    border: 6px solid var(--success);
+    padding: 2px 18px;
+    border-radius: var(--radius-sm);
+    opacity: .12;
+    pointer-events: none;
+    z-index: 10;
+    letter-spacing: 6px;
+    user-select: none;
+}
+
+/* ── Employee band ───────────────────────────────────────── */
+.employee-band {
+    background: var(--teal-50);
+    border-bottom: 1px solid var(--teal-100);
+    padding: 16px 30px;
+    display: grid;
+    grid-template-columns: repeat(4, 1fr);
+    gap: 12px 20px;
+}
+
+.info-cell { display: flex; flex-direction: column; gap: 2px; }
+
+.ic-label {
+    font-size: 7.5pt;
+    font-weight: 700;
+    color: var(--brand);
+    text-transform: uppercase;
+    letter-spacing: .7px;
+}
+
+.ic-value {
+    font-size: 9.5pt;
+    font-weight: 600;
+    color: var(--text);
+}
+
+/* Status badge */
+.badge {
+    display: inline-flex;
+    align-items: center;
+    gap: 5px;
+    padding: 2px 10px;
+    border-radius: 99px;
+    font-size: 8.5pt;
+    font-weight: 700;
+    letter-spacing: .3px;
+}
+.badge::before {
+    content: '';
+    width: 6px; height: 6px;
+    border-radius: 50%;
+    flex-shrink: 0;
+}
+.badge-paid    { background: var(--success-bg); color: var(--success); border: 1px solid var(--success-bd); }
+.badge-paid::before    { background: var(--success); }
+.badge-pending { background: var(--danger-bg);  color: var(--danger);  border: 1px solid var(--danger-bd); }
+.badge-pending::before { background: var(--danger); }
+
+/* ══════════════════════════════════════════════════════════
+   BODY
+══════════════════════════════════════════════════════════ */
+.payslip-body { padding: 26px 30px; }
+
+/* ── Summary cards ───────────────────────────────────────── */
+.summary-strip {
+    display: grid;
+    grid-template-columns: repeat(4, 1fr);
+    gap: 10px;
+    margin-bottom: 24px;
+}
+
+.scard {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-top: 3px solid var(--border);
+    border-radius: var(--radius);
+    padding: 12px 14px;
+}
+
+.scard.sc-base   { border-top-color: var(--brand); }
+.scard.sc-bonus  { border-top-color: var(--success); }
+.scard.sc-deduct { border-top-color: var(--danger); }
+.scard.sc-net    { border-top-color: var(--brand-accent); background: linear-gradient(135deg, rgba(64, 153, 255, 0.08) 0%, rgba(46, 216, 182, 0.08) 100%); border: 1px solid rgba(46, 216, 182, 0.3); }
+
+.sc-label {
+    font-size: 8pt;
+    font-weight: 700;
+    color: var(--text-muted);
+    text-transform: uppercase;
+    letter-spacing: .5px;
+    margin-bottom: 5px;
+}
+
+.sc-value {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 14px;
+    font-weight: 500;
+    color: var(--text);
+    line-height: 1.2;
+}
+
+.scard.sc-net .sc-value { font-size: 16px; color: var(--brand); font-weight: 700; }
+
+.sc-cur {
+    font-size: 9pt;
+    color: var(--text-muted);
+    font-family: 'Plus Jakarta Sans', sans-serif;
+    font-weight: 500;
+    margin-left: 2px;
+}
+
+/* ── Payment progress ────────────────────────────────────── */
+.progress-block {
+    margin-bottom: 22px;
+    padding: 13px 16px;
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+}
+
+.progress-meta {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 9px;
+    font-size: 9.5pt;
+}
+
+.pm-title { font-weight: 700; }
+.pm-info  { display: flex; gap: 16px; }
+.pm-info span { color: var(--text-muted); }
+.pm-info strong { font-weight: 700; }
+
+.progress-track {
+    height: 7px;
+    background: var(--border);
+    border-radius: 99px;
+    overflow: hidden;
+}
+
+.progress-fill {
+    height: 100%;
+    background: linear-gradient(90deg, var(--teal-500), var(--teal-700));
+    border-radius: 99px;
+}
+
+/* ── Section title — left accent bar ─────────────────────── */
+.section-title {
+    display: flex;
+    align-items: center;
+    gap: 9px;
+    font-size: 10pt;
+    font-weight: 800;
+    color: var(--brand-dark);
+    margin-bottom: 10px;
+    padding-bottom: 8px;
+    border-bottom: 1px solid var(--border);
+    letter-spacing: -.2px;
+}
+
+.section-title::before {
+    content: '';
+    display: block;
+    width: 4px;
+    height: 18px;
+    background: var(--brand);
+    border-radius: 99px;
+    flex-shrink: 0;
+}
+
+.section-title.s-danger         { color: var(--danger); }
+.section-title.s-danger::before { background: var(--danger); }
+
+/* ── Two-column grid ─────────────────────────────────────── */
+.two-col {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 22px;
+    margin-bottom: 24px;
+}
+
+/* ── Data tables ─────────────────────────────────────────── */
+.data-table {
+    width: 100%;
+    border-collapse: collapse;
+    font-size: 9.5pt;
+}
+
+.data-table thead th {
+    font-size: 7.5pt;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: .6px;
+    color: var(--text-muted);
+    background: var(--surface);
+    padding: 7px 10px;
+    border: 1px solid var(--border);
+    text-align: left;
+    white-space: nowrap;
+}
+
+.data-table tbody td {
+    padding: 7px 10px;
+    border: 1px solid var(--border);
+    vertical-align: middle;
+    line-height: 1.4;
+}
+
+.data-table tbody tr:hover td { background: var(--surface); }
+
+.data-table .total-row td {
+    background: var(--brand-light) !important;
+    font-weight: 700;
+    color: var(--brand);
+    border-color: var(--brand-mid);
+}
+
+.data-table .bonus-row td  { background: var(--success-bg); }
+.data-table .deduct-row td { background: var(--danger-bg); }
+
+.amount-col {
+    text-align: right;
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 9pt;
+    white-space: nowrap;
+}
+
+.text-success { color: var(--success); font-weight: 600; }
+.text-danger  { color: var(--danger);  font-weight: 600; }
+.text-muted   { color: var(--text-muted); }
+
+/* ── Attendance grid ─────────────────────────────────────── */
+.section-gap { margin-bottom: 24px; }
+
+.attendance-grid {
+    display: grid;
+    grid-template-columns: repeat(6, 1fr);
+    gap: 8px;
+}
+
+.att-card {
+    border: 1px solid var(--border);
+    border-top: 3px solid var(--border);
+    border-radius: var(--radius);
+    padding: 10px 8px;
+    text-align: center;
+    background: var(--surface);
+}
+
+.att-num {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 18px;
+    font-weight: 500;
+    line-height: 1.1;
+    margin-bottom: 3px;
+}
+
+.att-lbl {
+    font-size: 7.5pt;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: .5px;
+    color: var(--text-muted);
+}
+
+.att-card.att-total   { border-top-color: var(--brand); }
+.att-card.att-total   .att-num { color: var(--brand); }
+.att-card.att-present { border-top-color: var(--success); }
+.att-card.att-present .att-num { color: var(--success); }
+.att-card.att-absent  { border-top-color: var(--danger); }
+.att-card.att-absent  .att-num { color: var(--danger); }
+.att-card.att-late    { border-top-color: var(--warning); }
+.att-card.att-late    .att-num { color: var(--warning); }
+.att-card.att-half    { border-top-color: #ea580c; }
+.att-card.att-half    .att-num { color: #ea580c; }
+
+/* ── History section ─────────────────────────────────────── */
+.history-section { margin-bottom: 24px; }
+
+/* ── Net payable bar ─────────────────────────────────────── */
+.net-bar {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    background: linear-gradient(135deg, var(--brand) 0%, var(--brand-accent) 100%);
+    color: #fff;
+    border-radius: var(--radius);
+    padding: 16px 22px;
+    margin-bottom: 24px;
+}
+
+.nb-label  { font-size: 11pt; font-weight: 700; opacity: .82; }
+.nb-amount { font-family: 'JetBrains Mono', monospace; font-size: 22px; font-weight: 500; }
+.nb-cur    { font-size: 11pt; opacity: .65; margin-left: 5px; }
+
+/* ── Signatures ──────────────────────────────────────────── */
+.signature-section {
+    display: grid;
+    grid-template-columns: 1fr auto 1fr;
+    gap: 20px;
+    align-items: end;
+    padding-top: 22px;
+    border-top: 1px dashed var(--border-dk);
+}
+
+.sig-box { display: flex; flex-direction: column; }
+
+.sig-line {
+    height: 42px;
+    border-bottom: 1.5px solid var(--border-dk);
+    margin-bottom: 7px;
+}
+
+.sig-label {
+    font-size: 8pt;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: .6px;
+    color: var(--text-muted);
+    text-align: center;
+}
+
+.sig-date-box { text-align: center; }
+
+.date-value {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 10pt;
+    color: var(--text-muted);
+    border-bottom: 1.5px solid var(--border-dk);
+    padding: 4px 20px 8px;
+    margin-bottom: 7px;
+    display: inline-block;
+}
+
+/* ══════════════════════════════════════════════════════════
+   EMPTY STATE
+══════════════════════════════════════════════════════════ */
+.no-data {
+    text-align: center;
+    padding: 60px 24px;
+    color: var(--text-muted);
+    font-size: 14px;
+}
+
+/* ══════════════════════════════════════════════════════════
+   PRINT
+══════════════════════════════════════════════════════════ */
+@media print {
+
+    @page {
+        size: A4 portrait;
+        margin: 0;
+    }
+
+    body {
+        background: #fff;
+        font-size: 8.5pt;
+        -webkit-print-color-adjust: exact;
+        print-color-adjust: exact;
+    }
+
+    .no-print { display: none !important; }
+
+    .page-wrapper { padding: 0; max-width: 100%; }
+
+    /* One slip = one page */
+    .payslip {
+        box-shadow: none;
+        border-radius: 0;
+        border: none;
+        margin-bottom: 0;
+        page-break-after: always;
+        break-after: page;
+    }
+    .payslip:last-of-type {
+        page-break-after: auto;
+        break-after: auto;
+    }
+
+    /* Never orphan these blocks */
+    .summary-strip,
+    .two-col,
+    .attendance-grid,
+    .net-bar,
+    .signature-section,
+    .history-section {
+        break-inside: avoid;
+        page-break-inside: avoid;
+    }
+
+    /* Force colour printing */
+    .payslip-header,
+    .employee-band,
+    .scard.sc-net,
+    .net-bar,
+    .data-table thead th,
+    .data-table .total-row td,
+    .data-table .bonus-row td,
+    .data-table .deduct-row td,
+    .att-card {
+        -webkit-print-color-adjust: exact;
+        print-color-adjust: exact;
+    }
+
+    /* Tighten spacing */
+    .payslip-header  { padding: 14px 22px; }
+    .employee-band   { padding: 10px 22px; grid-template-columns: repeat(3, 1fr); }
+    .payslip-body    { padding: 14px 22px; }
+    .summary-strip   { margin-bottom: 14px; }
+    .scard           { padding: 9px 11px; }
+    .sc-value        { font-size: 12px; }
+    .scard.sc-net .sc-value { font-size: 14px; }
+    .two-col         { gap: 16px; margin-bottom: 14px; }
+    .section-gap     { margin-bottom: 14px; }
+    .attendance-grid { grid-template-columns: repeat(3, 1fr); }
+    .net-bar         { padding: 12px 18px; margin-bottom: 16px; }
+    .nb-amount       { font-size: 18px; }
+    .history-section { margin-bottom: 16px; }
+
+    /* Hide progress bar on print (saves ink) */
+    .progress-block { display: none; }
+
+    .controls { display: none; }
+}
+
     </style>
 </head>
 <body>
-    <div class="container">
-        <!-- Print Controls -->
-        <div class="controls no-print">
-            <form method="get" action="">
-                <?php if ($user_id): ?>
-                    <input type="hidden" name="user_id" value="<?php echo $user_id; ?>">
-                <?php endif; ?>
-                
-                <div class="form-group">
-                    <label for="month">Month:</label>
-                    <select name="month" id="month">
-                        <?php for ($i = 1; $i <= 12; $i++): ?>
-                            <option value="<?php echo $i; ?>" <?php echo $i == $month ? 'selected' : ''; ?>>
-                                <?php echo date('F', mktime(0, 0, 0, $i, 1)); ?>
-                            </option>
-                        <?php endfor; ?>
-                    </select>
-                    
-                    <label for="year">Year:</label>
-                    <select name="year" id="year">
-                        <?php for ($i = date('Y') - 5; $i <= date('Y') + 1; $i++): ?>
-                            <option value="<?php echo $i; ?>" <?php echo $i == $year ? 'selected' : ''; ?>>
-                                <?php echo $i; ?>
-                            </option>
-                        <?php endfor; ?>
-                    </select>
-                    
-                    <button type="submit" class="btn">Apply Filters</button>
-                </div>
-            </form>
-            
-            <button onclick="window.print();" class="btn btn-print">Print Payroll</button>
-            <button onclick="window.history.back();" class="btn">Back</button>
+<div class="page-wrapper">
+
+<!-- Controls -->
+<div class="controls no-print">
+    <form method="get" action="">
+        <?php if ($user_id): ?>
+            <input type="hidden" name="user_id" value="<?php echo (int)$user_id; ?>">
+        <?php endif; ?>
+
+        <label for="month">Month</label>
+        <select name="month" id="month">
+            <?php for ($i = 1; $i <= 12; $i++): ?>
+                <option value="<?php echo $i; ?>" <?php echo $i == $month ? 'selected' : ''; ?>>
+                    <?php echo date('F', mktime(0,0,0,$i,1)); ?>
+                </option>
+            <?php endfor; ?>
+        </select>
+
+        <label for="year">Year</label>
+        <select name="year" id="year">
+            <?php for ($i = date('Y') - 5; $i <= date('Y') + 1; $i++): ?>
+                <option value="<?php echo $i; ?>" <?php echo $i == $year ? 'selected' : ''; ?>>
+                    <?php echo $i; ?>
+                </option>
+            <?php endfor; ?>
+        </select>
+
+        <button type="submit" class="btn btn-apply">Apply</button>
+    </form>
+
+    <button onclick="window.print();" class="btn btn-print">🖨&nbsp; Print Payslip</button>
+    <button onclick="window.history.back();" class="btn btn-back">← Back</button>
+</div>
+
+
+<!-- Employee loop -->
+<?php foreach ($employees as $index => $employee):
+
+    $totalBonuses    = array_sum(array_column($employee['bonuses'],    'amount'));
+    $totalDeductions = array_sum(array_column($employee['deductions'], 'amount'))
+                     + array_sum(array_column($employee['advances'],   'amount'));
+    $netSalary       = $employee['base_salary'] + $totalBonuses - $totalDeductions;
+    $requiredAmt     = $employee['required_amount'] ?? $netSalary;
+    $paidAmt         = $employee['amount_paid'] ?? 0;
+    $remainingAmt    = max(0, $requiredAmt - $paidAmt);
+    $paidPct         = $requiredAmt > 0 ? min(100, round(($paidAmt / $requiredAmt) * 100)) : 0;
+    $statusKey       = strtolower($employee['payment_status']);
+    $cur             = htmlspecialchars($employee['currency']);
+?>
+
+<div class="payslip">
+
+    <?php if ($statusKey === 'paid'): ?>
+        <div class="paid-stamp">PAID</div>
+    <?php endif; ?>
+
+    <!-- Header -->
+    <div class="payslip-header">
+        <div>
+            <div class="company-name"><?php echo htmlspecialchars($settings['agency_name']); ?></div>
+            <div class="company-meta">
+                <?php if (!empty($branch['name'])): ?>Branch: <?php echo htmlspecialchars($branch['name']); ?><br><?php endif; ?>
+                <?php if (!empty($settings['address'])): echo htmlspecialchars($settings['address']) . '<br>'; endif; ?>
+                <?php if (!empty($settings['phone'])): ?>Tel: <?php echo htmlspecialchars($settings['phone']); ?><?php endif; ?>
+                <?php if (!empty($settings['email'])): ?>&nbsp;·&nbsp;<?php echo htmlspecialchars($settings['email']); ?><?php endif; ?>
+            </div>
         </div>
-        
-        <!-- Header -->
-        <div class="header">
-            <table class="header-table">
-                <tr>
-                    <td class="header-left">
-                        <div class="company-name"><?php echo htmlspecialchars($settings['agency_name']); ?></div>
-                        <div class="branch-name">Branch: <?php echo htmlspecialchars($branch['name'] ?? 'N/A'); ?></div>
-                        <?php if (!empty($settings['address'])): ?>
-                            <div class="company-address"><?php echo htmlspecialchars($settings['address']); ?></div>
-                        <?php endif; ?>
-                        <?php if (!empty($settings['phone'])): ?>
-                            <div class="company-phone">Phone: <?php echo htmlspecialchars($settings['phone']); ?></div>
-                        <?php endif; ?>
-                        <?php if (!empty($settings['email'])): ?>
-                            <div class="company-email">Email: <?php echo htmlspecialchars($settings['email']); ?></div>
-                        <?php endif; ?>
-                    </td>
-                    <td class="header-right">
-                        <div class="title"><?php echo $title; ?></div>
-                        <div class="subtitle"><?php echo $subtitle; ?></div>
-                    </td>
-                </tr>
-            </table>
+        <div class="title-block">
+            <div class="doc-label">Document</div>
+            <div class="doc-title"><?php echo htmlspecialchars($title); ?></div>
+            <div class="doc-period"><?php echo htmlspecialchars($subtitle); ?></div>
         </div>
-        
-        <!-- For each employee -->
-        <?php foreach ($employees as $index => $employee): ?>
-            <?php if ($index > 0 && !$user_id): ?>
-                <div class="page-break"></div>
-            <?php endif; ?>
-            
-            <div class="employee-section">
-                <?php if ($employee['payment_status'] === 'paid'): ?>
-                    <div class="paid-stamp">PAID</div>
-                <?php endif; ?>
-                
-                <!-- Employee Information -->
-                <div class="employee-info">
-                    <table width="100%">
+    </div>
+
+    <!-- Employee band -->
+    <div class="employee-band">
+        <div class="info-cell">
+            <span class="ic-label">Employee</span>
+            <span class="ic-value"><?php echo htmlspecialchars($employee['employee_name']); ?></span>
+        </div>
+        <div class="info-cell">
+            <span class="ic-label">Employee ID</span>
+            <span class="ic-value"><?php echo htmlspecialchars($employee['user_id']); ?></span>
+        </div>
+        <div class="info-cell">
+            <span class="ic-label">Joining Date</span>
+            <span class="ic-value"><?php echo htmlspecialchars($employee['hire_date']); ?></span>
+        </div>
+        <div class="info-cell">
+            <span class="ic-label">Payment Date</span>
+            <span class="ic-value"><?php echo date('M', mktime(0,0,0,$month,1)) . ' ' . $employee['payment_day'] . ', ' . $year; ?></span>
+        </div>
+        <div class="info-cell">
+            <span class="ic-label">Email</span>
+            <span class="ic-value"><?php echo htmlspecialchars($employee['email']); ?></span>
+        </div>
+        <div class="info-cell">
+            <span class="ic-label">Phone</span>
+            <span class="ic-value"><?php echo htmlspecialchars($employee['phone']); ?></span>
+        </div>
+        <div class="info-cell" style="grid-column:span 2">
+            <span class="ic-label">Payment Status</span>
+            <span class="ic-value">
+                <span class="badge badge-<?php echo $statusKey; ?>">
+                    <?php echo strtoupper($statusKey); ?>
+                </span>
+            </span>
+        </div>
+    </div>
+
+    <!-- Body -->
+    <div class="payslip-body">
+
+        <!-- Summary cards -->
+        <div class="summary-strip">
+            <div class="scard sc-base">
+                <div class="sc-label">Base Salary</div>
+                <div class="sc-value"><?php echo number_format($employee['base_salary'], 2); ?><span class="sc-cur"><?php echo $cur; ?></span></div>
+            </div>
+            <div class="scard sc-bonus">
+                <div class="sc-label">Bonuses</div>
+                <div class="sc-value" style="color:var(--success)"><?php echo number_format($totalBonuses, 2); ?><span class="sc-cur"><?php echo $cur; ?></span></div>
+            </div>
+            <div class="scard sc-deduct">
+                <div class="sc-label">Deductions</div>
+                <div class="sc-value" style="color:var(--danger)"><?php echo number_format($totalDeductions, 2); ?><span class="sc-cur"><?php echo $cur; ?></span></div>
+            </div>
+            <div class="scard sc-net">
+                <div class="sc-label">Net Salary</div>
+                <div class="sc-value"><?php echo number_format($netSalary, 2); ?><span class="sc-cur"><?php echo $cur; ?></span></div>
+            </div>
+        </div>
+
+        <!-- Payment progress (hidden on print) -->
+        <?php if ($requiredAmt > 0): ?>
+        <div class="progress-block no-print">
+            <div class="progress-meta">
+                <span class="pm-title">Payment Progress</span>
+                <span class="pm-info">
+                    <span>Paid: <strong class="text-success"><?php echo number_format($paidAmt, 2) . ' ' . $cur; ?></strong></span>
+                    <?php if ($remainingAmt > 0): ?>
+                        <span>Remaining: <strong class="text-danger"><?php echo number_format($remainingAmt, 2) . ' ' . $cur; ?></strong></span>
+                    <?php else: ?>
+                        <span><strong class="text-success">&#10003; Fully Paid</strong></span>
+                    <?php endif; ?>
+                </span>
+            </div>
+            <div class="progress-track">
+                <div class="progress-fill" style="width:<?php echo $paidPct; ?>%"></div>
+            </div>
+        </div>
+        <?php endif; ?>
+
+        <!-- Earnings + Deductions -->
+        <div class="two-col">
+
+            <div>
+                <div class="section-title">Earnings</div>
+                <table class="data-table">
+                    <thead>
                         <tr>
-                            <td width="50%"><strong>Employee:</strong> <?php echo htmlspecialchars($employee['employee_name']); ?></td>
-                            <td width="50%"><strong>Employee ID:</strong> <?php echo htmlspecialchars($employee['user_id']); ?></td>
+                            <th>Description</th>
+                            <th class="amount-col"><?php echo $cur; ?></th>
                         </tr>
+                    </thead>
+                    <tbody>
                         <tr>
-                            <td><strong>Email:</strong> <?php echo htmlspecialchars($employee['email']); ?></td>
-                            <td><strong>Phone:</strong> <?php echo htmlspecialchars($employee['phone']); ?></td>
+                            <td>Base Salary</td>
+                            <td class="amount-col"><?php echo number_format($employee['base_salary'], 2); ?></td>
                         </tr>
-                        <tr>
-                            <td><strong>Joining Date:</strong> <?php echo htmlspecialchars($employee['hire_date']); ?></td>
-                            <td><strong>Payment Date:</strong> <?php echo date('F', mktime(0, 0, 0, $month, 1)) . ' ' . $employee['payment_day'] . ', ' . $year; ?></td>
+                        <?php foreach ($employee['bonuses'] as $bonus): ?>
+                        <tr class="bonus-row">
+                            <td><?php echo htmlspecialchars($bonus['description'] ?: ucfirst($bonus['type'])); ?></td>
+                            <td class="amount-col text-success">+ <?php echo number_format($bonus['amount'], 2); ?></td>
                         </tr>
+                        <?php endforeach; ?>
+                        <?php if ($totalBonuses > 0): ?>
+                        <tr class="total-row">
+                            <td>Gross Earnings</td>
+                            <td class="amount-col"><?php echo number_format($employee['base_salary'] + $totalBonuses, 2); ?></td>
+                        </tr>
+                        <?php endif; ?>
+                    </tbody>
+                </table>
+            </div>
+
+            <div>
+                <div class="section-title s-danger">Deductions</div>
+                <table class="data-table">
+                    <thead>
                         <tr>
-                            <td colspan="2"><strong>Payment Status:</strong> 
-                                <span class="payment-status status-<?php echo strtolower($employee['payment_status']); ?>">
-                                    <?php echo strtoupper($employee['payment_status']); ?>
-                                </span>
+                            <th>Description</th>
+                            <th class="amount-col"><?php echo $cur; ?></th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <?php foreach ($employee['deductions'] as $deduction): ?>
+                        <tr class="deduct-row">
+                            <td><?php echo htmlspecialchars($deduction['description'] ?: ucfirst($deduction['type'])); ?></td>
+                            <td class="amount-col text-danger">- <?php echo number_format($deduction['amount'], 2); ?></td>
+                        </tr>
+                        <?php endforeach; ?>
+                        <?php foreach ($employee['advances'] as $advance): ?>
+                        <tr class="deduct-row">
+                            <td>Salary Advance <span class="text-muted" style="font-size:8.5pt">(<?php echo date('M j, Y', strtotime($advance['advance_date'])); ?>)</span></td>
+                            <td class="amount-col text-danger">- <?php echo number_format($advance['amount'], 2); ?></td>
+                        </tr>
+                        <?php endforeach; ?>
+                        <?php if ($totalDeductions > 0): ?>
+                        <tr class="total-row">
+                            <td>Total Deductions</td>
+                            <td class="amount-col">- <?php echo number_format($totalDeductions, 2); ?></td>
+                        </tr>
+                        <?php endif; ?>
+                        <?php if (empty($employee['deductions']) && empty($employee['advances'])): ?>
+                        <tr>
+                            <td colspan="2" style="text-align:center;color:var(--text-muted);font-style:italic;padding:14px 10px">
+                                No deductions this period
                             </td>
                         </tr>
-                    </table>
-                    
-                    <div class="payment-info">
-                        <table width="100%">
-                            <tr>
-                                <td><strong>Base Salary:</strong> <?php echo number_format($employee['base_salary'], 2) . ' ' . $employee['currency']; ?></td>
-                                <td><strong>Bonuses:</strong> <?php echo number_format($employee['total_bonuses'], 2) . ' ' . $employee['currency']; ?></td>
-                                <td><strong>Deductions:</strong> <?php echo number_format($totalDeductions, 2) . ' ' . $employee['currency']; ?></td>
-                            </tr>
-                            <tr>
-                                <td><strong>Required Amount:</strong> <?php echo number_format($employee['required_amount'], 2) . ' ' . $employee['currency']; ?></td>
-                                <td><strong>Amount Paid:</strong> <?php echo number_format($employee['amount_paid'], 2) . ' ' . $employee['currency']; ?></td>
-                                <?php if ($employee['amount_remaining'] > 0): ?>
-                                <td><strong>Remaining Balance:</strong> <?php echo number_format($employee['amount_remaining'], 2) . ' ' . $employee['currency']; ?></td>
-                                <?php else: ?>
-                                <td><strong class="text-success">Fully Paid</strong></td>
-                                <?php endif; ?>
-                            </tr>
-                        </table>
-                        
-                        <?php if (!empty($employee['payment_details']) || !empty($employee['bonuses']) || !empty($employee['deductions'])): ?>
-                        <div class="payment-details">
-                            <h4>Payment History</h4>
-                            <table class="payroll-table" style="margin-top: 10px;">
-                                <thead>
-                                    <tr>
-                                        <th>Date</th>
-                                        <th>Account/Type</th>
-                                        <th>Category</th>
-                                        <th>Description</th>
-                                        <th>Reference</th>
-                                        <th>Amount</th>
-                                    </tr>
-                                </thead>
-                                <tbody>
-                                    <?php 
-                                    // Show regular salary payments
-                                    foreach ($employee['payment_details'] as $payment): 
-                                        // Get account name
-                                        $accountQuery = "SELECT name FROM main_account WHERE id = ?";
-                                        $accountStmt = $pdo->prepare($accountQuery);
-                                        $accountStmt->execute([$payment['main_account_id']]);
-                                        $account = $accountStmt->fetch(PDO::FETCH_ASSOC);
-                                    ?>
-                                    <tr>
-                                        <td><?php echo date('Y-m-d', strtotime($payment['payment_date'])); ?></td>
-                                        <td><?php echo htmlspecialchars($account['name'] ?? 'N/A'); ?></td>
-                                        <td><?php echo htmlspecialchars(ucfirst($payment['payment_type'])); ?></td>
-                                        <td><?php echo htmlspecialchars($payment['description']); ?></td>
-                                        <td><?php echo htmlspecialchars($payment['receipt']); ?></td>
-                                        <td class="text-success"><?php echo '+ ' . number_format($payment['amount'], 2) . ' ' . $employee['currency']; ?></td>
-                                    </tr>
-                                    <?php endforeach; 
-
-                                    // Show bonuses
-                                    foreach ($employee['bonuses'] as $bonus): ?>
-                                    <tr class="bonus-row" style="background-color: #d4edda;">
-                                        <td><?php echo date('Y-m-d', strtotime($bonus['bonus_date'])); ?></td>
-                                        <td>Bonus</td>
-                                        <td><?php echo htmlspecialchars(ucfirst($bonus['type'])); ?></td>
-                                        <td><?php echo htmlspecialchars($bonus['description']); ?></td>
-                                        <td>-</td>
-                                        <td class="text-success"><?php echo '+ ' . number_format($bonus['amount'], 2) . ' ' . $employee['currency']; ?></td>
-                                    </tr>
-                                    <?php endforeach;
-
-                                    // Show deductions
-                                    foreach ($employee['deductions'] as $deduction): ?>
-                                    <tr class="deduction-row" style="background-color: #f8d7da;">
-                                        <td><?php echo date('Y-m-d', strtotime($deduction['deduction_date'])); ?></td>
-                                        <td>Deduction</td>
-                                        <td><?php echo htmlspecialchars(ucfirst($deduction['type'])); ?></td>
-                                        <td><?php echo htmlspecialchars($deduction['description']); ?></td>
-                                        <td>-</td>
-                                        <td class="text-danger"><?php echo '- ' . number_format($deduction['amount'], 2) . ' ' . $employee['currency']; ?></td>
-                                    </tr>
-                                    <?php endforeach; ?>
-                                </tbody>
-                            </table>
-                        </div>
                         <?php endif; ?>
-                    </div>
+                    </tbody>
+                </table>
+            </div>
 
-                    <?php if ($employee['attendance_summary'] && $employee['attendance_summary']['total_days'] > 0): ?>
-                    <!-- Attendance Summary -->
-                    <div class="attendance-summary" style="margin-top: 10px; padding: 5px; border: 1px solid #ddd; background-color: #f0f8ff;">
-                        <h4 style="margin-bottom: 5px; color: #333; font-size: 12px;">Attendance Summary for <?php echo $monthName . ' ' . $year; ?></h4>
-                        <table width="100%" style="border-collapse: collapse;">
-                            <tr>
-                                <td style="padding: 3px; border: 1px solid #ddd;"><strong>Total Working Days:</strong></td>
-                                <td style="padding: 3px; border: 1px solid #ddd;"><?php echo $employee['attendance_summary']['total_days']; ?></td>
-                                <td style="padding: 3px; border: 1px solid #ddd;"><strong>Present Days:</strong></td>
-                                <td style="padding: 3px; border: 1px solid #ddd; color: #28a745;"><?php echo $employee['attendance_summary']['present_days']; ?></td>
-                            </tr>
-                            <tr>
-                                <td style="padding: 3px; border: 1px solid #ddd;"><strong>Absent Days:</strong></td>
-                                <td style="padding: 3px; border: 1px solid #ddd; color: #dc3545;"><?php echo $employee['attendance_summary']['absent_days']; ?></td>
-                                <td style="padding: 3px; border: 1px solid #ddd;"><strong>Late Days:</strong></td>
-                                <td style="padding: 3px; border: 1px solid #ddd; color: #ffc107;"><?php echo $employee['attendance_summary']['late_days']; ?></td>
-                            </tr>
-                            <tr>
-                                <td style="padding: 3px; border: 1px solid #ddd;"><strong>Half Day Days:</strong></td>
-                                <td style="padding: 3px; border: 1px solid #ddd; color: #fd7e14;"><?php echo $employee['attendance_summary']['half_day_days']; ?></td>
-                                <td style="padding: 3px; border: 1px solid #ddd;"><strong>Total Working Minutes:</strong></td>
-                                <td style="padding: 3px; border: 1px solid #ddd;"><?php echo number_format($employee['attendance_summary']['total_working_minutes']); ?> min</td>
-                            </tr>
-                        </table>
-                    </div>
-                    <?php endif; ?>
-                </div>
+        </div><!-- /two-col -->
 
-                <!-- Earnings -->
-                <div class="earnings">
-                    <h3>Earnings</h3>
-                    <table class="payroll-table">
-                        <thead>
-                            <tr>
-                                <th>Description</th>
-                                <th>Amount (<?php echo htmlspecialchars($employee['currency']); ?>)</th>
-                            </tr>
-                        </thead>
-                        <tbody>
-                            <tr>
-                                <td>Base Salary</td>
-                                <td><?php echo number_format($employee['base_salary'], 2); ?></td>
-                            </tr>
-                            
-                            <?php foreach ($employee['bonuses'] as $bonus): ?>
-                                <tr>
-                                    <td><?php echo htmlspecialchars($bonus['description']); ?></td>
-                                    <td><?php echo number_format($bonus['amount'], 2); ?></td>
-                                </tr>
-                            <?php endforeach; ?>
-                            
-                            <?php 
-                            $totalBonuses = 0;
-                            foreach ($employee['bonuses'] as $bonus) {
-                                $totalBonuses += $bonus['amount'];
-                            }
-                            if ($totalBonuses > 0): 
-                            ?>
-                            <tr class="total-row">
-                                <td>Total Bonuses</td>
-                                <td><?php echo number_format($totalBonuses, 2); ?></td>
-                            </tr>
-                            <?php endif; ?>
-                        </tbody>
-                    </table>
+        <!-- Attendance -->
+        <?php if (!empty($employee['attendance_summary']) && $employee['attendance_summary']['total_days'] > 0):
+            $att = $employee['attendance_summary']; ?>
+        <div class="section-gap">
+            <div class="section-title">Attendance &mdash; <?php echo htmlspecialchars($monthName . ' ' . $year); ?></div>
+            <div class="attendance-grid">
+                <div class="att-card att-total">
+                    <div class="att-num"><?php echo $att['total_days']; ?></div>
+                    <div class="att-lbl">Working</div>
                 </div>
-                
-                <!-- Deductions -->
-                <div class="deductions">
-                    <h3>Deductions</h3>
-                    <table class="payroll-table">
-                        <thead>
-                            <tr>
-                                <th>Description</th>
-                                <th>Amount (<?php echo htmlspecialchars($employee['currency']); ?>)</th>
-                            </tr>
-                        </thead>
-                        <tbody>
-                            <?php 
-                            $totalDeductions = 0;
-                            foreach ($employee['deductions'] as $deduction): 
-                                $totalDeductions += $deduction['amount'];
-                            ?>
-                                <tr>
-                                    <td><?php echo htmlspecialchars($deduction['description']); ?></td>
-                                    <td><?php echo number_format($deduction['amount'], 2); ?></td>
-                                </tr>
-                            <?php endforeach; 
-                            
-                            foreach ($employee['advances'] as $advance):
-                                $totalDeductions += $advance['amount'];
-                            ?>
-                                <tr>
-                                    <td>Salary Advance (<?php echo date('M d, Y', strtotime($advance['advance_date'])); ?>)</td>
-                                    <td><?php echo number_format($advance['amount'], 2); ?></td>
-                                </tr>
-                            <?php endforeach; ?>
-                            
-                            <?php if ($totalDeductions > 0): ?>
-                            <tr class="total-row">
-                                <td>Total Deductions</td>
-                                <td><?php echo number_format($totalDeductions, 2); ?></td>
-                            </tr>
-                            <?php endif; ?>
-                        </tbody>
-                    </table>
+                <div class="att-card att-present">
+                    <div class="att-num"><?php echo $att['present_days']; ?></div>
+                    <div class="att-lbl">Present</div>
                 </div>
-                
-                <!-- Summary -->
-                <div class="summary">
-                    <h3>Payment Summary</h3>
-                    <table class="payroll-table">
-                        <tbody>
-                            <tr>
-                                <th>Base Salary</th>
-                                <td><?php echo number_format($employee['base_salary'], 2); ?></td>
-                            </tr>
-                            <tr>
-                                <th>Total Bonuses</th>
-                                <td><?php echo number_format($totalBonuses, 2); ?></td>
-                            </tr>
-                            <tr>
-                                <th>Total Deductions</th>
-                                <td><?php echo number_format($totalDeductions, 2); ?></td>
-                            </tr>
-                            <tr class="total-row">
-                                <th>Net Salary</th>
-                                <td><?php echo number_format($employee['total_earnings'], 2); ?></td>
-                            </tr>
-                        </tbody>
-                    </table>
+                <div class="att-card att-absent">
+                    <div class="att-num"><?php echo $att['absent_days']; ?></div>
+                    <div class="att-lbl">Absent</div>
                 </div>
-                
-                <!-- Signature Section -->
-                <div class="signature-section">
-                    <div class="signature-box">
-                        Employee Signature
-                    </div>
-                    <div class="signature-box">
-                        Manager Signature
-                    </div>
+                <div class="att-card att-late">
+                    <div class="att-num"><?php echo $att['late_days']; ?></div>
+                    <div class="att-lbl">Late</div>
+                </div>
+                <div class="att-card att-half">
+                    <div class="att-num"><?php echo $att['half_day_days']; ?></div>
+                    <div class="att-lbl">Half Day</div>
+                </div>
+                <div class="att-card">
+                    <div class="att-num" style="font-size:14px"><?php echo number_format($att['total_working_minutes']); ?></div>
+                    <div class="att-lbl">Minutes</div>
                 </div>
             </div>
-        <?php endforeach; ?>
-        
-        <?php if (empty($employees)): ?>
-            <div class="no-data">
-                <p>No payroll data found for the selected criteria.</p>
-            </div>
+        </div>
         <?php endif; ?>
-    </div>
+
+        <!-- Payment history -->
+        <?php if (!empty($employee['payment_details']) || !empty($employee['bonuses']) || !empty($employee['deductions'])): ?>
+        <div class="history-section">
+            <div class="section-title">Payment History</div>
+            <table class="data-table">
+                <thead>
+                    <tr>
+                        <th>Date</th>
+                        <th>Account / Channel</th>
+                        <th>Category</th>
+                        <th>Description</th>
+                        <th>Reference</th>
+                        <th class="amount-col">Amount</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <?php foreach ($employee['payment_details'] as $payment):
+                        // TODO: pre-load accounts above loop to avoid N+1 queries
+                        $acctStmt = $pdo->prepare("SELECT name FROM main_account WHERE id = ? LIMIT 1");
+                        $acctStmt->execute([$payment['main_account_id']]);
+                        $acct = $acctStmt->fetch(PDO::FETCH_ASSOC);
+                    ?>
+                    <tr>
+                        <td><?php echo date('Y-m-d', strtotime($payment['payment_date'])); ?></td>
+                        <td><?php echo htmlspecialchars($acct['name'] ?? '—'); ?></td>
+                        <td><?php echo htmlspecialchars(ucfirst($payment['payment_type'])); ?></td>
+                        <td><?php echo htmlspecialchars($payment['description']); ?></td>
+                        <td style="font-family:'JetBrains Mono',monospace;font-size:8pt"><?php echo htmlspecialchars($payment['receipt'] ?: '—'); ?></td>
+                        <td class="amount-col text-success">+ <?php echo number_format($payment['amount'], 2) . ' ' . $cur; ?></td>
+                    </tr>
+                    <?php endforeach; ?>
+                    <?php foreach ($employee['bonuses'] as $bonus): ?>
+                    <tr class="bonus-row">
+                        <td><?php echo date('Y-m-d', strtotime($bonus['bonus_date'])); ?></td>
+                        <td>Bonus</td>
+                        <td><?php echo htmlspecialchars(ucfirst($bonus['type'])); ?></td>
+                        <td><?php echo htmlspecialchars($bonus['description']); ?></td>
+                        <td>—</td>
+                        <td class="amount-col text-success">+ <?php echo number_format($bonus['amount'], 2) . ' ' . $cur; ?></td>
+                    </tr>
+                    <?php endforeach; ?>
+                    <?php foreach ($employee['deductions'] as $deduction): ?>
+                    <tr class="deduct-row">
+                        <td><?php echo date('Y-m-d', strtotime($deduction['deduction_date'])); ?></td>
+                        <td>Deduction</td>
+                        <td><?php echo htmlspecialchars(ucfirst($deduction['type'])); ?></td>
+                        <td><?php echo htmlspecialchars($deduction['description']); ?></td>
+                        <td>—</td>
+                        <td class="amount-col text-danger">- <?php echo number_format($deduction['amount'], 2) . ' ' . $cur; ?></td>
+                    </tr>
+                    <?php endforeach; ?>
+                </tbody>
+            </table>
+        </div>
+        <?php endif; ?>
+
+        <!-- Net payable -->
+        <div class="net-bar">
+            <span class="nb-label">Net Payable Amount</span>
+            <span>
+                <span class="nb-amount"><?php echo number_format($netSalary, 2); ?></span>
+                <span class="nb-cur"><?php echo $cur; ?></span>
+            </span>
+        </div>
+
+        <!-- Signatures -->
+        <div class="signature-section">
+            <div class="sig-box">
+                <div class="sig-line"></div>
+                <div class="sig-label">Employee Signature</div>
+            </div>
+            <div class="sig-date-box">
+                <div class="date-value"><?php echo date('F j, Y'); ?></div>
+                <div class="sig-label">Date Issued</div>
+            </div>
+            <div class="sig-box" style="text-align:right">
+                <div class="sig-line"></div>
+                <div class="sig-label">Authorized Signature</div>
+            </div>
+        </div>
+
+    </div><!-- /payslip-body -->
+</div><!-- /payslip -->
+
+<?php endforeach; ?>
+
+<?php if (empty($employees)): ?>
+<div class="payslip no-data">
+    <p>No payroll data found for the selected period.</p>
+</div>
+<?php endif; ?>
+
+</div><!-- /page-wrapper -->
 </body>
-</html> 
+</html>

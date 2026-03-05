@@ -55,6 +55,8 @@ $ticketsQuery = "
         c.name AS sold_to_name,
         ma.name AS paid_to_name,
         tb.departure_date AS old_departure_date,
+        tb.return_date AS old_return_date,
+        rt.date_type,
         u.name AS created_by
     FROM
         date_change_tickets rt

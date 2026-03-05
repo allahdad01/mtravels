@@ -11,15 +11,16 @@ function deleteTicket(id) {
         })
         .then(response => response.json())
         .then(data => {
-            if (data.success) {
+            if (data.success || data.status === 'success') {
                 showToast('Ticket deleted successfully', 'success');
-                location.reload();
+                setTimeout(() => {
+                    refreshTicketTable();
+                }, 1000);
             } else {
-                showToast(data.message, 'error');
+                showToast(data.message || 'Error deleting ticket', 'error');
             }
         })
         .catch(error => {
-
             showToast('An error occurred while deleting the ticket', 'error');
         });
     }

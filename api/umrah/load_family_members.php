@@ -19,8 +19,13 @@ enforce_auth();
 $tenant_id = $_SESSION['tenant_id'];
 $branch_id = $_SESSION['branch_id'];
 
-// Get family ID
+// Check if user is admin or finance
+$canEdit = in_array($_SESSION['role'], ['admin', 'finance']);
+$isAdmin = $_SESSION['role'] === 'admin';
+
+// Get family ID and filter
 $family_id = isset($_GET['family_id']) ? intval($_GET['family_id']) : 0;
+$filter = isset($_GET['filter']) ? trim($_GET['filter']) : '';
 
 if ($family_id <= 0) {
     echo json_encode(['success' => false, 'message' => 'Invalid family ID']);
@@ -46,12 +51,21 @@ try {
     LEFT JOIN umrah_booking_services ubs ON um.booking_id = ubs.booking_id
     LEFT JOIN suppliers s ON ubs.supplier_id = s.id
     LEFT JOIN users u ON um.created_by = u.id
-    WHERE um.family_id = ? AND um.tenant_id = ? AND um.branch_id = ?
-    GROUP BY um.booking_id
+    WHERE um.family_id = ? AND um.tenant_id = ? AND um.branch_id = ?";
+    
+    $membersParams = [$family_id, $tenant_id, $branch_id];
+    
+    // Apply filter if specified
+    if ($filter === 'refunded' || $filter === 'cancelled') {
+        $sqlMembers .= " AND um.status = ?";
+        $membersParams[] = $filter;
+    }
+    
+    $sqlMembers .= " GROUP BY um.booking_id
     ORDER BY um.created_at DESC";
     
     $membersStmt = $pdo->prepare($sqlMembers);
-    $membersStmt->execute([$family_id, $tenant_id, $branch_id]);
+    $membersStmt->execute($membersParams);
     $members = $membersStmt->fetchAll(PDO::FETCH_ASSOC);
 
     if (empty($members)) {
@@ -65,6 +79,18 @@ try {
     // Build HTML for members
     ob_start();
     ?>
+    <!-- Family-level Bulk Actions -->
+    <div class="family-bulk-actions mb-3">
+        <div class="d-flex gap-2 align-items-center">
+            <button type="button" class="btn btn-sm btn-outline-primary selectAllGroupTicketBtn" data-family-id="<?= $family_id ?>" onclick="selectAllFamilyForGroupTicket(<?= $family_id ?>)">
+                <i class="fas fa-plane mr-1"></i><?= __('select_all_for_group_ticket') ?>
+            </button>
+            <button type="button" class="btn btn-sm btn-outline-info selectAllIdCardBtn" data-family-id="<?= $family_id ?>" onclick="selectAllFamilyForIdCard(<?= $family_id ?>)">
+                <i class="fas fa-id-card mr-1"></i><?= __('select_all_for_id_cards') ?>
+            </button>
+        </div>
+    </div>
+
     <div class="members-list">
         <?php foreach ($members as $member): 
             $isRefunded = isset($member['status']) && $member['status'] === 'refunded';
@@ -91,7 +117,8 @@ try {
                            data-sold-price="<?= $member['sold_price'] ?>"
                            data-current-profit="<?= $member['profit'] ?>"
                            data-status="<?= $member['status'] ?>"
-                           data-currency="<?= $member['currency'] ?>">
+                           data-currency="<?= $member['currency'] ?>"
+                           <?= in_array($member['status'], ['active', 'refunded']) ? 'disabled title="' . ucfirst($member['status']) . ' bookings cannot be selected"' : '' ?>>
                 </div>
                 <div class="member-info">
                     <h5 class="member-name"><?= htmlspecialchars($member['name'] ?? '') ?></h5>
@@ -114,6 +141,24 @@ try {
                             <i class="fas fa-check-circle"></i> <?= __('active') ?>
                         </span>
                     <?php endif; ?>
+                    
+                    <!-- Flight Status Badge -->
+                    <?php if ($member['flight_date'] && $member['return_date']): ?>
+                        <span class="status-badge badge-flight-done">
+                            <i class="fas fa-plane"></i> <?= __('flight_done') ?>
+                        </span>
+                    <?php else: ?>
+                        <span class="status-badge badge-flight-pending">
+                            <i class="fas fa-calendar"></i> Flight Pending
+                        </span>
+                    <?php endif; ?>
+                    
+                    <!-- Financial Details - Below Name/Status -->
+                    <div class="member-financial-row" style="margin-top: 0.5rem; display: flex; gap: 1rem; flex-wrap: wrap;">
+                        <span style="font-size: 0.75rem;"><strong><?= __('sold_price') ?>:</strong> <?= number_format($member['sold_price'] ?? 0, 2) ?> <?= htmlspecialchars($member['currency'] ?? 'USD') ?></span>
+                        <span style="font-size: 0.75rem; color: #059669;"><strong><?= __('paid') ?>:</strong> <?= number_format($member['paid'] ?? 0, 2) ?> <?= htmlspecialchars($member['currency'] ?? 'USD') ?></span>
+                        <span style="font-size: 0.75rem; <?= (($member['due'] ?? 0) > 0) ? 'color: #ef4444;' : 'color: #059669;' ?>"><strong><?= __('due') ?>:</strong> <?= number_format($member['due'] ?? 0, 2) ?> <?= htmlspecialchars($member['currency'] ?? 'USD') ?></span>
+                    </div>
                 </div>
                 <div class="member-actions">
                     <button class="btn-icon-sm" onclick="viewMemberDetails(<?= $member['booking_id'] ?>)" title="<?= __('view_details') ?>">
@@ -126,14 +171,18 @@ try {
                         <div class="dropdown-menu dropdown-menu-right">
                             <h6 class="dropdown-header"><?= __('primary_actions') ?></h6>
                             <a class="dropdown-item" href="#" onclick="viewMemberDetails(<?= $member['booking_id'] ?>); return false;">
-                                <i class="fas fa-eye"></i><?= __('view_details') ?>
-                            </a>
-                            <a class="dropdown-item" href="#" onclick="openEditMemberModal(<?= $member['booking_id'] ?>); return false;">
-                                <i class="fas fa-edit"></i><?= __('edit') ?>
-                            </a>
-                            <a class="dropdown-item" href="#" onclick="openTransactionTab(<?= $member['booking_id'] ?>, <?= $member['sold_price'] ?>); return false;">
-                                <i class="fas fa-credit-card"></i><?= __('transaction') ?>
-                            </a>
+                                 <i class="fas fa-eye"></i><?= __('view_details') ?>
+                             </a>
+                             <?php if ($member['status'] !== 'active' || $canEdit): ?>
+                             <a class="dropdown-item" href="#" onclick="openEditMemberModal(<?= $member['booking_id'] ?>); return false;">
+                                  <i class="fas fa-edit"></i><?= __('edit') ?>
+                              </a>
+                             <?php endif; ?>
+                             <?php if ($canEdit): ?>
+                             <a class="dropdown-item" href="#" onclick="openTransactionTab(<?= $member['booking_id'] ?>, <?= $member['sold_price'] ?>); return false;">
+                                 <i class="fas fa-credit-card"></i><?= __('transaction') ?>
+                             </a>
+                             <?php endif; ?>
                             
                             <div class="dropdown-divider"></div>
                             <h6 class="dropdown-header"><?= __('documents') ?></h6>
@@ -166,27 +215,30 @@ try {
                             
                             <div class="dropdown-divider"></div>
                             <h6 class="dropdown-header"><?= __('advanced_actions') ?></h6>
+                            <?php if ($member['status'] === 'active'): ?>
                             <a class="dropdown-item" href="#" onclick="openRefundModal(<?= $member['booking_id'] ?>, <?= $member['sold_price'] ?>, <?= $member['profit'] ?>, '<?= $member['currency'] ?>'); return false;">
-                                <i class="fas fa-undo"></i><?= __('process_refund') ?>
-                            </a>
-                            <a class="dropdown-item" href="#" onclick="openCancellationReapplyModal(<?= $member['booking_id'] ?>, <?= $member['price'] ?>, <?= $member['sold_price'] ?>, <?= $member['profit'] ?>, '<?= $member['currency'] ?>', '<?= $member['status'] ?>'); return false;">
-                                <i class="fas fa-cog"></i>Manage Booking Status
-                            </a>
-                            <a class="dropdown-item" href="#" onclick="openDateChangeModal(<?= $member['booking_id'] ?>, '<?= htmlspecialchars($member['name'] ?? '') ?>', '<?= htmlspecialchars($member['flight_date'] ?? '') ?>', '<?= htmlspecialchars($member['return_date'] ?? '') ?>', '<?= htmlspecialchars($member['duration'] ?? '') ?>', <?= $member['price'] ?>, '<?= $member['currency'] ?>'); return false;">
-                                <i class="fas fa-calendar"></i><?= __('request_date_change') ?>
-                            </a>
-                            <a class="dropdown-item" href="#" onclick="generateCancellationForm(<?= $member['booking_id'] ?>); return false;">
-                                <i class="fas fa-times-circle"></i><?= __('generate_cancellation_form') ?>
-                            </a>
-                            
-                            <div class="dropdown-divider"></div>
-                            <h6 class="dropdown-header text-danger"><?= __('danger_zone') ?></h6>
-                            <a class="dropdown-item text-danger" href="#" onclick="deleteBooking(<?= $member['booking_id'] ?>); return false;">
-                                <i class="fas fa-trash"></i><?= __('delete') ?>
-                            </a>
+                                 <i class="fas fa-undo"></i><?= __('process_refund') ?>
+                              </a>
+                            <?php endif; ?>
+                              <a class="dropdown-item" href="#" onclick="openCancellationReapplyModal(<?= $member['booking_id'] ?>, <?= $member['price'] ?>, <?= $member['sold_price'] ?>, <?= $member['profit'] ?>, '<?= $member['currency'] ?>', '<?= $member['status'] ?>'); return false;">
+                                  <i class="fas fa-cog"></i>Manage Booking Status
+                              </a>
+                             <a class="dropdown-item" href="#" onclick="openDateChangeModal(<?= $member['booking_id'] ?>, '<?= htmlspecialchars($member['name'] ?? '') ?>', '<?= htmlspecialchars($member['flight_date'] ?? '') ?>', '<?= htmlspecialchars($member['return_date'] ?? '') ?>', '<?= htmlspecialchars($member['duration'] ?? '') ?>', <?= $member['price'] ?>, '<?= $member['currency'] ?>'); return false;">
+                                 <i class="fas fa-calendar"></i><?= __('request_date_change') ?>
+                             </a>
+                             <a class="dropdown-item" href="#" onclick="generateCancellationForm(<?= $member['booking_id'] ?>); return false;">
+                                 <i class="fas fa-times-circle"></i><?= __('generate_cancellation_form') ?>
+                             </a>
+                             
+                             <?php if ($canEdit && ($member['status'] !== 'active' || $isAdmin)): ?>
+                             <div class="dropdown-divider"></div>
+                             <h6 class="dropdown-header text-danger"><?= __('danger_zone') ?></h6>
+                             <a class="dropdown-item text-danger" href="#" onclick="deleteBooking(<?= $member['booking_id'] ?>); return false;">
+                                 <i class="fas fa-trash"></i><?= __('delete') ?>
+                             </a>
+                             <?php endif; ?>
                         </div>
                     </div>
-                </div>
             </div>
             
         </div>
@@ -227,6 +279,30 @@ try {
         --transition-fast: 150ms cubic-bezier(0.4, 0, 0.2, 1);
         --radius-md: 0.5rem;
         --radius-lg: 0.75rem;
+    }
+    
+    /* Family Bulk Actions */
+    .family-bulk-actions {
+        background: linear-gradient(135deg, rgba(37, 99, 235, 0.05), rgba(59, 130, 246, 0.05));
+        border: 1px solid rgba(37, 99, 235, 0.1);
+        border-radius: var(--radius-lg);
+        padding: 0.75rem 1rem;
+        margin-bottom: 1rem;
+    }
+    
+    .family-bulk-actions .d-flex {
+        display: flex;
+        gap: 0.5rem;
+        flex-wrap: wrap;
+    }
+    
+    .family-bulk-actions .btn {
+        transition: all var(--transition-fast);
+    }
+    
+    .family-bulk-actions .btn:hover {
+        transform: translateY(-2px);
+        box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
     }
     
     /* Member Card Styles */
@@ -605,6 +681,26 @@ try {
         display: block;
         margin-bottom: 0.5rem;
         color: var(--gray-400);
+    }
+    
+    .badge-flight-done {
+        background-color: #d1fae5 !important;
+        color: #065f46 !important;
+        border: 1px solid #a7f3d0 !important;
+    }
+    
+    .badge-flight-done:hover {
+        background-color: #a7f3d0 !important;
+    }
+    
+    .badge-flight-pending {
+        background-color: #fef3c7 !important;
+        color: #92400e !important;
+        border: 1px solid #fde68a !important;
+    }
+    
+    .badge-flight-pending:hover {
+        background-color: #fde68a !important;
     }
     
     @media (max-width: 768px) {

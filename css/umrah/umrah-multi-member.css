@@ -1,0 +1,346 @@
+/**
+ * Multi-Member Umrah Modal Styling
+ */
+
+/* Member Cards */
+#membersContainer .card {
+    border: 1px solid #e9ecef;
+    border-radius: 8px;
+    transition: all 0.3s ease;
+}
+
+#membersContainer .card:hover {
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.08);
+}
+
+#membersContainer .card.border-left-primary {
+    border-left-width: 4px !important;
+}
+
+#membersContainer .card-header {
+    background: linear-gradient(135deg, #f8f9fa 0%, #e9ecef 100%);
+    border-bottom: 1px solid #dee2e6;
+    padding: 12px 15px;
+}
+
+#membersContainer .card-header h6 {
+    font-size: 14px;
+    font-weight: 600;
+    margin-bottom: 0;
+}
+
+.member-name-badge {
+    font-size: 12px;
+    color: #6c757d;
+    font-weight: 400;
+    margin-left: 5px;
+}
+
+#membersContainer .card-body {
+    padding: 15px;
+}
+
+/* Form Groups in Member Cards */
+#membersContainer .form-group {
+    margin-bottom: 12px;
+}
+
+#membersContainer .form-group label {
+    font-size: 12px;
+    font-weight: 600;
+    color: #495057;
+    margin-bottom: 5px;
+}
+
+#membersContainer .form-control,
+#membersContainer .form-control-sm {
+    font-size: 13px;
+    border-radius: 4px;
+    border: 1px solid #ced4da;
+}
+
+#membersContainer .form-control:focus,
+#membersContainer .form-control-sm:focus {
+    border-color: #4099ff;
+    box-shadow: 0 0 0 0.2rem rgba(64, 153, 255, 0.25);
+}
+
+/* Row Spacing */
+#membersContainer .row {
+    margin-bottom: 0;
+}
+
+/* Member Section Header */
+.card-header.bg-light h6 {
+    font-size: 14px;
+    font-weight: 600;
+}
+
+.card-header.bg-light small {
+    font-size: 11px;
+    color: #6c757d;
+    font-weight: 400;
+}
+
+/* Document Upload Zone */
+#passportUploadZone {
+    transition: all 0.3s ease;
+    user-select: none;
+}
+
+#passportUploadZone:hover {
+    background-color: #f0f9ff !important;
+    border-color: #4099ff !important;
+}
+
+#uploadedFilesList {
+    background: #f8f9fa;
+    padding: 10px;
+    border-radius: 4px;
+    font-size: 12px;
+}
+
+#uploadedFilesList ol {
+    margin-bottom: 0;
+}
+
+#uploadedFilesList li {
+    margin-bottom: 5px;
+    color: #495057;
+}
+
+/* Members Summary Card */
+#membersSummaryCard {
+    border-top: 3px solid #007bff;
+}
+
+#membersSummaryCard .card-header {
+    background: linear-gradient(135deg, #0066cc 0%, #004099 100%);
+    color: white;
+}
+
+#membersSummaryCard .card-body {
+    background: #f8f9fa;
+}
+
+#membersSummaryList {
+    font-size: 12px;
+    color: #495057;
+}
+
+/* Action Buttons */
+#addMemberBtn {
+    transition: all 0.2s ease;
+}
+
+#addMemberBtn:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 4px 8px rgba(40, 167, 69, 0.3);
+}
+
+#addServiceBtn {
+    transition: all 0.2s ease;
+}
+
+#addServiceBtn:hover {
+    background-color: #0062cc;
+    border-color: #0062cc;
+}
+
+/* Remove Buttons */
+#membersContainer .btn-danger,
+.card-header .btn-danger {
+    font-size: 12px;
+    padding: 4px 8px;
+    transition: all 0.2s ease;
+}
+
+#membersContainer .btn-danger:hover,
+.card-header .btn-danger:hover {
+    background-color: #c82333;
+    border-color: #bd2130;
+    transform: translateY(-1px);
+}
+
+/* Info Button for Upload */
+.btn-info {
+    transition: all 0.2s ease;
+    font-size: 12px;
+    padding: 6px 8px;
+}
+
+.btn-info:hover {
+    transform: translateY(-2px);
+}
+
+/* Modal Dialog */
+.modal-xl {
+    max-width: 1000px;
+}
+
+.modal-body {
+    padding: 20px;
+}
+
+/* Service Grid (keep existing) */
+.services-grid-wrapper {
+    overflow-x: auto;
+}
+
+.services-grid-header,
+.services-grid-footer {
+    display: grid;
+    grid-template-columns: 1fr 1fr 1fr;
+    gap: 15px;
+    padding: 10px 0;
+    border-bottom: 1px solid #dee2e6;
+}
+
+.header-item {
+    font-weight: 600;
+    font-size: 12px;
+    color: #495057;
+}
+
+.footer-item {
+    padding: 10px;
+    background: #f8f9fa;
+    border-radius: 4px;
+}
+
+.service-row-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr 1fr;
+    gap: 15px;
+    padding: 15px 0;
+    border-bottom: 1px solid #e9ecef;
+}
+
+.grid-column-1,
+.grid-column-2,
+.grid-column-3 {
+    display: flex;
+    flex-direction: column;
+}
+
+.grid-column-1 .form-group,
+.grid-column-2 .form-group,
+.grid-column-3 .form-group {
+    margin-bottom: 10px;
+}
+
+/* Sticky Footer */
+.sticky-footer {
+    position: sticky;
+    bottom: 0;
+    padding: 15px 20px;
+    border-top: 1px solid #e9ecef;
+    background: white;
+}
+
+/* Toasts */
+.toast {
+    font-size: 13px;
+}
+
+/* Responsive Adjustments */
+@media (max-width: 768px) {
+    .modal-xl {
+        max-width: 95vw;
+    }
+    
+    .service-row-grid,
+    .services-grid-header,
+    .services-grid-footer {
+        grid-template-columns: 1fr !important;
+        gap: 10px !important;
+    }
+    
+    #membersContainer .form-group {
+        margin-bottom: 10px;
+    }
+    
+    .member-name-badge {
+        display: none;
+    }
+}
+
+/* Animation for new member rows */
+@keyframes slideDown {
+    from {
+        opacity: 0;
+        transform: translateY(-10px);
+    }
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
+}
+
+#membersContainer .card {
+    animation: slideDown 0.3s ease;
+}
+
+/* Loading State */
+.btn:disabled {
+    opacity: 0.6;
+    cursor: not-allowed;
+}
+
+/* Success/Error States */
+.form-control.is-valid {
+    border-color: #28a745;
+}
+
+.form-control.is-invalid {
+    border-color: #dc3545;
+}
+
+/* Input Focus Enhancement */
+.form-control:focus {
+    color: #495057;
+    background-color: #fff;
+    border-color: #80bdff;
+    outline: 0;
+    box-shadow: 0 0 0 0.2rem rgba(0, 123, 255, 0.25);
+}
+
+/* Typography */
+.card-header h6 {
+    letter-spacing: 0.5px;
+}
+
+small.text-muted {
+    font-size: 12px;
+    color: #6c757d !important;
+}
+
+/* Spacing Utilities */
+.mb-3 {
+    margin-bottom: 1rem;
+}
+
+.mb-4 {
+    margin-bottom: 1.5rem;
+}
+
+.mr-1 {
+    margin-right: 0.25rem;
+}
+
+.mr-2 {
+    margin-right: 0.5rem;
+}
+
+/* Gradient Backgrounds */
+.bg-primary {
+    background: linear-gradient(135deg, #007bff 0%, #0056b3 100%) !important;
+}
+
+.bg-success {
+    background: linear-gradient(135deg, #28a745 0%, #1e7e34 100%) !important;
+}
+
+.bg-info {
+    background: linear-gradient(135deg, #17a2b8 0%, #117a8b 100%) !important;
+}

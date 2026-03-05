@@ -1,343 +1,420 @@
-document.addEventListener('DOMContentLoaded', function() {
-    // Hide preloader when page is fully loaded
-    window.addEventListener('load', function() {
-        const preloader = document.querySelector('.loader-bg');
-        if (preloader) {
-            preloader.classList.add('fade-out');
-            setTimeout(() => {
-                preloader.style.display = 'none';
-            }, 300);
-        }
-    });
+/**
+ * client_management.js
+ * Wired to the redesigned UI — uses the new DOM IDs and visual patterns
+ * while keeping all original API endpoints and Bootstrap/SweetAlert2 behaviour.
+ */
 
-    let clients = [];
-    const searchInput = document.getElementById('searchClient');
-    const filterType = document.getElementById('filterType');
-    
-    // Initialize Bootstrap modals
-    const addClientModal = $('#addClientModal');
+document.addEventListener('DOMContentLoaded', function () {
+
+    // ─── State ────────────────────────────────────────────────────────────────
+    let clients     = [];
+    let currentTab  = 'active';
+    let currentType = '';
+    let currentSearch = '';
+    let currentPage   = 1;
+    const PER_PAGE    = 8;
+  
+    // ─── Bootstrap modals (jQuery — kept as-is from original) ─────────────────
+    const addClientModal  = $('#addClientModal');
     const editClientModal = $('#editClientModal');
-
-    // Load Clients
+  
+    // ─── Avatar helpers ────────────────────────────────────────────────────────
+    const AVATAR_CLASSES = ['c1','c2','c3','c4','c5','c6'];
+  
+    function avatarClass(name) {
+      let h = 0;
+      for (const ch of name) h = (h * 31 + ch.charCodeAt(0)) % AVATAR_CLASSES.length;
+      return AVATAR_CLASSES[h];
+    }
+  
+    function initials(name) {
+      const parts = name.trim().split(/\s+/);
+      return parts.length >= 2
+        ? (parts[0][0] + parts[parts.length - 1][0]).toUpperCase()
+        : name.slice(0, 2).toUpperCase();
+    }
+  
+    // ─── Number formatters ─────────────────────────────────────────────────────
+    function fmtUSD(raw) {
+      const v = parseFloat(raw || 0);
+      if (!v) return '<span class="bal-zero">—</span>';
+      const cls = v > 0 ? 'bal-positive' : 'bal-negative';
+      return `<span class="${cls}">$${Math.abs(v).toLocaleString(undefined, {minimumFractionDigits:2, maximumFractionDigits:2})}</span>`;
+    }
+  
+    function fmtAFS(raw) {
+      const v = parseFloat(raw || 0);
+      if (!v) return '<span class="bal-zero">—</span>';
+      const cls = v > 0 ? 'bal-positive' : 'bal-negative';
+      return `<span class="${cls}">${Math.abs(v).toLocaleString(undefined, {minimumFractionDigits:2, maximumFractionDigits:2})} ؋</span>`;
+    }
+  
+    // ─── Load clients from API ─────────────────────────────────────────────────
     function loadClients() {
-        // Show preloader while loading data
-        const preloader = document.querySelector('.loader-bg');
-        if (preloader) {
-            preloader.style.display = 'block';
-        }
-
-        fetch('../api/client/getClients.php')
-            .then(response => response.json())
-            .then(data => {
-                clients = data;
-                updateDashboardStats();
-                renderClients();
-            })
-            .catch(error => {
-
-                showError('Failed to load clients');
-            })
-            .finally(() => {
-                // Hide preloader after data is loaded or if there's an error
-                if (preloader) {
-                    preloader.classList.add('fade-out');
-                    setTimeout(() => {
-                        preloader.style.display = 'none';
-                    }, 300);
-                }
-            });
+      setLoading(true);
+  
+      fetch('../api/client/getClients.php')
+        .then(res => res.json())
+        .then(data => {
+          // Normalise field names: API returns usd_balance / afs_balance / client_type
+          // The renderer uses .usd / .afs / .type  — map once here.
+          clients = data.map(c => ({
+            ...c,
+            type : c.client_type,
+            usd  : parseFloat(c.usd_balance || 0),
+            afs  : parseFloat(c.afs_balance || 0),
+          }));
+          updateStats();
+          buildSparklines();
+          render();
+        })
+        .catch(() => showError('Failed to load clients'))
+        .finally(() => setLoading(false));
     }
-
-    // Update Dashboard Statistics
-    function updateDashboardStats() {
-        const totalClients = clients.length;
-        const agencies = clients.filter(c => c.client_type === 'agency').length;
-        // Calculate total USD - only sum negative balances (money owed to us)
-        const totalUsd = clients.reduce((sum, c) => {
-            const balance = parseFloat(c.usd_balance || 0);
-            return sum + (balance < 0 ? Math.abs(balance) : 0);
-        }, 0);
-        const totalAfs = clients.reduce((sum, c) => sum + parseFloat(c.afs_balance || 0), 0);
-
-        document.getElementById('totalClients').textContent = totalClients;
-        document.getElementById('totalAgencies').textContent = agencies;
-        document.getElementById('totalBalance').textContent = `$${totalUsd.toFixed(2)}`;
-        document.getElementById('totalAfs').textContent = `AFN${totalAfs.toFixed(2)}`;
+  
+    // ─── Stats bar ────────────────────────────────────────────────────────────
+    function updateStats() {
+      const total    = clients.length;
+      const agencies = clients.filter(c => c.type === 'agency').length;
+  
+      // Match original logic: USD total = sum of negative balances (money owed to us)
+      const totalUsd = clients.reduce((sum, c) => sum + (c.usd < 0 ? Math.abs(c.usd) : 0), 0);
+      const totalAfs = clients.reduce((sum, c) => sum + c.afs, 0);
+  
+      document.getElementById('statTotal').textContent    = total;
+      document.getElementById('statAgencies').textContent = agencies;
+      document.getElementById('statUSD').textContent =
+        '$' + (totalUsd >= 1000 ? (totalUsd / 1000).toFixed(1) + 'k' : totalUsd.toLocaleString());
+      document.getElementById('statAFS').textContent =
+        totalAfs >= 1_000_000
+          ? (totalAfs / 1_000_000).toFixed(1) + 'M'
+          : (totalAfs / 1000).toFixed(0) + 'k';
     }
-
-    // Render Clients Table
-    function renderClients(filteredClients = clients) {
-        // Separate active and inactive clients
-        const activeClients = filteredClients.filter(c => c.status === 'active');
-        const inactiveClients = filteredClients.filter(c => c.status === 'inactive');
-
-        // Render Active Clients
-        renderClientTable(activeClients, 'activeClientsTableBody');
-
-        // Render Inactive Clients
-        renderClientTable(inactiveClients, 'inactiveClientsTableBody');
+  
+    // ─── Sparklines (decorative) ───────────────────────────────────────────────
+    function buildSparklines() {
+      const configs = [
+        { id: 'sparkTotal',    heights: [40,55,45,65,50,70,80,75,90,85,95,100] },
+        { id: 'sparkAgencies', heights: [60,55,70,65,80,75,85,80,90,85,90,95]  },
+        { id: 'sparkUSD',      heights: [30,45,55,40,60,70,65,80,75,90,85,100] },
+        { id: 'sparkAFS',      heights: [80,70,85,75,65,80,70,75,70,65,70,68]  },
+      ];
+      configs.forEach(({ id, heights }) => {
+        const el = document.getElementById(id);
+        if (el) el.innerHTML = heights.map(h => `<div class="spark-bar" style="height:${h}%"></div>`).join('');
+      });
     }
-
-    // Render Client Table
-    function renderClientTable(clientList, tableBodyId) {
-        const tbody = document.getElementById(tableBodyId);
+  
+    // ─── Filter helpers ────────────────────────────────────────────────────────
+    function getFiltered() {
+      const q = currentSearch.toLowerCase();
+      return clients.filter(c => {
+        if (c.status !== currentTab) return false;
+        if (currentType && c.type !== currentType) return false;
+        if (q && !c.name.toLowerCase().includes(q) &&
+                 !c.email.toLowerCase().includes(q) &&
+                 !(c.phone || '').toLowerCase().includes(q)) return false;
+        return true;
+      });
+    }
+  
+    // ─── Main render ──────────────────────────────────────────────────────────
+    function render() {
+      const filtered = getFiltered();
+      const total    = filtered.length;
+      const pages    = Math.ceil(total / PER_PAGE) || 1;
+      currentPage    = Math.min(currentPage, pages);
+  
+      const slice  = filtered.slice((currentPage - 1) * PER_PAGE, currentPage * PER_PAGE);
+      const tbody  = document.getElementById('tableBody');
+      const empty  = document.getElementById('emptyState');
+  
+      if (!tbody || !empty) return;
+  
+      if (!slice.length) {
         tbody.innerHTML = '';
-
-        if (clientList.length === 0) {
-            tbody.innerHTML = `
-                <tr>
-                    <td colspan="8" class="text-center py-4">
-                        <div class="text-muted">
-                            <i class="fas fa-search fa-2x mb-3"></i>
-                            <p class="mb-0"><?= __('no_clients_found') ?></p>
-                        </div>
-                    </td>
-                </tr>
-            `;
-            return;
-        }
-
-        clientList.forEach(client => {
-            const row = document.createElement('tr');
-            const bgColor = getRandomColor();
-
-            // Get translated client type
-            const typeText = clientTypeTranslations[client.client_type] || client.client_type;
-            const displayType = typeText;
-
-            row.innerHTML = `
-                <td>
-                    <div class="d-flex align-items-center">
-                        <div>
-                            <h6 class="mb-0">${client.name}</h6>
-                            <small class="text-muted">${client.address || ''}</small>
-                        </div>
-                    </div>
-                </td>
-                <td>
-                    <span class="badge-${client.client_type.toLowerCase()}">
-                        ${displayType}
-                    </span>
-                </td>
-                <td>${client.email}</td>
-                <td>${client.phone || '-'}</td>
-                <td>$${parseFloat(client.usd_balance || 0).toFixed(2)}</td>
-                <td>AFN${parseFloat(client.afs_balance || 0).toFixed(2)}</td>
-                <td>${client.status}</td>
-                <td class="text-right">
-                    <div class="dropdown">
-                        <button class="btn btn-secondary btn-sm dropdown-toggle" type="button" data-toggle="dropdown" aria-haspopup="true" aria-expanded="false">
-                            <i class="fas fa-ellipsis-v"></i>
-                        </button>
-                        <div class="dropdown-menu">
-                            <a class="dropdown-item" href="#" onclick="editClient(${client.id})">
-                                <i class="fas fa-edit"></i> Edit
-                            </a>
-                            <a class="dropdown-item text-danger" href="#" onclick="deleteClient(${client.id})">
-                                <i class="fas fa-trash-alt"></i> Delete
-                            </a>
-                        </div>
-                    </div>
-                </td>
-            `;
-
-            tbody.appendChild(row);
-        });
+        empty.style.display = 'block';
+      } else {
+        empty.style.display = 'none';
+        tbody.innerHTML = slice.map(c => buildRow(c)).join('');
+      }
+  
+      // Tab counts
+      const activeCountEl = document.getElementById('activeCount');
+      const inactiveCountEl = document.getElementById('inactiveCount');
+      if (activeCountEl) activeCountEl.textContent = `(${clients.filter(c => c.status === 'active').length})`;
+      if (inactiveCountEl) inactiveCountEl.textContent = `(${clients.filter(c => c.status === 'inactive').length})`;
+  
+      // Footer
+      const footCountEl = document.getElementById('footCount');
+      if (footCountEl) {
+        const start = total ? (currentPage - 1) * PER_PAGE + 1 : 0;
+        const end   = Math.min(currentPage * PER_PAGE, total);
+        footCountEl.innerHTML = `Showing <strong>${start}–${end}</strong> of <strong>${total}</strong> clients`;
+      }
+  
+      renderPagination(pages);
     }
-
-    // Filter Clients
-    function filterClients() {
-        const searchTerm = searchInput.value.toLowerCase();
-        const selectedType = filterType.value.toLowerCase();
-
-        const filtered = clients.filter(client => {
-            const matchesSearch = 
-                client.name.toLowerCase().includes(searchTerm) ||
-                client.email.toLowerCase().includes(searchTerm) ||
-                (client.phone && client.phone.toLowerCase().includes(searchTerm));
-
-            const matchesType = !selectedType || client.client_type.toLowerCase() === selectedType;
-
-            return matchesSearch && matchesType;
-        });
-
-        renderClients(filtered);
+  
+    function buildRow(c) {
+      const typeLabel = (clientTypeTranslations && clientTypeTranslations[c.type]) || c.type;
+      return `
+        <tr data-id="${c.id}">
+          <td>
+            <div class="client-cell">
+              <div class="avatar ${avatarClass(c.name)}">${initials(c.name)}</div>
+              <div class="client-info">
+                <div class="client-name">${escHtml(c.name)}</div>
+                <div class="client-id">${escHtml(String(c.id))}</div>
+              </div>
+            </div>
+          </td>
+          <td><span class="${escHtml(c.type)}">${escHtml(typeLabel)}</span></td>
+          <td class="col-email">
+            <div class="contact-cell">
+              <span class="contact-email">${escHtml(c.email)}</span>
+              <span class="contact-phone">${escHtml(c.phone || '—')}</span>
+            </div>
+          </td>
+          <td class="num">${fmtUSD(c.usd)}</td>
+          <td class="num">${fmtAFS(c.afs)}</td>
+          <td><span class="${c.status}">${c.status.charAt(0).toUpperCase() + c.status.slice(1)}</span></td>
+          <td class="actions-cell">
+            <div class="action-row">
+              <button class="act-btn primary" onclick="editClient(${c.id})" title="Edit">
+                <i class="fas fa-pen-to-square"></i>
+              </button>
+              <button class="act-btn danger" onclick="deleteClient(${c.id})" title="Delete">
+                <i class="fas fa-trash-can"></i>
+              </button>
+            </div>
+          </td>
+        </tr>`;
     }
-
-    // Add Client
-    document.getElementById('addClientForm').addEventListener('submit', function(e) {
+  
+    // ─── Pagination ────────────────────────────────────────────────────────────
+    function renderPagination(pages) {
+      const pg = document.getElementById('pagination');
+      if (!pg) return;
+      if (pages <= 1) { pg.innerHTML = ''; return; }
+  
+      let html = `<button class="page-btn" onclick="goPage(${currentPage - 1})" ${currentPage === 1 ? 'disabled' : ''}>
+                    <i class="fas fa-chevron-left" style="font-size:10px"></i></button>`;
+      for (let i = 1; i <= pages; i++) {
+        html += `<button class="page-btn ${i === currentPage ? 'active' : ''}" onclick="goPage(${i})">${i}</button>`;
+      }
+      html += `<button class="page-btn" onclick="goPage(${currentPage + 1})" ${currentPage === pages ? 'disabled' : ''}>
+                 <i class="fas fa-chevron-right" style="font-size:10px"></i></button>`;
+      pg.innerHTML = html;
+    }
+  
+    window.goPage = function (p) { currentPage = p; render(); };
+  
+    // ─── Add Client ────────────────────────────────────────────────────────────
+    const addClientBtnEl = document.getElementById('addClientBtn');
+    if (addClientBtnEl) {
+      addClientBtnEl.addEventListener('click', () => {
+        addClientModal.modal('show');
+      });
+    }
+  
+    const addClientFormEl = document.getElementById('addClientForm');
+    if (addClientFormEl) {
+      addClientFormEl.addEventListener('submit', function (e) {
         e.preventDefault();
         const formData = new FormData(this);
-
-        fetch('../api/client/add_clients.php', {
-            method: 'POST',
-            body: formData
-        })
-            .then(response => response.json())
-            .then(data => {
-                if (data.status === "success" || data.success) {
-                    // First hide the modal
-                    addClientModal.modal('hide');
-                    
-                    // Wait for modal to finish hiding
-                    setTimeout(() => {
-                        Swal.fire({
-                            icon: 'success',
-                            title: '<?= __("success") ?>',
-                            text: '<?= __("client_added_successfully") ?>',
-                            timer: 1500,
-                            showConfirmButton: false,
-                            customClass: {
-                                popup: 'colored-toast'
-                            }
-                        }).then(() => {
-                            this.reset();
-                            loadClients();
-                        });
-                    }, 300);
-                } else {
-                    addClientModal.modal('hide');
-                    setTimeout(() => {
-                        Swal.fire({
-                            icon: 'error',
-                            title: '<?= __("error") ?>',
-                            text: data.message || '<?= __("failed_to_add_client") ?>',
-                        });
-                    }, 300);
-                }
-            })
-            .catch(error => {
-                addClientModal.modal('hide');
-                setTimeout(() => {
-                    Swal.fire({
-                        icon: 'error',
-                        title: '<?= __("error") ?>',
-                        text: error.message || '<?= __("failed_to_add_client") ?>',
-                    });
-                }, 300);
-            });
-    });
-
-    // Edit Client
-    window.editClient = function(clientId) {
-        const client = clients.find(c => c.id === clientId);
-        if (!client) return;
-
-        document.getElementById('editClientId').value = client.id;
-        document.getElementById('editName').value = client.name;
-        document.getElementById('editEmail').value = client.email;
-        document.getElementById('editPhone').value = client.phone || '';
-        document.getElementById('editAddress').value = client.address || '';
-        document.getElementById('editType').value = client.client_type;
-        document.getElementById('editStatus').value = client.status;
-
-        editClientModal.modal('show');
+  
+        fetch('../api/client/add_clients.php', { method: 'POST', body: formData })
+          .then(res => res.json())
+          .then(data => {
+            addClientModal.modal('hide');
+            setTimeout(() => {
+              if (data.status === 'success' || data.success) {
+                Swal.fire({
+                  icon: 'success', title: 'Client Added',
+                  text: 'New client has been saved.',
+                  timer: 1500, showConfirmButton: false,
+                }).then(() => { this.reset(); loadClients(); });
+              } else {
+                showError(data.message || 'Failed to add client');
+              }
+            }, 300);
+          })
+          .catch(err => {
+            addClientModal.modal('hide');
+            setTimeout(() => showError(err.message || 'Failed to add client'), 300);
+          });
+      });
+    }
+  
+    // ─── Edit Client ───────────────────────────────────────────────────────────
+    window.editClient = function (clientId) {
+      const client = clients.find(c => c.id === clientId);
+      if (!client) return;
+  
+      const editClientIdEl = document.getElementById('editClientId');
+      const editNameEl = document.getElementById('editName');
+      const editEmailEl = document.getElementById('editEmail');
+      const editPhoneEl = document.getElementById('editPhone');
+      const editAddressEl = document.getElementById('editAddress');
+      const editTypeEl = document.getElementById('editType');
+      const editStatusEl = document.getElementById('editStatus');
+  
+      if (!editClientIdEl || !editNameEl || !editEmailEl) return;
+  
+      editClientIdEl.value = client.id;
+      editNameEl.value = client.name;
+      editEmailEl.value = client.email;
+      if (editPhoneEl) editPhoneEl.value = client.phone || '';
+      if (editAddressEl) editAddressEl.value = client.address || '';
+      if (editTypeEl) editTypeEl.value = client.type;
+      if (editStatusEl) editStatusEl.value = client.status;
+  
+      editClientModal.modal('show');
     };
-
-    // Handle Edit Form Submit
-    document.getElementById('editClientForm').addEventListener('submit', function(e) {
+  
+    const editClientFormEl = document.getElementById('editClientForm');
+    if (editClientFormEl) {
+      editClientFormEl.addEventListener('submit', function (e) {
         e.preventDefault();
-        
-        const clientData = {
-            id: document.getElementById('editClientId').value,
-            name: document.getElementById('editName').value,
-            email: document.getElementById('editEmail').value,
-            phone: document.getElementById('editPhone').value,
-            address: document.getElementById('editAddress').value,
-            client_type: document.getElementById('editType').value,
-            status: document.getElementById('editStatus').value
+  
+        const payload = {
+          id         : document.getElementById('editClientId').value,
+          name       : document.getElementById('editName').value,
+          email      : document.getElementById('editEmail').value,
+          phone      : document.getElementById('editPhone').value,
+          address    : document.getElementById('editAddress').value,
+          client_type: document.getElementById('editType').value,
+          status     : document.getElementById('editStatus').value,
         };
-
+  
         fetch('../api/client/update_client.php', {
-            method: 'POST',
-            headers: {
-                'Content-Type': 'application/json'
-            },
-            body: JSON.stringify(clientData)
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(payload),
         })
-            .then(response => response.json())
-            .then(data => {
-                if (data.success) {
-                    Swal.fire({
-                        icon: 'success',
-                        title: 'Success',
-                        text: 'Client updated successfully',
-                        timer: 1500,
-                        showConfirmButton: false
-                    });
-                    editClientModal.modal('hide');
-                    loadClients();
-                } else {
-                    throw new Error(data.message || 'Failed to update client');
-                }
-            })
-            .catch(error => {
-                showError(error.message);
-            });
-    });
-
-    // Delete Client
-    window.deleteClient = function(clientId) {
-        Swal.fire({
-            title: 'Are you sure',
-            text: "<?= __('this_action_cannot_be_undone') ?>",
-            icon: 'warning',
-            showCancelButton: true,
-            confirmButtonColor: '#dc3545',
-            cancelButtonColor: '#6c757d',
-            confirmButtonText: 'Yes delete it'
-        }).then((result) => {
-            if (result.isConfirmed) {
-                fetch('../api/client/delete_client.php', {
-                    method: 'POST',
-                    headers: {
-                        'Content-Type': 'application/json'
-                    },
-                    body: JSON.stringify({ id: clientId })
-                })
-                    .then(response => response.json())
-                    .then(data => {
-                        if (data.success) {
-                            Swal.fire({
-                                icon: 'success',
-                                title: 'Deleted',
-                                text: 'Client has been deleted',
-                                timer: 1500,
-                                showConfirmButton: false
-                            });
-                            loadClients();
-                        } else {
-                            throw new Error(data.message || 'Failed to delete client');
-                        }
-                    })
-                    .catch(error => {
-                        showError(error.message);
-                    });
+          .then(res => res.json())
+          .then(data => {
+            if (data.success) {
+              editClientModal.modal('hide');
+              showToast('Client updated successfully');
+              loadClients();
+            } else {
+              throw new Error(data.message || 'Failed to update client');
             }
-        });
+          })
+          .catch(err => showError(err.message));
+      });
+    }
+  
+    // ─── Delete Client ─────────────────────────────────────────────────────────
+    window.deleteClient = function (clientId) {
+      const client = clients.find(c => c.id === clientId);
+      if (!client) return;
+  
+      Swal.fire({
+        title: 'Delete Client?',
+        html: `<span style="color:#6C737F">This will permanently remove <strong>${escHtml(client.name)}</strong>.<br>This action cannot be undone.</span>`,
+        icon: 'warning',
+        showCancelButton: true,
+        confirmButtonColor: '#E11D48',
+        cancelButtonColor: '#6C737F',
+        confirmButtonText: 'Yes, delete',
+        cancelButtonText: 'Cancel',
+      }).then(result => {
+        if (!result.isConfirmed) return;
+  
+        fetch('../api/client/delete_client.php', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ id: clientId }),
+        })
+          .then(res => res.json())
+          .then(data => {
+            if (data.success) {
+              showToast(`${client.name} removed`);
+              loadClients();
+            } else {
+              throw new Error(data.message || 'Failed to delete client');
+            }
+          })
+          .catch(err => showError(err.message));
+      });
     };
-
-    // Utility Functions
-    function showError(message) {
-        Swal.fire({
-            icon: 'error',
-            title: 'Error',
-            text: message
+  
+    // ─── Search & filter event listeners ──────────────────────────────────────
+    const searchInputEl = document.getElementById('searchInput');
+    if (searchInputEl) {
+      searchInputEl.addEventListener('input', e => {
+        currentSearch = e.target.value;
+        currentPage   = 1;
+        render();
+      });
+    }
+  
+    const filterPills = document.querySelectorAll('.filter-pill');
+    if (filterPills.length) {
+      filterPills.forEach(pill => {
+        pill.addEventListener('click', function () {
+          document.querySelectorAll('.filter-pill').forEach(p => p.classList.remove('active'));
+          this.classList.add('active');
+          currentType = this.dataset.type;
+          currentPage = 1;
+          render();
         });
+      });
     }
-
-    function getRandomColor() {
-        const colors = [
-            '#4361ee', '#3f37c9', '#4cc9f0', '#4895ef',
-            '#f72585', '#e63946', '#2a9d8f', '#e76f51'
-        ];
-        return colors[Math.floor(Math.random() * colors.length)];
+  
+    const tabBtns = document.querySelectorAll('.tab-btn');
+    if (tabBtns.length) {
+      tabBtns.forEach(btn => {
+        btn.addEventListener('click', function () {
+          document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
+          this.classList.add('active');
+          currentTab  = this.dataset.tab;
+          currentPage = 1;
+          render();
+        });
+      });
     }
-
-    // Event Listeners
-    searchInput.addEventListener('input', filterClients);
-    filterType.addEventListener('change', filterClients);
-
-    // Initial Load
+  
+    // ─── Toast notification ────────────────────────────────────────────────────
+    function showToast(msg) {
+      const toast = document.getElementById('toast');
+      const toastMsgEl = document.getElementById('toastMsg');
+      if (!toast || !toastMsgEl) return;
+      toastMsgEl.textContent = msg;
+      toast.classList.add('show');
+      clearTimeout(toast._timer);
+      toast._timer = setTimeout(() => toast.classList.remove('show'), 2600);
+    }
+  
+    // ─── Loading overlay (uses existing pcoded preloader if present) ───────────
+    function setLoading(on) {
+      const el = document.querySelector('.loader-bg');
+      if (!el) return;
+      if (on) {
+        el.style.display = 'block';
+        el.classList.remove('fade-out');
+      } else {
+        el.classList.add('fade-out');
+        setTimeout(() => (el.style.display = 'none'), 300);
+      }
+    }
+  
+    // ─── Error helper ──────────────────────────────────────────────────────────
+    function showError(msg) {
+      Swal.fire({ icon: 'error', title: 'Error', text: msg });
+    }
+  
+    // ─── XSS guard ────────────────────────────────────────────────────────────
+    function escHtml(str) {
+      return String(str)
+        .replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;')
+        .replace(/"/g,'&quot;').replace(/'/g,'&#039;');
+    }
+  
+    // ─── Init ─────────────────────────────────────────────────────────────────
+    buildSparklines();
     loadClients();
-});
+  });

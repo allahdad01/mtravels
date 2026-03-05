@@ -18,7 +18,6 @@ if (!verify_csrf_token()) {
 $tenant_id = $_SESSION['tenant_id'];
 $branch_id = $_SESSION['branch_id'];
 require_once('../../includes/db.php');
-require_once('../../includes/conn.php');
 
 $response = ['success' => false, 'message' => ''];
 

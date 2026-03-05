@@ -554,6 +554,7 @@ $tenant_id = isset($_SESSION['tenant_id']) ? $_SESSION['tenant_id'] : 1;
             this.pendingBadge = document.getElementById('pendingBadge');
             
             this.apiBaseUrl = '../api/floating_tasks_api.php';
+            this.csrfToken = this.getCsrfToken();
             this.tasks = [];
             this.isDragging = false;
             this.offsetX = 0;
@@ -561,6 +562,19 @@ $tenant_id = isset($_SESSION['tenant_id']) ? $_SESSION['tenant_id'] : 1;
             this.isSyncing = false;
 
             this.init();
+        }
+
+        getCsrfToken() {
+            // Try to get from meta tag first
+            let token = document.querySelector('meta[name="csrf-token"]')?.getAttribute('content');
+            
+            // If not found in meta, try to get from cookie or other source
+            if (!token) {
+                // Try document.csrfToken if available
+                token = window.csrfToken || null;
+            }
+            
+            return token;
         }
 
         async init() {
@@ -660,10 +674,15 @@ $tenant_id = isset($_SESSION['tenant_id']) ? $_SESSION['tenant_id'] : 1;
             this.addTaskBtn.disabled = true;
 
             try {
+                const body = { action: 'add', text: text };
+                if (this.csrfToken) {
+                    body.csrf_token = this.csrfToken;
+                }
+
                 const response = await fetch(this.apiBaseUrl, {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ action: 'add', text: text })
+                    body: JSON.stringify(body)
                 });
 
                 if (!response.ok) throw new Error('Failed to add task');
@@ -690,10 +709,15 @@ $tenant_id = isset($_SESSION['tenant_id']) ? $_SESSION['tenant_id'] : 1;
             this.isSyncing = true;
 
             try {
+                const body = { action: 'delete', id: id };
+                if (this.csrfToken) {
+                    body.csrf_token = this.csrfToken;
+                }
+
                 const response = await fetch(this.apiBaseUrl, {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ action: 'delete', id: id })
+                    body: JSON.stringify(body)
                 });
 
                 if (!response.ok) throw new Error('Failed to delete task');
@@ -719,14 +743,19 @@ $tenant_id = isset($_SESSION['tenant_id']) ? $_SESSION['tenant_id'] : 1;
             this.isSyncing = true;
 
             try {
+                const body = { 
+                    action: 'update', 
+                    id: id, 
+                    completed: !task.completed 
+                };
+                if (this.csrfToken) {
+                    body.csrf_token = this.csrfToken;
+                }
+
                 const response = await fetch(this.apiBaseUrl, {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ 
-                        action: 'update', 
-                        id: id, 
-                        completed: !task.completed 
-                    })
+                    body: JSON.stringify(body)
                 });
 
                 if (!response.ok) throw new Error('Failed to update task');
@@ -756,10 +785,15 @@ $tenant_id = isset($_SESSION['tenant_id']) ? $_SESSION['tenant_id'] : 1;
             this.clearCompletedBtn.disabled = true;
 
             try {
+                const body = { action: 'clear_completed' };
+                if (this.csrfToken) {
+                    body.csrf_token = this.csrfToken;
+                }
+
                 const response = await fetch(this.apiBaseUrl, {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ action: 'clear_completed' })
+                    body: JSON.stringify(body)
                 });
 
                 if (!response.ok) throw new Error('Failed to clear completed tasks');

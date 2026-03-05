@@ -59,6 +59,9 @@ $(document).ready(function() {
                         // Close modal and reset form
                         $('#addWeightModal').modal('hide');
                         $('#addWeightForm')[0].reset();
+                        setTimeout(() => {
+                            refreshTicketTable();
+                        }, 1000);
                     } else {
                         throw new Error(result.message);
                     }

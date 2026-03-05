@@ -1,1659 +1,1084 @@
 <?php
-// Start session if not already started
-if (session_status() === PHP_SESSION_NONE) {
-    session_start();
-}
+// ─── SESSION & SECURITY ───────────────────────────────────────────────────────
+if (session_status() === PHP_SESSION_NONE) { session_start(); }
 
-// Set secure headers
 header("X-XSS-Protection: 1; mode=block");
 header("X-Content-Type-Options: nosniff");
 header("X-Frame-Options: DENY");
 header("Content-Security-Policy: default-src 'self'; script-src 'self' 'unsafe-inline' https://cdn.jsdelivr.net; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com https://cdn.jsdelivr.net https://cdn.datatables.net; font-src 'self' https://fonts.gstatic.com; img-src 'self' data:;");
 header("Referrer-Policy: strict-origin-when-cross-origin");
 
-// Check session timeout (30 minutes)
-$sessionTimeout = 30 * 60; // 30 minutes in seconds
+$sessionTimeout = 30 * 60;
 if (isset($_SESSION['last_activity']) && (time() - $_SESSION['last_activity'] > $sessionTimeout)) {
-    // Session expired, destroy session and redirect to login
-    session_unset();
-    session_destroy();
-    header('Location: ../login.php?timeout=1');
-    exit();
+    session_unset(); session_destroy();
+    header('Location: ../login.php?timeout=1'); exit();
 }
-$_SESSION['last_activity'] = time(); // Update last activity time
+$_SESSION['last_activity'] = time();
 
-// Check if user is logged in with proper role
-if (!isset($_SESSION['user_id']) || $_SESSION['role'] !== 'admin') {
-    // Log unauthorized access attempt
-    error_log("Unauthorized access attempt to admin dashboard: " . ($_SESSION['user_id'] ?? 'unknown') . " - IP: " . $_SERVER['REMOTE_ADDR']);
-    header('Location: ../login.php');
-    exit();
+$allowed_roles = ['admin', 'finance', 'sales', 'umrah', 'staff'];
+if (!isset($_SESSION['user_id']) || !in_array($_SESSION['role'], $allowed_roles)) {
+    error_log("Unauthorized access attempt to dashboard: " . ($_SESSION['user_id'] ?? 'unknown') . " - Role: " . ($_SESSION['role'] ?? 'unknown') . " - IP: " . $_SERVER['REMOTE_ADDR']);
+    header('Location: ../login.php'); exit();
 }
+if (!isset($_SESSION['csrf_token'])) { $_SESSION['csrf_token'] = bin2hex(random_bytes(32)); }
 
-// Create CSRF token if not exists
-if (!isset($_SESSION['csrf_token'])) {
-    $_SESSION['csrf_token'] = bin2hex(random_bytes(32));
-}
-
-// Load input validation helper
 require_once '../includes/InputValidator.php';
+
+if ($_SESSION['role'] === 'staff') {
+    require_once '../api/dashboard/staff_dashboard.php';
+    include '../includes/header.php';
+    include '../admin/staff_dashboard_view.php';
+    exit();
+}
 
 require_once '../api/dashboard/dashboard_handler.php';
 require_once '../api/dashboard/supplier_notification.php';
 require_once '../api/dashboard/client_notification.php';
 ?>
-
-
 <?php include '../includes/header.php'; ?>
+<?php
+$showTickets = hasFeature('ticket_bookings', $allowed_features) ||
+               hasFeature('ticket_reservations', $allowed_features) ||
+               hasFeature('refunded_tickets', $allowed_features) ||
+               hasFeature('date_change_tickets', $allowed_features) ||
+               hasFeature('ticket_weights', $allowed_features);
+if (!file_exists($imagePath)) { $imagePath = "../assets/images/user/avatar-1.jpg"; }
+$selected_date = InputValidator::getDate($_GET['departure_date'] ?? '', 'Y-m-d', date('Y-m-d'));
+?>
+
+<link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;600&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="../css/general/modal-styles.css">
+<style>
+:root {
+  --primary:#4099ff;--primary-dark:#2563eb;--primary-light:#60a5fa;
+  --accent:#2ed8b6;--accent-dark:#14b8a6;--accent-light:#5eead4;
+  --violet:#7c3aed;--violet-light:#a78bfa;--indigo:#4f46e5;
+  --sky:#0ea5e9;--emerald:#10b981;--amber:#f59e0b;
+  --rose:#f43f5e;--orange:#f97316;--pink:#ec4899;--teal:#14b8a6;
+  --bg:#f8fafc;--surface:#ffffff;--surface2:#f1f5f9;--surface3:#e2e8f0;
+  --border:rgba(0,0,0,0.08);
+  --text:#1e293b;--text-muted:#64748b;
+  --grad-start:#4099ff;--grad-end:#2ed8b6;--grad:linear-gradient(135deg,var(--grad-start) 0%,var(--grad-end) 100%);
+}
+.pcoded-main-container{background:var(--bg)!important;}
+.pcoded-content,.pcoded-inner-content{background:transparent!important;}
+.dash-wrap{font-family:'Plus Jakarta Sans',sans-serif;color:var(--text);padding:28px 20px;position:relative;}
+.dash-wrap::before{content:'';position:fixed;inset:0;pointer-events:none;z-index:0;background:radial-gradient(ellipse 80% 60% at 10% 0%,rgba(124,58,237,.15) 0%,transparent 60%),radial-gradient(ellipse 60% 50% at 90% 10%,rgba(14,165,233,.12) 0%,transparent 55%),radial-gradient(ellipse 50% 40% at 50% 100%,rgba(16,185,129,.08) 0%,transparent 50%);}
+.dash-inner{position:relative;z-index:1;}
+.sec-label{font-size:11px;font-weight:700;letter-spacing:1.5px;text-transform:uppercase;color:var(--text-muted);margin-bottom:14px;display:flex;align-items:center;gap:8px;}
+.sec-label::after{content:'';flex:1;height:1px;background:var(--border);}
+.d-card{background:var(--surface);border:1px solid var(--border);border-radius:20px;padding:24px;margin-bottom:22px;}
+.d-card-header{display:flex;justify-content:space-between;align-items:center;margin-bottom:18px;flex-wrap:wrap;gap:12px;}
+.d-card-title{font-size:15px;font-weight:800;display:flex;align-items:center;gap:10px;color:var(--text);}
+.ci{width:32px;height:32px;border-radius:9px;display:flex;align-items:center;justify-content:center;font-size:13px;}
+.ci-violet{background:rgba(124,58,237,.2);color:var(--violet-light);}
+.ci-sky{background:rgba(14,165,233,.2);color:var(--sky);}
+.ci-emerald{background:rgba(16,185,129,.2);color:var(--emerald);}
+.ci-amber{background:rgba(245,158,11,.2);color:var(--amber);}
+.ci-rose{background:rgba(244,63,94,.2);color:var(--rose);}
+
+/* Header */
+.dash-header{display:flex;justify-content:space-between;align-items:center;margin-bottom:26px;flex-wrap:wrap;gap:16px;}
+.dash-header h1{font-size:24px;font-weight:800;letter-spacing:-.5px;background:var(--grad);-webkit-background-clip:text;-webkit-text-fill-color:transparent;}
+.dash-header p{color:var(--text-muted);font-size:14px;margin-top:3px;}
+.header-actions{display:flex;gap:10px;flex-wrap:wrap;}
+.dbtn{display:inline-flex;align-items:center;gap:7px;padding:9px 16px;border-radius:10px;font-size:13px;font-weight:600;font-family:inherit;cursor:pointer;border:none;transition:all .2s;text-decoration:none;}
+.dbtn-ghost{background:var(--surface2);color:var(--text);border:1px solid var(--border);}
+.dbtn-ghost:hover{background:var(--surface3);transform:translateY(-1px);color:var(--text);}
+.dbtn-primary{background:var(--grad);color:#fff;box-shadow:0 4px 20px rgba(64,153,255,.35);}
+.dbtn-primary:hover{transform:translateY(-2px);color:#fff;}
+.dbtn-info{background:var(--grad);color:#fff;box-shadow:0 4px 16px rgba(46,216,182,.3);}
+.dbtn-info:hover{transform:translateY(-2px);color:#fff;}
+
+/* Alerts */
+.d-alert{border-radius:14px;padding:16px 20px;margin-bottom:12px;display:flex;align-items:flex-start;gap:14px;border:1px solid;animation:slideIn .4s ease;}
+@keyframes slideIn{from{opacity:0;transform:translateY(-8px)}to{opacity:1;transform:translateY(0)}}
+.d-alert-warning{background:rgba(245,158,11,.1);border-color:rgba(245,158,11,.3);}
+.d-alert-danger{background:rgba(244,63,94,.1);border-color:rgba(244,63,94,.3);}
+.d-alert-icon{width:38px;height:38px;border-radius:10px;display:flex;align-items:center;justify-content:center;font-size:16px;flex-shrink:0;}
+.d-alert-warning .d-alert-icon{background:rgba(245,158,11,.2);color:var(--amber);}
+.d-alert-danger .d-alert-icon{background:rgba(244,63,94,.2);color:var(--rose);}
+.d-alert-title{font-size:13px;font-weight:700;margin-bottom:4px;}
+.d-alert-items{display:flex;flex-wrap:wrap;gap:8px;margin-top:8px;}
+.d-alert-chip{font-size:12px;padding:4px 12px;border-radius:20px;font-weight:600;}
+.d-alert-warning .d-alert-chip{background:rgba(245,158,11,.2);color:var(--amber);}
+.d-alert-danger .d-alert-chip{background:rgba(244,63,94,.2);color:var(--rose);}
+.d-alert-close{margin-left:auto;background:none;border:none;color:var(--text-muted);cursor:pointer;font-size:16px;padding:4px;}
+
+/* Financial chart */
+.fin-chart-card{background:var(--surface);border:1px solid var(--border);border-radius:20px;padding:28px;margin-bottom:22px;position:relative;overflow:hidden;}
+.fin-chart-card::before{content:'';position:absolute;top:0;left:0;right:0;height:3px;border-radius:20px 20px 0 0;background:var(--grad);}
+.fin-chart-layout{display:grid;grid-template-columns:1fr 280px;gap:28px;align-items:start;}
+.fin-select{background:var(--surface2);border:1px solid var(--border);color:var(--text);border-radius:9px;padding:7px 14px;font-size:12px;font-weight:600;font-family:inherit;cursor:pointer;outline:none;transition:border-color .2s;}
+.fin-select:focus{border-color:rgba(124,58,237,.5);}
+.fin-select option{background:var(--surface2);}
+.fin-controls{display:flex;gap:10px;flex-wrap:wrap;align-items:center;}
+.wealth-panel{background:var(--surface2);border:1px solid var(--border);border-radius:16px;padding:22px;}
+.wealth-panel-title{font-size:11px;font-weight:700;letter-spacing:1px;text-transform:uppercase;color:var(--text-muted);margin-bottom:16px;display:flex;align-items:center;gap:8px;}
+.wealth-row{display:flex;justify-content:space-between;align-items:center;padding:11px 0;border-bottom:1px solid var(--border);}
+.wealth-row:last-of-type{border-bottom:none;}
+.wealth-row-label{display:flex;align-items:center;gap:9px;font-size:13px;color:var(--text-muted);}
+.wealth-dot{width:9px;height:9px;border-radius:50%;flex-shrink:0;}
+.wealth-row-value{font-size:14px;font-weight:700;font-family:'JetBrains Mono',monospace;}
+.wealth-total-row{margin-top:14px;padding-top:14px;border-top:1px solid rgba(255,255,255,.12);display:flex;justify-content:space-between;align-items:center;}
+.wealth-total-label{font-size:13px;font-weight:700;}
+.wealth-total-value{font-size:20px;font-weight:800;font-family:'JetBrains Mono',monospace;background:var(--grad);-webkit-background-clip:text;-webkit-text-fill-color:transparent;}
+.wealth-date-badge{display:inline-block;font-size:11px;font-weight:600;padding:3px 10px;border-radius:20px;background:rgba(124,58,237,.15);color:var(--violet-light);margin-bottom:16px;}
+
+/* Sales cards */
+.sales-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:16px;margin-bottom:22px;}
+.sales-card{border-radius:18px;padding:22px;position:relative;overflow:hidden;cursor:pointer;transition:transform .25s,box-shadow .25s;border:1px solid rgba(255,255,255,.08);}
+.sales-card:hover{transform:translateY(-4px);}
+.sales-card::before{content:'';position:absolute;inset:0;opacity:.08;background:radial-gradient(ellipse at top right,white,transparent 70%);}
+.sc-daily{background:var(--grad);box-shadow:0 8px 32px rgba(64,153,255,.3);}
+.sc-monthly{background:linear-gradient(135deg,var(--primary-dark),var(--primary));box-shadow:0 8px 32px rgba(37,99,235,.3);}
+.sc-yearly{background:linear-gradient(135deg,var(--accent),var(--accent-dark));box-shadow:0 8px 32px rgba(46,216,182,.3);}
+.sc-label{font-size:11px;font-weight:700;letter-spacing:1px;text-transform:uppercase;opacity:.75;margin-bottom:10px;display:flex;align-items:center;gap:6px;}
+.sc-amount{font-size:28px;font-weight:800;letter-spacing:-1px;font-family:'JetBrains Mono',monospace;line-height:1;margin-bottom:5px;}
+.sc-secondary{font-size:13px;opacity:.65;font-family:'JetBrains Mono',monospace;margin-bottom:14px;}
+.sc-footer{display:flex;justify-content:space-between;align-items:center;}
+.trend-badge{display:inline-flex;align-items:center;gap:4px;font-size:12px;font-weight:700;background:rgba(255,255,255,.15);padding:4px 10px;border-radius:20px;}
+.sc-sparkline{display:flex;align-items:flex-end;gap:3px;height:30px;}
+.spark-bar{width:5px;border-radius:3px;background:rgba(255,255,255,.25);}
+.spark-bar.hi{background:rgba(255,255,255,.9);}
+.sc-filter-panel{margin-top:12px;padding-top:12px;border-top:1px solid rgba(255,255,255,.15);display:none;}
+.sc-filter-panel.open{display:block;}
+.sc-filter-panel label{font-size:11px;opacity:.7;display:block;margin-bottom:4px;}
+.sc-filter-input{width:100%;background:rgba(0,0,0,.25);border:1px solid rgba(255,255,255,.2);color:#fff;border-radius:8px;padding:6px 10px;font-size:12px;font-family:inherit;}
+.sc-filter-input:focus{outline:none;border-color:rgba(255,255,255,.5);}
+.sc-filter-input option{background:#1e1e35;}
+.sc-filter-btn{margin-top:8px;background:rgba(255,255,255,.15);border:none;color:#fff;border-radius:8px;padding:6px 14px;font-size:12px;font-weight:600;font-family:inherit;cursor:pointer;width:100%;}
+.sc-filter-btn:hover{background:rgba(255,255,255,.25);}
+
+/* Dues */
+.dues-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(190px,1fr));gap:14px;margin-bottom:22px;}
+.due-card{background:var(--surface);border:1px solid var(--border);border-radius:16px;padding:18px;position:relative;overflow:hidden;transition:transform .2s,border-color .2s;cursor:pointer;}
+.due-card:hover{transform:translateY(-3px);border-color:rgba(255,255,255,.15);}
+.due-card::after{content:'';position:absolute;top:0;left:0;right:0;height:3px;border-radius:16px 16px 0 0;}
+.dc-ticket::after{background:linear-gradient(90deg,var(--violet),var(--indigo));}
+.dc-datechange::after{background:linear-gradient(90deg,var(--amber),var(--orange));}
+.dc-refund::after{background:linear-gradient(90deg,var(--sky),var(--teal));}
+.dc-umrah::after{background:linear-gradient(90deg,var(--emerald),var(--teal));}
+.dc-visa::after{background:linear-gradient(90deg,var(--indigo),var(--violet));}
+.dc-hotel::after{background:linear-gradient(90deg,var(--orange),var(--amber));}
+.dc-addpay::after{background:linear-gradient(90deg,var(--rose),var(--pink));}
+.dc-weight::after{background:linear-gradient(90deg,var(--pink),var(--violet));}
+.dc-reserve::after{background:linear-gradient(90deg,var(--teal),var(--emerald));}
+.due-icon{width:34px;height:34px;border-radius:9px;display:flex;align-items:center;justify-content:center;font-size:14px;margin-bottom:12px;}
+.dc-ticket .due-icon{background:rgba(124,58,237,.15);color:var(--violet-light);}
+.dc-datechange .due-icon{background:rgba(245,158,11,.15);color:var(--amber);}
+.dc-refund .due-icon{background:rgba(14,165,233,.15);color:var(--sky);}
+.dc-umrah .due-icon{background:rgba(16,185,129,.15);color:var(--emerald);}
+.dc-visa .due-icon{background:rgba(79,70,229,.15);color:var(--indigo);}
+.dc-hotel .due-icon{background:rgba(249,115,22,.15);color:var(--orange);}
+.dc-addpay .due-icon{background:rgba(244,63,94,.15);color:var(--rose);}
+.dc-weight .due-icon{background:rgba(236,72,153,.15);color:var(--pink);}
+.dc-reserve .due-icon{background:rgba(20,184,166,.15);color:var(--teal);}
+.due-label{font-size:10px;color:var(--text-muted);font-weight:700;text-transform:uppercase;letter-spacing:.5px;margin-bottom:5px;}
+.due-usd{font-size:18px;font-weight:800;font-family:'JetBrains Mono',monospace;letter-spacing:-.5px;}
+.due-afs{font-size:11px;color:var(--text-muted);font-family:'JetBrains Mono',monospace;margin-top:2px;}
+.due-bar-track{height:4px;background:var(--surface3);border-radius:4px;margin-top:12px;overflow:hidden;}
+.due-bar-fill{height:100%;border-radius:4px;width:0%;transition:width 1s ease;}
+.dc-ticket .due-bar-fill{background:linear-gradient(90deg,var(--violet),var(--indigo));}
+.dc-datechange .due-bar-fill{background:linear-gradient(90deg,var(--amber),var(--orange));}
+.dc-refund .due-bar-fill{background:linear-gradient(90deg,var(--sky),var(--teal));}
+.dc-umrah .due-bar-fill{background:linear-gradient(90deg,var(--emerald),var(--teal));}
+.dc-visa .due-bar-fill{background:linear-gradient(90deg,var(--indigo),var(--violet));}
+.dc-hotel .due-bar-fill{background:linear-gradient(90deg,var(--orange),var(--amber));}
+.dc-addpay .due-bar-fill{background:linear-gradient(90deg,var(--rose),var(--pink));}
+.dc-weight .due-bar-fill{background:linear-gradient(90deg,var(--pink),var(--violet));}
+.dc-reserve .due-bar-fill{background:linear-gradient(90deg,var(--teal),var(--emerald));}
+
+/* Flight cards */
+.ftabs{display:flex;gap:4px;background:var(--surface2);border-radius:12px;padding:4px;margin-bottom:18px;width:fit-content;border:1px solid var(--border);flex-wrap:wrap;}
+.ftab{padding:7px 14px;border-radius:9px;font-size:12px;font-weight:600;cursor:pointer;color:var(--text-muted);border:none;background:none;font-family:inherit;transition:all .2s;}
+.ftab.active{background:var(--grad);color:#fff;box-shadow:0 4px 14px rgba(64,153,255,.4);}
+.flight-cards{display:flex;flex-direction:column;gap:10px;}
+.flight-card{background:var(--surface2);border:1px solid var(--border);border-radius:14px;padding:14px 16px;display:grid;grid-template-columns:1.2fr auto 1.2fr 1fr auto;align-items:center;gap:14px;transition:transform .2s,border-color .2s,box-shadow .2s;position:relative;overflow:hidden;cursor:pointer;}
+.flight-card:hover{transform:translateY(-2px);border-color:rgba(64,153,255,.4);box-shadow:0 8px 30px rgba(64,153,255,.12);}
+.flight-card::before{content:'';position:absolute;left:0;top:0;bottom:0;width:3px;background:var(--grad);border-radius:14px 0 0 14px;}
+.fc-pass h3{font-size:13px;font-weight:700;margin-bottom:3px;}
+.fc-pass span{font-size:11px;color:var(--text-muted);display:flex;align-items:center;gap:4px;}
+.fc-route{display:flex;align-items:center;gap:8px;min-width:150px;justify-content:center;}
+.fc-city-code{font-size:18px;font-weight:800;font-family:'JetBrains Mono',monospace;letter-spacing:-1px;text-align:center;}
+.fc-city-name{font-size:9px;color:var(--text-muted);text-align:center;}
+.fc-arrow{flex:1;display:flex;flex-direction:column;align-items:center;gap:4px;}
+.fc-arrow-line{width:100%;height:1px;background:linear-gradient(90deg,var(--violet),var(--sky));position:relative;}
+.fc-arrow-line::after{content:'✈';position:absolute;top:-9px;left:50%;transform:translateX(-50%);font-size:12px;color:var(--sky);}
+.fc-airline{font-size:9px;color:var(--text-muted);margin-top:5px;}
+.fc-date-row{display:flex;align-items:center;gap:5px;font-size:11px;color:var(--text-muted);margin-bottom:2px;}
+.fc-date-row span{color:var(--text);font-weight:600;}
+.fc-date-row.dep span,.fc-date-row.dep{color:var(--rose);}
+.fc-sold{font-family:'JetBrains Mono',monospace;font-size:14px;font-weight:700;color:var(--emerald);white-space:nowrap;text-align:right;}
+.dep-badge{display:inline-flex;align-items:center;gap:4px;font-size:10px;font-weight:700;padding:2px 8px;border-radius:20px;background:rgba(244,63,94,.15);color:var(--rose);margin-top:3px;}
+.dep-filter-bar{display:flex;align-items:center;gap:10px;margin-bottom:14px;flex-wrap:wrap;}
+.dep-filter-bar label{font-size:12px;color:var(--text-muted);font-weight:600;}
+.dep-date-input{background:var(--surface2);border:1px solid var(--border);color:var(--text);border-radius:9px;padding:7px 12px;font-size:12px;font-family:inherit;outline:none;}
+.dep-date-input:focus{border-color:rgba(124,58,237,.5);}
+
+/* Notifications */
+.notif-tabs-row{display:flex;gap:8px;background:transparent;border-radius:0;padding:14px 0;border-bottom:1px solid var(--border);margin-bottom:12px;}
+.notif-tab-btn{padding:8px 16px;border-radius:8px;font-size:12px;font-weight:600;cursor:pointer;color:var(--text-muted);border:1px solid transparent;background:transparent;font-family:inherit;transition:all .2s;display:flex;align-items:center;gap:8px;}
+.notif-tab-btn:hover{color:var(--text);background:var(--surface2);}
+.notif-tab-btn.active{background:var(--grad);color:#fff;border-color:transparent;}
+.nbadge{background:var(--rose);color:#fff;font-size:9px;font-weight:700;padding:2px 6px;border-radius:12px;display:inline-flex;align-items:center;justify-content:center;min-width:18px;height:18px;margin-left:4px;}
+.timeline{display:flex;flex-direction:column;}
+.tl-date-group{margin-bottom:16px;}
+.tl-date-hdr{font-size:10px;font-weight:700;color:var(--text-muted);letter-spacing:1px;text-transform:uppercase;margin-bottom:10px;display:flex;align-items:center;gap:8px;}
+.tl-date-hdr::after{content:'';flex:1;height:1px;background:var(--border);}
+.tl-item{display:flex;gap:12px;padding:11px 0;border-bottom:1px solid var(--border);}
+.tl-item:last-child{border-bottom:none;}
+.tl-dot{width:34px;height:34px;border-radius:10px;display:flex;align-items:center;justify-content:center;font-size:13px;flex-shrink:0;position:relative;}
+.tl-dot.unread::after{content:'';width:7px;height:7px;background:var(--rose);border-radius:50%;position:absolute;top:-2px;right:-2px;border:2px solid var(--surface);}
+.tld-visa{background:rgba(14,165,233,.15);color:var(--sky);}
+.tld-supplier{background:rgba(245,158,11,.15);color:var(--amber);}
+.tld-umrah{background:rgba(16,185,129,.15);color:var(--emerald);}
+.tld-ticket{background:rgba(124,58,237,.15);color:var(--violet-light);}
+.tld-expense{background:rgba(244,63,94,.15);color:var(--rose);}
+.tld-hotel{background:rgba(249,115,22,.15);color:var(--orange);}
+.tld-refund{background:rgba(14,165,233,.15);color:var(--sky);}
+.tld-sarafi{background:rgba(20,184,166,.15);color:var(--teal);}
+.tld-default{background:rgba(255,255,255,.07);color:var(--text-muted);}
+.tl-body{flex:1;}
+.tl-top{display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:3px;}
+.tl-type{font-size:12px;font-weight:700;text-transform:capitalize;}
+.tl-time{font-size:11px;color:var(--text-muted);}
+.tl-msg{font-size:13px;color:var(--text-muted);line-height:1.5;}
+.tl-meta{display:flex;align-items:center;gap:8px;margin-top:6px;flex-wrap:wrap;}
+.tl-chip{font-size:11px;padding:3px 10px;border-radius:20px;font-weight:600;background:var(--surface2);color:var(--text-muted);display:flex;align-items:center;gap:4px;border:1px solid var(--border);}
+.tl-actions{display:flex;gap:8px;margin-top:8px;}
+.tl-btn{font-size:11px;padding:5px 12px;border-radius:8px;font-weight:600;cursor:pointer;border:1px solid;font-family:inherit;transition:all .2s;display:flex;align-items:center;gap:5px;}
+.tl-btn-receive{background:rgba(16,185,129,.1);border-color:rgba(16,185,129,.3);color:var(--emerald);}
+.tl-btn-receive:hover{background:rgba(16,185,129,.2);}
+.tl-btn-read{background:rgba(14,165,233,.1);border-color:rgba(14,165,233,.3);color:var(--sky);}
+.tl-btn-read:hover{background:rgba(14,165,233,.2);}
+.read-filter{display:flex;gap:8px;align-items:center;margin-bottom:14px;flex-wrap:wrap;}
+.read-filter label{font-size:12px;color:var(--text-muted);font-weight:600;}
+
+/* Leaderboard */
+.lb-list{display:flex;flex-direction:column;gap:10px;}
+.lb-item{background:var(--surface2);border:1px solid var(--border);border-radius:14px;padding:14px 16px;display:grid;grid-template-columns:44px 1fr auto;align-items:center;gap:14px;transition:transform .2s,border-color .2s;cursor:pointer;}
+.lb-item:hover{transform:translateX(4px);border-color:rgba(255,255,255,.15);}
+.lb-rank{width:40px;height:40px;border-radius:11px;display:flex;align-items:center;justify-content:center;font-size:17px;font-weight:900;flex-shrink:0;}
+.rank-1{background:linear-gradient(135deg,#fbbf24,#f59e0b);box-shadow:0 4px 14px rgba(245,158,11,.4);}
+.rank-2{background:linear-gradient(135deg,#cbd5e1,#94a3b8);box-shadow:0 4px 14px rgba(148,163,184,.3);}
+.rank-3{background:linear-gradient(135deg,#cd7c42,#b45309);box-shadow:0 4px 14px rgba(180,83,9,.3);}
+.rank-other{background:var(--surface3);color:var(--text-muted);font-size:14px;font-family:'JetBrains Mono',monospace;border:1px solid var(--border);}
+.lb-info .lb-name{font-size:14px;font-weight:700;margin-bottom:6px;}
+.lb-bar-track{height:5px;background:var(--surface3);border-radius:4px;overflow:hidden;}
+.lb-bar-fill{height:100%;border-radius:4px;transition:width 1.2s cubic-bezier(.34,1.56,.64,1);}
+.lb-bar-1{background:linear-gradient(90deg,var(--amber),var(--orange));}
+.lb-bar-2{background:linear-gradient(90deg,var(--sky),var(--indigo));}
+.lb-bar-3{background:linear-gradient(90deg,var(--emerald),var(--teal));}
+.lb-bar-o{background:linear-gradient(90deg,var(--violet),var(--violet-light));}
+.lb-right{text-align:right;}
+.lb-profit{font-size:15px;font-weight:800;font-family:'JetBrains Mono',monospace;color:var(--emerald);}
+.lb-tickets{font-size:11px;color:var(--text-muted);margin-top:2px;}
+.lb-filter-row{display:flex;align-items:center;gap:10px;margin-bottom:16px;flex-wrap:wrap;}
+.lb-filter-row label{font-size:12px;color:var(--text-muted);font-weight:600;}
+
+/* Debt pills */
+.debt-pills{display:flex;flex-wrap:wrap;gap:10px;}
+.debt-pill{background:var(--surface2);border:1px solid rgba(244,63,94,.25);border-radius:12px;padding:12px 16px;cursor:pointer;transition:all .2s;min-width:175px;text-decoration:none;color:inherit;display:block;}
+.debt-pill:hover{border-color:rgba(244,63,94,.5);background:rgba(244,63,94,.06);color:inherit;text-decoration:none;}
+.debt-pill-name{font-size:13px;font-weight:700;margin-bottom:5px;}
+.debt-pill-amounts{display:flex;gap:8px;flex-wrap:wrap;}
+.debt-amt{font-size:12px;font-family:'JetBrains Mono',monospace;}
+.debt-neg{color:var(--rose);}
+.debt-ok{color:var(--text-muted);}
+
+/* Umrah */
+.umrah-stat-row{display:grid;grid-template-columns:repeat(3,1fr);gap:18px;margin-bottom:20px;}
+.umrah-stat{background:#fff;border:1px solid var(--border);border-radius:16px;padding:20px;text-align:center;position:relative;overflow:hidden;transition:transform 0.2s,box-shadow 0.2s;}
+.umrah-stat::before{content:'';position:absolute;top:0;left:0;right:0;height:3px;background:var(--grad);}
+.umrah-stat:hover{transform:translateY(-2px);box-shadow:0 4px 16px rgba(0,0,0,0.08);}
+.umrah-stat-val{font-size:32px;font-weight:800;font-family:'JetBrains Mono',monospace;letter-spacing:-1px;margin-bottom:8px;}
+.umrah-stat-lbl{font-size:11px;color:var(--text-muted);margin-top:8px;font-weight:600;text-transform:uppercase;letter-spacing:0.5px;}
+.us-green{color:var(--emerald);}
+.us-blue{color:var(--primary);}
+.us-violet{color:var(--violet);}
+
+/* Two-col */
+.two-col{display:grid;grid-template-columns:1fr 1fr;gap:20px;margin-bottom:22px;}
+
+/* Misc */
+.d-empty{text-align:center;padding:28px;color:var(--text-muted);}
+.d-empty i{font-size:36px;margin-bottom:8px;display:block;}
+.d-spinner{display:flex;justify-content:center;align-items:center;padding:36px;color:var(--text-muted);}
+
+/* Responsive */
+@media(max-width:1100px){.fin-chart-layout{grid-template-columns:1fr;}.two-col{grid-template-columns:1fr;}}
+@media(max-width:900px){.sales-grid{grid-template-columns:1fr 1fr;}.flight-card{grid-template-columns:1fr auto;}.fc-route{display:none;}.umrah-stat-row{grid-template-columns:1fr 1fr;}}
+@media(max-width:600px){.sales-grid{grid-template-columns:1fr;}.dues-grid{grid-template-columns:1fr 1fr;}.umrah-stat-row{grid-template-columns:1fr;}}
+
+@keyframes fadeUp{from{opacity:0;transform:translateY(14px)}to{opacity:1;transform:translateY(0)}}
+.d-card,.fin-chart-card,.dues-grid,.sales-grid{animation:fadeUp .4s ease both;}
+
+/* Dropdown override */
+.dropdown-menu{background:var(--surface2)!important;border:1px solid var(--border)!important;border-radius:12px!important;padding:6px!important;box-shadow:0 12px 40px rgba(0,0,0,.5)!important;}
+.dropdown-item{color:var(--text)!important;border-radius:8px!important;padding:8px 14px!important;font-size:13px!important;font-family:'Plus Jakarta Sans',sans-serif!important;}
+.dropdown-item:hover{background:var(--surface3)!important;}
+
+/* Notifications Collapse */
+#notificationsContent{max-height:1000px;overflow:hidden;transition:max-height 0.3s ease,opacity 0.3s ease;opacity:1;}
+#notificationsContent.collapsed{max-height:0;opacity:0;overflow:hidden;}
+.notif-collapse-btn i{transition:transform 0.3s ease;}
+.notif-collapse-btn.collapsed i{transform:rotate(180deg);}
+
+/* Umrah Bookings Table */
+.umrah-bookings-wrapper{width:100%;overflow-x:auto;}
+.umrah-bookings-table{width:100%;border-collapse:collapse;font-family:'Plus Jakarta Sans',sans-serif;}
+.umrah-bookings-table thead{background:var(--grad);color:#fff;}
+.umrah-bookings-table th{padding:12px 16px;text-align:left;font-size:11px;font-weight:700;letter-spacing:0.5px;text-transform:uppercase;}
+.umrah-bookings-table tbody tr{border-bottom:1px solid var(--border);transition:background 0.2s;}
+.umrah-bookings-table tbody tr:hover{background:var(--surface2);}
+.umrah-bookings-table td{padding:12px 16px;font-size:12px;color:var(--text);}
+.umrah-bookings-table .text-center{text-align:center;}
+.umrah-bookings-table .badge-success{background:rgba(16,185,129,.15);color:var(--emerald);padding:4px 12px;border-radius:6px;font-size:10px;font-weight:700;}
+.umrah-bookings-table .badge-info{background:rgba(14,165,233,.15);color:var(--sky);padding:4px 12px;border-radius:6px;font-size:10px;font-weight:700;}
+.umrah-bookings-table .badge-warning{background:rgba(245,158,11,.15);color:var(--amber);padding:4px 12px;border-radius:6px;font-size:10px;font-weight:700;}
+.umrah-bookings-table .badge-danger{background:rgba(244,63,94,.15);color:var(--rose);padding:4px 12px;border-radius:6px;font-size:10px;font-weight:700;}
+.umrah-bookings-table .badge-secondary{background:rgba(100,116,139,.15);color:var(--text-muted);padding:4px 12px;border-radius:6px;font-size:10px;font-weight:700;}
+.umrah-bookings-table .badge-pill{display:inline-block;}
+.umrah-bookings-table .font-weight-bold{font-weight:700;}
+.umrah-bookings-table small{font-size:12px;}
+.umrah-bookings-table .text-success{color:var(--emerald);}
+</style>
+
+<!-- ─── MAIN CONTENT ──────────────────────────────────────────────────────── -->
+<div class="pcoded-main-container">
+ <div class="pcoded-wrapper">
+  <div class="pcoded-content">
+   <div class="pcoded-inner-content">
+    <div class="main-body">
+     <div class="page-wrapper">
+      <div class="dash-wrap">
+       <div class="dash-inner">
+
+        <!-- HEADER -->
+        <div class="dash-header">
+          <div>
+            <h1><?= __('welcome_back') ?>, <?= htmlspecialchars($user['name'] ?? 'Admin') ?> 👋</h1>
+            <p><?= __('dashboard_subtitle') ?></p>
+          </div>
+          <div class="header-actions">
+            <?php if (in_array($user['role'], ['admin','finance'])): ?>
+            <div class="dropdown">
+              <button class="dbtn dbtn-ghost dropdown-toggle" data-toggle="dropdown">
+                <i class="fas fa-bolt"></i> <?= __('quick_actions') ?>
+              </button>
+              <div class="dropdown-menu dropdown-menu-right">
+                <a class="dropdown-item" href="ticket.php"><i class="fas fa-plus-circle mr-2" style="color:var(--violet-light);"></i><?= __('add_ticket') ?></a>
+                <a class="dropdown-item" href="client.php"><i class="fas fa-user-plus mr-2" style="color:var(--emerald);"></i><?= __('add_client') ?></a>
+                <a class="dropdown-item" href="supplier.php"><i class="fas fa-truck mr-2" style="color:var(--amber);"></i><?= __('add_supplier') ?></a>
+              </div>
+            </div>
+            <?php endif; ?>
+            <button class="dbtn dbtn-info" data-toggle="modal" data-target="#dashboardTutorialsModal">
+              <i class="fas fa-play-circle"></i> Watch Tutorials
+            </button>
+          </div>
+        </div>
+
+        <!-- ALERTS -->
+        <?php if (in_array($user['role'], ['admin','finance'])): ?>
+        <?php if (!empty($suppliersWithLowBalance)): ?>
+        <div class="d-alert d-alert-warning">
+          <div class="d-alert-icon"><i class="fas fa-exclamation-triangle"></i></div>
+          <div style="flex:1">
+            <div class="d-alert-title">Low Supplier Balance Alert</div>
+            <div style="font-size:13px;color:rgba(255,255,255,.55);"><?= count($suppliersWithLowBalance) ?> supplier(s) need attention</div>
+            <div class="d-alert-items">
+              <?php foreach ($suppliersWithLowBalance as $sup):
+                $sym = ($sup['currency']==='USD')?'$':'؋'; ?>
+              <span class="d-alert-chip"><?= htmlspecialchars($sup['name']) ?> · <?= $sym.number_format($sup['balance'],2) ?></span>
+              <?php endforeach; ?>
+            </div>
+          </div>
+          <button class="d-alert-close" onclick="this.parentElement.style.display='none'">✕</button>
+        </div>
+        <?php endif; ?>
+        <?php if (!empty($clientsWithLowBalance)): ?>
+        <div class="d-alert d-alert-danger">
+          <div class="d-alert-icon"><i class="fas fa-circle-exclamation"></i></div>
+          <div style="flex:1">
+            <div class="d-alert-title">Client Balance Due Alert</div>
+            <div style="font-size:13px;color:rgba(255,255,255,.55);"><?= count($clientsWithLowBalance) ?> client(s) exceeded thresholds</div>
+            <div class="d-alert-items">
+              <?php foreach ($clientsWithLowBalance as $cl):
+                $parts=[];
+                if ($cl['usd_balance']<-1000) $parts[]="USD: $".number_format($cl['usd_balance'],2);
+                if ($cl['afs_balance']<-20000) $parts[]="AFS: ؋".number_format($cl['afs_balance'],2); ?>
+              <span class="d-alert-chip"><?= htmlspecialchars($cl['name']) ?> · <?= implode(' | ',$parts) ?></span>
+              <?php endforeach; ?>
+            </div>
+          </div>
+          <button class="d-alert-close" onclick="this.parentElement.style.display='none'">✕</button>
+        </div>
+        <?php endif; ?>
+        <?php endif; ?>
+
+        <!-- FINANCIAL WEALTH CHART (admin only) -->
+        <?php if ($user['role']==='admin'): ?>
+        <div class="sec-label"><i class="fas fa-chart-area"></i> <?= __('financial_wealth_distribution') ?></div>
+        <div class="fin-chart-card">
+          <div class="d-card-header" style="margin-bottom:18px;">
+            <div class="d-card-title"><div class="ci ci-violet"><i class="fas fa-chart-area"></i></div><?= __('financial_wealth_distribution') ?></div>
+            <div class="fin-controls">
+              <select class="fin-select" id="financeChartPeriod">
+                <option value="daily"><?= __('daily') ?></option>
+                <option value="monthly" selected><?= __('monthly') ?></option>
+                <option value="yearly"><?= __('yearly') ?></option>
+              </select>
+              <select class="fin-select" id="financeChartCurrency">
+                <option value="USD" selected><?= __('usd') ?></option>
+                <option value="AFS"><?= __('afs') ?></option>
+                <option value="EUR"><?= __('eur') ?></option>
+                <option value="AED"><?= __('aed') ?></option>
+              </select>
+            </div>
+          </div>
+          <div class="fin-chart-layout">
+            <div><div id="financeFlowChart" style="min-height:350px;"></div></div>
+            <div class="wealth-panel">
+              <div class="wealth-panel-title"><i class="fas fa-wallet"></i> <?= __('wealth_distribution') ?></div>
+              <div class="wealth-date-badge" id="currentDateBadge"><?= date('F Y') ?></div>
+              <div class="wealth-row">
+                <div class="wealth-row-label"><div class="wealth-dot" style="background:var(--violet);"></div><?= __('main_accounts') ?></div>
+                <div class="wealth-row-value" id="mainAccountBalance" style="color:var(--violet-light);">$0.00</div>
+              </div>
+              <div class="wealth-row">
+                <div class="wealth-row-label"><div class="wealth-dot" style="background:var(--sky);"></div><?= __('supplier_credits') ?></div>
+                <div class="wealth-row-value" id="supplierBalance" style="color:var(--sky);">$0.00</div>
+              </div>
+              <div class="wealth-row">
+                <div class="wealth-row-label"><div class="wealth-dot" style="background:var(--emerald);"></div><?= __('client_credits') ?></div>
+                <div class="wealth-row-value" id="clientBalance" style="color:var(--emerald);">$0.00</div>
+              </div>
+              <div class="wealth-row">
+                <div class="wealth-row-label"><div class="wealth-dot" style="background:var(--rose);"></div><?= __('debtor_balance') ?></div>
+                <div class="wealth-row-value" id="debtorBalance" style="color:var(--rose);">$0.00</div>
+              </div>
+              <div class="wealth-total-row">
+                <div class="wealth-total-label"><?= __('total_net_worth') ?></div>
+                <div class="wealth-total-value" id="totalNetWorth">$0.00</div>
+              </div>
+            </div>
+          </div>
+        </div>
+        <?php endif; ?>
+
+        <!-- SALES CARDS (admin only) -->
+         <?php if ($user['role']==='admin'): ?>
+         <div class="sec-label"><i class="fas fa-chart-line"></i> Performance Overview</div>
+         
+         <!-- Sales Filter Controls (Outside Cards) -->
+         <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:16px;margin-bottom:22px;">
+           <!-- Daily Filter -->
+           <div style="background:linear-gradient(135deg,rgba(255,193,7,.08),rgba(255,193,7,.04));border:1.5px solid rgba(255,193,7,.3);border-radius:14px;padding:14px;position:relative;overflow:hidden;">
+             <div style="position:absolute;top:-20px;right:-20px;width:80px;height:80px;background:radial-gradient(circle,rgba(255,193,7,.1),transparent);border-radius:50%;"></div>
+             <div style="position:relative;z-index:1;">
+               <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:10px;">
+                 <label style="font-size:12px;font-weight:700;color:var(--text);margin:0;letter-spacing:0.5px;text-transform:uppercase;"><i class="fas fa-sun" style="color:#f59e0b;margin-right:6px;"></i><?= __('daily') ?></label>
+                 <button class="dbtn dbtn-ghost" style="padding:3px 8px;font-size:10px;border-radius:6px;color:#f59e0b;opacity:0.7;transition:all .2s;" onclick="resetDailyFilter()" title="Reset to today"><i class="fas fa-redo-alt"></i></button>
+               </div>
+               <div style="display:flex;gap:6px;align-items:stretch;">
+                 <input type="date" class="sc-filter-input date-filter" id="dailyDateInput" value="<?= date('Y-m-d') ?>" style="flex:1;padding:9px 12px;font-size:12px;background:#fff;color:var(--text);border:1px solid rgba(245,158,11,.2);border-radius:8px;">
+                 <button class="sc-filter-btn apply-daily-filter" style="flex:0;padding:9px 12px;background:#f59e0b;color:#fff;border-radius:8px;border:none;font-weight:600;transition:all .2s;" onmouseover="this.style.background='#d97706'" onmouseout="this.style.background='#f59e0b'"><i class="fas fa-check"></i></button>
+               </div>
+             </div>
+           </div>
+           
+           <!-- Monthly Filter -->
+           <div style="background:linear-gradient(135deg,rgba(59,130,246,.08),rgba(59,130,246,.04));border:1.5px solid rgba(59,130,246,.3);border-radius:14px;padding:14px;position:relative;overflow:hidden;">
+             <div style="position:absolute;top:-20px;right:-20px;width:80px;height:80px;background:radial-gradient(circle,rgba(59,130,246,.1),transparent);border-radius:50%;"></div>
+             <div style="position:relative;z-index:1;">
+               <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:10px;">
+                 <label style="font-size:12px;font-weight:700;color:var(--text);margin:0;letter-spacing:0.5px;text-transform:uppercase;"><i class="fas fa-calendar-alt" style="color:#3b82f6;margin-right:6px;"></i><?= __('monthly') ?></label>
+                 <button class="dbtn dbtn-ghost" style="padding:3px 8px;font-size:10px;border-radius:6px;color:#3b82f6;opacity:0.7;transition:all .2s;" onclick="resetMonthlyFilter()" title="Reset to this month"><i class="fas fa-redo-alt"></i></button>
+               </div>
+               <div style="display:flex;gap:6px;align-items:stretch;">
+                 <input type="month" class="sc-filter-input date-filter" id="monthlyDateInput" value="<?= date('Y-m') ?>" style="flex:1;padding:9px 12px;font-size:12px;background:#fff;color:var(--text);border:1px solid rgba(59,130,246,.2);border-radius:8px;">
+                 <button class="sc-filter-btn apply-monthly-filter" style="flex:0;padding:9px 12px;background:#3b82f6;color:#fff;border-radius:8px;border:none;font-weight:600;transition:all .2s;" onmouseover="this.style.background='#2563eb'" onmouseout="this.style.background='#3b82f6'"><i class="fas fa-check"></i></button>
+               </div>
+             </div>
+           </div>
+           
+           <!-- Yearly Filter -->
+           <div style="background:linear-gradient(135deg,rgba(16,185,129,.08),rgba(16,185,129,.04));border:1.5px solid rgba(16,185,129,.3);border-radius:14px;padding:14px;position:relative;overflow:hidden;">
+             <div style="position:absolute;top:-20px;right:-20px;width:80px;height:80px;background:radial-gradient(circle,rgba(16,185,129,.1),transparent);border-radius:50%;"></div>
+             <div style="position:relative;z-index:1;">
+               <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:10px;">
+                 <label style="font-size:12px;font-weight:700;color:var(--text);margin:0;letter-spacing:0.5px;text-transform:uppercase;"><i class="fas fa-chart-line" style="color:#10b981;margin-right:6px;"></i><?= __('yearly') ?></label>
+                 <button class="dbtn dbtn-ghost" style="padding:3px 8px;font-size:10px;border-radius:6px;color:#10b981;opacity:0.7;transition:all .2s;" onclick="resetYearlyFilter()" title="Reset to this year"><i class="fas fa-redo-alt"></i></button>
+               </div>
+               <div style="display:flex;gap:6px;align-items:stretch;">
+                 <select class="sc-filter-input date-filter" id="yearlyDateInput" style="flex:1;padding:9px 12px;font-size:12px;background:#fff;color:var(--text);border:1px solid rgba(16,185,129,.2);border-radius:8px;">
+                   <?php $cy=date('Y'); for($y=$cy;$y>=$cy-5;$y--): ?>
+                   <option value="<?=$y?>"<?=$y==$cy?' selected':''?>><?=$y?></option>
+                   <?php endfor; ?>
+                 </select>
+                 <button class="sc-filter-btn apply-yearly-filter" style="flex:0;padding:9px 12px;background:#10b981;color:#fff;border-radius:8px;border:none;font-weight:600;transition:all .2s;" onmouseover="this.style.background='#059669'" onmouseout="this.style.background='#10b981'"><i class="fas fa-check"></i></button>
+               </div>
+             </div>
+           </div>
+         </div>
+         
+         <div class="sales-grid">
+           <!-- Daily -->
+           <div class="sales-card sc-daily daily-sales" data-type="daily"
+                data-usd="<?= number_format($dailySales['usd_profit'],2) ?>"
+                data-afs="<?= number_format($dailySales['afs_profit'],2) ?>">
+             <div class="sc-label"><i class="fas fa-sun"></i> <?= __('daily_sales') ?></div>
+             <div class="sc-amount">$<span id="dailyUsdProfit"><?= number_format($dailySales['usd_profit'],2) ?></span></div>
+             <div class="sc-secondary">؋<span id="dailyAfsProfit"><?= number_format($dailySales['afs_profit'],2) ?></span></div>
+             <div class="sc-footer">
+               <span class="trend-badge"><?php if($dailyTrendPercent>=0):?><i class="fas fa-arrow-up"></i><?php else:?><i class="fas fa-arrow-down"></i><?php endif;?> <?= number_format(abs($dailyTrendPercent),1) ?>%</span>
+               <div class="sc-sparkline"><div class="spark-bar" style="height:35%"></div><div class="spark-bar" style="height:55%"></div><div class="spark-bar" style="height:40%"></div><div class="spark-bar" style="height:75%"></div><div class="spark-bar" style="height:60%"></div><div class="spark-bar" style="height:80%"></div><div class="spark-bar hi" style="height:100%"></div></div>
+             </div>
+             <div style="display:flex;justify-content:space-between;align-items:center;margin-top:10px;">
+               <span style="font-size:11px;opacity:.6;" id="dailyDateDisplay"><?= __('today') ?></span>
+             </div>
+           </div>
+           
+           <!-- Monthly -->
+           <div class="sales-card sc-monthly monthly-sales" data-type="monthly"
+                data-usd="<?= number_format($monthlySales['usd_profit'],2) ?>"
+                data-afs="<?= number_format($monthlySales['afs_profit'],2) ?>">
+             <div class="sc-label"><i class="fas fa-calendar-alt"></i> <?= __('monthly_sales') ?></div>
+             <div class="sc-amount">$<span id="monthlyUsdProfit"><?= number_format($monthlySales['usd_profit'],2) ?></span></div>
+             <div class="sc-secondary">؋<span id="monthlyAfsProfit"><?= number_format($monthlySales['afs_profit'],2) ?></span></div>
+             <div class="sc-footer">
+               <span class="trend-badge"><?php if($monthlyTrendPercent>=0):?><i class="fas fa-arrow-up"></i><?php else:?><i class="fas fa-arrow-down"></i><?php endif;?> <?= number_format(abs($monthlyTrendPercent),1) ?>%</span>
+               <div class="sc-sparkline"><div class="spark-bar" style="height:30%"></div><div class="spark-bar" style="height:50%"></div><div class="spark-bar" style="height:65%"></div><div class="spark-bar" style="height:45%"></div><div class="spark-bar" style="height:80%"></div><div class="spark-bar" style="height:60%"></div><div class="spark-bar hi" style="height:100%"></div></div>
+             </div>
+             <div style="display:flex;justify-content:space-between;align-items:center;margin-top:10px;">
+               <span style="font-size:11px;opacity:.6;" id="monthlyDateDisplay"><?= date('M Y') ?></span>
+             </div>
+           </div>
+           
+           <!-- Yearly -->
+           <div class="sales-card sc-yearly yearly-sales" data-type="yearly"
+                data-usd="<?= number_format($yearlySales['usd_profit'],2) ?>"
+                data-afs="<?= number_format($yearlySales['afs_profit'],2) ?>">
+             <div class="sc-label"><i class="fas fa-chart-line"></i> <?= __('yearly_sales') ?></div>
+             <div class="sc-amount">$<span id="yearlyUsdProfit"><?= number_format($yearlySales['usd_profit'],2) ?></span></div>
+             <div class="sc-secondary">؋<span id="yearlyAfsProfit"><?= number_format($yearlySales['afs_profit'],2) ?></span></div>
+             <div class="sc-footer">
+               <span class="trend-badge"><?php if($yearlyTrendPercent>=0):?><i class="fas fa-arrow-up"></i><?php else:?><i class="fas fa-arrow-down"></i><?php endif;?> <?= number_format(abs($yearlyTrendPercent),1) ?>%</span>
+               <div class="sc-sparkline"><div class="spark-bar" style="height:20%"></div><div class="spark-bar" style="height:38%"></div><div class="spark-bar" style="height:32%"></div><div class="spark-bar" style="height:58%"></div><div class="spark-bar" style="height:52%"></div><div class="spark-bar" style="height:72%"></div><div class="spark-bar hi" style="height:100%"></div></div>
+             </div>
+             <div style="display:flex;justify-content:space-between;align-items:center;margin-top:10px;">
+               <span style="font-size:11px;opacity:.6;" id="yearlyDateDisplay"><?= date('Y') ?></span>
+             </div>
+           </div>
+         </div>
+         <?php endif; ?>
+
+        <!-- OUTSTANDING DUES (admin + finance) -->
+        <?php if (in_array($user['role'],['admin','finance'])): ?>
+        <div class="sec-label"><i class="fas fa-receipt"></i> <?= __('outstanding_dues') ?></div>
+        <div class="dues-grid">
+          <?php if (hasFeature('ticket_bookings',$allowed_features)): ?>
+          <div class="due-card dc-ticket" data-type="ticket"><div class="due-icon"><i class="fas fa-ticket-alt"></i></div><div class="due-label"><?= __('ticket_bookings') ?></div><div class="due-usd" id="ticketDuesUSD">$0.00</div><div class="due-afs" id="ticketDuesAFS">؋0.00</div><div class="due-bar-track"><div class="due-bar-fill"></div></div></div>
+          <?php endif; ?>
+          <?php if (hasFeature('date_change_tickets',$allowed_features)): ?>
+          <div class="due-card dc-datechange" data-type="datechange"><div class="due-icon"><i class="fas fa-calendar-times"></i></div><div class="due-label"><?= __('date_change') ?></div><div class="due-usd" id="dateChangeDuesUSD">$0.00</div><div class="due-afs" id="dateChangeDuesAFS">؋0.00</div><div class="due-bar-track"><div class="due-bar-fill"></div></div></div>
+          <?php endif; ?>
+          <?php if (hasFeature('refunded_tickets',$allowed_features)): ?>
+          <div class="due-card dc-refund" data-type="refunded"><div class="due-icon"><i class="fas fa-undo-alt"></i></div><div class="due-label"><?= __('refunded_tickets') ?></div><div class="due-usd" id="refundedDuesUSD">$0.00</div><div class="due-afs" id="refundedDuesAFS">؋0.00</div><div class="due-bar-track"><div class="due-bar-fill"></div></div></div>
+          <?php endif; ?>
+          <?php if (hasFeature('umrah_bookings',$allowed_features)): ?>
+          <div class="due-card dc-umrah" data-type="umrah"><div class="due-icon"><i class="fas fa-mosque"></i></div><div class="due-label"><?= __('umrah') ?></div><div class="due-usd" id="umrahDuesUSD">$0.00</div><div class="due-afs" id="umrahDuesAFS">؋0.00</div><div class="due-bar-track"><div class="due-bar-fill"></div></div></div>
+          <?php endif; ?>
+          <?php if (hasFeature('visa_applications',$allowed_features)): ?>
+          <div class="due-card dc-visa" data-type="visa"><div class="due-icon"><i class="fas fa-passport"></i></div><div class="due-label"><?= __('visa') ?></div><div class="due-usd" id="visaDuesUSD">$0.00</div><div class="due-afs" id="visaDuesAFS">؋0.00</div><div class="due-bar-track"><div class="due-bar-fill"></div></div></div>
+          <?php endif; ?>
+          <?php if (hasFeature('hotel_bookings',$allowed_features)): ?>
+          <div class="due-card dc-hotel" data-type="hotel"><div class="due-icon"><i class="fas fa-hotel"></i></div><div class="due-label"><?= __('hotel') ?></div><div class="due-usd" id="hotelDuesUSD">$0.00</div><div class="due-afs" id="hotelDuesAFS">؋0.00</div><div class="due-bar-track"><div class="due-bar-fill"></div></div></div>
+          <?php endif; ?>
+          <?php if (hasFeature('additional_payments',$allowed_features)): ?>
+          <div class="due-card dc-addpay" data-type="addpayment"><div class="due-icon"><i class="fas fa-dollar-sign"></i></div><div class="due-label"><?= __('additional_payments') ?></div><div class="due-usd" id="addpaymentDuesUSD">$0.00</div><div class="due-afs" id="addpaymentDuesAFS">؋0.00</div><div class="due-bar-track"><div class="due-bar-fill"></div></div></div>
+          <?php endif; ?>
+          <?php if (hasFeature('ticket_weights',$allowed_features)): ?>
+          <div class="due-card dc-weight" data-type="weight"><div class="due-icon"><i class="fas fa-weight-hanging"></i></div><div class="due-label"><?= __('weight') ?></div><div class="due-usd" id="weightDuesUSD">$0.00</div><div class="due-afs" id="weightDuesAFS">؋0.00</div><div class="due-bar-track"><div class="due-bar-fill"></div></div></div>
+          <?php endif; ?>
+          <?php if (hasFeature('ticket_reservations',$allowed_features)): ?>
+          <div class="due-card dc-reserve" data-type="ticket_reserve"><div class="due-icon"><i class="fas fa-bookmark"></i></div><div class="due-label"><?= __('ticket_reserve') ?></div><div class="due-usd" id="ticketReserveDuesUSD">$0.00</div><div class="due-afs" id="ticketReserveDuesAFS">؋0.00</div><div class="due-bar-track"><div class="due-bar-fill"></div></div></div>
+          <?php endif; ?>
+        </div>
+        <?php endif; ?>
+
+        <!-- TICKET BOOKINGS + NOTIFICATIONS -->
+        <?php
+        $today_stmt=$this_week_stmt=$this_month_stmt=$today_departures_stmt=null;
+        try {
+          $today_stmt=$pdo->prepare("SELECT tb.*,s.name AS supplier_name FROM ticket_bookings tb LEFT JOIN suppliers s ON tb.supplier=s.id AND s.tenant_id=tb.tenant_id WHERE DATE(tb.created_at)=CURDATE() AND tb.tenant_id=?");
+          $today_stmt->execute([$tenant_id]);
+          $this_week_stmt=$pdo->prepare("SELECT tb.*,s.name AS supplier_name FROM ticket_bookings tb LEFT JOIN suppliers s ON tb.supplier=s.id AND s.tenant_id=tb.tenant_id WHERE YEARWEEK(tb.created_at,1)=YEARWEEK(CURDATE(),1) AND tb.tenant_id=?");
+          $this_week_stmt->execute([$tenant_id]);
+          $this_month_stmt=$pdo->prepare("SELECT tb.*,s.name AS supplier_name FROM ticket_bookings tb LEFT JOIN suppliers s ON tb.supplier=s.id AND s.tenant_id=tb.tenant_id WHERE YEAR(tb.created_at)=YEAR(CURDATE()) AND MONTH(tb.created_at)=MONTH(CURDATE()) AND tb.tenant_id=?");
+          $this_month_stmt->execute([$tenant_id]);
+          $today_departures_stmt=$pdo->prepare("SELECT tb.*,s.name AS supplier_name,tb.phone AS passenger_phone FROM ticket_bookings tb LEFT JOIN suppliers s ON tb.supplier=s.id AND s.tenant_id=tb.tenant_id WHERE DATE(tb.departure_date)=? AND tb.tenant_id=?");
+          $today_departures_stmt->execute([$selected_date,$tenant_id]);
+        } catch(PDOException $e){error_log($e->getMessage());}
+
+        // Helper to render flight card rows
+        function renderFlightCard($row) {
+          $o=$row['origin']??$row['from_city']??''; $d=$row['destination']??$row['to_city']??'';
+          $oc=$row['origin_code']??$row['from_code']??''; $dc=$row['destination_code']??$row['to_code']??'';
+          echo '<div class="flight-card">';
+          echo '<div class="fc-pass"><h3>'.htmlspecialchars($row['passenger_name']).'</h3>';
+          echo '<span><i class="fas fa-barcode" style="font-size:10px;"></i> '.htmlspecialchars($row['pnr']).'</span>';
+          if (!empty($row['passenger_phone'])) echo '<span style="color:var(--sky);margin-top:3px;"><i class="fas fa-phone-alt" style="font-size:10px;"></i> '.htmlspecialchars($row['passenger_phone']).'</span>';
+          echo '</div>';
+          echo '<div class="fc-route"><div><div class="fc-city-code">'.htmlspecialchars($oc?:strtoupper(substr($o,0,3))).'</div><div class="fc-city-name">'.htmlspecialchars($o).'</div></div><div class="fc-arrow"><div class="fc-arrow-line"></div><div class="fc-airline">'.htmlspecialchars($row['airline']??$row['supplier_name']??'').'</div></div><div><div class="fc-city-code">'.htmlspecialchars($dc?:strtoupper(substr($d,0,3))).'</div><div class="fc-city-name">'.htmlspecialchars($d).'</div></div></div>';
+          echo '<div class="fc-dates"><div class="fc-date-row"><i class="fas fa-calendar-check"></i> '.htmlspecialchars(__('issue')).': <span>'.date('d M Y',strtotime($row['issue_date'])).'</span></div><div class="fc-date-row dep"><i class="fas fa-plane-departure"></i> '.htmlspecialchars(__('departure')).': <span>'.date('d M Y',strtotime($row['departure_date'])).'</span></div></div>';
+          echo '<div class="fc-sold">'.htmlspecialchars($row['sold']).'</div>';
+          echo '</div>';
+        }
+        ?>
+
+        <div class="two-col">
+
+          <!-- Ticket Bookings -->
+          <?php if ($showTickets && in_array($user['role'],['admin','finance','sales'])): ?>
+          <div class="d-card" style="margin-bottom:0;">
+            <div class="d-card-header">
+              <div class="d-card-title"><div class="ci ci-violet"><i class="fas fa-plane"></i></div><?= __('ticket_bookings_overview') ?></div>
+            </div>
+            <div class="ftabs">
+              <button class="ftab active" onclick="switchFlightTab(this,'ftab-dep')">✈ <?= $selected_date===date('Y-m-d')?__('todays_departures'):'Dep '.date('M d',strtotime($selected_date)) ?></button>
+              <button class="ftab" onclick="switchFlightTab(this,'ftab-today')"><?= __('today') ?></button>
+              <button class="ftab" onclick="switchFlightTab(this,'ftab-week')"><?= __('this_week') ?></button>
+              <button class="ftab" onclick="switchFlightTab(this,'ftab-month')"><?= __('this_month') ?></button>
+            </div>
+
+            <div id="ftab-dep">
+              <div class="dep-filter-bar">
+                <form method="GET" style="display:flex;align-items:center;gap:10px;flex-wrap:wrap;">
+                  <label>Departure Date:</label>
+                  <input type="date" name="departure_date" class="dep-date-input" value="<?= htmlspecialchars($selected_date) ?>">
+                  <button type="submit" class="dbtn dbtn-primary" style="padding:6px 14px;font-size:12px;">Filter</button>
+                  <a href="dashboard.php" class="dbtn dbtn-ghost" style="padding:6px 14px;font-size:12px;">Today</a>
+                </form>
+              </div>
+              <div class="flight-cards">
+                <?php if ($today_departures_stmt&&$today_departures_stmt->rowCount()>0): while($row=$today_departures_stmt->fetch(PDO::FETCH_ASSOC)): renderFlightCard($row); endwhile; else: ?>
+                <div class="d-empty"><i class="fas fa-plane-slash"></i>No departures for this date</div>
+                <?php endif; ?>
+              </div>
+            </div>
+            <div id="ftab-today" style="display:none;"><div class="flight-cards">
+              <?php if ($today_stmt&&$today_stmt->rowCount()>0): while($row=$today_stmt->fetch(PDO::FETCH_ASSOC)): renderFlightCard($row); endwhile; else: ?>
+              <div class="d-empty"><i class="fas fa-ticket-alt"></i>No tickets booked today</div>
+              <?php endif; ?>
+            </div></div>
+            <div id="ftab-week" style="display:none;"><div class="flight-cards">
+              <?php if ($this_week_stmt&&$this_week_stmt->rowCount()>0): while($row=$this_week_stmt->fetch(PDO::FETCH_ASSOC)): renderFlightCard($row); endwhile; else: ?>
+              <div class="d-empty"><i class="fas fa-ticket-alt"></i>No tickets this week</div>
+              <?php endif; ?>
+            </div></div>
+            <div id="ftab-month" style="display:none;"><div class="flight-cards">
+              <?php if ($this_month_stmt&&$this_month_stmt->rowCount()>0): while($row=$this_month_stmt->fetch(PDO::FETCH_ASSOC)): renderFlightCard($row); endwhile; else: ?>
+              <div class="d-empty"><i class="fas fa-ticket-alt"></i>No tickets this month</div>
+              <?php endif; ?>
+            </div></div>
+          </div>
+          <?php endif; ?>
+
+          <!-- Notifications (admin only) -->
+          <?php if ($user['role']==='admin'): ?>
+          <div class="d-card" style="margin-bottom:0;" id="notificationsCard">
+            <div class="d-card-header" style="justify-content: space-between;">
+              <div class="d-card-title"><div class="ci ci-sky"><i class="fas fa-bell"></i></div><?= __('recent_notifications') ?></div>
+              <button class="notif-collapse-btn" onclick="toggleNotificationsCollapse()" title="Collapse/Expand" style="background:none;border:none;cursor:pointer;color:var(--text-muted);font-size:18px;padding:4px;transition:transform 0.3s ease;">
+                <i class="fas fa-chevron-up"></i>
+              </button>
+            </div>
+            <div class="notif-tabs-row">
+              <button class="notif-tab-btn active" onclick="switchNotifTab(this,'ntab-unread')">
+                <?= __('unread') ?> <span class="nbadge" id="unreadNotifCount"><?php try{$cs=$pdo->prepare("SELECT COUNT(*) FROM notifications WHERE status='unread' AND tenant_id=?");$cs->execute([$tenant_id]);echo $cs->fetchColumn();}catch(Exception $e){echo 0;} ?></span>
+              </button>
+              <button class="notif-tab-btn" onclick="switchNotifTab(this,'ntab-read')"><?= __('read') ?></button>
+            </div>
+            <div id="notificationsContent">
+              <div id="ntab-unread">
+              <?php
+              try {
+                $nq="SELECT n.*,CASE WHEN n.transaction_type='visa' THEN va.applicant_name WHEN n.transaction_type='supplier' THEN s.name WHEN n.transaction_type='umrah' THEN ub.name ELSE NULL END AS related_name,CASE WHEN n.transaction_type='visa' THEN va.base WHEN n.transaction_type='supplier' THEN st.amount WHEN n.transaction_type='umrah' THEN ub.sold_price ELSE 0 END AS transaction_amount,CASE WHEN n.transaction_type='visa' THEN va.currency WHEN n.transaction_type='supplier' THEN s.currency ELSE NULL END AS transaction_currency FROM notifications n LEFT JOIN visa_applications va ON n.transaction_id=va.id AND n.transaction_type='visa' LEFT JOIN umrah_bookings ub ON n.transaction_id=ub.booking_id AND n.transaction_type='umrah' LEFT JOIN supplier_transactions st ON n.transaction_id=st.id AND n.transaction_type='supplier' LEFT JOIN suppliers s ON st.supplier_id=s.id OR va.supplier=s.id WHERE n.status='unread' AND n.tenant_id=? ORDER BY n.created_at DESC";
+                $ns=$pdo->prepare($nq);$ns->execute([$tenant_id]);
+                if($ns->rowCount()>0) displayModernNotifications($ns,'unread');
+                else echo '<div class="d-empty"><i class="fas fa-bell-slash"></i>'.__('no_unread_notifications_available').'</div>';
+              } catch(PDOException $e){error_log($e->getMessage());}
+              ?>
+            </div>
+            <div id="ntab-read" style="display:none;">
+              <div class="read-filter">
+                <label><?= __('filter') ?>:</label>
+                <input type="date" class="dep-date-input" id="readNotificationsDate" value="<?= date('Y-m-d') ?>">
+                <button class="dbtn dbtn-ghost" id="applyReadDateFilter" style="padding:6px 14px;font-size:12px;"><i class="fas fa-filter"></i> <?= __('filter') ?></button>
+              </div>
+              <div id="readNotificationsBody">
+                <?php
+                try {
+                  $rq="SELECT n.*,CASE WHEN n.transaction_type='visa' THEN va.applicant_name WHEN n.transaction_type='supplier' THEN s.name WHEN n.transaction_type='umrah' THEN ub.name ELSE NULL END AS related_name,CASE WHEN n.transaction_type='visa' THEN va.base WHEN n.transaction_type='supplier' THEN st.amount WHEN n.transaction_type='umrah' THEN ub.sold_price ELSE 0 END AS transaction_amount,CASE WHEN n.transaction_type='visa' THEN va.currency WHEN n.transaction_type='supplier' THEN s.currency ELSE NULL END AS transaction_currency FROM notifications n LEFT JOIN visa_applications va ON n.transaction_id=va.id AND n.transaction_type='visa' LEFT JOIN umrah_bookings ub ON n.transaction_id=ub.booking_id AND n.transaction_type='umrah' LEFT JOIN supplier_transactions st ON n.transaction_id=st.id AND n.transaction_type='supplier' LEFT JOIN suppliers s ON st.supplier_id=s.id OR va.supplier=s.id WHERE n.status='read' AND DATE(n.created_at)=? AND n.tenant_id=? ORDER BY n.created_at DESC";
+                  $rs=$pdo->prepare($rq);$rs->execute([date('Y-m-d'),$tenant_id]);
+                  if($rs->rowCount()>0) displayModernNotifications($rs,'read');
+                  else echo '<div class="d-empty"><i class="fas fa-inbox"></i>'.__('no_read_notifications_for_selected_date').'</div>';
+                } catch(PDOException $e){error_log($e->getMessage());}
+                ?>
+                </div>
+                </div>
+                </div>
+                </div>
+                <?php endif; ?>
+
+            </div><!-- /.two-col -->
+
+        <!-- TOP PERFORMERS + CLIENT DEBTS -->
+        <?php if (in_array($user['role'],['admin','finance'])): ?>
+        <div class="two-col">
+          <?php if ($showTickets && $user['role']==='admin'): ?>
+          <div class="d-card" style="margin-bottom:0;">
+            <div class="d-card-header">
+              <div class="d-card-title"><div class="ci ci-amber"><i class="fas fa-trophy"></i></div><?= __('top_performers') ?></div>
+              <span style="font-size:12px;color:var(--text-muted);"><?= date('M Y') ?></span>
+            </div>
+            <div class="lb-filter-row">
+              <label><?= __('performance_period') ?>:</label>
+              <input type="month" class="dep-date-input date-filter" id="performanceDateInput" value="<?= date('Y-m') ?>">
+              <button class="dbtn dbtn-ghost apply-performance-filter" style="padding:6px 14px;font-size:12px;"><i class="fas fa-filter"></i> <?= __('apply_filter') ?></button>
+            </div>
+            <div class="lb-list" id="topPerformersTableBody">
+              <?php
+              $topPerformers=getTopPerformersByTicketProfit(date('m'),date('Y'));
+              if (count($topPerformers)>0):
+                $rank=1; $maxP=max(array_column($topPerformers,'total_profit_usd'));
+                foreach($topPerformers as $p):
+                  $pct=$maxP>0?round(($p['total_profit_usd']/$maxP)*100):0;
+                  $rc=$rank===1?'rank-1':($rank===2?'rank-2':($rank===3?'rank-3':'rank-other'));
+                  $ri=$rank===1?'🥇':($rank===2?'🥈':($rank===3?'🥉':$rank));
+                  $bc=$rank===1?'lb-bar-1':($rank===2?'lb-bar-2':($rank===3?'lb-bar-3':'lb-bar-o'));
+              ?>
+              <div class="lb-item">
+                <div class="lb-rank <?=$rc?>"><?=$ri?></div>
+                <div class="lb-info"><div class="lb-name"><?=htmlspecialchars($p['user_name'])?></div><div class="lb-bar-track"><div class="lb-bar-fill <?=$bc?>" style="width:<?=$pct?>%"></div></div></div>
+                <div class="lb-right"><div class="lb-profit">$<?=number_format($p['total_profit_usd'],2)?></div><div class="lb-tickets"><?=$p['total_tickets']?> <?=__('total_tickets')?></div></div>
+              </div>
+              <?php $rank++; endforeach;
+              else: echo '<div class="d-empty"><i class="fas fa-award"></i>'.__('no_ticket_sales_data_available').'</div>';
+              endif; ?>
+            </div>
+          </div>
+          <?php endif; ?>
+
+          <div class="d-card" style="margin-bottom:0;">
+            <div class="d-card-header">
+              <div class="d-card-title"><div class="ci ci-rose"><i class="fas fa-exclamation-circle"></i></div><?= __('client_debts') ?></div>
+              <span style="font-size:12px;color:var(--text-muted);"><?= __('clients_with_negative_balance') ?></span>
+            </div>
+            <div class="debt-pills">
+              <?php $clientsWithDebts=getClientsWithDebts();
+              if (count($clientsWithDebts)>0):
+                foreach($clientsWithDebts as $cl): ?>
+              <a href="client_detail.php?id=<?=$cl['id']?>" class="debt-pill">
+                <div class="debt-pill-name"><?=htmlspecialchars($cl['name'])?></div>
+                <div class="debt-pill-amounts">
+                  <span class="debt-amt <?=$cl['usd_balance']<0?'debt-neg':'debt-ok'?>">$<?=number_format($cl['usd_balance'],2)?></span>
+                  <span class="debt-amt debt-ok" style="opacity:.4;">|</span>
+                  <span class="debt-amt <?=$cl['afs_balance']<0?'debt-neg':'debt-ok'?>">؋<?=number_format($cl['afs_balance'],2)?></span>
+                </div>
+              </a>
+              <?php endforeach;
+              else: echo '<div class="d-empty"><i class="fas fa-check-circle" style="color:var(--emerald);"></i>'.__('no_clients_with_negative_balance_found').'</div>';
+              endif; ?>
+            </div>
+          </div>
+        </div>
+        <?php endif; ?>
+
+        <!-- UMRAH STATISTICS -->
+        <div class="d-card">
+          <div class="d-card-header">
+            <div class="d-card-title"><div class="ci ci-emerald"><i class="feather icon-map-pin"></i></div><?= __('umrah_statistics') ?></div>
+            <span style="font-size:12px;color:var(--text-muted);"><?= __('this_month') ?></span>
+          </div>
+          <div class="umrah-stat-row">
+            <div class="umrah-stat"><div class="umrah-stat-val us-green" id="umrahTotalBookings">0</div><div class="umrah-stat-lbl"><?= __('total_bookings') ?></div></div>
+            <div class="umrah-stat"><div class="umrah-stat-val us-blue"  id="umrahActivePackages">0</div><div class="umrah-stat-lbl"><?= __('ongoing_bookings') ?></div></div>
+            <div class="umrah-stat"><div class="umrah-stat-val us-violet" id="umrahServices">0</div><div class="umrah-stat-lbl"><?= __('total_pilgrims') ?></div></div>
+          </div>
+          <div class="sec-label"><?= __('recent_bookings') ?></div>
+          <div class="umrah-bookings-wrapper">
+            <table class="umrah-bookings-table">
+              <thead>
+                <tr>
+                  <th><?= __('booking_id') ?></th>
+                  <th><?= __('package_type') ?></th>
+                  <th><?= __('passenger_name') ?></th>
+                  <th><?= __('amount') ?></th>
+                  <th><?= __('status') ?></th>
+                </tr>
+              </thead>
+              <tbody id="umrahBookingsTable">
+                <tr>
+                  <td colspan="5" class="text-center"><div class="d-spinner"><i class="fas fa-spinner fa-spin mr-2"></i><?= __('loading') ?>...</div></td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
+        </div>
+
+       </div><!-- /.dash-inner -->
+      </div><!-- /.dash-wrap -->
+     </div>
+    </div>
+   </div>
+  </div>
+ </div>
+</div>
 
 <?php
-// Define ticket features visibility
-$showTickets = hasFeature('ticket_bookings', $allowed_features) ||
-                              hasFeature('ticket_reservations', $allowed_features) ||
-                              hasFeature('refunded_tickets', $allowed_features) ||
-                              hasFeature('date_change_tickets', $allowed_features) ||
-                              hasFeature('ticket_weights', $allowed_features);
-?>
-<?php
-if (!file_exists($imagePath)) {
-    $imagePath = "../assets/images/user/avatar-1.jpg";
+// ─── displayModernNotifications() ────────────────────────────────────────────
+function displayModernNotifications($stmt, $status) {
+    $byDate=[];
+    while($row=$stmt->fetch(PDO::FETCH_ASSOC)){
+        $date=date('Y-m-d',strtotime($row['created_at']));
+        $byDate[$date][]=$row;
+    }
+    foreach($byDate as $date=>$rows){
+        $lbl=($date===date('Y-m-d'))?__('today'):(($date===date('Y-m-d',strtotime('-1 day')))?__('yesterday'):date('l, F j, Y',strtotime($date)));
+        echo '<div class="tl-date-group"><div class="tl-date-hdr">'.$lbl.'</div>';
+        foreach($rows as $row){
+            $id=htmlspecialchars($row['id']);
+            $msg=htmlspecialchars($row['message']);
+            $name=htmlspecialchars($row['related_name']??'');
+            $amt=$row['transaction_amount']??0;
+            $cur=htmlspecialchars($row['transaction_currency']??'');
+            $type=htmlspecialchars($row['transaction_type']??'');
+            $time=date('g:i A',strtotime($row['created_at']));
+            $sym=($cur==='USD')?'$':($cur==='AFS'?'؋':($cur==='EUR'?'€':''));
+            $dotClass='tld-default';$icon='fa-bell';$iconPrefix='fas';
+             switch($type){
+                 case 'visa':    $dotClass='tld-visa';    $icon='fa-passport';$iconPrefix='fas';break;
+                 case 'supplier':$dotClass='tld-supplier';$icon='fa-truck';$iconPrefix='fas';break;
+                 case 'umrah':   $dotClass='tld-umrah';   $icon='icon-map-pin';$iconPrefix='feather';break;
+                 case 'ticket':  $dotClass='tld-ticket';  $icon='fa-ticket-alt';$iconPrefix='fas';break;
+                 case 'refund':  $dotClass='tld-refund';  $icon='fa-undo-alt';$iconPrefix='fas';break;
+                 case 'expense':case 'expense_update':case 'expense_delete':$dotClass='tld-expense';$icon='fa-receipt';$iconPrefix='fas';break;
+                 case 'hotel':   $dotClass='tld-hotel';   $icon='fa-hotel';$iconPrefix='fas';break;
+                 case 'deposit_sarafi':case 'hawala_sarafi':case 'withdrawal_sarafi':$dotClass='tld-sarafi';$icon='fa-exchange-alt';$iconPrefix='fas';break;
+             }
+             $readOnly=in_array($type,['deposit_sarafi','hawala_sarafi','withdrawal_sarafi','supplier_fund','client_fund','expense','expense_update','expense_delete']);
+             echo '<div class="tl-item notification-'.htmlspecialchars($status).'" data-id="'.$id.'">';
+             echo '<div class="tl-dot '.$dotClass.($status==='unread'?' unread':'').'"><i class="'.$iconPrefix.' '.$icon.'"></i></div>';
+            echo '<div class="tl-body">';
+            echo '<div class="tl-top"><span class="tl-type">'.$type.'</span><span class="tl-time">'.$time.'</span></div>';
+            echo '<div class="tl-msg">'.$msg.'</div>';
+            if($name||$amt){
+                echo '<div class="tl-meta">';
+                if($name) echo '<span class="tl-chip"><i class="fas fa-user"></i>'.$name.'</span>';
+                if($amt)  echo '<span class="tl-chip"><i class="fas fa-credit-card"></i>'.$sym.number_format((float)$amt,2).'</span>';
+                echo '</div>';
+            }
+            if($status==='unread'){
+                echo '<div class="tl-actions">';
+                if(!$readOnly) echo '<button class="tl-btn tl-btn-receive approve-button" data-id="'.$id.'" data-amount="'.$amt.'" data-currency="'.$cur.'" data-type="'.$type.'"><i class="fas fa-check"></i>'.htmlspecialchars(__('received')).'</button>';
+                echo '<button class="tl-btn tl-btn-read read-button" data-id="'.$id.'"><i class="fas fa-eye"></i>'.htmlspecialchars(__('mark_as_read')).'</button>';
+                echo '</div>';
+            }
+            echo '</div></div>';
+        }
+        echo '</div>';
+    }
 }
 ?>
-<link rel="stylesheet" href="../css/dashboard/dashboard.css">
-<link href="../css/dashboard/dashboard-styles.css" rel="stylesheet">
-<link rel="stylesheet" href="../css/general/modal-styles.css">
 
-
-    <!-- [ Main Content ] start -->
-    <div class="pcoded-main-container">
-        <div class="pcoded-wrapper">
-            <div class="pcoded-content">
-                <div class="pcoded-inner-content">
-                    <!-- [ breadcrumb ] start -->
-
-                    <!-- [ breadcrumb ] end -->
-                    <div class="main-body">
-                        <div class="page-wrapper">
-                            <!-- [ Main Content ] start -->
-                            
-                            <!-- Dashboard Header -->
-                            <div class="row mb-4">
-                                <div class="col-md-12">
-                                    <div class="dashboard-header d-flex justify-content-between align-items-center flex-wrap">
-                                        <div>
-                                            <h3 class="dashboard-title"><?= __('welcome_back') ?>, <?= htmlspecialchars($user['name'] ?? 'Admin') ?></h3>
-                                            <p class="dashboard-subtitle"><?= __('dashboard_subtitle') ?></p>
-                                        </div>
-                                        <div class="d-flex flex-wrap gap-2">
-                                           
-                                             <div class="dropdown">
-                                                 <button class="btn btn-light dropdown-toggle mb-2 mb-md-0" type="button" id="quickActionsDropdown" data-toggle="dropdown" aria-haspopup="true" aria-expanded="false">
-                                                     <i class="feather icon-zap mr-1"></i><?= __('quick_actions') ?>
-                                                 </button>
-                                                 <div class="dropdown-menu dropdown-menu-right" aria-labelledby="quickActionsDropdown">
-                                                     <a class="dropdown-item" href="ticket.php">
-                                                         <i class="feather icon-plus-circle mr-2 text-primary"></i><?= __('add_ticket') ?>
-                                                     </a>
-                                                     <a class="dropdown-item" href="client.php">
-                                                         <i class="feather icon-user-plus mr-2 text-success"></i><?= __('add_client') ?>
-                                                     </a>
-                                                     <a class="dropdown-item" href="supplier.php">
-                                                         <i class="feather icon-truck mr-2 text-warning"></i><?= __('add_supplier') ?>
-                                                     </a>
-                                                     
-                                                 </div>
-                                             </div>
-
-                                             <button class="btn btn-info mb-2 mb-md-0" type="button" id="watchTutorialsBtn" data-toggle="modal" data-target="#dashboardTutorialsModal">
-                                                 <i class="feather icon-play-circle mr-1"></i>Watch Tutorials
-                                             </button>
-                                         </div>
-                                     </div>
-                                 </div>
-                            </div>
-                            
-                            <!-- Low Supplier Balance Alert -->
-                            <?php if (!empty($suppliersWithLowBalance)): ?>
-                            <div class="row mb-4">
-                                <div class="col-md-12">
-                                    <div class="alert alert-warning alert-dismissible fade show border-left-warning" role="alert">
-                                        <div class="d-flex align-items-start">
-                                            <i class="feather icon-alert-triangle mr-3" style="font-size: 20px; margin-top: 2px;"></i>
-                                            <div class="flex-grow-1">
-                                                <h5 class="alert-heading mb-2">Low Supplier Balance Alert</h5>
-                                                <p class="mb-2">The following suppliers have low account balances:</p>
-                                                <div class="supplier-alerts">
-                                                    <?php foreach ($suppliersWithLowBalance as $supplier): ?>
-                                                        <div class="alert alert-sm mb-2" style="background-color: rgba(255,193,7,0.1); border-left: 3px solid #ffc107; padding: 8px 12px;">
-                                                            <strong><?= htmlspecialchars($supplier['name']) ?></strong><br>
-                                                            <small class="text-muted">
-                                                                <?php
-                                                                $currency_symbol = ($supplier['currency'] === 'USD') ? '$' : '؋';
-                                                                $threshold = ($supplier['currency'] === 'USD') ? 500 : 20000;
-                                                                $threshold_display = ($supplier['currency'] === 'USD') ? '$500' : '؋20,000';
-                                                                echo $supplier['currency'] . ": " . $currency_symbol . number_format($supplier['balance'], 2) . " (Threshold: " . $threshold_display . ")";
-                                                                ?>
-                                                            </small>
-                                                        </div>
-                                                    <?php endforeach; ?>
-                                                </div>
-                                                <small class="d-block mt-2">
-                                                    <a href="accounts.php" class="text-warning font-weight-bold">View All Suppliers</a>
-                                                </small>
-                                            </div>
-                                        </div>
-                                        <button type="button" class="close" data-dismiss="alert" aria-label="Close">
-                                            <span aria-hidden="true">&times;</span>
-                                        </button>
-                                    </div>
-                                </div>
-                            </div>
-                            <?php endif; ?>
-                            
-                            <!-- Client Low/Negative Balance Alert -->
-                            <?php if (!empty($clientsWithLowBalance)): ?>
-                            <div class="row mb-4">
-                                <div class="col-md-12">
-                                    <div class="alert alert-danger alert-dismissible fade show border-left-danger" role="alert">
-                                        <div class="d-flex align-items-start">
-                                            <i class="feather icon-alert-circle mr-3" style="font-size: 20px; margin-top: 2px;"></i>
-                                            <div class="flex-grow-1">
-                                                <h5 class="alert-heading mb-2">Client Balance Due Alert</h5>
-                                                <p class="mb-2">The following clients have reached the balance due thresholds:</p>
-                                                <div class="client-alerts">
-                                                    <?php foreach ($clientsWithLowBalance as $client): ?>
-                                                        <div class="alert alert-sm mb-2" style="background-color: rgba(220,53,69,0.1); border-left: 3px solid #dc3545; padding: 8px 12px;">
-                                                            <strong><?= htmlspecialchars($client['name']) ?></strong><br>
-                                                            <small class="text-muted">
-                                                                <?php
-                                                                $usd_threshold = -1000;
-                                                                $afs_threshold = -20000;
-                                                                $display_items = [];
-                                                                
-                                                                if ($client['usd_balance'] < $usd_threshold) {
-                                                                    $display_items[] = "USD: $" . number_format($client['usd_balance'], 2) . " (Threshold: $-1,000)";
-                                                                }
-                                                                if ($client['afs_balance'] < $afs_threshold) {
-                                                                    $display_items[] = "AFS: ؋" . number_format($client['afs_balance'], 2) . " (Threshold: ؋-20,000)";
-                                                                }
-                                                                
-                                                                echo implode(" | ", $display_items);
-                                                                ?>
-                                                            </small>
-                                                        </div>
-                                                    <?php endforeach; ?>
-                                                </div>
-                                                <small class="d-block mt-2">
-                                                    <a href="accounts.php" class="text-danger font-weight-bold">View All Clients</a>
-                                                </small>
-                                            </div>
-                                        </div>
-                                        <button type="button" class="close" data-dismiss="alert" aria-label="Close">
-                                            <span aria-hidden="true">&times;</span>
-                                        </button>
-                                    </div>
-                                </div>
-                            </div>
-                            <?php endif; ?>
-                            
-                            
-                            <!-- Financial Wealth Distribution Chart -->
-                            <div class="row mb-4">
-                                <div class="col-md-12">
-                                    <div class="card border-0 shadow-lg" style="border-radius: 12px; overflow: hidden; background: linear-gradient(135deg, #ffffff 0%, #f8f9fa 100%); transition: all 0.3s ease;">
-                                        <div class="card-header bg-white" style="border-bottom: 2px solid #f0f0f0; padding: 20px;">
-                                            <div class="d-flex justify-content-between align-items-center flex-wrap">
-                                                <h5 class="mb-0 mb-md-0" style="font-weight: 700; font-size: 18px; color: #1a202c;">
-                                                    <i class="feather icon-bar-chart-2 text-primary mr-2"></i><?= __('financial_wealth_distribution') ?>
-                                                </h5>
-                                                <div class="chart-controls d-flex flex-column flex-md-row mt-2 mt-md-0">
-                                                    <div class="chart-period mr-md-2 mb-2 mb-md-0 w-100 w-md-auto">
-                                                        <label class="mb-0 mr-2 d-block d-md-inline-block text-muted small"><?= __('period') ?>:</label>
-                                                        <select id="financeChartPeriod" class="form-control form-control-sm">
-                                                            <option value="daily"><?= __('daily') ?></option>
-                                                            <option value="monthly" selected><?= __('monthly') ?></option>
-                                                            <option value="yearly"><?= __('yearly') ?></option>
-                                                        </select>
-                                                    </div>
-                                                    <div class="chart-currency w-100 w-md-auto">
-                                                        <label class="mb-0 mr-2 d-block d-md-inline-block text-muted small"><?= __('currency') ?>:</label>
-                                                        <select id="financeChartCurrency" class="form-control form-control-sm">
-                                                            <option value="USD" selected><?= __('usd') ?></option>
-                                                            <option value="AFS"><?= __('afs') ?></option>
-                                                            <option value="EUR"><?= __('eur') ?></option>
-                                                            <option value="AED"><?= __('aed') ?></option>
-                                                        </select>
-                                                    </div>
-                                                </div>
-                                            </div>
-                                        </div>
-                                        <div class="card-body" style="padding: 25px;">
-                                            <div class="row">
-                                                <div class="col-lg-8 mb-4 mb-lg-0">
-                                                    <div id="financeFlowChart" style="height: 450px; position: relative;"></div>
-                                                </div>
-                                                <div class="col-lg-4">
-                                                    <div class="d-flex align-items-center justify-content-between mb-4">
-                                                        <h6 class="mb-0" style="font-weight: 700; color: #374151; font-size: 14px; text-transform: uppercase; letter-spacing: 0.5px;"><?= __('wealth_distribution') ?></h6>
-                                                        <span class="badge badge-pill" id="currentDateBadge" style="background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: white; font-size: 11px; font-weight: 600;"></span>
-                                                    </div>
-                                                    <div class="wealth-distribution-summary p-4 rounded-lg" style="background: linear-gradient(135deg, #f5f7fa 0%, #c3cfe2 100%); border-left: 4px solid #667eea;">
-                                                        <div class="d-flex flex-column flex-sm-row justify-content-between mb-3">
-                                                            <span class="mb-1 mb-sm-0"><?= __('main_accounts') ?>:</span>
-                                                            <span id="mainAccountBalance" class="font-weight-bold">$0.00</span>
-                                                        </div>
-                                                        <div class="d-flex flex-column flex-sm-row justify-content-between mb-3">
-                                                            <span class="mb-1 mb-sm-0"><?= __('supplier_credits') ?>:</span>
-                                                            <span id="supplierBalance" class="font-weight-bold">$0.00</span>
-                                                        </div>
-                                                        <div class="d-flex flex-column flex-sm-row justify-content-between mb-3">
-                                                            <span class="mb-1 mb-sm-0"><?= __('client_credits') ?>:</span>
-                                                            <span id="clientBalance" class="font-weight-bold">$0.00</span>
-                                                        </div>
-                                                        <div class="d-flex flex-column flex-sm-row justify-content-between mb-3">
-                                                            <span class="mb-1 mb-sm-0"><?= __('debtor_balance') ?>:</span>
-                                                            <span id="debtorBalance" class="font-weight-bold">$0.00</span>
-                                                        </div>
-
-                                                        <hr>
-                                                        <div class="d-flex flex-column flex-sm-row justify-content-between">
-                                                            <span class="font-weight-bold mb-1 mb-sm-0"><?= __('total_net_worth') ?>:</span>
-                                                            <span id="totalNetWorth" class="font-weight-bold text-primary">$0.00</span>
-                                                        </div>
-                                                    </div>
-                                                </div>
-                                            </div>
-                                        </div>
-                                    </div>
-                                </div>
-                            </div>
-                            
-                            <div class="row">
-                                <!--[ daily sales section ] start-->
-                                <div class="col-md-6 col-xl-4">
-                                    <div class="filter-controls">
-                                        <h6><?= __('daily_sales') ?></h6>
-                                        <div class="date-filter-toggle">
-                                            <i class="feather icon-filter filter-icon" data-toggle="collapse" data-target="#dailyDateFilter"></i>
-                                        </div>
-                                    </div>
-                                    <div class="collapse mb-2" id="dailyDateFilter">
-                                        <div class="date-filter-panel">
-                                            <label class="small text-muted"><?= __('select_date') ?></label>
-                                            <input type="date" class="form-control form-control-sm date-filter" id="dailyDateInput" value="<?= date('Y-m-d') ?>">
-                                            <button class="btn btn-sm btn-primary mt-2 apply-daily-filter"><?= __('apply_filter') ?></button>
-                                        </div>
-                                    </div>
-                                    <div class="card dashboard-card sales-card animate-card daily-sales" data-type="daily" data-usd="<?= number_format($dailySales['usd_profit'], 2) ?>" data-afs="<?= number_format($dailySales['afs_profit'], 2) ?>">
-                                        <div class="card-block">
-                                            <div class="d-flex align-items-center mb-3">
-                                                <div class="card-icon">
-                                                    <i class="feather icon-calendar"></i>
-                                                </div>
-                                                <div>
-                                                    <h6 class="card-title"><?= __('daily_sales') ?></h6>
-                                                    <span class="card-trend trend-up"><?= $dailyTrendPercent ?>%</span>
-                                                </div>
-                                            </div>
-                                            <h3 class="card-amount">$<span id="dailyUsdProfit"><?= number_format($dailySales['usd_profit'], 2) ?></span></h3>
-                                            <p class="card-secondary-amount">؋<span id="dailyAfsProfit"><?= number_format($dailySales['afs_profit'], 2) ?></span></p>
-                                            <div class="d-flex justify-content-between align-items-center mt-3">
-                                                <span class="card-date" id="dailyDateDisplay"><?= __('today') ?></span>
-                                                <i class="feather icon-external-link text-primary"></i>
-                                            </div>
-                                        </div>
-                                    </div>
-                                </div>
-                                <!--[ daily sales section ] end-->
-                                <!--[ Monthly  sales section ] starts-->
-                                <div class="col-md-6 col-xl-4">
-                                    <div class="filter-controls">
-                                        <h6><?= __('monthly_sales') ?></h6>
-                                        <div class="date-filter-toggle">
-                                            <i class="feather icon-filter filter-icon" data-toggle="collapse" data-target="#monthlyDateFilter"></i>
-                                        </div>
-                                    </div>
-                                    <div class="collapse mb-2" id="monthlyDateFilter">
-                                        <div class="date-filter-panel">
-                                            <label class="small text-muted"><?= __('select_month') ?></label>
-                                            <input type="month" class="form-control form-control-sm date-filter" id="monthlyDateInput" value="<?= date('Y-m') ?>">
-                                            <button class="btn btn-sm btn-primary mt-2 apply-monthly-filter"><?= __('apply_filter') ?></button>
-                                        </div>
-                                    </div>
-                                    <div class="card dashboard-card sales-card animate-card monthly-sales" data-type="monthly" data-usd="<?= number_format($monthlySales['usd_profit'], 2) ?>" data-afs="<?= number_format($monthlySales['afs_profit'], 2) ?>">
-                                        <div class="card-block">
-                                            <div class="d-flex align-items-center mb-3">
-                                                <div class="card-icon">
-                                                    <i class="feather icon-bar-chart-2"></i>
-                                                </div>
-                                                <div>
-                                                    <h6 class="card-title"><?= __('monthly_sales') ?></h6>
-                                                    <span class="card-trend trend-up"><?= $monthlyTrendPercent ?>%</span>
-                                                </div>
-                                            </div>
-                                            <h3 class="card-amount">$<span id="monthlyUsdProfit"><?= number_format($monthlySales['usd_profit'], 2) ?></span></h3>
-                                            <p class="card-secondary-amount">؋<span id="monthlyAfsProfit"><?= number_format($monthlySales['afs_profit'], 2) ?></span></p>
-                                            <div class="d-flex justify-content-between align-items-center mt-3">
-                                                <span class="card-date" id="monthlyDateDisplay"><?= date('M Y') ?></span>
-                                                <i class="feather icon-external-link text-primary"></i>
-                                            </div>
-                                        </div>
-                                    </div>
-                                </div>
-                                <!--[ Monthly  sales section ] end-->
-                                <!--[ year  sales section ] starts-->
-                                <div class="col-md-12 col-xl-4">
-                                    <div class="filter-controls">
-                                        <h6><?= __('yearly_sales') ?></h6>
-                                        <div class="date-filter-toggle">
-                                            <i class="feather icon-filter filter-icon" data-toggle="collapse" data-target="#yearlyDateFilter"></i>
-                                        </div>
-                                    </div>
-                                    <div class="collapse mb-2" id="yearlyDateFilter">
-                                        <div class="date-filter-panel">
-                                            <label class="small text-muted"><?= __('select_year') ?></label>
-                                            <select class="form-control form-control-sm date-filter" id="yearlyDateInput">
-                                                <?php 
-                                                $currentYear = date('Y');
-                                                for($y = $currentYear; $y >= $currentYear - 5; $y--) {
-                                                    echo "<option value='$y'" . ($y == $currentYear ? " selected" : "") . ">$y</option>";
-                                                }
-                                                ?>
-                                            </select>
-                                            <button class="btn btn-sm btn-primary mt-2 apply-yearly-filter"><?= __('apply_filter') ?></button>
-                                        </div>
-                                    </div>
-                                    <div class="card dashboard-card sales-card animate-card yearly-sales" data-type="yearly" data-usd="<?= number_format($yearlySales['usd_profit'], 2) ?>" data-afs="<?= number_format($yearlySales['afs_profit'], 2) ?>">
-                                        <div class="card-block">
-                                            <div class="d-flex align-items-center mb-3">
-                                                <div class="card-icon">
-                                                    <i class="feather icon-trending-up"></i>
-                                                </div>
-                                                <div>
-                                                    <h6 class="card-title"><?= __('yearly_sales') ?></h6>
-                                                    <span class="card-trend trend-up"><?= $yearlyTrendPercent ?>%</span>
-                                                </div>
-                                            </div>
-                                            <h3 class="card-amount">$<span id="yearlyUsdProfit"><?= number_format($yearlySales['usd_profit'], 2) ?></span></h3>
-                                            <p class="card-secondary-amount">؋<span id="yearlyAfsProfit"><?= number_format($yearlySales['afs_profit'], 2) ?></span></p>
-                                            <div class="d-flex justify-content-between align-items-center mt-3">
-                                                <span class="card-date" id="yearlyDateDisplay"><?= date('Y') ?></span>
-                                                <i class="feather icon-external-link text-primary"></i>
-                                            </div>
-                                        </div>
-                                    </div>
-                                </div>
-                                <!-- Dues Summary Section -->
-                                <div class="col-xl-12 col-md-6">
-                                        <div class="card Recent-Users">
-                                            <div class="card-header">
-                                                <h5><?= __('outstanding_dues') ?></h5>
-                                            </div>
-                                            <div class="card-block px-0 py-3">
-                                                <div class="row px-3">
-                                                    <!-- Ticket Bookings Dues -->
-                                                    <?php if (hasFeature('ticket_bookings', $allowed_features)): ?>
-                                                    <div class="col-md-4 mb-4">
-                                                        <div class="card dashboard-card due-card animate-card" data-type="ticket">
-                                                            <div class="card-body">
-                                                                <div class="d-flex justify-content-between align-items-center">
-                                                                    <div>
-                                                                        <h6 class="due-title"><?= __('ticket_bookings') ?></h6>
-                                                                        <h3 class="due-amount" id="ticketDuesUSD">$0.00</h3>
-                                                                        <p class="due-secondary-amount" id="ticketDuesAFS">؋0.00</p>
-                                                                    </div>
-                                                                    <div class="bg-light-danger">
-                                                                        <i class="fas fa-ticket-alt text-danger"></i>
-                                                                    </div>
-                                                                </div>
-
-                                                            </div>
-                                                        </div>
-                                                    </div>
-                                                    <?php endif; ?>
-
-                                                    <!-- Date Change Dues -->
-                                                    <?php if (hasFeature('date_change_tickets', $allowed_features)): ?>
-                                                    <div class="col-md-4 mb-4">
-                                                        <div class="card dashboard-card due-card animate-card" data-type="datechange">
-                                                            <div class="card-body">
-                                                                <div class="d-flex justify-content-between align-items-center">
-                                                                    <div>
-                                                                        <h6 class="due-title"><?= __('date_change') ?></h6>
-                                                                        <h3 class="due-amount" id="dateChangeDuesUSD">$0.00</h3>
-                                                                        <p class="due-secondary-amount" id="dateChangeDuesAFS">؋0.00</p>
-                                                                    </div>
-                                                                    <div class="bg-light-warning">
-                                                                        <i class="feather icon-calendar text-warning"></i>
-                                                                    </div>
-                                                                </div>
-
-                                                            </div>
-                                                        </div>
-                                                    </div>
-                                                    <?php endif; ?>
-
-                                                    <!-- Refunded Tickets Dues -->
-                                                    <?php if (hasFeature('refunded_tickets', $allowed_features)): ?>
-                                                    <div class="col-md-4 mb-4">
-                                                        <div class="card dashboard-card due-card animate-card" data-type="refunded">
-                                                            <div class="card-body">
-                                                                <div class="d-flex justify-content-between align-items-center">
-                                                                    <div>
-                                                                        <h6 class="due-title"><?= __('refunded_tickets') ?></h6>
-                                                                        <h3 class="due-amount" id="refundedDuesUSD">$0.00</h3>
-                                                                        <p class="due-secondary-amount" id="refundedDuesAFS">؋0.00</p>
-                                                                    </div>
-                                                                    <div class="bg-light-info">
-                                                                        <i class="feather icon-refresh-cw text-info"></i>
-                                                                    </div>
-                                                                </div>
-
-                                                            </div>
-                                                        </div>
-                                                    </div>
-                                                    <?php endif; ?>
-
-
-                                                    <!-- Umrah Dues -->
-                                                    <?php if (hasFeature('umrah_bookings', $allowed_features)): ?>
-                                                    <div class="col-md-4 mb-4">
-                                                        <div class="card dashboard-card due-card animate-card" data-type="umrah">
-                                                            <div class="card-body">
-                                                                <div class="d-flex justify-content-between align-items-center">
-                                                                    <div>
-                                                                        <h6 class="due-title"><?= __('umrah') ?></h6>
-                                                                        <h3 class="due-amount" id="umrahDuesUSD">$0.00</h3>
-                                                                        <p class="due-secondary-amount" id="umrahDuesAFS">؋0.00</p>
-                                                                    </div>
-                                                                    <div class="bg-light-success">
-                                                                        <i class="feather icon-map text-success"></i>
-                                                                    </div>
-                                                                </div>
-
-                                                            </div>
-                                                        </div>
-                                                    </div>
-                                                    <?php endif; ?>
-
-                                                    <!-- Visa Dues -->
-                                                    <?php if (hasFeature('visa_applications', $allowed_features)): ?>
-                                                    <div class="col-md-4 mb-4">
-                                                        <div class="card dashboard-card due-card animate-card" data-type="visa">
-                                                            <div class="card-body">
-                                                                <div class="d-flex justify-content-between align-items-center">
-                                                                    <div>
-                                                                        <h6 class="due-title"><?= __('visa') ?></h6>
-                                                                        <h3 class="due-amount" id="visaDuesUSD">$0.00</h3>
-                                                                        <p class="due-secondary-amount" id="visaDuesAFS">؋0.00</p>
-                                                                    </div>
-                                                                    <div class="bg-light-primary">
-                                                                        <i class="feather icon-file-text text-primary"></i>
-                                                                    </div>
-                                                                </div>
-
-                                                            </div>
-                                                        </div>
-                                                    </div>
-                                                    <?php endif; ?>
-
-                                                    <!-- Hotel Dues -->
-                                                    <?php if (hasFeature('hotel_bookings', $allowed_features)): ?>
-                                                    <div class="col-md-4 mb-4">
-                                                        <div class="card dashboard-card due-card animate-card" data-type="hotel">
-                                                            <div class="card-body">
-                                                                <div class="d-flex justify-content-between align-items-center">
-                                                                    <div>
-                                                                        <h6 class="due-title"><?= __('hotel') ?></h6>
-                                                                        <h3 class="due-amount" id="hotelDuesUSD">$0.00</h3>
-                                                                        <p class="due-secondary-amount" id="hotelDuesAFS">؋0.00</p>
-                                                                    </div>
-                                                                    <div class="bg-light-warning">
-                                                                        <i class="feather icon-home text-warning"></i>
-                                                                    </div>
-                                                                </div>
-
-                                                            </div>
-                                                        </div>
-                                                    </div>
-                                                    <?php endif; ?>
-
-                                                    <!-- Additional Payments Dues -->
-                                                    <?php if (hasFeature('additional_payments', $allowed_features)): ?>
-                                                    <div class="col-md-4 mb-4">
-                                                        <div class="card dashboard-card due-card animate-card" data-type="addpayment">
-                                                            <div class="card-body">
-                                                                <div class="d-flex justify-content-between align-items-center">
-                                                                    <div>
-                                                                        <h6 class="due-title"><?= __('additional_payments') ?></h6>
-                                                                        <h3 class="due-amount" id="addpaymentDuesUSD">$0.00</h3>
-                                                                        <p class="due-secondary-amount" id="addpaymentDuesAFS">؋0.00</p>
-                                                                    </div>
-                                                                    <div class="bg-light-secondary">
-                                                                        <i class="fas fa-dollar-sign text-secondary"></i>
-                                                                    </div>
-                                                                </div>
-
-                                                            </div>
-                                                        </div>
-                                                    </div>
-                                                    <?php endif; ?>
-                                                    <!-- Weight Dues -->
-                                                    <?php if (hasFeature('ticket_weights', $allowed_features)): ?>
-                                                    <div class="col-md-4 mb-4">
-                                                        <div class="card dashboard-card due-card animate-card" data-type="weight">
-                                                            <div class="card-body">
-                                                                <div class="d-flex justify-content-between align-items-center">
-                                                                    <div>
-                                                                        <h6 class="due-title"><?= __('weight') ?></h6>
-                                                                        <h3 class="due-amount" id="weightDuesUSD">$0.00</h3>
-                                                                        <p class="due-secondary-amount" id="weightDuesAFS">؋0.00</p>
-                                                                    </div>
-                                                                    <div class="bg-light-danger">
-                                                                        <i class="feather icon-package text-danger"></i>
-                                                                    </div>
-                                                                </div>
-                                                            </div>
-                                                        </div>
-                                                    </div>
-                                                    <?php endif; ?>
-                                                    <!-- Ticket Reserve Dues -->
-                                                    <?php if (hasFeature('ticket_reservations', $allowed_features)): ?>
-                                                    <div class="col-md-4 mb-4">
-                                                        <div class="card dashboard-card due-card animate-card" data-type="ticket_reserve">
-                                                            <div class="card-body">
-                                                                <div class="d-flex justify-content-between align-items-center">
-                                                                    <div>
-                                                                        <h6 class="due-title"><?= __('ticket_reserve') ?></h6>
-                                                                        <h3 class="due-amount" id="ticketReserveDuesUSD">$0.00</h3>
-                                                                        <p class="due-secondary-amount" id="ticketReserveDuesAFS">؋0.00</p>
-                                                                    </div>
-                                                                    <div class="bg-light-danger">
-                                                                        <i class="feather icon-package text-danger"></i>
-                                                                    </div>
-                                                                </div>
-                                                            </div>
-                                                        </div>
-                                                    </div>
-                                                    <?php endif; ?>
-                                                </div>
-                                            </div>
-                                        </div>
-                                </div>
-
-                                <!-- Client Debts Section -->
-                                <div class="col-xl-12 col-md-6">
-                                    <div class="card Recent-Users">
-                                        <div class="card-header">
-                                            <h5><?= __('client_debts') ?></h5>
-                                            <span class="text-muted small"><?= __('clients_with_negative_balance') ?></span>
-                                        </div>
-                                        <div class="card-block px-0 py-3">
-                                            <div class="table-responsive px-3">
-                                                <table class="table table-hover">
-                                                    <thead>
-                                                        <tr>
-                                                            <th><?= __('client_name') ?></th>
-                                                            <th><?= __('usd_balance') ?></th>
-                                                            <th><?= __('afs_balance') ?></th>
-                                                            <th><?= __('actions') ?></th>
-                                                        </tr>
-                                                    </thead>
-                                                    <tbody>
-                                                        <?php
-                                                        $clientsWithDebts = getClientsWithDebts();
-                                                        if (count($clientsWithDebts) > 0) {
-                                                            foreach ($clientsWithDebts as $client) {
-                                                                echo '<tr>';
-                                                                echo '<td>' . htmlspecialchars($client['name']) . '</td>';
-                                                                echo '<td class="' . ($client['usd_balance'] < 0 ? 'text-danger' : '') . '">' . number_format($client['usd_balance'], 2) . '</td>';
-                                                                echo '<td class="' . ($client['afs_balance'] < 0 ? 'text-danger' : '') . '">' . number_format($client['afs_balance'], 2) . '</td>';
-                                                                echo '<td><a href="client_detail.php?id=' . $client['id'] . '" class="btn btn-sm btn-primary">' . __('view') . '</a></td>';
-                                                                echo '</tr>';
-                                                            }
-                                                        } else {
-                                                            echo '<tr><td colspan="4" class="text-center">' . __('no_clients_with_negative_balance_found') . '</td></tr>';
-                                                        }
-                                                        ?>
-                                                    </tbody>
-                                                </table>
-                                            </div>
-                                        </div>
-                                    </div>
-                                </div>
-
-                                <!-- Notifications -->
-                                <div class="col-xl-12 col-md-6">
-                                    <div class="card Recent-Users">
-                                        <div class="card-header d-flex justify-content-between align-items-center">
-                                            <div class="d-flex align-items-center">
-                                                <h5 class="mb-0 mr-2"><?= __('recent_notifications') ?></h5>
-                                                <span class="badge-pill badge-danger notification-count">
-                                                    <?php
-                                                    try {
-                                                        $countStmt = $pdo->prepare("SELECT COUNT(*)
-                                                                                    FROM notifications
-                                                                                    WHERE status = 'unread'
-                                                                                    AND tenant_id = :tenant_id");
-                                                        $countStmt->execute(['tenant_id' => $tenant_id]);
-                                                        echo $countStmt->fetchColumn();
-                                                    } catch (PDOException $e) {
-                                                        echo "0";
-                                                    }
-                                                    ?>
-                                                </span>
-                                            </div>
-                                            <button class="btn btn-sm btn-outline-secondary" type="button" data-toggle="collapse" data-target="#notificationBody" aria-expanded="false" aria-controls="notificationBody" id="notificationToggle">
-                                                <i class="feather icon-chevron-down"></i>
-                                            </button>
-                                        </div>
-                                        <div class="collapse" id="notificationBody">
-                                            <div class="card-header border-top-0 pt-0">
-                                                <ul class="nav nav-pills nav-fill" id="notificationTabs" role="tablist">
-                                                <li class="nav-item">
-                                                    <a class="nav-link active" id="unread-tab" data-toggle="tab" href="#unread" role="tab">
-                                                        <i class="feather icon-bell mr-1"></i><?= __('unread') ?> 
-                                                        <span class="badge-pill badge-danger notification-count ml-1">
-                                                            <?php 
-                                                        try {
-                                                            $countStmt = $pdo->prepare("SELECT COUNT(*) 
-                                                                                        FROM notifications 
-                                                                                        WHERE status = 'unread' 
-                                                                                        AND tenant_id = :tenant_id");
-                                                            $countStmt->execute(['tenant_id' => $tenant_id]);
-                                                            echo $countStmt->fetchColumn();
-                                                        } catch (PDOException $e) {
-                                                            echo "0";
-                                                        }
-                                                        
-                                                            ?>
-                                                        </span>
-                                                    </a>
-                                                </li>
-                                                <li class="nav-item">
-                                                    <a class="nav-link" id="read-tab" data-toggle="tab" href="#read" role="tab">
-                                                        <i class="feather icon-check-circle mr-1"></i><?= __('read') ?>
-                                                    </a>
-                                                </li>
-                                            </ul>
-                                        </div>
-                                        <div class="card-block px-0 py-3">
-                                            <div class="tab-content" id="notificationTabContent">
-                                                <!-- Unread Notifications Tab -->
-                                                <div class="tab-pane fade show active" id="unread" role="tabpanel">
-                                                    <div class="px-3">
-                                                        <?php
-                                                        try {
-                                                            // Query to fetch unread notifications for the current tenant
-                                                            $query = "
-                                                                SELECT n.*, 
-                                                                    CASE 
-                                                                        WHEN n.transaction_type = 'visa' THEN va.applicant_name 
-                                                                        WHEN n.transaction_type = 'supplier' THEN s.name
-                                                                        WHEN n.transaction_type = 'umrah' THEN ub.name 
-                                                                        ELSE NULL 
-                                                                    END AS related_name,
-                                                                    CASE 
-                                                                        WHEN n.transaction_type = 'visa' THEN va.base 
-                                                                        WHEN n.transaction_type = 'supplier' THEN st.amount
-                                                                        WHEN n.transaction_type = 'umrah' THEN ub.sold_price 
-                                                                        ELSE 0 
-                                                                    END AS transaction_amount,
-                                                                    CASE 
-                                                                        WHEN n.transaction_type = 'visa' THEN va.currency 
-                                                                        WHEN n.transaction_type = 'supplier' THEN s.currency 
-                                                                        ELSE NULL 
-                                                                    END AS transaction_currency
-                                                                FROM notifications n
-                                                                LEFT JOIN visa_applications va 
-                                                                    ON n.transaction_id = va.id 
-                                                                    AND n.transaction_type = 'visa'
-                                                                LEFT JOIN umrah_bookings ub 
-                                                                    ON n.transaction_id = ub.booking_id 
-                                                                    AND n.transaction_type = 'umrah'
-                                                                LEFT JOIN supplier_transactions st 
-                                                                    ON n.transaction_id = st.id 
-                                                                    AND n.transaction_type = 'supplier'
-                                                                LEFT JOIN suppliers s 
-                                                                    ON st.supplier_id = s.id 
-                                                                    OR va.supplier = s.id
-                                                                WHERE n.status = 'unread'
-                                                                AND n.tenant_id = :tenant_id
-                                                                ORDER BY n.created_at DESC
-                                                            ";
-                                                        
-                                                            $stmt = $pdo->prepare($query);
-                                                            $stmt->execute(['tenant_id' => $tenant_id]);
-                                                        
-                                                            if ($stmt->rowCount() > 0) {
-                                                                displayModernNotifications($stmt, 'unread');
-                                                            } else {
-                                                                echo '<div class="empty-state text-center py-4">
-                                                                        <i class="feather icon-bell-off text-muted" style="font-size: 48px;"></i>
-                                                                        <p class="text-muted mt-2">' . __('no_unread_notifications_available') . '</p>
-                                                                    </div>';
-                                                            }
-                                                        } catch (PDOException $e) {
-                                                            error_log("Error fetching unread notifications: " . $e->getMessage());
-                                                            echo '<div class="alert alert-danger">' . __('error_loading_notifications') . '</div>';
-                                                        }
-                                                        
-                                                        ?>
-                                                    </div>
-                                                </div>
-
-                                                <!-- Read Notifications Tab -->
-                                                <div class="tab-pane fade" id="read" role="tabpanel">
-                                                    <div class="d-flex justify-content-between align-items-center px-3 py-2">
-                                                        <h6 class="mb-0"><?= __('read_notifications') ?></h6>
-                                                        <div class="date-filter">
-                                                            <div class="input-group input-group-sm">
-                                                                <input type="date" class="form-control form-control-sm" id="readNotificationsDate" value="<?= date('Y-m-d') ?>">
-                                                                <div class="input-group-append">
-                                                                    <button class="btn btn-sm btn-primary" id="applyReadDateFilter">
-                                                                        <i class="feather icon-filter"></i> <?= __('filter') ?>
-                                                                    </button>
-                                                                </div>
-                                                            </div>
-                                                        </div>
-                                                    </div>
-                                                    <div id="readNotificationsBody" class="px-3">
-                                                        <?php
-                                                    try {
-                                                        // Query to fetch read notifications (filtered by today's date by default)
-                                                        $today = date('Y-m-d');
-                                                        $query = "
-                                                            SELECT n.*, 
-                                                                CASE 
-                                                                    WHEN n.transaction_type = 'visa' THEN va.applicant_name 
-                                                                    WHEN n.transaction_type = 'supplier' THEN s.name
-                                                                    WHEN n.transaction_type = 'umrah' THEN ub.name 
-                                                                    ELSE NULL 
-                                                                END AS related_name,
-                                                                CASE 
-                                                                    WHEN n.transaction_type = 'visa' THEN va.base 
-                                                                    WHEN n.transaction_type = 'supplier' THEN st.amount
-                                                                    WHEN n.transaction_type = 'umrah' THEN ub.sold_price 
-                                                                    ELSE 0 
-                                                                END AS transaction_amount,
-                                                                CASE 
-                                                                    WHEN n.transaction_type = 'visa' THEN va.currency 
-                                                                    WHEN n.transaction_type = 'supplier' THEN s.currency 
-                                                                    ELSE NULL 
-                                                                END AS transaction_currency
-                                                            FROM notifications n
-                                                            LEFT JOIN visa_applications va 
-                                                                ON n.transaction_id = va.id 
-                                                                AND n.transaction_type = 'visa'
-                                                            LEFT JOIN umrah_bookings ub 
-                                                                ON n.transaction_id = ub.booking_id 
-                                                                AND n.transaction_type = 'umrah'
-                                                            LEFT JOIN supplier_transactions st 
-                                                                ON n.transaction_id = st.id 
-                                                                AND n.transaction_type = 'supplier'
-                                                            LEFT JOIN suppliers s 
-                                                                ON st.supplier_id = s.id 
-                                                                OR va.supplier = s.id
-                                                            WHERE n.status = 'read' 
-                                                            AND DATE(n.created_at) = :today
-                                                            AND n.tenant_id = :tenant_id
-                                                            ORDER BY n.created_at DESC
-                                                        ";
-                                                        
-                                                        $stmt = $pdo->prepare($query);
-                                                        $stmt->execute([
-                                                            'today' => $today,
-                                                            'tenant_id' => $tenant_id
-                                                        ]);
-                                                    
-                                                        if ($stmt->rowCount() > 0) {
-                                                            displayModernNotifications($stmt, 'read');
-                                                        } else {
-                                                            echo '<div class="empty-state text-center py-4">
-                                                                    <i class="feather icon-inbox text-muted" style="font-size: 48px;"></i>
-                                                                    <p class="text-muted mt-2">' . __('no_read_notifications_for_selected_date') . '</p>
-                                                                </div>';
-                                                        }
-                                                    } catch (PDOException $e) {
-                                                        error_log("Error fetching read notifications: " . $e->getMessage());
-                                                        echo '<div class="alert alert-danger">' . __('error_loading_notifications') . '</div>';
-                                                    }
-                                                    
-                                                        ?>
-                                                    </div>
-                                                </div>
-                                            </div>
-                                        </div>
-                                        </div>
-                                    </div>
-                                </div>
-
-                                <?php
-                                // Function to display notifications with a modern design
-                                function displayModernNotifications($stmt, $status) {
-                                    // Group notifications by date
-                                    $notificationsByDate = [];
-                                    
-                                    while ($row = $stmt->fetch(PDO::FETCH_ASSOC)) {
-                                        $date = date('Y-m-d', strtotime($row['created_at']));
-                                        if (!isset($notificationsByDate[$date])) {
-                                            $notificationsByDate[$date] = [];
-                                        }
-                                        $notificationsByDate[$date][] = $row;
-                                    }
-                                    
-                                    foreach ($notificationsByDate as $date => $notifications) {
-                                        // Format the date for display
-                                        $formattedDate = date('l, F j, Y', strtotime($date));
-                                        if ($date === date('Y-m-d')) {
-                                            $formattedDate = __('today');
-                                        } elseif ($date === date('Y-m-d', strtotime('-1 day'))) {
-                                            $formattedDate = __('yesterday');
-                                        }
-                                        
-                                        echo '<div class="notification-date-group mb-3">';
-                                        echo '<div class="date-header mb-2 d-flex align-items-center">';
-                                        echo '<span class="date-badge mr-2">' . $formattedDate . '</span>';
-                                        echo '<hr class="flex-grow-1 my-0">';
-                                        echo '</div>';
-                                        
-                                        foreach ($notifications as $row) {
-                                            $notification_id = htmlspecialchars($row['id']);
-                                            $message = htmlspecialchars($row['message']);
-                                            $related_name = htmlspecialchars($row['related_name'] ?? '');
-                                            $transaction_amount = htmlspecialchars($row['transaction_amount'] ?? '');
-                                            $transaction_currency = htmlspecialchars($row['transaction_currency'] ?? '');
-                                            $created_at = htmlspecialchars($row['created_at']);
-                                            $transaction_type = htmlspecialchars($row['transaction_type'] ?? '');
-                                            $time = date('g:i A', strtotime($created_at));
-                                            
-                                            // Determine notification icon and color based on type
-                                            $icon = 'bell';
-                                            $iconColor = 'primary';
-                                            
-                                            switch ($transaction_type) {
-                                                case 'visa':
-                                                    $icon = 'file-text';
-                                                    $iconColor = 'info';
-                                                    break;
-                                                case 'supplier':
-                                                    $icon = 'truck';
-                                                    $iconColor = 'warning';
-                                                    break;
-                                                case 'umrah':
-                                                    $icon = 'map';
-                                                    $iconColor = 'success';
-                                                    break;
-                                                case 'ticket':
-                                                    $icon = 'ticket';
-                                                    $iconColor = 'primary';
-                                                    break;
-                                                case 'refund':
-                                                    $icon = 'refresh-cw';
-                                                    $iconColor = 'danger';
-                                                    break;
-                                                case 'expense':
-                                                case 'expense_update':
-                                                case 'expense_delete':
-                                                    $icon = 'dollar-sign';
-                                                    $iconColor = 'danger';
-                                                    break;
-                                                case 'hotel':
-                                                    $icon = 'home';
-                                                    $iconColor = 'warning';
-                                                    break;
-                                                case 'deposit_sarafi':
-                                                case 'hawala_sarafi':
-                                                case 'withdrawal_sarafi':
-                                                    $icon = 'repeat';
-                                                    $iconColor = 'info';
-                                                    break;
-                                            }
-                                            
-                                            // Array of transaction types that should only show read button
-                                            $read_only_types = ['deposit_sarafi', 'hawala_sarafi', 'withdrawal_sarafi', 'supplier_fund', 'client_fund', 'expense', 'expense_update', 'expense_delete'];
-                                            $show_only_read = in_array($transaction_type, $read_only_types);
-                                            ?>
-                                            
-                                            <div class="notification-card mb-3 card border-0 shadow-sm notification-<?= $status ?>" data-id="<?= $notification_id ?>">
-                                                <div class="card-body">
-                                                    <div class="d-flex">
-                                                        <div class="notification-icon bg-light-<?= $iconColor ?> rounded-circle p-3 mr-3 align-self-start">
-                                                            <i class="fa fa-<?= $icon ?> text-<?= $iconColor ?>"></i>
-                                                        </div>
-                                                        
-                                                        <div class="notification-content flex-grow-1">
-                                                            <div class="d-flex justify-content-between align-items-start mb-1">
-                                                                <h6 class="mb-0 font-weight-bold notification-type"><?= ucfirst($transaction_type) ?></h6>
-                                                                <small class="text-muted notification-time"><?= $time ?></small>
-                                                            </div>
-                                                            
-                                                            <p class="notification-message mb-1"><?= $message ?></p>
-                                                            
-                                                            <?php if ($related_name || $transaction_amount): ?>
-                                                            <div class="notification-details small text-muted mb-2">
-                                                                <?php if ($related_name): ?>
-                                                                <span class="mr-2"><i class="feather icon-user mr-1"></i><?= $related_name ?></span>
-                                                                <?php endif; ?>
-                                                                
-                                                                <?php if ($transaction_amount): ?>
-                                                                <span>
-                                                                    <i class="feather icon-credit-card mr-1"></i>
-                                                                    <?= $transaction_currency === 'USD' ? '$' : ($transaction_currency === 'AFS' ? '؋' : '') ?>
-                                                                    <?= number_format($transaction_amount, 2) ?>
-                                                                </span>
-                                                                <?php endif; ?>
-                                                            </div>
-                                                            <?php endif; ?>
-                                                            
-                                                            <?php if ($status === 'unread'): ?>
-                                                            <div class="notification-actions">
-                                                                <?php if (!$show_only_read): ?>
-                                                                <button class="btn btn-sm btn-outline-success approve-button" 
-                                                                        data-id="<?= $notification_id ?>" 
-                                                                        data-amount="<?= $transaction_amount ?>" 
-                                                                        data-currency="<?= $transaction_currency ?>"
-                                                                        data-type="<?= $transaction_type ?>">
-                                                                    <i class="feather icon-check mr-1"></i><?= __('received') ?>
-                                                                </button>
-                                                                <?php endif; ?>
-                                                                
-                                                                <button class="btn btn-sm btn-outline-info read-button" 
-                                                                        data-id="<?= $notification_id ?>">
-                                                                    <i class="feather icon-eye mr-1"></i><?= __('mark_as_read') ?>
-                                                                </button>
-                                                            </div>
-                                                            <?php endif; ?>
-                                                        </div>
-                                                    </div>
-                                                </div>
-                                            </div>
-                                            <?php
-                                        }
-                                        
-                                        echo '</div>';
-                                    }
-                                }
-                                ?>
-
-                                <?php
-
-                                // Query for tickets booked today with supplier name and transaction status
-                                $today_query = "SELECT ticket_bookings.*,
-                                                    suppliers.name AS supplier_name
-                                                FROM ticket_bookings
-                                                LEFT JOIN suppliers ON ticket_bookings.supplier = suppliers.id AND suppliers.tenant_id = ticket_bookings.tenant_id
-                                                WHERE DATE(ticket_bookings.created_at) = CURDATE()
-                                                AND ticket_bookings.tenant_id = :tenant_id";
-                                try {
-                                    $today_stmt = $pdo->prepare($today_query);
-                                    $today_stmt->execute(['tenant_id' => $tenant_id]);
-                                } catch (PDOException $e) {
-                                    error_log("Error fetching today's tickets: " . $e->getMessage());
-                                    $today_stmt = null;
-                                }
-
-                                // Fetch this week's tickets
-                                $this_week_query = "SELECT ticket_bookings.*,
-                                                        suppliers.name AS supplier_name
-                                                    FROM ticket_bookings
-                                                    LEFT JOIN suppliers ON ticket_bookings.supplier = suppliers.id AND suppliers.tenant_id = ticket_bookings.tenant_id
-                                                    WHERE YEARWEEK(ticket_bookings.created_at, 1) = YEARWEEK(CURDATE(), 1)
-                                                    AND ticket_bookings.tenant_id = :tenant_id";
-                                try {
-                                    $this_week_stmt = $pdo->prepare($this_week_query);
-                                    $this_week_stmt->execute(['tenant_id' => $tenant_id]);
-                                } catch (PDOException $e) {
-                                    error_log("Error fetching this week's tickets: " . $e->getMessage());
-                                    $this_week_stmt = null;
-                                }
-
-                                // Fetch this month's tickets
-                                $this_month_query = "SELECT ticket_bookings.*,
-                                                            suppliers.name AS supplier_name
-                                                    FROM ticket_bookings
-                                                    LEFT JOIN suppliers ON ticket_bookings.supplier = suppliers.id AND suppliers.tenant_id = ticket_bookings.tenant_id
-                                                    WHERE YEAR(ticket_bookings.created_at) = YEAR(CURDATE())
-                                                    AND MONTH(ticket_bookings.created_at) = MONTH(CURDATE())
-                                                    AND ticket_bookings.tenant_id = :tenant_id";
-                                try {
-                                    $this_month_stmt = $pdo->prepare($this_month_query);
-                                    $this_month_stmt->execute(['tenant_id' => $tenant_id]);
-                                } catch (PDOException $e) {
-                                    error_log("Error fetching this month's tickets: " . $e->getMessage());
-                                    $this_month_stmt = null;
-                                }
-
-                                // Get selected date for departures filter, default to today
-                                $selected_date = InputValidator::getDate(
-                                    $_GET['departure_date'] ?? '',
-                                    'Y-m-d',
-                                    date('Y-m-d')
-                                );
-
-                                // Query for departures on selected date
-                                $today_departures_query = "SELECT ticket_bookings.*,
-                                                                suppliers.name AS supplier_name,
-                                                                ticket_bookings.phone AS passenger_phone
-                                                        FROM ticket_bookings
-                                                        LEFT JOIN suppliers ON ticket_bookings.supplier = suppliers.id AND suppliers.tenant_id = ticket_bookings.tenant_id
-
-                                                        WHERE DATE(ticket_bookings.departure_date) = ? AND ticket_bookings.tenant_id = ?";
-                                $today_departures_stmt = null;
-                                try {
-                                    $today_departures_stmt = $pdo->prepare($today_departures_query);
-                                    $today_departures_stmt->execute([$selected_date, $tenant_id]);
-                                } catch (PDOException $e) {
-                                    error_log("Error fetching departures for date $selected_date: " . $e->getMessage());
-                                    $today_departures_stmt = null;
-                                }
-                                ?>
-
-
-
-                                
-                                <?php if ($showTickets): ?>
-                                <div class="col-xl-12 col-md-6">
-                                    <div class="card">
-                                        <div>
-                                            <div class="card-header">
-                                                <h5><?= __('ticket_bookings_overview') ?></h5>
-                                            </div>
-                                            <ul class="nav nav-pills nav-fill" id="ticketTabs" role="tablist">
-                                            <li class="nav-item">
-                                                <a class="nav-link active" id="departures-tab" data-toggle="tab" href="#today-departures" role="tab">
-                                                    <i class="fas fa-plane mr-1"></i>
-                                                    <?php
-                                                    if ($selected_date === date('Y-m-d')) {
-                                                        echo __('todays_departures');
-                                                    } else {
-                                                        echo 'Departures on ' . date('M d, Y', strtotime($selected_date));
-                                                    }
-                                                    ?>
-                                                </a>
-                                            </li>
-                                                <li class="nav-item">
-                                                        <a class="nav-link" id="today-tab" data-toggle="tab" href="#today" role="tab">
-                                                            <i class="feather icon-clock mr-1"></i><?= __('today') ?>
-                                                        </a>
-                                                    </li>
-                                                    <li class="nav-item">
-                                                        <a class="nav-link" id="week-tab" data-toggle="tab" href="#this-week" role="tab">
-                                                                <i class="feather icon-calendar mr-1"></i><?= __('this_week') ?>
-                                                        </a>
-                                                    </li>
-                                                    <li class="nav-item">
-                                                        <a class="nav-link" id="month-tab" data-toggle="tab" href="#this-month" role="tab">
-                                                            <i class="feather icon-calendar mr-1"></i><?= __('this_month') ?>
-                                                        </a>
-                                                    </li>
-                                                </li>
-                                            </ul>
-                                            </div>
-                                            <div class="card-body p-0">
-                                                <div class="tab-content" id="ticketTabContent">
-                                                    <!-- Today's Departures -->
-                                                <div class="tab-pane fade show active" id="today-departures" role="tabpanel">
-                                                <!-- Date Filter Form -->
-                                                <div class="mb-3">
-                                                    <form method="GET" class="form-inline">
-                                                        <div class="form-group mr-3">
-                                                            <label for="departure_date" class="mr-2">Select Departure Date:</label>
-                                                            <input type="date" class="form-control" id="departure_date" name="departure_date"
-                                                                    value="<?php echo htmlspecialchars($selected_date); ?>">
-                                                        </div>
-                                                        <button type="submit" class="btn btn-primary">Filter</button>
-                                                        <a href="dashboard.php" class="btn btn-secondary ml-2">Today</a>
-                                                    </form>
-                                                </div>
-                                                <div class="table-responsive">
-                                                    <table class="table table-hover table-striped mb-0">
-                                                        <thead>
-                                                            <tr>
-                                                                <th><?= __('passenger_info') ?></th>
-                                                                <th><?= __('flight_details') ?></th>
-                                                                <th><?= __('route') ?></th>
-                                                                <th><?= __('dates') ?></th>
-                                                                <th><?= __('sold') ?></th>
-                                                            </tr>
-                                                        </thead>
-                                                        <tbody>
-                                                            <?php
-                                                            if ($today_departures_stmt && $today_departures_stmt->rowCount() > 0) {
-                                                                while ($row = $today_departures_stmt->fetch(PDO::FETCH_ASSOC)) {
-                                                            ?>
-                                                                <tr>
-                                                                    <td>
-                                                                        <div class="d-flex align-items-center">
-                                                                            <div class="flex-grow-1">
-                                                                                <h6 class="mb-1"><?= htmlspecialchars($row['passenger_name']) ?></h6>
-                                                                                <small class="text-muted">
-                                                                                    <?= __('pnr') ?>: <?= htmlspecialchars($row['pnr']) ?>
-                                                                                </small>
-                                                                                <?php if (!empty($row['passenger_phone'])): ?>
-                                                                                <small class="d-block text-primary">
-                                                                                    <i class="fas fa-phone-alt mr-1"></i>
-                                                                                    <?= htmlspecialchars($row['passenger_phone']) ?>
-                                                                                </small>
-                                                                                <?php endif; ?>
-                                                                            </div>
-                                                                        </div>
-                                                                    </td>
-                                                                    <td>
-                                                                        <div class="d-flex flex-column">
-                                                                            <span class="font-weight-bold">
-                                                                                <i class="fas fa-plane mr-1"></i>
-                                                                                <?= htmlspecialchars($row['airline']) ?>
-                                                                            </span>
-                                                                            <small class="text-muted">
-                                                                                <?= htmlspecialchars($row['supplier_name']) ?>
-                                                                            </small>
-                                                                        </div>
-                                                                    </td>
-                                                                    <td>
-                                                                        <div class="d-flex flex-column">
-                                                                            <span class="font-weight-bold">
-                                                                                <i class="fas fa-route mr-1"></i>
-                                                                                <?php
-                                                                                $origin = isset($row['origin']) ? htmlspecialchars($row['origin']) : (isset($row['from_city']) ? htmlspecialchars($row['from_city']) : 'N/A');
-                                                                                $destination = isset($row['destination']) ? htmlspecialchars($row['destination']) : (isset($row['to_city']) ? htmlspecialchars($row['to_city']) : 'N/A');
-                                                                                echo $origin . ' → ' . $destination;
-                                                                                ?>
-                                                                            </span>
-                                                                            <small class="text-muted">
-                                                                                <?php
-                                                                                $origin_code = isset($row['origin_code']) ? htmlspecialchars($row['origin_code']) : (isset($row['from_code']) ? htmlspecialchars($row['from_code']) : '');
-                                                                                $destination_code = isset($row['destination_code']) ? htmlspecialchars($row['destination_code']) : (isset($row['to_code']) ? htmlspecialchars($row['to_code']) : '');
-                                                                                if ($origin_code && $destination_code) {
-                                                                                    echo $origin_code . ' → ' . $destination_code;
-                                                                                }
-                                                                                ?>
-                                                                            </small>
-                                                                        </div>
-                                                                    </td>
-                                                                    <td>
-                                                                        <div class="d-flex flex-column">
-                                                                            <small class="text-muted">
-                                                                                <i class="fas fa-calendar-check mr-1"></i>
-                                                                                <?= __('issue') ?>: <?= date('d M Y', strtotime($row['issue_date'])) ?>
-                                                                            </small>
-                                                                            <small class="text-danger font-weight-bold">
-                                                                                <i class="fas fa-plane-departure mr-1"></i>
-                                                                                <?= __('departure') ?>: <?= date('d M Y', strtotime($row['departure_date'])) ?>
-                                                                            </small>
-                                                                        </div>
-                                                                    </td>
-                                                                    <td>
-                                                                        <div class="big mt-1">
-                                                                            <span class="text-success font-weight-bold">
-                                                                                <?= htmlspecialchars($row['sold']) ?>
-                                                                            </span>
-                                                                        </div>
-                                                                    </td>
-                                                                </tr>
-                                                            <?php } } ?>
-                                                        </tbody>
-                                                    </table>
-                                                </div>
-                                            </div>
-                                                <!-- Today's Tickets -->
-                                                <div class="tab-pane fade" id="today" role="tabpanel">
-                                                    <div class="table-responsive">
-                                                        <table class="table table-hover table-striped mb-0">
-                                                            <thead>
-                                                                <tr>
-                                                                    <th><?= __('passenger_info') ?></th>
-                                                                    <th><?= __('flight_details') ?></th>
-                                                                    <th><?= __('dates') ?></th>
-                                                                    <th><?= __('sold') ?></th>
-                                                                </tr>
-                                                            </thead>
-                                                            <tbody>
-                                                                <?php
-                                                                if ($today_stmt) {
-                                                                    while ($row = $today_stmt->fetch(PDO::FETCH_ASSOC)) {
-                                                                ?>
-                                                                    <tr>
-                                                                        <td>
-                                                                            <div class="d-flex align-items-center">
-                                                                                <div class="flex-grow-1">
-                                                                                    <h6 class="mb-1"><?= htmlspecialchars($row['passenger_name']) ?></h6>
-                                                                                    <small class="text-muted">
-                                                                                        <?= __('pnr') ?>: <?= htmlspecialchars($row['pnr']) ?>
-                                                                                    </small>
-                                                                                </div>
-                                                                            </div>
-                                                                        </td>
-                                                                        <td>
-                                                                            <div class="d-flex flex-column">
-                                                                                <span class="font-weight-bold">
-                                                                                    <i class="fas fa-plane mr-1"></i>
-                                                                                    <?= htmlspecialchars($row['airline']) ?>
-                                                                                </span>
-                                                                                <small class="text-muted">
-                                                                                    <?= htmlspecialchars($row['supplier_name']) ?>
-                                                                                </small>
-                                                                            </div>
-                                                                        </td>
-                                                                        <td>
-                                                                            <div class="d-flex flex-column">
-                                                                                <small class="text-muted">
-                                                                                    <i class="fas fa-calendar-check mr-1"></i>
-                                                                                    <?= __('issue') ?>: <?= date('d M Y', strtotime($row['issue_date'])) ?>
-                                                                                </small>
-                                                                                <small class="text-muted">
-                                                                                    <i class="fas fa-plane-departure mr-1"></i>
-                                                                                    <?= __('departure') ?>: <?= date('d M Y', strtotime($row['departure_date'])) ?>
-                                                                                </small>
-                                                                            </div>
-                                                                        </td>
-                                                                        <td>
-
-                                                                            <div class="big mt-1">
-                                                                                <span class="text-success font-weight-bold">
-                                                                                    <?= htmlspecialchars($row['sold']) ?>
-                                                                                </span>
-                                                                            </div>
-                                                                        </td>
-                                                                    </tr>
-                                                                <?php } } ?>
-                                                            </tbody>
-                                                        </table>
-                                                    </div>
-                                                </div>
-
-                                                <!-- This Week's Tickets -->
-                                                <div class="tab-pane fade" id="this-week" role="tabpanel">
-                                                    <div class="table-responsive">
-                                                        <table class="table table-hover table-striped mb-0">
-                                                            <thead>
-                                                                <tr>
-                                                                    <th><?= __('passenger_info') ?></th>
-                                                                    <th><?= __('flight_details') ?></th>
-                                                                    <th><?= __('dates') ?></th>
-                                                                    <th><?= __('sold') ?></th>
-                                                                </tr>
-                                                            </thead>
-                                                            <tbody>
-                                                                <?php
-                                                                if ($this_week_stmt) {
-                                                                    while ($row = $this_week_stmt->fetch(PDO::FETCH_ASSOC)) {
-                                                                ?>
-                                                                    <tr>
-                                                                        <td>
-                                                                            <div class="d-flex align-items-center">
-                                                                                <div class="flex-grow-1">
-                                                                                    <h6 class="mb-1"><?= htmlspecialchars($row['passenger_name']) ?></h6>
-                                                                                    <small class="text-muted">
-                                                                                        <?= __('pnr') ?>: <?= htmlspecialchars($row['pnr']) ?>
-                                                                                    </small>
-                                                                                </div>
-                                                                            </div>
-                                                                        </td>
-                                                                        <td>
-                                                                            <div class="d-flex flex-column">
-                                                                                <span class="font-weight-bold">
-                                                                                    <i class="fas fa-plane mr-1"></i>
-                                                                                    <?= htmlspecialchars($row['airline']) ?>
-                                                                                </span>
-                                                                                <small class="text-muted">
-                                                                                    <?= htmlspecialchars($row['supplier_name']) ?>
-                                                                                </small>
-                                                                            </div>
-                                                                        </td>
-                                                                        <td>
-                                                                            <div class="d-flex flex-column">
-                                                                                <small class="text-muted">
-                                                                                    <i class="fas fa-calendar-check mr-1"></i>
-                                                                                    <?= __('issue') ?>: <?= date('d M Y', strtotime($row['issue_date'])) ?>
-                                                                                </small>
-                                                                                <small class="text-muted">
-                                                                                    <i class="fas fa-plane-departure mr-1"></i>
-                                                                                    <?= __('departure') ?>: <?= date('d M Y', strtotime($row['departure_date'])) ?>
-                                                                                </small>
-                                                                            </div>
-                                                                        </td>
-                                                                        <td>
-
-                                                                            <div class="big mt-1">
-                                                                                <span class="text-success font-weight-bold">
-                                                                                    <?= htmlspecialchars($row['sold']) ?>
-                                                                                </span>
-                                                                            </div>
-                                                                        </td>
-                                                                    </tr>
-                                                                <?php } } ?>
-                                                            </tbody>
-                                                        </table>
-                                                    </div>
-                                                </div>
-
-                                                <!-- This Month's Tickets -->
-                                                <div class="tab-pane fade" id="this-month" role="tabpanel">
-                                                    <div class="table-responsive">
-                                                        <table class="table table-hover table-striped mb-0">
-                                                            <thead>
-                                                                <tr>
-                                                                    <th><?= __('passenger_info') ?></th>
-                                                                    <th><?= __('flight_details') ?></th>
-                                                                    <th><?= __('dates') ?></th>
-                                                                    <th><?= __('sold') ?></th>
-                                                                </tr>
-                                                            </thead>
-                                                            <tbody>
-                                                                <?php
-                                                                if ($this_month_stmt) {
-                                                                    while ($row = $this_month_stmt->fetch(PDO::FETCH_ASSOC)) {
-                                                                ?>
-                                                                    <tr>
-                                                                        <td>
-                                                                            <div class="d-flex align-items-center">
-                                                                                <div class="flex-grow-1">
-                                                                                    <h6 class="mb-1"><?= htmlspecialchars($row['passenger_name']) ?></h6>
-                                                                                    <small class="text-muted">
-                                                                                        <?= __('pnr') ?>: <?= htmlspecialchars($row['pnr']) ?>
-                                                                                    </small>
-                                                                                </div>
-                                                                            </div>
-                                                                        </td>
-                                                                        <td>
-                                                                            <div class="d-flex flex-column">
-                                                                                <span class="font-weight-bold">
-                                                                                    <i class="fas fa-plane mr-1"></i>
-                                                                                    <?= htmlspecialchars($row['airline']) ?>
-                                                                                </span>
-                                                                                <small class="text-muted">
-                                                                                    <?= htmlspecialchars($row['supplier_name']) ?>
-                                                                                </small>
-                                                                            </div>
-                                                                        </td>
-                                                                        <td>
-                                                                            <div class="d-flex flex-column">
-                                                                                <small class="text-muted">
-                                                                                    <i class="fas fa-calendar-check mr-1"></i>
-                                                                                    <?= __('issue') ?>: <?= date('d M Y', strtotime($row['issue_date'])) ?>
-                                                                                </small>
-                                                                                <small class="text-muted">
-                                                                                    <i class="fas fa-plane-departure mr-1"></i>
-                                                                                    <?= __('departure') ?>: <?= date('d M Y', strtotime($row['departure_date'])) ?>
-                                                                                </small>
-                                                                            </div>
-                                                                        </td>
-                                                                        <td>
-
-                                                                            <div class="big mt-1">
-                                                                                <span class="text-success font-weight-bold">
-                                                                                    <?= htmlspecialchars($row['sold']) ?>
-                                                                                </span>
-                                                                            </div>
-                                                                        </td>
-                                                                    </tr>
-                                                                <?php } } ?>
-                                                            </tbody>
-                                                        </table>
-                                                    </div>
-                                                </div>
-                                            </div>
-                                        </div>
-                                    </div>
-                                </div>
-                                <?php endif; ?>
-
-                                <!-- Top Performers Section -->
-                                <?php if ($showTickets): ?>
-                                <div class="col-xl-12 col-md-6">
-                                    <div class="card Recent-Users top-performers-card">
-                                        <div class="card-header">
-                                            <h5><i class="feather icon-award text-warning mr-2"></i><?= __('top_performers') ?> - <?= __('ticket_sales') ?></h5>
-                                            <span class="text-muted small"><?= __('users_with_highest_ticket_profit') ?></span>
-                                        </div>
-                                        <div class="filter-controls">
-                                            <h6><?= __('performance_period') ?></h6>
-                                            <div class="date-filter-toggle">
-                                                <i class="feather icon-filter filter-icon" data-toggle="collapse" data-target="#performanceDateFilter"></i>
-                                            </div>
-                                        </div>
-                                        <div class="collapse mb-2" id="performanceDateFilter">
-                                            <div class="date-filter-panel">
-                                                <label class="small text-muted"><?= __('select_month') ?></label>
-                                                <input type="month" class="form-control form-control-sm date-filter" id="performanceDateInput" value="<?= date('Y-m') ?>">
-                                                <button class="btn btn-sm btn-primary mt-2 apply-performance-filter"><?= __('apply_filter') ?></button>
-                                            </div>
-                                        </div>
-                                        <div class="card-block px-0 py-3">
-                                            <div class="table-responsive px-3">
-                                                <table class="table table-hover">
-                                                    <thead>
-                                                        <tr>
-                                                            <th width="60" class="text-center">#</th>
-                                                            <th><?= __('user_name') ?></th>
-                                                            <th class="text-center"><?= __('total_tickets') ?></th>
-                                                            <th class="text-right"><?= __('total_profit_usd') ?></th>
-                                                            <th class="text-right"><?= __('total_profit_afs') ?></th>
-                                                        </tr>
-                                                    </thead>
-                                                    <tbody id="topPerformersTableBody">
-                                                        <?php
-                                                        $topPerformers = getTopPerformersByTicketProfit(date('m'), date('Y'));
-                                                        if (count($topPerformers) > 0) {
-                                                            $rank = 1;
-                                                            foreach ($topPerformers as $performer) {
-                                                                $rankClass = '';
-                                                                $rankIconClass = '';
-
-                                                                // Add styling for top 3 performers
-                                                                if ($rank === 1) {
-                                                                    $rankClass = 'rank-1';
-                                                                    $rankIconClass = 'fas fa-trophy';
-                                                                } elseif ($rank === 2) {
-                                                                    $rankClass = 'rank-2';
-                                                                    $rankIconClass = 'fas fa-medal';
-                                                                } elseif ($rank === 3) {
-                                                                    $rankClass = 'rank-3';
-                                                                    $rankIconClass = 'fas fa-award';
-                                                                }
-
-                                                                echo '<tr>';
-                                                                echo '<td class="text-center">';
-                                                                if ($rank <= 3) {
-                                                                    echo '<span class="rank-badge ' . $rankClass . '"><i class="' . $rankIconClass . '"></i></span>';
-                                                                } else {
-                                                                    echo '<span class="font-weight-bold">' . $rank . '</span>';
-                                                                }
-                                                                echo '</td>';
-                                                                echo '<td><span class="performer-name">' . htmlspecialchars($performer['user_name']) . '</span></td>';
-                                                                echo '<td class="text-center"><span class="ticket-count-badge">' . htmlspecialchars($performer['total_tickets']) . '</span></td>';
-                                                                echo '<td class="text-right"><span class="performer-profit">$' . number_format($performer['total_profit_usd'], 2) . '</span></td>';
-                                                                echo '<td class="text-right"><span class="performer-profit">' . number_format($performer['total_profit_afs'], 2) . '</span></td>';
-                                                                echo '</tr>';
-                                                                $rank++;
-                                                            }
-                                                        } else {
-                                                            echo '<tr><td colspan="4" class="text-center">' . __('no_ticket_sales_data_available') . '</td></tr>';
-                                                        }
-                                                        ?>
-                                                    </tbody>
-                                                </table>
-                                            </div>
-                                        </div>
-                                    </div>
-                                </div>
-                                <?php endif; ?>
-
-                            </div>
-                            <!-- [ Main Content ] end -->
-                        </div>
-                    </div>
-                </div>
-            </div>
-        </div>
-    </div>
-<!-- Include Admin Footer -->
+<!-- MODALS -->
 <?php include '../modals/dashboard/receipt_modal.php'; ?>
 <?php include '../modals/dashboard/debtor_modal.php'; ?>
 <?php include '../modals/dashboard/sales_modal.php'; ?>
-    <?php include '../includes/admin_footer.php'; ?>
+<?php include '../includes/admin_footer.php'; ?>
 
-    <!-- Required Js -->
-    
-    <script src="../assets/js/vendor-all.min.js"></script>
-	<script src="../assets/plugins/bootstrap/js/bootstrap.min.js"></script>
-    <script src="../assets/js/pcoded.min.js"></script>
-    
+<!-- VENDOR SCRIPTS -->
+<script src="../assets/js/vendor-all.min.js"></script>
+<script src="../assets/plugins/bootstrap/js/bootstrap.min.js"></script>
+<script src="../assets/js/pcoded.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/apexcharts"></script>
 
+<!-- ORIGINAL JS — all logic & API calls preserved unchanged -->
+<script src="../js/dashboard/dashboard-charts.js"></script>
+<script src="../js/dashboard/dashboard-notifications.js"></script>
+<script src="../js/dashboard/dashboard-sales.js"></script>
+<script src="../js/dashboard/dashboard-filters.js"></script>
+<script src="../js/dashboard/dashboard-receipt.js"></script>
+<script src="../js/dashboard/dashboard-debtors.js"></script>
+<script src="../js/dashboard/dashboard-dues.js"></script>
+<script src="../js/dashboard/umrah-statistics.js"></script>
 
-    <!-- Add ApexCharts JS if not already included -->
-    <script src="https://cdn.jsdelivr.net/npm/apexcharts"></script>
+<!-- NEW UI HELPERS -->
+<script>
+/* Tab switchers */
+function switchFlightTab(btn,id){
+  const card=btn.closest('.d-card');
+  card.querySelectorAll('.ftab').forEach(t=>t.classList.remove('active'));
+  btn.classList.add('active');
+  ['ftab-dep','ftab-today','ftab-week','ftab-month'].forEach(t=>{
+    const el=document.getElementById(t);
+    if(el) el.style.display=(t===id)?'block':'none';
+  });
+}
+function switchNotifTab(btn,id){
+  btn.closest('.d-card').querySelectorAll('.notif-tab-btn').forEach(t=>t.classList.remove('active'));
+  btn.classList.add('active');
+  ['ntab-unread','ntab-read'].forEach(t=>{
+    const el=document.getElementById(t);
+    if(el) el.style.display=(t===id)?'block':'none';
+  });
+}
 
-    <!-- Dashboard JS files -->
-    <script src="../js/dashboard/dashboard-charts.js"></script>
-    <script src="../js/dashboard/dashboard-notifications.js"></script>
-    <script src="../js/dashboard/dashboard-sales.js"></script>
-    <script src="../js/dashboard/dashboard-filters.js"></script>
-    <script src="../js/dashboard/dashboard-receipt.js"></script>
-    <script src="../js/dashboard/dashboard-debtors.js"></script>
-    <script src="../js/dashboard/dashboard-dues.js"></script>
-    
-    <script>
-    $(document).ready(function() {
-        var $icon = $('#notificationToggle').find('i');
-        var $collapse = $('#notificationBody');
-    
-        // Set initial icon state based on collapse state
-        if ($collapse.hasClass('show')) {
-            $icon.removeClass('icon-chevron-down').addClass('icon-chevron-up');
-        } else {
-            $icon.removeClass('icon-chevron-up').addClass('icon-chevron-down');
-        }
-    
-        $collapse.on('shown.bs.collapse', function() {
-            $icon.removeClass('icon-chevron-down').addClass('icon-chevron-up');
-        });
-    
-        $collapse.on('hidden.bs.collapse', function() {
-            $icon.removeClass('icon-chevron-up').addClass('icon-chevron-down');
-        });
+/* Reset filter functions */
+function resetDailyFilter(){
+  document.getElementById('dailyDateInput').value = '<?= date('Y-m-d') ?>';
+}
+function resetMonthlyFilter(){
+  document.getElementById('monthlyDateInput').value = '<?= date('Y-m') ?>';
+}
+function resetYearlyFilter(){
+  document.getElementById('yearlyDateInput').value = '<?= date('Y') ?>';
+}
+
+/* Animate leaderboard bars on load */
+document.addEventListener('DOMContentLoaded',function(){
+  setTimeout(()=>{
+    document.querySelectorAll('.lb-bar-fill').forEach(b=>{
+      const w=b.style.width; b.style.width='0%';
+      requestAnimationFrame(()=>{ b.style.transition='width 1.2s cubic-bezier(.34,1.56,.64,1)'; b.style.width=w; });
     });
-    </script>
+  },300);
+});
 
-    <!-- Dashboard Tutorials Modal -->
-    <div class="modal fade" id="dashboardTutorialsModal" tabindex="-1" role="dialog" aria-labelledby="dashboardTutorialsModalLabel" aria-hidden="true">
-        <div class="modal-dialog modal-xl" role="document">
-            <div class="modal-content">
-                <div class="modal-header bg-info text-white">
-                    <h5 class="modal-title" id="dashboardTutorialsModalLabel">
-                        <i class="feather icon-play-circle mr-2"></i>Dashboard Tutorials
-                    </h5>
-                    <button type="button" class="close text-white" data-dismiss="modal" aria-label="Close">
-                        <span aria-hidden="true">&times;</span>
-                    </button>
-                </div>
-                <div class="modal-body p-0">
-                    <div class="row h-100 no-gutters">
-                        <!-- Video Player Column -->
-                        <div class="col-md-8">
-                            <div style="background: #000; position: relative;">
-                                <iframe id="tutorialVideoPlayer" style="width: 100%; height: 500px; border: none;" 
-                                        src="" allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture" 
-                                        allowfullscreen>
-                                </iframe>
-                            </div>
-                            <div class="p-3">
-                                <h6 id="tutorialTitle" class="mb-2">Select a tutorial to watch</h6>
-                                <p id="tutorialDescription" class="text-muted small mb-0"></p>
-                                <div class="mt-2">
-                                    <small class="badge-primary" id="tutorialLevel">Beginner</small>
-                                    <small class="badge-secondary" id="tutorialDuration">5:00</small>
-                                </div>
-                            </div>
-                        </div>
-                        <!-- Tutorials List Column -->
-                        <div class="col-md-4" style="max-height: 600px; overflow-y: auto; border-left: 1px solid #e9ecef;">
-                            <div class="p-3">
-                                <h6 class="mb-3">Available Tutorials</h6>
-                                <div id="tutorialsListContainer">
-                                    <p class="text-muted text-center py-3">Loading tutorials...</p>
-                                </div>
-                            </div>
-                        </div>
-                    </div>
-                </div>
-                <div class="modal-footer">
-                    <button type="button" class="btn btn-secondary" data-dismiss="modal">Close</button>
-                </div>
+/* Override performance filter response to render new leaderboard style */
+$(document).ajaxSuccess(function(ev,xhr,settings,data){
+  if(!settings.url||!settings.url.includes('get_filtered_performance')) return;
+  if(!data||data.status!=='success') return;
+  const performers=data.data;
+  let html='';
+  if(performers&&performers.length>0){
+    const maxP=Math.max(...performers.map(p=>parseFloat(p.total_profit_usd)));
+    performers.forEach((p,i)=>{
+      const rank=i+1;
+      const pct=maxP>0?Math.round((parseFloat(p.total_profit_usd)/maxP)*100):0;
+      const rc=rank===1?'rank-1':rank===2?'rank-2':rank===3?'rank-3':'rank-other';
+      const ri=rank===1?'🥇':rank===2?'🥈':rank===3?'🥉':rank;
+      const bc=rank===1?'lb-bar-1':rank===2?'lb-bar-2':rank===3?'lb-bar-3':'lb-bar-o';
+      html+=`<div class="lb-item"><div class="lb-rank ${rc}">${ri}</div><div class="lb-info"><div class="lb-name">${p.user_name}</div><div class="lb-bar-track"><div class="lb-bar-fill ${bc}" style="width:${pct}%"></div></div></div><div class="lb-right"><div class="lb-profit">$${parseFloat(p.total_profit_usd).toFixed(2)}</div><div class="lb-tickets">${p.total_tickets} tickets</div></div></div>`;
+    });
+  } else {
+    html='<div class="d-empty"><i class="fas fa-award"></i>No data for selected period</div>';
+  }
+  $('#topPerformersTableBody').html(html);
+  setTimeout(()=>{document.querySelectorAll('#topPerformersTableBody .lb-bar-fill').forEach(b=>{const w=b.style.width;b.style.width='0%';requestAnimationFrame(()=>{b.style.transition='width 1.2s cubic-bezier(.34,1.56,.64,1)';b.style.width=w;});});},100);
+});
+</script>
+
+<!-- TUTORIALS MODAL -->
+<div class="modal fade" id="dashboardTutorialsModal" tabindex="-1" role="dialog">
+  <div class="modal-dialog modal-lg" role="document">
+    <div class="modal-content" style="background:var(--surface);border:1px solid var(--border);border-radius:20px;color:var(--text);">
+      <div class="modal-header" style="background:linear-gradient(135deg,var(--violet),var(--indigo));border-radius:20px 20px 0 0;border:none;">
+        <h5 class="modal-title" style="color:#fff;font-weight:700;"><i class="fas fa-play-circle mr-2"></i>Dashboard Tutorials</h5>
+        <button type="button" class="close" data-dismiss="modal" style="color:#fff;opacity:.8;"><span>&times;</span></button>
+      </div>
+      <div class="modal-body p-0">
+        <div class="row no-gutters">
+          <div class="col-md-8" style="background:#000;border-radius:0 0 0 20px;">
+            <iframe id="tutorialVideoPlayer" style="width:100%;height:420px;border:none;" src="" allowfullscreen></iframe>
+            <div class="p-3" style="background:var(--surface2);">
+              <h6 id="tutorialTitle" style="font-weight:700;">Select a tutorial</h6>
+              <p id="tutorialDescription" style="font-size:13px;color:var(--text-muted);margin-bottom:6px;"></p>
+              <span id="tutorialLevel" style="font-size:11px;padding:2px 8px;border-radius:20px;background:rgba(124,58,237,.2);color:var(--violet-light);"></span>
+              <span id="tutorialDuration" style="font-size:11px;margin-left:8px;color:var(--text-muted);"></span>
             </div>
+          </div>
+          <div class="col-md-4" style="max-height:520px;overflow-y:auto;border-left:1px solid var(--border);">
+            <div class="p-3">
+              <h6 style="font-weight:700;margin-bottom:14px;">Available Tutorials</h6>
+              <div id="tutorialsListContainer"><p style="color:var(--text-muted);text-align:center;padding:20px;">Loading...</p></div>
+            </div>
+          </div>
         </div>
+      </div>
+      <div class="modal-footer" style="border-top:1px solid var(--border);">
+        <button class="dbtn dbtn-ghost" data-dismiss="modal">Close</button>
+      </div>
     </div>
+  </div>
+</div>
+<script>
+const dashboardTutorials=[
+  {id:1,title:'Dashboard Overview',description:'Quick actions, balance alerts, financial wealth distribution chart, multi-currency support.',duration:'5:00',level:'Beginner',vimeo_id:''},
+  {id:2,title:'Sales Cards & Dues',description:'Daily/Monthly/Yearly sales cards with trend percentages, outstanding dues metric grid.',duration:'6:00',level:'Beginner',vimeo_id:''},
+  {id:3,title:'Departures & Top Performers',description:"Flight cards, departure board, top performers leaderboard, client debts.",duration:'5:30',level:'Beginner',vimeo_id:''}
+];
+$('#dashboardTutorialsModal').on('show.bs.modal',function(){
+  let html='';
+  dashboardTutorials.forEach(t=>{
+    html+=`<div class="tutorial-item" data-id="${t.id}" style="background:var(--surface2);border:1px solid var(--border);border-radius:12px;padding:12px;margin-bottom:8px;cursor:pointer;transition:all .2s;"><div style="display:flex;align-items:flex-start;gap:10px;"><div style="width:30px;height:30px;background:rgba(124,58,237,.15);border-radius:8px;display:flex;align-items:center;justify-content:center;color:var(--violet-light);flex-shrink:0;font-size:11px;"><i class="fas fa-play"></i></div><div><div style="font-weight:700;font-size:13px;margin-bottom:2px;">${t.title}</div><div style="font-size:11px;color:var(--text-muted);">${t.duration} · ${t.level}</div></div></div></div>`;
+  });
+  $('#tutorialsListContainer').html(html);
+  $('.tutorial-item').on('click',function(){
+    const t=dashboardTutorials.find(x=>x.id===$(this).data('id'));
+    if(!t) return;
+    $('.tutorial-item').css({'background':'var(--surface2)','border-color':'var(--border)'});
+    $(this).css({'background':'rgba(124,58,237,.1)','border-color':'rgba(124,58,237,.4)'});
+    $('#tutorialVideoPlayer').attr('src',t.vimeo_id?'https://player.vimeo.com/video/'+t.vimeo_id:'');
+    $('#tutorialTitle').text(t.title);
+    $('#tutorialDescription').text(t.description);
+    $('#tutorialLevel').text(t.level);
+    $('#tutorialDuration').text(t.duration);
+  });
+  if(dashboardTutorials.length) $('.tutorial-item').first().trigger('click');
+  });
 
-    <script>
-    // Dashboard Tutorials Data
-    const dashboardTutorials = [
-        {id: 1, title: 'Dashboard Overview', description: 'Welcome page with quick action dropdown (Add Ticket, Client, Supplier), low supplier balance alerts with currency thresholds, financial wealth distribution chart with daily/monthly/yearly periods, multi-currency support (USD, AFS, EUR, AED).', duration: '5:00', level: 'Beginner', vimeo_id: ''},
-        {id: 2, title: 'Dashboard Sales Cards', description: 'Daily, Monthly, Yearly sales cards with profit trends, outstanding dues (tickets, date changes, refunds, umrah, visa, hotel, additional payments) with USD/AFS amounts.', duration: '6:00', level: 'Beginner', vimeo_id: ''},
-        {id: 3, title: 'Dashboard Charts & Departures', description: 'Ticket bookings by departure dates, today\'s departures, this week, this month tabs, top performers ranking with commissions, financial metrics.', duration: '5:30', level: 'Beginner', vimeo_id: ''}
-    ];
+  // Notifications collapse/expand functionality
+  function toggleNotificationsCollapse() {
+  const content = document.getElementById('notificationsContent');
+  const btn = document.querySelector('.notif-collapse-btn');
+  
+  if (content.classList.contains('collapsed')) {
+    content.classList.remove('collapsed');
+    btn.classList.remove('collapsed');
+    localStorage.setItem('notificationsCollapsed', 'false');
+  } else {
+    content.classList.add('collapsed');
+    btn.classList.add('collapsed');
+    localStorage.setItem('notificationsCollapsed', 'true');
+  }
+  }
 
-    $(document).ready(function() {
-        // Initialize tutorials list
-        function loadTutorialsInModal() {
-            let html = '';
-            dashboardTutorials.forEach(function(tutorial) {
-                html += `
-                    <div class="tutorial-item p-2 mb-2 border rounded cursor-pointer tutorial-selectable" 
-                         data-tutorial-id="${tutorial.id}" 
-                         style="background: #f8f9fa; transition: all 0.3s ease;">
-                        <div class="d-flex align-items-start">
-                            <div class="flex-grow-1">
-                                <h6 class="mb-1 small font-weight-bold">${tutorial.title}</h6>
-                                <small class="text-muted d-block mb-1">${tutorial.duration}</small>
-                                <small class="badge-light">${tutorial.level}</small>
-                            </div>
-                            <i class="feather icon-play text-muted" style="margin-top: 2px;"></i>
-                        </div>
-                    </div>
-                `;
-            });
-            $('#tutorialsListContainer').html(html);
-
-            // Add click handlers
-            $('.tutorial-selectable').click(function() {
-                const tutorialId = $(this).data('tutorial-id');
-                const tutorial = dashboardTutorials.find(t => t.id == tutorialId);
-                
-                if (tutorial) {
-                    // Update active state
-                    $('.tutorial-selectable').css('background', '#f8f9fa');
-                    $(this).css('background', '#e7f3ff').css('border-color', '#4099ff');
-                    
-                    // Update video player and info
-                    if (tutorial.vimeo_id) {
-                        const videoUrl = `https://player.vimeo.com/video/${tutorial.vimeo_id}`;
-                        $('#tutorialVideoPlayer').attr('src', videoUrl);
-                    } else {
-                        $('#tutorialVideoPlayer').attr('src', '');
-                    }
-                    
-                    $('#tutorialTitle').text(tutorial.title);
-                    $('#tutorialDescription').text(tutorial.description);
-                    $('#tutorialLevel').text(tutorial.level);
-                    $('#tutorialDuration').text(tutorial.duration);
-                }
-            });
-        }
-
-        // Load tutorials when modal is shown
-        $('#dashboardTutorialsModal').on('show.bs.modal', function() {
-            loadTutorialsInModal();
-            // Select first tutorial by default
-            if (dashboardTutorials.length > 0) {
-                $('.tutorial-selectable').first().click();
-            }
-        });
-
-        // Add CSS for cursor pointer
-        $('<style>').text('.cursor-pointer { cursor: pointer; }').appendTo('head');
-    });
-    </script>
-    
-    </body>
-    </html>
+  // Restore collapse state on page load & auto-collapse if count >= 10
+  document.addEventListener('DOMContentLoaded', function() {
+  const content = document.getElementById('notificationsContent');
+  const btn = document.querySelector('.notif-collapse-btn');
+  const unreadCountElement = document.getElementById('unreadNotifCount');
+  const unreadCount = unreadCountElement ? parseInt(unreadCountElement.textContent) : 0;
+  
+  // Auto-collapse if unread count >= 10
+  if (unreadCount >= 10) {
+    if (content) content.classList.add('collapsed');
+    if (btn) btn.classList.add('collapsed');
+    localStorage.setItem('notificationsCollapsed', 'true');
+  } else {
+    // Otherwise, restore previous state
+    const isCollapsed = localStorage.getItem('notificationsCollapsed') === 'true';
+    if (isCollapsed) {
+      if (content) content.classList.add('collapsed');
+      if (btn) btn.classList.add('collapsed');
+    }
+  }
+  });
+  </script>
+</body>
+</html>

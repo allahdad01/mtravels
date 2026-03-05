@@ -68,6 +68,73 @@ class SupportTicketManager {
     }
     
     /**
+     * Get ticket details by ID (alias for getTicket)
+     */
+    public function getTicketDetails($ticketId) {
+        return $this->getTicket($ticketId);
+    }
+    
+    /**
+     * Get ticket replies (alias for getReplies)
+     */
+    public function getTicketReplies($ticketId, $includeInternal = false) {
+        return $this->getReplies($ticketId, $includeInternal);
+    }
+    
+    /**
+     * Get all ticket replies including internal notes
+     */
+    public function getAllTicketReplies($ticketId) {
+        return $this->getReplies($ticketId, true);
+    }
+    
+    /**
+     * Get ticket categories (alias for getCategories)
+     */
+    public function getTicketCategories() {
+        return $this->getCategories();
+    }
+    
+    /**
+     * Get ticket statistics (alias for getStatistics)
+     */
+    public function getTicketStatistics($tenantId = null) {
+        return $this->getStatistics($tenantId);
+    }
+    
+    /**
+     * Update ticket status with resolution notes
+     */
+    public function updateTicketStatus($ticketId, $status, $userId = null, $resolutionNotes = null) {
+        return $this->updateStatus($ticketId, $status, $userId);
+    }
+    
+    /**
+     * Update ticket priority
+     */
+    public function updateTicketPriority($ticketId, $priority) {
+        try {
+            $stmt = $this->pdo->prepare("UPDATE support_tickets SET priority = ?, updated_at = NOW() WHERE id = ?");
+            $stmt->execute([$priority, $ticketId]);
+            return true;
+        } catch (Exception $e) {
+            error_log("Update Priority Error: " . $e->getMessage());
+            return false;
+        }
+    }
+    
+    /**
+     * Add ticket reply (alternative format with array data)
+     */
+    public function addTicketReply($ticketId, $replyData) {
+        $userId = $replyData['replied_by_id'] ?? $_SESSION['user_id'] ?? null;
+        $replyText = $replyData['reply_text'] ?? '';
+        $isInternal = isset($replyData['is_internal']) && $replyData['is_internal'];
+        
+        return $this->addReply($ticketId, $userId, $replyText, $isInternal);
+    }
+    
+    /**
      * Get ticket by ID
      */
     public function getTicket($ticketId) {

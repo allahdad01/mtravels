@@ -60,6 +60,14 @@ RewriteRule (^|/)\.git - [F,L]
     # Security: Hide PHP version fingerprinting
     php_value expose_php off
     php_flag expose_php off
+    
+    # Session Cookie Security
+    php_value session.cookie_httponly 1
+    php_value session.cookie_secure 1
+    php_value session.cookie_samesite "Strict"
+    php_value session.use_strict_mode 1
+    php_value session.sid_length 32
+    php_value session.sid_bits_per_character 6
 </IfModule>
 
 # Version disclosure suppression - Hide Apache and PHP versions
@@ -179,7 +187,8 @@ AddDefaultCharset UTF-8
 # Security Headers
 <IfModule mod_headers.c>
     # HSTS (HTTP Strict Transport Security)
-    Header always set Strict-Transport-Security "max-age=31536000; includeSubDomains; preload"
+    # Only set on HTTPS connections (not on localhost/development)
+    Header always set Strict-Transport-Security "max-age=31536000; includeSubDomains; preload" env=HTTPS
 
     # Prevent clickjacking - Allow same origin for chat iframe
     Header always set X-Frame-Options DENY
@@ -198,10 +207,11 @@ AddDefaultCharset UTF-8
     
     # Content Security Policy (CSP) - Prevents XSS, inline scripts, and unauthorized resource loading
     # UPDATED: Added blob: to media-src for voice message playback
-    Header always set Content-Security-Policy "default-src 'self'; script-src 'self' 'unsafe-inline' 'unsafe-eval' cdn.jsdelivr.net code.jquery.com cdnjs.cloudflare.com unpkg.com cdn.datatables.net https://player.vimeo.com; style-src 'self' 'unsafe-inline' fonts.googleapis.com cdn.jsdelivr.net cdnjs.cloudflare.com cdn.datatables.net; img-src 'self' data: https: blob:; font-src 'self' https://fonts.gstatic.com https://cdnjs.cloudflare.com data: https:; connect-src 'self' https: data: blob:; frame-src 'self' https://player.vimeo.com; object-src 'none'; media-src 'self' blob:; manifest-src 'self'; frame-ancestors 'self'; worker-src 'self' blob:;"
+    # UPDATED: Added cdn.jsdelivr.net to style-src, unpkg.com to script-src for Bootstrap and WaveSurfer
+    Header always set Content-Security-Policy "default-src 'self'; script-src 'self' 'unsafe-inline' code.jquery.com cdnjs.cloudflare.com cdn.datatables.net cdn.jsdelivr.net https://player.vimeo.com unpkg.com; style-src 'self' 'unsafe-inline' fonts.googleapis.com cdnjs.cloudflare.com cdn.datatables.net cdn.jsdelivr.net; img-src 'self' data: https: blob:; font-src 'self' https://fonts.gstatic.com https://cdnjs.cloudflare.com data: https:; connect-src 'self' https://code.jquery.com https://cdnjs.cloudflare.com https://cdn.datatables.net https://cdn.jsdelivr.net data: blob:; frame-src 'self' https://player.vimeo.com; object-src 'none'; media-src 'self' blob:; manifest-src 'self'; frame-ancestors 'self'; worker-src 'self' blob:;"
     
     # Permissions Policy - Control browser features (formerly Feature-Policy)
-    Header always set Permissions-Policy "geolocation=(), microphone=(), camera=(), payment=(self)"
+    Header always set Permissions-Policy "geolocation=(), microphone=(self), camera=(), payment=(self)"
     
     # X-Permitted-Cross-Domain-Policies - Prevent cross-domain policies
     Header always set X-Permitted-Cross-Domain-Policies "none"

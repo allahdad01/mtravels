@@ -25,6 +25,10 @@ function loadOptions() {
         return allowedFeatures.includes(feature);
     }
 
+    // Get user role from session (via data attribute or meta tag)
+    var userRole = document.querySelector('meta[name="user-role"]') ? 
+        document.querySelector('meta[name="user-role"]').getAttribute('content') : '';
+
     if (reportType === "general" || reportType === "main_account") {
         // Show report configuration section for general and main account
         reportConfigSection.style.display = "block";
@@ -32,27 +36,53 @@ function loadOptions() {
 
         // Reset or populate report category options for general report
         var reportCategoryDropdown = document.getElementById("reportCategory");
-        reportCategoryDropdown.innerHTML = '';
+        reportCategoryDropdown.innerHTML = '<option value="">Select Category</option>';
 
-        // Dynamically add report categories based on allowed features
-        var reportCategories = [
-            { value: 'ticket', label: '🎫 Ticket', feature: 'ticket_bookings' },
-            { value: 'ticket_reservation', label: '🎫 Ticket Reservation', feature: 'ticket_reservations' },
-            { value: 'ticket_weight', label: '🎫 Ticket Weight', feature: 'ticket_weights' },
-            { value: 'refund_ticket', label: '↩️ Refund Ticket', feature: 'refunded_tickets' },
-            { value: 'date_change_ticket', label: '📅 Date Change Ticket', feature: 'date_change_tickets' },
-            { value: 'visa', label: '🛂 Visa', feature: 'visa_applications' },
-            { value: 'visa_refund', label: '🛂 Visa Refund', feature: 'visa_refunds' },
-            { value: 'umrah', label: '🕌 Umrah', feature: 'umrah_bookings' },
-            { value: 'umrah_refund', label: '🕌 Umrah Refund', feature: 'umrah_refunds' },
-            { value: 'hotel', label: '🏨 Hotel', feature: 'hotel_bookings' },
-            { value: 'hotel_refund', label: '🏨 Hotel Refund', feature: 'hotel_refunds' },
-            { value: 'expense', label: '💸 Expense', feature: 'expense_management' },
-            { value: 'creditor', label: '💼 Creditor', feature: 'creditors' },
-            { value: 'debtor', label: '📝 Debtor', feature: 'debtors' },
-            { value: 'additional_payment', label: '💵 Additional Payments', feature: 'additional_payments' },
-            { value: 'statement', label: '📊 Statement', feature: 'financial_statements' }
-        ];
+        // Dynamically add report categories based on allowed features and user role
+        var reportCategories = [];
+        
+        if (userRole === 'umrah') {
+            // Umrah role only sees umrah and umrah_refund
+            reportCategories = [
+                { value: 'umrah', label: '🕌 Umrah', feature: 'umrah_bookings' },
+                { value: 'umrah_refund', label: '🕌 Umrah Refund', feature: 'umrah_refunds' }
+            ];
+        } else if (['admin', 'finance'].includes(userRole)) {
+            // Admin and Finance see all categories
+            reportCategories = [
+                { value: 'ticket', label: '🎫 Ticket', feature: 'ticket_bookings' },
+                { value: 'ticket_reservation', label: '🎫 Ticket Reservation', feature: 'ticket_reservations' },
+                { value: 'ticket_weight', label: '🎫 Ticket Weight', feature: 'ticket_weights' },
+                { value: 'refund_ticket', label: '↩️ Refund Ticket', feature: 'refunded_tickets' },
+                { value: 'date_change_ticket', label: '📅 Date Change Ticket', feature: 'date_change_tickets' },
+                { value: 'visa', label: '🛂 Visa', feature: 'visa_applications' },
+                { value: 'visa_refund', label: '🛂 Visa Refund', feature: 'visa_refunds' },
+                { value: 'umrah', label: '🕌 Umrah', feature: 'umrah_bookings' },
+                { value: 'umrah_refund', label: '🕌 Umrah Refund', feature: 'umrah_refunds' },
+                { value: 'hotel', label: '🏨 Hotel', feature: 'hotel_bookings' },
+                { value: 'hotel_refund', label: '🏨 Hotel Refund', feature: 'hotel_refunds' },
+                { value: 'expense', label: '💸 Expense', feature: 'expense_management' },
+                { value: 'creditor', label: '💼 Creditor', feature: 'creditors' },
+                { value: 'debtor', label: '📝 Debtor', feature: 'debtors' },
+                { value: 'additional_payment', label: '💵 Additional Payments', feature: 'additional_payments' },
+                { value: 'statement', label: '📊 Statement', feature: 'financial_statements' }
+            ];
+        } else {
+            // Sales and other roles - restricted categories
+            reportCategories = [
+                { value: 'ticket', label: '🎫 Ticket', feature: 'ticket_bookings' },
+                { value: 'ticket_reservation', label: '🎫 Ticket Reservation', feature: 'ticket_reservations' },
+                { value: 'ticket_weight', label: '🎫 Ticket Weight', feature: 'ticket_weights' },
+                { value: 'refund_ticket', label: '↩️ Refund Ticket', feature: 'refunded_tickets' },
+                { value: 'date_change_ticket', label: '📅 Date Change Ticket', feature: 'date_change_tickets' },
+                { value: 'visa', label: '🛂 Visa', feature: 'visa_applications' },
+                { value: 'visa_refund', label: '🛂 Visa Refund', feature: 'visa_refunds' },
+                { value: 'umrah', label: '🕌 Umrah', feature: 'umrah_bookings' },
+                { value: 'umrah_refund', label: '🕌 Umrah Refund', feature: 'umrah_refunds' },
+                { value: 'hotel', label: '🏨 Hotel', feature: 'hotel_bookings' },
+                { value: 'hotel_refund', label: '🏨 Hotel Refund', feature: 'hotel_refunds' },
+            ];
+        }
 
         reportCategories.forEach(function(category) {
             if (hasFeature(category.feature)) {
@@ -66,7 +96,7 @@ function loadOptions() {
         reportCategorySelection.style.display = "block";
 
         var reportCategoryDropdown = document.getElementById("reportCategory");
-        reportCategoryDropdown.innerHTML = '';
+        reportCategoryDropdown.innerHTML = '<option value="">Select Category</option>';
 
         var reportCategories = [
             { value: 'ticket', label: '🎫 Ticket', feature: 'ticket_bookings' },

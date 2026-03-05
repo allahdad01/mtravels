@@ -59,20 +59,34 @@ function loadDuesData() {
 }
 
 function loadDebtorsList(type) {
-    fetch(`../api/dashboard/get_debtors.php?type=${type}`)
-        .then(response => response.json())
-        .then(data => {
-            const tableBody = document.getElementById('debtorsTableBody');
-            
-            // Check if the element exists before trying to modify it
-            if (!tableBody) {
+     fetch(`../api/dashboard/get_debtors.php?type=${type}`)
+         .then(response => response.json())
+         .then(data => {
+             const tableBody = document.getElementById('debtorsTableBody');
+             
+             // Check if the element exists before trying to modify it
+             if (!tableBody) {
 
-                return;
-            }
-            
-            tableBody.innerHTML = '';
-            
-            data.forEach(debtor => {
+                 return;
+             }
+             
+             // Check if response contains an error
+             if (data.error) {
+                 console.error('API Error:', data.error);
+                 tableBody.innerHTML = '<tr><td colspan="5" class="text-center text-danger">Error loading debtors: ' + data.error + '</td></tr>';
+                 return;
+             }
+             
+             tableBody.innerHTML = '';
+             
+             // Check if data is an array before calling forEach
+             if (!Array.isArray(data)) {
+                 console.error('Expected array response but got:', typeof data);
+                 tableBody.innerHTML = '<tr><td colspan="5" class="text-center text-warning">No debtors found</td></tr>';
+                 return;
+             }
+             
+             data.forEach(debtor => {
                 const row = `
                     <tr>
                         <td>${debtor.name}</td>

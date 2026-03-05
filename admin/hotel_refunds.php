@@ -8,8 +8,11 @@ require_once '../includes/language_helpers.php';
 // Enforce authentication
 enforce_auth();
 
-// Check if user is logged in
-if (!isset($_SESSION['user_id']) || $_SESSION['role'] !== 'admin') {
+// Check if user is logged in with proper role
+$allowed_roles = ['admin', 'finance', 'sales'];
+if (!isset($_SESSION['user_id']) || !in_array($_SESSION['role'], $allowed_roles)) {
+    // Log unauthorized access attempt
+    error_log("Unauthorized access attempt to dashboard: " . ($_SESSION['user_id'] ?? 'unknown') . " - Role: " . ($_SESSION['role'] ?? 'unknown') . " - IP: " . $_SERVER['REMOTE_ADDR']);
     header('Location: ../login.php');
     exit();
 }
@@ -17,6 +20,12 @@ $tenant_id = $_SESSION['tenant_id'];
 $branch_id = $_SESSION['branch_id'];
 // Database connection
 require_once('../includes/db.php');
+
+// Include utility functions
+require_once('../includes/utils.php');
+
+// Check if user is admin or finance
+$canEdit = in_array($_SESSION['role'], ['admin', 'finance']);
     // Pagination setup
     $page = isset($_GET['page']) ? (int)$_GET['page'] : 1;
     $recordsPerPage = 10;
@@ -78,527 +87,743 @@ require_once('../includes/db.php');
 
 ?>
 
+<?php include '../includes/header.php'; ?>
 
-<?php
-    // Include the header
-include '../includes/header.php';
-?>
-    <link rel="stylesheet" href="../css/general/modal-styles.css">
-    <link rel="stylesheet" href="../css/hotel/styles.css">
+<link rel="stylesheet" href="../css/general/modal-styles.css">
+<link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@300;400;500;600&family=Playfair+Display:wght@600&display=swap" rel="stylesheet">
 
-    <style>
-    /* Enhanced custom styles for better layout and design */
-    .page-header.card {
-        background: linear-gradient(135deg, #4099ff 0%, #2ed8b6 100%);
-        color: #ffffff;
-        border: none;
-        margin-bottom: 20px;
-        padding: 20px !important;
-        box-shadow: 0 4px 12px rgba(0,0,0,0.15);
-        border-radius: 10px;
-    }
+<!-- Main Content -->
+<div class="pcoded-main-container">
+    <div class="pcoded-wrapper">
+        <div class="pcoded-content">
+            <div class="pcoded-inner-content">
+                <div class="main-body">
+                    <div class="page-wrapper">
 
-    .page-header.card .row {
-        display: flex;
-        justify-content: space-between;
-        align-items: center;
-    }
-
-    .page-header.card h5 {
-        color: #ffffff;
-        margin: 0;
-        font-weight: 600;
-    }
-
-    .page-header.card .text-end {
-        text-align: right;
-    }
-
-    .page-header.card .btn {
-        background: rgba(255,255,255,0.2);
-        color: #ffffff;
-        border: 1px solid rgba(255,255,255,0.3);
-        border-radius: 25px;
-        transition: all 0.3s ease;
-    }
-
-    .page-header.card .btn:hover {
-        background: rgba(255,255,255,0.3);
-        border-color: rgba(255,255,255,0.5);
-        transform: translateY(-1px);
-    }
-
-    .card {
-        border-radius: 10px;
-        box-shadow: 0 2px 8px rgba(0,0,0,0.1);
-        transition: transform 0.2s ease-in-out, box-shadow 0.2s ease-in-out;
-        border: none;
-    }
-
-    .card:hover {
-        transform: translateY(-2px);
-        box-shadow: 0 4px 16px rgba(0,0,0,0.15);
-    }
-
-    .card-header {
-        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-        color: white;
-        border-radius: 10px 10px 0 0;
-        padding: 1rem 1.5rem;
-        border: none;
-    }
-
-    .card-header h5 {
-        margin: 0;
-        font-weight: 600;
-        display: flex;
-        align-items: center;
-    }
-
-    .progress {
-        border-radius: 15px;
-        overflow: hidden;
-        box-shadow: inset 0 1px 2px rgba(0,0,0,0.1);
-    }
-
-    .progress-bar {
-        transition: width 0.6s ease;
-    }
-
-    .badge {
-        font-size: 0.85em;
-        padding: 0.5em 0.75em;
-        border-radius: 20px;
-        font-weight: 500;
-    }
-
-    .badge-danger {
-        background-color: #dc3545;
-    }
-
-    .badge-warning {
-        background-color: #ffc107;
-        color: #212529;
-    }
-
-    .badge-info {
-        background-color: #17a2b8;
-    }
-
-    .badge-success {
-        background-color: #28a745;
-    }
-
-    .table-responsive {
-        border-radius: 10px;
-        overflow: hidden;
-    }
-
-    .table {
-        margin-bottom: 0;
-    }
-
-    .table thead th {
-        background-color: #f8f9fa;
-        border-bottom: 2px solid #dee2e6;
-        font-weight: 600;
-        color: #495057;
-        padding: 1rem;
-    }
-
-    .table tbody tr:hover {
-        background-color: #f1f3f4;
-    }
-
-    .table tbody td {
-        padding: 1rem;
-        vertical-align: middle;
-    }
-
-    .form-control {
-        border-radius: 8px;
-        border: 1px solid #ced4da;
-        transition: border-color 0.15s ease-in-out, box-shadow 0.15s ease-in-out;
-        padding: 0.75rem;
-    }
-
-    .form-control:focus {
-        border-color: #4099ff;
-        box-shadow: 0 0 0 0.2rem rgba(64, 153, 255, 0.25);
-    }
-
-    .btn-primary {
-        background: linear-gradient(135deg, #4099ff 0%, #2ed8b6 100%);
-        border: none;
-        border-radius: 25px;
-        padding: 0.75rem 2rem;
-        font-weight: 600;
-        transition: all 0.3s ease;
-    }
-
-    .btn-primary:hover {
-        transform: translateY(-1px);
-        box-shadow: 0 4px 12px rgba(64, 153, 255, 0.3);
-    }
-
-    .btn-secondary {
-        border-radius: 25px;
-        padding: 0.75rem 2rem;
-        font-weight: 600;
-        transition: all 0.3s ease;
-    }
-
-    .btn-outline-info, .btn-outline-success, .btn-outline-primary, .btn-outline-danger {
-        border-radius: 25px;
-        padding: 0.5rem 1rem;
-        font-weight: 500;
-        transition: all 0.3s ease;
-    }
-
-    .btn-outline-info:hover, .btn-outline-success:hover, .btn-outline-primary:hover, .btn-outline-danger:hover {
-        transform: translateY(-1px);
-        box-shadow: 0 2px 8px rgba(0,0,0,0.15);
-    }
-
-    .alert {
-        border-radius: 10px;
-        border: none;
-        padding: 1rem 1.5rem;
-    }
-
-    .alert-info {
-        background: linear-gradient(135deg, #d1ecf1 0%, #bee5eb 100%);
-        color: #0c5460;
-    }
-
-    .alert-success {
-        background: linear-gradient(135deg, #d4edda 0%, #c3e6cb 100%);
-        color: #155724;
-    }
-
-    .alert-danger {
-        background: linear-gradient(135deg, #f8d7da 0%, #f5c6cb 100%);
-        color: #721c24;
-    }
-
-    .h2 {
-        font-size: 2.5rem;
-    }
-
-    .h4 {
-        font-size: 1.5rem;
-    }
-
-    .h5 {
-        font-size: 1.25rem;
-    }
-
-    .h6 {
-        font-size: 1rem;
-    }
-
-    .pagination .page-link {
-        border-radius: 8px;
-        margin: 0 2px;
-        border: 1px solid #dee2e6;
-        color: #495057;
-    }
-
-    .pagination .page-item.active .page-link {
-        background: linear-gradient(135deg, #4099ff 0%, #2ed8b6 100%);
-        border-color: #4099ff;
-    }
-
-    .pagination .page-link:hover {
-        background-color: #e9ecef;
-        border-color: #adb5bd;
-    }
-    </style>
-
-    <!-- [ Main Content ] start -->
-    <div class="pcoded-main-container">
-        <div class="pcoded-wrapper">
-            <div class="pcoded-content">
-                <div class="pcoded-inner-content">
-                    <div class="main-body">
-                        <div class="page-wrapper">
-                            <!-- [ Main Content ] start -->
-                            <div class="main-content">
-                                <div class="page-header card">
-                                    <div class="row align-items-center">
-                                        <div class="col-md-6">
-                                            <h5 class="mb-0"><i class="feather icon-refresh-cw mr-2"></i><?= __('hotel_refunds') ?></h5>
-                                            <p class="mb-0 mt-1" style="font-size: 14px; opacity: 0.9;"><?= __('manage_hotel_refund_records') ?></p>
-                                        </div>
-                                        <div class="col-md-6 text-end">
-                                            <a href="hotel.php" class="btn btn-outline-secondary btn-sm">
-                                                <i class="feather icon-arrow-left mr-1"></i><?= __('back_to_hotel_management') ?>
-                                            </a>
-                                        </div>
-                                    </div>
-                                </div>
-
-                                <div class="row">
-                                    <!-- Refund Summary Card -->
-                                    <div class="col-md-4">
-                                        <div class="card">
-                                            <div class="card-header">
-                                                <h5><i class="feather icon-bar-chart-2 mr-2"></i><?= __('refund_summary') ?></h5>
-                                            </div>
-                                            <div class="card-body">
-                                                <div class="text-center mb-4">
-                                                    <div class="h2 font-weight-bold text-danger">
-                                                        <i class="feather icon-refresh-cw mr-2"></i><?= count($refunds) ?>
-                                                        <span class="text-muted h4">/ <?= $totalRefunds ?></span>
-                                                    </div>
-                                                    <p class="text-muted mb-0"><?= __('refunds_processed') ?></p>
-                                                </div>
-
-                                                <div class="progress mb-4" style="height: 30px; border-radius: 15px;">
-                                                    <div class="progress-bar <?= count($refunds) >= $totalRefunds ? 'bg-success' : 'bg-info' ?>"
-                                                         role="progressbar"
-                                                         style="width: <?= $totalRefunds > 0 ? min(100, (count($refunds) / $totalRefunds) * 100) : 0 ?>%; border-radius: 15px;">
-                                                        <span class="font-weight-bold"><?= $totalRefunds > 0 ? round((count($refunds) / $totalRefunds) * 100) : 0 ?>%</span>
-                                                    </div>
-                                                </div>
-
-                                                <hr class="my-4">
-
-                                                <div class="row text-center">
-                                                    <div class="col-6">
-                                                        <div class="h4 mb-1 font-weight-bold text-info"><?= __('this_page') ?></div>
-                                                        <small class="text-muted"><i class="feather icon-file-text mr-1"></i><?= count($refunds) ?> <?= __('records') ?></small>
-                                                    </div>
-                                                    <div class="col-6">
-                                                        <div class="h4 mb-1 font-weight-bold text-success"><?= __('total') ?></div>
-                                                        <small class="text-muted"><i class="feather icon-database mr-1"></i><?= $totalRefunds ?> <?= __('records') ?></small>
-                                                    </div>
-                                                </div>
-
-                                                <hr class="my-4">
-
-                                                <div class="text-center">
-                                                    <span class="badge badge-danger badge-pill px-3 py-2 h6">
-                                                        <i class="feather icon-refresh-cw mr-1"></i><?= __('hotel_refunds') ?>
-                                                    </span>
-                                                </div>
-                                            </div>
-                                        </div>
-                                    </div>
-
-                                    <!-- Refund Records -->
-                                    <div class="col-md-8">
-                                        <div class="card">
-                                            <div class="card-header">
-                                                <h5><i class="feather icon-refresh-cw mr-2"></i><?= __('hotel_refund_records') ?></h5>
-                                            </div>
-                                            <div class="card-body">
-                                            <?php if (!$tableExists || empty($refunds)): ?>
-                                                <div class="alert alert-info border-0 shadow-sm">
-                                                    <div class="d-flex align-items-center">
-                                                        <i class="feather icon-info mr-3 text-info" style="font-size: 24px;"></i>
-                                                        <div>
-                                                            <h6 class="mb-1"><?= __('no_hotel_refunds_have_been_processed_yet') ?></h6>
-                                                            <small class="text-muted"><?= __('when_refunds_are_processed_they_will_appear_here') ?></small>
-                                                        </div>
-                                                    </div>
-                                                </div>
-                                            <?php else: ?>
-                                                <div class="table-responsive">
-                                                    <table id="refundsTable" class="table table-hover">
-                                                        <thead>
-                                                            <tr>
-                                                                <th class="text-center">#</th>
-                                                                <th><?= __('booking_details') ?></th>
-                                                                <th><?= __('refund_info') ?></th>
-                                                                <th><?= __('amount') ?></th>
-                                                                <th><?= __('date') ?></th>
-                                                                <th class="text-center"><?= __('actions') ?></th>
-                                                            </tr>
-                                                        </thead>
-                                                        <tbody>
-                                                            <?php foreach ($refunds as $index => $refund): ?>
-                                                                <tr>
-                                                                    <td class="text-center font-weight-bold text-muted"><?= ($offset + $index + 1) ?></td>
-                                                                    <td>
-                                                                        <div class="d-flex flex-column">
-                                                                            <span class="font-weight-bold text-dark h6 mb-2">
-                                                                                <i class="feather icon-user mr-2 text-primary"></i><?= htmlspecialchars($refund['title'] . ' ' . $refund['first_name'] . ' ' . $refund['last_name']) ?>
-                                                                            </span>
-                                                                            <div class="mt-2">
-                                                                                <small class="text-muted d-block">
-                                                                                    <i class="feather icon-calendar mr-1"></i>
-                                                                                    <?= __('check_in') ?>: <strong><?= date('M d, Y', strtotime($refund['check_in_date'])) ?></strong>
-                                                                                </small>
-                                                                                <small class="text-muted d-block">
-                                                                                    <i class="feather icon-calendar mr-1"></i>
-                                                                                    <?= __('check_out') ?>: <strong><?= date('M d, Y', strtotime($refund['check_out_date'])) ?></strong>
-                                                                                </small>
-                                                                            </div>
-                                                                            <small class="text-muted d-block mt-2">
-                                                                                <i class="feather icon-home mr-1"></i>
-                                                                                <?= htmlspecialchars($refund['accommodation_details']) ?>
-                                                                            </small>
-                                                                        </div>
-                                                                    </td>
-                                                                    <td>
-                                                                        <div class="d-flex flex-column">
-                                                                            <span class="badge <?= $refund['refund_type'] === 'full' ? 'badge-danger' : 'badge-warning' ?> badge-pill px-3 py-2 mb-2 font-weight-bold">
-                                                                                <i class="feather icon-refresh-cw mr-1"></i><?= ucfirst($refund['refund_type']) ?> <?= __('refund') ?>
-                                                                            </span>
-                                                                            <small class="text-muted d-block mb-2">
-                                                                                <i class="feather icon-info mr-1"></i>
-                                                                                <strong><?= __('reason') ?>:</strong> <?= htmlspecialchars($refund['reason']) ?>
-                                                                            </small>
-                                                                            <div class="mt-2">
-                                                                                <small class="text-muted d-block">
-                                                                                    <i class="feather icon-user mr-1"></i>
-                                                                                    <strong><?= __('client') ?>:</strong> <?= htmlspecialchars($refund['client_name']) ?>
-                                                                                </small>
-                                                                                <small class="text-muted d-block">
-                                                                                    <i class="feather icon-briefcase mr-1"></i>
-                                                                                    <strong><?= __('supplier') ?>:</strong> <?= htmlspecialchars($refund['supplier_name']) ?>
-                                                                                </small>
-                                                                            </div>
-                                                                        </div>
-                                                                    </td>
-                                                                    <td>
-                                                                        <div class="d-flex flex-column">
-                                                                            <span class="font-weight-bold text-danger h5 mb-1">
-                                                                                <i class="feather icon-dollar-sign mr-1"></i><?= htmlspecialchars($refund['currency']) ?> <?= number_format($refund['refund_amount'], 2) ?>
-                                                                            </span>
-                                                                            <?php if (!empty($refund['exchange_rate']) && $refund['exchange_rate'] != 1): ?>
-                                                                                <small class="text-muted mt-1">
-                                                                                    <i class="feather icon-repeat mr-1"></i>
-                                                                                    <strong><?= __('exchange_rate') ?>:</strong> <?= number_format($refund['exchange_rate'], 4) ?>
-                                                                                </small>
-                                                                            <?php endif; ?>
-                                                                        </div>
-                                                                    </td>
-                                                                    <td>
-                                                                        <div class="d-flex flex-column">
-                                                                            <span class="font-weight-bold text-dark h6 mb-1">
-                                                                                <i class="feather icon-calendar mr-1"></i><?= date('M d, Y', strtotime($refund['created_at'])) ?>
-                                                                            </span>
-                                                                            <small class="text-muted mb-2">
-                                                                                <i class="feather icon-clock mr-1"></i><?= date('h:i A', strtotime($refund['created_at'])) ?>
-                                                                            </small>
-                                                                            <?php if ($refund['processed_by_name']): ?>
-                                                                                <small class="text-muted mt-1">
-                                                                                    <i class="feather icon-user-check mr-1"></i>
-                                                                                    <strong><?= __('processed_by') ?>:</strong> <?= htmlspecialchars($refund['processed_by_name']) ?>
-                                                                                </small>
-                                                                            <?php endif; ?>
-                                                                        </div>
-                                                                    </td>
-                                                                    <td class="text-center">
-                                                                        <div class="btn-group-vertical" role="group">
-                                                                            <a class="btn btn-outline-info btn-sm mb-1" href="hotel.php?id=<?= $refund['booking_id'] ?>">
-                                                                                <i class="feather icon-file-text mr-1"></i><?= __('view_booking') ?>
-                                                                            </a>
-                                                                            <?php if (!empty($refund['transaction_id'])): ?>
-                                                                                <a class="btn btn-outline-success btn-sm mb-1" href="javascript:void(0)" onclick="viewTransaction(<?= $refund['transaction_id'] ?>)">
-                                                                                    <i class="feather icon-credit-card mr-1"></i><?= __('view_transaction') ?>
-                                                                                </a>
-                                                                            <?php endif; ?>
-                                                                            <?php if ($refund['processed'] != 1): ?>
-                                                                                <a class="btn btn-outline-primary btn-sm mb-1" href="javascript:void(0)" onclick="processRefundTransaction(<?= $refund['id'] ?>)">
-                                                                                    <i class="feather icon-check-circle mr-1"></i><?= __('process_payment') ?>
-                                                                                </a>
-                                                                            <?php endif; ?>
-                                                                            <a class="btn btn-outline-primary btn-sm mb-1" href="javascript:void(0)" onclick="printRefundAgreement(<?= $refund['id'] ?>)">
-                                                                                <i class="feather icon-printer mr-1"></i><?= __('print_agreement') ?>
-                                                                            </a>
-                                                                            <a class="btn btn-outline-danger btn-sm" href="javascript:void(0)" onclick="deleteRefund(<?= $refund['id'] ?>)">
-                                                                                <i class="feather icon-trash-2 mr-1"></i><?= __('delete_refund') ?>
-                                                                            </a>
-                                                                        </div>
-                                                                    </td>
-                                                                </tr>
-                                                            <?php endforeach; ?>
-                                                        </tbody>
-                                                    </table>
-                                    
-                                    <!-- Pagination Controls -->
-                                    <nav aria-label="Refunds pagination" class="mt-3">
-                                        <ul class="pagination justify-content-center">
-                                            <?php if ($page > 1): ?>
-                                                <li class="page-item">
-                                                    <a class="page-link" href="?page=1" aria-label="First">
-                                                        <span aria-hidden="true">&laquo;&laquo;</span>
-                                                    </a>
-                                                </li>
-                                                <li class="page-item">
-                                                    <a class="page-link" href="?page=<?= $page - 1 ?>" aria-label="Previous">
-                                                        <span aria-hidden="true">&laquo;</span>
-                                                    </a>
-                                                </li>
-                                            <?php endif; ?>
-
-                                            <?php 
-                                            // Show page numbers
-                                            $startPage = max(1, $page - 2);
-                                            $endPage = min($totalPages, $page + 2);
-                                            
-                                            for ($i = $startPage; $i <= $endPage; $i++): ?>
-                                                <li class="page-item <?= $i == $page ? 'active' : '' ?>">
-                                                    <a class="page-link" href="?page=<?= $i ?>"><?= $i ?></a>
-                                                </li>
-                                            <?php endfor; ?>
-
-                                            <?php if ($page < $totalPages): ?>
-                                                <li class="page-item">
-                                                    <a class="page-link" href="?page=<?= $page + 1 ?>" aria-label="Next">
-                                                        <span aria-hidden="true">&raquo;</span>
-                                                    </a>
-                                                </li>
-                                                <li class="page-item">
-                                                    <a class="page-link" href="?page=<?= $totalPages ?>" aria-label="Last">
-                                                        <span aria-hidden="true">&raquo;&raquo;</span>
-                                                    </a>
-                                                </li>
-                                            <?php endif; ?>
-                                        </ul>
-                                        
-                                        <!-- Pagination Info -->
-                                        <div class="text-center mt-2 text-muted">
-                                            <?= sprintf(__('showing_page_x_of_y'), $page, $totalPages) ?> 
-                                            (<?= sprintf(__('total_x_refunds'), $totalRefunds) ?>)
-                                        </div>
-                                    </nav>
-                                </div>
-                            <?php endif; ?>
-                                        </div>
-                                    </div>
-                                </div>
+                        <!-- Page Header -->
+                        <div class="hb-page-header">
+                            <div class="hb-page-header-left">
+                                <h1><i class="fa-solid fa-credit-card"></i><?= __('hotel_refunds') ?></h1>
+                                <p><?= __('manage_hotel_refunds_efficiently') ?></p>
                             </div>
-                            <!-- [ Main Content ] end -->
+                            <div class="hb-page-header-right">
+                                <a href="hotel.php" class="hb-btn-back">
+                                    <i class="feather icon-arrow-left"></i><?= __('back_to_bookings') ?>
+                                </a>
+                            </div>
                         </div>
-                    </div>
+
+                        <!-- Toast Container -->
+                        <div class="toast-container"></div>
+
+                        <!-- Column Headers -->
+                        <div class="hb-list-header">
+                            <div class="lh-bar"></div>
+                            <div class="lh-guest">Guest</div>
+                            <div class="lh-room">Room</div>
+                            <div class="lh-dates">Refund Info</div>
+                            <div class="lh-price">Amount</div>
+                            <div class="lh-status">Date</div>
+                            <div class="lh-actions"></div>
+                        </div>
+
+                        <!-- Refunds List -->
+                        <div class="hb-list" id="refundsContainer">
+                            <?php if (!$tableExists || empty($refunds)): ?>
+                                <div class="hb-empty">
+                                    <i class="feather icon-inbox"></i>
+                                    <h4><?= __('no_hotel_refunds_have_been_processed_yet') ?></h4>
+                                    <p><?= __('when_refunds_are_processed_they_will_appear_here') ?></p>
+                                </div>
+                            <?php else: ?>
+                                <?php foreach ($refunds as $i => $refund): ?>
+                                    <?php
+                                    // Status styling
+                                    $refundType = $refund['refund_type'] ?? 'full';
+                                    $statusClass = ($refundType === 'full') ? 'hb-status-cancelled' : 'hb-status-pending';
+                                    $statusLabel = ($refundType === 'full') ? 'Full Refund' : 'Partial Refund';
+                                    $statusBar = ($refundType === 'full') ? '#d1d5db' : 'linear-gradient(180deg,#d97706 0%,#f59e0b 100%)';
+                                    ?>
+                                    <div class="hb-row" 
+                                         data-refund-id="<?= $refund['id'] ?>"
+                                         data-refund-type="<?= htmlspecialchars($refundType) ?>"
+                                         style="animation-delay: <?= $i * 0.04 ?>s">
+
+                                        <!-- Accent Bar -->
+                                        <div class="hb-accent-bar" style="background: <?= $statusBar ?>;"></div>
+
+                                        <!-- Guest -->
+                                        <div class="hb-guest-cell">
+                                            <div class="hb-guest-name"><?= htmlspecialchars(getValue($refund, 'title') . ' ' . getValue($refund, 'first_name') . ' ' . getValue($refund, 'last_name')) ?></div>
+                                            <div class="hb-guest-meta">
+                                                <?php if (!empty($refund['client_name'])): ?>
+                                                <span><i class="feather icon-briefcase"></i><?= htmlspecialchars($refund['client_name']) ?></span>
+                                                <?php endif; ?>
+                                                <?php if (!empty($refund['supplier_name'])): ?>
+                                                <span><i class="feather icon-home"></i><?= htmlspecialchars($refund['supplier_name']) ?></span>
+                                                <?php endif; ?>
+                                            </div>
+                                        </div>
+
+                                        <!-- Room -->
+                                        <div class="hb-room-cell">
+                                            <div class="hb-cell-label">Room</div>
+                                            <div class="hb-room-name"><?= htmlspecialchars(getValue($refund, 'accommodation_details')) ?></div>
+                                        </div>
+
+                                        <!-- Refund Info -->
+                                        <div class="hb-dates-cell">
+                                            <div class="hb-cell-label">Refund</div>
+                                            <div class="hb-dates-track">
+                                                <span class="hb-status-pill <?= $statusClass ?>">
+                                                    <span class="hb-dot"></span><?= $statusLabel ?>
+                                                </span>
+                                                <small style="display: block; margin-top: 4px; color: #9ca3af; font-size: .75rem;">
+                                                    <?= htmlspecialchars($refund['reason'] ?? 'No reason provided') ?>
+                                                </small>
+                                            </div>
+                                        </div>
+
+                                        <!-- Amount -->
+                                        <div class="hb-price-cell">
+                                            <div class="hb-price-amount">
+                                                <span class="hb-currency"><?= htmlspecialchars(getValue($refund, 'currency')) ?></span>
+                                                <?= number_format(getValue($refund, 'refund_amount', 0), 2) ?>
+                                            </div>
+                                            <?php if (!empty($refund['exchange_rate']) && $refund['exchange_rate'] != 1): ?>
+                                            <div style="font-size: .73rem; color: #9ca3af; margin-top: 4px;">
+                                                <i class="feather icon-repeat"></i> Rate: <?= number_format($refund['exchange_rate'], 4) ?>
+                                            </div>
+                                            <?php endif; ?>
+                                        </div>
+
+                                        <!-- Date -->
+                                        <div class="hb-status-cell">
+                                            <div style="font-weight: 600; color: #111827;">
+                                                <i class="feather icon-calendar"></i> <?= date('M d, Y', strtotime($refund['created_at'])) ?>
+                                            </div>
+                                            <div class="hb-created-by">
+                                                <i class="feather icon-clock"></i>
+                                                <?= date('h:i A', strtotime($refund['created_at'])) ?>
+                                            </div>
+                                            <?php if ($refund['processed_by_name']): ?>
+                                            <div class="hb-created-by">
+                                                <i class="feather icon-user"></i>
+                                                <?= htmlspecialchars($refund['processed_by_name']) ?>
+                                            </div>
+                                            <?php endif; ?>
+                                        </div>
+
+                                        <!-- Actions -->
+                                        <div class="hb-actions-cell">
+                                            <button class="hb-btn-icon hb-view"
+                                                    data-tip="<?= __('view_booking') ?>"
+                                                    onclick="window.location.href='hotel.php?id=<?= $refund['booking_id'] ?>'">
+                                                <i class="feather icon-file-text"></i>
+                                            </button>
+
+                                            <?php if (!empty($refund['transaction_id']) && $canEdit): ?>
+                                            <button class="hb-btn-icon hb-trans"
+                                                    data-tip="<?= __('view_transaction') ?>"
+                                                    onclick="viewTransaction(<?= $refund['transaction_id'] ?>)">
+                                                <i class="feather icon-credit-card"></i>
+                                            </button>
+                                            <?php endif; ?>
+
+                                            <?php if ($refund['processed'] != 1 && $canEdit): ?>
+                                            <button class="hb-btn-icon hb-edit"
+                                                    data-tip="<?= __('process_payment') ?>"
+                                                    onclick="processRefundTransaction(<?= $refund['id'] ?>)">
+                                                <i class="feather icon-check-circle"></i>
+                                            </button>
+                                            <?php endif; ?>
+
+                                            <button class="hb-btn-icon hb-view"
+                                                    data-tip="<?= __('print_agreement') ?>"
+                                                    onclick="printRefundAgreement(<?= $refund['id'] ?>)">
+                                                <i class="feather icon-printer"></i>
+                                            </button>
+
+                                            <?php if ($canEdit): ?>
+                                            <div class="hb-dropdown-wrap">
+                                                <button class="hb-btn-icon hb-more"
+                                                        data-tip="More"
+                                                        onclick="toggleHbDropdown(this)">
+                                                    <i class="feather icon-more-vertical"></i>
+                                                </button>
+                                                <div class="hb-dropdown-menu">
+                                                    <button class="hb-dropdown-item hb-danger"
+                                                            onclick="deleteRefund(<?= $refund['id'] ?>)">
+                                                        <i class="feather icon-trash-2"></i><?= __('delete_refund') ?>
+                                                    </button>
+                                                </div>
+                                            </div>
+                                            <?php endif; ?>
+                                        </div>
+
+                                    </div><!-- /.hb-row -->
+                                <?php endforeach; ?>
+                            <?php endif; ?>
+                        </div>
+
+                        <!-- Pagination -->
+                        <?php if (!empty($refunds) && isset($totalPages) && $totalPages > 1): ?>
+                        <div class="hb-pagination">
+                            <span class="hb-pagination-info">
+                                <?php
+                                if (isset($page, $recordsPerPage, $totalRefunds)) {
+                                    $startRecord = (($page - 1) * $recordsPerPage) + 1;
+                                    $endRecord   = min($page * $recordsPerPage, $totalRefunds);
+                                    echo sprintf('Showing %d–%d of %d entries', $startRecord, $endRecord, $totalRefunds);
+                                }
+                                ?>
+                            </span>
+                            <nav class="hb-pager">
+                                <?php
+                                $prevDisabled = ($page <= 1) ? 'disabled' : '';
+                                echo '<a class="hb-page-btn ' . $prevDisabled . '" href="' . ($prevDisabled ? '#' : '?page=' . ($page - 1)) . '"><i class="feather icon-chevron-left"></i></a>';
+
+                                $maxPages  = 5;
+                                $startPage = max(1, min($page - floor($maxPages / 2), $totalPages - $maxPages + 1));
+                                $endPage   = min($startPage + $maxPages - 1, $totalPages);
+
+                                if ($startPage > 1) {
+                                    echo '<a class="hb-page-btn" href="?page=1">1</a>';
+                                    if ($startPage > 2) echo '<span class="hb-page-ellipsis">…</span>';
+                                }
+
+                                for ($p = $startPage; $p <= $endPage; $p++) {
+                                    $activeClass = ($p == $page) ? 'hb-page-active' : '';
+                                    echo '<a class="hb-page-btn ' . $activeClass . '" href="?page=' . $p . '">' . $p . '</a>';
+                                }
+
+                                if ($endPage < $totalPages) {
+                                    if ($endPage < $totalPages - 1) echo '<span class="hb-page-ellipsis">…</span>';
+                                    echo '<a class="hb-page-btn" href="?page=' . $totalPages . '">' . $totalPages . '</a>';
+                                }
+
+                                $nextDisabled = ($page >= $totalPages) ? 'disabled' : '';
+                                echo '<a class="hb-page-btn ' . $nextDisabled . '" href="' . ($nextDisabled ? '#' : '?page=' . ($page + 1)) . '"><i class="feather icon-chevron-right"></i></a>';
+                                ?>
+                            </nav>
+                        </div>
+                        <?php endif; ?>
+
+                    </div><!-- /.page-wrapper -->
                 </div>
             </div>
         </div>
     </div>
-    <!-- [ Main Content ] end -->
-    <?php include '../modals/hotel_refund/transaction_modal.php'; ?>
-    <?php include '../modals/hotel_refund/edit_transaction_modal.php'; ?>
+</div>
 
+<?php include '../modals/hotel_refund/transaction_modal.php'; ?>
+<?php include '../modals/hotel_refund/edit_transaction_modal.php'; ?>
 
-    <!-- Required Js -->
-    <script src="../assets/js/vendor-all.min.js"></script>
-    <script src="../assets/plugins/bootstrap/js/bootstrap.min.js"></script>
-    <script src="../assets/js/pcoded.min.js"></script>
-    <!-- SweetAlert2 JS -->
-    <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
+<style>
+/* ═══════════════════════════════════════════════════════
+   Hotel Refunds — Row Card Design (matching hotel.php)
+   Prefixed with hb- to avoid conflicts with existing CSS
+   ═══════════════════════════════════════════════════════ */
 
-    <script src="../js/hotel_refund/transaction_manager.js"></script>
-    <script src="../js/hotel_refund/hotel_management.js"></script>
-    <script src="../js/hotel_refund/button_protection.js"></script>
+:root {
+    --hb-bg:         #f0f2f7;
+    --hb-surface:    #ffffff;
+    --hb-border:     #e4e8f0;
+    --hb-text-1:     #111827;
+    --hb-text-2:     #4b5563;
+    --hb-text-3:     #9ca3af;
+    --hb-accent:     #1a56db;
+    --hb-accent-lt:  #eff3ff;
+    --hb-green:      #059669;
+    --hb-green-lt:   #ecfdf5;
+    --hb-amber:      #d97706;
+    --hb-amber-lt:   #fffbeb;
+    --hb-red:        #dc2626;
+    --hb-red-lt:     #fef2f2;
+    --hb-radius:     14px;
+    --hb-shadow:     0 1px 3px rgba(0,0,0,.07), 0 4px 12px rgba(0,0,0,.06);
+    --hb-shadow-hover: 0 4px 8px rgba(0,0,0,.08), 0 14px 28px rgba(0,0,0,.1);
+}
 
+/* ── Page Header ─────────────────────────────────────────── */
+.hb-page-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    margin-bottom: 24px;
+    flex-wrap: wrap;
+    gap: 14px;
+}
+.hb-page-header-left h1 {
+    font-family: 'Playfair Display', Georgia, serif;
+    font-size: 1.65rem;
+    font-weight: 600;
+    color: var(--hb-text-1);
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    margin: 0;
+}
+.hb-page-header-left h1 i {
+    color: var(--hb-accent);
+    font-size: 1.3rem;
+}
+.hb-page-header-left p {
+    color: var(--hb-text-3);
+    font-size: .85rem;
+    margin: 3px 0 0;
+}
+.hb-page-header-right {
+    display: flex;
+    gap: 10px;
+    align-items: center;
+    flex-wrap: wrap;
+}
+.hb-btn-back {
+    display: inline-flex;
+    align-items: center;
+    gap: 7px;
+    padding: 9px 18px;
+    border-radius: 10px;
+    border: 1px solid var(--hb-border);
+    background: var(--hb-surface);
+    color: var(--hb-text-2);
+    font-size: .85rem;
+    font-weight: 500;
+    text-decoration: none;
+    transition: all .2s;
+}
+.hb-btn-back:hover {
+    border-color: var(--hb-accent);
+    color: var(--hb-accent);
+    text-decoration: none;
+}
 
+/* ── Column Headers ──────────────────────────────────────── */
+.hb-list-header {
+    display: grid;
+    grid-template-columns: 6px 1fr 190px 190px 150px 155px 140px;
+    align-items: center;
+    padding: 0 0 8px;
+}
+.hb-list-header > div {
+    font-size: .68rem;
+    font-weight: 700;
+    letter-spacing: .07em;
+    text-transform: uppercase;
+    color: var(--hb-text-3);
+    padding: 0 12px;
+}
+.hb-list-header .lh-bar,
+.hb-list-header .lh-icon { padding: 0; }
+.hb-list-header .lh-guest { padding-left: 16px; }
+.hb-list-header .lh-price { text-align: right; }
+.hb-list-header .lh-actions { padding-right: 16px; }
 
+/* ── List Wrapper ────────────────────────────────────────── */
+.hb-list {
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+}
 
-<!-- Include Admin Footer -->
+/* ── Booking Row ─────────────────────────────────────────── */
+.hb-row {
+    display: grid;
+    grid-template-columns: 6px 1fr 190px 190px 150px 155px 140px;
+    align-items: center;
+    background: var(--hb-surface);
+    border-radius: var(--hb-radius);
+    border: 1px solid var(--hb-border);
+    box-shadow: var(--hb-shadow);
+    overflow: visible;
+    transition: box-shadow .25s, transform .25s;
+    animation: hbFadeUp .35s ease both;
+    min-height: 88px;
+    position: relative;
+}
+.hb-row:hover {
+    box-shadow: var(--hb-shadow-hover);
+    transform: translateY(-2px);
+}
+
+@keyframes hbFadeUp {
+    from { opacity: 0; transform: translateY(10px); }
+    to   { opacity: 1; transform: translateY(0); }
+}
+
+/* ── Accent Bar ──────────────────────────────────────────── */
+.hb-accent-bar {
+    height: 100%;
+    min-height: 88px;
+    border-radius: var(--hb-radius) 0 0 var(--hb-radius);
+}
+
+/* ── Guest Cell ──────────────────────────────────────────── */
+.hb-guest-cell {
+    padding: 14px 12px 14px 16px;
+    min-width: 0;
+}
+.hb-guest-name {
+    font-weight: 600;
+    font-size: .9375rem;
+    color: var(--hb-text-1);
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+.hb-guest-meta {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    margin-top: 4px;
+    flex-wrap: wrap;
+}
+.hb-guest-meta span {
+    display: inline-flex;
+    align-items: center;
+    gap: 5px;
+    font-size: .78rem;
+    color: var(--hb-text-3);
+    white-space: nowrap;
+}
+.hb-guest-meta span .feather { font-size: .72rem; }
+
+/* ── Shared Cell Styles ──────────────────────────────────── */
+.hb-room-cell,
+.hb-dates-cell,
+.hb-price-cell,
+.hb-status-cell {
+    padding: 14px 12px;
+    border-left: 1px solid var(--hb-border);
+    min-width: 0;
+}
+.hb-cell-label {
+    font-size: .68rem;
+    font-weight: 700;
+    letter-spacing: .06em;
+    text-transform: uppercase;
+    color: var(--hb-text-3);
+    margin-bottom: 5px;
+}
+
+/* ── Room Cell ───────────────────────────────────────────── */
+.hb-room-name {
+    font-size: .875rem;
+    font-weight: 500;
+    color: var(--hb-text-1);
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+/* ── Dates Cell ──────────────────────────────────────────── */
+.hb-dates-track {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    flex-wrap: nowrap;
+    flex-direction: column;
+    align-items: flex-start;
+}
+.hb-date-block { flex-shrink: 0; }
+
+/* ── Price Cell ──────────────────────────────────────────── */
+.hb-price-cell { text-align: right; }
+.hb-price-amount {
+    font-size: 1.05rem;
+    font-weight: 700;
+    color: var(--hb-text-1);
+    letter-spacing: -.2px;
+    white-space: nowrap;
+}
+.hb-currency {
+    font-size: .72rem;
+    font-weight: 500;
+    color: var(--hb-text-3);
+    margin-right: 2px;
+}
+
+/* ── Status Cell ─────────────────────────────────────────── */
+.hb-status-pill {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    padding: 4px 10px;
+    border-radius: 20px;
+    font-size: .75rem;
+    font-weight: 600;
+    white-space: nowrap;
+}
+.hb-dot {
+    width: 6px; height: 6px;
+    border-radius: 50%;
+    flex-shrink: 0;
+}
+.hb-status-confirmed { background: var(--hb-green-lt); color: var(--hb-green); }
+.hb-status-confirmed .hb-dot {
+    background: var(--hb-green);
+    box-shadow: 0 0 0 2px rgba(5,150,105,.2);
+    animation: hbPulse 2s infinite;
+}
+.hb-status-pending { background: var(--hb-amber-lt); color: var(--hb-amber); }
+.hb-status-pending .hb-dot { background: var(--hb-amber); }
+.hb-status-cancelled { background: #f3f4f6; color: var(--hb-text-3); }
+.hb-status-cancelled .hb-dot { background: var(--hb-text-3); }
+
+@keyframes hbPulse {
+    0%, 100% { box-shadow: 0 0 0 2px rgba(5,150,105,.2); }
+    50%       { box-shadow: 0 0 0 4px rgba(5,150,105,.08); }
+}
+
+.hb-created-by {
+    display: flex;
+    align-items: center;
+    gap: 4px;
+    font-size: .78rem;
+    color: var(--hb-text-3);
+    margin-top: 6px;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+.hb-created-by .feather { font-size: .7rem; flex-shrink: 0; }
+
+/* ── Actions Cell ────────────────────────────────────────── */
+.hb-actions-cell {
+    padding: 14px 14px 14px 12px;
+    display: flex;
+    align-items: center;
+    justify-content: flex-end;
+    gap: 6px;
+    border-left: 1px solid var(--hb-border);
+    flex-wrap: wrap;
+    min-width: 0;
+}
+.hb-btn-icon {
+    width: 34px;
+    height: 34px;
+    border-radius: 8px;
+    border: 1px solid var(--hb-border);
+    background: var(--hb-surface);
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    font-size: .8rem;
+    cursor: pointer;
+    transition: all .18s;
+    color: var(--hb-text-2);
+    position: relative;
+    flex-shrink: 0;
+}
+.hb-btn-icon:hover { border-color: transparent; }
+.hb-btn-icon.hb-view  { color: var(--hb-accent); }
+.hb-btn-icon.hb-view:hover  { background: var(--hb-accent-lt); }
+.hb-btn-icon.hb-edit  { color: var(--hb-amber); }
+.hb-btn-icon.hb-edit:hover  { background: var(--hb-amber-lt); }
+.hb-btn-icon.hb-trans  { color: var(--hb-green); }
+.hb-btn-icon.hb-trans:hover { background: var(--hb-green-lt); }
+.hb-btn-icon.hb-more:hover  { background: #f3f4f6; color: var(--hb-text-1); }
+
+/* Tooltip */
+.hb-btn-icon[data-tip]::after {
+    content: attr(data-tip);
+    position: absolute;
+    bottom: calc(100% + 7px);
+    left: 50%;
+    transform: translateX(-50%);
+    background: #1f2937;
+    color: #fff;
+    font-size: .68rem;
+    padding: 3px 8px;
+    border-radius: 5px;
+    white-space: nowrap;
+    opacity: 0;
+    pointer-events: none;
+    transition: opacity .15s;
+    z-index: 200;
+}
+.hb-btn-icon[data-tip]:hover::after { opacity: 1; }
+
+/* ── Dropdown ────────────────────────────────────────────── */
+.hb-dropdown-wrap { position: relative; }
+.hb-dropdown-menu {
+    position: absolute;
+    right: 0;
+    top: calc(100% + 6px);
+    background: var(--hb-surface);
+    border: 1px solid var(--hb-border);
+    border-radius: 10px;
+    box-shadow: 0 8px 24px rgba(0,0,0,.12);
+    min-width: 168px;
+    z-index: 150;
+    display: none;
+    overflow: hidden;
+}
+.hb-dropdown-menu.open { display: block; }
+.hb-dropdown-item {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    padding: 10px 14px;
+    font-size: .8rem;
+    color: var(--hb-text-2);
+    cursor: pointer;
+    transition: background .15s;
+    border: none;
+    background: none;
+    width: 100%;
+    text-align: left;
+    font-family: inherit;
+}
+.hb-dropdown-item:hover { background: #f9fafb; }
+.hb-dropdown-item.hb-danger { color: var(--hb-red); }
+.hb-dropdown-item.hb-danger:hover { background: var(--hb-red-lt); }
+.hb-dropdown-item .feather { width: 14px; font-size: .8rem; flex-shrink: 0; }
+
+/* ── Empty State ─────────────────────────────────────────── */
+.hb-empty {
+    background: var(--hb-surface);
+    border: 1px dashed var(--hb-border);
+    border-radius: var(--hb-radius);
+    padding: 64px 24px;
+    text-align: center;
+    color: var(--hb-text-3);
+}
+.hb-empty .feather { font-size: 2.5rem; display: block; margin: 0 auto 14px; }
+.hb-empty h4 { font-size: 1rem; font-weight: 600; color: var(--hb-text-2); margin-bottom: 6px; }
+.hb-empty p  { font-size: .875rem; }
+
+/* ── Pagination ──────────────────────────────────────────── */
+.hb-pagination {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    margin-top: 20px;
+    flex-wrap: wrap;
+    gap: 12px;
+}
+.hb-pagination-info {
+    font-size: .8rem;
+    color: var(--hb-text-3);
+}
+.hb-pager {
+    display: flex;
+    gap: 5px;
+    align-items: center;
+}
+.hb-page-btn {
+    min-width: 34px;
+    height: 34px;
+    padding: 0 8px;
+    border-radius: 8px;
+    border: 1px solid var(--hb-border);
+    background: var(--hb-surface);
+    color: var(--hb-text-2);
+    font-size: .82rem;
+    font-weight: 500;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    text-decoration: none;
+    transition: all .18s;
+    cursor: pointer;
+}
+.hb-page-btn:hover:not(.disabled):not(.hb-page-active) {
+    border-color: var(--hb-accent);
+    color: var(--hb-accent);
+    text-decoration: none;
+}
+.hb-page-btn.hb-page-active {
+    background: var(--hb-accent);
+    border-color: var(--hb-accent);
+    color: #fff;
+    box-shadow: 0 2px 8px rgba(26,86,219,.28);
+}
+.hb-page-btn.disabled {
+    opacity: .4;
+    pointer-events: none;
+}
+.hb-page-ellipsis {
+    color: var(--hb-text-3);
+    font-size: .8rem;
+    padding: 0 4px;
+    display: inline-flex;
+    align-items: center;
+}
+
+/* ── Responsive ──────────────────────────────────────────── */
+@media (max-width: 1200px) {
+    .hb-row,
+    .hb-list-header {
+        grid-template-columns: 6px 1fr 170px 140px auto;
+    }
+    .hb-status-cell,
+    .hb-list-header .lh-status { display: none; }
+}
+
+@media (max-width: 960px) {
+    .hb-row,
+    .hb-list-header {
+        grid-template-columns: 6px 1fr 140px auto;
+    }
+    .hb-dates-cell,
+    .hb-list-header .lh-dates { display: none; }
+}
+
+@media (max-width: 700px) {
+    .hb-row,
+    .hb-list-header {
+        grid-template-columns: 6px 1fr auto;
+    }
+    .hb-room-cell,
+    .hb-price-cell,
+    .hb-list-header .lh-room,
+    .hb-list-header .lh-price { display: none; }
+    .hb-list-header { display: none; }
+    .hb-actions-cell { border-left: none; }
+}
+
+@media (max-width: 480px) {
+    .hb-page-header { flex-direction: column; align-items: flex-start; }
+    .hb-page-header-right { width: 100%; }
+    .hb-btn-back { width: 100%; justify-content: center; }
+}
+
+/* ── Toast (keep existing) ───────────────────────────────── */
+.toast-container {
+    position: fixed;
+    top: 20px;
+    right: 20px;
+    z-index: 9999;
+    max-width: 350px;
+}
+</style>
+
+<script>
+function toggleHbDropdown(btn) {
+    const menu = btn.nextElementSibling;
+    document.querySelectorAll('.hb-dropdown-menu').forEach(m => {
+        if (m !== menu) m.classList.remove('open');
+    });
+    menu.classList.toggle('open');
+}
+
+document.addEventListener('click', function(e) {
+    if (!e.target.closest('.hb-dropdown-wrap')) {
+        document.querySelectorAll('.hb-dropdown-menu').forEach(m => m.classList.remove('open'));
+    }
+});
+</script>
+
+<!-- Required Js -->
+<script src="../assets/js/vendor-all.min.js"></script>
+<script src="../assets/plugins/bootstrap/js/bootstrap.min.js"></script>
+<script src="../assets/js/pcoded.min.js"></script>
+<script src="../js/hotel_refund/transaction_manager.js"></script>
+<script src="../js/hotel_refund/hotel_management.js"></script>
+<script src="../js/hotel_refund/button_protection.js"></script>
+
 <?php include '../includes/admin_footer.php'; ?>
 
 </body>

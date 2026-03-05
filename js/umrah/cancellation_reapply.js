@@ -5,6 +5,12 @@ function openCancellationReapplyModal(bookingId, basePrice, soldPrice, currentPr
     // Default to 'active' status if not provided
     status = status || 'active';
     
+    // PREVENT CANCELLATION OF APPROVED (ACTIVE) BOOKINGS
+    if (status === 'active') {
+        showToast('warning', 'Approved bookings cannot be cancelled. Please use the refund option instead.');
+        return;
+    }
+    
     // Set hidden fields
     jQuery('#cr_booking_id').val(bookingId);
     jQuery('#cr_base_price').val(basePrice);
@@ -128,12 +134,12 @@ jQuery(document).ready(function($) {
                     const result = typeof response === 'string' ? JSON.parse(response) : response;
 
                     // Check for success
-                    if (result && (result.status === 'success' || result.success === true || result.success === 'true')) {
-                        showToast('success', result.message || 'Action processed successfully');
-                        setTimeout(() => {
-                            $('#cancellationReapplyModal').modal('hide');
-                            location.reload();
-                        }, 1500);
+                     if (result && (result.status === 'success' || result.success === true || result.success === 'true')) {
+                         showToast('success', result.message || 'Action processed successfully');
+                         setTimeout(() => {
+                             $('#cancellationReapplyModal').modal('hide');
+                             refreshFamiliesTable();
+                         }, 1500);
                     } else {
                         showToast('error', result.message || 'Failed to process action');
                     }
@@ -177,7 +183,7 @@ if (typeof window !== 'undefined') {
 // Toggle all member checkboxes
 function toggleAllMembers() {
     const selectAllCheckbox = document.getElementById('selectAllMembers');
-    const memberCheckboxes = document.querySelectorAll('.member-checkbox');
+    const memberCheckboxes = document.querySelectorAll('.member-checkbox:not(:disabled)');
     
     memberCheckboxes.forEach(checkbox => {
         checkbox.checked = selectAllCheckbox.checked;
@@ -296,14 +302,14 @@ function processBulkAction(selectedMembers, action, newStatus) {
                 const result = typeof response === 'string' ? JSON.parse(response) : response;
                 
                 if (result.success) {
-                    Swal.fire({
-                        icon: 'success',
-                        title: 'Success',
-                        text: result.message || `Successfully ${action}ed ${selectedMembers.length} member${selectedMembers.length > 1 ? 's' : ''}`,
-                        confirmButtonText: 'OK'
-                    }).then(() => {
-                        location.reload();
-                    });
+                     Swal.fire({
+                         icon: 'success',
+                         title: 'Success',
+                         text: result.message || `Successfully ${action}ed ${selectedMembers.length} member${selectedMembers.length > 1 ? 's' : ''}`,
+                         confirmButtonText: 'OK'
+                     }).then(() => {
+                         refreshFamiliesTable();
+                     });
                 } else {
                     showToast('error', result.message || `Failed to process bulk ${action}`);
                     }

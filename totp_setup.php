@@ -350,17 +350,20 @@ try {
                                 $return_path = 'admin/dashboard.php';
                                 break;
                             case 'sales':
-                                $return_path = 'sales/dashboard.php';
+                                $return_path = 'admin/dashboard.php';
                                 break;
                             case 'finance':
-                                $return_path = 'finance/dashboard.php';
+                                $return_path = 'admin/dashboard.php';
                                 break;
                             case 'umrah':
-                                $return_path = 'umrah/dashboard.php';
+                                $return_path = 'admin/dashboard.php';
                                 break;
+                                case 'tenant_super_admin':
+                                    $return_path = 'tenant_super_admin/dashboard.php';
+                                    break;
                             
                             default:
-                                $return_path = 'user/dashboard.php';
+                                $return_path = 'admin/dashboard.php';
                         }
                     }
                     ?>

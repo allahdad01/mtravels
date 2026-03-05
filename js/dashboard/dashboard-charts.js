@@ -168,7 +168,7 @@ document.addEventListener('DOMContentLoaded', function() {
             stroke: {
                 width: [0, 0, 4],
                 curve: 'monotoneCubic',
-                colors: ['#00D084', '#FF5370', '#00E396'],
+                colors: ['#4099ff', '#FF5370', '#667eea'],
                 lineCap: 'round'
             },
             xaxis: {
@@ -266,15 +266,24 @@ document.addEventListener('DOMContentLoaded', function() {
                     const debit = series[1][dataPointIndex];
                     const net = series[2][dataPointIndex];
                     
-                    return '<div class="apexcharts-tooltip-advanced" style="background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); padding: 12px 16px; border-radius: 8px; box-shadow: 0 4px 20px rgba(0,0,0,0.3);">' +
-                        '<span style="color: #fff; font-weight: bold; display: block; margin-bottom: 6px;">' + w.globals.categoryLabels[dataPointIndex] + '</span>' +
-                        '<span style="color: #76ff03; display: block; font-size: 11px; margin-bottom: 4px;">Income: ' + currencySymbol + Math.abs(credit).toFixed(2) + '</span>' +
-                        '<span style="color: #ff4081; display: block; font-size: 11px; margin-bottom: 4px;">Expense: ' + currencySymbol + Math.abs(debit).toFixed(2) + '</span>' +
-                        '<span style="color: #4fc3f7; display: block; font-size: 11px; font-weight: bold; border-top: 1px solid rgba(255,255,255,0.2); padding-top: 4px; margin-top: 4px;">Net: ' + currencySymbol + net.toFixed(2) + '</span>' +
+                    return '<div class="financial-chart-tooltip">' +
+                        '<div class="tooltip-date">' + w.globals.categoryLabels[dataPointIndex] + '</div>' +
+                        '<div class="tooltip-item income">' +
+                            '<span class="tooltip-label">Income:</span>' +
+                            '<span class="tooltip-value">' + currencySymbol + Math.abs(credit).toFixed(2) + '</span>' +
+                        '</div>' +
+                        '<div class="tooltip-item expense">' +
+                            '<span class="tooltip-label">Expense:</span>' +
+                            '<span class="tooltip-value">' + currencySymbol + Math.abs(debit).toFixed(2) + '</span>' +
+                        '</div>' +
+                        '<div class="tooltip-item net">' +
+                            '<span class="tooltip-label">Net:</span>' +
+                            '<span class="tooltip-value">' + currencySymbol + net.toFixed(2) + '</span>' +
+                        '</div>' +
                         '</div>';
                 }
             },
-            colors: ['#00D084', '#FF5370', '#00E396'],
+            colors: ['#4099ff', '#FF5370', '#667eea'],
             grid: {
                 show: true,
                 borderColor: '#f0f0f0',
@@ -297,13 +306,8 @@ document.addEventListener('DOMContentLoaded', function() {
                 }
             },
             fill: {
-                type: 'gradient',
-                gradient: {
-                    shadeIntensity: 0.1,
-                    opacityFrom: 0.45,
-                    opacityTo: 0.05,
-                    stops: [20, 100, 100, 100]
-                }
+                type: 'solid',
+                opacity: 0.85
             },
             states: {
                 hover: {
